@@ -1,0 +1,97 @@
+/* An LED board (led-board.tsx): rows of square cells, each holding one dot that fills 68% of its
+   cell, as a pictogram's do. Unlit dots take the section's unlit dot (`--dot-0`), lit dots its lit
+   one (`--dot-1`), so a consumer dims or brightens a board by setting those. */
+.led-board {
+  display: grid;
+  print-color-adjust: exact;
+}
+
+.led-board__row {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+
+.led-board__dot {
+  inline-size: 68%;
+  aspect-ratio: 1;
+  margin: 16%;
+  border-radius: 50%;
+  background-color: var(--dot-0);
+  transition:
+    transform var(--dur-spring-snappy) var(--spring-snappy),
+    background-color var(--dur-base) var(--curve-out);
+}
+
+/* Lit dots paint above the unlit ones (a grid item takes z-index unpositioned), so the layers their
+   animations run on never interleave with unlit dots. A lit dot draws its disc as its ::before: the
+   dot carries the power-on and the disc any idle motion, since two animations of one property on
+   one element would keep both off the compositor. */
+.led-board__dot[data-lit] {
+  z-index: 1;
+  scale: 1.08;
+  background-color: transparent;
+}
+
+.led-board__dot[data-lit]::before {
+  content: '';
+  display: block;
+  aspect-ratio: 1;
+  border-radius: inherit;
+  background-color: var(--dot-1);
+}
+
+/* The loupe under a fine pointer (use-led-board.ts): nearby dots swell, unlit ones glow faintly. */
+.led-board__dot[data-near='1'] {
+  transform: scale(1.3);
+}
+
+.led-board__dot[data-near='2'] {
+  transform: scale(1.6);
+}
+
+.led-board__dot:not([data-lit])[data-near] {
+  background-color: rgb(255 255 255 / 0.22);
+}
+
+/* Power-on: once the board is revealed, its lit dots flash up from the unlit level column by column,
+   `--led-step` apart after `--led-lead` (`--col` comes from use-led-board.ts). Only scale and opacity
+   animate, so it runs on the compositor. Reduced motion shows the dots lit and still. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .led-board[data-revealed] .led-board__dot[data-lit] {
+    animation: led-power 0.7s var(--curve-out)
+      calc(var(--rv-delay, 0ms) + var(--led-lead, 240ms) + var(--col, 0) * var(--led-step, 34ms))
+      backwards;
+  }
+}
+
+@media (forced-colors: active) {
+  .led-board {
+    forced-color-adjust: none;
+  }
+
+  .led-board__dot {
+    background-color: Canvas;
+  }
+
+  .led-board__dot[data-lit]::before {
+    background-color: CanvasText;
+  }
+}
+
+@keyframes led-power {
+  0% {
+    opacity: 0.07;
+    scale: 0.6;
+  }
+
+  45% {
+    opacity: 1;
+    scale: 1.32;
+  }
+
+  100% {
+    opacity: 1;
+    scale: 1.08;
+  }
+}

@@ -1,53 +1,84 @@
-/* Every slide is the same complete 16:10 desktop scene. Embla owns movement and snapping. */
+/* The showcase is one scroll sequence. Its track is a stage's height plus one step of scrolling per
+   scene (the empty steps after the stage set that length), and the stage is sticky, so it stays
+   pinned for exactly those steps while use-case-scroll.ts turns how far the stage has travelled
+   into the scene. The plate's perforations keep scrolling behind the pinned stage. */
 .cases__showcase {
+  --stage-top: calc(var(--nav-top) + var(--nav-h) + 24px);
+  --stage-h: calc(100svh - var(--stage-top));
+  --case-step: max(320px, 50svh);
+  position: relative;
+  container-type: inline-size;
+}
+
+/* The stage opens with the section's heading, then the screen, its caption and the progress, so as
+   it arrives the screen follows the heading at the plate's usual spacing. Below the heading the
+   stage fills the viewport below the nav: the screen's row grows to the screen's height at the
+   stage's full width, or takes what height is left when that is less. When the viewport also holds
+   the heading (use-case-scroll.ts), the heading pins with the rest; otherwise the stage is taller by
+   the heading (`--stage-head`) and pins that much higher, so the heading leaves the viewport and the
+   screen keeps its size. Whatever height is still unused falls to the last row; pinned, the stage
+   sits lower by half of it (`--stage-slack`), so the space is shared above and below. */
+.cases__stage {
+  position: sticky;
+  inset-block-start: calc(var(--stage-top) - var(--stage-head, 0px) + var(--stage-slack, 0px) / 2);
   display: grid;
-  gap: 24px;
-  min-inline-size: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, calc(100cqw / 1.6)) auto auto minmax(0, 1fr);
+  grid-template-areas:
+    'heading'
+    'frame'
+    'caption'
+    'progress'
+    '.';
+  block-size: calc(var(--stage-h) + var(--stage-head, 0px));
+  padding-block-end: 24px;
 }
 
-.cases__views {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
+.cases__heading {
+  grid-area: heading;
+  transition: opacity var(--dur-base) var(--curve-standard);
 }
 
-.cases__view {
+/* A heading that does not pin would rest just above the screen, under the nav: it fades while the
+   stage is pinned and returns as the stage lets go at the top. */
+.cases__stage:not([data-titled])[data-pinned] .cases__heading {
+  opacity: 0;
+}
+
+/* The steps run from the top of the track, behind the stage, and the track ends a stage's height
+   after the last one, so the stage unpins as the last scene's step ends. */
+.cases__steps {
+  margin-block-start: calc(-1 * var(--stage-h));
+  padding-block-end: var(--stage-h);
+  pointer-events: none;
+}
+
+.cases__space {
   display: block;
-  min-block-size: 44px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: var(--r-part);
-  background: transparent;
-  color: var(--fg-2);
-  font: inherit;
-  font-size: var(--fs-small);
-  font-weight: 500;
-  line-height: 1.4;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    color var(--dur-fast) linear,
-    background var(--dur-fast) linear;
+  block-size: var(--case-step);
 }
 
-.cases__view[aria-pressed='true'] {
-  color: var(--accent-on);
-  background: var(--accent-fill);
+/* The screen is a 16:10 window: the shared desktop, with the scenes stacked above it. It fits the
+   frame's box whichever way that box is tighter. */
+.cases__frame {
+  grid-area: frame;
+  display: grid;
+  place-items: center;
+  container-type: size;
+  view-timeline: --cases-frame block;
 }
 
-/* The screen is a 16:10 window: the shared desktop, with Embla's stacked slides crossfading
-   above it. */
 .cases__screen {
-  overflow: hidden;
+  inline-size: min(100cqw, 160cqh);
   aspect-ratio: 16 / 10;
+  overflow: hidden;
   border-radius: var(--r-display);
   /* Scene motion measures in cqw, so it scales with the screen like the scene itself. */
   container-type: inline-size;
 }
 
 .cases__desktop,
-.cases__viewport {
+.cases__slide {
   position: absolute;
   inset: 0;
   inline-size: 100%;
@@ -59,21 +90,22 @@
   user-select: none;
 }
 
-.cases__viewport {
-  overflow: hidden;
-}
-
-.cases__slides {
-  display: flex;
-  block-size: 100%;
-}
-
+/* Scenes cross-fade: the active one shows, the others wait hidden, their images loading with the
+   screen's. */
 .cases__slide {
-  position: relative;
-  flex: 0 0 100%;
-  min-inline-size: 0;
   display: grid;
   place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-slow) var(--curve-standard),
+    visibility 0s linear var(--dur-slow);
+}
+
+.cases__slide[data-active] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .cases__scene {
@@ -91,121 +123,6 @@
   pointer-events: none;
 }
 
-.cases__caption {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 32px;
-}
-
-.cases__description {
-  max-inline-size: 44rem;
-  min-inline-size: 0;
-  min-block-size: 92px;
-}
-
-.cases__description h3 {
-  font-size: var(--fs-h3);
-  line-height: 1.35;
-  margin-block-end: 10px;
-}
-
-.cases__description p {
-  color: var(--fg-2);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-
-.cases__controls {
-  display: flex;
-  align-items: center;
-  flex: none;
-  gap: 8px;
-}
-
-.cases__timing {
-  display: grid;
-  gap: 8px;
-  min-inline-size: 84px;
-  margin-inline-end: 12px;
-}
-
-.cases__position {
-  font-size: var(--fs-small);
-  white-space: nowrap;
-}
-
-.cases__timer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--fg-3);
-  font-size: var(--fs-legend);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.cases__timer-track {
-  display: block;
-  flex: 1;
-  block-size: 3px;
-  overflow: hidden;
-  border-radius: var(--r-part);
-  background: var(--line-2);
-}
-
-.cases__timer-fill {
-  display: block;
-  block-size: 100%;
-  background: var(--fg-1);
-  transform: scaleX(0);
-  transform-origin: left;
-}
-
-.cases__controls button {
-  display: grid;
-  place-items: center;
-  inline-size: 44px;
-  block-size: 44px;
-  padding: 0;
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-part);
-  background: var(--ink-2);
-  color: var(--fg-1);
-  cursor: pointer;
-  transition: background var(--dur-fast) linear;
-}
-
-.cases__controls svg,
-.cases__original svg {
-  inline-size: 16px;
-  block-size: 16px;
-}
-
-.cases__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  border-block-start: 1px solid var(--line-1);
-  padding-block-start: 8px;
-  color: var(--fg-3);
-  font-size: var(--fs-legend);
-}
-
-.cases__original {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-block-size: 44px;
-  color: var(--fg-2);
-  text-underline-offset: 4px;
-}
-
-.cases__original svg {
-  transition: transform var(--dur-fast) var(--curve-out);
-}
-
 .cases__unavailable {
   max-inline-size: 28rem;
   padding: 32px;
@@ -215,70 +132,180 @@
   text-align: center;
 }
 
+.cases__unavailable a {
+  color: var(--fg-1);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* The caption: every scene's title and line stacked in one cell, so the box keeps the tallest one's
+   height and nothing moves as scenes change. The active one shows. */
+.cases__captions {
+  grid-area: caption;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block-start: 24px;
+  text-align: center;
+}
+
+.cases__caption {
+  grid-area: 1 / 1;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-base) var(--curve-standard),
+    visibility 0s linear var(--dur-base);
+}
+
+.cases__caption[data-active] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.cases__caption h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+  text-wrap: balance;
+}
+
+.cases__caption p {
+  max-inline-size: 36rem;
+  color: var(--fg-2);
+  text-wrap: balance;
+}
+
+/* The progress: a bar per scene. Bars behind the current scene are full, and the current one fills
+   as its step scrolls by (`--case-fill`), so the row moves 1:1 with the scroll. The keys share the
+   row evenly up to their full width, so the row never outgrows the narrowest screen. */
+.cases__progress {
+  --key: 40px;
+  --bar: 28px;
+  grid-area: progress;
+  display: grid;
+  grid-auto-columns: minmax(0, var(--key));
+  grid-auto-flow: column;
+  justify-content: center;
+  margin-block-start: 12px;
+}
+
+.cases__step {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-part);
+  background: transparent;
+  cursor: pointer;
+}
+
+.cases__bar {
+  display: block;
+  overflow: hidden;
+  inline-size: min(var(--bar), 100% - 8px);
+  block-size: 3px;
+  border-radius: 2px;
+  background-color: var(--line-2);
+  transition: background-color var(--dur-fast) linear;
+}
+
+.cases__fill {
+  display: block;
+  block-size: 100%;
+  background-color: var(--fg-1);
+  transform-origin: 0 50%;
+  scale: var(--case-fill, 0) 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .cases__view:hover:not([aria-pressed='true']),
-  .cases__controls button:hover {
-    color: var(--fg-1);
-    background: var(--ink-3);
-  }
-  .cases__original:hover {
-    color: var(--fg-1);
-    text-decoration: underline;
-  }
-  .cases__original:hover svg {
-    transform: translate(2px, -2px);
+  .cases__step:hover .cases__bar {
+    background-color: var(--fg-3);
   }
 }
 
-.cases__view:active:not([aria-pressed='true']),
-.cases__controls button:active {
-  background: var(--ink-3);
-}
-
-.cases__view:focus-visible,
-.cases__controls button:focus-visible,
-.cases__original:focus-visible {
+.cases__step:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: -3px;
+  outline-offset: -2px;
 }
 
-.cases__view[aria-pressed='true']:focus-visible {
-  outline-color: var(--accent-on);
-}
+/* A landscape phone has more width than height: the caption and progress move beside the screen. */
+@media (orientation: landscape) and (height < 540px) and (width >= 480px) {
+  .cases__stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 17rem);
+    grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'heading heading'
+      'frame .'
+      'frame caption'
+      'frame progress'
+      'frame .';
+    column-gap: 24px;
+  }
 
-@media (width < 700px) {
+  .cases__captions {
+    margin-block-start: 0;
+    text-align: start;
+  }
+
   .cases__caption {
-    flex-direction: column;
-    gap: 16px;
+    justify-items: start;
   }
-  .cases__description {
-    min-block-size: 116px;
-  }
-  .cases__controls {
-    align-self: end;
-  }
-  .cases__showcase {
-    gap: 16px;
+
+  .cases__progress {
+    --key: 34px;
+    --bar: 24px;
+    justify-content: start;
+    margin-inline-start: -5px;
   }
 }
 
-@media (width < 480px) {
-  .cases__views {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
+@media (prefers-reduced-motion: no-preference) {
+  /* The caption rises a little as it changes, on the same beat as the scene. */
+  .cases__caption {
+    translate: 0 6px;
+    transition:
+      opacity var(--dur-base) var(--curve-standard),
+      translate var(--dur-spring-smooth) var(--spring-smooth),
+      visibility 0s linear var(--dur-base);
   }
-  .cases__view {
-    inline-size: 100%;
-    block-size: 100%;
-    padding-inline: 8px;
+
+  .cases__caption[data-active] {
+    translate: none;
+    transition-delay: 0s;
+  }
+
+  /* As the screen comes up into view, it grows to its full size, tied to the scroll: it is full
+     size once its whole frame is on screen. Without scroll-driven animations it is simply there. */
+  @supports (animation-timeline: view()) {
+    .cases__screen {
+      animation: cases-arrive linear both;
+      animation-timeline: --cases-frame;
+      animation-range: entry 0% entry 100%;
+    }
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cases__view,
-  .cases__controls button,
-  .cases__original svg {
-    transition: none;
+@keyframes cases-arrive {
+  from {
+    scale: 0.86;
+  }
+}
+
+@media (forced-colors: active) {
+  .cases__bar {
+    forced-color-adjust: none;
+    background-color: GrayText;
+  }
+
+  .cases__fill {
+    background-color: CanvasText;
   }
 }

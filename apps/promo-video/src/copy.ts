@@ -77,12 +77,13 @@ export const copy: Record<Lang, FilmCopy> = {
       },
     },
     features: {
-      title: 'Your models, your tools, your rules.',
+      title: 'Your setup, your rules, your Mac.',
       items: [
-        { title: 'Models', body: 'Bring the providers you use, in the cloud or on your Mac.' },
-        { title: 'Extensions', body: 'Skills, subagents, MCP servers and saved / commands.' },
+        { title: 'Models', body: 'Use the providers you have, cloud or local.' },
+        { title: 'Extensions', body: 'Skills, subagents, MCP servers and / commands.' },
         { title: 'Memory', body: 'It learns how you work. You review what it keeps.' },
         { title: 'Permissions', body: 'You decide what it may do without asking.' },
+        { title: 'Runs locally', body: 'No account, and no Atd server in between.' },
       ],
     },
     privacy: {
@@ -143,12 +144,13 @@ export const copy: Record<Lang, FilmCopy> = {
       },
     },
     features: {
-      title: '你的模型，你的工具，你的规则。',
+      title: '你的配置，你的规则，你的 Mac。',
       items: [
-        { title: '模型', body: '接入你在用的提供商，云端或本机皆可。' },
-        { title: '扩展', body: '技能、子代理、MCP 服务器，以及用 / 运行的命令。' },
-        { title: '记忆', body: '它会学习你的工作方式，记住什么由你审核。' },
-        { title: '权限', body: '无需询问时能做多少，由你决定。' },
+        { title: '模型', body: '接入在用的提供商，云端本机皆可。' },
+        { title: '扩展', body: '技能、子代理、MCP 和 / 命令。' },
+        { title: '记忆', body: '学习你的习惯，记住什么由你审核。' },
+        { title: '权限', body: '无需询问能做多少，由你决定。' },
+        { title: '本地运行', body: '无需账号，不经 Atd 服务器中转。' },
       ],
     },
     privacy: {

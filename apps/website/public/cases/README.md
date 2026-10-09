@@ -1,6 +1,6 @@
 # Interface scenes
 
-The “Interfaces” section (`#cases`) is an eight-scene carousel. Its labels, captions and image
+The “Interfaces” section (`#cases`) is an eight-scene scroll sequence. Its labels, captions and image
 paths live in [`src/content/cases.ts`](../../src/content/cases.ts). These are design previews exported
 from the canonical Figma file, not recordings of a live browser agent.
 
@@ -36,7 +36,7 @@ The shared glass switch pill binds its fill and edge to translucent color variab
 
 ## Scene layers
 
-The carousel does not show the flat PNGs: it stacks each scene's layers over one shared desktop
+The showcase does not show the flat PNGs: it stacks each scene's layers over one shared desktop
 (`layers/desktop.webp`) and animates them. The layers come from
 “W · Website · Interface scene layers (matte exports)” (`2552:144525`), on the same page as the
 scenes. [`scripts/case-layers.json`](../../scripts/case-layers.json) lists, per scene, its layers
@@ -54,7 +54,7 @@ each layer's box, `src/content/case-layers.ts` and `src/sections/cases/case-laye
 recomposites the decoded files and prints each scene's error against Figma (a mean below 1/255;
 the remaining maximum is lossy WebP on the Dock icons).
 
-## Updating the carousel
+## Updating the showcase
 
 1. Update the corresponding Figma scene, retaining the common canvas and desktop component. Keep
    small floating tools at their intended screen position and preserve full window bounds.
@@ -67,16 +67,14 @@ the remaining maximum is lossy WebP on the Dock icons).
    and Pillow with WebP). A new or renamed layer also needs its entrance in
    `src/sections/cases/scenes.css`.
 4. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
-5. Verify all eight slides, their entrances, automatic playback, pause/resume,
-   previous/next wrapping, keyboard access, original-image links, reduced motion and mobile
-   layout in both languages. Run the website lint, type check and production build.
+5. Verify all eight scenes and their entrances while scrolling through the pinned stage, both
+   directions, the bars' fill and their jumps, keyboard access, reduced motion and the phone,
+   landscape-phone and desktop layouts in both languages. Run the website lint, type check and
+   production build.
 
-The website uses Embla with its Autoplay and Fade plugins. Each scene holds for its own time
-(`src/sections/cases/scenes.ts`) while visible. Hover, choosing a scene and the previous and next
-buttons leave playback running; keyboard focus stops it until the visitor resumes explicitly.
-Reduced motion starts paused. The controls show the current scene's hold and a progress bar driven
-by Embla's timer events. The bar freezes when playback pauses and resets when the next interval
-starts. A failed layer displays a localized message and retains the link to the original asset.
+The scroll position, not a timer, decides the scene: see “Interface showcase” in the
+[website README](../../README.md). A scene whose layers fail to load shows a localized message
+with a link to its flat export.
 
 ## Archived recordings and Summon assets
 
@@ -150,6 +148,6 @@ ffmpeg -i public/cases/<id>.mp4 -frames:v 1 -q:v 3 public/cases/<id>.jpg
 ffprobe -v error -show_entries format=duration -of csv=p=0 public/cases/<id>.mp4
 ```
 
-These recordings are retained as source material and are not referenced by the current carousel.
+These recordings are retained as source material and are not referenced by the current showcase.
 Before using a recording again, verify playback, its poster, mobile layout and reduced motion.
 Never publish raw recordings, provider configuration, credentials or the isolated app data directory.

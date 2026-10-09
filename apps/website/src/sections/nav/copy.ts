@@ -15,9 +15,8 @@ export const navCopy = {
     home: 'Atd home',
     skip: 'Skip to content',
     links: [
-      { href: '#features', label: 'Features' },
       { href: '#cases', label: 'Interfaces' },
-      { href: '#privacy', label: 'Privacy' },
+      { href: '#features', label: 'Features' },
     ],
     download: 'Download',
     language: 'Change language',
@@ -27,9 +26,8 @@ export const navCopy = {
     home: 'Atd 首页',
     skip: '跳到正文',
     links: [
-      { href: '#features', label: '功能' },
       { href: '#cases', label: '界面' },
-      { href: '#privacy', label: '隐私' },
+      { href: '#features', label: '功能' },
     ],
     download: '下载',
     language: '切换语言',

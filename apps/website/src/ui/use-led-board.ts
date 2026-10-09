@@ -1,42 +1,44 @@
 import { useEffect, type RefObject } from 'react';
-import { useInView } from '../../lib/use-in-view';
+import { useInView } from '../lib/use-in-view';
 
 const FINE_POINTER = '(hover: hover) and (pointer: fine)';
 const REDUCED = '(prefers-reduced-motion: reduce)';
+const ROW = ':scope > .led-board__row';
+const DOT = '.led-board__dot';
 /** Lens radii in cells: dots inside the inner ring swell most. */
 const INNER = 1.6;
 const OUTER = 3.2;
 
 /**
- * Wires the LED board's script-side motion and returns whether it is on screen (its idle wave runs
- * only then). The board's dots are laid out `columns` to a row; each gets its column as `--col`,
- * which the CSS power-on and wave stagger by. Under a fine pointer the board is a loupe: dots within
- * a few cells of the pointer swell (`data-near="1" | "2"`), updated at most once a frame.
+ * Wires an LED board's script-side motion and returns whether it is on screen (a consumer's idle
+ * motion runs only then). Each dot gets its column as `--col`, which the CSS power-on and any idle
+ * wave stagger by. Under a fine pointer the board is a loupe: dots within a few cells of the pointer
+ * swell (`data-near="1" | "2"`), updated at most once a frame.
  */
-export function useLedBoard(boardRef: RefObject<HTMLElement | null>, columns: number): boolean {
+export function useLedBoard(boardRef: RefObject<HTMLElement | null>): boolean {
   const near = useInView(boardRef, { rootMargin: '80px 0px' });
 
   useEffect(() => {
     const board = boardRef.current;
-    const grid = board?.querySelector('.download__board');
-    if (!board || !grid || columns < 1) return;
+    if (!board) return;
+    const rows = Array.from(board.querySelectorAll<HTMLElement>(ROW));
+    const columns = rows[0]?.querySelectorAll(DOT).length ?? 0;
     // Cell centres, in cells from the board's top left.
-    const cells = Array.from(
-      grid.querySelectorAll<HTMLElement>('.download__dot'),
-      (dot, index) => ({
+    const cells = rows.flatMap((row, y) =>
+      Array.from(row.querySelectorAll<HTMLElement>(DOT), (dot, x) => ({
         dot,
-        x: (index % columns) + 0.5,
-        y: Math.floor(index / columns) + 0.5,
-      }),
+        x: x + 0.5,
+        y: y + 0.5,
+      })),
     );
     for (const { dot, x } of cells) dot.style.setProperty('--col', String(Math.floor(x)));
-    if (!matchMedia(FINE_POINTER).matches || matchMedia(REDUCED).matches) return;
+    if (columns < 1 || !matchMedia(FINE_POINTER).matches || matchMedia(REDUCED).matches) return;
 
     let frame = 0;
     let pointer: { x: number; y: number } | null = null;
     const apply = () => {
       frame = 0;
-      const box = grid.getBoundingClientRect();
+      const box = board.getBoundingClientRect();
       const cell = box.width / columns;
       for (const { dot, x, y } of cells) {
         const distance = pointer
@@ -73,7 +75,7 @@ export function useLedBoard(boardRef: RefObject<HTMLElement | null>, columns: nu
       abort.abort();
       cancelAnimationFrame(frame);
     };
-  }, [boardRef, columns]);
+  }, [boardRef]);
 
   return near;
 }

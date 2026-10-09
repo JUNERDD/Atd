@@ -4,7 +4,11 @@ import './section.css';
 interface SectionProps {
   /** The anchor id; the title gets `${id}-title`. */
   id: string;
-  title: string;
+  /**
+   * The heading. Leave it out when the children place the heading themselves with `SectionHeader`,
+   * as the interfaces showcase does to pin it with its stage.
+   */
+  title?: string;
   lede?: ReactNode;
   children?: ReactNode;
 }
@@ -18,9 +22,8 @@ interface SectionProps {
  * a small rise, and the lede follows.
  */
 export function Section({ id, title, lede, children }: SectionProps) {
-  const titleId = `${id}-title`;
   return (
-    <section id={id} className="section plate" aria-labelledby={titleId}>
+    <section id={id} className="section plate" aria-labelledby={`${id}-title`}>
       <span className="section__seam" aria-hidden="true" data-reveal="draw" />
       <div className="section__frame container">
         <span className="section__mark" data-corner="start" aria-hidden="true" data-reveal="plot" />
@@ -31,23 +34,37 @@ export function Section({ id, title, lede, children }: SectionProps) {
           data-reveal="plot"
           data-reveal-delay="120"
         />
-        <header className="section__header" data-reveal-group="">
-          <h2
-            id={titleId}
-            className="section__title dot-text"
-            data-reveal="rise"
-            data-reveal-delay="80"
-          >
-            {title}
-          </h2>
-          {lede ? (
-            <p className="section__lede" data-reveal="fade" data-reveal-delay="240">
-              {lede}
-            </p>
-          ) : null}
-        </header>
+        {title === undefined ? null : <SectionHeader id={id} title={title} lede={lede} />}
         {children}
       </div>
     </section>
+  );
+}
+
+interface SectionHeaderProps {
+  /** The section's anchor id: the heading takes `${id}-title`, which labels the section. */
+  id: string;
+  title: string;
+  lede?: ReactNode;
+}
+
+/** A section's heading and lede on the plate's center line, as `Section` places them. */
+export function SectionHeader({ id, title, lede }: SectionHeaderProps) {
+  return (
+    <header className="section__header" data-reveal-group="">
+      <h2
+        id={`${id}-title`}
+        className="section__title dot-text"
+        data-reveal="rise"
+        data-reveal-delay="80"
+      >
+        {title}
+      </h2>
+      {lede ? (
+        <p className="section__lede" data-reveal="fade" data-reveal-delay="240">
+          {lede}
+        </p>
+      ) : null}
+    </header>
   );
 }

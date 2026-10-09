@@ -61,9 +61,11 @@ keyframes; edit `timeline.ts` and the scenes instead.
 
 ## Assets and licenses
 
-- Interface layers and the feature pictograms are read from the website
-  (`apps/website/public/cases/layers`, `apps/website/src/sections/features/glyphs.ts`); update them
-  there, as `apps/website/public/cases/README.md` describes, and the film follows.
+- Interface layers, the capabilities and their pictograms are read from the website
+  (`apps/website/public/cases/layers`, `apps/website/src/sections/features/copy.ts` and
+  `glyphs.ts`); update them there, as `apps/website/public/cases/README.md` describes, and the film
+  follows. The film keeps its own copy of the features' lines in `src/copy.ts`, as for every scene,
+  and `FEATURES.cells` in `src/timeline.ts` counts the cells the soundtrack pops.
 - Provider marks come from `packages/ui/src/assets/brands`, rendered as their `sources.json` says:
   in ink for foreground marks, in their own colors otherwise. They identify services Atd connects
   to and remain their owners' trademarks.

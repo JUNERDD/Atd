@@ -95,8 +95,11 @@ export const CHOREO = {
   automations: { window: 0.05, rows: 0.4 },
 } as const satisfies Record<CaseId, unknown>;
 
-/** The four feature cells, then the privacy promise, whose ring lights on its downbeat. */
-export const FEATURES = { start: 42, end: 46, tiles: 0.35, stagger: 0.14 } as const;
+/**
+ * The feature cells, one per capability on the website (`cells`), then the privacy promise, whose
+ * ring lights on its downbeat.
+ */
+export const FEATURES = { start: 42, end: 46, tiles: 0.35, stagger: 0.14, cells: 5 } as const;
 export const PRIVACY = { start: 46, end: 50, ring: 0.04, nevers: [1.2, 1.5, 1.8] } as const;
 
 /** The display powers on again for the call to action, and the film holds on it. */

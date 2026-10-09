@@ -1,5 +1,5 @@
 /**
- * The sound effects, each a short mono voice: keys, pops, swooshes, sparkles, a shutter and the
+ * The sound effects, each a short mono voice: keys, pops, swooshes, tine cascades, a shutter and the
  * display's power-on. They are small and soft: the interface should sound tactile, not loud.
  */
 import {
@@ -71,17 +71,50 @@ export function swoosh(
   return shape(out, (t) => Math.sin((Math.PI * t) / seconds) ** 1.6);
 }
 
-/** Glitter: tiny high sine blips scattered over `seconds`, thinning out as they go. */
-export function sparkle(random: () => number, seconds: number, count: number): Float32Array {
-  const out = new Float32Array(samples(seconds + 0.1));
+/** D major pentatonic over two and a half octaves: notes the score's harmony never fights. */
+const PENTATONIC = [62, 64, 66, 69, 71, 74, 76, 78, 81, 83, 86, 88, 90, 93];
+
+/**
+ * A kalimba tine: a pure note under a bright, inharmonic partial that dies within a few
+ * milliseconds, as a plucked metal tongue sounds.
+ */
+function tine(note: number, brightness: number): Float32Array {
+  const hz = midiToHz(note);
+  const out = new Float32Array(samples(0.7));
+  for (let i = 0; i < out.length; i++) {
+    const t = i / SAMPLE_RATE;
+    out[i] =
+      Math.sin(TAU * hz * t) +
+      0.2 * Math.sin(TAU * 2 * hz * t) * Math.exp(-t / 0.07) +
+      0.45 * brightness * Math.sin(TAU * 5.4 * hz * t) * Math.exp(-t / 0.008);
+  }
+  return shape(out, pluckEnvelope(0.0015, 0.17));
+}
+
+/**
+ * A run of `count` kalimba tines over `seconds`, stepping down (or up) the D major pentatonic from
+ * `from`: each note a little softer, the run quickening as it goes, so dots scattering or a ring
+ * lighting sound in tune with the music.
+ */
+export function cascade(
+  random: () => number,
+  count: number,
+  seconds: number,
+  from: number,
+  direction: 'down' | 'up' = 'down',
+): Float32Array {
+  const out = new Float32Array(samples(seconds + 0.7));
+  const start = Math.max(
+    0,
+    PENTATONIC.findIndex((note) => note >= from),
+  );
+  const step = direction === 'down' ? -1 : 1;
   for (let i = 0; i < count; i++) {
-    const at = seconds * random() ** 1.6;
-    const hz = 2400 + 4800 * random();
-    const blip = shape(
-      oscillator('sine', hz, 0.05),
-      (t) => Math.min(1, t / 0.002) * Math.exp(-t / 0.012),
-    );
-    add(out, blip, at, 0.35 + 0.65 * random());
+    const index = Math.min(PENTATONIC.length - 1, Math.max(0, start + step * i));
+    const note = PENTATONIC[index] ?? from;
+    const at = count > 1 ? seconds * (i / (count - 1)) ** 0.85 : 0;
+    const level = (1 - (0.45 * i) / count) * (0.85 + 0.15 * random());
+    add(out, tine(note, level), at + 0.004 * random(), level);
   }
   return out;
 }
