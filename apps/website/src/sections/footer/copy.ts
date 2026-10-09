@@ -13,7 +13,7 @@ export const footerCopy = {
   en: {
     linksLabel: 'Project',
     links: [
-      { href: site.repoUrl, label: 'Source on GitHub' },
+      { href: site.repoUrl, label: 'Open source on GitHub' },
       { href: site.releasesUrl, label: 'Release notes' },
       { href: site.issuesUrl, label: 'Report an issue' },
     ],
@@ -23,7 +23,7 @@ export const footerCopy = {
   zh: {
     linksLabel: '项目',
     links: [
-      { href: site.repoUrl, label: 'GitHub 源码' },
+      { href: site.repoUrl, label: 'GitHub 开源仓库' },
       { href: site.releasesUrl, label: '更新说明' },
       { href: site.issuesUrl, label: '反馈问题' },
     ],
