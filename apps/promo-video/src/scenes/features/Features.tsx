@@ -1,6 +1,7 @@
 import { Img, useCurrentFrame } from 'remotion';
-// The pictograms are the website's own feature glyphs, so the film and the page draw the same set.
-import { FEATURE_IDS, glyphs } from '../../../../website/src/sections/features/glyphs.ts';
+// The capabilities and their pictograms are the website's own, so the film and the page show one set.
+import { FEATURE_IDS } from '../../../../website/src/sections/features/copy.ts';
+import { PICTOGRAMS } from '../../../../website/src/sections/features/glyphs.ts';
 import { copy, htmlLang, type Lang } from '../../copy.ts';
 import { useFontsReady } from '../../fonts.ts';
 import { easeIn, mix, ramp } from '../../motion/ease.ts';
@@ -28,8 +29,8 @@ function BrandMark({ brand }: { brand: Brand }) {
 }
 
 /**
- * Your models, your tools, your rules: the four feature cells drop in with their dot pictograms
- * lighting, and the providers Atd connects to drift by underneath.
+ * Your setup, your rules, your Mac: a cell per capability drops in with its dot pictogram lighting,
+ * and the providers Atd connects to drift by underneath.
  */
 export function Features({ lang }: { lang: Lang }) {
   const t = useCurrentFrame() / FPS;
@@ -72,7 +73,7 @@ export function Features({ lang }: { lang: Lang }) {
                 '--s': mix(0.92, 1, drop),
               }}
             >
-              <DotGlyph rows={glyphs[id]} t={t} at={at + 0.22} pitch={13} />
+              <DotGlyph rows={PICTOGRAMS[id]} t={t} at={at + 0.22} pitch={12} />
               <div className="feature__title">{item?.title}</div>
               <div className="feature__body">{item?.body}</div>
             </div>

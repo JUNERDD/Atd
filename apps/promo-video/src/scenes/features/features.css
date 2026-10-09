@@ -1,4 +1,4 @@
-/* Your models, your tools, your rules: four feature cells set into the plate like the website's
+/* Your setup, your rules, your Mac: a cell per capability set into the plate like the website's
    displays, and the providers drifting by beneath them. */
 .features {
   display: flex;
@@ -25,15 +25,15 @@
 
 .features__tiles {
   display: flex;
-  gap: 26px;
+  gap: 24px;
   margin-top: 70px;
 }
 
 .feature {
   box-sizing: border-box;
-  width: 384px;
+  width: 320px;
   height: 360px;
-  padding: 36px;
+  padding: 30px;
   border-radius: 18px;
   background-color: var(--ink);
   background-image: radial-gradient(circle, rgb(255 255 255 / 0.06) 0.9px, transparent 1.4px);
@@ -52,8 +52,8 @@
 }
 
 .feature__title {
-  margin-top: 34px;
-  font-size: 38px;
+  margin-top: 30px;
+  font-size: 34px;
   font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--fg-1);
@@ -64,10 +64,17 @@
 }
 
 .feature__body {
-  margin-top: 12px;
-  font-size: 24px;
+  margin-top: 10px;
+  font-size: 22px;
   line-height: 1.42;
   color: var(--fg-2);
+}
+
+/* Chinese lines break at their punctuation and spaces, as the website's do, so no word is split
+   across two lines. */
+.feature__body:lang(zh) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .marquee {

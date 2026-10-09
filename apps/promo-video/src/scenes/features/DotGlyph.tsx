@@ -11,8 +11,8 @@ interface DotGlyphProps {
 }
 
 /**
- * A 9 × 9 pictogram on a little LED panel: unlit dots stay faint, and the lit ones swell on in a
- * sweep from the top-left corner, as the website's feature cells draw theirs.
+ * A square pictogram on a little LED panel (the website's are 11 × 11): unlit dots stay faint, and
+ * the lit ones swell on in a sweep from the top-left corner, as the website's channels light theirs.
  */
 export function DotGlyph({ rows, t, at, pitch }: DotGlyphProps) {
   const size = rows.length * pitch;

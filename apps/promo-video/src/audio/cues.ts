@@ -22,10 +22,10 @@ import {
   keyPress,
   keyTick,
   mouseClick,
+  cascade,
   pop,
   powerOn,
   shutter,
-  sparkle,
   swoosh,
 } from './effects.ts';
 import { impact, riser } from './instruments.ts';
@@ -73,7 +73,8 @@ export function renderCues(): EffectBuses {
     );
   }
   place(swoosh(random, 0.9, 500, 2400), INTRO.tagline - 0.1, 0.06, 0, 0.4);
-  place(sparkle(random, 0.65, 70), INTRO.dissolve, 0.11, 0, 0.6);
+  // The word scatters into dots: a run of tines tumbling down the scale.
+  place(cascade(random, 9, 0.6, 90, 'down'), INTRO.dissolve, 0.1, 0, 0.6);
   const riseFrom = INTRO.dissolve - 0.5;
   place(riser(CASES_START - riseFrom, random), riseFrom, 0.09, 0, 0.5);
   place(swoosh(random, 0.75, 260, 3200), INTRO.morph - 0.05, 0.2, 0.15, 0.5);
@@ -94,7 +95,13 @@ export function renderCues(): EffectBuses {
   place(pop(79, random), at('chat') + CHOREO.chat.ask, 0.2, 0.5, 0.3);
   place(pop(74, random), at('chat') + CHOREO.chat.status, 0.07, 0.4, 0.3);
   for (let line = 0; line < 3; line++)
-    place(sparkle(random, 0.4, 9), at('chat') + CHOREO.chat.answer + line * 0.3, 0.05, 0.45, 0.3);
+    place(
+      cascade(random, 3, 0.16, [74, 78, 83][line] ?? 78, 'up'),
+      at('chat') + CHOREO.chat.answer + line * 0.3,
+      0.024,
+      0.45,
+      0.3,
+    );
   place(swoosh(random, 0.5, 1800, 380), at('chat') + CASE_LENGTH - 0.38, 0.13, 0.4, 0.3);
   place(
     swoosh(random, 0.45, 2200, 5200),
@@ -121,7 +128,13 @@ export function renderCues(): EffectBuses {
   CHOREO.screenshot.steps.forEach((step, i) =>
     place(pop(76 + i * 3, random), at('screenshot') + step, 0.16, -0.2 + i * 0.2, 0.3),
   );
-  place(sparkle(random, 0.3, 14), at('screenshot') + CHOREO.screenshot.mosaic, 0.05, -0.3, 0.2);
+  place(
+    cascade(random, 4, 0.2, 88, 'down'),
+    at('screenshot') + CHOREO.screenshot.mosaic,
+    0.03,
+    -0.3,
+    0.2,
+  );
   place(shutter(random), at('screenshot') + CHOREO.screenshot.capture, 0.3, 0, 0.25);
   place(swoosh(random, 0.5, 2600, 700), at('mini') + CHOREO.mini.rail, 0.12, 0.7, 0.3);
   place(pop(78, random), at('mini') + CHOREO.mini.menu, 0.1, 0.6, 0.3);
@@ -139,13 +152,22 @@ export function renderCues(): EffectBuses {
   // The screen falls away into the features, the privacy ring lights, the display returns.
   place(swoosh(random, 0.9, 1600, 160), STAGE.exit, 0.14, 0, 0.4);
   place(impact(random, 0.6), FEATURES.start, 0.12, 0, 0.5);
-  for (let tile = 0; tile < 4; tile++) {
+  // Each cell pops a step higher up the D major scale, panned with its place in the row.
+  const tileNotes = [69, 71, 73, 74, 76, 78];
+  for (let tile = 0; tile < FEATURES.cells; tile++) {
     const tileAt = FEATURES.start + FEATURES.tiles + tile * FEATURES.stagger;
-    place(pop(69 + tile * 2, random), tileAt, 0.12, -0.45 + tile * 0.3, 0.35);
-    place(sparkle(random, 0.35, 10), tileAt + 0.22, 0.04, -0.45 + tile * 0.3, 0.5);
+    const position = -0.5 + tile / Math.max(1, FEATURES.cells - 1);
+    place(pop(tileNotes[tile] ?? 76, random), tileAt, 0.12, position, 0.35);
+    place(
+      cascade(random, 2, 0.08, (tileNotes[tile] ?? 76) + 12, 'up'),
+      tileAt + 0.22,
+      0.024,
+      position,
+      0.5,
+    );
   }
   place(impact(random, 0.5), PRIVACY.start, 0.1, 0, 0.6);
-  place(sparkle(random, 0.9, 40), PRIVACY.start + PRIVACY.ring, 0.06, 0, 0.7);
+  place(cascade(random, 8, 0.85, 74, 'up'), PRIVACY.start + PRIVACY.ring, 0.045, 0, 0.7);
   PRIVACY.nevers.forEach((never, i) =>
     place(pop(74 + i * 2, random), PRIVACY.start + never, 0.13, -0.3 + i * 0.3, 0.35),
   );
