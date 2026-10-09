@@ -10,25 +10,25 @@
   container-type: inline-size;
 }
 
-/* The stage opens with the section's heading, then the screen, its caption and the progress, so as
-   it arrives the screen follows the heading at the plate's usual spacing. Below the heading the
-   stage fills the viewport below the nav: the screen's row grows to the screen's height at the
+/* The stage opens with the section's heading, then the scenes' names, the screen and its caption,
+   so as it arrives the screen follows the heading at the plate's usual spacing. Below the heading
+   the stage fills the viewport below the nav: the screen's row grows to the screen's height at the
    stage's full width, or takes what height is left when that is less. When the viewport also holds
-   the heading (use-case-scroll.ts), the heading pins with the rest; otherwise the stage is taller by
-   the heading (`--stage-head`) and pins that much higher, so the heading leaves the viewport and the
-   screen keeps its size. Whatever height is still unused falls to the last row; pinned, the stage
-   sits lower by half of it (`--stage-slack`), so the space is shared above and below. */
+   the heading (use-case-scroll.ts), the heading pins with the rest; otherwise the stage is taller
+   by the heading (`--stage-head`) and pins that much higher, so the heading leaves the viewport and
+   the screen keeps its size. Whatever height is still unused falls to the last row; pinned, the
+   stage sits lower by half of it (`--stage-slack`), so the space is shared above and below. */
 .cases__stage {
   position: sticky;
   inset-block-start: calc(var(--stage-top) - var(--stage-head, 0px) + var(--stage-slack, 0px) / 2);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, calc(100cqw / 1.6)) auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, calc(100cqw / 1.6)) auto minmax(0, 1fr);
   grid-template-areas:
     'heading'
+    'tabs'
     'frame'
     'caption'
-    'progress'
     '.';
   block-size: calc(var(--stage-h) + var(--stage-head, 0px));
   padding-block-end: 24px;
@@ -167,8 +167,10 @@
   transition-delay: 0s;
 }
 
+/* On a phone the headline shrinks with the showcase, down to 1rem, so the longest one still sets on
+   one line; from about 400px wide it is the usual size. */
 .cases__caption h3 {
-  font-size: var(--fs-h3);
+  font-size: clamp(1rem, 5.8cqw, var(--fs-h3));
   font-weight: 600;
   line-height: var(--lh-title);
   letter-spacing: var(--tr-title);
@@ -181,62 +183,87 @@
   text-wrap: balance;
 }
 
-/* The progress: a bar per scene. Bars behind the current scene are full, and the current one fills
-   as its step scrolls by (`--case-fill`), so the row moves 1:1 with the scroll. The keys share the
-   row evenly up to their full width, so the row never outgrows the narrowest screen. */
-.cases__progress {
-  --key: 40px;
-  --bar: 28px;
-  grid-area: progress;
-  display: grid;
-  grid-auto-columns: minmax(0, var(--key));
-  grid-auto-flow: column;
-  justify-content: center;
-  margin-block-start: 12px;
+/* The scenes' names (tabs.tsx), quiet until current or pointed at, over one hairline that runs
+   under the whole row. The line is the scroll's progress bar: each name's stretch of it lights from
+   left to right as that scene's step scrolls by (`--case-fill`), so it is lit up to the current
+   name and partway under it. The names sit edge to edge, spaced by their own padding, so their
+   stretches join into one line. The row stays on one line, centered; where it does not fit it
+   scrolls sideways under a fade at either end, its inner list centered by its own margins so it
+   starts at the edge once it overflows. */
+.cases__tabs {
+  position: relative;
+  grid-area: tabs;
+  min-inline-size: 0;
+  margin-block-end: 12px;
+  padding: 4px 24px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent, black 24px, black calc(100% - 24px), transparent);
 }
 
-.cases__step {
-  display: grid;
-  place-items: center;
-  inline-size: 100%;
-  block-size: 44px;
-  padding: 0;
+.cases__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cases__views {
+  display: flex;
+  inline-size: max-content;
+  margin-inline: auto;
+}
+
+.cases__view {
+  position: relative;
+  display: block;
+  min-block-size: 44px;
+  padding: 10px 14px;
   border: 0;
   border-radius: var(--r-part);
   background: transparent;
+  color: var(--fg-3);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
   cursor: pointer;
+  transition: color var(--dur-fast) linear;
 }
 
-.cases__bar {
-  display: block;
-  overflow: hidden;
-  inline-size: min(var(--bar), 100% - 8px);
-  block-size: 3px;
-  border-radius: 2px;
-  background-color: var(--line-2);
-  transition: background-color var(--dur-fast) linear;
+.cases__view::before,
+.cases__view::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  block-size: 2px;
 }
 
-.cases__fill {
-  display: block;
-  block-size: 100%;
-  background-color: var(--fg-1);
+.cases__view::before {
+  background: var(--line-2);
+}
+
+.cases__view::after {
+  background: var(--accent-fill);
   transform-origin: 0 50%;
   scale: var(--case-fill, 0) 1;
 }
 
+.cases__view[aria-current] {
+  color: var(--fg-1);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .cases__step:hover .cases__bar {
-    background-color: var(--fg-3);
+  .cases__view:hover {
+    color: var(--fg-1);
   }
 }
 
-.cases__step:focus-visible {
+.cases__view:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -2px;
 }
 
-/* A landscape phone has more width than height: the caption and progress move beside the screen. */
+/* A landscape phone has more width than height: the names and caption move beside the screen. */
 @media (orientation: landscape) and (height < 540px) and (width >= 480px) {
   .cases__stage {
     grid-template-columns: minmax(0, 1fr) minmax(0, 17rem);
@@ -244,8 +271,8 @@
     grid-template-areas:
       'heading heading'
       'frame .'
+      'frame tabs'
       'frame caption'
-      'frame progress'
       'frame .';
     column-gap: 24px;
   }
@@ -259,11 +286,8 @@
     justify-items: start;
   }
 
-  .cases__progress {
-    --key: 34px;
-    --bar: 24px;
-    justify-content: start;
-    margin-inline-start: -5px;
+  .cases__views {
+    margin-inline: 0;
   }
 }
 
@@ -293,19 +317,29 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .cases__view {
+    transition: none;
+  }
+}
+
 @keyframes cases-arrive {
   from {
     scale: 0.86;
   }
 }
 
+/* In forced colors the line keeps its lit and unlit stretches, and the current name is marked. */
 @media (forced-colors: active) {
-  .cases__bar {
-    forced-color-adjust: none;
-    background-color: GrayText;
+  .cases__view::before {
+    background: GrayText;
   }
 
-  .cases__fill {
-    background-color: CanvasText;
+  .cases__view::after {
+    background: Highlight;
+  }
+
+  .cases__view[aria-current] {
+    color: Highlight;
   }
 }

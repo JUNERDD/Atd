@@ -3,17 +3,18 @@ import { cases } from '../../content/cases';
 import { useCopy, useLang } from '../../i18n/lang';
 import { SectionHeader } from '../../ui/section';
 import { casesCopy } from './copy';
+import { CaseTabs } from './tabs';
 import { CaseDesktop, CaseScene } from './scene';
 import { useCaseScroll } from './use-case-scroll';
 import './cases.css';
 
 /**
- * Every scene as one scroll sequence on the one desktop, under the section's heading. The stage pins
- * while its track scrolls past, and each step of scrolling brings in the next scene with its
- * caption. Under them, one bar per scene fills with the scroll; a bar is also a button that goes
- * straight to its scene. The heading pins with the stage when the viewport has room for it beside a
- * full-size screen (use-case-scroll.ts). The prerendered page shows the first scene complete; the
- * scroll drives it once the page hydrates.
+ * Every scene as one scroll sequence on the one desktop, under the section's heading. The stage
+ * pins while its track scrolls past, and each step of scrolling brings in the next scene with its
+ * caption. Above the screen, the scenes' names light up in turn and each goes straight to its scene
+ * (tabs.tsx). The heading pins with the stage when the viewport has room for it beside a full-size
+ * screen (use-case-scroll.ts). The prerendered page shows the first scene complete; the scroll
+ * drives it once the page hydrates.
  */
 export function CasesShowcase({ id }: { id: string }) {
   const t = useCopy(casesCopy);
@@ -29,6 +30,12 @@ export function CasesShowcase({ id }: { id: string }) {
         <div ref={heading} className="cases__heading">
           <SectionHeader id={id} title={t.title} lede={t.lede} />
         </div>
+        <CaseTabs
+          label={t.index}
+          tabs={cases.map((item) => ({ id: item.id, name: item.label[lang] }))}
+          active={active}
+          onSelect={select}
+        />
         <div className="cases__frame">
           <div ref={screen} className="cases__screen display" id="case-screen">
             <CaseDesktop />
@@ -73,24 +80,6 @@ export function CasesShowcase({ id }: { id: string }) {
             </div>
           ))}
         </div>
-        <ol className="cases__progress" aria-label={t.index}>
-          {cases.map((item, index) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="cases__step"
-                aria-label={item.label[lang]}
-                aria-current={index === active ? 'true' : undefined}
-                aria-controls="case-screen"
-                onClick={() => select(index)}
-              >
-                <span className="cases__bar" aria-hidden="true">
-                  <span className="cases__fill" data-case-fill="" />
-                </span>
-              </button>
-            </li>
-          ))}
-        </ol>
       </div>
       {/* One step of scrolling per scene: together they set how long the stage stays pinned. */}
       <div className="cases__steps" aria-hidden="true">

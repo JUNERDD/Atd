@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useInView } from '../../lib/use-in-view';
 
-/** Marks the index bars whose fill follows the scroll (`--case-fill`, cases.css). */
+/** Marks each scene name's stretch of the progress line (`--case-fill`, cases.css). */
 const FILL = '[data-case-fill]';
 
 /**
  * Drives the showcase from the page's scroll position. The track is one stage tall plus one step of
- * scrolling per scene (cases.css), and the sticky stage stays pinned while those steps pass: how far
- * the stage has travelled down its track picks the scene, and how far into its step it is fills that
- * scene's bar, so the bars move 1:1 with the scroll. Layout is measured on resize; a scroll only
- * reads the two boxes' tops, at most once a frame, and only while the track is on or near the screen.
+ * scrolling per scene (cases.css), and the sticky stage stays pinned while those steps pass: how
+ * far the stage has travelled down its track picks the scene, and the same distance fills the line
+ * under the scenes' names up to the current one and into it, so the line moves 1:1 with the scroll.
+ * Layout is measured on resize; a scroll only reads the two boxes' tops, at most once a frame, and
+ * only while the track is on or near the screen.
  *
  * The stage opens with the section's heading. Measuring also decides whether the heading pins with
- * the screen: it does when the viewport below the nav holds it, a full-size screen, the caption and
- * the progress (`data-titled`); otherwise the stage is taller by the heading (`--stage-head`) and
- * pins that much higher, so the screen keeps its size, and the heading fades while the stage is
- * pinned (`data-pinned`). Whatever height is still unused is shared above and below
- * (`--stage-slack`).
+ * the screen: it does when the viewport below the nav holds it, the scenes' names, a full-size
+ * screen and the caption (`data-titled`); otherwise the stage is taller by the heading
+ * (`--stage-head`) and pins that much higher, so the screen keeps its size, and the heading fades
+ * while the stage is pinned (`data-pinned`). Whatever height is still unused is shared above and
+ * below (`--stage-slack`).
  */
 export function useCaseScroll(count: number) {
   const root = useRef<HTMLDivElement>(null);
@@ -48,8 +49,9 @@ export function useCaseScroll(count: number) {
       if (pinned.hasAttribute('data-pinned') !== passed > 0.5) {
         pinned.toggleAttribute('data-pinned', passed > 0.5);
       }
+      // The names before the current one are done, so the line is lit through them.
       fills.forEach((fill, at) => {
-        const amount = at < index ? 1 : at > index ? 0 : Math.min(1, position - index);
+        const amount = Math.min(1, Math.max(0, position - at));
         fill.style.setProperty('--case-fill', amount.toFixed(4));
       });
     };
@@ -62,10 +64,10 @@ export function useCaseScroll(count: number) {
       const style = getComputedStyle(pinned);
       const padding = Number.parseFloat(style.paddingBlockEnd) || 0;
       const raised = Number.parseFloat(style.getPropertyValue('--stage-head')) || 0;
-      // The viewport below the nav, and what the stage needs in it to pin the heading as well.
+      // The viewport below the nav, and what the stage needs in it to pin the heading as well:
+      // every part as it is, with the screen at its full height.
       const room = pinned.offsetHeight - raised - padding;
-      const below = bottom() - (box.offsetTop + box.offsetHeight);
-      const titled = head.offsetHeight + box.offsetWidth / 1.6 + below <= room;
+      const titled = bottom() - box.offsetHeight + box.offsetWidth / 1.6 <= room;
       pinned.toggleAttribute('data-titled', titled);
       pinned.style.setProperty('--stage-head', `${titled ? 0 : head.offsetHeight}px`);
       const slack = Math.max(0, pinned.clientHeight - padding - bottom());

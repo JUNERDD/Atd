@@ -3,7 +3,7 @@ import type { Localized } from '../../i18n/lang';
 interface CasesCopy {
   title: string;
   lede: string;
-  /** Names the progress bars, each of which goes straight to its scene. */
+  /** Names the row of scene names above the screen, each of which goes straight to its scene. */
   index: string;
   imageUnavailable: string;
   openImage: string;
