@@ -482,24 +482,30 @@ importers:
       '@atd/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@fontsource-variable/doto':
-        specifier: 5.3.0
-        version: 5.3.0
       '@fontsource-variable/inter':
         specifier: 5.3.0
         version: 5.3.0
       '@fontsource-variable/noto-sans-sc':
         specifier: 5.3.0
         version: 5.3.0
+      '@remotion/bundler':
+        specifier: 4.0.528
+        version: 4.0.528(lightningcss@1.33.0)(postcss@8.5.28)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@remotion/cli':
         specifier: 4.0.528
         version: 4.0.528(lightningcss@1.33.0)(postcss@8.5.28)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)(typescript@7.0.2)
       '@remotion/media':
         specifier: 4.0.528
         version: 4.0.528(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@remotion/renderer':
+        specifier: 4.0.528
+        version: 4.0.528(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.49.0(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: 'catalog:'
         version: 19.3.0

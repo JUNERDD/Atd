@@ -1,0 +1,85 @@
+/* Files in the transcript (apps/desktop/src/features/agent/agent.css `.user-context-file`,
+   `.file-result`, `.image-lightbox-trigger`). Each pops in from its own middle (`--in`). */
+.pk-file-pop {
+  display: flex;
+  opacity: min(1, calc(var(--in, 1) * 1.6));
+  scale: calc(0.9 + var(--in, 1) * 0.1);
+}
+
+/* An attached file: a 52 pt card on the bubble's fill, no border, the 36 pt kind tile concentric
+   with its 18 pt corner. */
+.pk-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 304px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 18px;
+  background: var(--pk-muted);
+}
+
+.pk-file__tile {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgb(250 250 250 / 0.1);
+  color: var(--pk-muted-fg);
+}
+
+.pk-file__tile > .pk-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.pk-file__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pk-file__name {
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-file__meta {
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* A saved file: an outline `Item` (sm), its 18 pt icon and two lines. */
+.pk-file-result {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--pk-border);
+  border-radius: 18px;
+}
+
+.pk-file-result__icon.pk-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--pk-fg);
+}
+
+.pk-file-image {
+  width: var(--w);
+  height: var(--h);
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--pk-border);
+}

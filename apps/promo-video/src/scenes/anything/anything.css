@@ -1,0 +1,125 @@
+/* Anything: the panel at work, the habit tracker, and the three tools the agent makes. */
+
+/* The light behind the chapter word, scaled about the frame's centre as the camera moves. */
+.anything-light {
+  position: absolute;
+  inset: 0;
+  scale: var(--s, 1);
+}
+
+/* The world and the cards, shaken together as each card lands. */
+.anything-stage {
+  position: absolute;
+  inset: 0;
+  translate: 0 var(--shake, 0px);
+}
+
+.anything-world {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o, 1);
+}
+
+/* The desktop drops back under the cards. */
+.anything-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 45%, rgb(4 5 10 / 0.35), rgb(4 5 10 / 0.75));
+  opacity: var(--o, 0);
+}
+
+/* Something placed on the display at a point (--x, --y in points). */
+.anything-at {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+}
+
+/* A popover view fading as it closes; it keeps the panel's popover layout. */
+.anything-popover {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  opacity: var(--o, 1);
+}
+
+.anything-subagents {
+  align-self: center;
+}
+
+.anything-pill {
+  opacity: var(--o, 1);
+}
+
+/* The habit tracker's icon on its app card. */
+.anything-app-icon.pk-icon {
+  width: 18px;
+  height: 18px;
+  color: #30d158;
+}
+
+.pk-build__tile:has(.anything-app-icon) {
+  background: rgb(48 209 88 / 0.14);
+}
+
+/* The pin being dragged: centred on the pointer, lifted, a little small and translucent. */
+.anything-drag {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: 0;
+  height: 0;
+  opacity: var(--o, 1);
+}
+
+.anything-drag > * {
+  position: absolute;
+  left: -85px;
+  top: -85px;
+  scale: var(--s, 1);
+  filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.45));
+}
+
+/* The cards' stage: a deep perspective about the frame's centre. */
+.anything-tools {
+  position: absolute;
+  inset: 0;
+  perspective: 1400px;
+  perspective-origin: 50% 44%;
+  pointer-events: none;
+}
+
+/* A card, centred on the stage, placed by --x, --y, --z, turned by --r and drawn at twice its
+   size in points, so the interface reads at the scale of the panel's macro. */
+.anything-card {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 0;
+  height: 0;
+  opacity: var(--o, 1);
+  transform: translate3d(var(--x), var(--y), var(--z)) rotate(var(--r)) scale(var(--s, 1));
+  transform-style: preserve-3d;
+}
+
+.anything-card > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  scale: 2.1;
+  filter: blur(var(--blur, 0px)) brightness(var(--dim, 1)) drop-shadow(0 22px 40px rgb(0 0 0 / 0.5));
+}
+
+/* Stacked, the cards need their own backing: the tool card surface alone lets the card behind
+   show through. */
+.anything-card .pk-created {
+  background-color: rgb(30 30 32 / 0.92);
+  border-radius: var(--radius-card);
+}
+
+/* The work caption shares the frame with the panel's macro: it keeps to the wallpaper beside it. */
+[data-caption='beside-panel'] .caption {
+  max-width: 640px;
+}

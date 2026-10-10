@@ -1,0 +1,78 @@
+/* The review sheet's own layout; none of it is part of the kit. */
+.sheet-guide {
+  position: absolute;
+  left: 100px;
+  top: 960px;
+  width: 1500px;
+  height: 1px;
+  background: rgb(255 255 255 / 0.25);
+}
+
+.sheet-keys {
+  position: absolute;
+  left: 50%;
+  top: 700px;
+  translate: -50% 0;
+}
+
+.sheet-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 600px;
+}
+
+.sheet-folder,
+.sheet-drag {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+}
+
+.sheet-drag {
+  translate: -50px -32px;
+  opacity: var(--o);
+  scale: var(--s);
+  transform-origin: 50px 32px;
+  filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.4));
+}
+
+.sheet-hint {
+  position: absolute;
+  left: 560px;
+  top: 600px;
+}
+
+.sheet-note {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 26px;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--fg-2);
+}
+
+.sheet-note__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--fg-1);
+}
+
+.sheet-note__link {
+  align-self: flex-start;
+  color: var(--fg-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sheet-note__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--fg-1);
+}

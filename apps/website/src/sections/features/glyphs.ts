@@ -5,8 +5,7 @@ const CHANNEL = { columns: 21, rows: 15 };
 
 /**
  * Each capability's pictogram, 11 × 11 dots, top row first: `x` is a lit dot and `.` an unlit one.
- * Every icon keeps a one-dot stroke so the five read as one family. The launch film draws these
- * too (apps/promo-video), so the page and the film show one set.
+ * Every icon keeps a one-dot stroke so the five read as one family.
  */
 export const PICTOGRAMS: Record<FeatureId, readonly string[]> = {
   // A plug: a connection to whichever provider you bring.

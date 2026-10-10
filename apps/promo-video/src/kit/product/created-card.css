@@ -1,0 +1,87 @@
+/* A made-on-request card: the tool card surface at 320 pt, slamming in from 108% (`--in`). */
+.pk-created-slot {
+  display: flex;
+  opacity: min(1, calc(var(--in, 1) * 2));
+  scale: calc(1.08 - var(--in, 1) * 0.08);
+}
+
+.pk-created {
+  width: 320px;
+}
+
+.pk-created__kind {
+  flex: 1;
+  font-weight: 500;
+}
+
+.pk-created__body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 12px;
+}
+
+.pk-created__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pk-created__name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-created__keys {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pk-created__detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.pk-created__detail > .pk-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* The confirm: a hairline circle that fills with the foreground, then the check draws in ink. */
+.pk-created__check {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.pk-created__check circle {
+  fill: color-mix(in srgb, var(--pk-fg) calc(var(--fill, 0) * 100%), transparent);
+  stroke: color-mix(in srgb, var(--pk-fg) calc(30% + var(--fill, 0) * 70%), transparent);
+  stroke-width: 1.5;
+  scale: calc(0.85 + var(--fill, 0) * 0.15);
+  transform-origin: 12px 12px;
+}
+
+.pk-created__check path {
+  fill: none;
+  stroke: var(--pk-primary-fg);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--draw, 0));
+}

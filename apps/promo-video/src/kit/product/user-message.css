@@ -1,0 +1,32 @@
+/* A sent message (apps/desktop/src/features/agent/agent.css `.user-message`). */
+.pk-user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pk-user__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.pk-user__bubble {
+  max-width: min(304px, 90%);
+  padding: 10px 14px;
+  border-radius: 20px;
+  background: var(--pk-muted);
+  color: var(--pk-fg);
+  font-size: 14px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pk-user__bubble .pk-chip {
+  margin-block: 2px;
+  margin-right: 4px;
+}

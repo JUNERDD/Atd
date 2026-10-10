@@ -1,0 +1,46 @@
+/* The habit tracker the agent builds: its window body and its desktop pin share these parts. Its
+   one colour is its own (an app the user asked for), a calm green; everything else is the app's
+   neutral dark. */
+.pk-habits {
+  --habit: #30d158;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+}
+
+.pk-habit-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pk-habit-cell__svg {
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+}
+
+.pk-habit-cell__ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.16);
+  stroke-width: 1.5;
+}
+
+.pk-habit-cell[data-today] .pk-habit-cell__ring {
+  stroke: rgb(255 255 255 / 0.42);
+}
+
+.pk-habit-cell__fill {
+  fill: var(--habit);
+  scale: var(--pop, 1);
+  transform-origin: 12px 12px;
+}
+
+.pk-habit-cell__tick {
+  fill: none;
+  stroke: #04150a;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--draw, 1));
+}

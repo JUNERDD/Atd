@@ -1,0 +1,194 @@
+/* The composer (apps/desktop/src/components/composer.css). */
+.pk-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pk-composer__pill {
+  display: flex;
+  justify-content: center;
+}
+
+/* A glass control: the control fill, a hairline edge and the backdrop it floats over. The attach
+   and send buttons sit inside its 8 pt padding. */
+.pk-composer__field {
+  display: grid;
+  grid-template-areas: 'attach prompt actions';
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--pk-control-fill);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 1px var(--pk-control-edge),
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+.pk-composer__field[data-expanded] {
+  grid-template-areas: 'prompt prompt prompt' 'attach . actions';
+  padding-inline: 10px;
+  border-radius: 18px;
+}
+
+.pk-composer__prompt {
+  grid-area: prompt;
+  display: flex;
+  min-width: 0;
+  min-height: 20px;
+  overflow: hidden;
+  justify-content: flex-end;
+}
+
+/* One line that keeps its end in view, as the editor scrolls sideways with the caret. */
+.pk-composer__line {
+  flex-shrink: 0;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+.pk-composer__field[data-expanded] .pk-composer__prompt {
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.pk-composer__field[data-expanded] .pk-composer__line {
+  flex-shrink: 1;
+  line-height: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pk-composer__field[data-expanded] .pk-chip {
+  margin-block: 2px;
+}
+
+.pk-composer__placeholder {
+  color: var(--pk-muted-fg);
+}
+
+.pk-composer__text {
+  white-space: inherit;
+}
+
+/* Drawn from its position rightwards, like WebKit's caret. */
+.pk-composer__caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 18px;
+  margin-left: 1px;
+  margin-right: -2.5px;
+  vertical-align: -3px;
+  border-radius: 1px;
+  background: var(--pk-fg);
+  opacity: 0;
+}
+
+.pk-composer__caret[data-on] {
+  opacity: 1;
+}
+
+.pk-composer__attach,
+.pk-composer__send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.pk-composer__attach {
+  grid-area: attach;
+  align-self: end;
+}
+
+.pk-composer__attach > .pk-icon,
+.pk-composer__send > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The default (primary) icon button; disabled at half opacity until there is something to send. */
+.pk-composer__send {
+  grid-area: actions;
+  align-self: end;
+  background: color-mix(
+    in oklab,
+    var(--pk-primary) calc(100% - var(--press, 0) * 20%),
+    transparent
+  );
+  color: var(--pk-primary-fg);
+  opacity: 0.5;
+  scale: calc(1 - var(--press, 0) * 0.08);
+}
+
+.pk-composer__send[data-ready] {
+  opacity: 1;
+}
+
+.pk-composer__stop.pk-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.pk-composer__config {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline: 0;
+}
+
+/* An `xs` glass-ghost button: 24 pt, 12 pt medium text, 12 pt icons. */
+.pk-xs-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.pk-xs-button > .pk-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.pk-composer__tier-icon.pk-icon {
+  translate: 0 1px;
+}
+
+.pk-composer__model {
+  margin-left: auto;
+}
+
+.pk-composer__brand {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask: var(--brand) center / contain no-repeat;
+}
+
+.pk-composer__meta {
+  color: var(--pk-muted-fg);
+}
+
+.pk-composer__chevron.pk-icon {
+  width: 16px;
+  height: 16px;
+}

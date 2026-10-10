@@ -1,0 +1,133 @@
+/* A macOS 26 window, in points. --x, --y, --w, --h place it; --sidebar is the inset sidebar's
+   width (0 without one). */
+.mac-window[data-material] {
+  --bar: 52px;
+  --inset: 8px;
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  border-radius: var(--radius-window);
+  overflow: hidden;
+  font-family: var(--font-text);
+  color: var(--fg-1);
+}
+
+.mac-window[data-material='opaque'] {
+  background: #1e1e21;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 0 0.5px rgb(0 0 0 / 0.7),
+    0 28px 70px -8px rgb(0 0 0 / 0.6),
+    0 8px 22px rgb(0 0 0 / 0.3);
+}
+
+.mac-window[data-material='glass'] {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 1px 1px 0 0 rgb(255 255 255 / 0.16),
+    0 0 0 0.5px rgb(0 0 0 / 0.5),
+    0 28px 70px -8px rgb(0 0 0 / 0.55),
+    0 8px 22px rgb(0 0 0 / 0.25);
+}
+
+.mac-window[data-material]:not([data-focused]) {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    0 0 0 0.5px rgb(0 0 0 / 0.5),
+    0 14px 36px -6px rgb(0 0 0 / 0.45);
+}
+
+/* The inset sidebar: a lighter pane floating inside the window's edge. */
+.mac-window__sidebar {
+  position: absolute;
+  left: var(--inset);
+  top: var(--inset);
+  bottom: var(--inset);
+  width: calc(var(--sidebar) * 1px);
+  padding-top: calc(var(--bar) - var(--inset) + 2px);
+  box-sizing: border-box;
+  border-radius: calc(var(--radius-window) - var(--inset) + 4px);
+  background: rgb(255 255 255 / 0.065);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.07),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  overflow: hidden;
+}
+
+.mac-window__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--bar);
+  display: flex;
+  align-items: center;
+  padding-right: 14px;
+  padding-left: calc(var(--sidebar) * 1px + var(--inset) + 16px);
+}
+
+.mac-window:not([data-sidebar]) .mac-window__bar {
+  padding-left: 90px;
+}
+
+.mac-window__lights {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  gap: 8px;
+}
+
+.mac-window__light {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.25);
+}
+
+.mac-window__light[data-light='close'] {
+  background: #ff5f57;
+}
+
+.mac-window__light[data-light='minimize'] {
+  background: #febc2e;
+}
+
+.mac-window__light[data-light='zoom'] {
+  background: #28c840;
+}
+
+.mac-window:not([data-focused]) .mac-window__light {
+  background: rgb(255 255 255 / 0.16);
+}
+
+.mac-window__title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.mac-window__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.mac-window__body {
+  position: absolute;
+  top: var(--bar);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.mac-window[data-sidebar] .mac-window__body {
+  left: calc(var(--sidebar) * 1px + var(--inset));
+}

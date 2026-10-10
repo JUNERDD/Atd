@@ -1,0 +1,128 @@
+/* Anytime. The worlds stack over the scene's ink: the dusk light behind the chapter word, then
+   the time-lapse desktop (fading in as the camera flies through the word), then the close-up. */
+.anytime-world {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+}
+
+/* The desktop's menu bar clock races through the night: tabular figures and a fixed, right-aligned
+   box keep its width still, so the status item and the system items beside it never jitter. */
+.anytime .menu-bar__clock {
+  min-width: 92px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Things on the display, placed in points by their top-left (--x, --y). */
+.anytime-folder,
+.anytime-notice {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+}
+
+/* A file falling into the folder, placed by its art's center. */
+.anytime-file {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  translate: -50% calc(var(--size) * -0.5px);
+  rotate: var(--r);
+  scale: var(--s);
+  transform-origin: 50% calc(var(--size) * 0.5px);
+  opacity: var(--o);
+  filter: blur(var(--blur)) drop-shadow(0 10px 14px rgb(0 0 0 / 0.35));
+}
+
+/* The panel in the close-up's world, in points scaled once like the desktop. */
+.anytime-panel {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  scale: var(--s);
+  transform-origin: 0 0;
+}
+
+/* The defocused desktop sits back: a soft darkening toward the edges keeps the panel forward. */
+.anytime-haze {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 40%, rgb(4 5 10 / 0.1), rgb(4 5 10 / 0.5));
+}
+
+/* The time skip between chats: a quiet label centered between two hairlines. */
+.anytime-skip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 8px;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.anytime-skip::before,
+.anytime-skip::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--pk-border);
+}
+
+/* A ring of light spreading from a point (in points): its center is (--x, --y), its radius --r. */
+.anytime-ping {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--r) * 2px);
+  height: calc(var(--r) * 2px);
+  translate: -50% -50%;
+  border: 1.5px solid color-mix(in srgb, var(--light-rim) 80%, transparent);
+  border-radius: 50%;
+  opacity: var(--o);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--light-cyan) 70%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--light-cyan) 45%, transparent);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Dawn's warmth, over the wallpaper and under the icons: peach light rising behind the folder and
+   the banners, where the camera looks at dawn (the wallpaper's own dawn light sits lower). */
+.anytime-sunrise {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(
+      48% 46% at 66% 52%,
+      color-mix(in srgb, var(--light-peach) 72%, transparent),
+      color-mix(in srgb, var(--light-coral) 30%, transparent) 42%,
+      transparent 76%
+    ),
+    radial-gradient(
+      40% 34% at 92% 18%,
+      color-mix(in srgb, var(--light-peach) 34%, transparent),
+      transparent 70%
+    );
+  pointer-events: none;
+}
+
+/* ...and the same dawn turns the wallpaper's cool night light warm: a peach hue laid over it. */
+.anytime-warmth {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  mix-blend-mode: color;
+  background: linear-gradient(
+    200deg,
+    var(--light-peach),
+    var(--light-coral) 70%,
+    var(--light-peach)
+  );
+  pointer-events: none;
+}

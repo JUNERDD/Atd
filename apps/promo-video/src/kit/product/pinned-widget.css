@@ -1,0 +1,96 @@
+/* The pinned app on the wallpaper, in widget sizes (small 170 × 170 pt, medium 364 × 170 pt). It
+   lands a touch large and settles (`--settle`). */
+.pk-pin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 170px;
+  height: 170px;
+  padding: 14px 16px 16px;
+  opacity: min(1, calc(var(--settle, 1) * 2));
+  scale: calc(1.06 - var(--settle, 1) * 0.06);
+}
+
+.pk-pin[data-size='medium'] {
+  width: 364px;
+}
+
+.pk-pin__title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-pin__today {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.pk-pin__ring {
+  position: absolute;
+  width: 104px;
+  height: 104px;
+  rotate: -90deg;
+}
+
+.pk-pin__ring circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.pk-pin__track {
+  stroke: rgb(255 255 255 / 0.12);
+}
+
+.pk-pin__value {
+  stroke: var(--habit);
+  stroke-linecap: round;
+  stroke-dasharray: var(--ring, 0) 100;
+}
+
+.pk-pin__count {
+  font-size: 26px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 30px;
+}
+
+.pk-pin__day {
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.pk-pin__rows {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.pk-pin__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(7, 26px);
+  align-items: center;
+}
+
+.pk-pin__habit {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-pin__row .pk-habit-cell__svg {
+  width: 18px;
+  height: 18px;
+}

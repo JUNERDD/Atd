@@ -1,0 +1,40 @@
+/* A centered line that sets word by word: the Open's tagline and the finale's closing line. */
+.line {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--font-text);
+  line-height: 1.2;
+}
+
+.line[data-variant='tagline'] {
+  font-size: 40px;
+  font-weight: 450;
+  letter-spacing: -0.012em;
+  color: var(--fg-2);
+}
+
+.line[data-variant='statement'] {
+  font-size: 58px;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  color: var(--fg-1);
+}
+
+.line:lang(zh)[data-variant='tagline'] {
+  font-weight: 420;
+  letter-spacing: 0.06em;
+}
+
+.line:lang(zh)[data-variant='statement'] {
+  font-weight: 560;
+  letter-spacing: 0.03em;
+}
+
+.line__word {
+  display: inline-block;
+  opacity: var(--o);
+  translate: 0 var(--y);
+  filter: blur(var(--blur));
+}

@@ -1,0 +1,80 @@
+/* An assistant reply (apps/desktop/src/features/agent/agent.css `.assistant-message`, `.markdown`). */
+.pk-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  color: var(--pk-fg);
+  font-size: 14px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.pk-reply p,
+.pk-reply ul {
+  margin: 0;
+}
+
+.pk-reply ul {
+  padding-left: 22px;
+  list-style: disc;
+}
+
+.pk-reply strong {
+  font-weight: 600;
+}
+
+.pk-reply__code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.08);
+  font-family: var(--pk-mono);
+  font-size: 12px;
+}
+
+/* A unit the reply chose on its own, lit by the film: the app's quote highlight, faded in. */
+.pk-reply__mark {
+  margin: 0 -2px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #facc15 calc(var(--mark, 0) * 22%), transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #facc15 calc(var(--mark, 0) * 40%), transparent);
+  color: inherit;
+}
+
+/* Streamdown's table wrapper: one hairline frame with a 10 pt corner on a faint muted fill. */
+.pk-reply__table {
+  overflow: hidden;
+  border: 1px solid var(--pk-border);
+  border-radius: 10px;
+  background: rgb(38 38 38 / 0.6);
+}
+
+.pk-reply__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.pk-reply__table th,
+.pk-reply__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--pk-border);
+  text-align: left;
+  overflow-wrap: normal;
+}
+
+.pk-reply__table th + th,
+.pk-reply__table td + td {
+  border-left: 1px solid var(--pk-border);
+}
+
+.pk-reply__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.pk-reply__table th {
+  font-weight: 600;
+  background: rgb(38 38 38 / 0.8);
+}

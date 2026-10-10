@@ -1,0 +1,156 @@
+/* The review sheet: a dark neutral ground with a faint light behind the glass, so its blur and rim
+   read as they will on the desktop. Everything sits at 1:1 in points. */
+.pk-sheet {
+  background:
+    radial-gradient(40% 50% at 16% 28%, rgb(240 96 47 / 0.3), transparent 70%),
+    radial-gradient(40% 50% at 60% 80%, rgb(37 48 122 / 0.45), transparent 70%),
+    radial-gradient(35% 45% at 88% 30%, rgb(26 168 196 / 0.25), transparent 70%), #0d0e12;
+}
+
+.pk-sheet__at {
+  position: absolute;
+}
+
+.pk-sheet__at[data-at='panel'] {
+  left: 48px;
+  top: 40px;
+}
+
+.pk-sheet__stack {
+  position: absolute;
+  top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.pk-sheet__stack[data-at='middle'] {
+  left: 600px;
+  width: 468px;
+}
+
+.pk-sheet__stack[data-at='right'] {
+  left: 1120px;
+  width: 760px;
+}
+
+.pk-sheet__stack > .pk-approval,
+.pk-sheet__stack > .pk-arrive {
+  align-self: stretch;
+}
+
+.pk-sheet__reply {
+  width: 420px;
+}
+
+.pk-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 468px;
+}
+
+.pk-sheet__row > .pk-composer {
+  flex: 1;
+}
+
+/* Page two: a mock page frozen for capture, 740 × 360 pt. */
+.pk-sheet__screen {
+  position: absolute;
+  left: 48px;
+  top: 40px;
+  width: 740px;
+  height: 360px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #e9e7e3;
+}
+
+.pk-mock > i {
+  position: absolute;
+  display: block;
+  border-radius: 8px;
+}
+
+.pk-mock > i[data-line='title'] {
+  left: 40px;
+  top: 40px;
+  width: 260px;
+  height: 32px;
+  background: #2b2b2f;
+}
+
+.pk-mock > i[data-card='a'] {
+  left: 40px;
+  top: 96px;
+  width: 330px;
+  height: 120px;
+  background: linear-gradient(135deg, #f0602f, #ffb08f);
+}
+
+.pk-mock > i[data-card='b'] {
+  left: 400px;
+  top: 96px;
+  width: 300px;
+  height: 120px;
+  background: linear-gradient(135deg, #25307a, #1aa8c4);
+}
+
+.pk-mock > i[data-line='body'] {
+  left: 40px;
+  top: 240px;
+  width: 660px;
+  height: 80px;
+  background: repeating-linear-gradient(#b9b6b0 0 10px, transparent 10px 24px);
+}
+
+.pk-sheet__at[data-at='annotation'] {
+  left: 300px;
+  top: 412px;
+}
+
+.pk-sheet__at[data-at='capsule'] {
+  left: 860px;
+  top: 56px;
+}
+
+.pk-sheet__at[data-at='capsule-mark'] {
+  left: 860px;
+  top: 120px;
+}
+
+.pk-sheet__at[data-at='notice'] {
+  left: 1500px;
+  top: 40px;
+}
+
+.pk-sheet__at[data-at='notice-2'] {
+  left: 1500px;
+  top: 126px;
+}
+
+/* The mini panel's box sits on the sheet's right edge, as on the screen's. */
+.pk-sheet__edge {
+  position: absolute;
+  top: 300px;
+  right: 0;
+}
+
+.pk-sheet__at[data-at='app'] {
+  left: 48px;
+  top: 560px;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.55);
+}
+
+.pk-sheet__at[data-at='pin-small'] {
+  left: 560px;
+  top: 560px;
+}
+
+.pk-sheet__at[data-at='pin-medium'] {
+  left: 760px;
+  top: 560px;
+}

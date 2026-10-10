@@ -1,0 +1,179 @@
+/* The Atd mark: the static symbol, the forming mark, the wordmark and the lockup. Drops are always
+   drawn in a square box from the master's paths, so the mark never stretches. */
+.drops-symbol {
+  display: block;
+  width: var(--size, 1em);
+  height: var(--size, 1em);
+  fill: currentColor;
+  flex: none;
+}
+
+.drops-mark {
+  --upper-core: var(--light-peach);
+  --upper-edge: var(--light-coral);
+  --lower-core: var(--light-rim);
+  --lower-edge: var(--light-cyan);
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+}
+
+.drops-mark__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.drops-mark__stop[data-stop='upper-core'] {
+  stop-color: var(--upper-core);
+}
+
+.drops-mark__stop[data-stop='upper-edge'] {
+  stop-color: var(--upper-edge);
+}
+
+.drops-mark__stop[data-stop='lower-core'] {
+  stop-color: var(--lower-core);
+}
+
+.drops-mark__stop[data-stop='lower-edge'] {
+  stop-color: var(--lower-edge);
+}
+
+/* One drop in flight: offset in mark sizes, spun and scaled about its own centroid, blurred by
+   its distance, and glowing in its own color until it settles to white. */
+.drops-mark__drop {
+  --glow-color: color-mix(in oklab, var(--drop-light), var(--fg-1) calc(var(--settle) * 100%));
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  translate: calc(var(--dx) * var(--size)) calc(var(--dy) * var(--size));
+  rotate: var(--rotate);
+  scale: var(--scale);
+  transform-origin: var(--ox) var(--oy);
+  filter: blur(calc(var(--blur) * var(--size)))
+    drop-shadow(
+      0 0 calc(var(--size) * 0.07)
+        color-mix(
+          in srgb,
+          var(--glow-color) calc((1 - var(--settle) + var(--glow) * 0.8) * 70%),
+          transparent
+        )
+    );
+}
+
+.drops-mark__drop[data-drop='upper'] {
+  --drop-light: var(--light-coral);
+}
+
+.drops-mark__drop[data-drop='lower'] {
+  --drop-light: var(--light-cyan);
+}
+
+.drops-mark__drop[data-ghost] {
+  mix-blend-mode: screen;
+}
+
+.drops-mark__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.drops-mark__white {
+  fill: var(--fg-1);
+  opacity: var(--white);
+}
+
+/* The lock's glint: light running out from the meeting point along the seam, the straight edges
+   the drops share on the box's horizontal and vertical center lines, with a hot core. */
+.drops-mark__glint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  opacity: var(--glint);
+  mix-blend-mode: screen;
+}
+
+.drops-mark__seam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--size) * (0.2 + var(--reach) * 0.75));
+  height: calc(var(--size) * 0.014);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.7) 30%,
+    #fff 50%,
+    rgb(255 255 255 / 0.7) 70%,
+    transparent
+  );
+  box-shadow: 0 0 calc(var(--size) * 0.03) rgb(255 255 255 / 0.55);
+}
+
+.drops-mark__seam[data-axis='y'] {
+  rotate: 90deg;
+}
+
+.drops-mark__core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--size) * 0.3);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #fff, rgb(255 255 255 / 0.45) 30%, transparent);
+}
+
+/* The wordmark: clipped at its left edge, it slides out from behind what stands there. */
+.wordmark {
+  position: relative;
+  width: calc(var(--width) * var(--size));
+  height: var(--size);
+  overflow: clip;
+  overflow-clip-margin: calc(var(--size) * 0.2);
+  clip-path: inset(-20% -20% -20% 0);
+  font-family: var(--font-text);
+  font-size: var(--size);
+  line-height: 1;
+}
+
+.wordmark__text {
+  display: block;
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  color: var(--fg-1);
+  opacity: var(--o);
+  translate: calc(var(--shift) * -105%) 0;
+  filter: blur(var(--blur));
+}
+
+/* The lockup: a zero-size anchor at its parent's center, the mark centered on it and pushed left
+   by --shift, the word starting a gap right of the mark's edge. */
+.lockup {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+.lockup__mark {
+  position: absolute;
+  left: calc(var(--size) * -0.5 - var(--shift));
+  top: calc(var(--size) * -0.5);
+}
+
+.lockup__word {
+  position: absolute;
+  left: calc(var(--size) * (0.5 + var(--gap)) - var(--shift));
+  top: calc(var(--size) * -0.42);
+}

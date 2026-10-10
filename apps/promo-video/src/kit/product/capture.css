@@ -1,0 +1,105 @@
+/* The capture overlay's marks (apps/macos/Sources/AIShell/Capture/CaptureChromeView.swift and
+   Annotation/AnnotationRenderer.swift), on a box the size of the frozen display. */
+.pk-capture {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* One undimmed rectangle: the dim is the rectangle's own outset shadow, so it follows the box. */
+.pk-capture__hole {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  box-shadow: 0 0 0 4000px rgb(0 0 0 / calc(var(--dim, 0.4) * var(--o, 1)));
+}
+
+/* The detected area or the selection: a 1.5 pt accent outline just outside it. */
+.pk-capture__hole[data-outline] {
+  outline: 1.5px solid var(--pk-accent);
+  outline-offset: 0;
+}
+
+/* The selection's eight handles: white dots with an accent edge. */
+.pk-capture__handle {
+  position: absolute;
+  left: calc(var(--hx) * 1px);
+  top: calc(var(--hy) * 1px);
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--pk-accent);
+}
+
+/* The size label: 12 pt monospaced digits, white on a 72% black plate with a 6 pt corner, 6 pt
+   above the area's top-left corner. */
+.pk-capture__size {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px - 30px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.72);
+  color: #fff;
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* A step number: a filled disc in the mark's colour, its number bold at 55% of the diameter. */
+.pk-step {
+  position: absolute;
+  left: calc(var(--cx) * 1px);
+  top: calc(var(--cy) * 1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--d) * 1px);
+  height: calc(var(--d) * 1px);
+  margin: calc(var(--d) * -0.5px) 0 0 calc(var(--d) * -0.5px);
+  border-radius: 50%;
+  color: #fff;
+  font-family: var(--font-text);
+  font-size: calc(var(--d) * 0.55px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  scale: var(--pop, 1);
+  opacity: min(1, calc(var(--pop, 1) * 2));
+}
+
+.pk-step[data-color='red'] {
+  background: rgb(255 59 48);
+}
+
+.pk-step[data-color='yellow'] {
+  background: rgb(255 204 0);
+  color: #000;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+}
+
+.pk-step[data-color='green'] {
+  background: rgb(52 199 89);
+}
+
+.pk-step[data-color='blue'] {
+  background: rgb(0 122 255);
+}
+
+.pk-step[data-color='black'] {
+  background: #000;
+}
+
+.pk-step[data-color='white'] {
+  background: #fff;
+  color: #000;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+}

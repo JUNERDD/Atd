@@ -1,0 +1,185 @@
+/* The transcript's activity rows and the tool card surface they unfold
+   (apps/desktop/src/features/agent/agent.css `.activity-*`, transcript/tool-card.css). */
+
+/* A 32 pt row with no side padding: the 14 pt icon lines up with the prose around it. */
+.pk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 0;
+  color: var(--pk-muted-fg);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pk-row__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--pk-muted-fg);
+}
+
+.pk-row__title {
+  flex: none;
+  white-space: nowrap;
+}
+
+.pk-row__meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-row__trail {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The unfolded body: inset like `.tool-body`, folding away as `--fold` runs to 1. */
+.pk-row-body {
+  height: calc-size(auto, size * (1 - var(--fold, 0)));
+  overflow: clip;
+  opacity: calc(1 - var(--fold, 0));
+}
+
+.pk-row-body > * {
+  margin: 4px 0 8px 8px;
+}
+
+/* The tool card: an opaque detail surface, one hairline, a 14 pt corner. */
+.pk-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--pk-detail-border);
+  border-radius: 14px;
+  background: var(--pk-detail);
+}
+
+.pk-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-bottom: 1px solid var(--pk-detail-border);
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.pk-card__header > .pk-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.pk-card__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-card__content {
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.pk-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--pk-detail-border);
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Output text in the card: monospace, the newest lines at the bottom. */
+.pk-output {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-family: var(--pk-mono);
+  font-size: 11.5px;
+  line-height: 18px;
+  white-space: pre;
+}
+
+.pk-output > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An outline button (`variant="outline"`): a hairline on transparent, `--press` deepening it. */
+.pk-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--pk-border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pk-input) calc(var(--press, 0) * 100%), transparent);
+  color: var(--pk-fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  scale: calc(1 - var(--press, 0) * 0.04);
+}
+
+.pk-button[data-size='sm'] {
+  height: 28px;
+  gap: 4px;
+  padding: 0 12px 0 8px;
+}
+
+.pk-button > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* `Kbd`: a 20 pt keycap, 12 pt medium on the muted fill. */
+.pk-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--pk-muted);
+  color: var(--pk-muted-fg);
+  font-family: var(--pk-keys);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* An outline `Badge`: 20 pt, 12 pt medium. */
+.pk-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--pk-border);
+  border-radius: 18px;
+  color: var(--pk-fg);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}

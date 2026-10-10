@@ -1,0 +1,46 @@
+/* The camera. The lens overhangs the frame by --bleed so a blur pulls in real picture at the
+   edges rather than transparency; the frame itself clips. The world's origin is translated to the
+   frame's center, tilted and zoomed there, then shifted so the shot's point (--cx, --cy) lands on
+   it. */
+.camera {
+  --bleed: 96px;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.camera__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.camera__lens {
+  position: absolute;
+  inset: calc(var(--bleed) * -1);
+  filter: var(--cam-filter);
+  perspective: 2400px;
+  perspective-origin: 50% 50%;
+}
+
+.camera__world {
+  position: absolute;
+  left: var(--bleed);
+  top: var(--bleed);
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+  transform: translate(960px, 540px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--zoom))
+    translate(calc(var(--cx) * -1px), calc(var(--cy) * -1px));
+}
+
+/* Without tilt, no perspective and no 3D functions: the world stays in 2D, so the browser lays out
+   and rasterizes it at the zoomed scale and close-ups of type stay crisp. */
+.camera__lens[data-flat] {
+  perspective: none;
+}
+
+.camera__lens[data-flat] > .camera__world {
+  transform: translate(960px, 540px) scale(var(--zoom))
+    translate(calc(var(--cx) * -1px), calc(var(--cy) * -1px));
+}

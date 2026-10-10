@@ -1,0 +1,47 @@
+/* The Open. Everything sits in the camera's world, positioned by its center in world px
+   (--x, --y). */
+.open__keys,
+.open__mark,
+.open__tagline,
+.open__bloom {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+}
+
+.open__keys {
+  translate: -50% -50%;
+  opacity: var(--o);
+  filter: blur(var(--rack));
+}
+
+/* The lockup centers itself on its parent's center, so its anchor is a point. */
+.open__mark {
+  width: 0;
+  height: 0;
+  opacity: var(--o);
+}
+
+.open__tagline {
+  width: 1600px;
+  translate: -50% -50%;
+}
+
+/* The first light: a wide warm glow that spreads out from under Space across the deck and up
+   into the dark, before the light field takes over. */
+.open__bloom {
+  width: 2200px;
+  height: 1500px;
+  translate: -50% -50%;
+  scale: var(--s);
+  opacity: var(--o);
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    closest-side,
+    rgb(255 226 206 / 0.5),
+    color-mix(in srgb, var(--light-peach) 34%, transparent) 20%,
+    color-mix(in srgb, var(--light-coral) 22%, transparent) 42%,
+    color-mix(in srgb, var(--light-coral) 7%, transparent) 68%,
+    transparent
+  );
+}

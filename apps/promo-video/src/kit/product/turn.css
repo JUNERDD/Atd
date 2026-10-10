@@ -1,0 +1,15 @@
+/* A turn and its activity group (apps/desktop/src/features/agent/agent.css `.transcript-turn`,
+   `.activity-group`). */
+.pk-turn {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pk-activity-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}

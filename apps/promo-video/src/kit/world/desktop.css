@@ -1,0 +1,34 @@
+/* The display: --dw × --dh points, scaled by --scale from its top-left so it fills the frame's
+   width. Everything inside is laid out in points as px. */
+.desktop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--dw) * 1px);
+  height: calc(var(--dh) * 1px);
+  overflow: hidden;
+  scale: var(--scale);
+  transform-origin: 0 0;
+  font-family: var(--font-text);
+  color: var(--fg-1);
+  background-color: var(--ink);
+}
+
+.desktop__screen {
+  position: absolute;
+  inset: 0;
+}
+
+/* Dimming toward sleep: the whole panel darkens, the corners first. */
+.desktop__dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      130% 110% at 50% 45%,
+      transparent 35%,
+      rgb(0 0 0 / calc(var(--dim) * 0.45)) 100%
+    ),
+    rgb(0 0 0 / calc(var(--dim) * 0.55));
+}

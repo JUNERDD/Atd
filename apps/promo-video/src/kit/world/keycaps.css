@@ -1,0 +1,171 @@
+/* Keycaps. --u is one key unit (a key's height) in px; each key carries its width in units (--w),
+   its travel (--travel, 0 rest → 1 bottomed out, slightly negative on the rebound), the light under
+   it (--glow) and how it arrives (--o, --rise in units, --blur in units). */
+.keycaps {
+  --depth: calc(var(--u) * 0.15);
+  perspective: calc(var(--u) * 9);
+  font-family: var(--font-text);
+}
+
+.keycaps__row {
+  display: flex;
+  gap: calc(var(--u) * 0.16);
+  transform: rotateX(24deg);
+  transform-origin: 50% 70%;
+}
+
+.keycap {
+  position: relative;
+  flex: none;
+  width: calc(var(--w) * var(--u));
+  height: var(--u);
+  opacity: var(--o);
+  translate: 0 calc(var(--rise) * var(--u));
+  filter: blur(calc(var(--blur) * var(--u)));
+}
+
+/* Light from beneath the key: a wide warm bloom on the deck around it. */
+.keycap__light {
+  position: absolute;
+  inset: calc(var(--u) * -0.9) calc(var(--u) * -0.7);
+  opacity: var(--glow);
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    closest-side,
+    rgb(255 236 224 / 0.95),
+    color-mix(in srgb, var(--light-peach) 80%, transparent) 22%,
+    color-mix(in srgb, var(--light-coral) 55%, transparent) 48%,
+    color-mix(in srgb, var(--light-coral) 14%, transparent) 74%,
+    transparent
+  );
+}
+
+/* The hole in the deck the cap sits in, and the cap's contact shadow. */
+.keycap__well {
+  position: absolute;
+  inset: calc(var(--u) * -0.03) calc(var(--u) * -0.03) calc(var(--depth) * -1 - var(--u) * 0.05);
+  border-radius: calc(var(--u) * 0.22);
+  background: rgb(0 0 0 / 0.72);
+  box-shadow:
+    0 calc(var(--u) * 0.1) calc(var(--u) * 0.3) rgb(0 0 0 / 0.75),
+    0 calc(var(--u) * 0.04) calc(var(--u) * 0.22)
+      color-mix(in srgb, var(--light-coral) calc(var(--glow) * 75%), transparent);
+}
+
+/* The cap's side wall: visible below the face, shrinking as the cap sinks into the deck. */
+.keycap__wall {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--travel) * var(--depth) * 0.8);
+  bottom: calc(var(--depth) * -1);
+  border-radius: calc(var(--u) * 0.2);
+  background:
+    linear-gradient(
+      transparent 45%,
+      color-mix(in srgb, var(--light-coral) calc(var(--glow) * 28%), transparent)
+    ),
+    linear-gradient(#26262b, #121214 55%, #070708);
+  box-shadow:
+    inset 0 calc(var(--u) * -0.012) 0 rgb(255 255 255 / 0.07),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* The top face: slightly inset from the wall (sculpted), with a shallow dish lit from above, a
+   sheen along its top edge and a soft shade toward the front. */
+.keycap__top {
+  position: absolute;
+  left: calc(var(--u) * 0.045);
+  right: calc(var(--u) * 0.045);
+  top: calc(var(--travel) * var(--depth) * 0.8 - var(--u) * 0.01);
+  height: calc(var(--u) * 0.94);
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--u) * 0.17);
+  background:
+    radial-gradient(
+      140% 70% at 50% 110%,
+      color-mix(in srgb, var(--light-peach) calc(var(--glow) * 16%), transparent),
+      transparent 70%
+    ),
+    radial-gradient(120% 90% at 50% 18%, rgb(255 255 255 / 0.07), transparent 60%),
+    radial-gradient(90% 80% at 50% 55%, #1b1b1f, #242429 70%, #2b2b31), #222226;
+  box-shadow:
+    inset 0 calc(var(--u) * 0.012) 0 rgb(255 255 255 / 0.16),
+    inset 0 calc(var(--u) * -0.03) calc(var(--u) * 0.05) rgb(0 0 0 / 0.45),
+    inset 0 0 0 1px rgb(255 255 255 / 0.05),
+    0 calc(var(--u) * 0.012) calc(var(--u) * 0.02) rgb(0 0 0 / 0.5);
+}
+
+.keycap__legend {
+  font-size: calc(var(--u) * 0.36);
+  font-weight: 420;
+  line-height: 1;
+  color: color-mix(in srgb, var(--fg-1) calc(84% + var(--pressed) * 16%), transparent);
+  text-shadow: 0 0 calc(var(--u) * 0.08)
+    color-mix(in srgb, var(--light-peach) calc(var(--glow) * 70%), transparent);
+}
+
+.keycap[data-legend='Space'] .keycap__legend {
+  font-size: calc(var(--u) * 0.2);
+  font-weight: 460;
+  letter-spacing: 0.01em;
+}
+
+/* Hint caps: small and flat, frosted, for shortcuts shown on screen. */
+.keycaps[data-variant='hint'] {
+  --depth: calc(var(--u) * 0.09);
+  perspective: none;
+}
+
+.keycaps[data-variant='hint'] .keycaps__row {
+  gap: calc(var(--u) * 0.2);
+  transform: none;
+}
+
+.keycaps[data-variant='hint'] .keycap {
+  filter: none;
+}
+
+.keycaps[data-variant='hint'] .keycap[data-legend='Space'] {
+  width: calc(var(--u) * 2.3);
+}
+
+.keycaps[data-variant='hint'] .keycap__light,
+.keycaps[data-variant='hint'] .keycap__well {
+  display: none;
+}
+
+.keycaps[data-variant='hint'] .keycap__wall {
+  border-radius: calc(var(--u) * 0.26);
+  background: rgb(255 255 255 / 0.07);
+  box-shadow: 0 calc(var(--u) * 0.1) calc(var(--u) * 0.3) rgb(0 0 0 / 0.35);
+}
+
+.keycaps[data-variant='hint'] .keycap__top {
+  left: 0;
+  right: 0;
+  top: calc(var(--travel) * var(--depth));
+  height: var(--u);
+  border-radius: calc(var(--u) * 0.26);
+  background: linear-gradient(
+    rgb(255 255 255 / calc(0.17 + var(--pressed) * 0.1)),
+    rgb(255 255 255 / calc(0.1 + var(--pressed) * 0.1))
+  );
+  backdrop-filter: blur(12px) saturate(1.6);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.keycaps[data-variant='hint'] .keycap__legend {
+  font-size: calc(var(--u) * 0.5);
+  font-weight: 500;
+  color: var(--fg-1);
+  text-shadow: none;
+}
+
+.keycaps[data-variant='hint'] .keycap[data-legend='Space'] .keycap__legend {
+  font-size: calc(var(--u) * 0.4);
+}
