@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
 import {
   CommandCreateSchema,
+  CommandOrderRequestSchema,
   CommandRunRequestSchema,
   CommandUpdateRequestSchema,
   Identifier,
@@ -30,6 +31,7 @@ const RevisionQuery = Type.Object(
 /**
  * Live command routes (T6b). The store loads per request; each mutation
  * serializes through its own chain and lands via atomic write. Revisions guard every mutation (409 on drift).
+ * The user's commands are listed in their saved order, which `PUT /v1/commands/order` sets.
  * Installed plugins' commands (plugins/commands.ts) are listed after the user's, carry their
  * `pluginId`, accept only an `enabled` change and cannot be deleted. `POST /v1/commands/:id/run`
  * launches one (launch.ts), answering like a task submit.
@@ -49,6 +51,17 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
   app.post('/v1/commands', RENDERER_ROUTE, async (request) => ({
     command: await (await store()).create(parse(CommandCreateSchema, request.body)),
   }));
+
+  // Declared beside `/v1/commands/:id`; Fastify matches the static segment first.
+  app.put('/v1/commands/order', RENDERER_ROUTE, async (request) => {
+    const { ids } = parse(CommandOrderRequestSchema, request.body);
+    return {
+      commands: [
+        ...(await (await store()).reorder(ids)),
+        ...(await listPluginCommands(ctx.dataDir)),
+      ],
+    };
+  });
 
   app.put<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);

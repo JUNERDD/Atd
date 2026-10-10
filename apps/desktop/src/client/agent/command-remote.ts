@@ -2,6 +2,7 @@ import {
   createCommand,
   deleteCommand,
   listCommands,
+  reorderCommands,
   updateCommand,
   type AgentClientOptions,
 } from '@atd/agent-client';
@@ -57,6 +58,15 @@ export function toCommandCreate(command: CommandDefinition): CommandCreate {
 
 export async function fetchCommands(options: AgentClientOptions): Promise<CommandDefinition[]> {
   const listed = await listCommands(options);
+  return listed.commands.map(toDesktopCommand);
+}
+
+/** Saves the order of the user's commands; answers the whole list in its new order. */
+export async function reorderRemote(
+  options: AgentClientOptions,
+  ids: string[],
+): Promise<CommandDefinition[]> {
+  const listed = await reorderCommands(options, { ids });
   return listed.commands.map(toDesktopCommand);
 }
 

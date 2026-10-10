@@ -180,6 +180,11 @@ export interface AgentBridge {
   detail: (taskId: string) => Promise<TaskDetail>;
   saveCommand: (command: CommandDefinition, expectedRevision: number) => Promise<CommandDefinition>;
   deleteCommand: (commandId: string, revision: number) => Promise<void>;
+  /**
+   * Saves the order of the user's own commands; `commandIds` names each of them once. Rejects when
+   * the list changed meanwhile, and the list then reloads with the service's order.
+   */
+  reorderCommands: (commandIds: string[]) => Promise<void>;
   launch: (commandId: string, prepared?: { input: TaskInput; revision: number }) => Promise<void>;
   /**
    * Prepares a command on text the page holds (a passage selected in a conversation's answers, or

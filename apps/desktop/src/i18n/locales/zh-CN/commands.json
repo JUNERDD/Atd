@@ -33,6 +33,7 @@
     "loading": "正在加载命令…",
     "personal": "个人",
     "pluginGroupFor": "来自 {{plugin}} 的命令",
+    "reorderHint": "长按命令即可拖动排序，也可以用 ⌥↑ / ⌥↓ 移动当前聚焦的命令。",
     "deleteTitle": "删除 {{name}}？",
     "deleteDescription": "将删除该命令及其快捷键。已有任务会保留其保存的命令版本。",
     "status": {

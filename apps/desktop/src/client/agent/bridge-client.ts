@@ -40,6 +40,7 @@ export function createAgentBridge(
       invoke({ action: 'saveCommand', command, expectedRevision }),
     deleteCommand: (commandId, revision) =>
       invoke({ action: 'deleteCommand', commandId, revision }),
+    reorderCommands: (commandIds) => invoke({ action: 'reorderCommands', commandIds }),
     launch: (commandId, prepared) =>
       invoke({ action: 'launch', commandId, prepared: prepared ?? null }),
     prepareWithText: (commandId, text) => invoke({ action: 'prepareWithText', commandId, text }),

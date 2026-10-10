@@ -198,6 +198,32 @@
   gap: 12px;
   min-width: 0;
 }
+/* A user's row moves on its own compositor layer, so a drag or a make-way slide never repaints
+ * the rest of the page. */
+.command-management-row[data-hold] {
+  will-change: transform;
+}
+/* A press that may become a hold starts the lift: after a short click's length the shadow rises
+ * over the rest of the hold, so the row is visibly up by the time it follows the pointer. The
+ * transition belongs to this state only, so a click that ends sooner drops it at once. */
+.command-management-row[data-hold='arming'] {
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  transition: box-shadow 230ms ease-out 120ms;
+}
+/* The held row keeps its resting look and only lifts: the window surface's own colour, made opaque
+ * so the rows and fields it passes over never show through, and a soft shadow. It stays above its
+ * siblings until it is back in its slot. */
+.command-management-row[data-hold='lifted'] {
+  z-index: 1;
+  background: var(--ata-glass-fill-opaque);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+/* No hover wash while held: the pointer is always over the row then, and the wash read as a
+ * highlight rather than a lift. */
+.command-management-row[data-hold='lifted'] > .open-row-button {
+  background: transparent;
+  cursor: grabbing;
+}
 .command-row-controls {
   display: flex;
   flex-shrink: 0;

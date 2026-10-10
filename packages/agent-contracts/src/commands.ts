@@ -229,6 +229,20 @@ export const CommandsListResponseSchema = Type.Object(
 );
 export type CommandsListResponse = Static<typeof CommandsListResponseSchema>;
 
+/**
+ * `PUT /v1/commands/order`: the user's own commands in their new order, every one of them once.
+ * A list that names a command the store lacks or leaves one out is refused (409), so a reorder
+ * made against a stale list never drops or misplaces a command another client just added. Plugin
+ * commands keep their own order after the user's. Answers like `GET /v1/commands`.
+ */
+export const CommandOrderRequestSchema = Type.Object(
+  {
+    ids: Type.Array(Identifier, { maxItems: 500, uniqueItems: true }),
+  },
+  { additionalProperties: false },
+);
+export type CommandOrderRequest = Static<typeof CommandOrderRequestSchema>;
+
 export const CommandGetResponseSchema = Type.Object(
   {
     command: ServiceCommandFullSchema,
@@ -310,9 +324,14 @@ export const ServiceCommandSchema = Type.Object(
 );
 export type ServiceCommand = Static<typeof ServiceCommandSchema>;
 
+/**
+ * The command store file. In version 2 the array order is the order the user gave their commands;
+ * version 1 files were listed by name, so the store reads them in name order and writes them back
+ * as version 2.
+ */
 export const ServiceCommandsFileSchema = Type.Object(
   {
-    version: Type.Literal(1),
+    version: Type.Union([Type.Literal(1), Type.Literal(2)]),
     commands: Type.Array(ServiceCommandSchema, { maxItems: 500 }),
   },
   { additionalProperties: false },

@@ -54,7 +54,9 @@ function withAddedPlacement<T extends object>(command: T): T {
  * every write (`legacy-selection.ts`), and a command stored before placements
  * existed gets its default placement on load (`withAddedPlacement`). The load
  * keeps the revision: the folds are deterministic, so the file converges with
- * the next write of any command.
+ * the next write of any command. The stored order is the user's (`reorder`); a
+ * version 1 file, listed by name before the user could order it, loads in name
+ * order and is written back as version 2.
  */
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
@@ -96,15 +98,14 @@ export class CommandStore {
     try {
       if ((await stat(file)).size > 8 * 1024 * 1024) throw new Error('Commands file is too large.');
       const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
-      return new CommandStore(dataDir, file, {
-        ...data,
-        commands: data.commands.map((command) =>
-          withAddedPlacement(withoutLegacySelection(command)),
-        ),
-      });
+      const commands = data.commands.map((command) =>
+        withAddedPlacement(withoutLegacySelection(command)),
+      );
+      if (data.version === 1) commands.sort((a, b) => a.name.localeCompare(b.name));
+      return new CommandStore(dataDir, file, { version: 2, commands });
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-        return new CommandStore(dataDir, file, { version: 1, commands: [] });
+        return new CommandStore(dataDir, file, { version: 2, commands: [] });
       throw new Error('Saved service commands could not be read. The file is preserved.');
     }
   }
@@ -126,10 +127,9 @@ export class CommandStore {
     return operation;
   }
 
+  /** The user's commands in the order they gave them; new commands come last. */
   list(): ServiceCommandFull[] {
-    return [...this.data.commands]
-      .map((command) => parse(ServiceCommandFullSchema, command))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return this.data.commands.map((command) => parse(ServiceCommandFullSchema, command));
   }
 
   /**
@@ -229,6 +229,26 @@ export class CommandStore {
       data.commands[index] = CommandStore.storable(next);
       return next;
     });
+  }
+
+  /**
+   * Puts the commands in the order of `ids`, which must name every stored command exactly once;
+   * anything else means the caller's list is stale (ConflictError). Order is not part of a
+   * command's definition, so no revision changes.
+   */
+  async reorder(ids: readonly string[]): Promise<ServiceCommandFull[]> {
+    await this.change((data) => {
+      const byId = new Map(data.commands.map((command) => [command.id, command]));
+      const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+      const permutation =
+        ids.length === data.commands.length &&
+        ordered.length === ids.length &&
+        new Set(ids).size === ids.length;
+      if (!permutation)
+        throw new ConflictError('The command list changed. Reload before reordering.');
+      data.commands = ordered;
+    });
+    return this.list();
   }
 
   async remove(id: string, expectedRevision: number): Promise<void> {

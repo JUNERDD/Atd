@@ -170,6 +170,7 @@ export function installBridge(extras?: {
     capture: vi.fn(async () => ({ text: '', capturedAt: '' })),
     saveCommand: vi.fn(async (command) => command),
     deleteCommand: vi.fn(async () => {}),
+    reorderCommands: vi.fn(async () => {}),
     launch: vi.fn(async () => {}),
     prepareWithText: vi.fn(async () => ({
       command: fixtureCommands()[0]!,

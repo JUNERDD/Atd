@@ -33,6 +33,7 @@
     "loading": "Loading commands…",
     "personal": "Personal",
     "pluginGroupFor": "Commands from {{plugin}}",
+    "reorderHint": "Press and hold a command to drag it into place, or move the focused one with ⌥↑ and ⌥↓.",
     "deleteTitle": "Delete {{name}}?",
     "deleteDescription": "This removes the command and its shortcut. Existing tasks keep their saved command version.",
     "status": {

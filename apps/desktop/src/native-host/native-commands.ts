@@ -2,7 +2,12 @@ import { parseAccelerator } from '@atd/agent-contracts';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
 import { prepareCommand } from '../client/agent/command-prepare';
-import { deleteRemote, fetchCommands, saveRemote } from '../client/agent/command-remote';
+import {
+  deleteRemote,
+  fetchCommands,
+  reorderRemote,
+  saveRemote,
+} from '../client/agent/command-remote';
 import type { CommandDefinition } from '../client/agent/command-schema';
 import { validateCommand } from '../client/agent/command-validation';
 import type { Screenshot } from '../client/agent/screenshot-input';
@@ -112,9 +117,11 @@ export class NativeCommands implements CommandCatalog {
     if (!old?.pluginId) validateCommand(command);
     if (command.shortcut) command.shortcut = parseAccelerator(command.shortcut, true, 'darwin');
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);
+    // A new command is the last of the user's, ahead of the plugins' as the service lists it.
+    const own = this.commands.filter((item) => !item.pluginId);
     this.commands = this.commands.some((item) => item.id === saved.id)
       ? this.commands.map((item) => (item.id === saved.id ? saved : item))
-      : [...this.commands, saved];
+      : [...own, saved, ...this.commands.filter((item) => item.pluginId)];
     delete this.errors[saved.id];
     this.changed();
     return saved;
@@ -125,6 +132,17 @@ export class NativeCommands implements CommandCatalog {
     await deleteRemote(this.connection.options(), id, revision);
     this.commands = this.commands.filter((item) => item.id !== id);
     delete this.errors[id];
+    this.changed();
+  }
+
+  /** A refused order (the list changed meanwhile) reloads the list before it rejects. */
+  async reorder(ids: string[]) {
+    try {
+      this.commands = await reorderRemote(this.connection.options(), ids);
+    } catch (error) {
+      await this.refreshFromService().catch(() => undefined);
+      throw error;
+    }
     this.changed();
   }
 

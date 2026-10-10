@@ -29,6 +29,10 @@ export const AgentRequestSchema = Type.Union([
     commandId: Identifier,
     revision: Type.Integer({ minimum: 1 }),
   }),
+  Type.Object({
+    action: Type.Literal('reorderCommands'),
+    commandIds: Type.Array(Identifier, { maxItems: 500, uniqueItems: true }),
+  }),
   Type.Object({ action: Type.Literal('prepare'), commandId: Identifier }),
   Type.Object({
     action: Type.Literal('launch'),
