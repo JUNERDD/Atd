@@ -1,15 +1,11 @@
 import { execFile } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import type { NodePath, PluginObj } from '@babel/core';
+import type { PluginAPI, PluginObject } from '@babel/core';
 import type { Connect, Plugin, ViteDevServer } from 'vite';
 
 export interface ComponentInspectorOptions {
   enabled?: boolean;
-}
-
-interface BabelApi {
-  types: typeof import('@babel/core').types;
 }
 
 interface EditorLaunch {
@@ -93,7 +89,7 @@ async function openInEditor(
  * Tags every JSX opening element with the source location and owning component
  * so the dev-only client inspector can resolve a DOM node back to its file.
  */
-export function componentInspectorBabelPlugin({ types: t }: BabelApi): PluginObj {
+export function componentInspectorBabelPlugin({ types: t }: PluginAPI): PluginObject {
   return {
     visitor: {
       JSXOpeningElement(path, state) {
@@ -102,21 +98,18 @@ export function componentInspectorBabelPlugin({ types: t }: BabelApi): PluginObj
         const loc = path.node.loc;
         if (!loc) return;
 
+        // The nearest named function or variable declarator owns the element. The ancestry
+        // starts at the element itself, which is neither.
         let comp = '';
-        let current: NodePath | null = path.parentPath;
-        while (current) {
-          if (
-            (current.isFunctionDeclaration() || current.isFunctionExpression()) &&
-            current.node.id
-          ) {
-            comp = current.node.id.name;
+        for (const { node } of path.getAncestry()) {
+          if ((t.isFunctionDeclaration(node) || t.isFunctionExpression(node)) && node.id) {
+            comp = node.id.name;
             break;
           }
-          if (current.isVariableDeclarator() && t.isIdentifier(current.node.id)) {
-            comp = current.node.id.name;
+          if (t.isVariableDeclarator(node) && t.isIdentifier(node.id)) {
+            comp = node.id.name;
             break;
           }
-          current = current.parentPath;
         }
 
         if (!comp) {

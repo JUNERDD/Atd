@@ -24,15 +24,15 @@
   },
   "devDependencies": {
     "@shadcn/lint": "0.2.0",
-    "@types/node": "24.19.0",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
+    "@types/node": "24.19.1",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
     "oxlint-tsgolint": "catalog:",
-    "turbo": "2.11.5",
+    "turbo": "2.11.7",
     "typescript": "7.0.2"
   },
   "engines": {
     "node": "^24.15.0 || >=26.0.0"
   },
-  "packageManager": "pnpm@12.8.1"
+  "packageManager": "pnpm@12.10.1"
 }

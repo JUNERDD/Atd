@@ -154,18 +154,16 @@ export function ProviderForm({
                 </p>
               </div>
             )}
-            {(custom || draft.provider === 'azure-openai-responses' || draft.baseUrl) && (
+            {(custom || draft.provider === 'azure' || draft.baseUrl) && (
               <div className="settings-field">
                 <Label htmlFor="provider-endpoint">
-                  {draft.provider === 'azure-openai-responses'
-                    ? t('form.resourceEndpoint')
-                    : t('form.baseUrl')}
+                  {draft.provider === 'azure' ? t('form.resourceEndpoint') : t('form.baseUrl')}
                 </Label>
                 <Input
                   id="provider-endpoint"
                   type="url"
                   value={draft.baseUrl}
-                  readOnly={!custom && draft.provider !== 'azure-openai-responses'}
+                  readOnly={!custom && draft.provider !== 'azure'}
                   onChange={(event) => change({ baseUrl: event.target.value })}
                   placeholder="https://your-provider.example/v1"
                 />

@@ -47,10 +47,23 @@ function emptyFile(): ServiceConnectionsFile {
   return { version: 1, defaultConnectionId: null, connections: [] };
 }
 
+/**
+ * Provider ids Pi renamed without keeping an alias, old to new. A stored connection is read under
+ * the current id and the next write persists it. Only the id moves: the configuration identity,
+ * the keyring entry and saved model selections are keyed by connection, so they stay valid.
+ */
+const RENAMED_PROVIDERS = new Map([
+  // pi-ai 1.0.3 renamed Azure OpenAI's provider.
+  ['azure-openai-responses', 'azure'],
+]);
+
 async function readConnections(file: string): Promise<ServiceConnectionsFile> {
   if ((await stat(file)).size > 8 * 1024 * 1024)
     throw new Error('Provider connections file is too large.');
-  return parse(ServiceConnectionsFileSchema, JSON.parse(await readFile(file, 'utf8')));
+  const data = parse(ServiceConnectionsFileSchema, JSON.parse(await readFile(file, 'utf8')));
+  for (const connection of data.connections)
+    connection.provider = RENAMED_PROVIDERS.get(connection.provider) ?? connection.provider;
+  return data;
 }
 
 export class ConnectionStore {

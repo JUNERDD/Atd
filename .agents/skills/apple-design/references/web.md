@@ -437,8 +437,7 @@ Keep field text at 16 px or more on touch layouts (the `field` block uses `--fs-
 ```js
 shareButton.addEventListener('click', async () => {
   const data = { title: document.title, url: location.href };
-  if (navigator.canShare?.(data))
-    await navigator.share(data).catch(() => {}); // AbortError: the person cancelled
+  if (navigator.canShare?.(data)) await navigator.share(data).catch(() => {}); // AbortError: the person cancelled
   else {
     await navigator.clipboard.writeText(data.url);
     AppleFeedback.announce('Link copied');

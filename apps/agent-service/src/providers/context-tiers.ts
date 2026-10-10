@@ -10,11 +10,11 @@ import { isLocalProvider } from './catalog.js';
  * Larger context windows a provider offers beyond the one Pi's catalog pins, by
  * `<provider>/<modelId>`. Only first-hand sources qualify; each entry names its source.
  * Pi pins these models at 272,000 tokens so requests stay below OpenAI's long-context price
- * (pi-ai 1.0.0 `providers/data/openai.json`: contextWindow 272000, cost tier above 272000).
+ * (pi-ai 1.1.0 `providers/data/openai.json`: contextWindow 272000, cost tier above 272000).
  */
 const EXTENDED_WINDOWS: Readonly<Record<string, number>> = {
   // developers.openai.com/api/docs/models/gpt-5.5: 1,050,000-token context window. Pi's own
-  // Azure OpenAI catalog lists the same model at 1,050,000 (providers/data/azure-openai-responses.json).
+  // Azure catalog lists the same model at 1,050,000 (providers/data/azure.json).
   'openai/gpt-5.5': 1_050_000,
   // Pi v0.86.1 docs/models.md: "To opt into OpenAI's 1.05M context window" for GPT-5.6 Sol, Terra
   // and Luna, set `modelOverrides.<id>.contextWindow` to 1050000; developers.openai.com model pages.

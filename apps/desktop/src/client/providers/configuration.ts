@@ -20,10 +20,7 @@ export function endpoint(value: string): string {
 export function validateConfig(config: ConnectionConfig) {
   if (!config.name.trim()) throw new Error('Enter a connection name.');
   if (config.baseUrl) config.baseUrl = endpoint(config.baseUrl);
-  if (
-    (isCustom(config.provider) || config.provider === 'azure-openai-responses') &&
-    !config.baseUrl
-  )
+  if ((isCustom(config.provider) || config.provider === 'azure') && !config.baseUrl)
     throw new Error('Enter the service endpoint.');
   if (config.provider === 'llamacpp') config.baseUrl = `${config.baseUrl.replace(/\/v1$/, '')}/v1`;
   const fields = CLOUD_FIELDS[config.provider] ?? [];

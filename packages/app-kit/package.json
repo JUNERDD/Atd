@@ -39,20 +39,20 @@
     "@atd/agent-contracts": "workspace:*",
     "@atd/ui": "workspace:*",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/react-query": "5.104.0",
-    "@types/node": "24.19.0",
+    "@tanstack/react-query": "5.104.1",
+    "@types/node": "24.19.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "6.1.1",
+    "@vitejs/plugin-react": "6.1.2",
     "lucide-react": "catalog:",
     "motion": "catalog:",
-    "npm": "11.19.0",
+    "npm": "12.2.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typebox": "catalog:",
     "typescript": "7.0.2",
-    "vite": "8.3.1"
+    "vite": "8.3.4"
   },
   "devDependencies": {
     "@atd/typescript-config": "workspace:*"

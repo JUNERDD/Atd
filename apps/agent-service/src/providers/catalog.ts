@@ -18,7 +18,7 @@ const LOCAL_PROVIDERS: Array<{ id: string; name: string; baseUrl: string }> = [
 
 const CLOUD_PROVIDERS = new Set([
   'amazon-bedrock',
-  'azure-openai-responses',
+  'azure',
   'google-vertex',
   'cloudflare-ai-gateway',
   'cloudflare-workers-ai',

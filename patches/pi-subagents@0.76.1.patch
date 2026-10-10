@@ -1,5 +1,5 @@
 diff --git a/src/runs/shared/child-session.d.ts b/src/runs/shared/child-session.d.ts
-index 0b45238250592fe1e73dbaa3b48bc16885c1300e..0d2ecb21b26db4445bf52a923d0c68734c1dce14 100644
+index 44372e7499e12ec94e825ea9a9eccc8a50dd7dc5..1ce9e442f93b5cfedc499379cb8b4bc1ecc41a0d 100644
 --- a/src/runs/shared/child-session.d.ts
 +++ b/src/runs/shared/child-session.d.ts
 @@ -37,6 +37,16 @@ export interface ChildSessionLaunch {
@@ -19,9 +19,9 @@ index 0b45238250592fe1e73dbaa3b48bc16885c1300e..0d2ecb21b26db4445bf52a923d0c6873
      /** Logical names resolved only by the remote ambient package. */
      remoteResources?: {
          agent: string;
-@@ -96,6 +106,10 @@ export interface ChildSession {
-     readonly sessionId: string;
-     readonly modelId: string | undefined;
+@@ -100,6 +110,10 @@ export interface ChildSession {
+     /** Live provider/id of the selected model when Pi marks it virtual (`api === "pi-virtual"`); assistant messages then name the dispatched physical model. */
+     readonly virtualModelId?: string;
      readonly contextWindow?: number;
 +    /** Host seam (not upstream): the child's settings, for per-model overrides by the host. */
 +    readonly settingsManager?: import("@earendil-works/pi-coding-agent").SettingsManager;
@@ -31,10 +31,10 @@ index 0b45238250592fe1e73dbaa3b48bc16885c1300e..0d2ecb21b26db4445bf52a923d0c6873
          machineId: string;
          initial?: HerdrRemoteGitStatus;
 diff --git a/src/runs/shared/child-session.js b/src/runs/shared/child-session.js
-index ec48aa22cbea67caa946632d595ffe940d4e9d78..ea870f6eeeb3f0e86465c8b139291a673d234717 100644
+index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73defd01caa 100644
 --- a/src/runs/shared/child-session.js
 +++ b/src/runs/shared/child-session.js
-@@ -265,8 +265,10 @@ export function createDefaultChildSessionFactory(options = {}) {
+@@ -323,8 +323,10 @@ export function createDefaultChildSessionFactory(options = {}) {
              const pi = await loadPiCodingAgent();
              const builtinMcpTools = launch.builtinMcpTools ?? [];
              const builtinMcp = builtinMcpTools.length ? selectedBuiltinMcpExtension(pi, builtinMcpTools) : undefined;
@@ -45,10 +45,10 @@ index ec48aa22cbea67caa946632d595ffe940d4e9d78..ea870f6eeeb3f0e86465c8b139291a67
 +                ? await (launch.hostModelRuntime ? launch.hostModelRuntime() : pi.ModelRuntime.create())
                  : await sharedRuntime(pi);
              const agentDir = getAgentDir();
-             const settingsManager = pi.SettingsManager.create(launch.cwd, agentDir, { projectTrusted: launch.projectTrusted });
-@@ -427,6 +429,10 @@ export function createDefaultChildSessionFactory(options = {}) {
-                 get sessionId() { return session.sessionId; },
+             const commands = launch.runtime.runId && launch.runtime.agent && launch.runtime.childIndex !== undefined
+@@ -512,6 +514,10 @@ export function createDefaultChildSessionFactory(options = {}) {
                  get modelId() { return session.model ? `${session.model.provider}/${session.model.id}` : undefined; },
+                 get virtualModelId() { return session.model?.api === "pi-virtual" ? `${session.model.provider}/${session.model.id}` : undefined; },
                  get contextWindow() { return session.model?.contextWindow; },
 +                // Host seam (not upstream): the child's settings and model, so a host can apply
 +                // per-model settings overrides (compaction) to a launched child.

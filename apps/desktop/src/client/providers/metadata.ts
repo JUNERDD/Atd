@@ -9,7 +9,7 @@ export const isCustom = (provider: string) => LOCAL_PROVIDERS.some((item) => ite
 export const isCloud = (provider: string) =>
   [
     'amazon-bedrock',
-    'azure-openai-responses',
+    'azure',
     'google-vertex',
     'cloudflare-ai-gateway',
     'cloudflare-workers-ai',
@@ -19,7 +19,7 @@ export const CLOUD_FIELDS: Record<
   string,
   Array<{ key: string; label: string; placeholder: string }>
 > = {
-  'azure-openai-responses': [
+  azure: [
     { key: 'AZURE_OPENAI_API_VERSION', label: 'API version', placeholder: '2025-04-01-preview' },
     {
       key: 'AZURE_OPENAI_DEPLOYMENT_NAME_MAP',
