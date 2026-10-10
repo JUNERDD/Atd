@@ -14,7 +14,8 @@ export const PermissionTierSchema = Type.Union([
   Type.Literal('always'),
 ]);
 export type PermissionTier = Static<typeof PermissionTierSchema>;
-export const DEFAULT_PERMISSION_TIER: PermissionTier = 'manual';
+/** The tier new installs start at; a stored setting always wins. */
+export const DEFAULT_PERMISSION_TIER: PermissionTier = 'auto';
 
 export const GrantLocationSchema = Type.Union([Type.Literal('inside'), Type.Literal('outside')]);
 export type GrantLocation = Static<typeof GrantLocationSchema>;

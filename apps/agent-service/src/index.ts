@@ -1,4 +1,4 @@
-import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
+import { DEFAULT_PERMISSION_TIER, errorMessage, type PermissionTier } from '@atd/agent-contracts';
 import { AutomationService } from './automations/service.js';
 import { CapabilityRegistry } from './capabilities.js';
 import { launchCommand } from './commands/launch.js';
@@ -84,7 +84,7 @@ export async function createService(
     capabilities,
     paths: config.paths,
     log,
-    tier: options.tier ?? 'manual',
+    tier: options.tier ?? DEFAULT_PERMISSION_TIER,
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
   const folders = await FolderStore.load(config.paths.root);
