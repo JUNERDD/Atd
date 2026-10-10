@@ -162,6 +162,12 @@ public enum MiniPanelChoreography {
     }
   }
 
+  /// The resting pill's tone (pill-v2), the label color at this opacity: it leaves with the
+  /// capsule's content timing as the pill opens, and arrives only once a closing body has all but
+  /// drawn into the pill, so the capsule never closes as a filled shape.
+  public static let pillFillLevel = 0.2
+  public static let pillFill = MiniPanelContentMotion(delay: 0.24, exit: 0.08, hiddenBlur: 0)
+
   // MARK: The commands card
 
   public static let flyoutOpen = MiniPanelSpring(0.315, 0.25)
