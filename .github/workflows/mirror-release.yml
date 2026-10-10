@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   mirror:
-    name: Mirror and verify the latest stable DMG
+    name: Mirror and verify the latest stable DMG and update feed
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:

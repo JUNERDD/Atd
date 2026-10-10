@@ -131,10 +131,12 @@ targets:
         AtdURLScheme: $(AI_URL_SCHEME)
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSPrincipalClass: NSApplication
-        # Sparkle (AppUpdater, Release builds only): the latest GitHub release's appcast, which
-        # release.yml signs with the private half of this key. Checks run on schedule without
+        # Sparkle (AppUpdater, Release builds only): the R2 mirror's appcast, which points at the
+        # mirrored dmg (ops/release-downloads); release.yml signs that dmg with the private half of
+        # this key. Checks run hourly (Sparkle's minimum; releases often ship several a day) without
         # asking first, and an update downloads silently and installs on quit or from the panel.
-        SUFeedURL: https://github.com/JUNERDD/Atd/releases/latest/download/appcast.xml
+        SUFeedURL: https://downloads.atd.best/appcast.xml
+        SUScheduledCheckInterval: 3600
         SUPublicEDKey: ZkMCOa3sWdgMqszOe6hWN78I1eh77SzbSaghs2iy6lU=
         SUEnableAutomaticChecks: true
         SUAutomaticallyUpdate: true

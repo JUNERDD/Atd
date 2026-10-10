@@ -237,7 +237,7 @@ saves as `Atd-<version>-arm64.dmg`.
 The release workflow mirrors GitHub's original bytes to the separate `atd-releases` R2 bucket;
 the latest URL's cache expires within 60 seconds. The root README also keeps a GitHub alternative.
 See the [release mirror instructions](../../ops/release-downloads/README.md) for credentials,
-verification, and manual retries. Application updates continue to use the signed GitHub appcast.
+verification, and manual retries. Installed apps update from the same bucket's `appcast.xml`.
 
 ### Media rollback
 

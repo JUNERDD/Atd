@@ -8,8 +8,14 @@ Every successful stable release updates this object to the newest verified Apple
 It downloads as `Atd-<version>-arm64.dmg`, the release asset's own name, so the saved file names
 its version while the link never changes.
 Cloudflare R2 Standard serves the bytes through the custom domain. GitHub Releases remains the
-source of truth and the alternative download location. This does not change Sparkle's signed
-appcast or require a new application version.
+source of truth and the alternative download location.
+
+Installed Release builds also update from this domain: their `SUFeedURL` is
+<https://downloads.atd.best/appcast.xml>. The mirror republishes the release's signed `appcast.xml`
+with its enclosure pointing at the verified versioned DMG; Sparkle's EdDSA signature covers the
+DMG's bytes, not its URL, so the release job's signature still applies. The GitHub copy of the
+feed keeps the GitHub URL for installs built before this feed moved; they take one more update
+from GitHub and read the mirror afterwards.
 
 ## Publication
 
@@ -21,8 +27,10 @@ The official AWS CLI performs multipart S3 uploads; the current DMG exceeds Wran
 single-object upload limit. A versioned object is uploaded with a one-year immutable cache policy.
 Its public size, MIME type, cache headers, byte ranges, and full SHA-256 must pass before a
 server-side copy promotes it to the permanent URL. `latest.json` records the verified version,
-digest, size, and versioned URL. The permanent URL and manifest use a 60-second cache lifetime,
-so a cached previous release can remain visible for up to one minute after promotion.
+digest, size, and versioned URL. The update feed is published after the versioned DMG it names
+passes verification, and its public content must match before the manifest is written. The
+permanent URL, feed, and manifest use a 60-second cache lifetime, so a cached previous release
+can remain visible for up to one minute after promotion.
 
 A failed upload or verification does not promote the candidate. The previous verified download
 remains available. A failure after promotion is visible in Actions and can be retried. Manually
@@ -69,6 +77,7 @@ Regional throughput depends on the user's network and is not guaranteed.
 
 The [R2 budget guard](../r2-budget-guard/README.md) covers both website media and release downloads.
 It can pause their public endpoints before shared thresholds are reached, but is not a billing
-hard cap. The GitHub alternative remains available during a pause. After successful promotion,
+hard cap. The GitHub alternative remains available during a pause, but installed apps cannot
+check for or download updates until `downloads.atd.best` is re-enabled. After successful promotion,
 the mirror keeps the current and two most recently uploaded previous versioned DMGs, plus the
 permanent latest object. Older mirror DMGs are removed; GitHub retains the full release archive.
