@@ -8,21 +8,23 @@
   "scripts": {
     "soundtrack": "node scripts/soundtrack.ts",
     "studio": "node scripts/soundtrack.ts && remotion studio",
-    "render": "node scripts/soundtrack.ts && remotion render AtdPromo out/atd-promo-en.mp4 && remotion render AtdPromoZh out/atd-promo-zh.mp4",
-    "render:en": "node scripts/soundtrack.ts && remotion render AtdPromo out/atd-promo-en.mp4",
-    "render:zh": "node scripts/soundtrack.ts && remotion render AtdPromoZh out/atd-promo-zh.mp4",
+    "render": "node scripts/render.ts",
+    "render:en": "node scripts/render.ts en",
+    "render:zh": "node scripts/render.ts zh",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "oxlint src scripts *.ts"
   },
   "devDependencies": {
     "@atd/typescript-config": "workspace:*",
     "@atd/ui": "workspace:*",
-    "@fontsource-variable/doto": "5.3.0",
     "@fontsource-variable/inter": "5.3.0",
     "@fontsource-variable/noto-sans-sc": "5.3.0",
+    "@remotion/bundler": "4.0.528",
     "@remotion/cli": "4.0.528",
     "@remotion/media": "4.0.528",
+    "@remotion/renderer": "4.0.528",
     "@types/react": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "remotion": "4.0.528"

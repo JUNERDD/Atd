@@ -1,0 +1,101 @@
+/* The app card (apps/desktop/src/features/apps/app-card.tsx, apps.css `.app-card-slot`). */
+.pk-build-slot {
+  padding: 4px 0 8px 8px;
+}
+
+.pk-build__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.pk-build__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* `AppIcon`: a 32 pt tile, 14 pt corner, the input wash at 40%. */
+.pk-build__tile {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--pk-muted-fg);
+}
+
+.pk-build__tile > .pk-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.pk-build__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pk-build__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pk-build__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-build__summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pk-build__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  opacity: var(--reveal, 1);
+  translate: 0 calc((1 - var(--reveal, 1)) * 4px);
+}
+
+.pk-build__actions .pk-button {
+  font-size: 14px;
+}
+
+.pk-build__footer {
+  position: relative;
+}
+
+/* The film's progress line along the footer's bottom edge: the build's share in the foreground. */
+.pk-build__bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--build, 0) * 100%);
+  height: 2px;
+  background: var(--pk-fg);
+  opacity: 0.7;
+}

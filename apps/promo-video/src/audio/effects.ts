@@ -1,10 +1,11 @@
 /**
- * The sound effects, each a short mono voice: keys, pops, swooshes, tine cascades, a shutter and the
- * display's power-on. They are small and soft: the interface should sound tactile, not loud.
+ * The interface's sound effects, each a short mono voice: keys, pops, snaps, swooshes, tine
+ * cascades, a shutter and the display's power-on. They are small and soft: the interface should sound tactile, not loud.
  */
 import {
   filter,
   midiToHz,
+  mixInto as add,
   noise,
   oscillator,
   pluckEnvelope,
@@ -14,14 +15,6 @@ import {
 } from './dsp.ts';
 
 const TAU = Math.PI * 2;
-
-function add(into: Float32Array, voice: Float32Array, at = 0, gain = 1): Float32Array {
-  const offset = Math.round(at * SAMPLE_RATE);
-  for (let i = 0; i < voice.length && offset + i < into.length; i++) {
-    into[offset + i] = (into[offset + i] ?? 0) + (voice[i] ?? 0) * gain;
-  }
-  return into;
-}
 
 /** A light keyboard tick: a bright click over a small thock. `pitch` varies it per key. */
 export function keyTick(random: () => number, pitch = 1): Float32Array {
@@ -72,13 +65,13 @@ export function swoosh(
 }
 
 /** D major pentatonic over two and a half octaves: notes the score's harmony never fights. */
-const PENTATONIC = [62, 64, 66, 69, 71, 74, 76, 78, 81, 83, 86, 88, 90, 93];
+export const PENTATONIC = [62, 64, 66, 69, 71, 74, 76, 78, 81, 83, 86, 88, 90, 93];
 
 /**
  * A kalimba tine: a pure note under a bright, inharmonic partial that dies within a few
  * milliseconds, as a plucked metal tongue sounds.
  */
-function tine(note: number, brightness: number): Float32Array {
+export function tine(note: number, brightness = 1): Float32Array {
   const hz = midiToHz(note);
   const out = new Float32Array(samples(0.7));
   for (let i = 0; i < out.length; i++) {
@@ -158,4 +151,23 @@ export function glass(note: number): Float32Array {
 /** A mouse click: one crisp, short tick. */
 export function mouseClick(random: () => number): Float32Array {
   return shape(filter(noise(0.025, random), 'bandpass', 4200, 1.6), (t) => Math.exp(-t / 0.0022));
+}
+
+/** The smallest interface sound: a bright blip a few milliseconds long, for snaps and streaming text. */
+export function snap(random: () => number, pitch = 1): Float32Array {
+  const blip = shape(oscillator('sine', 2600 * pitch, 0.02), (t) => Math.exp(-t / 0.0035));
+  const edge = shape(filter(noise(0.01, random), 'highpass', 6000), (t) => Math.exp(-t / 0.001));
+  return add(blip, edge, 0, 0.3);
+}
+
+/** Something soft landing: a low body that falls in pitch under a dull, felted contact. */
+export function thud(random: () => number): Float32Array {
+  const body = shape(
+    oscillator('sine', (t) => 58 + 70 * Math.exp(-t / 0.03), 0.3),
+    (t) => Math.min(1, t / 0.003) * Math.exp(-t / 0.07),
+  );
+  const contact = shape(filter(noise(0.06, random), 'lowpass', 900, 0.8), (t) =>
+    Math.exp(-t / 0.01),
+  );
+  return add(body, contact, 0, 0.6);
 }

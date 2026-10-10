@@ -1,6 +1,7 @@
 /**
  * The soundtrack's instruments, each rendering one note as a mono voice: a warm pad, an FM pluck,
- * a struck bell, a sub bass and a soft kit. Levels are left to the score.
+ * a struck bell, a sub bass and a soft kit (kick, hats, rim, clap), with a riser and an impact.
+ * Levels are left to the score.
  */
 import {
   arEnvelope,
@@ -16,12 +17,15 @@ import {
 
 const TAU = Math.PI * 2;
 
-/** A pad note: three slightly detuned saws, low-passed and breathing, with a slow swell. */
+/**
+ * A pad note: three slightly detuned saws, low-passed and breathing, with a slow swell. The cutoff
+ * may follow `cutoff(t)`, t in seconds into the note, so a section can open up as it plays.
+ */
 export function padNote(
   note: number,
   seconds: number,
   random: () => number,
-  cutoff = 1500,
+  cutoff: number | ((t: number) => number) = 1500,
 ): Float32Array {
   const hz = midiToHz(note);
   const out = new Float32Array(samples(seconds));
@@ -30,7 +34,8 @@ export function padNote(
     for (let i = 0; i < out.length; i++) out[i] = (out[i] ?? 0) + (saw[i] ?? 0) / 3;
   }
   const wobble = random() * TAU;
-  filter(out, 'lowpass', (t) => cutoff * (1 + 0.18 * Math.sin(TAU * 0.23 * t + wobble)), 0.8);
+  const base = typeof cutoff === 'number' ? () => cutoff : cutoff;
+  filter(out, 'lowpass', (t) => base(t) * (1 + 0.18 * Math.sin(TAU * 0.23 * t + wobble)), 0.8);
   return shape(out, arEnvelope(seconds, Math.min(0.9, seconds / 3), Math.min(1.4, seconds / 2)));
 }
 
@@ -82,6 +87,16 @@ export function hat(random: () => number, open = false): Float32Array {
   const decay = open ? 0.12 : 0.03;
   const out = filter(noise(decay * 6, random), 'highpass', 7600, 0.8);
   return shape(out, pluckEnvelope(0.001, decay));
+}
+
+/** A rim tap: a short woody knock, lighter than a clap, for a nimble backbeat. */
+export function rim(random: () => number): Float32Array {
+  const knock = shape(oscillator('sine', 1650, 0.04), (t) => Math.exp(-t / 0.007));
+  const crack = shape(filter(noise(0.03, random), 'bandpass', 2300, 2.2), (t) =>
+    Math.exp(-t / 0.004),
+  );
+  for (let i = 0; i < crack.length; i++) knock[i] = (knock[i] ?? 0) * 0.6 + (crack[i] ?? 0) * 1.6;
+  return knock;
 }
 
 /** A clap: three quick band-passed bursts, then a short diffuse tail. */

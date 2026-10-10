@@ -1,0 +1,56 @@
+/* The pointer: a zero-size anchor at its position (--x, --y, in its layer's units); each drawing
+   is offset so its hotspot sits on the anchor, and scales about it. Ghosts trail along the
+   velocity for motion blur. */
+.cursor {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: 0;
+  height: 0;
+  opacity: var(--o);
+  pointer-events: none;
+}
+
+.cursor__svg {
+  position: absolute;
+  left: calc(var(--hx) * -1px + var(--gx) * 1px);
+  top: calc(var(--hy) * -1px + var(--gy) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  overflow: visible;
+  opacity: var(--go);
+  scale: var(--s);
+  transform-origin: calc(var(--hx) * 1px) calc(var(--hy) * 1px);
+  filter: drop-shadow(0 1.5px 2.5px rgb(0 0 0 / 0.45));
+}
+
+.cursor__svg[data-ghost] {
+  filter: none;
+}
+
+.cursor__shape {
+  fill: #000;
+  stroke: #fff;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+.cursor__outline {
+  fill: #fff;
+  stroke: #fff;
+  stroke-width: 2.6px;
+  stroke-linejoin: round;
+}
+
+.cursor__fill {
+  fill: #000;
+}
+
+.cursor__creases {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.7px;
+  stroke-linecap: round;
+  opacity: 0.85;
+}

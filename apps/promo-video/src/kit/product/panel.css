@@ -1,0 +1,177 @@
+/* The task panel (apps/desktop/src/styles.css `.task-panel`, `.panel-header`; agent.css
+   `.conversation-messages`). The window is 500 × 680 pt; the glass owns its corner and edge. */
+.pk-panel {
+  display: flex;
+  flex-direction: column;
+  width: 500px;
+  height: 680px;
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* The native 52 pt title bar; the traffic lights take the leading 88 pt. */
+.pk-panel__header {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 8px 12px 8px 88px;
+  border-bottom: 1px solid var(--pk-border);
+}
+
+.pk-lights {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+.pk-lights > i {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.25);
+}
+
+.pk-lights > i[data-light='close'] {
+  background: #ff5f57;
+}
+
+.pk-lights > i[data-light='minimize'] {
+  background: #febc2e;
+}
+
+.pk-lights > i[data-light='zoom'] {
+  background: #28c840;
+}
+
+/* An `icon-sm` (28 pt) glass-ghost button: no fill at rest, the glass washes on hover and press. */
+.pk-header-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 18px;
+  color: var(--pk-fg);
+}
+
+.pk-header-button > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.pk-header-button[data-brand] {
+  margin-inline: -4px;
+}
+
+.pk-header-button[data-pressed] {
+  background: var(--pk-wash-strong);
+}
+
+/* The mark's 26 pt footprint keeps the visible drops about 15 pt wide. */
+.pk-panel__mark {
+  width: 15px;
+  height: 15px;
+}
+
+.pk-panel__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-panel__controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.pk-panel__body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* The transcript runs under the footer's 24 pt band and fades out before the controls, as the
+   app's overlay footer fade does. */
+.pk-panel__transcript {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  margin-bottom: -24px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 16px,
+    #000 calc(100% - 56px),
+    transparent
+  );
+}
+
+.pk-panel__messages {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 16px 40px;
+  translate: 0 var(--scroll, 0px);
+}
+
+.pk-panel__welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: auto;
+  padding: 64px 16px 16px;
+}
+
+.pk-panel__welcome h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.pk-panel__welcome p {
+  margin: 0;
+  color: var(--pk-muted-fg);
+}
+
+.pk-panel__footer {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  padding: 24px 16px 16px;
+}
+
+/* The composer popover: the composer's width, its bottom 8 pt above the composer's top. */
+.pk-panel__popover {
+  position: absolute;
+  right: 16px;
+  bottom: calc(100% - 16px);
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}

@@ -1,0 +1,443 @@
+/* The Anywhere section. Everything inside the Mac is in points (the desktop and the screen layer
+   scale it once); the hint keycaps sit over the frame in px. */
+
+.aw-world {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+}
+
+/* A layer the size of the display, scaled with it, above the menu bar: the shell's overlays
+   (the selection toolbar, the capture's chrome) and the pointer. */
+.aw-screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1512px;
+  height: 982px;
+  overflow: hidden;
+  scale: var(--scale);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* A window opening: it fades in and grows from 95% about its own middle. */
+.aw-window-in {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  scale: var(--s);
+  transform-origin: calc(var(--ox) * 1px) calc(var(--oy) * 1px);
+}
+
+/* ——— The reading app ——— */
+
+.aw-tools {
+  display: flex;
+  gap: 18px;
+  padding-right: 6px;
+  color: var(--fg-2);
+}
+
+.aw-tools__icon {
+  width: 17px;
+  height: 17px;
+}
+
+.aw-article {
+  position: absolute;
+  inset: 0;
+  color: rgb(245 245 247 / 0.86);
+  /* Canvas measures the default glyphs; the film's stylistic sets would shift the selection. */
+  font-feature-settings: normal;
+}
+
+.aw-article > * {
+  position: absolute;
+  left: calc(var(--left) * 1px);
+  top: calc(var(--top) * 1px);
+  margin: 0;
+}
+
+.aw-article__kicker {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  color: var(--light-peach);
+}
+
+.aw-article__title {
+  font-size: 30px;
+  font-weight: 680;
+  line-height: 38px;
+  letter-spacing: -0.02em;
+  color: var(--fg-1);
+  white-space: nowrap;
+}
+
+.aw-article__dek {
+  display: flex;
+  flex-direction: column;
+  font-size: 17px;
+  line-height: 26px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.aw-article__byline {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--fg-3);
+}
+
+.aw-article__rule {
+  display: block;
+  width: calc(var(--width) * 1px);
+  height: 1px;
+  background: var(--line-2);
+}
+
+.aw-line {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 26px;
+  white-space: pre;
+}
+
+/* The text selection in a focused window: the accent behind the full line height. */
+.aw-line__sel {
+  display: inline-block;
+  line-height: 26px;
+  background: rgb(10 132 255 / 0.5);
+  color: var(--fg-1);
+}
+
+/* ——— The dashboard ——— */
+
+.aw-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.aw-nav__heading {
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.aw-nav__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--fg-2);
+}
+
+.aw-nav__row[data-selected] {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--fg-1);
+}
+
+.aw-nav__icon {
+  width: 15px;
+  height: 15px;
+}
+
+.aw-dash {
+  position: absolute;
+  inset: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.aw-dash__at {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  display: flex;
+  align-items: center;
+}
+
+.aw-dash__title {
+  font-size: 24px;
+  font-weight: 680;
+  line-height: 30px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.aw-dash__subtitle {
+  position: absolute;
+  left: 28px;
+  top: 54px;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.aw-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.aw-button__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.aw-card {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.045);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+
+.aw-card__title {
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 20px;
+}
+
+.aw-card__meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fg-3);
+}
+
+.aw-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.aw-kpi__value {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.aw-kpi__delta {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ui-success);
+}
+
+/* The chart card: title, subtitle and peak on top, the bars on hairline grid lines below. */
+.aw-chart > .aw-card__title {
+  position: absolute;
+  left: 20px;
+  top: 16px;
+}
+
+.aw-chart > .aw-card__meta {
+  position: absolute;
+  left: 20px;
+  top: 38px;
+}
+
+.aw-chart__peak {
+  position: absolute;
+  right: 20px;
+  top: 18px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--fg-2);
+}
+
+.aw-chart__grid {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: calc(var(--y) * 1px);
+  height: 1px;
+  background: rgb(255 255 255 / 0.07);
+}
+
+.aw-chart__bar {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  border-radius: 7px 7px 2px 2px;
+  background: rgb(255 255 255 / 0.32);
+}
+
+.aw-chart__bar[data-peak] {
+  background: rgb(255 255 255 / 0.86);
+}
+
+.aw-chart__hour {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--fg-3);
+}
+
+.aw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 20px;
+}
+
+.aw-list__row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--fg-2);
+}
+
+.aw-list__value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ——— The shell's overlays ——— */
+
+/* The selection toolbar, centered under the selection's end. */
+.aw-capsule {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  opacity: var(--o);
+}
+
+.aw-capture {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+}
+
+.aw-at {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+}
+
+/* The annotation bars, anchored by their top-right corner. */
+.aw-bars {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  translate: -100% 0;
+}
+
+/* The freeze's flash. */
+.aw-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: var(--o);
+}
+
+/* The capture flying into the composer: the card and its marks, shrinking along an arc. */
+.aw-flight {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  overflow: hidden;
+  border-radius: 14px;
+  background: #1e1e21;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.55);
+  opacity: var(--o);
+  translate: calc(var(--dx) * 1px) calc(var(--dy) * 1px);
+  scale: var(--s);
+}
+
+.aw-flight__marks {
+  position: absolute;
+  inset: 0;
+}
+
+/* The Atd panel's box, rising in or sliding away. */
+.aw-panel {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  opacity: var(--o);
+  translate: calc(var(--dx) * 1px) calc(var(--dy) * 1px);
+  scale: var(--s);
+  transform-origin: 50% 100%;
+}
+
+.aw-mini {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  opacity: var(--o);
+}
+
+/* The dragged PDF, its art centered on the pointer. */
+.aw-ghost {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  translate: -50px -32px;
+  opacity: var(--o);
+  scale: var(--s);
+  transform-origin: 50px 32px;
+  filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.4));
+}
+
+/* A shortcut hint, over the frame at its lower center, on a soft shade of its own. */
+.aw-hint {
+  position: absolute;
+  left: 50%;
+  top: 884px;
+  translate: -50% -50%;
+  opacity: var(--o);
+}
+
+.aw-hint::before {
+  content: '';
+  position: absolute;
+  inset: -90px -200px;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgb(4 5 10 / 0.6), transparent);
+}
+
+/* The captions' shade: a soft dark falloff from the lower-left corner, under the caption. */
+.aw-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    85% 42% at 18% 100%,
+    rgb(4 5 10 / 0.72),
+    rgb(4 5 10 / 0.38) 45%,
+    transparent 100%
+  );
+  opacity: var(--o);
+}

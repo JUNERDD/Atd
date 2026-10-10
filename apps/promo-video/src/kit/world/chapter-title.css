@@ -1,0 +1,64 @@
+/* A chapter's title card. The word scales from its center as the camera flies through it
+   (--fly-scale, --fly-blur, --fly-o); each letter rises out of a blur (--rise in em, --blur, --o). */
+.chapter-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  font-family: var(--font-text);
+  pointer-events: none;
+}
+
+.chapter-title__word {
+  display: flex;
+  font-size: 260px;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 0.06em 0.08em 0.12em;
+  scale: var(--fly-scale);
+  opacity: var(--fly-o);
+  filter: blur(var(--fly-blur));
+  transform-origin: 50% 55%;
+}
+
+/* Each letter carries its slice of one gradient spanning the whole word, so the light runs across
+   the letters unbroken while each moves on its own. Overrides the shared recipe's sizing. */
+.chapter-title__letter.light-text {
+  display: inline-block;
+  padding: 0.04em 0 0.1em;
+  margin-bottom: -0.1em;
+  background-size: calc(var(--word-em) * 2.2em) 100%;
+  background-position: calc((var(--light-shift) * var(--word-em) * -1.2 - var(--offset-em)) * 1em)
+    50%;
+  opacity: var(--o);
+  translate: 0 calc(var(--rise) * 1em);
+  filter: blur(var(--blur)) drop-shadow(0 0 0.12em rgb(255 176 143 / 0.18));
+}
+
+.chapter-title__subline {
+  font-size: 40px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: var(--fg-2);
+  white-space: nowrap;
+  opacity: calc(var(--fly-o) * (1 - var(--leave)));
+  translate: 0 calc(var(--leave) * 30px);
+  filter: blur(calc(var(--leave) * 10px));
+}
+
+.chapter-title__subline:lang(zh) {
+  font-weight: 420;
+  letter-spacing: 0.06em;
+}
+
+.chapter-title__piece {
+  display: inline-block;
+  opacity: var(--o);
+  translate: 0 calc(var(--rise) * 1em);
+  filter: blur(var(--blur));
+}

@@ -1,0 +1,69 @@
+/* A saved memory: a 28 pt capsule on the detail surface, in the row's muted voice. */
+.pk-memory-row {
+  display: flex;
+  padding: 6px 4px 6px 0;
+}
+
+.pk-memory {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--pk-detail-border);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+        100deg,
+        transparent calc(var(--sweep, 1) * 140% - 40%),
+        rgb(255 255 255 / 0.14) calc(var(--sweep, 1) * 140% - 20%),
+        transparent calc(var(--sweep, 1) * 140%)
+      )
+      no-repeat,
+    var(--pk-detail);
+  color: var(--pk-muted-fg);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.pk-memory__icon.pk-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.pk-memory__label {
+  color: var(--pk-fg);
+  font-weight: 500;
+}
+
+.pk-memory__label::after {
+  content: ':';
+}
+
+.pk-memory__label:lang(zh-CN)::after {
+  content: '：';
+}
+
+.pk-memory__spark.pk-icon {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  color: var(--pk-fg);
+  fill: currentColor;
+  opacity: var(--t, 0);
+  scale: calc(0.4 + var(--t, 0) * 0.6);
+}
+
+.pk-memory__spark[data-at='a'] {
+  top: -5px;
+  right: -3px;
+}
+
+.pk-memory__spark[data-at='b'] {
+  bottom: -4px;
+  right: 18px;
+  width: 7px;
+  height: 7px;
+}

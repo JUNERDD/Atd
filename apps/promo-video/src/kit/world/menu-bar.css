@@ -1,0 +1,116 @@
+/* The menu bar, in points (the desktop scales it): 30 pt tall, translucent, white type with a
+   soft shadow so it reads over any light. */
+.menu-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 20px;
+  font-family: var(--font-text);
+  font-size: 13.5px;
+  font-weight: 450;
+  letter-spacing: -0.005em;
+  color: var(--fg-1);
+  text-shadow: 0 0.5px 2px rgb(0 0 0 / 0.35);
+  background: linear-gradient(rgb(10 12 24 / 0.32), rgb(10 12 24 / 0.18));
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: inset 0 -0.5px 0 rgb(255 255 255 / 0.06);
+}
+
+.menu-bar__side {
+  display: flex;
+  align-items: center;
+  gap: 21px;
+}
+
+.menu-bar__side[data-side='right'] {
+  gap: 17px;
+}
+
+.menu-bar__app {
+  font-weight: 680;
+}
+
+.menu-bar__glyph {
+  display: block;
+  fill: currentColor;
+  filter: drop-shadow(0 0.5px 1.5px rgb(0 0 0 / 0.3));
+}
+
+.menu-bar__glyph[data-glyph='apple'] {
+  width: 16px;
+  height: 16px;
+  translate: 0 -1px;
+}
+
+.menu-bar__glyph[data-glyph='battery'] {
+  width: 26px;
+  height: 12.5px;
+}
+
+.menu-bar__glyph[data-glyph='control'] {
+  width: 15px;
+  height: 13px;
+}
+
+.menu-bar__battery-case,
+.menu-bar__toggle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3px;
+  opacity: 0.55;
+}
+
+.menu-bar__toggle {
+  opacity: 1;
+}
+
+.menu-bar__battery-cap {
+  opacity: 0.55;
+}
+
+.menu-bar__icon {
+  display: block;
+  filter: drop-shadow(0 0.5px 1.5px rgb(0 0 0 / 0.3));
+}
+
+.menu-bar__clock {
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* The status item's slot: a rounded highlight behind it while its menu or panel is open. */
+.menu-bar__status {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 22px;
+  margin: 0 -6px;
+  border-radius: 7px;
+}
+
+.menu-bar__status[data-open] {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.status-item {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  filter: drop-shadow(0 0.5px 1.5px rgb(0 0 0 / 0.3));
+}
+
+.status-item__mask-keep {
+  fill: #fff;
+}
+
+.status-item__mask-cut {
+  fill: #000;
+}

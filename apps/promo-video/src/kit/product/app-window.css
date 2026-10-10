@@ -1,0 +1,68 @@
+/* The habit tracker's window body: 440 pt wide, 20 pt in. */
+.pk-app {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 440px;
+  padding: 18px 20px 20px;
+}
+
+.pk-app[data-material='opaque'] {
+  background: #1c1c1e;
+}
+
+.pk-app__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pk-app__title {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 26px;
+}
+
+.pk-app__subtitle {
+  color: var(--pk-muted-fg);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Names, seven days and a count. */
+.pk-app__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(7, 30px) 40px;
+  align-items: center;
+  row-gap: 10px;
+  column-gap: 2px;
+}
+
+.pk-app__day {
+  color: var(--pk-muted-fg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  text-align: center;
+}
+
+.pk-app__day[data-today] {
+  color: var(--habit);
+}
+
+.pk-app__habit {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-app__count {
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

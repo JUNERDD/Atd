@@ -1,0 +1,37 @@
+/* The composer popover's glass (`surface-glass`, a 22 pt corner) and the views it shows
+   (apps/desktop/src/features/agent/progress/progress.css, components/hitl-queue-popover.css). It
+   rises 4 pt and scales from 0.96 as it opens (`--in`). */
+.pk-popover {
+  --glass-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 20px;
+  opacity: min(1, calc(var(--in, 1) * 1.6));
+  scale: calc(0.96 + var(--in, 1) * 0.04);
+  translate: 0 calc((1 - var(--in, 1)) * 4px);
+  transform-origin: 50% 100%;
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02) 45%),
+    rgb(30 30 30 / 0.9);
+}
+
+/* A status glyph: Lucide's circle and check, the check drawn in as `--draw` runs to 1. */
+.pk-glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pk-glyph__check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--draw, 1));
+}

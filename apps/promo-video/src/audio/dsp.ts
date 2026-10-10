@@ -62,6 +62,36 @@ export function addMono(
   }
 }
 
+/** Mixes a mono voice into another at `at` seconds, scaled; for building one effect from parts. */
+export function mixInto(into: Float32Array, voice: Float32Array, at = 0, gain = 1): Float32Array {
+  const offset = Math.round(at * SAMPLE_RATE);
+  for (let i = 0; i < voice.length && offset + i < into.length; i++) {
+    into[offset + i] = (into[offset + i] ?? 0) + (voice[i] ?? 0) * gain;
+  }
+  return into;
+}
+
+/**
+ * Adds a mono voice that travels across the stereo field: `position(t)` gives its pan, -1 to 1,
+ * `t` seconds into the voice.
+ */
+export function addMoving(
+  out: Stereo,
+  voice: Float32Array,
+  start: number,
+  gain: number,
+  position: (t: number) => number,
+): void {
+  const offset = Math.round(start * SAMPLE_RATE);
+  const end = Math.min(voice.length, out.left.length - offset);
+  for (let i = Math.max(0, -offset); i < end; i++) {
+    const [gl, gr] = panGains(Math.max(-1, Math.min(1, position(i / SAMPLE_RATE))));
+    const value = (voice[i] ?? 0) * gain;
+    out.left[offset + i] = (out.left[offset + i] ?? 0) + value * gl;
+    out.right[offset + i] = (out.right[offset + i] ?? 0) + value * gr;
+  }
+}
+
 /** Adds one stereo bus into another, scaled. */
 export function addStereo(out: Stereo, bus: Stereo, gain = 1): void {
   for (let i = 0; i < out.left.length; i++) {

@@ -1,0 +1,63 @@
+/* The Todos view (apps/desktop/src/features/agent/progress/progress.css `.composer-todos`). */
+.pk-todos {
+  gap: 8px;
+  width: 320px;
+  align-self: center;
+  padding: 12px 4px 8px 12px;
+}
+
+.pk-todos__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.pk-todos__title {
+  font-weight: 500;
+}
+
+.pk-todos__count {
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-todos__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pk-todo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+}
+
+.pk-todo[data-state='pending'] .pk-glyph,
+.pk-todo[data-state='completed'] .pk-glyph {
+  color: var(--pk-muted-fg);
+}
+
+/* The strike draws across the text as the tick lands, and the text settles to muted. */
+.pk-todo__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-todo[data-state='completed'] .pk-todo__text {
+  flex: 0 1 auto;
+  color: color-mix(in srgb, var(--pk-muted-fg) calc(var(--tick, 1) * 100%), var(--pk-fg));
+  background: linear-gradient(currentColor, currentColor) 0 55% / calc(var(--tick, 1) * 100%) 1px
+    no-repeat;
+}

@@ -6,9 +6,10 @@ import AppKit
 /// toggles the panel; a right-click or Control/Option-click opens the app menu. The image and
 /// tooltip follow the service's reachability and its root-task counts.
 ///
-/// The images are the App target's `<state>Template` image sets, exported at 1x and 2x from the
-/// Figma component set `1562:59933`; re-export them from Figma instead of editing them. The
-/// `Template` suffix makes macOS tint them for the menu bar appearance.
+/// The images are the App target's `<state>Template` image sets at 1x and 2x, exported from the
+/// mark's vector master by `scripts/export-brand.mjs` (Figma component set `1562:59933`); run the
+/// script instead of editing them. The `Template` suffix makes macOS tint them for the menu bar
+/// appearance.
 /// Debug uses wider `<state>DevTemplate` exports that include the DEV label.
 final class StatusItemController: NSObject {
   #if DEBUG

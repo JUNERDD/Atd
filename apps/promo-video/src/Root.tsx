@@ -1,28 +1,17 @@
 import { Composition, Folder } from 'remotion';
-// The base stylesheet loads before the scenes' own, which build on it.
+// The base stylesheet loads before the components' own, which build on it.
 import './styles/film.css';
+import { ProductSheet } from './kit/product/Sheet.tsx';
+import { WorldSheet } from './kit/world/Sheet.tsx';
 import { Promo } from './Promo.tsx';
-import { Features } from './scenes/features/Features.tsx';
-import { Intro } from './scenes/intro/Intro.tsx';
-import { Outro } from './scenes/outro/Outro.tsx';
-import { Privacy } from './scenes/privacy/Privacy.tsx';
-import { Stage } from './stage/Stage.tsx';
-import {
-  DURATION,
-  FEATURES,
-  FPS,
-  HEIGHT,
-  INTRO,
-  OUTRO,
-  PRIVACY,
-  STAGE,
-  toFrames,
-  WIDTH,
-} from './timeline.ts';
+import { SCENES } from './scenes.ts';
+import { DURATION, FPS, HEIGHT, SECTIONS, toFrames, WIDTH } from './timeline.ts';
+
+const FRAME = { width: WIDTH, height: HEIGHT, fps: FPS } as const;
 
 /**
- * The film in English and Chinese, plus its larger scenes on their own timelines. Lengths come from
- * the timeline, so the compositions never drift from the soundtrack it scores.
+ * The film in English and Chinese, each section on its own timeline, and the kits' review sheets.
+ * Lengths come from the timeline, so the compositions never drift from the soundtrack it scores.
  */
 export function RemotionRoot() {
   return (
@@ -30,66 +19,42 @@ export function RemotionRoot() {
       <Composition
         id="AtdPromo"
         component={Promo}
-        width={WIDTH}
-        height={HEIGHT}
-        fps={FPS}
+        {...FRAME}
         durationInFrames={toFrames(DURATION)}
         defaultProps={{ lang: 'en' }}
       />
       <Composition
         id="AtdPromoZh"
         component={Promo}
-        width={WIDTH}
-        height={HEIGHT}
-        fps={FPS}
+        {...FRAME}
         durationInFrames={toFrames(DURATION)}
         defaultProps={{ lang: 'zh' }}
       />
       <Folder name="Scenes">
+        {SCENES.map(({ id, name, Scene }) => (
+          <Composition
+            key={id}
+            id={name}
+            component={Scene}
+            {...FRAME}
+            durationInFrames={toFrames(SECTIONS[id].end - SECTIONS[id].start)}
+            defaultProps={{ lang: 'en' as const }}
+          />
+        ))}
+      </Folder>
+      <Folder name="Kits">
         <Composition
-          id="Intro"
-          component={Intro}
-          width={WIDTH}
-          height={HEIGHT}
-          fps={FPS}
-          durationInFrames={toFrames(INTRO.morph + 1)}
-          defaultProps={{ lang: 'en' }}
+          id="WorldSheet"
+          component={WorldSheet}
+          {...FRAME}
+          durationInFrames={toFrames(8)}
         />
         <Composition
-          id="Stage"
-          component={Stage}
-          width={WIDTH}
-          height={HEIGHT}
-          fps={FPS}
-          durationInFrames={toFrames(STAGE.end - STAGE.start)}
-          defaultProps={{ lang: 'en' }}
-        />
-        <Composition
-          id="Features"
-          component={Features}
-          width={WIDTH}
-          height={HEIGHT}
-          fps={FPS}
-          durationInFrames={toFrames(FEATURES.end - FEATURES.start)}
-          defaultProps={{ lang: 'en' }}
-        />
-        <Composition
-          id="Privacy"
-          component={Privacy}
-          width={WIDTH}
-          height={HEIGHT}
-          fps={FPS}
-          durationInFrames={toFrames(PRIVACY.end - PRIVACY.start)}
-          defaultProps={{ lang: 'en' }}
-        />
-        <Composition
-          id="Outro"
-          component={Outro}
-          width={WIDTH}
-          height={HEIGHT}
-          fps={FPS}
-          durationInFrames={toFrames(OUTRO.end - OUTRO.start)}
-          defaultProps={{ lang: 'en' }}
+          id="ProductSheet"
+          component={ProductSheet}
+          {...FRAME}
+          durationInFrames={toFrames(8)}
+          defaultProps={{ lang: 'en' as const }}
         />
       </Folder>
     </>

@@ -1,0 +1,39 @@
+/* The caption's block is anchored by its bottom so its last line's baseline sits at y = 960:
+   with Inter at line-height 1.18 the baseline is 0.227em above the line box's bottom. Longer
+   captions wrap upward. */
+.caption {
+  position: absolute;
+  left: 120px;
+  bottom: calc(1080px - 960px - 0.227 * 44px);
+  max-width: 1180px;
+  font-family: var(--font-text);
+  pointer-events: none;
+}
+
+.caption__text {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 560;
+  line-height: 1.18;
+  letter-spacing: -0.018em;
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+
+.caption:lang(zh) .caption__text {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.caption:lang(zh) {
+  bottom: calc(1080px - 960px - 0.28 * 44px);
+}
+
+.caption__word {
+  display: inline-block;
+  opacity: var(--o);
+  translate: 0 var(--y);
+  filter: blur(var(--blur));
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.35);
+}

@@ -1,0 +1,96 @@
+/* Yours: the Drops mark at the center of two tilted orbits of provider marks. Positions are world
+   px of the camera's world, set as unitless --x / --y. */
+.yours__mark {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  translate: -50% -50%;
+}
+
+/* The local ring lighting: a ripple of light that runs outward from the inner orbit. */
+.yours__ripple {
+  position: absolute;
+  left: calc((var(--x) - var(--rx)) * 1px);
+  top: calc((var(--y) - var(--ry)) * 1px);
+  width: calc(var(--rx) * 2px);
+  height: calc(var(--ry) * 2px);
+  border-radius: 50%;
+  scale: var(--s);
+  opacity: var(--o);
+  border: 2px solid color-mix(in srgb, var(--light-rim) 80%, transparent);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--light-cyan) 70%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--light-cyan) 50%, transparent);
+  mix-blend-mode: screen;
+}
+
+.orbit {
+  position: absolute;
+  inset: 0;
+}
+
+/* The ring's line: a hairline that draws in with the marks, and turns to light when lit. */
+.orbit__path {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: visible;
+}
+
+.orbit__path path {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.16);
+  stroke-width: 1.2px;
+  stroke-dasharray: var(--draw) 1;
+}
+
+.orbit[data-lights] .orbit__path path {
+  stroke: color-mix(
+    in srgb,
+    color-mix(in srgb, rgb(255 255 255 / 0.16), var(--light-rim) calc(var(--lit) * 100%))
+      calc(40% + var(--lit) * 50%),
+    transparent
+  );
+  stroke-width: calc(1.2px + var(--lit) * 1.2px);
+  filter: drop-shadow(
+    0 0 calc(var(--lit) * 8px)
+      color-mix(in srgb, var(--light-cyan) calc(var(--lit) * 90%), transparent)
+  );
+}
+
+.orbit[data-layer='back'] .orbit__path path {
+  opacity: 0.55;
+}
+
+/* A mark on its glass disc, centered on its orbit position. */
+.orbit .orbit__mark {
+  --glass-radius: 999px;
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: var(--size);
+  height: var(--size);
+  translate: -50% -50%;
+  scale: var(--s);
+  opacity: var(--o);
+  filter: blur(var(--blur));
+  display: grid;
+  place-items: center;
+}
+
+.orbit__img {
+  width: 58%;
+  height: 58%;
+  object-fit: contain;
+}
+
+/* A ring that lights: its marks are grey until it does. */
+.orbit[data-lights] .orbit__img {
+  filter: grayscale(calc(1 - var(--lit)));
+}
+
+/* Marks the brand sources render in the foreground color, as an ink silhouette: white here. */
+.orbit__mark[data-ink] .orbit__img {
+  filter: brightness(0) invert(1);
+}

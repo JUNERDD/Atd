@@ -1,0 +1,62 @@
+/* The Subagents list (apps/desktop/src/features/agent/progress/progress.css
+   `.composer-status-list`, an xs `Item` per row). */
+.pk-subagents {
+  gap: 4px;
+  width: 300px;
+  align-self: center;
+  padding: 10px 4px 4px;
+}
+
+.pk-subagents__title {
+  padding-inline: 11px;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.pk-subagent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+}
+
+.pk-subagent__glyph.pk-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+.pk-subagent[data-done] .pk-subagent__glyph {
+  color: var(--pk-muted-fg);
+}
+
+.pk-subagent__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.pk-subagent__title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-subagent__state {
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.pk-subagent__chevron.pk-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--pk-muted-fg);
+}

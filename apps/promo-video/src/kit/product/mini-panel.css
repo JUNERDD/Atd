@@ -1,0 +1,49 @@
+/* The mini panel's body (apps/macos/Sources/AICore/MiniPanel/MiniPanelGeometry.swift): a 200 × 140
+   pt box whose right edge is the screen's work-area edge. */
+.pk-mini {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  color: var(--pk-label);
+  font-family: var(--font-text);
+}
+
+/* One glass shape, morphing per axis from its edge: thickness across the edge, length along it.
+   The stretch scales it about its edge side and leans it toward the pointer. */
+.pk-mini__body {
+  --glass-radius: calc(var(--radius) * 1px);
+  position: absolute;
+  top: 50%;
+  right: calc(var(--inset) * 1px);
+  width: calc(var(--thick) * 1px);
+  height: calc(var(--long) * 1px);
+  margin-top: calc(var(--long) * -0.5px);
+  overflow: hidden;
+  translate: calc(var(--reach-x, 0) * 1px) calc(var(--reach-y, 0) * 1px);
+  scale: var(--sx, 1) var(--sy, 1);
+  transform-origin: 100% 50%;
+}
+
+/* The drop card's content: a 24 pt glyph over 13 pt medium text, centred, 12 pt in. */
+.pk-mini__drop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+  opacity: var(--show, 0);
+  scale: calc(0.92 + var(--show, 0) * 0.08);
+}
+
+.pk-mini__drop > .pk-icon {
+  width: 24px;
+  height: 24px;
+}

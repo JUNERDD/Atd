@@ -1,9 +1,17 @@
 /**
- * Everything the film says, per language. The lines are the website's approved copy
- * (apps/website/src/sections and content/cases.ts), so the film and the site speak alike; the LED
- * display's words stay in English in both cuts because they spell out the name.
+ * The film's narrative voice, per language: the tagline, the chapter words and their sublines, the
+ * one caption each moment carries, and the call to action. What appears inside the product's own
+ * interface (articles, prompts, answers, app names) is each scene's `content.ts`, registered below
+ * so the fonts load every glyph the film shows.
  */
-import type { CaseId } from './timeline.ts';
+import { content as anything } from './scenes/anything/content.ts';
+import { content as anytime } from './scenes/anytime/content.ts';
+import { content as anywhere } from './scenes/anywhere/content.ts';
+import { content as finale } from './scenes/finale/content.ts';
+import { content as open } from './scenes/open/content.ts';
+import { content as yours } from './scenes/yours/content.ts';
+import { strings as product } from './kit/product/strings.ts';
+import { MAC_CHROME as mac } from './kit/world/chrome.ts';
 
 export const LANGS = ['en', 'zh'] as const;
 export type Lang = (typeof LANGS)[number];
@@ -13,160 +21,94 @@ export function htmlLang(lang: Lang): string {
   return lang === 'zh' ? 'zh-CN' : 'en';
 }
 
-interface CaseCopy {
-  /** The small dot-matrix readout above the headline. */
-  label: string;
-  title: string;
-  body: string;
+interface Chapter {
+  /** The chapter's word, in English in both cuts: the three words spell out the name. */
+  word: string;
+  subline: string;
 }
 
 interface FilmCopy {
   tagline: string;
-  cases: Record<CaseId, CaseCopy>;
-  features: {
-    title: string;
-    items: { title: string; body: string }[];
+  anywhere: {
+    chapter: Chapter;
+    selection: string;
+    screenshot: string;
+    mini: string;
+    summon: string;
   };
-  privacy: { title: string; lede: string; never: string[] };
-  outro: { title: string; lede: string; cta: string; url: string; specs: string };
+  anything: { chapter: Chapter; work: string; app: string; tools: string };
+  anytime: { chapter: Chapter; timelapse: string; memory: string };
+  yours: { models: string; promise: string };
+  finale: { line: string; cta: string; url: string; specs: string };
 }
 
 export const copy: Record<Lang, FilmCopy> = {
   en: {
-    tagline: 'A quiet agent for your Mac.',
-    cases: {
-      summon: {
-        label: 'Shortcut',
-        title: 'Always one shortcut away.',
-        body: 'Atd rises in the corner of any screen. Press again to hide it; your draft stays.',
-      },
-      chat: {
-        label: 'Conversation',
-        title: 'Keep the conversation moving.',
-        body: 'Read the result, follow the tool activity, and keep working in the same conversation.',
-      },
-      selection: {
-        label: 'Selection toolbar',
-        title: 'Start with the words in front of you.',
-        body: 'Ask Atd, translate, summarize or explain, right beside your selection.',
-      },
-      screenshot: {
-        label: 'Screenshot',
-        title: 'Show exactly what you mean.',
-        body: 'Capture an area and add arrows, text, step numbers or mosaic before bringing it into a task.',
-      },
-      mini: {
-        label: 'Mini Panel',
-        title: 'A little space. A quick way in.',
-        body: 'Open a task, take a screenshot or pick a saved command from the edge of your screen.',
-      },
-      models: {
-        label: 'Settings',
-        title: 'Make room for your way of working.',
-        body: 'Connect your models and manage permissions, commands, automations, memory and extensions.',
-      },
-      apps: {
-        label: 'Apps',
-        title: 'Turn an idea into an app of your own.',
-        body: 'Create a small app with Atd, open it from My apps, and keep refining it in conversation.',
-      },
-      automations: {
-        label: 'Automations',
-        title: 'Work that starts on its own.',
-        body: 'Start tasks on a schedule, when files change or when your Mac is idle.',
-      },
+    tagline: 'The agent at hand on your Mac.',
+    anywhere: {
+      chapter: { word: 'Anywhere.', subline: 'In every app you use.' },
+      selection: 'Select text in any app. Ask, translate, summarize.',
+      screenshot: 'Point at anything on screen, then mark it up.',
+      mini: 'Drop files in from the edge of your screen.',
+      summon: 'One shortcut, and Atd is there.',
     },
-    features: {
-      title: 'Your setup, your rules, your Mac.',
-      items: [
-        { title: 'Models', body: 'Use the providers you have, cloud or local.' },
-        { title: 'Extensions', body: 'Skills, subagents, MCP servers and / commands.' },
-        { title: 'Memory', body: 'It learns how you work. You review what it keeps.' },
-        { title: 'Permissions', body: 'You decide what it may do without asking.' },
-        { title: 'Runs locally', body: 'No account, and no Atd server in between.' },
-      ],
+    anything: {
+      chapter: { word: 'Anything.', subline: 'Any task, start to finish.' },
+      work: 'It plans, works in parallel, and asks before it acts.',
+      app: 'Describe an app. Atd builds it.',
+      tools: 'Need a command, a skill, an automation? Just ask.',
     },
-    privacy: {
-      title: 'Local by design.',
-      lede: 'What Atd keeps stays on your Mac. A task leaves only for the model you choose.',
-      never: ['No account to create', 'No Atd server in between', 'No usage tracking'],
+    anytime: {
+      chapter: { word: 'Anytime.', subline: 'Even while you’re away.' },
+      timelapse: 'Tasks start on a schedule, when files arrive, or while your Mac rests.',
+      memory: 'Correct it once. It remembers, and you review what it keeps.',
     },
-    outro: {
-      title: 'Ready when you are.',
-      lede: 'Download Atd, press ⌘ ⇧ Space, and hand it your first task.',
+    yours: {
+      models: 'Any model. In the cloud, or right on your Mac.',
+      promise: 'No account. No Atd server. Just yours.',
+    },
+    finale: {
+      line: 'Your next task starts with a shortcut.',
       cta: 'Download for Mac',
       url: 'atd.best',
-      specs: 'macOS 26+ · Apple silicon',
+      specs: 'macOS 26+ · Apple silicon · Free and open source',
     },
   },
   zh: {
-    tagline: '安静待命的 Mac 智能体。',
-    cases: {
-      summon: {
-        label: '快捷键',
-        title: '一个快捷键，随叫随到。',
-        body: 'Atd 从屏幕一角升起。再按一次收起，草稿原样保留。',
-      },
-      chat: {
-        label: '对话',
-        title: '接着追问，把事情做完整。',
-        body: '查看回答与工具执行过程，在同一个对话中补充要求、继续追问。',
-      },
-      selection: {
-        label: '选区工具栏',
-        title: '选中文字，就能接着做。',
-        body: '工具栏就在选区旁，提问、翻译、总结或解释，顺手完成。',
-      },
-      screenshot: {
-        label: '截图工具',
-        title: '框出重点，说明更直观。',
-        body: '框选画面，用箭头、文字、序号和马赛克做好标注，再把截图带进任务。',
-      },
-      mini: {
-        label: 'Mini Panel',
-        title: '屏幕边缘，留一个入口。',
-        body: '在屏幕边缘展开迷你面板，新建任务、截图，或运行常用命令。',
-      },
-      models: {
-        label: '设置',
-        title: '按你的习惯，安排好一切。',
-        body: '接入模型，管理权限、命令、自动化、记忆与扩展，让 Atd 配合你的工作方式。',
-      },
-      apps: {
-        label: '应用',
-        title: '把一个想法，变成自己的应用。',
-        body: '让 Atd 帮你创建小应用，从「我的应用」打开使用，再通过对话继续完善。',
-      },
-      automations: {
-        label: '自动化',
-        title: '让工作自己开始。',
-        body: '按计划、文件变化或 Mac 空闲时自动开始，统一查看任务状态与结果。',
-      },
+    tagline: '触手可及的 Mac 智能体。',
+    anywhere: {
+      chapter: { word: 'Anywhere.', subline: '在你用的每一个应用里。' },
+      selection: '在任何应用中选中文字，提问、翻译、总结。',
+      screenshot: '指向屏幕上的任何内容，再加上标注。',
+      mini: '从屏幕边缘，把文件拖进来。',
+      summon: '一个快捷键，Atd 随即就位。',
     },
-    features: {
-      title: '你的配置，你的规则，你的 Mac。',
-      items: [
-        { title: '模型', body: '接入在用的提供商，云端本机皆可。' },
-        { title: '扩展', body: '技能、子代理、MCP 和 / 命令。' },
-        { title: '记忆', body: '学习你的习惯，记住什么由你审核。' },
-        { title: '权限', body: '无需询问能做多少，由你决定。' },
-        { title: '本地运行', body: '无需账号，不经 Atd 服务器中转。' },
-      ],
+    anything: {
+      chapter: { word: 'Anything.', subline: '任何任务，从头做到尾。' },
+      work: '先列计划，并行推进，动手之前先问你。',
+      app: '描述一个应用，Atd 把它做出来。',
+      tools: '要命令、技能还是自动化？说一声就好。',
     },
-    privacy: {
-      title: '本地运行，设计使然。',
-      lede: 'Atd 保存的一切都留在你的 Mac 上。任务只发往你选择的模型。',
-      never: ['无需注册账号', '没有 Atd 服务器中转', '不收集使用数据'],
+    anytime: {
+      chapter: { word: 'Anytime.', subline: '你不在时，也在做事。' },
+      timelapse: '按计划、文件到达或 Mac 空闲时，任务自己开始。',
+      memory: '纠正一次，它就记住；记住什么，由你审核。',
     },
-    outro: {
-      title: '随时待命。',
-      lede: '下载 Atd，按下 ⌘ ⇧ Space，交给它第一个任务。',
+    yours: {
+      models: '任意模型，云端或本机。',
+      promise: '无需账号，不经 Atd 服务器，只属于你。',
+    },
+    finale: {
+      line: '下一个任务，从一个快捷键开始。',
       cta: '下载 Mac 版',
       url: 'atd.best',
-      specs: 'macOS 26+ · Apple 芯片',
+      specs: 'macOS 26+ · Apple 芯片 · 免费开源',
     },
   },
 };
+
+/** Each scene's in-interface content, which the fonts must cover as well. */
+const CONTENT = [mac, product, open, anywhere, anything, anytime, yours, finale] as const;
 
 /** Every string a language shows, so its font subsets can load before the first frame. */
 export function allText(lang: Lang): string {
@@ -177,5 +119,6 @@ export function allText(lang: Lang): string {
     else if (value && typeof value === 'object') Object.values(value).forEach(collect);
   };
   collect(copy[lang]);
+  for (const scene of CONTENT) collect(scene[lang]);
   return strings.join('');
 }

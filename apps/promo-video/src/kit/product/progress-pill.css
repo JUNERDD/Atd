@@ -1,0 +1,73 @@
+/* The progress capsule (apps/desktop/src/features/agent/progress/progress.css `.composer-progress`):
+   a 24 pt glass control whose parts are xs glass-ghost buttons flush on it. */
+.pk-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--pk-control-fill);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 1px var(--pk-control-edge),
+    0 1px 2px rgb(0 0 0 / 0.18);
+  color: var(--pk-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  opacity: min(1, calc(var(--in, 1) * 1.6));
+  scale: calc(0.96 + var(--in, 1) * 0.04);
+}
+
+.pk-pill__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pk-pill__divider {
+  display: block;
+  width: 1px;
+  height: 12px;
+  background: var(--pk-border);
+}
+
+.pk-pill__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.pk-pill__part[data-open] {
+  background: var(--pk-wash-strong);
+}
+
+.pk-pill__part > .pk-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--pk-muted-fg);
+}
+
+.pk-pill__ring {
+  width: 12px;
+  height: 12px;
+  rotate: -90deg;
+}
+
+.pk-pill__ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.pk-pill__track {
+  stroke: var(--pk-border);
+}
+
+.pk-pill__value {
+  stroke: var(--pk-progress);
+  stroke-linecap: round;
+  stroke-dasharray: var(--ring, 0) 100;
+}
