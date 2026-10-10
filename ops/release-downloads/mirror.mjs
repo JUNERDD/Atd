@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -17,6 +17,8 @@ const repo = 'JUNERDD/Atd';
 const bucket = 'atd-releases';
 const base = 'https://downloads.atd.best';
 const latestKey = 'latest/Atd-arm64.dmg';
+// Installed Release builds read this feed (SUFeedURL in apps/macos/project.yml).
+const feedKey = 'appcast.xml';
 const immutableCache = 'public, max-age=31536000, immutable';
 const latestCache = 'public, max-age=60, must-revalidate';
 const sensitive = ['R2_DOWNLOAD_ACCOUNT_ID', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
@@ -52,12 +54,19 @@ assert(asset && asset.state === 'uploaded', 'The versioned release DMG is missin
 assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest), 'GitHub must provide a SHA-256 asset digest.');
 assert(asset.size > 0 && asset.size <= 512 * 1024 ** 2, 'The DMG exceeds the CDN cache limit.');
 const sha256 = asset.digest.slice('sha256:'.length);
+const feedAsset = release.assets.find((item) => item.name === feedKey);
+assert(feedAsset && feedAsset.state === 'uploaded', 'The release update feed is missing.');
 const versionKey = `releases/${release.tag_name}/${name}`;
 const disposition = `attachment; filename="${name}"`;
 const runNonce = randomUUID();
 const metadata = { version, sha256, bytes: asset.size, url: `${base}/${versionKey}` };
 console.log(
-  JSON.stringify({ ...metadata, latest: `${base}/${latestKey}`, dryRun: values['dry-run'] }),
+  JSON.stringify({
+    ...metadata,
+    latest: `${base}/${latestKey}`,
+    feed: `${base}/${feedKey}`,
+    dryRun: values['dry-run'],
+  }),
 );
 if (values['dry-run']) process.exit(0);
 
@@ -67,6 +76,8 @@ const endpoint = `https://${process.env.R2_DOWNLOAD_ACCOUNT_ID}.r2.cloudflaresto
 const directory = await mkdtemp(join(tmpdir(), 'atd-release-mirror-'));
 const file = join(directory, name);
 const metadataFile = join(directory, 'latest.json');
+const releaseFeedFile = join(directory, feedKey);
+const mirrorFeedFile = join(directory, 'mirror-appcast.xml');
 
 function aws(args) {
   return command('aws', [...args, '--endpoint-url', endpoint, '--region', 'auto']);
@@ -93,6 +104,30 @@ function pruneOldMirrors() {
     aws(['s3api', 'delete-object', '--bucket', bucket, '--key', item.Key]);
     console.log(`Removed old mirror: ${item.Key}`);
   }
+}
+
+/**
+ * The release's signed feed, re-pointed at the verified mirror copy. Sparkle's EdDSA signature
+ * covers the dmg's bytes, not its URL, and the mirror holds exactly those bytes, so the release
+ * job's signature and length stay valid. The GitHub feed keeps the GitHub URL for installs that
+ * still read it.
+ */
+async function mirrorFeed() {
+  const feed = await readFile(releaseFeedFile, 'utf8');
+  const source = `url="https://github.com/${repo}/releases/download/${release.tag_name}/${name}"`;
+  assert.equal(feed.split(source).length, 2, 'The release feed must name its dmg exactly once.');
+  assert(feed.includes(` length="${asset.size}"`), 'The release feed names a different dmg size.');
+  return feed.replace(source, `url="${base}/${versionKey}"`);
+}
+
+async function verifyFeed(expected) {
+  const url = new URL(`${base}/${feedKey}`);
+  url.searchParams.set('verify', `${version}-${runNonce}`);
+  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  assert.equal(response.status, 200, `GET failed for ${feedKey}`);
+  assert.equal(response.headers.get('cache-control'), latestCache);
+  assert.equal(await response.text(), expected, 'The public update feed differs.');
+  console.log(`Verified ${feedKey}: content, cache policy`);
 }
 
 async function verifyDelivery(key, cacheControl, full) {
@@ -153,10 +188,13 @@ try {
     repo,
     '--pattern',
     name,
+    '--pattern',
+    feedKey,
     '--dir',
     directory,
   ]);
   assert.equal(await hashFile(file), sha256, 'Downloaded release digest does not match GitHub.');
+  const feed = await mirrorFeed();
   // The official AWS CLI owns multipart uploads, retries, and S3 authentication.
   // Wrangler's single-upload limit is smaller than the current DMG.
   aws([
@@ -202,6 +240,21 @@ try {
     `sha256=${sha256},version=${version}`,
   ]);
   await verifyDelivery(latestKey, latestCache, false);
+  // Published only after the versioned dmg it names passed verification, so an installed app is
+  // never offered an update the mirror cannot serve.
+  await writeFile(mirrorFeedFile, feed);
+  aws([
+    's3',
+    'cp',
+    mirrorFeedFile,
+    `s3://${bucket}/${feedKey}`,
+    '--content-type',
+    'application/xml',
+    '--cache-control',
+    latestCache,
+    '--only-show-errors',
+  ]);
+  await verifyFeed(feed);
   await writeFile(metadataFile, `${JSON.stringify(metadata, null, 2)}\n`);
   aws([
     's3',
@@ -215,7 +268,9 @@ try {
     '--only-show-errors',
   ]);
   pruneOldMirrors();
-  console.log(`Published ${version}; the stable download cache expires within 60 seconds.`);
+  console.log(
+    `Published ${version}; the stable download and feed caches expire within 60 seconds.`,
+  );
 } finally {
   await rm(directory, { recursive: true, force: true });
 }

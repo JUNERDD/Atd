@@ -4,9 +4,11 @@ name: Release
 # with the arm64 dmg of the Release app. The app is ad hoc signed and not notarized (project.yml
 # signs with `-` until Developer ID signing lands), so a downloaded copy is opened once from
 # Privacy & Security. Installed copies update themselves with Sparkle (AppUpdater): each release
-# also publishes `appcast.xml`, the feed `SUFeedURL` reads from the latest release, with the dmg's
-# EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY` secret (the private half of
-# `SUPublicEDKey` in project.yml). A prerelease is never the latest release, so it is not offered.
+# also publishes `appcast.xml` with the dmg's EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY`
+# secret (the private half of `SUPublicEDKey` in project.yml). That feed names the GitHub asset and
+# serves installs whose `SUFeedURL` is still the latest release's; the mirror job then republishes
+# it on R2, pointing at the verified mirror copy, for the `SUFeedURL` current builds read. A
+# prerelease is never the latest release and is never mirrored, so it is not offered.
 # A push that leaves the version as it was builds nothing, even when that version has no release
 # yet. A manual run releases the current version unless its tag exists: use it for a first
 # release without a bump, or to retry a release whose build failed.

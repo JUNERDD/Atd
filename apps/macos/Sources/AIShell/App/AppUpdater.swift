@@ -1,9 +1,10 @@
 import AppKit
 import Sparkle
 
-/// Keeps a Release build current with Sparkle. The feed (`SUFeedURL`) is the `appcast.xml` of
-/// the latest GitHub release, whose items `release.yml` signs with the key `SUPublicEDKey` names;
-/// that EdDSA signature is what authorizes an update, since ad hoc signing proves no identity.
+/// Keeps a Release build current with Sparkle. The feed (`SUFeedURL`) is the `appcast.xml` the
+/// R2 download mirror publishes once it has verified the latest release's dmg; `release.yml` signs
+/// that dmg with the key `SUPublicEDKey` names, and the EdDSA signature is what authorizes an
+/// update, since ad hoc signing proves no identity.
 /// Info.plist turns on scheduled checks without asking and silent downloads, so a newer version
 /// downloads in the background and installs when the app quits. Once one waits,
 /// ``readyVersion`` names it and ``installNow()`` installs it and relaunches.
