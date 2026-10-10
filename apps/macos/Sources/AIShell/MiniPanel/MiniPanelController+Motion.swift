@@ -60,10 +60,10 @@ extension MiniPanelController {
 
   /// Decides where the panel rests (saved for next time) and springs the window there, carrying
   /// `velocity`, with the release's stretch. Everything takes its place in the new canvas at once,
-  /// the body shifted to where it is drawn now should its place in the canvas change (near the
-  /// display's top or bottom, or the pill across edges); the shift then springs out with the
-  /// window, so on screen it moves as one. A drag rests in the state it began in; the rest keep
-  /// their state.
+  /// the body shifted to where it is drawn now should its place in the canvas change (the canvas
+  /// stays on its display, so the edge, the display and the height all move it); the shift then
+  /// springs out with the window, so on screen it moves as one. A drag rests in the state it
+  /// began in; the rest keep their state.
   private func settle(
     at placement: MiniPanelPlacement, on screen: NSScreen, velocity: CGVector, trigger: String
   ) {

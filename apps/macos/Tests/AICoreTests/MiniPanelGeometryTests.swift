@@ -125,7 +125,7 @@ struct MiniPanelGeometryTests {
     #expect(layout.canvas.y >= display.y && layout.canvas.maxY <= display.maxY)
   }
 
-  @Test("Every state's shapes fit in the canvas, which stays on its display vertically")
+  @Test("Every state's shapes fit in the canvas, which stays on its display")
   func canvasHoldsEveryShape() {
     let displays = [
       (Self.display, Self.workArea),
@@ -156,10 +156,10 @@ struct MiniPanelGeometryTests {
             for targeted in [false, true] {
               let zone = MiniPanelMagnet.dropZone(
                 invite: layout.invite, target: layout.target, targeted: targeted)
-              let bottom = max(zone.y, display.y)
-              let top = min(zone.maxY, display.maxY)
+              let (left, right) = (max(zone.x, display.x), min(zone.maxX, display.maxX))
+              let (bottom, top) = (max(zone.y, display.y), min(zone.maxY, display.maxY))
               shapes.append(
-                ScreenRect(x: zone.x, y: bottom, width: zone.width, height: top - bottom))
+                ScreenRect(x: left, y: bottom, width: right - left, height: top - bottom))
             }
             shapes.append(layout.swell)
             // The glass container covers every shape, inside the canvas.
@@ -171,9 +171,10 @@ struct MiniPanelGeometryTests {
                 shape.x >= bounds.x && shape.maxX <= bounds.maxX && shape.y >= bounds.y
                   && shape.maxY <= bounds.maxY, "\(edge) \(position) \(commands)")
             }
+            // Off its display, a window is moved whole to the next one (separate Spaces).
+            #expect(layout.canvas.x >= display.x && layout.canvas.maxX <= display.maxX)
             #expect(layout.canvas.y >= display.y && layout.canvas.maxY <= display.maxY)
             #expect(layout.canvas.size == MiniPanelMetrics.canvasSize)
-            #expect(abs(layout.canvas.midX - layout.capsule.midX) < 1e-9)
           }
         }
       }

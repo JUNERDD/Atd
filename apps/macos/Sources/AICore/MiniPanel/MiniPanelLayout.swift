@@ -7,10 +7,12 @@ import CoreGraphics
 /// pill rests near the top or the bottom, and so are the invite and the drop card.
 ///
 /// The window is one transparent ``canvas`` that holds every state, so states morph inside it
-/// without the window changing size. Its center is the anchor: the capsule column's center line,
-/// at the height of a full capsule centered on the pill. It depends on the placement only,
-/// never on the command list, so the canvas moves only when the panel does. It is kept inside
-/// the display vertically, so the display that shows the panel always holds most of the window.
+/// without the window changing size. It is centered on the anchor (the capsule column's center
+/// line, at the height of a full capsule centered on the pill), then moved to stay inside the
+/// display: with Displays have separate Spaces on (the system default), a window that reaches
+/// into the next display belongs to one of them only, and macOS moves it there whole, taking the
+/// pill off its edge. It depends on the placement only, never on the command list, so the canvas
+/// moves only when the panel does.
 public struct MiniPanelLayout: Equatable, Sendable {
   public let edge: MiniPanelEdge
   public let workArea: ScreenRect
@@ -263,20 +265,23 @@ public struct MiniPanelLayout: Equatable, Sendable {
       width: width, height: height)
   }
 
-  /// ``MiniPanelMetrics/canvasSize`` centered on the anchor, moved vertically to stay on the
-  /// display when it is tall enough.
+  /// ``MiniPanelMetrics/canvasSize`` centered on the anchor, moved along each axis to stay on
+  /// the display when the display is large enough on that axis.
   private static func canvas(
     columnCenter: Double, pillCenter: Double, workArea: ScreenRect, displayFrame: ScreenRect
   ) -> ScreenRect {
     let size = MiniPanelMetrics.canvasSize
     let full = MiniPanelMetrics.capsuleHeight(hasCommands: true)
     let anchor = origin(centeredOn: pillCenter, length: full, in: workArea) + full / 2
+    var x = columnCenter - size.width / 2
+    if displayFrame.width >= size.width {
+      x = min(max(x, displayFrame.x), displayFrame.maxX - size.width)
+    }
     var y = anchor - size.height / 2
     if displayFrame.height >= size.height {
       y = min(max(y, displayFrame.y), displayFrame.maxY - size.height)
     }
-    return ScreenRect(
-      x: columnCenter - size.width / 2, y: y, width: size.width, height: size.height)
+    return ScreenRect(x: x, y: y, width: size.width, height: size.height)
   }
 }
 
