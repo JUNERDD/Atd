@@ -107,6 +107,8 @@ private struct MiniPanelBodyContent: View {
 
   var body: some View {
     ZStack(alignment: .topLeading) {
+      MiniPanelPillFill(model: model)
+        .frame(width: model.bodyLane.width, height: model.bodyLane.height)
       layer(.capsule) { MiniPanelCapsule(model: model) }
       layer(.invite) { MiniPanelInvite(model: model) }
       layer(.card) { MiniPanelDropCard(model: model) }
@@ -132,6 +134,29 @@ private struct MiniPanelBodyContent: View {
       .animation(nil) { $0.offset(x: frame.minX, y: frame.minY) }
       .allowsHitTesting(active)
       .accessibilityHidden(!active)
+  }
+}
+
+/// The resting pill's tone (pill-v2): bare glass this thin has almost nothing to refract over a
+/// flat window and all but disappears, so the pill and its swell are filled with a neutral tone
+/// that the body's outline clips, following every frame of its glass. It leaves as the pill opens,
+/// as the capsule's controls would, and returns once the body has all but drawn back into the
+/// pill, so every other shape keeps its bare glass.
+private struct MiniPanelPillFill: View {
+  let model: MiniPanelModel
+  @Environment(\.colorSchemeContrast) private var contrast
+
+  var body: some View {
+    let resting = model.phase == .tucked || model.phase == .draggingPill
+    let level = contrast == .increased ? 0.4 : MiniPanelChoreography.pillFillLevel
+    Rectangle()
+      .fill(Color.primary.opacity(level))
+      .modifier(
+        MiniPanelPresenceEffect(
+          presence: MiniPanelPresence(shown: resting, motion: MiniPanelChoreography.pillFill))
+      )
+      .allowsHitTesting(false)
+      .accessibilityHidden(true)
   }
 }
 
