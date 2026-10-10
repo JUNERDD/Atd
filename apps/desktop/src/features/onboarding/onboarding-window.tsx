@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,23 @@ import './onboarding.css';
 
 /** Below the menu bar, which overlays the window's top edge once the guide has settled. */
 const TOAST_TOP = 56;
+
+/**
+ * Milliseconds the saved progress may take before the page says it is loading. Until then it
+ * draws nothing, so a resumed guide appears where it was left without a loading frame first.
+ */
+const LOADING_NOTICE_AFTER = 1000;
+
+/** Whether `pending` has lasted `LOADING_NOTICE_AFTER`. */
+function useSlowLoad(pending: boolean) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setTimeout(() => setSlow(true), LOADING_NOTICE_AFTER);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
+  return pending && slow;
+}
 
 /**
  * The welcome guide window (`#onboarding`): a borderless, transparent window over the whole
@@ -37,6 +55,7 @@ export function OnboardingWindow() {
           step: 'intro',
           furthest: 'welcome',
           hotkeyTested: false,
+          musicMuted: false,
         };
         // Opening from the menu also starts a resumable guide. Save before revealing any step.
         await bridge.saveProgress(saved);
@@ -48,12 +67,13 @@ export function OnboardingWindow() {
     queryClient,
   );
   const goals = useOnboardingGoals(snapshot, bridge, progress.data?.hotkeyTested);
+  const slowLoad = useSlowLoad(progress.isPending);
   return (
     <MotionConfig reducedMotion="user">
       <TooltipProvider delayDuration={300}>
         {progress.data ? (
           <OnboardingStage snapshot={snapshot} goals={goals} initialProgress={progress.data} />
-        ) : (
+        ) : progress.isError || slowLoad ? (
           <div className="onboarding-stage">
             <Card className="mx-8 max-w-md p-6">
               <p role={progress.isError ? 'alert' : 'status'}>
@@ -70,7 +90,7 @@ export function OnboardingWindow() {
               )}
             </Card>
           </div>
-        )}
+        ) : null}
         <ToastHost top={TOAST_TOP} />
       </TooltipProvider>
     </MotionConfig>

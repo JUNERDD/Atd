@@ -4,7 +4,13 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { OnboardingCardArt } from './onboarding-card-art';
 import { OnboardingFooter } from './onboarding-footer';
-import { INTRO, STAGE_FADE_DURATION, STEP_OFFSET, STEP_SPRING } from './onboarding-motion';
+import {
+  INTRO,
+  STAGE_FADE,
+  STAGE_FADE_DURATION,
+  STEP_OFFSET,
+  STEP_SPRING,
+} from './onboarding-motion';
 import { OnboardingProgress } from './onboarding-progress';
 import { CloseButton, MusicToggle } from './onboarding-stage-controls';
 import { useStepView } from './onboarding-steps';
@@ -27,10 +33,18 @@ const CARD_RADIUS = 22;
 
 /**
  * How the card arrives: `skip` (a quick fade and settle with its content staggering in, at the
- * intro's reveal as its light fades, or at once when the intro was skipped)
- * or `fade` (Reduce Motion: a cross-fade, no stagger).
+ * intro's reveal as its light fades, or at once when the intro was skipped), `fade` (Reduce
+ * Motion: a cross-fade, no stagger) or `resume` (a resumed guide: the whole card fades in place
+ * with the stage, as it faded out when the guide closed).
  */
-export type CardEntrance = 'skip' | 'fade';
+export type CardEntrance = 'skip' | 'fade' | 'resume';
+
+/** The card's own arrival from `from`; its content groups follow `revealVariants`. */
+const ARRIVAL = {
+  skip: { from: { opacity: 0, scale: 0.98 }, transition: STEP_SPRING },
+  fade: { from: { opacity: 0, scale: 0.98 }, transition: { duration: 0.4, ease: 'easeInOut' } },
+  resume: { from: { opacity: 0 }, transition: STAGE_FADE },
+} as const satisfies Record<CardEntrance, { from: object; transition: object }>;
 
 /**
  * The step slide, by direction (1 forward, -1 back): the new step comes in from the side it lies
@@ -46,8 +60,14 @@ function stepVariants(reduced: boolean): Variants {
   };
 }
 
-/** The card's content groups (top bar, step, footer, art) staggering in after the surface. */
+/**
+ * The card's content groups (top bar, step, footer, art) staggering in after the surface; a
+ * resumed card shows them with the surface.
+ */
 function revealVariants(entrance: CardEntrance): { group: Variants; item: Variants } {
+  if (entrance === 'resume') {
+    return { group: { cardHidden: {}, cardShown: {} }, item: { cardHidden: {}, cardShown: {} } };
+  }
   const stagger = entrance === 'fade' ? 0 : INTRO.contentStagger;
   return {
     group: {
@@ -131,9 +151,9 @@ export function OnboardingCard({
     <motion.main
       className="onboarding-card"
       data-step={flow.step}
-      initial={{ opacity: 0, scale: 0.98 }}
+      initial={ARRIVAL[entrance].from}
       animate={{ opacity: 1, scale: 1 }}
-      transition={entrance === 'fade' ? { duration: 0.4, ease: 'easeInOut' } : STEP_SPRING}
+      transition={ARRIVAL[entrance].transition}
     >
       <div ref={surface} aria-hidden className="onboarding-card-surface" />
       <motion.div

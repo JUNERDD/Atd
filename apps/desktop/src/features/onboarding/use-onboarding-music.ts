@@ -76,12 +76,13 @@ async function fetchTrack(context: AudioContext, signal: AbortSignal) {
  * music starts once it runs.
  *
  * Two gain stages keep the envelopes apart: `fade` carries the fade-in and the closing fade-out,
- * `mute` the toggle, so muting during a fade neither cuts nor restarts it.
+ * `mute` the toggle, so muting during a fade neither cuts nor restarts it. `initiallyMuted` is the
+ * toggle a resumed guide saved.
  */
-export function useOnboardingMusic(startedAt: number): OnboardingMusic {
-  const [muted, setMuted] = useState(false);
+export function useOnboardingMusic(startedAt: number, initiallyMuted: boolean): OnboardingMusic {
+  const [muted, setMuted] = useState(initiallyMuted);
   const [available, setAvailable] = useState(() => typeof AudioContext !== 'undefined');
-  const mutedRef = useRef(false);
+  const mutedRef = useRef(initiallyMuted);
   const phaseRef = useRef<Phase>('loading');
   const audioRef = useRef<Audio | null>(null);
 
