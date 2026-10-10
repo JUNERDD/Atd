@@ -39,7 +39,12 @@ export class BudgetAlarm extends DurableObject {
     let result;
     let guardFailure;
     try {
-      result = await runGuard(this.env, { now, checkStorage, monitorState });
+      result = await runGuard(this.env, {
+        now,
+        checkStorage,
+        monitorState,
+        persistState: (state) => this.ctx.storage.put('monitorState', state),
+      });
     } catch (error) {
       guardFailure = error instanceof Error ? error : new Error('Unknown guard failure');
       result =

@@ -11,7 +11,8 @@ const FAILURE_GRACE = 3 * 60000;
 
 /** @typedef {{checkedAt: number, classA: number, classB: number, storageBytes: number, storageCheckedAt: number, billingPeriod: {start: string, end: string}}} HealthySnapshot */
 /** @typedef {{checkedAt: number, nextCheckAt?: number, successes: number, periodKey?: string}} PausedCheck */
-/** @typedef {import('./billing.mjs').BillingState & {lastHealthy?: HealthySnapshot, failureSince?: number, retryNotBefore?: number, lastFailure?: import('./api.mjs').RequestFailure, pausedSince?: number, pausedCheck?: PausedCheck}} MonitorState */
+/** @typedef {{requestedAt: string, reasons: string[], usage: object}} PendingPause */
+/** @typedef {import('./billing.mjs').BillingState & {lastHealthy?: HealthySnapshot, failureSince?: number, retryNotBefore?: number, lastFailure?: import('./api.mjs').RequestFailure, pausedSince?: number, pausedCheck?: PausedCheck, pendingPause?: PendingPause}} MonitorState */
 
 /** Preserve the scheduled interval across restarts and legacy state upgrades.
  * @param {PausedCheck} check */

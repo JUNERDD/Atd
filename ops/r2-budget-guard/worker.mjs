@@ -86,7 +86,7 @@ export function countOperations(rows) {
  * Control-plane calls are necessary here: R2 bindings cannot read account-wide
  * billing or disable a public custom domain. The token stays in a Worker Secret.
  * @param {GuardEnv} env
- * @param {{fetcher?: typeof fetch, now?: Date, checkStorage?: boolean, log?: (record: object) => void, wait?: (ms: number) => Promise<void>, monitorState?: import('./health.mjs').MonitorState}} [options]
+ * @param {{fetcher?: typeof fetch, now?: Date, checkStorage?: boolean, log?: (record: object) => void, wait?: (ms: number) => Promise<void>, monitorState?: import('./health.mjs').MonitorState, persistState?: (state: import('./health.mjs').MonitorState) => Promise<void>}} [options]
  */
 export async function runGuard(env, options = {}) {
   const now = options.now ?? new Date();
@@ -133,6 +133,10 @@ export async function runGuard(env, options = {}) {
       log(result);
       return result;
     }
+    // A failed write or readback must not cancel the decision to close access.
+    // Persist before I/O so an interrupted alarm retries the same decision.
+    monitorState.pendingPause ??= { requestedAt: now.toISOString(), reasons, usage };
+    await options.persistState?.(monitorState);
     // Disabling domains is persistent. This Worker deliberately never enables one.
     // Close every configured bucket, including a stray development URL.
     const access = await disablePublicAccess(request, endpoints);
@@ -145,12 +149,20 @@ export async function runGuard(env, options = {}) {
       throw new PauseFailedError(reasons, usage, now.toISOString());
     }
     const result = { event: 'paused', reasons, usage, checkedAt: now.toISOString() };
+    delete monitorState.pendingPause;
+    delete monitorState.failureSince;
+    delete monitorState.retryNotBefore;
+    delete monitorState.lastFailure;
     recordPausedCheck(monitorState, +now, 0);
     log(result);
     return result;
   }
 
   try {
+    // Complete an earlier protective pause even if analytics have recovered.
+    // It must take priority over usage checks, grace and their API cooldowns.
+    if (monitorState.pendingPause)
+      return pause(monitorState.pendingPause.reasons, monitorState.pendingPause.usage);
     if (monitorState.lastFailure && +now < (monitorState.retryNotBefore ?? 0))
       throw new ApiRequestError(monitorState.lastFailure);
     const access = await publicAccessState(request, endpoints);
