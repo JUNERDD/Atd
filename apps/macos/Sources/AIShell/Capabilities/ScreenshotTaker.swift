@@ -109,8 +109,8 @@ final class ScreenshotTaker {
   /// One session from the panel's withdrawal to its return. Detection runs only for a new
   /// capture; an edit opens with `reopening` preselected instead.
   private func runSession(reopening: ReopenBase?) async throws(BridgeError) -> SessionEnd {
-    // A build whose grant was revoked (a new ad hoc signature) captures only the wallpaper and
-    // the menu bar, so the grant is checked on every capture before anything is shown.
+    // A build whose grant was revoked (or left with an earlier signature) captures only the
+    // wallpaper and the menu bar, so the grant is checked on every capture before anything shows.
     guard CGPreflightScreenCaptureAccess() else {
       requestScreenAccess()
       return .notPermitted

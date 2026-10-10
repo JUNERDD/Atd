@@ -192,6 +192,8 @@ public final class ShellController {
     miniPanel.start()
     trust.start()
     screenRecording.start()
+    StaleGrantRecovery.start(
+      defaults: defaults, accessibility: trust, screenRecording: screenRecording)
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
