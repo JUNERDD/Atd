@@ -127,8 +127,8 @@ public enum MiniPanelMetrics {
   }
 
   /// The transparent window every state is drawn in: wide enough for the card and a row's hover
-  /// label beside it on either side of the capsule column, so the edge can change without the
-  /// canvas moving relative to the capsule, and tall enough for the card's farthest reach from
+  /// label beside it on either side of the capsule column, so either edge's shapes fit however
+  /// the canvas moves to stay on its display, and tall enough for the card's farthest reach from
   /// the column's anchor (``MiniPanelLayout/canvas``).
   public static var canvasSize: WindowSize {
     let reach = capsuleWidth / 2 + flyoutGap + flyoutMaxWidth + labelGap + labelMaxWidth

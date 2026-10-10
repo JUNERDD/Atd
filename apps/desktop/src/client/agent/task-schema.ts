@@ -178,7 +178,7 @@ export function artifactLocation(file: Artifact) {
 export function runThinkingLevel(snapshot: RunSnapshot): ModelThinkingLevel {
   return snapshot.thinkingLevel ?? 'off';
 }
-/** The tier guarding this task's tool calls; tasks created before tiers existed stay on manual approval. */
+/** The tier guarding this task's tool calls; tasks created before tiers existed take the default. */
 export function taskPermissionTier(task: AgentTask): PermissionTier {
   return task.permissionTier ?? DEFAULT_PERMISSION_TIER;
 }

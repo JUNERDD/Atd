@@ -9,7 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
-import { PERMISSION_TIERS, type PermissionTier } from '../../client/agent/permission-schema';
+import {
+  DEFAULT_PERMISSION_TIER,
+  PERMISSION_TIERS,
+  type PermissionTier,
+} from '../../client/agent/permission-schema';
 import { taskPermissionTier, type AgentTask } from '../../client/agent/task-schema';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { agentApi } from './use-agent';
@@ -43,7 +47,9 @@ export function PermissionTierControl({
   // A task view edits that task's tier; the home view has no task yet, so it edits the
   // Settings default the next task will freeze at creation.
   const writable = Boolean(taskId && task) || (!taskId && Boolean(settingsBridge));
-  const tier = task ? taskPermissionTier(task) : (snapshot?.permissionTier ?? 'manual');
+  const tier = task
+    ? taskPermissionTier(task)
+    : (snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER);
   const trigger = (
     <Button
       type="button"

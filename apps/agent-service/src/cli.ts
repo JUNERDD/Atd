@@ -55,7 +55,7 @@ function usage(): string {
     '',
     'Usage: node dist/cli.js <command> [flags]',
     '',
-    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual] [--login-shell-path]',
+    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier auto] [--login-shell-path]',
     '  status [--dataDir <dir>]',
     '  stop [--dataDir <dir>]',
     '  approve mcp <serverId> [--dataDir <dir>] [--yes]',

@@ -1,5 +1,9 @@
 import { Type, type Static } from 'typebox';
-import { ConfirmReviewSchema, ShellAllowlistEntrySchema } from '@atd/agent-contracts';
+import {
+  ConfirmReviewSchema,
+  DEFAULT_PERMISSION_TIER,
+  ShellAllowlistEntrySchema,
+} from '@atd/agent-contracts';
 import { Identifier } from './command-schema';
 
 /**
@@ -14,7 +18,7 @@ export const PermissionTierSchema = Type.Union([
   Type.Literal('always'),
 ]);
 export type PermissionTier = Static<typeof PermissionTierSchema>;
-export const DEFAULT_PERMISSION_TIER: PermissionTier = 'manual';
+export { DEFAULT_PERMISSION_TIER };
 export const PERMISSION_TIERS: readonly PermissionTier[] = ['manual', 'auto', 'always'];
 
 /** Whether a file operation targets the task's own output folder (`tasks/<id>/output`) or not. */
