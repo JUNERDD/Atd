@@ -1,7 +1,7 @@
 # Atd
 
 > [!WARNING]
-> **Atd does not yet have an Apple Developer ID certificate.** Current releases use ad hoc signing and are **not notarized by Apple**, so macOS may block the first launch because it cannot verify the developer or Apple notarization.
+> **Atd does not yet have an Apple Developer ID certificate.** Current releases are signed with the project’s own self-signed certificate and are **not notarized by Apple**, so macOS may block the first launch because it cannot verify the developer or Apple notarization.
 >
 > Download only from the official link below. If you trust that download, try opening **Atd** once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open** in the next prompt. See [Apple’s full first-launch instructions](https://support.apple.com/en-sa/102445).
 
