@@ -111,12 +111,16 @@ const OnboardingStepSchema = Type.Union([
   Type.Literal('finish'),
 ]);
 
-/** Permissions and provider readiness are always read live; only the hotkey try-out is kept. */
+/**
+ * Permissions and provider readiness are always read live; only the hotkey try-out and the music
+ * toggle are kept, so a resumed guide continues as it was left.
+ */
 export const OnboardingProgressSchema = Type.Object(
   {
     step: Type.Union([Type.Literal('intro'), OnboardingStepSchema]),
     furthest: OnboardingStepSchema,
     hotkeyTested: Type.Boolean(),
+    musicMuted: Type.Boolean(),
   },
   { additionalProperties: false },
 );

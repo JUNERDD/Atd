@@ -2,7 +2,8 @@ import AICore
 import AppKit
 
 /// A privacy permission the guide can lead to: its Privacy & Security page and its name there.
-enum PermissionPane {
+/// The raw value is how ``StaleGrantRecovery`` records it.
+enum PermissionPane: String, CaseIterable {
   case accessibility
   case screenRecording
 

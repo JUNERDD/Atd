@@ -49,14 +49,23 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
 /**
  * A file written before the welcome guide existed belongs to someone already using the app, so it
  * keeps the guide dismissed. Files without saved progress keep their existing completion flag.
+ * Progress saved before the music toggle was kept resumes with the music on.
  */
 function withAddedOnboarding(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
   if (typeof settings !== 'object' || settings === null) return file;
+  const progress = 'onboardingProgress' in settings ? settings.onboardingProgress : null;
   return {
     ...file,
-    settings: { onboardingCompleted: true, onboardingProgress: null, ...settings },
+    settings: {
+      onboardingCompleted: true,
+      onboardingProgress: null,
+      ...settings,
+      ...(typeof progress === 'object' && progress !== null
+        ? { onboardingProgress: { musicMuted: false, ...progress } }
+        : {}),
+    },
   };
 }
 

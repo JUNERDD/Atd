@@ -19,11 +19,12 @@ settings:
     # Sparkle compares CFBundleVersion with an update's `sparkle:version`, so the build number
     # follows the release version instead of staying constant.
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
-    # Ad hoc signing until Developer ID signing and notarization land with packaging. Privacy
-    # grants (Screen Recording, Accessibility) follow an ad hoc build's cdhash, so every rebuild
-    # loses them; a local build signed by a trusted identity keeps them. `AI_CODE_SIGN_IDENTITY`
-    # names it (e.g. `Apple Development`) and `AI_DEVELOPMENT_TEAM` its team, which Xcode requires
-    # for Apple-issued identities. CI sets neither.
+    # Ad hoc signing unless `AI_CODE_SIGN_IDENTITY` names an identity, until Developer ID signing
+    # and notarization land. Privacy grants (Screen Recording, Accessibility) follow an ad hoc
+    # build's cdhash, so every rebuild loses them; a build signed by a certificate keeps them
+    # across rebuilds signed by the same one. A local build may use e.g. `Apple Development`, with
+    # its team in `AI_DEVELOPMENT_TEAM`, which Xcode requires for Apple-issued identities;
+    # release.yml signs releases with the self-signed release certificate and sets no team.
     CODE_SIGN_IDENTITY: '$(AI_CODE_SIGN_IDENTITY:default=-)'
     DEVELOPMENT_TEAM: '$(AI_DEVELOPMENT_TEAM)'
     CODE_SIGN_STYLE: Manual

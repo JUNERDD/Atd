@@ -28,9 +28,14 @@ export const STEP_NAME_KEYS = {
 /**
  * Where the guide is: the shown step, the direction of the last move (1 forward, -1 back) for the
  * slide, the furthest step reached (progress jumps only to visited steps, or the next one), and
- * whether the user has moved yet (the first move starts step announcements).
+ * whether the user has moved yet (the first move starts step announcements). The hotkey try-out
+ * and the music toggle are saved with it whenever they change.
  */
-export function useOnboardingFlow(initial: OnboardingProgress, hotkeyTested: boolean) {
+export function useOnboardingFlow(
+  initial: OnboardingProgress,
+  hotkeyTested: boolean,
+  musicMuted: boolean,
+) {
   const [state, setState] = useState(() => {
     const index = initial.step === 'intro' ? 0 : ONBOARDING_STEPS.indexOf(initial.step);
     return {
@@ -53,6 +58,7 @@ export function useOnboardingFlow(initial: OnboardingProgress, hotkeyTested: boo
         step: next.begun ? (ONBOARDING_STEPS[next.index] ?? 'welcome') : 'intro',
         furthest: ONBOARDING_STEPS[next.furthest] ?? 'welcome',
         hotkeyTested,
+        musicMuted,
       });
       current.current = next;
       setState(next);
@@ -64,7 +70,7 @@ export function useOnboardingFlow(initial: OnboardingProgress, hotkeyTested: boo
   const persist = useEffectEvent(saveProgress);
   useEffect(() => {
     void persist().catch(showErrorToast);
-  }, [hotkeyTested]);
+  }, [hotkeyTested, musicMuted]);
 
   function goTo(target: number) {
     void change((value) => {

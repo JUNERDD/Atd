@@ -4,6 +4,7 @@ import { isComposingKey } from '@atd/ui/lib/ime';
 import type { OnboardingProgress } from '@atd/agent-contracts';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { showErrorToast } from '../../components/toast-store';
+import { ONBOARDING_THEME } from './assets/onboarding-theme';
 import { OnboardingCard } from './onboarding-card';
 import { OnboardingIntro } from './onboarding-intro';
 import {
@@ -59,6 +60,10 @@ function useBeginKeys(active: boolean, begin: () => void) {
  * card fades in, and once the card is at rest the shell is told to drop the window below the menu
  * bar (`settle`, exactly once). Closing fades the stage and the music, then asks the shell to
  * close.
+ *
+ * A guide resumed after a quit or a permission-driven restart comes back as it was left, the
+ * reverse of closing: no opening page and no card entrance, the scrim, the card and its glass
+ * fading in together over the stage fade, and the music, muted if it was, joining at its loop.
  */
 export function OnboardingStage({
   snapshot,
@@ -70,12 +75,17 @@ export function OnboardingStage({
   initialProgress: OnboardingProgress;
 }) {
   const reduced = useReducedMotion() ?? false;
+  const resumed = initialProgress.step !== 'intro';
   // The music begins as the room dims (at once under Reduce Motion), so its bloom lands with the
-  // opening page's light.
-  const [musicAt] = useState(() => performance.now() + (reduced ? 0 : INTRO.musicAt * 1000));
-  const music = useOnboardingMusic(musicAt);
-  const [phase, setPhase] = useState<Phase>(initialProgress.step === 'intro' ? 'intro' : 'settled');
-  const flow = useOnboardingFlow(initialProgress, goals.hotkey);
+  // opening page's light; a resumed guide has no opening, so its t=0 lies a whole opening back.
+  const [musicAt] = useState(() =>
+    resumed
+      ? performance.now() - ONBOARDING_THEME.loopStart * 1000
+      : performance.now() + (reduced ? 0 : INTRO.musicAt * 1000),
+  );
+  const music = useOnboardingMusic(musicAt, initialProgress.musicMuted);
+  const [phase, setPhase] = useState<Phase>(resumed ? 'settled' : 'intro');
+  const flow = useOnboardingFlow(initialProgress, goals.hotkey, music.muted);
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
   const settledRef = useRef(false);
@@ -136,7 +146,9 @@ export function OnboardingStage({
         transition={
           phase === 'intro'
             ? { duration: reduced ? INTRO_REDUCED.scrimIn : INTRO.scrimIn, ease: DIM_EASE }
-            : { duration: SCRIM_EASE, ease: 'easeInOut' }
+            : resumed
+              ? STAGE_FADE
+              : { duration: SCRIM_EASE, ease: 'easeInOut' }
         }
       />
       <AnimatePresence>
@@ -149,7 +161,7 @@ export function OnboardingStage({
           snapshot={snapshot}
           goals={goals}
           music={music}
-          entrance={reduced ? 'fade' : 'skip'}
+          entrance={resumed ? 'resume' : reduced ? 'fade' : 'skip'}
           settled={phase === 'settled'}
           closing={closing}
           flow={flow}

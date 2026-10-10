@@ -1,9 +1,9 @@
 name: Release
 
 # Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>`
-# with the arm64 dmg of the Release app. The app is ad hoc signed and not notarized (project.yml
-# signs with `-` until Developer ID signing lands), so a downloaded copy is opened once from
-# Privacy & Security. Installed copies update themselves with Sparkle (AppUpdater): each release
+# with the arm64 dmg of the Release app. The app is signed with the project's self-signed release
+# certificate and not notarized (until Developer ID signing lands), so a downloaded copy is opened
+# once from Privacy & Security. Installed copies update themselves with Sparkle (AppUpdater): each release
 # also publishes `appcast.xml` with the dmg's EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY`
 # secret (the private half of `SUPublicEDKey` in project.yml). That feed names the GitHub asset and
 # serves installs whose `SUFeedURL` is still the latest release's; the mirror job then republishes
@@ -92,6 +92,9 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      # The SHA-1 of the self-signed release certificate. It is public: every signed app names it
+      # in its designated requirement.
+      RELEASE_SIGNING_SHA1: 2CB9D1EA2DA706E7C5B422E6A80AA48638FE83E9
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
@@ -112,6 +115,44 @@ jobs:
           rustup toolchain install
           cargo --version
       - run: pnpm install --frozen-lockfile
+      # TCC records an Accessibility or Screen Recording grant with the app's designated
+      # requirement. An ad hoc build's requirement is its cdhash, so every update dropped the
+      # grants; this certificate makes it `identifier "com.junerdd.ai" and certificate leaf =
+      # H"<SHA-1>"`, the same for every release. A different certificate drops every installed
+      # copy's grants once (StaleGrantRecovery asks again), so the step accepts only this one.
+      # `RELEASE_SIGNING_P12` is its base64 PKCS#12, `RELEASE_SIGNING_P12_PASSWORD` the password.
+      # The certificate is public (apps/macos/release-certificate.pem); only its private key is
+      # kept outside the repository, and apps/macos/scripts/restore-release-signing.mjs packs the
+      # two under a new password and sets both secrets again.
+      # codesign finds an identity only in a keychain on the search list; a self-signed
+      # certificate needs no trust settings to sign.
+      - name: Import the release signing certificate
+        env:
+          RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
+          RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_SIGNING_P12" ] || [ -z "$RELEASE_SIGNING_P12_PASSWORD" ]; then
+            echo "::error::The RELEASE_SIGNING_P12 secrets are missing; an ad hoc build would drop every installed copy's privacy grants."
+            exit 1
+          fi
+          keychain="$RUNNER_TEMP/release-signing.keychain-db"
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          p12="$RUNNER_TEMP/release-signing.p12"
+          printf '%s' "$RELEASE_SIGNING_P12" | base64 --decode > "$p12"
+          security import "$p12" -k "$keychain" -P "$RELEASE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign > /dev/null
+          rm "$p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+          # Ahead of the runner's own keychains, which stay on the list (xargs unquotes them).
+          security list-keychains -d user | xargs security list-keychains -d user -s "$keychain"
+          if ! security find-identity -p codesigning "$keychain" | grep -q "$RELEASE_SIGNING_SHA1"; then
+            echo "::error::RELEASE_SIGNING_P12 does not hold the release certificate $RELEASE_SIGNING_SHA1."
+            exit 1
+          fi
+          # project.yml signs with AI_CODE_SIGN_IDENTITY; the hash names an untrusted identity.
+          echo "AI_CODE_SIGN_IDENTITY=$RELEASE_SIGNING_SHA1" >> "$GITHUB_ENV"
       - name: Build the Release app
         run: pnpm --filter @atd/macos build:release
       - name: Package the dmg
@@ -126,6 +167,14 @@ jobs:
             fi
           done
           codesign --verify --deep --strict "$app"
+          # Installed copies keep their privacy grants only under this exact requirement.
+          leaf=$(printf '%s' "$RELEASE_SIGNING_SHA1" | tr 'A-F' 'a-f')
+          expected="identifier \"com.junerdd.ai\" and certificate leaf = H\"$leaf\""
+          requirement=$(codesign -d -r- "$app" 2> /dev/null | sed -n 's/^designated => //p')
+          if [ "$requirement" != "$expected" ]; then
+            echo "::error::The app's designated requirement is '$requirement', not '$expected'."
+            exit 1
+          fi
           # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon
           # positions and the Applications link, written straight into the image's .DS_Store
           # without driving Finder. build.py corrects its background bookmark before compression;
@@ -187,7 +236,7 @@ jobs:
           gh release create "v$VERSION" dist/* \
             --target "$GITHUB_SHA" \
             --title "v$VERSION" \
-            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is ad hoc signed and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies of 0.4.0 or later update themselves." \
+            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is not signed with an Apple Developer ID and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies of 0.4.0 or later update themselves." \
             --generate-notes \
             "${flags[@]}"
 

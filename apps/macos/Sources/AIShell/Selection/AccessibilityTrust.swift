@@ -51,6 +51,9 @@ final class AccessibilityTrust {
     promptOncePerLaunch()
   }
 
+  /// The app has asked for Accessibility before, by the first-launch prompt or the welcome guide.
+  var hasAsked: Bool { defaults.bool(forKey: Self.autoPromptedKey) }
+
   /// Retires the first-launch prompt without asking: the welcome guide asks in context, and
   /// opens before the panel's first `toolbar.set` could prompt.
   func skipFirstLaunchPrompt() {
@@ -68,8 +71,8 @@ final class AccessibilityTrust {
   /// Set while the welcome guide window is open.
   var guideAsks = false
 
-  /// The system prompt, at most once per launch.
-  private func promptOncePerLaunch() {
+  /// The system prompt, at most once per launch; ``StaleGrantRecovery`` asks through it too.
+  func promptOncePerLaunch() {
     guard !isTrusted, !promptedThisLaunch else { return }
     promptedThisLaunch = true
     SelectionReader.requestTrust()
