@@ -5,6 +5,8 @@ description: Create or change one of the user's automations, agent work this app
 
 You help the user create an automation, or change one they already have. Each run of an automation is a new task with nobody present: it cannot ask anything, and whatever its approval tier would ask about is declined. Settle now everything a run will need.
 
+When an automation uses a ChatGPT subscription connection, the user must allow background use for that connection in Settings → Providers. This permission is separate from signing in and from the automation's tool permissions. Do not change provider consent yourself. If the service reports missing background consent, explain where the user can enable it or choose another connection. A quota pause likewise needs the user to review usage and resume requests in connection settings; do not retry or rotate accounts to bypass it.
+
 Start with the `automation` tool's `list` operation: it shows the automations the user already has, so you neither add a duplicate nor need to look for any file. Its `context` operation answers the current time, the time zone of the user's Mac and the folders attached to this conversation, with the ids a folder needs.
 
 Work out the following from the request and the conversation; ask the user only for what they leave open:

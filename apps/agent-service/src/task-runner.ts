@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { withInferencePurpose } from './providers/chatgpt-usage.js';
+import { inferenceError } from './providers/inference-result.js';
 import {
   errorMessage,
   isTerminalStatus,
@@ -193,6 +195,21 @@ export class TaskRunner {
 
   /** Executes one accepted run to a terminal ledger state; a failed folder read fails it. */
   async execute(run: TaskRun, attachments: RunAttachment[], folders: RunFolders): Promise<void> {
+    const task = this.ctx.ledger.task(this.taskId);
+    // Older queued app runs have only their task origin. Only the first run came from the app;
+    // subsequent user messages must not inherit that background purpose.
+    const background =
+      run.snapshot.background ??
+      (run.snapshot.trigger !== undefined ||
+        (task.origin?.kind === 'app' && task.runs[0]?.id === run.id));
+    return withInferencePurpose(background, () => this.executeRun(run, attachments, folders));
+  }
+
+  private async executeRun(
+    run: TaskRun,
+    attachments: RunAttachment[],
+    folders: RunFolders,
+  ): Promise<void> {
     this.currentRunId = run.id;
     this.aborted = false;
     // A lite session answers only its own prompt; what is queued meanwhile waits (held-queue.ts).
@@ -220,8 +237,7 @@ export class TaskRunner {
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
       await live.session.prompt(runPromptText(run), runPromptOptions(attachments));
       const last = lastAssistant(live.manager.getBranch());
-      const failed = last?.stopReason === 'error';
-      const error = failed ? (last.errorMessage ?? 'The model request failed.') : '';
+      const error = last ? (inferenceError(last) ?? '') : '';
       if (!error && !this.isStopping(run.id)) await this.beforeCompleted(run.id);
       if (this.isStopping(run.id)) await this.setStatus(run.id, 'stopped', '');
       else await this.setStatus(run.id, error ? 'failed' : 'completed', error);

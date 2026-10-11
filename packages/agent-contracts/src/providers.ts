@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ChatGPTConsentRequestSchema } from './chatgpt.js';
 import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
 import { ServiceModelDefinitionSchema } from './models.js';
 
@@ -104,6 +105,30 @@ export const ProviderDisconnectResponseSchema = Type.Object(
 );
 export type ProviderDisconnectResponse = Static<typeof ProviderDisconnectResponseSchema>;
 
+/** `DELETE /v1/providers/:connectionId?expectedRevision=N`: the revision the caller read. */
+export const ProviderRemoveQuerySchema = Type.Object(
+  {
+    expectedRevision: Type.Integer({ minimum: 1 }),
+  },
+  { additionalProperties: false },
+);
+export type ProviderRemoveQuery = Static<typeof ProviderRemoveQuerySchema>;
+
+/**
+ * A removed connection and the default afterwards: removing the default leaves none, so the
+ * user chooses the next one rather than the service guessing it.
+ */
+export const ProviderRemoveResponseSchema = Type.Object(
+  {
+    removed: Type.Literal(true),
+    connectionId: Identifier,
+    defaultConnectionId: Type.Union([Identifier, Type.Null()]),
+    warning: Type.Optional(Type.String({ maxLength: 2000 })),
+  },
+  { additionalProperties: false },
+);
+export type ProviderRemoveResponse = Static<typeof ProviderRemoveResponseSchema>;
+
 /**
  * Service-owned provider catalog (v1, frozen): Pi providers plus local
  * entries. Secrets never appear here.
@@ -163,6 +188,7 @@ export type ProvidersCatalogResponse = Static<typeof ProvidersCatalogResponseSch
  */
 export const ProviderCreateRequestSchema = Type.Object(
   {
+    chatgptConsent: Type.Optional(ChatGPTConsentRequestSchema),
     provider: ServiceConnectionSchema.properties.provider,
     name: ServiceConnectionSchema.properties.name,
     baseUrl: ServiceConnectionSchema.properties.baseUrl,

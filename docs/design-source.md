@@ -1253,3 +1253,58 @@ Figma：
 - 可发现性：可以排序时（至少两条个人命令且未搜索），个人命令列表上方显示一行 12px muted 提示（`commands:list.reorderHint`，说明长按拖动和 ⌥↑/⌥↓），它同时是各行按钮的 `aria-describedby`。按下后 120ms 起阴影在 230ms 内升起（`data-hold="arming"`），按满 350ms 时行已抬起，长按因此在拖动前就能被看见；120ms 内松开的短按不显示阴影。
 - 松手回位：抬起状态在行的偏移回到 0 时结束（Motion `onUpdate`），不依赖回弹动画的结束回调；回弹被打断停在半路时，行会自己滑回原位，不会停留在抬起态。
 - Figma：App / Command management item · Rhea (Figma `project/373:1416`) 结构不变（不加手柄），组件说明补充长按排序、提示行、按下反馈与抬起态；抬起态没有单独的变体。05.01、06.01、06.04、06.05、06.07、06.08 的命令列表外加 `Personal commands` 组（提示行 + Saved commands，间距 8）。
+
+## 2026-10-11 账号登录收敛与 ChatGPT SIWC
+
+按用户确认的严格范围，账号登录只保留 OpenAI（ChatGPT SIWC）、OpenRouter 和 Radius。移除旧 Codex、Claude 订阅以及借用其他客户端身份的 Copilot、Kimi、Meta、xAI 登录入口；这些服务已有的 API Key 方式保留。旧连接在读取时迁移为需要重新授权或填写 API Key 的状态，旧令牌不会被当成新授权继续使用。
+
+账号连接默认选中账号认证，主按钮直接保存连接并发起登录、打开系统浏览器。用户不再选择浏览器／无头传输方式。浏览器无法自动返回时可以展开手动回调兜底；Radius 回调端口不可用时自动转设备码。取消、超时、轮询断线恢复均保留。API Key 是可选的另一种认证方式。
+
+ChatGPT 按[官方 SIWC 登录流程](https://developers.openai.com/siwc/token-sharing-open-source/sign-in)动态注册 Atd，保存注册身份和安装标识，以 openid-client 验证身份、PKCE、state、nonce 与授权范围。模型目录与推理使用公开 OpenAI API，复用 Pi 的 Responses 编码和流解析。首次成功登录显示一次性套餐提示；已登录连接与模型菜单显示套餐来源和 Manage usage；用量受限或共享不可用时，在任务失败提示内提供 Manage usage 主操作。退出时撤销并清理令牌；刷新、写入和退出共用连接锁。
+
+| Figma 来源（项目别名／节点） | 同步范围                                                                                             |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `project/968:20109`          | 账号目录：OpenAI 合并为账号登录或 API Key；隐藏独立旧 Codex 行；移除不再支持的账号说明               |
+| `project/922:18169`          | 账号表单：ChatGPT 一键发起、等待、手动回调、Radius 设备码、失败与已登录状态；Claude 示例改为 API Key |
+| `project/1544:58725`         | 模型配置的两种根视图增加默认关闭的 Show ChatGPT plan 属性，仅 ChatGPT 连接打开                       |
+| `project/2670:163393`        | 新增首次成功登录提示及 ChatGPT 模型菜单的可编辑实例；Got it 连接至已登录画面                         |
+
+代码对应 `providers/chatgpt-oauth.ts`、`chatgpt-provider.ts`、`auth-policy.ts`、`login.ts`、`credentials/service-store.ts`，以及渲染层 `provider-form.tsx`、`provider-login.tsx`、`chatgpt-plan.tsx`。现有产品 skills 没有教授这些提供商登录方式，无需调整。
+
+验证采用静态检查、既有测试和隔离的模拟服务，不使用真实账号。原生隔离实例只确认了目录中的三种账号登录和其他服务的 API Key 入口；该 Debug 实例随后结束，未继续操作被替换的实例。Figma 已检查登录入口、已登录、首次欢迎和模型菜单的截图。用量失败状态已在组件说明中记录，尚无单独的 Figma 行内错误示例；完整原生登录表单、中文布局和真实服务授权不在本次已验证范围内。
+
+## 2026-10-11 模型目录刷新与未保存配置
+
+已保存的连接存在未保存修改时，Refresh models 与 Verify model access 均不可执行，保留键盘焦点与 Tooltip，分别提示先保存再刷新／验证；不会自动保存凭据，也不会静默操作旧配置。API Key 表单新增 `State=Unsaved`（Figma `project/2675:185096`），账号表单新增 `Step=Unsaved`（`project/2675:185197`），复用现有 Glass 按钮和 App / Tooltip；产品评审实例位于 `project/2677:163654`。原有干净表单与验证费用提示保留。
+
+OpenRouter 刷新使用[官方模型目录](https://openrouter.ai/docs/guides/overview/models)，保持可调用工具的文本模型范围；API Key 与账号登录共用目录，该公共目录不代表账号访问验证通过。刷新失败保留原目录与模型偏好，显示 HTTP 状态、网络错误或格式／容量限制，不透传上游正文或凭据。自定义服务仍要求 OpenAI 兼容的 `/models` 结构；重定向提示用户修正 Base URL。
+
+Figma 已回读新增组件及连接实例并检查截图；代码采用静态检查、现有测试和模拟响应验证，没有使用真实账号。已有其他会话的 Debug 应用正在运行，因此本轮未接管该实例，也未进行原生界面复测。现有产品 skills 未教授这些连接设置，无需变更。
+
+## 2026-10-11 ChatGPT 授权界面复用通用组件
+
+`chatgpt-settings.tsx` 的隐私分组移到连接名称、认证方式与登录说明之后。标题和「隐私详情」入口在卡片上方，同意连接与后台调用复用同一个 `Card size="sm"` / `ItemGroup` 中的两个 `SettingsSwitchRow`，开关统一靠右。未同意连接时，后台调用保持禁用并显示原因。登录结果与额度暂停提示复用 `Alert` / `AlertDescription` / `AlertAction`。ChatGPT 专属的显示条件、告知文案、默认关闭的后台授权及保存逻辑保留在业务组件中。
+
+隐私详情使用共享 `Dialog` 的居中 modal、玻璃表面与遮罩，最大宽度 512px，宽高均保留窗口边距。标题、关闭操作和底部操作保留，四段说明放在共享 `ScrollArea` 中；窄窗口的底部操作纵向排列。「OpenAI 隐私政策」链接去掉水平内边距并保持靠左，与正文共用左边缘。焦点约束、Escape 关闭和关闭后的焦点恢复由共享 Dialog 负责，关闭按钮文案使用当前语言。
+
+Figma 的 ChatGPT consent（`project/2689:185458`）六个变体统一采用上述分组，两个开关均连接至 Settings card switch row（`project/1968:113364`）；Account connection（`project/922:18169`）的七个相关源变体同步移动分组顺序。保留的 `Disclosure=Expanded` 变体表示窗口级 modal 状态，不再增加行内内容。新增 App / ChatGPT privacy dialog · Rhea（`project/2743:187219`）的 Wide / Compact 变体，隐私详情入口连接至 modal，关闭按钮连接关闭操作。Figma 不会自动按窗口宽度切换变体，宽度低于 640px 时需显式使用 Compact。
+
+原 Automation alert 更名为通用的 App / Alert · Rhea（`project/2343:138909`），增加默认隐藏的操作区域和默认显示的图标开关；现有消费者的默认内容保留。`Variant=Default, Layout=Narrow`（`project/2729:187171`）对应代码中提示宽度不足 320px 时将操作移到下方的行为；Figma 需显式切换布局变体。
+
+组件核对画面位于 `project/2725:187047`；新增 modal 与窄版核对画面位于 `project/2743:187220`。已查看中文 768 × 640、320 × 640、320 × 360 的 modal 及 320px 宽的设置分组截图；正文与政策链接的左内边距均为 24px，短窗口正文区域收缩后仍保留完整底部操作。Figma Plugin API 的原型遮罩配置只读，核对画面使用独立遮罩表达效果，实际代码使用共享 DialogOverlay。未核对原生窗口、玻璃合成及键盘交互，原因是已有 Debug 应用运行，本轮没有接管。代码通过类型检查和文件 lint / 格式检查；既有的设置开关交互测试通过，该测试不覆盖 modal 交互。此次只调整界面组合，产品 skills 教授的能力与选项没有变化，无需更新。
+
+## 2026-10-11 ChatGPT 浏览器授权结果页
+
+`apps/agent-service/src/providers/oauth-page.ts` 移除「在 Atd 中继续」分区及其中英文文案。账号、订阅额度和后台调用的状态保留；状态卡片与结果图标共用不透明的深灰表面 `#1c1c1e` 和 20px 圆角。保留官网点阵背景与标题，提高辅助文字对比度，页脚紧跟状态内容并去掉装饰线。
+
+Figma 的 Website / ChatGPT authorization result（`project/2694:171104`）六个 Wide / Compact 变体同步，复用现有品牌标志与 Section heading 实例；新增作用域限定在该页面的 `callback/*` 变量，官网原有颜色不变。宽版与窄版截图已检查，六个源变体的表面、页脚与移除区块均已回读。标题延续 Figma 的 Doto 近似；浏览器实际使用系统字体的 CSS 点阵裁切。
+
+浏览器预览直接由 `oauthPage()` 生成，核对中文成功页 1280 × 800、320 × 640、英文未启用额度页 320 × 640，以及中文失败与英文取消页 568 × 320；未出现横向溢出，短窗口可纵向滚动。Tab 可聚焦用量链接，焦点描边可见，点击高度为 44px。状态标签对卡片的对比度为 8.06:1，页脚说明对背景为 6.69:1。`pnpm typecheck`、改动的 TypeScript 文件 Oxlint 与格式检查通过。设计记录全文件的格式检查仍报告任务开始前已有的格式差异，本次仅追加本节并保留原文。未使用真实账号进行授权；此页不依赖原生窗口。产品 skills 的能力与选项不变，无需更新。
+
+## 2026-10-11 ChatGPT 模型菜单的文字操作
+
+`ChatGPTPlan variant="menu"` 复用共享 `Button variant="link" size="xs"`：订阅说明在左，「管理用量」在右，移除操作的描边与水平按钮内边距；标题行使用 8px 水平、4px 垂直内边距，与根菜单已有的 4px 留白一起形成 12px 对齐边缘。说明使用现有的辅助文字色与 12/16 字号，可在空间不足时换行；操作保留 24px 点击高度和内部焦点环。连接表单的描边按钮以及用量错误提示的主按钮保持原有呈现与打开链接行为。
+
+Figma 的 App / Model config content（`project/1544:58725`）Root 与 Root context tiers 同步上述布局，复用 App / Settings action · Rhea 的 Link / Extra small 变体；英文审阅实例 `project/2670:163744` 随源组件更新，并补充中文 `project/2757:164132`、英文长状态 `project/2757:164164`。已核对三个实例的截图、文字换行、按钮来源与布局边界。Figma 的既有玻璃近似保持不变。
+
+使用临时数据目录与空闲端口启动隔离 Debug 应用，以无凭据的示例连接核对真实 WKWebView / 原生窗口：中文 1000 × 720，英文 480 × 480、320 × 480，以及 320 × 480 下未启用额度的长状态。文字操作左右对齐，菜单保持在窗口内，长状态换行且操作不收缩；Option-Tab 可聚焦「Manage usage」，焦点环可见。未触发真实登录、模型请求或打开外部用量页面。`pnpm typecheck`（9 项）、三个改动 TSX 文件的 Oxlint 与格式检查通过；没有新增测试，现有测试中没有覆盖这一展示组件的用例。此次只调整呈现，产品 skills 的能力、字段和选项不变，无需更新。

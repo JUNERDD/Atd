@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { withInferencePurpose } from '../../providers/chatgpt-usage.js';
+import { inferenceError } from '../../providers/inference-result.js';
 import type { Api, AssistantMessage, Message, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { AiGenerateInput, AiGenerateOutput, ServiceConnection } from '@atd/agent-contracts';
@@ -82,11 +84,12 @@ function piMessages(input: AiGenerateInput, model: Model<Api>): Message[] {
 }
 
 function output(message: AssistantMessage, model: Model<Api>): AiGenerateOutput {
-  if (message.stopReason === 'error' || message.stopReason === 'aborted')
+  const error = inferenceError(message);
+  if (error)
     throw new AppFailure(
       502,
       message.stopReason === 'aborted' ? 'cancelled' : 'upstream_failed',
-      message.errorMessage ?? 'The model request failed.',
+      error,
     );
   return {
     text: message.content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join(''),
@@ -100,6 +103,16 @@ function output(message: AssistantMessage, model: Model<Api>): AiGenerateOutput 
  * (or the connection offering `input.model`), without tools. `onDelta` streams the answer text.
  */
 export async function generate(
+  paths: ServicePaths,
+  input: AiGenerateInput,
+  signal: AbortSignal,
+  onDelta?: (delta: string) => void,
+): Promise<AiGenerateOutput> {
+  // An app backend can request inference without a foreground user gesture.
+  return withInferencePurpose(true, () => generateForApp(paths, input, signal, onDelta));
+}
+
+async function generateForApp(
   paths: ServicePaths,
   input: AiGenerateInput,
   signal: AbortSignal,

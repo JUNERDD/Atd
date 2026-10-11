@@ -3,9 +3,11 @@ import {
   cancelProviderLogin,
   getProviderLogin,
   startProviderLogin,
+  AgentClientError,
   type AgentClientOptions,
 } from '@atd/agent-client';
 import type { LoginState } from './schema';
+import type { ProviderLoginRequest } from '@atd/agent-contracts';
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -26,10 +28,12 @@ export class ProviderLoginClient {
     private readonly openExternal: (url: string) => Promise<void>,
   ) {}
 
-  async start(connectionId: string): Promise<LoginState> {
-    const { login } = await startProviderLogin(this.required(), connectionId);
+  async start(connectionId: string, request?: ProviderLoginRequest): Promise<LoginState> {
+    const { login } = await startProviderLogin(this.required(), connectionId, undefined, request);
     this.states.clear();
     this.states.set(login.id, login);
+    this.publish(login);
+    this.openSignInBrowser(login);
     void this.poll(login.id);
     return login;
   }
@@ -67,13 +71,18 @@ export class ProviderLoginClient {
       try {
         if (!options) throw new Error('The service disconnected.');
         this.record((await getProviderLogin(options, id)).login);
-      } catch {
-        // A restarted service forgets its sign-ins; the flow cannot resume.
+      } catch (error) {
+        // A transport failure does not terminate the server's login. Keep polling and cancellation
+        // available; only a missing session (for example after restart) requires a new sign-in.
+        if (this.states.get(id)?.status !== 'waiting') return;
+        const expired = error instanceof AgentClientError && error.status === 404;
         this.record({
           ...current,
-          status: 'error',
-          message: 'Sign-in was interrupted. Try again.',
-          prompt: null,
+          status: expired ? 'error' : 'waiting',
+          message: expired
+            ? 'Sign-in was interrupted. Try again.'
+            : 'Reconnecting to the sign-in service…',
+          ...(expired ? { prompt: null, url: '', code: '' } : {}),
         });
       }
     }
@@ -83,9 +92,17 @@ export class ProviderLoginClient {
   private record(state: LoginState): void {
     const previous = this.states.get(state.id);
     if (!previous || JSON.stringify(previous) === JSON.stringify(state)) return;
+    if (previous.status !== 'waiting' && state.status === 'waiting') return;
     this.states.set(state.id, state);
     this.publish(state);
+    if (state.url !== previous.url) this.openSignInBrowser(state);
     if (state.status === 'complete' && previous.status !== 'complete')
       this.signedIn(state.connectionId);
+  }
+
+  private openSignInBrowser(state: LoginState): void {
+    if (state.status !== 'waiting' || !state.url) return;
+    // A failed OS handoff keeps the sign-in pending; its Open browser action remains available.
+    void this.openLink(state.id).catch(() => {});
   }
 }

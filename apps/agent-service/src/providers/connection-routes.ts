@@ -8,6 +8,7 @@ import {
   ProviderDefaultRequestSchema,
   ProviderLevelsQuerySchema,
   ProviderLoginAnswerRequestSchema,
+  ProviderLoginRequestSchema,
   ProviderModelRequestSchema,
   ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
@@ -17,12 +18,25 @@ import {
 } from '@atd/agent-contracts';
 import { serviceConfigurationId } from '../credentials/connections.js';
 import { keyringAccount } from '../credentials/keyring.js';
+import { withCredentialLock } from '../credentials/service-store.js';
 import { ConflictError } from '../errors.js';
-import { mustConnection, presentConnection, presentStored } from './connection-view.js';
+import {
+  assertProviderModels,
+  mustConnection,
+  presentConnection,
+  presentStored,
+} from './connection-view.js';
 import { connectionModelTiers, contextsResponse } from './context-tiers.js';
 import type { ProviderLogins } from './login.js';
 import { connectionModel, refreshCatalog, verifyModel, type ProviderStores } from './runtime.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import { assertProviderAuth, assertUploadedCredential } from './auth-policy.js';
+import {
+  isChatGPT,
+  recordChatGPTConsent,
+  resumeChatGPTUsage,
+  withInferencePurpose,
+} from './chatgpt-usage.js';
 
 const STALE = 'This connection changed. Reload its saved settings and try again.';
 
@@ -49,6 +63,12 @@ export function registerConnectionRoutes(
     const { live, ...opened } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
     const { connections, keyring } = opened;
+    assertProviderAuth({ ...live, ...body });
+    assertProviderModels({ ...live, ...body });
+    if (body.credential.action === 'replace')
+      assertUploadedCredential({ ...live, ...body }, body.credential.credential);
+    if (live.authType === 'oauth' && body.credential.action !== 'keep')
+      throw new TypeError('Use sign-in or disconnect to change this account’s authorization.');
     if (
       live.authType === 'api_key' &&
       live.hasCredential &&
@@ -58,17 +78,26 @@ export function registerConnectionRoutes(
       throw new TypeError(
         'Enter the API key again, or explicitly remove it, when changing the endpoint.',
       );
-    // The secret moves first: a keyring failure leaves the saved connection untouched.
-    const account = keyringAccount(live.connectionId);
-    if (body.credential.action === 'replace')
-      await keyring.set(account, JSON.stringify(body.credential.credential));
-    else if (body.credential.action === 'remove' && live.hasCredential)
-      await keyring.delete(account);
-    await connections.change((data) => {
-      const current = data.connections.find((item) => item.connectionId === live.connectionId);
-      if (!current || current.revision !== body.expectedRevision) throw new ConflictError(STALE);
-      applyUpdate(current, body);
+    await withCredentialLock(live.connectionId, async () => {
+      let removeSecret = false;
+      await connections.change(
+        (data) => {
+          const current = data.connections.find((item) => item.connectionId === live.connectionId);
+          if (!current || current.revision !== body.expectedRevision)
+            throw new ConflictError(STALE);
+          removeSecret = Boolean(current.hasCredential || current.credentialCleanupPending);
+          applyUpdate(current, body);
+        },
+        async () => {
+          const account = keyringAccount(live.connectionId);
+          if (body.credential.action === 'replace')
+            await keyring.set(account, JSON.stringify(body.credential.credential));
+          else if (body.credential.action === 'remove' && removeSecret)
+            await keyring.delete(account);
+        },
+      );
     });
+    if (body.resumeChatGPTUsage) resumeChatGPTUsage(live.connectionId);
     return { connection: await presentStored(connections, live.connectionId) };
   });
 
@@ -162,13 +191,14 @@ export function registerConnectionRoutes(
   app.post<Params>('/v1/providers/:connectionId/verify', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderVerifyRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
-    await verifyModel(opened, live, body.modelId);
+    await withInferencePurpose(false, () => verifyModel(opened, live, body.modelId));
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 
   app.post<Params>('/v1/providers/:connectionId/login', RENDERER_ROUTE, async (request) => {
     const { live, ...opened } = await load(request.params.connectionId);
-    return { login: await logins.start(opened, live) };
+    const options = parse(ProviderLoginRequestSchema, request.body ?? {});
+    return { login: await logins.start(opened, live, options) };
   });
 
   app.get<{ Params: { loginId: string } }>(
@@ -193,7 +223,7 @@ export function registerConnectionRoutes(
   app.post<{ Params: { loginId: string } }>(
     '/v1/providers/logins/:loginId/cancel',
     RENDERER_ROUTE,
-    async (request) => ({ login: logins.cancel(parse(Identifier, request.params.loginId)) }),
+    async (request) => ({ login: await logins.cancel(parse(Identifier, request.params.loginId)) }),
   );
 }
 
@@ -203,6 +233,11 @@ export function registerConnectionRoutes(
  * removed secret drops the verification too.
  */
 function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): void {
+  recordChatGPTConsent(current, body.chatgptConsent);
+  if (body.resumeChatGPTUsage) {
+    if (!isChatGPT(current)) throw new TypeError('Only ChatGPT connections can resume plan usage.');
+    current.chatgptUsagePaused = false;
+  }
   const configurationId = serviceConfigurationId({
     provider: current.provider,
     baseUrl: body.baseUrl,
@@ -223,6 +258,8 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   if (body.credential.action !== 'keep') {
     current.hasCredential = body.credential.action === 'replace';
     current.connected = current.hasCredential;
+    delete current.authNotice;
+    delete current.credentialCleanupPending;
   }
   if (configurationChanged) {
     delete current.catalog;

@@ -107,6 +107,13 @@
         "cancel": "取消",
         "confirm": "断开连接",
         "missingProvider": "该提供商已不再注册。"
+      },
+      "remove": {
+        "title": "删除 {{name}}？",
+        "description": "此连接、已保存的凭据和模型列表都将被删除，且无法恢复。使用它的任务、命令和自动化需要改用其他模型。",
+        "defaultNote": "它是当前默认提供商，删除后请另选默认提供商。",
+        "cancel": "取消",
+        "confirm": "删除"
       }
     }
   },

@@ -107,6 +107,13 @@
         "cancel": "Cancel",
         "confirm": "Disconnect",
         "missingProvider": "This provider is no longer registered."
+      },
+      "remove": {
+        "title": "Remove {{name}}?",
+        "description": "The connection, its saved credential, and its model list will be deleted. This cannot be undone. Tasks, commands, and automations that use it will need another model.",
+        "defaultNote": " It is the default provider, so choose another default afterwards.",
+        "cancel": "Cancel",
+        "confirm": "Remove"
       }
     }
   },

@@ -56,7 +56,8 @@ function submitModelSelection(
  * refused. `task` is the task the run joins, null for a new one, and `onBranch` its user messages
  * as `branchUserEntries` read them. `internal` carries what only service code sets: the `trigger`
  * that names the automation that started the run, the hidden `instructions` it is told, and
- * whether it runs `lite`. None of them carries over to a follow-up.
+ * whether it runs `lite`. None of them carries over to a follow-up. Background inference is
+ * derived from this submission's service-owned source, never the task's earlier runs.
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
@@ -78,6 +79,7 @@ export function freezeRunSnapshot(
     tools: [...(request.tools ?? last?.snapshot.tools ?? DEFAULT_RUN_TOOLS)],
     // Runs with memory search and learn through the service memory authority (harness slot).
     memory: request.memory ?? last?.snapshot.memory ?? true,
+    background: trigger !== undefined || internal.origin?.kind === 'app',
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(contextWindow ? { contextWindow } : {}),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),

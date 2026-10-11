@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { withInferencePurpose } from '../providers/chatgpt-usage.js';
 import {
   CompactTaskRequestSchema,
   type ContextBreakdownResponse,
@@ -101,7 +102,9 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       const taskId = parse(Identifier, request.params.taskId);
       const body = parse(CompactTaskRequestSchema, request.body ?? {});
       ctx.ledger.task(taskId);
-      await ctx.manager.compact(taskId, body.instructions?.trim() || undefined);
+      await withInferencePurpose(false, () =>
+        ctx.manager.compact(taskId, body.instructions?.trim() || undefined),
+      );
       return { ok: true as const };
     },
   );

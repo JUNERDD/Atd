@@ -27,6 +27,7 @@ catalog:
   rehype-katex: 7.0.1
   croner: 10.0.1
   radix-ui: 1.7.0
+  openid-client: 6.8.8
 
 allowBuilds:
   '@google/genai': false
@@ -40,4 +41,6 @@ overrides:
   '@pierre/trees>@pierre/theming': 1.0.1
 
 patchedDependencies:
+  # Keep malformed loopback callback URLs from crashing OpenRouter and Radius sign-in.
+  '@earendil-works/pi-ai@1.1.0': patches/@earendil-works__pi-ai@1.1.0.patch
   pi-subagents@0.76.1: patches/pi-subagents@0.76.1.patch

@@ -40,6 +40,7 @@
     "eventsource-parser": "4.1.1",
     "fastify": "5.12.5",
     "jiti": "2.7.0",
+    "openid-client": "catalog:",
     "pi-subagents": "0.76.1",
     "pi-web-access": "0.37.0",
     "typebox": "catalog:"

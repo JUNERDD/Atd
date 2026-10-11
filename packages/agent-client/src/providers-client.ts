@@ -6,6 +6,7 @@ import {
   ProviderDisconnectRequestSchema,
   ProviderDisconnectResponseSchema,
   ProviderGetResponseSchema,
+  ProviderRemoveResponseSchema,
   ProvidersCatalogResponseSchema,
   ProvidersListResponseSchema,
   ProviderStatusResponseSchema,
@@ -14,6 +15,7 @@ import {
   type ProviderCreateRequest,
   type ProviderDisconnectResponse,
   type ProviderGetResponse,
+  type ProviderRemoveResponse,
   type ProvidersCatalogResponse,
   type ProvidersListResponse,
   type ProviderStatusResponse,
@@ -118,6 +120,23 @@ export function disconnectProvider(
     'POST',
     parse(ProviderDisconnectRequestSchema, { expectedRevision }),
     (json) => parse(ProviderDisconnectResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** Removes a connection with its credential and model files; revision-guarded. */
+export function removeProvider(
+  options: AgentClientOptions,
+  connectionId: string,
+  expectedRevision: number,
+  fetchImpl?: typeof fetch,
+): Promise<ProviderRemoveResponse> {
+  return manageRequest(
+    options,
+    `/v1/providers/${encodeURIComponent(connectionId)}?expectedRevision=${expectedRevision}`,
+    'DELETE',
+    undefined,
+    (json) => parse(ProviderRemoveResponseSchema, json),
     fetchImpl,
   );
 }

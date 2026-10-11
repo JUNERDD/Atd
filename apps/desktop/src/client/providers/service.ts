@@ -9,7 +9,7 @@ import {
   type AgentClientOptions,
 } from '@atd/agent-client';
 import { CatalogSync } from './catalog-sync';
-import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
+import { disconnectLive, fetchCatalog, fetchLiveProviders, removeLive, saveLive } from './live';
 import { ProviderLoginClient } from './login-client';
 import type {
   Connection,
@@ -80,9 +80,9 @@ export class ProviderService {
     this.changed();
   }
 
-  /** Service catalog when connected, else the local fallback. Never resolves []. */
+  /** The complete service catalog; failures remain retryable in settings. */
   async catalog(): Promise<ProviderCatalogEntry[]> {
-    return fetchCatalog(this.connection?.options() ?? null);
+    return fetchCatalog(this.options());
   }
 
   private options(): AgentClientOptions {
@@ -137,6 +137,10 @@ export class ProviderService {
 
   async disconnect(id: string, revision: number): Promise<void> {
     await this.write((options) => disconnectLive(options, id, revision));
+  }
+
+  async remove(id: string, revision: number): Promise<string | undefined> {
+    return this.write((options) => removeLive(options, id, revision));
   }
 
   /**

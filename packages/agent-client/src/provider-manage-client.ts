@@ -10,6 +10,8 @@ import {
   ProviderLevelsQuerySchema,
   ProviderLevelsResponseSchema,
   ProviderLoginResponseSchema,
+  ProviderLoginRequestSchema,
+  type ProviderLoginRequest,
   ProviderModelRequestSchema,
   ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
@@ -184,12 +186,13 @@ export function startProviderLogin(
   options: AgentClientOptions,
   connectionId: string,
   fetchImpl?: typeof fetch,
+  request?: ProviderLoginRequest,
 ): Promise<ProviderLoginResponse> {
   return manageRequest(
     options,
     connectionPath(connectionId, '/login'),
     'POST',
-    undefined,
+    request ? parse(ProviderLoginRequestSchema, request) : undefined,
     decodeLogin,
     fetchImpl,
   );

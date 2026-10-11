@@ -1,25 +1,35 @@
-import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { link, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type {
-  Api,
-  AuthContext,
-  Model,
-  ModelsPublication,
-  Provider,
-  RefreshModelsContext,
+import { isDeepStrictEqual } from 'node:util';
+import {
+  isModelType,
+  type Api,
+  type AuthContext,
+  type Model,
+  type ModelsPublication,
+  type ModelsStore,
+  type Provider,
+  type RefreshModelsContext,
 } from '@earendil-works/pi-ai';
-import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
+import {
+  parse,
+  ServiceModelDefinitionSchema,
+  type ServiceConnection,
+  type ServiceModelDefinition,
+} from '@atd/agent-contracts';
+import { Value } from 'typebox/value';
+import { writeTextAtomic } from '../config.js';
 
 /** The service's llama.cpp provider id; stored connections, catalogs and runs keep it. */
 export const LLAMA_PROVIDER = 'llamacpp';
 
 /**
- * The version whose built-in llama.cpp extension (`dist/extensions/llama/{provider,client}.js`)
- * the wrapper below was verified against. The extension is not exported, so it is loaded by file
- * path and refused for any other version.
+ * The version whose built-in llama.cpp extension and FileModelsStore were verified here.
+ * These are not exported, so they are loaded by file path and refused for any other version.
  */
-const PI_CODING_AGENT_VERSION = '1.0.0';
+const PI_CODING_AGENT_VERSION = '1.1.0';
 
 interface LlamaModules {
   /** Pi's id for the provider (`llama.cpp`); its stored models carry it. */
@@ -29,6 +39,7 @@ interface LlamaModules {
   normalizeServerUrl: (value: string) => string;
   /** `<server root>/v1`, the OpenAI-compatible inference endpoint. */
   inferenceUrl: (serverUrl: string) => string;
+  FileModelsStore: new (file: string) => ModelsStore;
 }
 
 let cached: Promise<LlamaModules> | null = null;
@@ -64,6 +75,7 @@ async function importModules(): Promise<LlamaModules> {
     );
   const provider = await load('provider.js');
   const client = await load('client.js');
+  const store = await load('../../core/models-store.js');
   if (typeof provider.LLAMA_PROVIDER_ID !== 'string')
     throw new Error('pi llama.cpp extension: LLAMA_PROVIDER_ID is unavailable.');
   return {
@@ -71,6 +83,7 @@ async function importModules(): Promise<LlamaModules> {
     createLlamaProvider: callable(provider, 'createLlamaProvider'),
     normalizeServerUrl: callable(client, 'normalizeLlamaServerUrl'),
     inferenceUrl: callable(client, 'llamaInferenceUrl'),
+    FileModelsStore: callable(store, 'FileModelsStore'),
   };
 }
 
@@ -82,8 +95,88 @@ function loadModules(): Promise<LlamaModules> {
   return cached;
 }
 
+function serviceDefinition(model: Model<Api>): ServiceModelDefinition {
+  return parse(
+    ServiceModelDefinitionSchema,
+    Value.Clean(ServiceModelDefinitionSchema, structuredClone(model)),
+  );
+}
+
+function matchesCatalog(models: Model<Api>[], catalog: ServiceModelDefinition[]): boolean {
+  const expected = new Map(catalog.map((model) => [model.id, model]));
+  if (models.length !== expected.size || expected.size !== catalog.length) return false;
+  const seen = new Set<string>();
+  try {
+    return models.every((model) => {
+      if (seen.has(model.id)) return false;
+      seen.add(model.id);
+      return isDeepStrictEqual(serviceDefinition(model), expected.get(model.id));
+    });
+  } catch {
+    return false;
+  }
+}
+
+/** Preserve legacy llama compat data only when every chat model proves the cache's binding. */
+export async function migrateLlamaCatalog(
+  connection: ServiceConnection,
+  legacyFile: string,
+  scopedFile: string,
+): Promise<void> {
+  if (!connection.catalog) return;
+  let temporary: string | undefined;
+  try {
+    if (
+      await stat(scopedFile).then(
+        () => true,
+        () => false,
+      )
+    )
+      return;
+    if ((await stat(legacyFile)).size > 8 * 1024 * 1024) return;
+    const modules = await loadModules();
+    const stored = await new modules.FileModelsStore(legacyFile).read(LLAMA_PROVIDER);
+    if (!stored || !Array.isArray(stored.models)) return;
+    const models = stored.models.filter((model) => isModelType(model, 'chat'));
+    const endpoint = modules.inferenceUrl(modules.normalizeServerUrl(connection.baseUrl));
+    if (new Set(models.map((model) => model.id)).size !== models.length) return;
+    for (const model of models) {
+      if (
+        model.provider !== LLAMA_PROVIDER ||
+        model.api !== 'openai-completions' ||
+        model.baseUrl !== endpoint
+      )
+        return;
+      // Custom overrides must not conceal malformed native cache entries during migration.
+      serviceDefinition(model);
+    }
+    if (!matchesCatalog(withCustomModels(connection, models), connection.catalog)) return;
+    temporary = `${scopedFile}.${randomUUID()}.migration`;
+    await writeTextAtomic(temporary, JSON.stringify({ [LLAMA_PROVIDER]: { ...stored, models } }));
+    // Publish only if absent: a simultaneous current-config refresh must never be overwritten.
+    await link(temporary, scopedFile);
+  } catch {
+    // Unreadable, malformed or unprovable caches are optional; the saved catalog remains usable.
+  } finally {
+    if (temporary) await rm(temporary, { force: true });
+  }
+}
+
 function asModel(definition: ServiceModelDefinition, compat?: Model<Api>['compat']): Model<Api> {
   return { ...definition, provider: LLAMA_PROVIDER, ...(compat ? { compat } : {}) };
+}
+
+function withCustomModels(
+  connection: Pick<ServiceConnection, 'customModels'>,
+  models: Model<Api>[],
+  nativeModels: Model<Api>[] = models,
+): Model<Api>[] {
+  const custom = (connection.customModels ?? []).map((definition) => {
+    const found = nativeModels.find((model) => model.id === definition.id);
+    return asModel(definition, definition.api === found?.api ? found.compat : undefined);
+  });
+  const customIds = new Set(custom.map((model) => model.id));
+  return [...models.filter((model) => !customIds.has(model.id)), ...custom];
 }
 
 /**
@@ -130,19 +223,25 @@ export async function llamaProvider(connection: ServiceConnection): Promise<Prov
     const key = `${refreshed}:${restored}`;
     if (memo?.source === source && memo.key === key) return memo.models;
     const piModels = source.map(rename);
-    const base =
-      refreshed || (connection.catalog && restored)
-        ? piModels
-        : (connection.catalog ?? []).map((definition) => asModel(definition));
-    const custom = (connection.customModels ?? []).map((definition) => {
-      const found = piModels.find((model) => model.id === definition.id);
-      return asModel(definition, definition.api === found?.api ? found.compat : undefined);
-    });
-    const customIds = new Set(custom.map((model) => model.id));
+    const combined = withCustomModels(connection, piModels);
+    // Pi persists before the service commits its catalog. A failed commit or superseded refresh
+    // must not make that cache authoritative over the last saved service catalog.
+    const useStored =
+      restored &&
+      connection.catalog &&
+      piModels.every((model) => model.baseUrl === modules.inferenceUrl(serverUrl)) &&
+      matchesCatalog(combined, connection.catalog);
     memo = {
       source,
       key,
-      models: [...base.filter((model) => !customIds.has(model.id)), ...custom],
+      models:
+        refreshed || useStored
+          ? combined
+          : withCustomModels(
+              connection,
+              (connection.catalog ?? []).map((definition) => asModel(definition)),
+              piModels,
+            ),
     };
     return memo.models;
   };
@@ -182,7 +281,10 @@ export async function llamaProvider(connection: ServiceConnection): Promise<Prov
     },
     getModels: models,
     refreshModels: (context) => {
-      const key = context.credential?.type === 'api_key' ? context.credential.key : undefined;
+      const key =
+        connection.authType !== 'none' && context.credential?.type === 'api_key'
+          ? context.credential.key
+          : undefined;
       const { stored } = context;
       return refresh({
         allowNetwork: context.allowNetwork,

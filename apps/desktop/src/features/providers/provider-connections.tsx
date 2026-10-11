@@ -1,4 +1,4 @@
-import { Check, Ellipsis, RefreshCw, Settings2, Unplug } from 'lucide-react';
+import { Check, Ellipsis, RefreshCw, Settings2, Trash2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@atd/ui/components/dropdown-menu';
 import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
+import type { ConnectionConfirm } from './connection-confirm-dialog';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
 import '../../components/open-row.css';
@@ -40,7 +41,7 @@ export function ProviderConnections({
   pending,
   canManage,
   onManage,
-  onDisconnect,
+  onConfirm,
   perform,
 }: {
   rows: ConnectionRow[];
@@ -49,7 +50,8 @@ export function ProviderConnections({
   /** Whether the provider catalog is loaded, which a connection's page needs. */
   canManage: boolean;
   onManage: (connection: Connection) => void;
-  onDisconnect: (connection: Connection) => void;
+  /** Asks before a disconnect or a removal. */
+  onConfirm: (confirm: ConnectionConfirm) => void;
   perform: (operation: () => Promise<void>) => Promise<void>;
 }) {
   const { t } = useTranslation('providers');
@@ -66,17 +68,25 @@ export function ProviderConnections({
         );
         const description = !connection.connected
           ? t('connections.status.disconnected')
-          : connection.authType === 'oauth'
-            ? t('connections.status.oauth')
-            : connection.authType === 'none'
-              ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
-              : connection.authType === 'ambient'
-                ? t('connections.status.ambient')
-                : t(
-                    verified
-                      ? 'connections.status.apiKeyVerified'
-                      : 'connections.status.apiKeyUnverified',
-                  );
+          : connection.provider === 'openai' &&
+              connection.authType === 'oauth' &&
+              connection.chatgptUsagePaused
+            ? t('chatgpt.paused')
+            : connection.provider === 'openai' &&
+                connection.authType === 'oauth' &&
+                !connection.chatgptPlanEnabled
+              ? t('chatgpt.planDisabled')
+              : connection.authType === 'oauth'
+                ? t('connections.status.oauth')
+                : connection.authType === 'none'
+                  ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
+                  : connection.authType === 'ambient'
+                    ? t('connections.status.ambient')
+                    : t(
+                        verified
+                          ? 'connections.status.apiKeyVerified'
+                          : 'connections.status.apiKeyUnverified',
+                      );
         return (
           <Item
             asChild
@@ -171,16 +181,26 @@ export function ProviderConnections({
                     <DropdownMenuItem
                       variant="destructive"
                       disabled={!connection.connected}
-                      onSelect={() => onDisconnect(connection)}
+                      onSelect={() => onConfirm({ action: 'disconnect', connection })}
                     >
                       <Unplug />
                       {t('connections.disconnect')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => onConfirm({ action: 'remove', connection })}
+                    >
+                      <Trash2 />
+                      {t('connections.remove')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </ItemActions>
               {connection.catalogError && (
                 <output className="provider-row-notice">{connection.catalogError}</output>
+              )}
+              {connection.authNotice && (
+                <output className="provider-row-notice">{connection.authNotice}</output>
               )}
               {connection.defaultModel &&
                 !connection.catalog.some((model) => model.id === connection.defaultModel) && (

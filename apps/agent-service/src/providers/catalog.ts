@@ -2,11 +2,11 @@ import { InMemoryCredentialStore, type Api, type Model } from '@earendil-works/p
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
+import { ACCOUNT_PROVIDERS } from './auth-policy.js';
 
 /**
- * Service-owned provider catalog: Pi directory plus local entries. The Pi
- * runtime is cached; any Pi failure falls back to locals only so the
- * endpoint never throws 500 for catalog reads and never returns [].
+ * Service-owned provider catalog: Pi directory plus local entries. Cache the Pi runtime,
+ * but never publish a partial catalog as a successful read when that directory fails.
  */
 const LOCAL_PROVIDERS: Array<{ id: string; name: string; baseUrl: string }> = [
   { id: LLAMA_PROVIDER, name: 'llama.cpp', baseUrl: 'http://127.0.0.1:8080/v1' },
@@ -102,7 +102,7 @@ export async function directoryModels(providerId: string): Promise<ServiceModelD
   }
 }
 
-/** Pi providers plus locals; Pi failure falls back to locals only. */
+/** Pi providers plus locals; a failed directory read is retryable, not a partial success. */
 export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
   try {
     const models = await getDirectory();
@@ -110,29 +110,26 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
     // `typesafe`). The local entries below list none on purpose and are not filtered.
     const providers = models
       .getProviders()
+      .filter((provider) => provider.id !== 'openai-codex')
       .filter((provider) => models.getModels(provider.id).length > 0);
     const piEntries = providers.map((provider): ServiceCatalogEntry => {
-      // Pi 0.99 gave `openai` a ChatGPT sign-in. This product offers that sign-in as the separate
-      // "ChatGPT / Codex" (`openai-codex`) entry, so `openai` stays the API-key provider.
-      const oauth = provider.id === 'openai' ? undefined : provider.auth.oauth;
+      const oauth = ACCOUNT_PROVIDERS.has(provider.id) ? provider.auth.oauth : undefined;
       const apiKeyType: ServiceCatalogEntry['auth'][number]['type'] = isAmbient(provider.id)
         ? 'ambient'
         : 'api_key';
       return {
         id: provider.id,
-        name:
-          provider.id === 'openai'
-            ? 'OpenAI API'
-            : provider.id === 'openai-codex'
-              ? 'ChatGPT / Codex'
-              : (provider.name ?? provider.id),
+        name: provider.name ?? provider.id,
         category: isCloud(provider.id) ? 'cloud' : oauth ? 'accounts' : 'api',
         auth: [
           ...(oauth
             ? [
                 {
                   type: 'oauth' as const,
-                  label: oauth.loginLabel ?? 'Account login',
+                  label:
+                    provider.id === 'openai'
+                      ? 'Continue with ChatGPT'
+                      : (oauth.loginLabel ?? 'Account login'),
                 },
               ]
             : []),
@@ -149,9 +146,9 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
         models: models.getModels(provider.id).map(toServiceModel),
       };
     });
-    return [...piEntries, ...localEntries()];
-  } catch {
+    return [...piEntries.filter((entry) => entry.auth.length > 0), ...localEntries()];
+  } catch (error) {
     directory = null;
-    return localEntries();
+    throw error;
   }
 }

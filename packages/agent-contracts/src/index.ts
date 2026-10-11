@@ -24,6 +24,7 @@ export * from './mcp-approvals.js';
 export * from './subagents.js';
 export * from './subagent-permissions.js';
 export * from './provider-connections.js';
+export * from './chatgpt.js';
 export * from './providers.js';
 export * from './provider-manage.js';
 export * from './commands.js';

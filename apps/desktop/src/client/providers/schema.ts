@@ -1,5 +1,11 @@
 import { Type, type Static } from 'typebox';
-import type { ProviderContextsResponse } from '@atd/agent-contracts';
+import {
+  ChatGPTConsentSchema,
+  ChatGPTConsentRequestSchema,
+  type ProviderLoginRequest,
+  type ProviderLoginDiagnostic,
+  type ProviderContextsResponse,
+} from '@atd/agent-contracts';
 
 const text = Type.String({ maxLength: 2048 });
 const id = Type.String({ minLength: 1, maxLength: 256 });
@@ -104,6 +110,8 @@ export const ConnectionDraftSchema = Type.Object(
     connectionId: Type.Union([id, Type.Null()]),
     expectedRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     apiKey: Type.Optional(Type.String({ maxLength: 8192 })),
+    chatgptConsent: Type.Optional(ChatGPTConsentRequestSchema),
+    resumeChatGPTUsage: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );
@@ -114,6 +122,11 @@ export const StoredConnectionSchema = Type.Object(
     connectionId: id,
     revision: Type.Integer({ minimum: 1 }),
     connected: Type.Boolean(),
+    authNotice: Type.Optional(Type.String({ maxLength: 2000 })),
+    accountLabel: Type.Optional(Type.String({ maxLength: 320 })),
+    chatgptConsent: Type.Optional(ChatGPTConsentSchema),
+    chatgptPlanEnabled: Type.Optional(Type.Boolean()),
+    chatgptUsagePaused: Type.Optional(Type.Boolean()),
     encryptedCredential: Type.String({ maxLength: 65536 }),
     catalog: Type.Array(ModelDefinitionSchema),
     catalogError: Type.String(),
@@ -162,6 +175,8 @@ export interface ProviderCatalogEntry {
   models: ModelDefinition[];
 }
 export interface LoginState {
+  chatgptPlanEnabled?: boolean;
+  diagnostic?: ProviderLoginDiagnostic;
   id: string;
   connectionId: string;
   status: 'waiting' | 'complete' | 'cancelled' | 'error';
@@ -199,6 +214,11 @@ export interface ProviderBridge {
    */
   setContext: (reference: ModelReference, tier: ContextTier, revision: number) => Promise<void>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
+  /**
+   * Removes a connection with its credential and model files; revision-guarded. Removing the
+   * default leaves no default until the user chooses one.
+   */
+  remove: (connectionId: string, revision: number) => Promise<string | undefined>;
   refresh: (connectionId: string) => Promise<void>;
   /**
    * A model list opened: background-refreshes connected catalogs that are more than a minute old.
@@ -207,7 +227,7 @@ export interface ProviderBridge {
    */
   refreshCatalogs: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
-  login: (connectionId: string) => Promise<LoginState>;
+  login: (connectionId: string, request?: ProviderLoginRequest) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;
   cancel: (id: string) => Promise<void>;
   openLink: (id: string) => Promise<void>;

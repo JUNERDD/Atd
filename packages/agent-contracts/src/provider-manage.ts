@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ChatGPTConsentRequestSchema } from './chatgpt.js';
 import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
 import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
@@ -27,6 +28,8 @@ export type ProviderCredentialChange = Static<typeof ProviderCredentialChangeSch
 /** Replaces the editable configuration; provider and authentication method stay fixed. */
 export const ProviderUpdateRequestSchema = Type.Object(
   {
+    chatgptConsent: Type.Optional(ChatGPTConsentRequestSchema),
+    resumeChatGPTUsage: Type.Optional(Type.Literal(true)),
     expectedRevision: Type.Integer({ minimum: 1 }),
     name: ServiceConnectionSchema.properties.name,
     baseUrl: ServiceConnectionSchema.properties.baseUrl,
@@ -159,6 +162,37 @@ export const ProviderContextRequestSchema = Type.Object(
 );
 export type ProviderContextRequest = Static<typeof ProviderContextRequestSchema>;
 
+/** Safe protocol diagnostics only; never include upstream messages, URLs, or token claims. */
+export const ProviderLoginDiagnosticSchema = Type.Object(
+  {
+    kind: Type.Union([
+      Type.Literal('network'),
+      Type.Literal('expired'),
+      Type.Literal('invalidGrant'),
+      Type.Literal('rejected'),
+      Type.Literal('unavailable'),
+      Type.Literal('invalidResponse'),
+      Type.Literal('verification'),
+    ]),
+    stage: Type.Union([Type.Literal('discovery'), Type.Literal('exchange')]),
+    code: Type.String({ maxLength: 100 }),
+    field: Type.Optional(Type.String({ maxLength: 32 })),
+    status: Type.Optional(Type.Integer({ minimum: 100, maximum: 599 })),
+    reason: Type.Optional(
+      Type.Union([
+        Type.Literal('pkceMismatch'),
+        Type.Literal('redirectMismatch'),
+        Type.Literal('clientMismatch'),
+        Type.Literal('codeUsed'),
+        Type.Literal('codeExpired'),
+      ]),
+    ),
+    requestId: Type.Optional(Type.String({ maxLength: 128 })),
+  },
+  { additionalProperties: false },
+);
+export type ProviderLoginDiagnostic = Static<typeof ProviderLoginDiagnosticSchema>;
+
 /**
  * Account sign-in progress. The service runs the Pi login flow and keeps its
  * state; the caller polls it while `waiting`, answers `prompt`, and opens
@@ -166,6 +200,8 @@ export type ProviderContextRequest = Static<typeof ProviderContextRequestSchema>
  */
 export const ProviderLoginStateSchema = Type.Object(
   {
+    chatgptPlanEnabled: Type.Optional(Type.Boolean()),
+    diagnostic: Type.Optional(ProviderLoginDiagnosticSchema),
     id: Identifier,
     connectionId: Identifier,
     status: Type.Union([
