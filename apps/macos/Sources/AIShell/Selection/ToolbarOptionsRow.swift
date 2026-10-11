@@ -195,9 +195,21 @@ final class ToolbarOptionsSeparator: NSView {
 
 /// The options half of a split command button on the toolbar's capsule: a narrow capsule with a
 /// down chevron right after the command's own button, washed like it, and held in its pressed
-/// wash while its options menu is open (``isActive``).
+/// wash while its options menu is open (``isActive``). One that ends the capsule
+/// (``endsCapsule``) is as wide as the toolbar's square buttons, so its wash is a circle that
+/// nests in the capsule's round end like More's; a narrow capsule's tighter corners would not.
 final class ToolbarOptionsChevron: NSButton, ToolbarHoverable {
   static let width: CGFloat = 20
+  /// The width of one that ends the capsule.
+  static let endingWidth = AnnotationToolbarButton.side
+
+  var endsCapsule = false {
+    didSet {
+      guard endsCapsule != oldValue else { return }
+      widthConstraint.constant = endsCapsule ? Self.endingWidth : Self.width
+      needsDisplay = true
+    }
+  }
 
   var isHovered = false {
     didSet { if isHovered != oldValue { needsDisplay = true } }
@@ -207,6 +219,8 @@ final class ToolbarOptionsChevron: NSButton, ToolbarHoverable {
     didSet { if isActive != oldValue { needsDisplay = true } }
   }
 
+  private var widthConstraint: NSLayoutConstraint!
+
   init(action: Selector) {
     let side = AnnotationToolbarButton.side
     super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: side))
@@ -214,10 +228,8 @@ final class ToolbarOptionsChevron: NSButton, ToolbarHoverable {
     title = ""
     self.action = action
     translatesAutoresizingMaskIntoConstraints = false
-    NSLayoutConstraint.activate([
-      widthAnchor.constraint(equalToConstant: Self.width),
-      heightAnchor.constraint(equalToConstant: side),
-    ])
+    widthConstraint = widthAnchor.constraint(equalToConstant: Self.width)
+    NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: side)])
     setAccessibilityRole(.menuButton)
   }
 

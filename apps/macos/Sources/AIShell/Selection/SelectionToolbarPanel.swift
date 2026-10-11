@@ -156,9 +156,20 @@ final class SelectionToolbarPanel: NSObject {
       action: #selector(askClicked))
     ask.toolTip = strings.text(.selectionToolbarAskTooltip)
     let units = commands.enumerated().map { index, command in commandUnit(command, index) }
+    let widths = units.map { Double($0.view.fittingSize.width) }
+    let extra = Double(ToolbarOptionsChevron.endingWidth - ToolbarOptionsChevron.width)
     let visible = SelectionToolbarLayout.visibleCommandCount(
-      askWidth: ask.fittingSize.width, commandWidths: units.map { $0.view.fittingSize.width })
+      askWidth: ask.fittingSize.width, commandWidths: widths,
+      endingWidths: zip(units, widths).map { unit, width in
+        unit.controls.contains { $0 is ToolbarOptionsChevron } ? width + extra : width
+      })
     overflow = Array(commands.dropFirst(visible))
+    // The last command's chevron ends the capsule when no More follows it.
+    if overflow.isEmpty, visible > 0,
+      let chevron = units[visible - 1].controls.last as? ToolbarOptionsChevron
+    {
+      chevron.endsCapsule = true
+    }
     var views: [NSView] = [ask] + units.prefix(visible).map(\.view)
     var items: [any ToolbarHoverable] = [ask] + units.prefix(visible).flatMap(\.controls)
     if !overflow.isEmpty {
