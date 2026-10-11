@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { Value } from 'typebox/value';
+import { CommandThinkingLevelSchema, ThinkingLevelSchema } from '@atd/agent-contracts';
 import { Label } from '@atd/ui/components/label';
 import {
   Select,
@@ -9,13 +11,20 @@ import {
 } from '@atd/ui/components/select';
 import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
+import { FieldHint } from '../../components/field-hint';
 import { ModelConfigPopover } from '../providers/model-config-popover';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../client/agent/command-schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 
-/** The command's run policy as an editor group: model, memory and allowed tools. */
+/** Every level a command may ask for, lowest first, after `inherit`. */
+const LEVELS = ThinkingLevelSchema.anyOf.map((level) => level.const);
+
+/**
+ * The command's run policy as an editor group: model, effort, memory and allowed tools. The effort
+ * is the command's own, whichever model runs it, so the fixed model's popover offers none.
+ */
 export function RunSettings({
   command,
   onChange,
@@ -27,6 +36,7 @@ export function RunSettings({
 }) {
   const { t } = useTranslation('commands');
   const { t: tCommon } = useTranslation('common');
+  const { t: tProviders } = useTranslation('providers');
   const provider = settings?.connections.find(
     (connection) => connection.connectionId === settings.defaultConnectionId,
   );
@@ -74,16 +84,38 @@ export function RunSettings({
                 <ModelConfigPopover
                   connections={settings?.connections ?? []}
                   model={fixedModel}
-                  thinkingLevel={fixedModel.thinkingLevel ?? 'off'}
+                  hideEffort
                   onModelChange={(reference) =>
                     onChange({ ...command, model: { ...fixedModel, ...reference } })
-                  }
-                  onThinkingLevelChange={(thinkingLevel) =>
-                    onChange({ ...command, model: { ...fixedModel, thinkingLevel } })
                   }
                 />
               )}
             </div>
+          </div>
+          <div className="settings-field">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="command-thinking-level">{t('run.thinkingLevel')}</Label>
+              <FieldHint text={t('run.thinkingLevelHint')} />
+            </div>
+            <Select
+              value={command.thinkingLevel}
+              onValueChange={(value) => {
+                if (Value.Check(CommandThinkingLevelSchema, value))
+                  onChange({ ...command, thinkingLevel: value });
+              }}
+            >
+              <SelectTrigger id="command-thinking-level" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inherit">{t('run.thinkingLevelInherit')}</SelectItem>
+                {LEVELS.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {tProviders(`thinkingLevels.levels.${level}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="settings-field">
             <Label htmlFor="command-memory">{t('run.memory')}</Label>

@@ -30,7 +30,7 @@ export async function replaceFollowUps(
 }
 
 /** Whether every entry of `next` is still queued, counting repeated texts. */
-function withinQueue(next: readonly string[], queued: readonly string[]): boolean {
+export function withinQueue(next: readonly string[], queued: readonly string[]): boolean {
   const left = new Map<string, number>();
   for (const text of queued) left.set(text, (left.get(text) ?? 0) + 1);
   for (const text of next) {

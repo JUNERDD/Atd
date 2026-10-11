@@ -26,20 +26,16 @@ import { AuditWriter } from './audit.js';
 import type { RunFolders } from './folders/material.js';
 import { createReviewer } from './harness/auto-review.js';
 import {
-  applyRunToSession,
-  createLiveState,
   NO_RUN_MATERIAL,
   type RunAttachment,
   type RunMaterial,
   type SessionFactoryDeps,
 } from './pi-session.js';
-import { prepareRunBinding } from './run-binding.js';
 import { runPromptOptions, runPromptText } from './run-prompt.js';
-import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
+import { releaseRunSelections } from './run-freeze.js';
+import { openRunSession, prepareRun } from './run-prepare.js';
 import type { LiveState } from './live-state.js';
 import { lastAssistant } from './task-view.js';
-import { runSkillsError } from './skills/run-skills.js';
-import type { RuntimeAgent } from './subagents/agents.js';
 import {
   abortSubagentsForTask,
   disposeSubagentsForTask,
@@ -47,7 +43,7 @@ import {
   rebindSubagentsForRun,
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
-import { replaceFollowUps } from './tasks/queue-replace.js';
+import { TaskQueue } from './tasks/task-queue.js';
 
 export interface RunnerContext {
   ledger: Ledger;
@@ -61,8 +57,8 @@ export interface RunnerContext {
 
 /**
  * One Node runner per parent task. Owns run lifecycle, ledger status and
- * audit; staged selections freeze in run-freeze.ts, and Pi session assembly
- * lives in pi-session.ts.
+ * audit; a run's material and session are prepared in run-prepare.ts, and Pi
+ * session assembly lives in pi-session.ts and lite-session.ts.
  */
 export class TaskRunner {
   /** The live session; a release serializes against reopening it (session-release.ts). */
@@ -78,10 +74,18 @@ export class TaskRunner {
   private readonly grants = new Set<string>();
   /** Wiring for every Pi session this runner builds; accessors read the current run. */
   private readonly session: SessionFactoryDeps;
+  /** What the user queued for the active run, until a run delivers it (tasks/task-queue.ts). */
+  readonly pending: TaskQueue;
 
+  /**
+   * `beforeCompleted` runs once a run's prompt ended without an error or a Stop, before the run
+   * reports completed: the runner manager accepts the task's next run from its held messages then
+   * (runner-manager.ts `startHeld`), so the task is never seen idle while messages wait.
+   */
   constructor(
     private readonly ctx: RunnerContext,
     readonly taskId: string,
+    private readonly beforeCompleted: (runId: string) => Promise<void>,
   ) {
     this.session = {
       ctx,
@@ -109,6 +113,19 @@ export class TaskRunner {
       stopRequested: () => this.aborted,
       deleted: () => this.deleted,
     };
+    this.pending = new TaskQueue({
+      live: () => this.slot.live,
+      stopped: () => this.aborted,
+      interject: (undelivered) => ctx.confirms.interject(taskId, undelivered),
+      publish: (queue) =>
+        ctx.events.publish({
+          taskId,
+          runId: this.currentRunId,
+          executionId: this.executionId(),
+          type: 'queue.update',
+          data: queue,
+        }),
+    });
   }
 
   executionId(): string {
@@ -174,38 +191,30 @@ export class TaskRunner {
     });
   }
 
-  queueState(): QueueState {
-    return this.slot.live?.transcript.queueState() ?? { steering: [], followUp: [] };
-  }
-
   /** Executes one accepted run to a terminal ledger state; a failed folder read fails it. */
   async execute(run: TaskRun, attachments: RunAttachment[], folders: RunFolders): Promise<void> {
     this.currentRunId = run.id;
     this.aborted = false;
+    // A lite session answers only its own prompt; what is queued meanwhile waits (held-queue.ts).
+    if (run.snapshot.lite) this.pending.held.start();
     this.audit = new AuditWriter(
       path.join(this.ctx.paths.auditDir, `${run.id}.jsonl`),
       this.ctx.log,
     );
     await this.setStatus(run.id, 'running', '');
     try {
-      // T3/T4: skill, role, MCP and reference selections freeze once at
-      // accept; the run's material and session binding come from them.
-      const frozen = await freezeRunSelections(this.session, run);
-      const blocked = runSkillsError(run, frozen.skills.loaded, frozen.catalog);
-      if (blocked) {
-        await this.setStatus(run.id, 'failed', blocked);
+      const prepared = await prepareRun(this.session, run, attachments, folders);
+      if (prepared.blocked !== null) {
+        await this.setStatus(run.id, 'failed', prepared.blocked);
         return;
       }
-      this.material = {
-        instructions: run.snapshot.instructions,
-        attachments,
-        folders: await folders(),
-        references: frozen.references.material,
-        skills: frozen.skills.loaded,
-        catalog: frozen.catalog,
-        memory: frozen.memory,
-      };
-      const live = await this.ensureSession(run, frozen.agents);
+      this.material = prepared.material;
+      const live = await openRunSession(
+        { session: this.session, slot: this.slot, stopped: () => this.aborted },
+        run,
+        prepared.agents,
+      );
+      if (!run.snapshot.lite) await this.pending.held.handOver(live);
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
@@ -213,8 +222,8 @@ export class TaskRunner {
       const last = lastAssistant(live.manager.getBranch());
       const failed = last?.stopReason === 'error';
       const error = failed ? (last.errorMessage ?? 'The model request failed.') : '';
-      if (this.statusOf(run.id) === 'stopping' || this.aborted)
-        await this.setStatus(run.id, 'stopped', '');
+      if (!error && !this.isStopping(run.id)) await this.beforeCompleted(run.id);
+      if (this.isStopping(run.id)) await this.setStatus(run.id, 'stopped', '');
       else await this.setStatus(run.id, error ? 'failed' : 'completed', error);
     } catch (error) {
       if (error instanceof AuthRequired) {
@@ -222,7 +231,7 @@ export class TaskRunner {
         return;
       }
       const state = this.statusOf(run.id);
-      if (state === 'stopping' || this.aborted) await this.setStatus(run.id, 'stopped', '');
+      if (this.isStopping(run.id)) await this.setStatus(run.id, 'stopped', '');
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
@@ -231,7 +240,8 @@ export class TaskRunner {
       // attachment and skill text are let go.
       const { catalog, memory } = this.material;
       this.material = { ...NO_RUN_MATERIAL, catalog, memory };
-      await releaseRunSelections(this.session, run.id);
+      // A lite run froze nothing (run-prepare.ts).
+      if (!run.snapshot.lite) await releaseRunSelections(this.session, run.id);
       await this.audit?.flush();
     }
   }
@@ -239,51 +249,12 @@ export class TaskRunner {
   /** Stops the run and returns the queued messages it withdrew, undelivered. */
   async abort(runId: string): Promise<QueueState> {
     this.aborted = true;
-    // Pi's abort keeps its queue, and the next prompt would deliver it into an
-    // unrelated run; withdraw it first, as Pi's own Stop restores it to the editor.
-    const unsent = this.slot.live?.session.clearQueue() ?? { steering: [], followUp: [] };
+    const unsent = this.pending.withdraw();
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.ctx.capabilities.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.slot.live?.session.abort();
     return unsent;
-  }
-
-  async queue(text: string, mode: 'followUp' | 'steer'): Promise<void> {
-    const live = this.slot.live;
-    if (!live || this.aborted) throw new Error('The task has no active run.');
-    // Pi runs skill and template expansion on every queued entry, but with no
-    // skills or prompt templates loaded, `/skill:` text stays as written.
-    if (mode === 'followUp') await live.session.followUp(text);
-    else await live.session.steer(text);
-    this.withdrawIfStopped(live);
-    // A steer is sent to be read now, so it cannot wait behind an approval or a question.
-    if (mode === 'steer')
-      await this.ctx.confirms.interject(
-        this.taskId,
-        () => live.session.getSteeringMessages().length > 0,
-      );
-  }
-
-  async replaceQueue(followUp: string[]): Promise<QueueState> {
-    const live = this.slot.live;
-    if (!live || this.aborted) throw new Error('The task has no active run.');
-    return live.transcript.batchQueue(async () => {
-      const queue = await replaceFollowUps(live.session, followUp);
-      this.withdrawIfStopped(live);
-      return queue;
-    });
-  }
-
-  /**
-   * Stop withdraws the queue once, but an edit that was still validating or in
-   * Pi's input handlers lands afterwards; take it back out so it cannot reach
-   * a later run, and fail so the caller keeps its text.
-   */
-  private withdrawIfStopped(live: LiveState): void {
-    if (!this.aborted) return;
-    live.session.clearQueue();
-    throw new Error('The task stopped before the message was queued.');
   }
 
   /** Releases the idle session; reopening resumes from the same session file. */
@@ -312,6 +283,11 @@ export class TaskRunner {
     return this.ctx.ledger.run(this.taskId, runId).status;
   }
 
+  /** Stop was requested for the run. */
+  private isStopping(runId: string): boolean {
+    return this.statusOf(runId) === 'stopping' || this.aborted;
+  }
+
   private async setStatus(runId: string, status: RunStatus, error: string): Promise<void> {
     // The run's audit is complete before anyone hears it ended (audit.ts): the automation engine
     // reads its unattended declines and writes then (unattended.ts).
@@ -331,19 +307,5 @@ export class TaskRunner {
       type: 'run.status',
       data: { status, error },
     });
-  }
-
-  private async ensureSession(run: TaskRun, agents: RuntimeAgent[]): Promise<LiveState> {
-    const binding = await prepareRunBinding(this.session, run, agents);
-    // An idle or tier-change release still shutting the session down ends before it reopens. A
-    // run stopped while it waited ends here, leaving the session untouched.
-    await this.slot.settled();
-    if (this.aborted) throw new Error('The run stopped before its session opened.');
-    const live = this.slot.live;
-    if (live && (await applyRunToSession(live, run, binding))) return live;
-    // A changed run binding or another connection needs a new session;
-    // reopen it from the same session file.
-    await this.release();
-    return this.slot.hold(await createLiveState(this.session, run, binding));
   }
 }

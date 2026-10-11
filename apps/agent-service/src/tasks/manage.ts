@@ -136,7 +136,7 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       const task = ctx.ledger.task(taskId);
       if (!task.runs.some((run) => isActiveStatus(run.status)))
         throw new Error('The task has no active run.');
-      const queue = await ctx.manager.runnerFor(taskId).replaceQueue(body.followUp);
+      const queue = await ctx.manager.runnerFor(taskId).pending.replace(body.followUp);
       return { queue };
     },
   );

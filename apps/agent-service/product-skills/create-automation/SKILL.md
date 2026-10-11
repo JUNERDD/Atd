@@ -24,7 +24,7 @@ Work out the following from the request and the conversation; ask the user only 
    - `folderIds`: folders from `context` that every run may read; a folder trigger's own folder is always readable.
    - `maxDurationMinutes`, 5 to 240: a run still going after this is stopped and counts as failed.
    - `missedRuns`: `runOnce` runs the latest occurrence missed while the Mac slept or the app was closed, once and late; `skip` drops them.
-   - Leave `model` and `thinkingLevel` out: runs then use the command's own model or the default one.
+   - Leave `model` and `thinkingLevel` out: runs then use the command's own model and reasoning level, or the defaults where the command sets none.
 5. **delivery** — `notify`: `whenNew` notifies only when a run found something new, `always` after every run, `never` only when a run fails or needs attention, which always notify; `includePreviousResult` gives each run the previous answer, so it can report only what changed.
 6. **enabled** — whether it starts switched on.
 

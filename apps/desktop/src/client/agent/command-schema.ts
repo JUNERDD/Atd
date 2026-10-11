@@ -1,6 +1,9 @@
 import { Type, type Static } from 'typebox';
-import { CommandPlacementSchema } from '@atd/agent-contracts';
-import { ModelThinkingLevelSchema } from '../providers/schema';
+import {
+  CommandOutputSchema,
+  CommandPlacementSchema,
+  CommandThinkingLevelSchema,
+} from '@atd/agent-contracts';
 
 export const Identifier = Type.String({
   minLength: 1,
@@ -84,8 +87,6 @@ export const ModelPolicySchema = Type.Union([
       mode: Type.Literal('fixed'),
       connectionId: Type.String({ maxLength: 4096 }),
       modelId: Type.String({ minLength: 1, maxLength: 256 }),
-      /** Level this command pins; omitted commands use the connection's saved level. */
-      thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     },
     { additionalProperties: false },
   ),
@@ -122,8 +123,15 @@ export const CommandSchema = Type.Object(
     ),
     /** Where the command is offered beyond the command list (`offeredAt` in `@atd/agent-contracts`). */
     placement: CommandPlacementSchema,
+    /** What happens with the run's answer (`CommandOutput` in `@atd/agent-contracts`). */
+    output: CommandOutputSchema,
     parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
     model: ModelPolicySchema,
+    /**
+     * The reasoning level the command asks for, whichever model runs it; `inherit` leaves the
+     * connection's default (`CommandThinkingLevel` in `@atd/agent-contracts`).
+     */
+    thinkingLevel: CommandThinkingLevelSchema,
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
     /**
@@ -132,6 +140,12 @@ export const CommandSchema = Type.Object(
      * joins the saved command cache, and is never sent when creating a command.
      */
     pluginId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+    /**
+     * The argument values the user's last run from the app used (`ServiceCommandFull`), computed
+     * by the service and never sent back with a write. A run starts from them over the parameter
+     * defaults (`commandValues` in `command-arguments.ts`), which revalidates them first.
+     */
+    lastArguments: Type.Optional(ArgumentValuesSchema),
   },
   { additionalProperties: false },
 );
@@ -147,6 +161,7 @@ export const CommandFieldsSchema = Type.Object(
     parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: CommandSchema.properties.memory,
+    thinkingLevel: Type.Optional(CommandThinkingLevelSchema),
   },
   { additionalProperties: false },
 );

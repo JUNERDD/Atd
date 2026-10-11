@@ -27,6 +27,8 @@ export * from './provider-connections.js';
 export * from './providers.js';
 export * from './provider-manage.js';
 export * from './commands.js';
+export * from './command-run.js';
+export * from './command-output.js';
 export * from './memory.js';
 export * from './memory-units.js';
 export * from './tasks-manage.js';

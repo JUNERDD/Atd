@@ -3,7 +3,6 @@ import {
   type AgentTask,
   type ModelSelection,
   type RunSnapshot,
-  type RunTrigger,
   type ServiceBlock,
   type SubmitTaskRequest,
   type TaskRun,
@@ -19,6 +18,7 @@ import {
   selectRunModel,
   type RunContextWindow,
 } from './run-selection.js';
+import type { InternalSubmitOptions } from './submit-options.js';
 
 /**
  * Loads the context window of the model `freezeRunSnapshot` selects for the request, before
@@ -54,8 +54,9 @@ function submitModelSelection(
  * for the task's follow-ups), else the defaults. The context window freezes like the thinking
  * level: later tier changes never reach an accepted run. A snapshot over the context budget is
  * refused. `task` is the task the run joins, null for a new one, and `onBranch` its user messages
- * as `branchUserEntries` read them. `trigger` names the automation that started the run; only
- * service code passes it (`InternalSubmitOptions`).
+ * as `branchUserEntries` read them. `internal` carries what only service code sets: the `trigger`
+ * that names the automation that started the run, the hidden `instructions` it is told, and
+ * whether it runs `lite`. None of them carries over to a follow-up.
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
@@ -63,15 +64,16 @@ export function freezeRunSnapshot(
   contextWindowOf: RunContextWindow,
   task: AgentTask | null,
   onBranch: BranchUserEntries | null,
-  trigger?: RunTrigger,
+  internal: InternalSubmitOptions = {},
 ): RunSnapshot {
+  const { trigger, instructions = '', lite } = internal;
   const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
   const contextWindow = contextWindowOf(model);
   const snapshot: RunSnapshot = {
     input: request.input,
-    instructions: '',
+    instructions,
     model,
     tools: [...(request.tools ?? last?.snapshot.tools ?? DEFAULT_RUN_TOOLS)],
     // Runs with memory search and learn through the service memory authority (harness slot).
@@ -81,6 +83,7 @@ export function freezeRunSnapshot(
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
     ...(isFromCommand(request, task, onBranch) ? { fromCommand: true } : {}),
     ...(trigger ? { trigger } : {}),
+    ...(lite ? { lite } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');

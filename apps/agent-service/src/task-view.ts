@@ -54,7 +54,7 @@ export function taskSummary(
     task: ctx.ledger.task(taskId),
     requests: ctx.confirms.forTask(taskId),
     capabilities: ctx.capabilities.forTask(taskId),
-    queue: runner?.queueState() ?? { steering: [], followUp: [] },
+    queue: runner?.pending.state() ?? { steering: [], followUp: [] },
   };
 }
 

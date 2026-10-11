@@ -1,32 +1,24 @@
-import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
 import { getCurrentTools, type ImageContent } from '@earendil-works/pi-ai';
 import {
-  createAgentSession,
   createToolSearchExtension,
-  DefaultResourceLoader,
-  SessionManager,
-  SettingsManager,
   type AgentSession,
+  type SessionManager,
 } from '@earendil-works/pi-coding-agent';
 import type { RunStatus, TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
-import { CompactionObserver } from './compaction/observer.js';
 import { compactionSettings } from './compaction/policy.js';
 import { pruneToolOutputs } from './compaction/prune.js';
 import type { RunFolder } from './folders/material.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { markInvocation } from './invocation-marker.js';
-import { bindLiveState, type LiveState } from './live-state.js';
+import type { LiveState } from './live-state.js';
 import { mcpServersSection } from './mcp/servers-section.js';
 import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
-import { REQUEST_POLICY } from './request-policy.js';
 import { ResourceStore } from './resources.js';
 import type { RunBinding } from './run-binding.js';
-import { rewindManager, rewindSession } from './session-rewind.js';
-import { openRunModel, reuseRunModel } from './run-model.js';
-import { buildSkillLoaderOptions } from './skills/loader.js';
-import { skillProfilePaths } from './skills/profile.js';
+import { rewindSession } from './session-rewind.js';
+import { reuseRunModel } from './run-model.js';
+import { buildRunSession, openSessionBase } from './session-base.js';
 import { loadedSkillDirs, loadSkillTool } from './skills/load-skill-tool.js';
 import type { LoadedSkill } from './skills/run-skills.js';
 import { sessionSkillCatalog } from './skills/session-catalog.js';
@@ -122,12 +114,11 @@ export const NO_RUN_MATERIAL: RunMaterial = {
 };
 
 /**
- * Pi session assembly for one parent task, extracted from the desktop
- * worker-session shape: the run's connection model runtime, in-memory
- * settings with cache warming off, the service request policy and the
- * service compaction policy for the run's model, service-owned SessionManager
- * and resource loader. `binding`
- * supplies what Pi fixes at construction (run-binding.ts).
+ * The full Pi session for one parent task, on the base every run session shares (session-base.ts:
+ * the run's model runtime, in-memory settings with the service request and compaction policies,
+ * the service-owned SessionManager and resource loader) with the service tools, MCP, subagents,
+ * skills and harness. `binding` supplies what Pi fixes at construction (run-binding.ts). A lite run
+ * builds its session in lite-session.ts instead.
  */
 export async function createLiveState(
   deps: SessionFactoryDeps,
@@ -135,34 +126,8 @@ export async function createLiveState(
   binding: RunBinding,
 ): Promise<LiveState> {
   const { ctx, taskId } = deps;
-  // The run that owns a session's unmarked start; a new task's first run is this one.
-  const [firstRun = run] = ctx.ledger.task(taskId).runs;
-  const sessionsDir = path.join(ctx.paths.sessionsDir, taskId);
-  const cwd = path.join(ctx.paths.tasksDir, taskId, 'output');
-  // T3 skill wiring: resource loading uses the service profile cwd, never the
-  // business output dir, so task files cannot become trusted Pi configuration.
-  const skillProfile = skillProfilePaths(ctx.paths.root, ctx.paths.agentDir);
-  await mkdir(sessionsDir, { recursive: true });
-  await mkdir(cwd, { recursive: true });
-  await mkdir(skillProfile.loaderCwd, { recursive: true });
-  const runModel = await openRunModel(ctx.paths, run);
-  const settings = SettingsManager.inMemory(
-    {
-      ...REQUEST_POLICY,
-      defaultThinkingLevel: 'off',
-      cacheWarming: 'off',
-      ...compactionSettings(runModel.model),
-    },
-    // T3: projectTrusted:false from the first read; task cwd settings excluded.
-    { projectTrusted: false },
-  );
-  const task = ctx.ledger.task(taskId);
-  const manager = task.sessionFile
-    ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
-    : SessionManager.create(ctx.paths.agentDir, sessionsDir);
-  // Before the session is built on it, so its context and extension state start on the new branch.
-  if (run.snapshot.branchBefore) rewindManager(manager, run.snapshot.branchBefore);
-  const compaction = new CompactionObserver(manager);
+  const base = await openSessionBase(deps, run);
+  const { cwd, manager, runModel } = base;
   const subagentsFactory = await prepareSubagentsParent(deps, binding, runModel.childRuntime);
   const resources = new ResourceStore(ctx.ledger, ctx.paths);
   const host: ServiceToolHost = {
@@ -196,6 +161,8 @@ export async function createLiveState(
   };
   // The memory learner reviews this session's model and branch, also while it shuts down.
   let session: AgentSession | null = null;
+  // Set once the session is followed; the full reprojection that ends its build covers before.
+  let state: LiveState | null = null;
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
   const harness = await prepareHarness({
     runner: deps,
@@ -212,81 +179,40 @@ export async function createLiveState(
         branch: () => manager.getBranch(),
       },
   });
-  const loader = new DefaultResourceLoader(
-    buildSkillLoaderOptions({
-      loaderCwd: skillProfile.loaderCwd,
-      agentDir: ctx.paths.agentDir,
-      settingsManager: settings,
-      systemPrompt: SERVICE_SYSTEM_PROMPT,
-      appendSystemPrompt: [],
-      extensionFactories: [
-        serviceTools(host),
-        binding.mcp.factory,
-        mcpServersSection(binding.mcp.bindings),
-        // Registered inactive; the allowlist declares it when a bound MCP server is deferred.
-        createToolSearchExtension(),
-        // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
-        codemodeExtension({
-          taskId,
-          resources,
-          resourcesDir: ctx.paths.resourcesDir,
-          log: ctx.log,
-        }),
-        subagentsFactory,
-        // Before the harness, so the memory sections render after the skill catalog.
-        sessionSkillCatalog(() => deps.currentMaterial().catalog),
-        sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
-        loadSkillTool({ catalog: () => deps.currentMaterial().catalog }),
-        // Before the harness: it marks a compaction prepared ahead of the memory learner's hook.
-        compaction.extension(),
-        pruneToolOutputs(),
-        runMaterialContext(deps.currentMaterial),
-        leadingSystemMessage(),
-        ...harness,
-      ],
-    }),
-  );
-  await loader.reload();
-  if (loader.getExtensions().errors.length)
-    throw new Error('An Agent extension could not be loaded.');
-  const created = await createAgentSession({
-    cwd,
-    agentDir: ctx.paths.agentDir,
-    modelRuntime: runModel.models,
-    model: runModel.model,
-    settingsManager: settings,
-    sessionManager: manager,
-    resourceLoader: loader,
+  state = await buildRunSession(deps, run, base, {
+    systemPrompt: SERVICE_SYSTEM_PROMPT,
+    extensionFactories: [
+      serviceTools(host),
+      binding.mcp.factory,
+      mcpServersSection(binding.mcp.bindings),
+      // Registered inactive; the allowlist declares it when a bound MCP server is deferred.
+      createToolSearchExtension(),
+      // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
+      codemodeExtension({
+        taskId,
+        resources,
+        resourcesDir: ctx.paths.resourcesDir,
+        log: ctx.log,
+      }),
+      subagentsFactory,
+      // Before the harness, so the memory sections render after the skill catalog.
+      sessionSkillCatalog(() => deps.currentMaterial().catalog),
+      sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
+      loadSkillTool({ catalog: () => deps.currentMaterial().catalog }),
+      // Before the harness: it marks a compaction prepared ahead of the memory learner's hook.
+      base.compaction.extension(),
+      pruneToolOutputs(),
+      runMaterialContext(deps.currentMaterial),
+      leadingSystemMessage(),
+      ...harness,
+    ],
     tools: binding.tools,
-    thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
-  });
-  session = created.session;
-  created.session.setActiveToolsByName(declaredTools(manager, binding));
-  await created.session.bindExtensions({
-    mode: 'json',
-    onError: (error) => {
-      ctx.log.warn('Extension error.', { taskId, error: error.error });
+    bindingKey: binding.key,
+    created: (created) => {
+      session = created;
+      created.setActiveToolsByName(declaredTools(manager, binding));
     },
   });
-  // Pi compacts before sending a prompt, before its agent run starts, and a Stop meanwhile aborts
-  // only that compaction; the prompt would still be sent. Stop it as soon as its run starts.
-  created.session.subscribe((event) => {
-    if (event.type === 'agent_start' && deps.stopRequested()) void created.session.abort();
-  });
-  const state = await bindLiveState({
-    ctx,
-    taskId,
-    session: created.session,
-    manager,
-    runModel,
-    compaction,
-    bindingKey: binding.key,
-    currentRunId: deps.currentRunId,
-    firstRunId: firstRun.id,
-  });
-  markInvocation(manager, run);
-  state.transcript.reproject(true);
-  state.context.update();
   return state;
 }
 

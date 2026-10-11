@@ -1,7 +1,7 @@
 import type { MemoryUnit } from '@atd/agent-contracts';
 import { escapeXml, plural, renderCatalog } from '../prompt-catalog.js';
 import type { MemoryRuntimeStore } from './engine-types.js';
-import { descriptionElement, framed, openTag } from './framing.js';
+import { CONTEXT_NOTE, descriptionElement, framed, openTag } from './framing.js';
 import { compareUnits, CORE_BODY_LIMIT, CORE_BUDGET, type UnitDraft } from './unit.js';
 
 /** Most characters the `memory_index` section brings into a run's context. */
@@ -16,7 +16,10 @@ export const MAX_INDEX_CHARS = 6000;
 export interface RunMemory {
   /** `memory_policy`: what memory is and how the memory tools are used; set when memory is on. */
   policyText: string;
-  /** `memory_core`: the `core` units, by body or, past `CORE_BODY_LIMIT`, by description. */
+  /**
+   * `memory_core`: the `core` units, by body or, past `CORE_BODY_LIMIT`, by description; a lite
+   * run's always by body (`freezeLiteRunMemory`).
+   */
   coreText: string;
   /** `memory_index`: names and descriptions of `index` units and of core units without room. */
   indexText: string;
@@ -41,6 +44,21 @@ const MEMORY_POLICY = [
 const CORE_INTRO = 'These memories apply to every task.';
 const CORE_DESCRIPTION_RULE =
   'A memory shown only by its <description> is longer; read it with memory_read when the task depends on its details.';
+
+/** How a `memory_core` section renders its units. */
+interface CoreStyle {
+  intro: string;
+  /** Whether a body past `CORE_BODY_LIMIT` shows only its description, for memory_read to fetch. */
+  abridge: boolean;
+}
+
+const FULL_CORE: CoreStyle = { intro: CORE_INTRO, abridge: true };
+/**
+ * The core of a lite run (`freezeLiteRunMemory`). A lite session carries no `memory_policy` and no
+ * memory_read, so its core says itself that memories are reference context, as the policy says for
+ * a full run, and shows every unit by its whole body.
+ */
+const LITE_CORE: CoreStyle = { intro: `${CORE_INTRO} ${CONTEXT_NOTE}`, abridge: false };
 const INDEX_INTRO =
   'These memories are not loaded. Each is listed by name and type with a description of what it holds and when it applies; read one with memory_read when the task clearly depends on it.';
 
@@ -60,6 +78,29 @@ export async function freezeRunMemory(
 ): Promise<RunMemory> {
   if (!runMemory) return EMPTY_RUN_MEMORY;
   return fitRunMemory(await store.enabledUnits(), room);
+}
+
+/**
+ * The memory of a lite run (lite-session.ts), which has no memory tools: only the `core` section,
+ * within `room` and `CORE_BUDGET` like `freezeRunMemory`, in the same order. Every unit it shows
+ * is shown by its whole body, a long one past `CORE_BODY_LIMIT` too, since the session cannot read
+ * a body a description would stand for. A unit without room is left out, never listed by
+ * description, as a description alone would name guidance the model cannot follow. No policy, no
+ * index. Empty when the run has memory off.
+ */
+export async function freezeLiteRunMemory(
+  store: Pick<MemoryRuntimeStore, 'enabledUnits'>,
+  runMemory: boolean,
+  room: number,
+): Promise<RunMemory> {
+  if (!runMemory) return EMPTY_RUN_MEMORY;
+  const units = (await store.enabledUnits()).filter((unit) => unit.activation === 'core');
+  const core = fitCore(units, Math.min(CORE_BUDGET, room), LITE_CORE);
+  return {
+    ...EMPTY_RUN_MEMORY,
+    coreText: core.text,
+    names: new Map(core.shown.map((unit) => [unit.name, unit.id])),
+  };
 }
 
 /** Characters a run's memory sections bring into context; they count before references. */
@@ -94,13 +135,13 @@ function fitRunMemory(units: readonly MemoryUnit[], room: number): RunMemory {
  * The core section within `budget`: each unit in order joins it when it still fits, and the
  * others, by id, go to the index.
  */
-function fitCore(units: readonly MemoryUnit[], budget: number) {
+function fitCore(units: readonly MemoryUnit[], budget: number, style = FULL_CORE) {
   const shown: MemoryUnit[] = [];
   const withoutRoom = new Set<string>();
   for (const unit of units)
-    if (coreText([...shown, unit]).length <= budget) shown.push(unit);
+    if (coreText([...shown, unit], style).length <= budget) shown.push(unit);
     else withoutRoom.add(unit.id);
-  return { text: coreText(shown), shown, withoutRoom };
+  return { text: coreText(shown, style), shown, withoutRoom };
 }
 
 /**
@@ -115,23 +156,21 @@ export function coreFits(units: readonly UnitDraft[], candidate: UnitDraft): boo
   return coreText([...others, candidate].sort(compareUnits)).length <= CORE_BUDGET;
 }
 
-function coreText(units: readonly UnitDraft[]): string {
+function coreText(units: readonly UnitDraft[], style = FULL_CORE): string {
   if (!units.length) return '';
-  const abridged = units.some((unit) => !bodyFitsCore(unit));
-  return [
-    abridged ? `${CORE_INTRO} ${CORE_DESCRIPTION_RULE}` : CORE_INTRO,
-    ...units.map(coreEntry),
-  ].join('\n');
+  const abridged = (unit: UnitDraft) => style.abridge && !bodyFitsCore(unit);
+  const intro = units.some(abridged) ? `${style.intro} ${CORE_DESCRIPTION_RULE}` : style.intro;
+  return [intro, ...units.map((unit) => coreEntry(unit, abridged(unit)))].join('\n');
 }
 
 function bodyFitsCore(unit: UnitDraft): boolean {
   return unit.body.trim().length <= CORE_BODY_LIMIT;
 }
 
-function coreEntry(unit: UnitDraft): string {
-  return bodyFitsCore(unit)
-    ? `${openTag(unit, false)}\n${framed(unit.body.trim())}\n</memory>`
-    : `${openTag(unit, false)}${descriptionElement(unit)}</memory>`;
+function coreEntry(unit: UnitDraft, abridged: boolean): string {
+  return abridged
+    ? `${openTag(unit, false)}${descriptionElement(unit)}</memory>`
+    : `${openTag(unit, false)}\n${framed(unit.body.trim())}\n</memory>`;
 }
 
 /**

@@ -1,4 +1,9 @@
-import type { CommandInput, CommandParameter, ServiceCommandFull } from '@atd/agent-contracts';
+import type {
+  CommandInput,
+  CommandParameter,
+  CommandThinkingLevel,
+  ServiceCommandFull,
+} from '@atd/agent-contracts';
 
 /**
  * What the user approves when the Agent saves a command: every authored field for a create, a
@@ -38,6 +43,10 @@ function toolList(tools: readonly string[]): string {
   return tools.length ? tools.join(', ') : 'none';
 }
 
+function levelText(level: CommandThinkingLevel): string {
+  return level === 'inherit' ? 'connection default' : level;
+}
+
 function preview(value: string): string {
   return clip(value.replace(/\s+/g, ' ').trim(), PREVIEW_LIMIT);
 }
@@ -55,6 +64,7 @@ export function createDetail(command: ServiceCommandFull): string {
         : ['- none']),
       `Tools: ${toolList(command.tools)}`,
       `Memory: ${command.memory}`,
+      `Reasoning: ${levelText(command.thinkingLevel)}`,
       '',
       'Instructions:',
       command.instructions,
@@ -92,6 +102,10 @@ export function updateDetail(previous: ServiceCommandFull, next: ServiceCommandF
   if (JSON.stringify(previous.tools) !== JSON.stringify(next.tools))
     lines.push(`Tools: ${toolList(previous.tools)} → ${toolList(next.tools)}`);
   if (previous.memory !== next.memory) lines.push(`Memory: ${previous.memory} → ${next.memory}`);
+  if (previous.thinkingLevel !== next.thinkingLevel)
+    lines.push(
+      `Reasoning: ${levelText(previous.thinkingLevel)} → ${levelText(next.thinkingLevel)}`,
+    );
   if (previous.instructions !== next.instructions)
     lines.push(`Instructions: ${preview(previous.instructions)} → ${preview(next.instructions)}`);
   return clip(lines.join('\n') || 'No changes to the command definition.', DETAIL_LIMIT);

@@ -9,7 +9,10 @@ import {
 import type { CommandCreate, ServiceCommandFull } from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 
-/** Maps a service command to the desktop editor shape (drops migratedAt, keeps pluginId). */
+/**
+ * Maps a service command to the desktop editor shape (drops migratedAt, keeps pluginId and the
+ * computed lastArguments).
+ */
 export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition {
   return {
     id: command.id,
@@ -22,15 +25,22 @@ export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition
     templateId: command.templateId,
     input: { ...command.input },
     placement: { ...command.placement },
+    output: { ...command.output },
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
     model: { ...command.model },
+    thinkingLevel: command.thinkingLevel,
     tools: [...command.tools],
     memory: command.memory,
     ...(command.pluginId === undefined ? {} : { pluginId: command.pluginId }),
+    ...(command.lastArguments === undefined ? {} : { lastArguments: { ...command.lastArguments } }),
   };
 }
 
-export function toServiceCommand(command: CommandDefinition): ServiceCommandFull {
+/** The command as a write sends it: the service computes `lastArguments`, so it never goes back. */
+export function toServiceCommand({
+  lastArguments: _computed,
+  ...command
+}: CommandDefinition): ServiceCommandFull {
   return {
     ...command,
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
@@ -49,8 +59,10 @@ export function toCommandCreate(command: CommandDefinition): CommandCreate {
     templateId: command.templateId,
     input: { ...command.input },
     placement: { ...command.placement },
+    output: { ...command.output },
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
     model: { ...command.model },
+    thinkingLevel: command.thinkingLevel,
     tools: [...command.tools],
     memory: command.memory,
   };

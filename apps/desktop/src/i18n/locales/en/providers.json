@@ -126,6 +126,7 @@
     "model": "Model",
     "back": "Back",
     "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}",
+    "modelOnlyTriggerLabel": "Model configuration: {{model}}, {{contextSize}}",
     "scopedTriggerLabel": "{{label}}: {{model}}, {{contextSize}}, {{effort}}",
     "tiers": {
       "standard": "Standard",
