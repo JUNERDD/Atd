@@ -1,9 +1,79 @@
 /**
  * Mastering: the buses meet in one mix with a shared reverb, the ends are faded, the whole is set
  * to a streaming loudness measured the ITU-R BS.1770 way, and a soft limiter keeps peaks under the
- * ceiling. Also writes 16-bit PCM WAV files.
+ * ceiling. Every film's soundtrack goes through `mixdown`. Also writes 16-bit PCM WAV files.
  */
-import { Biquad, dbToGain, prng, SAMPLE_RATE, type Stereo } from './dsp.ts';
+import type { EffectBuses } from './cue-bus.ts';
+import { addStereo, Biquad, dbToGain, prng, SAMPLE_RATE, stereo, type Stereo } from './dsp.ts';
+import { reverb } from './reverb.ts';
+
+/** What a score renders, for the mix to sidechain and reverberate. */
+export interface MusicBuses {
+  /** Pad, bass and plucks: ducked under the kick. */
+  ducked: Stereo;
+  /** Drums and bells, never ducked. */
+  dry: Stereo;
+  /** What feeds the reverb. */
+  send: Stereo;
+  /** Every kick, in seconds, for the sidechain. */
+  kicks: number[];
+}
+
+/** Integrated loudness for web and social video; the platforms normalize near -14 LUFS. */
+const TARGET_LUFS = -15;
+const WET = 1.1;
+
+/** The sidechain: a quick dip at each kick that recovers within a beat. */
+export function duck(buses: MusicBuses, depth = 0.55): void {
+  const kicks = [...buses.kicks].sort((a, b) => a - b).map((at) => Math.round(at * SAMPLE_RATE));
+  let next = 0;
+  let last = -Infinity;
+  const { left, right } = buses.ducked;
+  for (let i = 0; i < left.length; i++) {
+    while (next < kicks.length && (kicks[next] ?? Infinity) <= i) last = kicks[next++] ?? last;
+    const since = (i - last) / SAMPLE_RATE;
+    const gain =
+      since < 0 ? 1 : 1 - depth * Math.exp(-since / 0.09) * Math.min(1, since / 0.004 + 0.4);
+    left[i] = (left[i] ?? 0) * gain;
+    right[i] = (right[i] ?? 0) * gain;
+  }
+}
+
+export interface Mixdown {
+  /** The mastered soundtrack. */
+  mix: Stereo;
+  /** The music and the effects before the fades and the limiter, at the mix's makeup gain. */
+  music: Stereo;
+  effects: Stereo;
+  /** The mix's loudness before its makeup gain, in LUFS. */
+  measured: number;
+}
+
+/**
+ * Mixes a film's `seconds` of score and cues: the score ducks under its kicks, music and effects
+ * each get their share of the plate, the ends fade, and the mix is brought to the target loudness
+ * under a -1 dBFS ceiling.
+ */
+export function mixdown(seconds: number, score: MusicBuses, cues: EffectBuses): Mixdown {
+  const sum = (...buses: [Stereo, number][]): Stereo => {
+    const out = stereo(seconds);
+    for (const [bus, level] of buses) addStereo(out, bus, level);
+    return out;
+  };
+  duck(score);
+  const music = sum([score.ducked, 1], [score.dry, 1], [reverb(score.send), WET]);
+  const effects = sum([cues.dry, 1], [reverb(cues.send, 0.8, 0.4), WET]);
+  const mix = sum([music, 1], [effects, 1]);
+
+  fadeEnds(mix, 0.01, 1.6);
+  const measured = loudness(mix);
+  const makeup = 10 ** ((TARGET_LUFS - measured) / 20);
+  gain(mix, makeup);
+  limit(mix, -1);
+  gain(music, makeup);
+  gain(effects, makeup);
+  return { mix, music, effects, measured };
+}
 
 /** Integrated loudness in LUFS: K-weighting, 400 ms blocks every 100 ms, absolute and relative gates. */
 export function loudness(mix: Stereo): number {

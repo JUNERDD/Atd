@@ -1,0 +1,23 @@
+/* The coral caret: a rounded bar, 1.1 em tall inline (centered on the line's x-height band), with a
+   two-layer bloom whose strength follows --caret-glow. */
+.r08-caret {
+  --h: var(--caret-h, 1.1em);
+  --w: var(--caret-w, max(3px, calc(var(--h) * 0.06)));
+  display: inline-block;
+  width: var(--w);
+  height: var(--h);
+  vertical-align: -0.2em;
+  border-radius: calc(var(--w) / 2);
+  background: linear-gradient(var(--r08-coral), var(--r08-coral-deep));
+  opacity: var(--caret-o, 1);
+  box-shadow:
+    0 0 calc(var(--w) * 3 * var(--caret-glow, 0.6)) var(--r08-coral-glow),
+    0 0 calc(var(--w) * 9 * var(--caret-glow, 0.6)) var(--r08-coral-wash);
+}
+
+.r08-caret[data-placed] {
+  position: absolute;
+  left: var(--caret-x);
+  top: var(--caret-y);
+  vertical-align: baseline;
+}

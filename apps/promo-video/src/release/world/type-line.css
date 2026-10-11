@@ -1,0 +1,79 @@
+/* A typed line: the ghosts of its texts and the live line share one grid cell, so the box holds the
+   widest text from the first keystroke and the line never shifts as it types. */
+.r08-type {
+  display: inline-grid;
+  font-family: var(--r08-font);
+  font-size: var(--type-size, var(--r08-size-line));
+  font-weight: 820;
+  letter-spacing: var(--r08-track);
+  line-height: 1.12;
+  white-space: pre-wrap;
+  color: var(--r08-fg);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+.r08-type[data-size='hero'] {
+  --type-size: var(--r08-size-hero);
+}
+
+.r08-type[data-size='statement'] {
+  --type-size: var(--r08-size-statement);
+}
+
+.r08-type[data-size='label'] {
+  --type-size: var(--r08-size-label);
+}
+
+.r08-type[data-size='small'] {
+  --type-size: var(--r08-size-small);
+}
+
+.r08-type[data-weight='text'] {
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+.r08-type[data-tone='muted'] {
+  color: var(--r08-fg-2);
+}
+
+.r08-type:lang(zh) {
+  font-weight: 900;
+  letter-spacing: var(--r08-track-zh);
+}
+
+.r08-type__ghost,
+.r08-type__live {
+  grid-area: 1 / 1;
+}
+
+.r08-type__ghost {
+  visibility: hidden;
+}
+
+.r08-type__run[data-kind='pending'] {
+  visibility: hidden;
+}
+
+/* The selection: the coral wash behind the selected characters, as an editor draws it. */
+.r08-type__run[data-kind='selected'] {
+  background-color: var(--r08-coral-wash);
+  box-shadow: inset 0 0 0 1px var(--r08-coral-wash);
+  border-radius: 0.06em;
+}
+
+/* The caret's anchor takes no room at all (a point on the baseline), so showing or hiding it
+   never moves the text or grows the line. */
+.r08-type__caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+
+.r08-type__caret > .r08-caret {
+  position: absolute;
+  left: 0.03em;
+  bottom: -0.25em;
+}

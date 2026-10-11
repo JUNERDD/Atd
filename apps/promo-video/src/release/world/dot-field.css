@@ -1,0 +1,31 @@
+/* The world's backdrop: ink lifted toward the center, the dot canvas over it, and a vignette that
+   pulls the corners down to near black. */
+.r08-dots {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      90% 80% at 50% 46%,
+      var(--r08-ink-lift) 0%,
+      var(--r08-ink) 58%,
+      var(--r08-ink-edge) 100%
+    ),
+    var(--r08-ink);
+}
+
+.r08-dots__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: var(--dots-o, 1);
+}
+
+.r08-dots__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--vig, 1);
+  background: radial-gradient(120% 100% at 50% 48%, transparent 38%, var(--r08-vignette) 100%);
+}

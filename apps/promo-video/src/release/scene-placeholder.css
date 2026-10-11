@@ -1,0 +1,28 @@
+/* A section placeholder's layout (not part of the world kit). */
+.r08-placeholder__meta {
+  position: absolute;
+  left: 96px;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--r08-size-small);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--r08-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.r08-placeholder__id {
+  font-size: var(--r08-size-label);
+  font-weight: 820;
+  letter-spacing: -0.03em;
+  color: var(--r08-coral);
+}
+
+.r08-placeholder__line {
+  position: absolute;
+  left: 120px;
+  right: 120px;
+  top: 420px;
+}

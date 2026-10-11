@@ -1,0 +1,104 @@
+/* The Stage: the Mac's display, --dw × --dh points scaled by --scale from its top-left. Graphite
+   lifted toward the upper middle, the world's dot grid in points, and two soft glows under it. */
+.r08-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--dw) * 1px);
+  height: calc(var(--dh) * 1px);
+  overflow: hidden;
+  scale: var(--scale);
+  transform-origin: 0 0;
+  font-family: var(--font-text);
+  color: var(--fg-1);
+  background:
+    radial-gradient(
+      110% 90% at 52% 30%,
+      var(--r08-ink-lift) 0%,
+      var(--r08-ink) 62%,
+      var(--r08-ink-edge) 100%
+    ),
+    var(--r08-ink);
+}
+
+.r08-stage__glow {
+  position: absolute;
+  width: 980px;
+  height: 820px;
+  border-radius: 50%;
+  opacity: var(--glow, 1);
+  pointer-events: none;
+}
+
+.r08-stage__glow[data-glow='warm'] {
+  left: -300px;
+  bottom: -320px;
+  translate: calc(var(--warm-x) * 1px) calc(var(--warm-y) * 1px);
+  background: radial-gradient(closest-side, var(--r08-glow-warm), transparent);
+}
+
+.r08-stage__glow[data-glow='cool'] {
+  right: -320px;
+  top: -360px;
+  translate: calc(var(--cool-x) * 1px) calc(var(--cool-y) * 1px);
+  background: radial-gradient(closest-side, var(--r08-glow-cool), transparent);
+}
+
+/* Dots: one radial gradient per --pitch tile, centered, so the grid matches the DotField's. */
+.r08-stage__dots,
+.r08-stage__pulse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: calc(var(--pitch) * 1px) calc(var(--pitch) * 1px);
+}
+
+.r08-stage__dots {
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--r08-dot) calc(var(--dot-r) * 1px),
+    transparent calc(var(--dot-r) * 1px + 0.6px)
+  );
+}
+
+/* A pulse: the grid again, brighter and larger, seen only through a ring (and a flash at the
+   origin) that the timeline grows and fades. */
+.r08-stage__pulse {
+  --pulse-dot: var(--r08-dot-hot);
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--pulse-dot) calc(var(--dot-r) * 1.7px),
+    transparent calc(var(--dot-r) * 1.7px + 0.6px)
+  );
+  --ring: radial-gradient(
+    circle at calc(var(--px) * 1px) calc(var(--py) * 1px),
+    transparent calc((var(--pr) - var(--pw) * 1.6) * 1px),
+    rgb(0 0 0 / calc(var(--lvl) * 0.4)) calc((var(--pr) - var(--pw) * 0.8) * 1px),
+    rgb(0 0 0 / var(--lvl)) calc(var(--pr) * 1px),
+    rgb(0 0 0 / calc(var(--lvl) * 0.4)) calc((var(--pr) + var(--pw) * 0.8) * 1px),
+    transparent calc((var(--pr) + var(--pw) * 1.6) * 1px)
+  );
+  --flash-mask: radial-gradient(
+    circle at calc(var(--px) * 1px) calc(var(--py) * 1px),
+    rgb(0 0 0 / var(--flash)) 0,
+    transparent 72px
+  );
+  mask-image: var(--ring), var(--flash-mask);
+  -webkit-mask-image: var(--ring), var(--flash-mask);
+}
+
+.r08-stage__pulse[data-tint='coral'] {
+  --pulse-dot: var(--r08-dot-coral);
+}
+
+.r08-stage__screen {
+  position: absolute;
+  inset: 0;
+}
+
+.r08-stage__dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(4 5 6 / calc(var(--dim) * 0.62));
+}

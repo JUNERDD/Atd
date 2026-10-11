@@ -4,7 +4,7 @@
  * file scores the film's frame (the opening shortcut, the chapter words, the models and the
  * closing shortcut); each chapter's interactions are scored in its own `cues-*.ts`.
  */
-import { at, CHAPTER_TITLE, CHOREO, SECTIONS, type SectionId } from '../timeline.ts';
+import { at, CHAPTER_TITLE, CHOREO, DURATION, SECTIONS, type SectionId } from '../timeline.ts';
 import { RING_START } from './arrangement.ts';
 import { type Cues, createCues, type EffectBuses } from './cue-bus.ts';
 import { cascade, glass, keyTick, pop, snap, swoosh, tine } from './effects.ts';
@@ -14,6 +14,30 @@ import { impact } from './instruments.ts';
 import { anythingCues } from './cues-anything.ts';
 import { anytimeCues } from './cues-anytime.ts';
 import { anywhereCues } from './cues-anywhere.ts';
+
+/**
+ * How much more level a cue needs to read through each section's music: the grooves want about
+ * +6 dB over the quiet open, the filtered night and the build a little less.
+ */
+const UNDER_THE_MUSIC: [SectionId, number][] = [
+  ['open', 1],
+  ['anywhere', 2],
+  ['anything', 2],
+  ['anytime', 1.5],
+  ['yours', 1.6],
+  ['finale', 2],
+];
+
+/** A cue that leads into a cut by less than this belongs to the section it leads into. */
+const LEAD_IN = 0.25;
+
+function musicAt(seconds: number): number {
+  const time = Math.min(DURATION - 1e-6, seconds + LEAD_IN);
+  const found = UNDER_THE_MUSIC.find(
+    ([id]) => time >= SECTIONS[id].start && time < SECTIONS[id].end,
+  );
+  return found?.[1] ?? 1;
+}
 
 /** ⌘, ⇧ and Space from left to right; Space is the biggest, deepest key. */
 const KEY_SIZES = [1.1, 1.15, 1.35];
@@ -39,7 +63,7 @@ function keycaps(cues: Cues, times: readonly number[], gain: number): void {
  * Two drops of light travel in from opposite corners, coral from the left and cyan from the right,
  * gliding up to a fifth apart, and lock into the mark with a glass chime, a glint and a shimmer.
  */
-function dropsLock(cues: Cues, from: number, lock: number, gain: number): void {
+export function dropsLock(cues: Cues, from: number, lock: number, gain: number): void {
   const seconds = lock - from;
   cues.place(tine(86, 0.6), from, gain * 0.6, -0.85, 0.8);
   cues.place(tine(81, 0.6), from + 0.04, gain * 0.5, 0.85, 0.8);
@@ -156,7 +180,7 @@ function finale(cues: Cues): void {
 }
 
 export function renderCues(): EffectBuses {
-  const cues = createCues(11);
+  const cues = createCues(11, { seconds: DURATION, levelAt: musicAt });
   open(cues);
   chapterWord(cues, 'anywhere', [81, 86], 0.9);
   anywhereCues(cues);

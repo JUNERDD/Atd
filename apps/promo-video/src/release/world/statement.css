@@ -1,0 +1,64 @@
+/* Kinetic display type. Each word sits in a slot; a rising word is clipped by its slot, so it
+   emerges from behind its own baseline, while a slamming word overflows freely as it lands. */
+.r08-statement {
+  width: 100%;
+  font-family: var(--r08-font);
+  font-size: var(--statement-size, var(--r08-size-statement));
+  font-weight: 880;
+  letter-spacing: var(--r08-track);
+  line-height: 1.02;
+  color: var(--r08-fg);
+  text-align: center;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+.r08-statement[data-size='hero'] {
+  --statement-size: var(--r08-size-hero);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+}
+
+.r08-statement[data-size='label'] {
+  --statement-size: var(--r08-size-label);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+}
+
+.r08-statement[data-tone='muted'] {
+  color: var(--r08-fg-2);
+}
+
+.r08-statement[data-align='left'] {
+  text-align: left;
+}
+
+.r08-statement:lang(zh) {
+  font-weight: 900;
+  letter-spacing: var(--r08-track-zh);
+}
+
+.r08-statement__slot {
+  display: inline-block;
+  vertical-align: top;
+}
+
+/* The clip reaches a little past the glyphs so descenders and the settle's overshoot survive. */
+.r08-statement[data-motion='rise'] .r08-statement__slot {
+  overflow: clip;
+  overflow-clip-margin: 0.04em;
+  padding: 0.06em 0.04em 0.16em;
+  margin: -0.06em -0.04em -0.16em;
+}
+
+.r08-statement__unit {
+  display: inline-block;
+  opacity: var(--o, 1);
+  translate: 0 calc(var(--y, 0) * 1em);
+  scale: var(--s, 1);
+  transform-origin: 50% 70%;
+  filter: var(--blur, none);
+}
+
+.r08-statement__unit[data-accent] {
+  color: var(--r08-coral);
+}

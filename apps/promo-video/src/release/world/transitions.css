@@ -1,0 +1,93 @@
+/* ---- Caret wipe ---- */
+.r08-wipe {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.r08-wipe__layer {
+  position: absolute;
+  inset: 0;
+  clip-path: var(--clip, none);
+}
+
+/* The sweeping caret: a full-height coral bar that stretches with speed, with a hot core, a tight
+   glow, and a wide bloom on the side it reveals. */
+.r08-wipe__caret {
+  --w: 16px;
+  position: absolute;
+  top: -24px;
+  bottom: -24px;
+  left: calc(var(--edge) * 1px);
+  width: calc(var(--w) * var(--stretch, 1));
+  translate: -50% 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--r08-coral-deep),
+    var(--r08-coral) 35%,
+    var(--r08-coral) 65%,
+    var(--r08-coral-deep)
+  );
+  box-shadow:
+    0 0 18px 2px var(--r08-coral-glow),
+    0 0 90px 18px var(--r08-coral-wash);
+}
+
+.r08-wipe__caret::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 50%;
+  width: 260px;
+  background: linear-gradient(to left, var(--r08-coral-wash), transparent);
+  pointer-events: none;
+}
+
+.r08-wipe__caret[data-direction='left']::after {
+  right: auto;
+  left: 50%;
+  background: linear-gradient(to right, var(--r08-coral-wash), transparent);
+}
+
+/* ---- Selection flood ---- */
+.r08-flood {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.r08-flood__incoming {
+  position: absolute;
+  inset: 0;
+}
+
+/* The selection: the wash while it is small, thickening to solid coral as it fills the frame. */
+.r08-flood__selection {
+  position: absolute;
+  left: calc(var(--fx) * 1px);
+  top: calc(var(--fy) * 1px);
+  width: calc(var(--fw) * 1px);
+  height: calc(var(--fh) * 1px);
+  border-radius: calc(var(--radius) * 1px);
+}
+
+.r08-flood__selection::before,
+.r08-flood__selection::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.r08-flood__selection::before {
+  background: var(--r08-coral-wash);
+  opacity: var(--wash);
+}
+
+.r08-flood__selection::after {
+  background: radial-gradient(120% 90% at 50% 50%, var(--r08-coral), var(--r08-coral-deep));
+  opacity: var(--solid);
+}

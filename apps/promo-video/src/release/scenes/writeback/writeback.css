@@ -1,0 +1,215 @@
+/* The writeback section. Inside the Stage everything is in display points; the column is in
+   frame px. Every class is prefixed `r08-wb-`, clear of the launch film's global classes. */
+
+/* ---- The note and the demo windows ---- */
+.r08-wb-window-in {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  scale: var(--s);
+  transform-origin: calc(var(--ox) * 1px) calc(var(--oy) * 1px);
+}
+
+/* Text set exactly as the layout measures it: the film's faces, no stylistic sets, no tracking. */
+.r08-wb-note,
+.r08-wb-demo {
+  position: absolute;
+  top: 0;
+  left: calc(var(--left) * 1px);
+  width: calc(var(--width) * 1px);
+  font-family: var(--font-text);
+  font-feature-settings: normal;
+  letter-spacing: 0;
+  color: rgb(255 255 255 / 0.92);
+}
+
+.r08-wb-note {
+  padding-top: 18px;
+}
+
+.r08-wb-note__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+.r08-wb-note__meta {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: rgb(235 235 245 / 0.5);
+}
+
+.r08-wb-note__paragraph,
+.r08-wb-note__next,
+.r08-wb-demo__lead,
+.r08-wb-demo__text {
+  font-size: calc(var(--size) * 1px);
+  font-weight: 400;
+  line-height: calc(var(--line) * 1px);
+}
+
+.r08-wb-note__paragraph {
+  margin-top: 22px;
+}
+
+.r08-wb-note__line {
+  margin: 0;
+  white-space: pre;
+}
+
+.r08-wb-note__flow,
+.r08-wb-demo__text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.r08-wb-note__next {
+  margin: 14px 0 0;
+  color: rgb(235 235 245 / 0.5);
+}
+
+.r08-wb-demo {
+  padding-top: 26px;
+}
+
+.r08-wb-demo__lead {
+  margin: 0;
+  color: rgb(235 235 245 / 0.62);
+}
+
+.r08-wb-demo__text {
+  margin-top: 10px;
+}
+
+/* The selection, in the caret's coral wash; --wash fades it (Insert after keeps the text). */
+.r08-wb-sel {
+  border-radius: 2px;
+  background: rgb(255 106 61 / calc(0.34 * var(--wash, 1)));
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* The insertion point: the film's coral caret at the field's scale. */
+.r08-wb-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.18em;
+  margin-left: 1px;
+  margin-right: -3px;
+  vertical-align: -0.22em;
+  border-radius: 1px;
+  background: var(--r08-coral);
+  box-shadow: 0 0 6px var(--r08-coral-glow);
+  opacity: var(--o);
+}
+
+/* ---- The toolbar, the island's glint, the pointer ---- */
+.r08-wb-toolbar {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  opacity: var(--o);
+  translate: -50% -100%;
+}
+
+/* Completion's cool glint, behind the island's glass so the glass refracts it. */
+.r08-wb-glint {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: 420px;
+  height: 150px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  opacity: var(--o);
+  background: radial-gradient(closest-side, var(--r08-glint-glow), transparent);
+  pointer-events: none;
+}
+
+.r08-wb-beam {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: 0;
+  height: 0;
+  opacity: var(--o);
+  pointer-events: none;
+}
+
+.r08-wb-beam__svg {
+  position: absolute;
+  left: -6px;
+  top: -12px;
+  width: 12px;
+  height: 24px;
+  overflow: visible;
+  scale: var(--s);
+  filter: drop-shadow(0 0 0.7px rgb(255 255 255)) drop-shadow(0 0 0.7px rgb(255 255 255))
+    drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45));
+}
+
+.r08-wb-beam__shape {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.35px;
+  stroke-linecap: round;
+}
+
+/* The ⌥ hint rides below and left of the pointer: in the margin as the drag starts, under the
+   last line as it ends, so it never sits on the words being selected at either end. */
+.r08-wb-option {
+  position: absolute;
+  left: calc(var(--x) * 1px - 27px);
+  top: calc(var(--y) * 1px + 15px);
+  opacity: var(--o);
+  translate: 0 calc(var(--rise) * 1px);
+}
+
+/* ---- The narrative column (frame px) ---- */
+.r08-wb-column {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--left) * 1px);
+  width: calc(var(--width) * 1px);
+  pointer-events: none;
+}
+
+.r08-wb-word {
+  --statement-size: 116px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--top) * 1px);
+  opacity: var(--o);
+}
+
+.r08-wb-kicker {
+  position: absolute;
+  top: 396px;
+  margin: 0;
+  font-family: var(--r08-font);
+  font-size: 30px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  color: var(--r08-fg-3);
+  opacity: var(--o);
+  translate: 0 calc(var(--rise) * 1px);
+}
+
+.r08-wb-label {
+  --statement-size: 76px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 446px;
+}
+
+/* The fallback's line is a sentence, not a name: a size smaller, where the kicker stood. */
+.r08-wb-label[data-fallback] {
+  --statement-size: 66px;
+  top: 404px;
+}
