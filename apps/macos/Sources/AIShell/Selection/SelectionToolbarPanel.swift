@@ -9,13 +9,17 @@ import AppKit
 /// at its edge; that margin is transparent, so clicks there go to the app below.
 ///
 /// Ask Atd comes first, then a button per command while the capsule stays within
-/// ``SelectionToolbarLayout/maxWidth``, then More, which opens the remaining commands in
-/// ``SelectionToolbarMenu`` and closes it again. The menu goes whenever the toolbar does, and
-/// when a drag of the toolbar starts. Command names are user data and stay untranslated; the
-/// rest of the copy is read in the current shell language each time the toolbar shows.
+/// ``SelectionToolbarLayout/maxWidth``, then More, which opens the remaining commands in a menu
+/// and closes it again. A command with options (``CommandOptionsCatalog``) is a split button:
+/// its own part runs it with its remembered values, a chevron (``ToolbarOptionsChevron``) opens
+/// its options menu below the capsule and shows pressed while it is open; the split's whole width
+/// counts toward the capsule's, so it overflows into More like any other command. The menus
+/// (``ToolbarOptionsCascade``, ``ToolbarOptionsContent``) go whenever the toolbar does, and when
+/// a drag of the toolbar starts. Command names are user data and stay untranslated; the rest of
+/// the copy is read in the current shell language each time the toolbar shows.
 final class SelectionToolbarPanel: NSObject {
   var onAsk: (() -> Void)?
-  var onCommand: ((String) -> Void)?
+  var onCommand: ((CommandLaunch) -> Void)?
 
   /// The transparent margin around the capsule.
   static let inset: CGFloat = 24
@@ -24,9 +28,12 @@ final class SelectionToolbarPanel: NSObject {
   private var commands: [SelectionToolbarSettings.Command] = []
   /// The commands behind More, in order.
   private var overflow: [SelectionToolbarSettings.Command] = []
-  /// Follows the pointer over the capsule and, while it is open, the menu.
+  /// Follows the pointer over the capsule and, while they are open, the menus.
   private let hover: SelectionToolbarHover
-  private let menu: SelectionToolbarMenu
+  private let menus: ToolbarOptionsCascade
+  private let options: ToolbarOptionsContent
+  /// The chevron whose options menu is open.
+  private weak var activeChevron: ToolbarOptionsChevron?
   /// The window frame that put the capsule beside the selection; a double-click returns it.
   private var placed: NSRect?
   /// The window's origin when the current drag began.
@@ -35,11 +42,19 @@ final class SelectionToolbarPanel: NSObject {
   override init() {
     let hover = SelectionToolbarHover()
     self.hover = hover
-    menu = SelectionToolbarMenu(hover: hover)
+    let menus = ToolbarOptionsCascade(hover: hover)
+    self.menus = menus
+    options = ToolbarOptionsContent(cascade: menus)
     super.init()
-    menu.onChoose = { [weak self] id in
+    hover.onFrame = { [weak menus] view in menus?.pointerAt(view) }
+    options.onLaunch = { [weak self] launch in
       self?.hide()
-      self?.onCommand?(id)
+      self?.onCommand?(launch)
+    }
+    menus.onClose = { [weak self] in
+      self?.activeChevron?.isActive = false
+      self?.activeChevron = nil
+      self?.options.reset()
     }
   }
 
@@ -69,11 +84,16 @@ final class SelectionToolbarPanel: NSObject {
     self.commands = commands
   }
 
+  /// The commands with options, which get split buttons from the next time the toolbar shows.
+  func setCommandOptions(_ catalog: CommandOptionsCatalog) {
+    options.catalog = catalog
+  }
+
   /// Builds the row and shows it beside `selection` (Quartz points from Accessibility), or at
   /// the pointer when the app gave no bounds.
   func show(selection quartz: CGRect?, pointer: CGPoint) {
-    // A menu still open belongs to the More button this replaces.
-    menu.close()
+    // A menu still open belongs to the buttons this replaces.
+    menus.close()
     let (bar, buttons, grip) = makeContent()
     let size = bar.fittingSize
     let screens = NSScreen.screens
@@ -114,7 +134,7 @@ final class SelectionToolbarPanel: NSObject {
   /// Takes the toolbar and its menu off the screen.
   func hide() {
     hover.stop()
-    menu.close()
+    menus.close()
     placed = nil
     dragOrigin = nil
     guard window.isVisible else { return }
@@ -125,7 +145,7 @@ final class SelectionToolbarPanel: NSObject {
   // MARK: Content
 
   /// The glass row, its buttons in order, and its drag handle.
-  private func makeContent() -> (AnnotationGlassBar, [AnnotationToolbarButton], NSView) {
+  private func makeContent() -> (AnnotationGlassBar, [any ToolbarHoverable], NSView) {
     let strings = ShellStrings.shared
     let grip = AnnotationBarGrip()
     grip.image = AnnotationIcons.glyph(AnnotationIcons.grip, label: "")
@@ -135,33 +155,48 @@ final class SelectionToolbarPanel: NSObject {
       image: AnnotationIcons.glyph(SelectionToolbarIcons.ask, label: ""),
       action: #selector(askClicked))
     ask.toolTip = strings.text(.selectionToolbarAskTooltip)
-    let buttons = commands.enumerated().map { index, command in
-      let button = AnnotationToolbarButton(
-        label: command.name, image: nil, action: #selector(commandClicked))
-      button.tag = index
-      button.toolTip = command.name
-      return button
-    }
+    let units = commands.enumerated().map { index, command in commandUnit(command, index) }
     let visible = SelectionToolbarLayout.visibleCommandCount(
-      askWidth: ask.fittingSize.width, commandWidths: buttons.map { $0.fittingSize.width })
+      askWidth: ask.fittingSize.width, commandWidths: units.map { $0.view.fittingSize.width })
     overflow = Array(commands.dropFirst(visible))
-    var items: [AnnotationToolbarButton] = [ask] + Array(buttons.prefix(visible))
+    var views: [NSView] = [ask] + units.prefix(visible).map(\.view)
+    var items: [any ToolbarHoverable] = [ask] + units.prefix(visible).flatMap(\.controls)
     if !overflow.isEmpty {
       let more = AnnotationToolbarButton(selection: nil, action: #selector(moreClicked))
       more.image = AnnotationIcons.glyph(
         SelectionToolbarIcons.more, label: strings.text(.selectionToolbarMore))
       more.setAccessibilityLabel(strings.text(.selectionToolbarMore))
       more.toolTip = strings.text(.selectionToolbarMoreTooltip)
+      views.append(more)
       items.append(more)
     }
-    for button in items { button.target = self }
-    let bar = AnnotationGlassBar(
-      groups: [[grip] + (items as [NSView])], padding: SelectionToolbarLayout.padding)
+    for control in items { control.target = self }
+    let bar = AnnotationGlassBar(groups: [[grip] + views], padding: SelectionToolbarLayout.padding)
     bar.onDrag = { [weak self] in self?.drag($0) }
     bar.setAccessibilityElement(true)
     bar.setAccessibilityRole(.toolbar)
     bar.setAccessibilityLabel(strings.text(.selectionToolbar))
     return (bar, items, grip)
+  }
+
+  /// Command `index`'s place on the capsule and the controls in it: its button, or for a command
+  /// with options its button and chevron side by side as one split button.
+  private func commandUnit(_ command: SelectionToolbarSettings.Command, _ index: Int)
+    -> (view: NSView, controls: [any ToolbarHoverable])
+  {
+    let button = AnnotationToolbarButton(
+      label: command.name, image: nil, action: #selector(commandClicked))
+    button.tag = index
+    button.toolTip = command.name
+    guard options.catalog.contains(command.id) else { return (button, [button]) }
+    let chevron = ToolbarOptionsChevron(action: #selector(optionsClicked))
+    chevron.tag = index
+    let label = ShellStrings.shared.text(.commandOptionsMenu, command.name)
+    chevron.toolTip = label
+    chevron.setAccessibilityLabel(label)
+    let split = NSStackView(views: [button, chevron])
+    split.spacing = 0
+    return (split, [button, chevron])
   }
 
   // MARK: Moving
@@ -173,7 +208,7 @@ final class SelectionToolbarPanel: NSObject {
   private func drag(_ drag: AnnotationGlassBar.Drag) {
     switch drag {
     case .began:
-      menu.close()
+      menus.close()
       dragOrigin = window.frame.origin
     case .moved(let travel):
       guard let dragOrigin else { return }
@@ -214,17 +249,41 @@ final class SelectionToolbarPanel: NSObject {
     guard commands.indices.contains(sender.tag) else { return }
     let id = commands[sender.tag].id
     hide()
-    onCommand?(id)
+    onCommand?(CommandLaunch(id: id))
   }
 
-  /// Opens the menu under (or over) the capsule, aligned with More, or closes it if it is open.
+  /// Opens the More menu under (or over) the capsule, aligned with More, or closes it if it is
+  /// open.
   @objc private func moreClicked(_ sender: NSButton) {
-    guard !menu.isOpen else { return menu.close() }
-    let button = window.convertToScreen(sender.convert(sender.bounds, to: nil))
+    guard menus.opener !== sender else { return menus.close() }
+    let commands = overflow
+    menus.open(
+      from: sender, anchor: column(of: sender),
+      label: ShellStrings.shared.text(.selectionToolbarMore)
+    ) { [weak self] in self?.options.moreItems(commands) ?? [] }
+  }
+
+  /// Opens a command's options menu under (or over) the capsule, aligned with its split button,
+  /// or closes it if it is open.
+  @objc private func optionsClicked(_ sender: ToolbarOptionsChevron) {
+    guard menus.opener !== sender else { return menus.close() }
+    guard commands.indices.contains(sender.tag) else { return }
+    let command = commands[sender.tag]
+    menus.open(
+      from: sender, anchor: column(of: sender.superview ?? sender),
+      label: ShellStrings.shared.text(.commandOptionsMenu, command.name)
+    ) { [weak self] in self?.options.items(for: command.id) ?? [] }
+    guard menus.isOpen else { return }
+    sender.isActive = true
+    activeChevron = sender
+  }
+
+  /// `view`'s column through the capsule on screen: its leading edge and width, the capsule's
+  /// bottom and height, which the menu's gap is measured from.
+  private func column(of view: NSView) -> NSRect {
+    let frame = window.convertToScreen(view.convert(view.bounds, to: nil))
     let capsule = window.frame.insetBy(dx: Self.inset, dy: Self.inset)
-    menu.open(
-      overflow,
-      from: NSRect(x: button.minX, y: capsule.minY, width: button.width, height: capsule.height))
+    return NSRect(x: frame.minX, y: capsule.minY, width: frame.width, height: capsule.height)
   }
 }
 

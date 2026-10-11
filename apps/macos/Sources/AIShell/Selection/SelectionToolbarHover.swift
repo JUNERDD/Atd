@@ -9,16 +9,22 @@ import QuartzCore
 /// open hand over the drag handle (``BackgroundCursor`` lets an inactive app set the cursor).
 ///
 /// It is the one owner of the wash and the cursor across the toolbar's windows: the capsule's
-/// buttons (``start(_:grip:in:)``) and, while it is open, the More menu's rows (``add(_:)``,
-/// ``remove(_:)``), so no second tracker ever sets the cursor against it.
+/// buttons (``start(_:grip:in:)``) and, while they are open, the rows of its menus and submenus
+/// (``add(_:)``, ``remove(_:)``), so no second tracker ever sets the cursor against it. The menus
+/// time their submenus off the same frames (``onFrame``).
 ///
 /// The frame callbacks pause once the pointer has rested away from those windows for
 /// ``idleFrames``; the next move over another app (seen by the controller's monitor) resumes
 /// them before the pointer can reach the toolbar or its menu, so hover never waits on a frame.
 @MainActor
 final class SelectionToolbarHover: NSObject {
+  /// Called on every display frame while following, after the wash moved, with the followed view
+  /// under the pointer (a button, a row or the grip), or nil. Frames pause only while the pointer
+  /// rests away from every followed window, where no submenu timing is due.
+  var onFrame: ((NSView?) -> Void)?
+
   /// Every button followed, in whichever window shows it.
-  private var buttons: [AnnotationToolbarButton] = []
+  private var buttons: [any ToolbarHoverable] = []
   private var grip: NSView?
   /// The view the frame callbacks were made for (the toolbar's content): its window going away
   /// ends following.
@@ -35,8 +41,9 @@ final class SelectionToolbarHover: NSObject {
   /// rest.
   static let nearMargin: CGFloat = 24
 
-  /// Follows the pointer over `buttons` and `grip`, shown in `view`'s window, until ``stop()``.
-  func start(_ buttons: [AnnotationToolbarButton], grip: NSView, in view: NSView) {
+  /// Follows the pointer over `buttons` and `grip` (if the capsule has one), shown in `view`'s
+  /// window, until ``stop()``.
+  func start(_ buttons: [any ToolbarHoverable], grip: NSView?, in view: NSView) {
     stop()
     BackgroundCursor.enable()
     self.grip = grip
@@ -47,19 +54,21 @@ final class SelectionToolbarHover: NSObject {
     add(buttons)
   }
 
-  /// Follows `buttons` too, shown in another window that goes with the toolbar (the More
-  /// menu's rows), until ``remove(_:)`` or ``stop()``.
-  func add(_ buttons: [AnnotationToolbarButton]) {
-    for button in buttons { button.followsPointer = false }
+  /// Follows `buttons` too, shown in another window that goes with the toolbar (a menu's rows),
+  /// until ``remove(_:)`` or ``stop()``.
+  func add(_ buttons: [any ToolbarHoverable]) {
+    for case let button as AnnotationToolbarButton in buttons { button.followsPointer = false }
     self.buttons += buttons
     resume()
   }
 
   /// Stops following `buttons` (the menu closed): one under the pointer loses its wash, and the
   /// cursor turns to whatever is under the pointer now.
-  func remove(_ buttons: [AnnotationToolbarButton]) {
+  func remove(_ buttons: [any ToolbarHoverable]) {
     self.buttons.removeAll { button in buttons.contains { $0 === button } }
-    if let button = hovered as? AnnotationToolbarButton, !self.buttons.contains(button) {
+    if let button = hovered as? any ToolbarHoverable,
+      !self.buttons.contains(where: { $0 === button })
+    {
       button.isHovered = false
       hovered = nil
       NSCursor.arrow.set()
@@ -73,7 +82,7 @@ final class SelectionToolbarHover: NSObject {
     link?.invalidate()
     link = nil
     if hovered != nil { NSCursor.arrow.set() }
-    (hovered as? AnnotationToolbarButton)?.isHovered = false
+    (hovered as? any ToolbarHoverable)?.isHovered = false
     hovered = nil
     buttons = []
     grip = nil
@@ -100,6 +109,8 @@ final class SelectionToolbarHover: NSObject {
     // never keep firing for a window that is gone.
     guard let window = anchor?.window, window.isVisible else { return stop() }
     update()
+    // Only from here, never from `add` or `remove`: what it does may open or close a menu.
+    onFrame?(hovered)
     let pointer = NSEvent.mouseLocation
     stillFrames = pointer == lastPointer ? stillFrames + 1 : 0
     lastPointer = pointer
@@ -117,7 +128,8 @@ final class SelectionToolbarHover: NSObject {
   private func update() {
     guard link != nil else { return }
     let pointer = NSEvent.mouseLocation
-    let candidates: [NSView] = buttons.filter(\.isEnabled) + (grip.map { [$0] } ?? [])
+    let candidates: [NSView] =
+      buttons.filter(\.isEnabled).map { $0 as NSView } + (grip.map { [$0] } ?? [])
     let target = candidates.first { view in
       // Only the part not clipped away: a menu row scrolled out of its list is not under the
       // pointer. Views no longer clip to their bounds, so neither does their visible rect.
@@ -125,14 +137,23 @@ final class SelectionToolbarHover: NSObject {
       guard let window = view.window, window.isVisible, !visible.isEmpty else { return false }
       return window.convertToScreen(view.convert(visible, to: nil)).contains(pointer)
     }
-    guard target !== hovered else { return }
-    (hovered as? AnnotationToolbarButton)?.isHovered = false
-    (target as? AnnotationToolbarButton)?.isHovered = true
-    hovered = target
-    switch target {
-    case nil: NSCursor.arrow.set()
-    case let view? where view === grip: NSCursor.openHand.set()
-    default: NSCursor.pointingHand.set()
+    if target !== hovered {
+      (hovered as? any ToolbarHoverable)?.isHovered = false
+      (target as? any ToolbarHoverable)?.isHovered = true
+      hovered = target
+      switch target {
+      case nil: NSCursor.arrow.set()
+      case let view? where view === grip: NSCursor.openHand.set()
+      default: NSCursor.pointingHand.set()
+      }
     }
   }
 }
+
+/// A control the toolbar's hover washes: a capsule button or a menu row. It draws its own wash
+/// from ``isHovered``, which only the hover sets.
+protocol ToolbarHoverable: NSControl {
+  var isHovered: Bool { get set }
+}
+
+extension AnnotationToolbarButton: ToolbarHoverable {}

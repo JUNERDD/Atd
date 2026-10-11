@@ -1,4 +1,5 @@
-import type { PreparedCommand } from '../client/agent/bridge';
+import type { CommandLaunch } from '../client/agent/bridge';
+import { argumentOverrides } from '../client/agent/command-arguments';
 import { runsAsIs } from '../client/agent/command-prepare';
 import { errorMessage } from '../client/agent/validation';
 import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
@@ -32,8 +33,11 @@ export interface ShortcutSync {
  * The panel's side of the global shortcuts. The shell registers whatever set the panel pushes (the
  * panel and screenshot shortcuts plus each enabled command's shortcut) and reports every item;
  * conflicts between the app's own shortcuts stay with the service and the settings checks. A
- * command shortcut arrives as `{ id }` after the shell captured the selection and showed the
- * panel, and runs as the desktop's does: prepared with the capture expected, then launched. The
+ * command shortcut arrives as `{ id, target?, arguments?, intent? }` after the shell captured the
+ * selection, and is prepared with the capture expected and the shell's picks over the remembered
+ * values, carrying the write target along. Then by `intent`: `run` (or none) launches it as the
+ * desktop's shortcut does, running it when it can be used as-is; `edit` shows its input step and
+ * never runs it; `choose` asks the panel to offer its options first (`CommandLaunch.choose`). The
  * screenshot shortcut is the panel page's to run (`DesktopBridge.onScreenshotShortcut`).
  */
 export function nativeShortcuts(
@@ -45,7 +49,7 @@ export function nativeShortcuts(
     appShortcuts: () => { togglePanel: string; captureScreenshot: string } | null;
     /** Every push result: which app shortcuts hold, after `commands.errors` changed. */
     applied: (state: GlobalShortcutState) => void;
-    launch: (prepared: PreparedCommand, autoRun: boolean) => void;
+    launch: (launch: CommandLaunch) => void;
   },
 ): ShortcutSync {
   let running = false;
@@ -107,10 +111,22 @@ export function nativeShortcuts(
     }
   }
 
-  bridge.on('shortcut.command', ({ id }) => {
-    void commands
-      .prepare(id, true)
-      .then((prepared) => host.launch(prepared, runsAsIs(prepared)))
+  // The target is the field the summon found focused in another app; a write-back output writes
+  // the answer there once the run completes.
+  bridge.on('shortcut.command', ({ id, target, arguments: picked, intent = 'run' }) => {
+    // Async, so a throw (`find` of a deleted command) rejects into the catch below.
+    void (async () =>
+      commands.prepare(id, true, picked && argumentOverrides(commands.find(id), picked)))()
+      .then((prepared) => {
+        const launched = target ? { ...prepared, target } : prepared;
+        if (intent === 'run') host.launch({ prepared: launched, autoRun: runsAsIs(launched) });
+        else
+          host.launch({
+            prepared: launched,
+            autoRun: false,
+            ...(intent === 'choose' ? { choose: true as const } : {}),
+          });
+      })
       .catch((error: unknown) => {
         commands.errors[id] = errorMessage(error);
       });

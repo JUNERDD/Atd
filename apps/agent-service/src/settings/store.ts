@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  DEFAULT_COMMAND_TYPING,
   DEFAULT_SHORTCUTS,
   parse,
   parseShortcutBindings,
@@ -42,7 +43,9 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
   }
   return parse(
     SettingsFileSchema,
-    withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    withAddedCommandTyping(
+      withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    ),
   );
 }
 
@@ -67,6 +70,21 @@ function withAddedOnboarding(file: unknown): unknown {
         : {}),
     },
   };
+}
+
+/**
+ * A file written before the typing setting existed reads with its default. One written while it
+ * chose a rate (`instant`, `slow`, `normal` or `fast`) keeps typing for every rate and pastes at
+ * once for `instant`; any other value that is not a switch reads as the default.
+ */
+function withAddedCommandTyping(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  const stored = 'commandTyping' in settings ? settings.commandTyping : undefined;
+  const commandTyping =
+    typeof stored === 'boolean' ? stored : stored === 'instant' ? false : DEFAULT_COMMAND_TYPING;
+  return { ...file, settings: { ...settings, commandTyping } };
 }
 
 /** The selection toolbar starts on, over every app, for selections made while Option is held. */
@@ -139,6 +157,7 @@ export class SettingsStore {
         shellAllowlist: [],
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+        commandTyping: DEFAULT_COMMAND_TYPING,
         onboardingCompleted: false,
         onboardingProgress: null,
       };

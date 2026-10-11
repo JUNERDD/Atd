@@ -142,4 +142,62 @@ struct MiniPanelMotionTests {
     #expect(abs(diagonal.x - 1.02) < 1e-9)
     #expect(MiniPanelStretch.horizontalShare(.zero) == nil)
   }
+
+  @Test("The mini panel's thickness runs across the screen; the island's is its height")
+  func shapeAxis() {
+    // Horizontal is the mini panel's split, as it was: x, width and corner on the thickness.
+    let across = MiniPanelShapeAxis.horizontal.progress(across: 0.25, along: 0.75)
+    #expect(across == .init(x: 0.25, y: 0.75, width: 0.25, height: 0.75, corner: 0.25))
+    let tall = MiniPanelShapeAxis.vertical.progress(across: 0.25, along: 0.75)
+    #expect(tall == .init(x: 0.75, y: 0.25, width: 0.75, height: 0.25, corner: 0.25))
+    let change = MiniPanelShapeAxis.Components(x: -10, y: 4, width: 30, height: -12, corner: 25)
+    let horizontal = MiniPanelShapeAxis.horizontal.extent(of: change)
+    #expect(horizontal.across == 25 && horizontal.along == 8)
+    let vertical = MiniPanelShapeAxis.vertical.extent(of: change)
+    #expect(vertical.across == 25 && vertical.along == 20)
+  }
+
+  @Test("The island morphs like the capsule growing and the drop card shrinking, with no pill")
+  func island() {
+    let capsule = WindowSize(width: 200, height: 44)
+    let card = WindowSize(width: 320, height: 200)
+    #expect(IslandChoreography.shape(from: capsule, to: card) == Choreography.shape(.expand))
+    #expect(IslandChoreography.shape(from: card, to: capsule) == Choreography.shape(.untarget))
+    let reduced = IslandChoreography.shape(from: capsule, to: card, reduceMotion: true)
+    #expect(reduced.thickness.bounce == 0 && reduced.length.bounce == 0)
+    // Content that replaces other content arrives once that has left; the first arrives with
+    // the entrance itself, never into an empty shape.
+    #expect(IslandChoreography.replacing.delay == Choreography.content(.expand).exit)
+    #expect(IslandChoreography.entering.delay == 0)
+    #expect(IslandChoreography.entering.hiddenBlur == Choreography.content(.expand).hiddenBlur)
+    // Leaving, the island shrinks and fades as one piece, quicker than it entered.
+    #expect(IslandChoreography.exitDuration == 0.18)
+    #expect(IslandMetrics.corner(capsule, card: false) == 22)
+    // Capsules keep the progress HUD's toolbar row: 28 pt controls in 4 pt, 2 pt apart.
+    #expect(IslandMetrics.capsuleHeight == 36 && IslandMetrics.controlSide == 28)
+    #expect(IslandMetrics.padding == 4 && IslandMetrics.gap == 2 && IslandMetrics.gripWidth == 16)
+    #expect(IslandMetrics.corner(card, card: true) == 18 && IslandMetrics.rowHeight == 28)
+    // The canvas holds the largest shape at its overshoot.
+    let canvas = IslandMetrics.canvas
+    #expect(canvas.width >= IslandMetrics.maxShape.width * Choreography.followLimit)
+    #expect(canvas.height >= IslandMetrics.maxShape.height * Choreography.followLimit)
+  }
+
+  @Test("The island's spinner keeps the system small spinner's shape and stepped wave")
+  func islandSpinner() {
+    typealias Style = IslandSpinnerStyle
+    #expect(Style.side == 16 && Style.spokes == 8 && Style.spokeWidth == 2)
+    #expect(Style.innerRadius + Style.spokeLength == Style.side / 2)
+    #expect(Style.period == 0.8 && Style.steps == 24 && Style.reducedPeriod > Style.period)
+    #expect(abs(Style.spokeDelay(period: Style.period) - 0.1) < 1e-12)
+    let opacities = Style.opacities()
+    #expect(opacities.count == Style.steps)
+    // Up to full over the ramp, then down to the trailing share by the end of the turn.
+    #expect(opacities[0] == Style.trailingAlpha && opacities[Style.rampSteps] == 1)
+    let fade = Array(opacities[Style.rampSteps...])
+    #expect(zip(fade, fade.dropFirst()).allSatisfy { $0 > $1 })
+    #expect(opacities.last! > Style.trailingAlpha && opacities.last! < 0.2)
+    // One spoke behind the peak, as the system draws it: about 0.84 of it.
+    #expect(abs(opacities[Style.rampSteps + Style.steps / Style.spokes] - 0.84) < 0.05)
+  }
 }

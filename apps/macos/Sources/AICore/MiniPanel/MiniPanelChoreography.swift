@@ -61,6 +61,53 @@ public struct MiniPanelShapeMotion: Hashable, Sendable {
   }
 }
 
+/// Which way a shape's thickness runs, for the two axis springs of ``MiniPanelShapeMotion``.
+/// The mini panel docks to a left or right edge, so its thickness runs across the screen
+/// (`horizontal`: x, width and corner on the thickness spring, y and height on the length's);
+/// the command island stands on the bottom of the screen, so its thickness is its height
+/// (`vertical`: y, height and corner on the thickness spring, x and width on the length's). The
+/// corner always follows the thickness, which it is at most half of.
+public enum MiniPanelShapeAxis: Sendable {
+  case horizontal
+  case vertical
+
+  /// A shape's frame and corner as one value, in the order the animation reads them.
+  public struct Components: Equatable, Sendable {
+    public var x: Double
+    public var y: Double
+    public var width: Double
+    public var height: Double
+    public var corner: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double, corner: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+      self.corner = corner
+    }
+  }
+
+  /// How far along its change each component is when the thickness spring has gone `across` of
+  /// the way and the length spring `along`.
+  public func progress(across: Double, along: Double) -> Components {
+    switch self {
+    case .horizontal: Components(x: across, y: along, width: across, height: along, corner: across)
+    case .vertical: Components(x: along, y: across, width: along, height: across, corner: across)
+    }
+  }
+
+  /// How far a change of `shape` moves it across (thickness) and along (length), in points.
+  public func extent(of shape: Components) -> (across: Double, along: Double) {
+    let horizontal = max(abs(shape.x), abs(shape.x + shape.width))
+    let vertical = max(abs(shape.y), abs(shape.y + shape.height))
+    switch self {
+    case .horizontal: return (max(horizontal, abs(shape.corner)), vertical)
+    case .vertical: return (max(vertical, abs(shape.corner)), horizontal)
+    }
+  }
+}
+
 /// How content arrives and leaves (motion-v3): it arrives after ``delay``, its opacity and its
 /// blur from ``hiddenBlur`` clearing together on ``MiniPanelChoreography/contentOpacity``, and
 /// leaves at once, eased in over ``exit`` to transparent and blurred. Its size is not its own: it

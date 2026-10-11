@@ -208,6 +208,14 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.newCommand',
   },
   {
+    id: 'command-typing',
+    section: 'commands',
+    anchor: 'command-typing',
+    label: 'commands:typing.label',
+    description: 'commands:typing.description',
+    keywords: 'search.keywords.commandTyping',
+  },
+  {
     id: 'automations-new',
     section: 'automations',
     label: 'search.entries.newAutomation',

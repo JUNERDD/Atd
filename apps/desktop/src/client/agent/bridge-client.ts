@@ -79,6 +79,7 @@ export function createAgentBridge(
     dismissMemoryProposal: (id) => invoke({ action: 'dismissMemoryProposal', id }),
     artifact: (artifactId, operation) => invoke({ action: 'artifact', artifactId, operation }),
     copy: (text) => invoke({ action: 'copy', text }),
+    writeText: (request) => invoke({ action: 'writeText', ...request }),
     openLink: (url) => invoke({ action: 'openLink', url }),
     childTranscript: (taskId, childKey) => invoke({ action: 'childTranscript', taskId, childKey }),
     releaseChildTranscript: (taskId, childKey) =>

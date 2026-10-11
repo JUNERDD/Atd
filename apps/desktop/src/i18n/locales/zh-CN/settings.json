@@ -66,6 +66,7 @@
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
+      "commandTyping": "打字 打字机 逐字 动画 一次性 粘贴 写入 写回 插入 替换 减弱动态效果",
       "newAutomation": "创建 添加 自动化 计划 定时任务 例行 自动执行",
       "automationsPause": "暂停 停止 停用 全部自动化 计划 恢复",
       "memoryLearning": "自动学习 记住 暂停 偏好 纠正",

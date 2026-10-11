@@ -66,6 +66,7 @@
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
+      "commandTyping": "typing typewriter type out animation paste at once write back insert replace reduce motion",
       "newAutomation": "create add automation schedule recurring task routine automate",
       "automationsPause": "pause stop disable all automations schedule hold resume",
       "memoryLearning": "learn automatically remember pause preferences corrections",

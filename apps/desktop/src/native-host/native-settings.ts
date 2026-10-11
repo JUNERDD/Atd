@@ -1,5 +1,6 @@
 import { getSettings, patchSettings } from '@atd/agent-client';
 import {
+  DEFAULT_COMMAND_TYPING,
   DEFAULT_SHORTCUTS,
   parseShortcutBindings,
   type PatchSettingsRequest,
@@ -91,6 +92,7 @@ export function nativeSettings(
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
       selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
+      commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -197,6 +199,7 @@ export function nativeSettings(
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    saveCommandTyping: (value) => write({ commandTyping: value }),
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,

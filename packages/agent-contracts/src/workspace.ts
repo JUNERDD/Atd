@@ -139,6 +139,11 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
+    /**
+     * Whether write-back command answers are typed into other apps rather than pasted at once
+     * (`DEFAULT_COMMAND_TYPING`).
+     */
+    commandTyping: Type.Boolean(),
     /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
     /** An interrupted guide resumes here; null starts with the intro. */
@@ -170,6 +175,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    commandTyping: Type.Optional(Type.Boolean()),
     onboardingCompleted: Type.Optional(Type.Boolean()),
     onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */

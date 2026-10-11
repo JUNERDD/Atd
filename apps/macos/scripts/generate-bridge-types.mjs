@@ -62,7 +62,14 @@ function rendererSections(schema) {
   const bridge = schema['x-bridge'];
   const defs = schema.$defs;
   /** Definitions other schemas reuse; an equal inline schema refers to them by name. */
-  const shared = ['FileRef', 'ShortcutRegistration', 'ShortcutResult', 'SocketFrame'];
+  const shared = [
+    'FileRef',
+    'ShortcutRegistration',
+    'ShortcutResult',
+    'SocketFrame',
+    'CommandOption',
+    'CommandArguments',
+  ];
   const emitter = createEmitter({ defs, shared });
   return [
     section(

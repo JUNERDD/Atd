@@ -1,47 +1,41 @@
 import AICore
 import AppKit
 
-/// What the status HUD (``SelectionToolbarHUD``) shows, in the selection toolbar's vocabulary:
-/// the grip, the app's monochrome mark (the menu bar's), the state in the toolbar's label type,
-/// the hint with its keys as keycaps (the page's `Kbd`: 20 pt tall, 12 pt medium on a muted fill,
-/// fully rounded), and the close button. The off notice is the mark and the off state alone.
-enum SelectionToolbarHUDContent {
-  /// Stands in for the keys while the hint is translated, then splits it around them.
-  private static let keysMarker = "\u{2063}"
+/// The parts the glass status HUD (``GlassHUD``) builds its rows from, in the selection toolbar's
+/// vocabulary: the grip, the app's monochrome mark (the menu bar's), text in the toolbar's label
+/// type, a hint with its keys as keycaps (the page's `Kbd`: 20 pt tall, 12 pt medium on a muted
+/// fill, fully rounded), and the round close button. The command island
+/// (``IslandController``) draws the same vocabulary in SwiftUI and shares ``keysMarker`` and
+/// ``keycapHeight``.
+enum GlassHUDPieces {
+  /// Stands in for the keys while a hint is translated, then splits it around them.
+  static let keysMarker = "\u{2063}"
   static let keycapHeight: CGFloat = 20
+  /// The 16 pt glyph slot of the mark.
+  static let glyphSide: CGFloat = 16
 
-  /// The row for the glass bar, and what VoiceOver reads for it: `keys` as keycap symbols,
-  /// `close` the close button.
-  static func row(keys: [String], close: NSButton) -> (views: [NSView], label: String) {
-    let strings = ShellStrings.shared
+  /// The drag handle that leads a movable HUD's row.
+  static func grip() -> AnnotationBarGrip {
     let grip = AnnotationBarGrip()
     grip.image = AnnotationIcons.glyph(AnnotationIcons.grip, label: "")
-    grip.toolTip = strings.text(.captureToolbarMove)
-    let title = strings.text(.selectionHudOn)
-    let status = NSStackView(views: [mark(), text(title, primary: true)])
-    status.spacing = 6
-    let hint = strings.text(.selectionHudHint, keysMarker)
-    let body = NSStackView(views: [status, sentence(hint, keys: keys)])
-    body.spacing = 12
-    body.edgeInsets = NSEdgeInsets(top: 0, left: 2, bottom: 0, right: 4)
-    let label = title + ", " + hint.replacingOccurrences(of: keysMarker, with: keys.joined())
-    return ([grip, body, close], label)
+    grip.toolTip = ShellStrings.shared.text(.captureToolbarMove)
+    return grip
   }
 
-  /// The off notice's row, and what VoiceOver reads for it: nothing to move or close.
-  static func offRow() -> (views: [NSView], label: String) {
-    let title = ShellStrings.shared.text(.selectionHudOff)
-    let status = NSStackView(views: [mark(), text(title, primary: true)])
-    status.spacing = 6
-    status.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 10)
-    status.heightAnchor.constraint(equalToConstant: AnnotationToolbarButton.side).isActive = true
-    return ([status], title)
+  /// The round × button, named `label` for VoiceOver and its tooltip.
+  static func close(label: String, target: AnyObject, action: Selector) -> AnnotationToolbarButton {
+    let close = AnnotationToolbarButton(selection: nil, action: action)
+    close.image = AnnotationIcons.glyph(AnnotationIcons.cancel, label: label)
+    close.setAccessibilityLabel(label)
+    close.toolTip = label
+    close.target = target
+    return close
   }
 
   /// The menu bar's template mark, tinted like the text beside it.
-  private static func mark() -> NSView {
+  static func mark() -> NSView {
     let image = (NSImage(named: "idleTemplate")?.copy() as? NSImage) ?? NSImage()
-    image.size = NSSize(width: 16, height: 16)
+    image.size = NSSize(width: glyphSide, height: glyphSide)
     image.isTemplate = true
     let view = NSImageView(image: image)
     view.contentTintColor = .labelColor
@@ -49,7 +43,8 @@ enum SelectionToolbarHUDContent {
     return view
   }
 
-  private static func text(_ string: String, primary: Bool) -> NSTextField {
+  /// One line of text: `primary` in the toolbar's label type, else secondary 12 pt.
+  static func text(_ string: String, primary: Bool) -> NSTextField {
     let field = NSTextField(labelWithString: string)
     field.font = primary ? AnnotationToolbarButton.Label.font : .systemFont(ofSize: 12)
     field.textColor = primary ? .labelColor : .secondaryLabelColor
@@ -57,8 +52,9 @@ enum SelectionToolbarHUDContent {
     return field
   }
 
-  /// The hint in secondary text with the keys as keycaps wherever the language puts them.
-  private static func sentence(_ hint: String, keys: [String]) -> NSView {
+  /// `hint` (translated around ``keysMarker``) in secondary text with `keys` as keycaps
+  /// wherever the language puts them, and what VoiceOver reads for it.
+  static func sentence(_ hint: String, keys: [String]) -> (view: NSView, label: String) {
     let parts = hint.components(separatedBy: keysMarker)
     var views: [NSView] = []
     for (index, part) in parts.enumerated() {
@@ -68,7 +64,7 @@ enum SelectionToolbarHUDContent {
     }
     let stack = NSStackView(views: views)
     stack.spacing = 4
-    return stack
+    return (stack, hint.replacingOccurrences(of: keysMarker, with: keys.joined()))
   }
 
   /// One key as the page's `Kbd` draws it.
@@ -96,7 +92,7 @@ enum SelectionToolbarHUDContent {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-      layer?.cornerRadius = SelectionToolbarHUDContent.keycapHeight / 2
+      layer?.cornerRadius = GlassHUDPieces.keycapHeight / 2
       layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.08).cgColor
     }
   }

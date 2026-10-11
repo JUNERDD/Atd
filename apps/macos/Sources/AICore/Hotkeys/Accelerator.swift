@@ -14,6 +14,11 @@ public struct HotKeyModifiers: OptionSet, Hashable, Sendable {
 public struct HotKeyCombination: Hashable, Sendable {
   public let keyCode: UInt32
   public let modifiers: HotKeyModifiers
+
+  public init(keyCode: UInt32, modifiers: HotKeyModifiers) {
+    self.keyCode = keyCode
+    self.modifiers = modifiers
+  }
 }
 
 public enum AcceleratorError: Error, Equatable, Sendable {

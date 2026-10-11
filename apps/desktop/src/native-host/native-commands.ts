@@ -8,7 +8,7 @@ import {
   reorderRemote,
   saveRemote,
 } from '../client/agent/command-remote';
-import type { CommandDefinition } from '../client/agent/command-schema';
+import type { ArgumentValues, CommandDefinition } from '../client/agent/command-schema';
 import { validateCommand } from '../client/agent/command-validation';
 import type { Screenshot } from '../client/agent/screenshot-input';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
@@ -63,16 +63,23 @@ export class NativeCommands implements CommandCatalog {
     return command;
   }
 
-  /** `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice. */
-  prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
-    return prepareCommand(this.find(id), this, expectCapture);
+  /**
+   * `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice.
+   * `overrides`: argument values picked for this launch, over the remembered ones.
+   */
+  prepare(id: string, expectCapture = false, overrides?: ArgumentValues): Promise<PreparedCommand> {
+    return prepareCommand(this.find(id), this, expectCapture, overrides);
   }
 
   /**
    * Prepared like a shortcut launch (a failed capture becomes a notice), but the selection the
    * command reads is `text`, captured now, so the shell's stashed selection stays untouched.
    */
-  async prepareWithText(id: string, text: string): Promise<PreparedCommand> {
+  async prepareWithText(
+    id: string,
+    text: string,
+    overrides?: ArgumentValues,
+  ): Promise<PreparedCommand> {
     if (text.length > MAX_CAPTURE_LENGTH) throw new Error(PAGE_TEXT_TOO_LONG);
     const selection = { text, capturedAt: new Date().toISOString() };
     return prepareCommand(
@@ -82,6 +89,7 @@ export class NativeCommands implements CommandCatalog {
         screenshot: () => this.screenshot(),
       },
       true,
+      overrides,
     );
   }
 

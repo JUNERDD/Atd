@@ -23,7 +23,11 @@ export type {
   SelectionToolbarKey,
   SelectionToolbarSettings,
 };
-export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agent-contracts';
+export {
+  DEFAULT_COMMAND_TYPING,
+  SELECTION_TOOLBAR_ACTIVATIONS,
+  SELECTION_TOOLBAR_KEYS,
+} from '@atd/agent-contracts';
 
 /**
  * How the mini panel opens from its pill on the screen edge: as the pointer reaches it, or only on
@@ -99,6 +103,11 @@ export interface SettingsSnapshot {
   /** The toolbar the shell shows over text selected in other apps, and the apps it skips. */
   selectionToolbar: SelectionToolbarSettings;
   /**
+   * Whether write-back command answers are typed into other apps rather than pasted at once; the
+   * service's default until it loads.
+   */
+  commandTyping: boolean;
+  /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
    */
@@ -154,6 +163,8 @@ export interface SettingsBridge {
   addShellAllowlistEntry: (entry: string) => Promise<SettingsSnapshot>;
   /** Replaces the selection toolbar settings as a whole. */
   saveSelectionToolbar: (value: SelectionToolbarSettings) => Promise<SettingsSnapshot>;
+  /** Sets how write-back command answers arrive in other apps. */
+  saveCommandTyping: (value: boolean) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

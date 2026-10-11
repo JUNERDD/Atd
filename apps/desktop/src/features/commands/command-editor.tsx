@@ -19,6 +19,7 @@ import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
 import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
+import { OutputSettings } from './output-settings';
 import { ParameterList } from './parameter-list';
 import { PlacementSettings } from './placement-settings';
 import { RunSettings } from './run-settings';
@@ -273,6 +274,7 @@ export function CommandEditor({
             <PlacementSettings command={draft} onChange={setDraft} />
           </SettingsGroup>
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
+          <OutputSettings command={draft} onChange={setDraft} />
           {error && (
             <div ref={errorMessage} className="space-y-2">
               <p role="alert" className="settings-inline-error">

@@ -32,6 +32,11 @@ nonisolated struct MiniPanelGlassRect: VectorArithmetic {
 
   var rect: CGRect { CGRect(x: x, y: y, width: width, height: height) }
 
+  /// The same values for ``MiniPanelShapeAxis``, which splits them between the axis springs.
+  var components: MiniPanelShapeAxis.Components {
+    .init(x: x, y: y, width: width, height: height, corner: corner)
+  }
+
   static var zero: MiniPanelGlassRect { MiniPanelGlassRect() }
 
   static func + (lhs: MiniPanelGlassRect, rhs: MiniPanelGlassRect) -> MiniPanelGlassRect {

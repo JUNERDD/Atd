@@ -158,6 +158,45 @@
     },
     "unavailable": "命令需要读取选中的文本，才能显示在这些位置：请将“输入来源”设为“选中的文本”，或在“输入选项”中开启选中文本变量。"
   },
+  "output": {
+    "title": "结果",
+    "description": "运行结束时如何处理回答。",
+    "action": "回答完成后",
+    "panel": {
+      "title": "显示在对话中",
+      "description": "回答只保留在对话中。"
+    },
+    "replaceSelection": {
+      "title": "替换选中的文字",
+      "description": "用回答替换你选中的文字。"
+    },
+    "insertAfterSelection": {
+      "title": "插入到选中文字之后",
+      "description": "在选中的文字之后写入回答，保留原文。"
+    },
+    "insertAtCursor": {
+      "title": "插入到光标处",
+      "description": "在光标所在处输入回答。"
+    },
+    "copy": {
+      "title": "拷贝到剪贴板",
+      "description": "同时将回答拷贝到剪贴板。"
+    },
+    "unavailable": "命令需要读取选中的文本，才能对其操作：请将“输入来源”设为“选中的文本”，或在“输入选项”中开启选中文本变量。",
+    "writeBackNote": "仅在通过快捷键或选择文字工具栏从其他 App 运行时写入；在其他地方运行时，回答保留在对话中。",
+    "review": {
+      "title": "应用前确认",
+      "description": "回答先留在对话中，点击其“在…中替换”或“插入到…”按钮后再写入。"
+    }
+  },
+  "typing": {
+    "description": "命令将回答写入其他 App 时，逐字打出回答。关闭后将一次性粘贴。",
+    "reduceMotion": "系统已开启“减弱动态效果”，回答会一次性出现。",
+    "label": "打字效果",
+    "errors": {
+      "save": "无法保存打字效果，请重试。"
+    }
+  },
   "shortcut": {
     "error": "请将 Command、Control 或 Alt 与支持的按键组合使用。",
     "record": "录制命令快捷键",

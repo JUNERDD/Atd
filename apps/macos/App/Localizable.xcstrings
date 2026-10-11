@@ -919,6 +919,510 @@
         }
       }
     },
+    "commandOptions.change" : {
+      "comment" : "Accessibility label and tooltip of the values summary on the command progress HUD: stops the run and reopens its options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更改选项"
+          }
+        }
+      }
+    },
+    "commandOptions.edit" : {
+      "comment" : "Options menu row that opens the command's input page in the panel to fill in a text or number option",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill in Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 中填写"
+          }
+        }
+      }
+    },
+    "commandOptions.filter" : {
+      "comment" : "Placeholder and accessibility label of the field that filters a long option list in the options card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "筛选选项"
+          }
+        }
+      }
+    },
+    "commandOptions.holdHint" : {
+      "comment" : "Hint on the command progress HUD while a command shortcut with options is pressed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold for options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住可选选项"
+          }
+        }
+      }
+    },
+    "commandOptions.key.back" : {
+      "comment" : "Options card key hint: goes back from a value list to the options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
+    "commandOptions.key.change" : {
+      "comment" : "Options card key hint for Left and Right: changes the value of the current option",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "换值"
+          }
+        }
+      }
+    },
+    "commandOptions.key.close" : {
+      "comment" : "Options card key hint for Escape: closes the card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起"
+          }
+        }
+      }
+    },
+    "commandOptions.key.move" : {
+      "comment" : "Options card key hint for the arrow keys: moves between rows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动"
+          }
+        }
+      }
+    },
+    "commandOptions.key.open" : {
+      "comment" : "Options card key hint for Space: opens the current option's values",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开"
+          }
+        }
+      }
+    },
+    "commandOptions.key.pick" : {
+      "comment" : "Options card key hint for the digit keys: picks a value at once",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快选"
+          }
+        }
+      }
+    },
+    "commandOptions.key.run" : {
+      "comment" : "Options card key hint for Return: runs the command",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行"
+          }
+        }
+      }
+    },
+    "commandOptions.menu" : {
+      "comment" : "VoiceOver label of the chevron of a selection toolbar command's split button; %@ is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@的选项"
+          }
+        }
+      }
+    },
+    "commandOptions.noMatch" : {
+      "comment" : "Options card list when the filter matches no option",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有匹配的选项"
+          }
+        }
+      }
+    },
+    "commandOptions.run" : {
+      "comment" : "Row of the selection toolbar's options menu that runs the command with the values shown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行"
+          }
+        }
+      }
+    },
+    "commandProgress.answer" : {
+      "comment" : "VoiceOver label of the command progress HUD's answer card, which shows a command's answer that could not be written into the app; %@ is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer from %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”的回答"
+          }
+        }
+      }
+    },
+    "commandProgress.cancel" : {
+      "comment" : "Command progress HUD close button while the command runs: stops it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "commandProgress.close" : {
+      "comment" : "Command progress HUD answer card: close button and Esc key hint that close the card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "commandProgress.copied" : {
+      "comment" : "Command progress HUD once the answer card's answer was copied to the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制"
+          }
+        }
+      }
+    },
+    "commandProgress.copy" : {
+      "comment" : "Command progress HUD answer card: button and ⌘C key hint that copy the whole answer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "commandProgress.dismiss" : {
+      "comment" : "Command progress HUD close button on a notice: dismisses it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "commandProgress.done" : {
+      "comment" : "Command progress HUD once the command's answer was written into the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已写入"
+          }
+        }
+      }
+    },
+    "commandProgress.hint" : {
+      "comment" : "Command progress HUD hint while the command runs; %@ is the Esc key as a keycap",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press %@ to cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按 %@ 取消"
+          }
+        }
+      }
+    },
+    "commandProgress.open" : {
+      "comment" : "Command progress HUD button on a notice: shows the command's task in the panel",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开"
+          }
+        }
+      }
+    },
+    "commandProgress.open.tooltip" : {
+      "comment" : "Tooltip of the command progress HUD's Open button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show in Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 中查看"
+          }
+        }
+      }
+    },
+    "commandProgress.openInAtd" : {
+      "comment" : "Command progress HUD answer card button: opens the command's run in the panel",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 中打开"
+          }
+        }
+      }
+    },
+    "commandProgress.openInAtd.tooltip" : {
+      "comment" : "Tooltip of the answer card's Open in Atd button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show this run in the Atd panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 面板中查看这次运行"
+          }
+        }
+      }
+    },
+    "commandProgress.working" : {
+      "comment" : "Accessibility label of the command progress HUD while the command runs; %@ is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行“%@”"
+          }
+        }
+      }
+    },
+    "commandProgress.writing" : {
+      "comment" : "Command progress HUD while the command's answer is written into the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写入…"
+          }
+        }
+      }
+    },
     "common.cancel" : {
       "comment" : "Cancel button",
       "extractionState" : "manual",

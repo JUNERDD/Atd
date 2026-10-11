@@ -1,8 +1,12 @@
 import AICore
 import AppKit
+import OSLog
 
-/// What the application menu and the status item's menu do (``AppMenus``).
+/// The application menu and the status item: what their items do (``AppMenus``), the status item
+/// following the control stream, and the menus and window titles following the shell language.
 extension ShellController {
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "shell")
+
   var menuActions: AppMenuActions {
     let services = services
     return AppMenuActions(
@@ -20,5 +24,49 @@ extension ShellController {
       setSelectionListening: { [weak self] on in self?.toolbar.setListening(on) },
       miniPanelShown: { [weak self] in self?.miniPanel.isShown ?? false },
       setMiniPanelShown: { [weak self] shown in self?.miniPanel.setShown(shown) })
+  }
+
+  /// The status item follows the control stream: reachability, then the `status` counts.
+  func refreshStatus() {
+    let availability: ServiceAvailability =
+      switch control.state {
+      case .connecting: .connecting
+      case .connected: .available
+      case .reconnecting: .unavailable(development: false)
+      case .disconnected:
+        .unavailable(development: control.unavailable == .developmentServiceNotRunning)
+      }
+    menuStatus = MenuBarStatus(
+      availability: availability, running: control.status?.running ?? 0,
+      attention: control.status?.attention ?? 0)
+    statusItem?.update(menuStatus)
+    #if DEBUG
+      Self.log.info(
+        "menu bar \(self.menuStatus.state.rawValue, privacy: .public) running \(self.menuStatus.running) attention \(self.menuStatus.attention)"
+      )
+    #endif
+  }
+
+  func applyLanguage() {
+    NSApp.mainMenu = AppMenus.mainMenu(menuActions)
+    panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
+    settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))
+    onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
+  }
+
+  /// Undo and Redo go to the page of the key window, which runs them in its editor.
+  func sendEditCommand(_ command: EditCommandEvent.Command) {
+    let host: WebViewHost? =
+      if panel.isKey {
+        panelHost
+      } else if settings.isKey {
+        settings.host
+      } else if onboarding.isKey {
+        onboarding.host
+      } else {
+        nil
+      }
+    guard let host else { return sendUserAppEditCommand(command) }
+    host.send(.editCommand(.init(command: command)), scope: .document)
   }
 }

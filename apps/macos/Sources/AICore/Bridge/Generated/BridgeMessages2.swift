@@ -4,6 +4,146 @@
 
 import Foundation
 
+/// Everything the page posts: a call Swift answers by id, or a one-way post.
+public enum JsMessage: Decodable, Equatable, Sendable {
+  case call(id: Int, NativeCall)
+  case post(NativePost)
+
+  public init(from decoder: any Decoder) throws {
+    let kind = try decoder.container(keyedBy: Discriminator.self)
+    switch try kind.decode(String.self, forKey: .type) {
+    case "call":
+      let container = try BridgeCoding.keyed(decoder, CallKeys.self)
+      let id = try container.integer(.id, minimum: 1)
+      let method = try container.string(.method)
+      let call: NativeCall
+      switch method {
+      case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))
+      case "window.show": call = try .windowShow(container.value(.params, WindowShowParams.self))
+      case "window.hide": call = try .windowHide(container.value(.params, WindowHideParams.self))
+      case "window.setPinned":
+        call = try .windowSetPinned(container.value(.params, WindowSetPinnedParams.self))
+      case "app.state": call = try .appState(container.value(.params, AppStateParams.self))
+      case "app.setShowInDock":
+        call = try .appSetShowInDock(container.value(.params, AppSetShowInDockParams.self))
+      case "app.setOpenAtLogin":
+        call = try .appSetOpenAtLogin(container.value(.params, AppSetOpenAtLoginParams.self))
+      case "miniPanel.setShown":
+        call = try .miniPanelSetShown(container.value(.params, MiniPanelSetShownParams.self))
+      case "miniPanel.setOpenOn":
+        call = try .miniPanelSetOpenOn(container.value(.params, MiniPanelSetOpenOnParams.self))
+      case "miniPanel.setCommands":
+        call = try .miniPanelSetCommands(container.value(.params, MiniPanelSetCommandsParams.self))
+      case "settings.open":
+        call = try .settingsOpen(container.value(.params, SettingsOpenParams.self))
+      case "settings.close":
+        call = try .settingsClose(container.value(.params, SettingsCloseParams.self))
+      case "onboarding.open":
+        call = try .onboardingOpen(container.value(.params, OnboardingOpenParams.self))
+      case "onboarding.settle":
+        call = try .onboardingSettle(container.value(.params, OnboardingSettleParams.self))
+      case "onboarding.close":
+        call = try .onboardingClose(container.value(.params, OnboardingCloseParams.self))
+      case "userApp.open": call = try .userAppOpen(container.value(.params, UserAppOpenParams.self))
+      case "userApp.close":
+        call = try .userAppClose(container.value(.params, UserAppCloseParams.self))
+      case "userApp.widgetPreview":
+        call = try .userAppWidgetPreview(container.value(.params, UserAppWidgetPreviewParams.self))
+      case "userApp.clearData":
+        call = try .userAppClearData(container.value(.params, UserAppClearDataParams.self))
+      case "userApp.pin": call = try .userAppPin(container.value(.params, UserAppPinParams.self))
+      case "userApp.unpin":
+        call = try .userAppUnpin(container.value(.params, UserAppUnpinParams.self))
+      case "shortcuts.set":
+        call = try .shortcutsSet(container.value(.params, ShortcutsSetParams.self))
+      case "capture": call = try .capture(container.value(.params, CaptureParams.self))
+      case "clipboard.read":
+        call = try .clipboardRead(container.value(.params, ClipboardReadParams.self))
+      case "clipboard.write":
+        call = try .clipboardWrite(container.value(.params, ClipboardWriteParams.self))
+      case "screenshot.capture":
+        call = try .screenshotCapture(container.value(.params, ScreenshotCaptureParams.self))
+      case "screenshot.edit":
+        call = try .screenshotEdit(container.value(.params, ScreenshotEditParams.self))
+      case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
+      case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
+      case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))
+      case "link.open": call = try .linkOpen(container.value(.params, LinkOpenParams.self))
+      case "artifact": call = try .artifact(container.value(.params, ArtifactParams.self))
+      case "files.pick": call = try .filesPick(container.value(.params, FilesPickParams.self))
+      case "files.pickFolder":
+        call = try .filesPickFolder(container.value(.params, FilesPickFolderParams.self))
+      case "files.save": call = try .filesSave(container.value(.params, FilesSaveParams.self))
+      case "text.write": call = try .textWrite(container.value(.params, TextWriteParams.self))
+      case "commandProgress.show":
+        call = try .commandProgressShow(container.value(.params, CommandProgressShowParams.self))
+      case "commandProgress.hide":
+        call = try .commandProgressHide(container.value(.params, CommandProgressHideParams.self))
+      case "commandOptions.set":
+        call = try .commandOptionsSet(container.value(.params, CommandOptionsSetParams.self))
+      case "approval.request":
+        call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
+      case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
+      case "accessibility.request":
+        call = try .accessibilityRequest(container.value(.params, AccessibilityRequestParams.self))
+      case "screenRecording.request":
+        call = try .screenRecordingRequest(
+          container.value(.params, ScreenRecordingRequestParams.self))
+      case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
+      default:
+        throw DecodingError.dataCorruptedError(
+          forKey: .method, in: container, debugDescription: "Unknown method \(method).")
+      }
+      self = .call(id: id, call)
+    case "post":
+      let container = try BridgeCoding.keyed(decoder, PostKeys.self)
+      let method = try container.string(.method)
+      let post: NativePost
+      switch method {
+      case "bridge.ready": post = try .bridgeReady(container.value(.params, BridgeReadyPost.self))
+      case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
+      case "window.dragRegions":
+        post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
+      case "onboarding.surface":
+        post = try .onboardingSurface(container.value(.params, OnboardingSurfacePost.self))
+      case "onboarding.selection":
+        post = try .onboardingSelection(container.value(.params, OnboardingSelectionPost.self))
+      case "socket.open": post = try .socketOpen(container.value(.params, SocketOpenPost.self))
+      case "socket.send": post = try .socketSend(container.value(.params, SocketSendPost.self))
+      case "update.install":
+        post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
+      case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
+      case "userApp.pinDrag":
+        post = try .userAppPinDrag(container.value(.params, UserAppPinDragPost.self))
+      default:
+        throw DecodingError.dataCorruptedError(
+          forKey: .method, in: container, debugDescription: "Unknown method \(method).")
+      }
+      self = .post(post)
+    default:
+      throw DecodingError.dataCorruptedError(
+        forKey: .type, in: kind, debugDescription: "Unknown message type.")
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case type
+  }
+
+  private enum CallKeys: String, CodingKey, CaseIterable {
+    case type
+    case id
+    case method
+    case params
+  }
+
+  private enum PostKeys: String, CodingKey, CaseIterable {
+    case type
+    case method
+    case params
+  }
+}
+
 /// A Swift → page push; it encodes as its payload.
 public enum NativeEvent: Encodable, Equatable, Sendable {
   case windowActive(WindowActiveEvent)
@@ -25,6 +165,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case userAppState(UserAppStateEvent)
   case userAppPins(UserAppPinsEvent)
   case taskOpen(TaskOpenEvent)
+  case commandProgressAction(CommandProgressActionEvent)
 
   /// The contract name.
   public var name: String {
@@ -48,6 +189,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppState: "userApp.state"
     case .userAppPins: "userApp.pins"
     case .taskOpen: "task.open"
+    case .commandProgressAction: "commandProgress.action"
     }
   }
 
@@ -72,6 +214,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppState(let payload): try payload.encode(to: encoder)
     case .userAppPins(let payload): try payload.encode(to: encoder)
     case .taskOpen(let payload): try payload.encode(to: encoder)
+    case .commandProgressAction(let payload): try payload.encode(to: encoder)
     }
   }
 }

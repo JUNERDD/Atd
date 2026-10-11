@@ -9,10 +9,16 @@ final class HotKeyRegistrar {
   private let carbon = CarbonHotKeys()
   private var registered: [String: (combination: HotKeyCombination, token: UInt32)] = [:]
   private let onPress: @MainActor (String) -> Void
+  private let onRelease: @MainActor (String) -> Void
 
-  /// `onPress` receives the id of the pressed entry.
-  init(onPress: @escaping @MainActor (String) -> Void) {
+  /// `onPress` receives the id of the pressed entry, `onRelease` that of the entry whose key
+  /// came back up.
+  init(
+    onPress: @escaping @MainActor (String) -> Void,
+    onRelease: @escaping @MainActor (String) -> Void
+  ) {
     self.onPress = onPress
+    self.onRelease = onRelease
   }
 
   /// Registers the difference to `desired` and reports every entry once, in order. The page
@@ -26,7 +32,10 @@ final class HotKeyRegistrar {
     }
     var failures = plan.failures
     for (id, combination) in plan.register {
-      switch carbon.register(combination, onPress: { [onPress] in onPress(id) }) {
+      let registration = carbon.register(
+        combination, onPress: { [onPress] in onPress(id) },
+        onRelease: { [onRelease] in onRelease(id) })
+      switch registration {
       case .success(let token): registered[id] = (combination, token)
       case .failure(let status): failures[id] = .registrationFailed(status: status.value)
       }

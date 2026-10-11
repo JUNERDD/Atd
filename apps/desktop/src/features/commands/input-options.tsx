@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { actsOnSelection, defaultCommandOutput, readsSelection } from '@atd/agent-contracts';
 import { Label } from '@atd/ui/components/label';
 import { Button } from '@atd/ui/components/button';
 import { ChevronDown } from 'lucide-react';
@@ -52,9 +53,8 @@ export function InputOptions({
     // Switching to Selected text also puts the command on the selection toolbar over other apps,
     // where a command that takes the selection as its input has always shown.
     const toToolbar = value === 'selection' && command.input.source !== 'selection';
-    onChange({
-      ...command,
-      input: {
+    update(
+      {
         ...command.input,
         source: value,
         required: value === 'none' ? false : command.input.required,
@@ -62,7 +62,20 @@ export function InputOptions({
         selection: command.input.selection || value === 'selection',
         clipboard: command.input.clipboard || value === 'clipboard',
       },
-      placement: toToolbar ? { ...command.placement, selectionToolbar: true } : command.placement,
+      toToolbar ? { ...command.placement, selectionToolbar: true } : command.placement,
+    );
+  }
+  /**
+   * Applies an input change. An output that acts on the selection needs a command that reads it,
+   * so it returns to the conversation when the input stops reading the selection.
+   */
+  function update(input: CommandDefinition['input'], placement = command.placement) {
+    const strands = actsOnSelection(command.output.action) && !readsSelection(input);
+    onChange({
+      ...command,
+      input,
+      placement,
+      output: strands ? defaultCommandOutput() : command.output,
     });
   }
   return (
@@ -133,9 +146,7 @@ export function InputOptions({
                     (key === 'clipboard' && command.input.source === 'clipboard')
                   }
                   checked={command.input[key]}
-                  onCheckedChange={(checked) =>
-                    onChange({ ...command, input: { ...command.input, [key]: checked } })
-                  }
+                  onCheckedChange={(checked) => update({ ...command.input, [key]: checked })}
                 />
               </div>
             ))}

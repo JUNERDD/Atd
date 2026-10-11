@@ -69,6 +69,7 @@ export function installBridge(extras?: {
       activationKeys: ['option'],
       showHud: true,
     },
+    commandTyping: true,
     accessibilityTrusted: true,
     screenRecordingTrusted: true,
     onboardingCompleted: true,
@@ -197,6 +198,7 @@ export function installBridge(extras?: {
     saveFile: vi.fn(async () => true),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),
+    writeText: vi.fn(async () => ({ ok: true as const })),
     openLink: vi.fn(async () => {}),
     memory: vi.fn(async () => noMemory()),
     saveMemorySettings: vi.fn(async (settings) => ({ ...noMemory(), ...settings })),
@@ -288,6 +290,7 @@ export function installBridge(extras?: {
         contexts: vi.fn(async () => ({ options: [], defaultTier: null, selected: null })),
         setContext: vi.fn(async () => {}),
         disconnect: vi.fn(async () => {}),
+        remove: vi.fn(async () => undefined),
         refresh: vi.fn(async () => {}),
         refreshCatalogs: vi.fn(async () => {}),
         verify: vi.fn(async () => {}),
@@ -328,6 +331,11 @@ export function installBridge(extras?: {
       },
       saveSelectionToolbar: vi.fn(async (selectionToolbar) => {
         settings = { ...settings, selectionToolbar };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
+      saveCommandTyping: vi.fn(async (commandTyping) => {
+        settings = { ...settings, commandTyping };
         settingsListeners.forEach((listener) => listener(settings));
         return settings;
       }),

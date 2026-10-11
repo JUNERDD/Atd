@@ -10,7 +10,7 @@ import { PermissionAnswerSchema, PermissionTierSchema } from './permission-schem
 import { RunPolicySchema } from './run-policy';
 import { InputSchema } from './task-schema';
 import { ChildKeySchema } from './transcript-schema';
-import { MAX_CAPTURE_LENGTH, SaveContentSchema } from '../../native-bridge/calls';
+import { MAX_CAPTURE_LENGTH, NativeCalls, SaveContentSchema } from '../../native-bridge/calls';
 
 /**
  * Every request a window hands the agent request handler (`AgentRequests`), as the `AgentBridge`
@@ -155,6 +155,10 @@ export const AgentRequestSchema = Type.Union([
     ]),
   }),
   Type.Object({ action: Type.Literal('copy'), text: Type.String({ maxLength: 1000000 }) }),
+  Type.Object({
+    action: Type.Literal('writeText'),
+    ...NativeCalls['text.write'].params.properties,
+  }),
   Type.Object({ action: Type.Literal('openLink'), url: Type.String({ maxLength: 8192 }) }),
   Type.Object({
     action: Type.Literal('childTranscript'),

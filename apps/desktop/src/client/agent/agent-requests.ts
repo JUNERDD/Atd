@@ -22,6 +22,7 @@ import { TaskClient, type TaskConnection } from './service-tasks';
 import { submitTask } from './task-submit';
 import type { FileRef } from './task-schema';
 import type { SaveContent } from '../../native-bridge/calls';
+import type { CallParams, CallResult } from '../../native-bridge/client';
 
 /** The requests that write the command list; they run one at a time (`AgentRequests.handle`). */
 const COMMAND_WRITES: ReadonlySet<AgentRequest['action']> = new Set([
@@ -61,6 +62,8 @@ export interface AgentPlatform {
   /** Lets the user pick files and uploads them; resolves `[]` when cancelled. */
   chooseFiles(http: AgentHttpClient): Promise<FileRef[]>;
   copy(text: string): Promise<void>;
+  /** Writes a command's answer into the app it ran from; a refusal resolves with its reason. */
+  writeText(request: CallParams<'text.write'>): Promise<CallResult<'text.write'>>;
   /** `url` is already checked to be http(s). */
   openLink(url: string): Promise<void>;
   /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
@@ -285,6 +288,13 @@ export class AgentRequests<S> {
       case 'copy':
         await this.platform.copy(request.text);
         return null;
+      case 'writeText':
+        return this.platform.writeText({
+          target: request.target,
+          mode: request.mode,
+          text: request.text,
+          typing: request.typing,
+        });
       case 'openLink': {
         const url = new URL(request.url);
         if (!['http:', 'https:'].includes(url.protocol))

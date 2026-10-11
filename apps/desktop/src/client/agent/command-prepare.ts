@@ -1,7 +1,8 @@
 import type { CommandCatalog } from './agent-requests';
 import type { PreparedCommand } from './bridge';
-import type { CommandDefinition } from './command-schema';
-import { defaultArguments, readyToRun, templateReferences } from './command-validation';
+import type { ArgumentValues, CommandDefinition } from './command-schema';
+import { commandValues } from './command-arguments';
+import { readyToRun, templateReferences } from './command-validation';
 import { withScreenshot } from './screenshot-input';
 import { emptyInput, type TaskInput } from './task-schema';
 import { errorMessage } from './validation';
@@ -21,18 +22,20 @@ export function runsAsIs(prepared: PreparedCommand): boolean {
  * but unused source stays optional, so it cannot block the run or mask the failure that matters;
  * the first consumed failure (selection before clipboard, then the screenshot) is the one reported.
  * A screenshot command takes one capture; a cancelled one prepares the input without an image and
- * no notice, and the input page offers to take it again.
+ * no notice, and the input page offers to take it again. The arguments start from the parameter
+ * defaults, then the command's remembered values, then `overrides` (`commandValues`).
  */
 export async function prepareCommand(
   command: CommandDefinition,
   sources: Pick<CommandCatalog, 'capture' | 'screenshot'>,
   expectCapture: boolean,
+  overrides?: ArgumentValues,
 ): Promise<PreparedCommand> {
   if (!command.enabled) throw new Error('This command is disabled. Enable it in settings.');
   let input: TaskInput = {
     ...emptyInput(),
     source: command.input.source,
-    arguments: defaultArguments(command),
+    arguments: commandValues(command, overrides),
   };
   const referenced = new Set(
     templateReferences(command.instructions).map((reference) => reference.name),

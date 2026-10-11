@@ -20,8 +20,8 @@ import Carbon.HIToolbox
 /// screen (unless the page turned it off).
 ///
 /// The toolbar goes on any key (Escape included), scroll or click elsewhere, and when another
-/// app activates, and its More menu (``SelectionToolbarMenu``, which never takes the keyboard
-/// either) goes with it; the pointer wandering off never closes either, so the menu can reach
+/// app activates, and its menus and their submenus (``ToolbarOptionsCascade``, which never take
+/// the keyboard either) go with it; the pointer wandering off never closes either, so the menu can reach
 /// as far from the capsule as it needs. A newer press or key makes any check still running
 /// stale. Only presses are watched all the time; keys, scrolls and other buttons are watched
 /// while a check is pending or the toolbar shows, so typing and scrolling elsewhere never wake
@@ -39,9 +39,9 @@ final class SelectionToolbarController {
   /// selection in another app); the toolbar is already hidden.
   var onAsk: ((String?) -> Void)?
   /// A command button or a row of the More menu was clicked on a toolbar over another app's
-  /// selection; the toolbar and the menu are already hidden. A practice toolbar's commands never
-  /// get here: they would run.
-  var onCommand: ((String) -> Void)?
+  /// selection, launching the command as given; the toolbar and the menu are already hidden. A
+  /// practice toolbar's commands never get here: they would run.
+  var onCommand: ((CommandLaunch) -> Void)?
 
   static let debounce: Duration = .milliseconds(150)
 
@@ -79,16 +79,20 @@ final class SelectionToolbarController {
       self?.dismiss()
       self?.onAsk?(text)
     }
-    panel.onCommand = { [weak self] id in
+    panel.onCommand = { [weak self] launch in
       let practice = self?.practiceText != nil
       self?.dismiss()
-      if !practice { self?.onCommand?(id) }
+      if !practice { self?.onCommand?(launch) }
     }
     listening.onChange = { [weak self] on in
       self?.hud.setListening(on)
       if !on { self?.dismiss() }
     }
   }
+
+  /// A command's progress HUD came onto the screen or left it; the status HUD, which shares its
+  /// place, yields it meanwhile.
+  func hudYields(_ yields: Bool) { hud.setYielding(yields) }
 
   /// Whether the `toggle` mode listens for selections, or nil while it is not in effect.
   var isListening: Bool? { listening.isArmed ? listening.isOn : nil }
@@ -102,6 +106,12 @@ final class SelectionToolbarController {
     panel.setCommands(settings.commands)
     hud.configure(enabled: settings.showHud, keys: settings.activation.keys)
     update()
+  }
+
+  /// The page's `commandOptions.set`: the commands that get split buttons and options menus
+  /// from the next time the toolbar shows.
+  func setCommandOptions(_ catalog: CommandOptionsCatalog) {
+    panel.setCommandOptions(catalog)
   }
 
   /// Installs the monitors exactly while the toolbar is on and trusted, and arms the `toggle`

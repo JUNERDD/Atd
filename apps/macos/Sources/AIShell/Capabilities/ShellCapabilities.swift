@@ -68,14 +68,16 @@ final class ShellCapabilities: CapabilityHandling {
     return CapabilityInputs.fileSaved(name: url.lastPathComponent, size: file.bytes.count)
   }
 
-  /// A live read, not the summon stash.
+  /// A live read, not the summon stash, and through Accessibility only: a simulated ⌘C
+  /// (``CopySelection``) answers only a summon, when the user has just pointed at the app.
   private func readSelection() async throws -> JSONValue {
     let visible = panelVisible()
     let trusted = SelectionReader.isTrusted
     let text =
       visible && trusted
       ? await SelectionReader.readBounded(
-        frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
+        frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier
+      ).text : nil
     return try Self.value(
       TextCapture.liveSelection(text, at: .now, panelVisible: visible, readable: trusted))
   }

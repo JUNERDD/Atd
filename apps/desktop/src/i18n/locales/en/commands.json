@@ -158,6 +158,45 @@
     },
     "unavailable": "To show this command in these places, have it read the selected text: set Input source to Selected text, or turn on the selected text variable in Input options."
   },
+  "output": {
+    "title": "Result",
+    "description": "What happens with the answer when a run finishes.",
+    "action": "When the answer is ready",
+    "panel": {
+      "title": "Show in the conversation",
+      "description": "The answer stays in the conversation."
+    },
+    "replaceSelection": {
+      "title": "Replace the selected text",
+      "description": "Writes the answer over the text you selected."
+    },
+    "insertAfterSelection": {
+      "title": "Insert after the selected text",
+      "description": "Writes the answer after the text you selected, keeping that text."
+    },
+    "insertAtCursor": {
+      "title": "Insert at the cursor",
+      "description": "Types the answer where the cursor was."
+    },
+    "copy": {
+      "title": "Copy to the clipboard",
+      "description": "Also puts the answer on the clipboard."
+    },
+    "unavailable": "To act on the selected text, have this command read it: set Input source to Selected text, or turn on the selected text variable in Input options.",
+    "writeBackNote": "Writes only when the command runs from another app, through its shortcut or the selection toolbar. Anywhere else, the answer stays in the conversation.",
+    "review": {
+      "title": "Review before applying",
+      "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
+    }
+  },
+  "typing": {
+    "description": "Commands that write into another app type their answer there a few characters at a time. Turn off to paste it at once.",
+    "reduceMotion": "Reduce Motion is on in System Settings, so answers appear all at once.",
+    "label": "Typing effect",
+    "errors": {
+      "save": "The typing effect couldn't be saved. Try again."
+    }
+  },
   "shortcut": {
     "error": "Include Command, Control, or Alt with a supported key.",
     "record": "Record command shortcut",

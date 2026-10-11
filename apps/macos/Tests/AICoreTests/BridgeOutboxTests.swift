@@ -17,7 +17,8 @@ struct BridgeOutboxTests {
     }
   }
 
-  static let command = SwiftMessage.event(.shortcutCommand(.init(id: "c1")))
+  static let command = SwiftMessage.event(
+    .shortcutCommand(.init(id: "c1", target: nil, arguments: nil, intent: nil)))
   static let visible = NativeEvent.windowVisibility(.init(visible: true))
 
   static func ready() -> BridgeOutbox {

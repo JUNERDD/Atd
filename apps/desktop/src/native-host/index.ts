@@ -24,6 +24,7 @@ import { setReducedTransparency, setWindowActive, setWindowVisible } from '../wi
 import { publishDragRegions } from './drag-regions';
 import { nativeApps } from './native-apps';
 import { nativeAutomations, nativeTaskOpen } from './native-automations';
+import { nativeCommandOptions } from './native-command-options';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -33,6 +34,7 @@ import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
 import { nativeHeldRequest } from './native-held-request';
+import { nativeLightCommand, type PageHolder } from './native-light-command';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
@@ -118,8 +120,9 @@ export async function installNativeHost(
     shortcuts?.sync(true);
     toolbar?.sync();
     miniPanel?.sync();
+    commandOptions?.sync();
   });
-  const requests = new AgentRequests<'page'>(
+  const requests = new AgentRequests<PageHolder>(
     connection,
     commands,
     nativePlatform(native, (prepared, autoRun) => emit('launch', { prepared, autoRun })),
@@ -141,7 +144,7 @@ export async function installNativeHost(
       ? nativeShortcuts(native, commands, messages, {
           appShortcuts: () => (settings.loaded() ? latest.shortcuts : null),
           applied: shortcutsApplied,
-          launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
+          launch: (launch) => emit('launch', launch),
         })
       : null;
   if (surface !== 'panel') followShortcutState(messages, commands, shortcutsApplied);
@@ -157,6 +160,9 @@ export async function installNativeHost(
   // service's commands first arrive.
   const miniPanel =
     surface === 'panel' ? nativeMiniPanel(native, { commands: () => commands.list() }) : null;
+  // Likewise the options the shell offers, which follow the commands and their remembered values.
+  const commandOptions =
+    surface === 'panel' ? nativeCommandOptions(native, { commands: () => commands.list() }) : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
@@ -241,14 +247,17 @@ export async function installNativeHost(
     ...(update ? { update } : {}),
     apps,
     automations: nativeAutomations(connection, native, messages),
-    agent: createAgentBridge(async (request) => {
-      // Only the panel receives `launch` events, so the other windows hand their launches over.
-      if (surface !== 'panel' && request.action === 'launch') {
-        messages.post({ type: 'launchCommand', request });
-        return null;
-      }
-      return requests.handle(request, 'page');
-    }, listen),
+    agent: {
+      ...createAgentBridge(async (request) => {
+        // Only the panel receives `launch` events, so the other windows hand their launches over.
+        if (surface !== 'panel' && request.action === 'launch') {
+          messages.post({ type: 'launchCommand', request });
+          return null;
+        }
+        return requests.handle(request, 'page');
+      }, listen),
+      ...(surface === 'panel' ? { light: nativeLightCommand(native, requests) } : {}),
+    },
     service: createServiceBridge(
       async (request) => {
         if (request.action === 'status') return connection.status();

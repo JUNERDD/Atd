@@ -3,6 +3,7 @@ import { mutationOptions, useMutation, useMutationState } from '@tanstack/react-
 import { useTranslation } from 'react-i18next';
 import { Command, Plus } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Empty,
   EmptyContent,
@@ -28,6 +29,7 @@ import type { SettingsSnapshot } from '../../client/settings-contract';
 import { agentApi, useAgent } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandList } from './command-list';
+import { CommandTypingFooter } from './typing-footer';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -194,7 +196,7 @@ export function CommandSettings({
   // A deep link to an unknown id, or a command deleted meanwhile, falls back to the list.
   if (editor) history.discard();
   return (
-    <section className="command-settings">
+    <section className="command-settings command-overview">
       <SettingsHeading title={t('list.title')} description={t('list.description')}>
         <SettingsSearchField
           search={search}
@@ -207,43 +209,54 @@ export function CommandSettings({
           {t('list.new')}
         </Button>
       </SettingsHeading>
-      <CommandList
-        commands={commands}
-        query={search.query}
-        pendingIds={pending}
-        shortcutErrors={agent.snapshot?.shortcutErrors ?? {}}
-        onClearSearch={() => {
-          search.change('');
-          searchInput.current?.focus();
-        }}
-        onOpen={(command) => history.open({ page: 'command', id: command.id })}
-        onToggle={(command, enabled) => change(command, { enabled })}
-        onShortcut={(command, shortcut) => change(command, { shortcut })}
-        onDuplicate={duplicate}
-        onDelete={setDeleting}
-      />
-      {commands.length === 0 &&
-        (agent.snapshot ? (
-          <div className="settings-extension-empty">
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Command />
-                </EmptyMedia>
-                <EmptyTitle>{t('list.emptyTitle')}</EmptyTitle>
-                <EmptyDescription>{t('list.emptyDescription')}</EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button onClick={create}>
-                  <Plus />
-                  {t('list.new')}
-                </Button>
-              </EmptyContent>
-            </Empty>
-          </div>
-        ) : (
-          <output className="settings-loading">{t('list.loading')}</output>
-        ))}
+      {/* The list scrolls under the heading and search; the footer floats over its end. */}
+      <ScrollArea
+        className="settings-page-scroll"
+        viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+        gutter="none"
+        scrollShadow
+      >
+        <div className="command-overview-body">
+          <CommandList
+            commands={commands}
+            query={search.query}
+            pendingIds={pending}
+            shortcutErrors={agent.snapshot?.shortcutErrors ?? {}}
+            onClearSearch={() => {
+              search.change('');
+              searchInput.current?.focus();
+            }}
+            onOpen={(command) => history.open({ page: 'command', id: command.id })}
+            onToggle={(command, enabled) => change(command, { enabled })}
+            onShortcut={(command, shortcut) => change(command, { shortcut })}
+            onDuplicate={duplicate}
+            onDelete={setDeleting}
+          />
+          {commands.length === 0 &&
+            (agent.snapshot ? (
+              <div className="settings-extension-empty">
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Command />
+                    </EmptyMedia>
+                    <EmptyTitle>{t('list.emptyTitle')}</EmptyTitle>
+                    <EmptyDescription>{t('list.emptyDescription')}</EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button onClick={create}>
+                      <Plus />
+                      {t('list.new')}
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              </div>
+            ) : (
+              <output className="settings-loading">{t('list.loading')}</output>
+            ))}
+        </div>
+      </ScrollArea>
+      {commands.length > 0 && <CommandTypingFooter settings={settings} />}
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => {

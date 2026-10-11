@@ -5,25 +5,13 @@ import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
+import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
 import { UserMessage } from './user-message';
-
-/**
- * The turn's final answer: the last assistant text. A stopped turn can end in tool activity or an
- * empty aborted message, so the copied answer is not always the last block.
- */
-function lastAnswerText(turn: AdaptedTurn): string {
-  for (let index = turn.items.length - 1; index >= 0; index -= 1) {
-    const item = turn.items[index];
-    if (item?.type === 'block' && item.block.kind === 'assistant' && item.block.text.trim())
-      return item.block.text;
-  }
-  return '';
-}
 
 /** Every step of the turn's activity groups, in order. */
 function activitySteps(items: AdaptedTurn['items']) {
@@ -140,7 +128,14 @@ export const TurnView = memo(function TurnView({
       {settled && <McpApprovalBanners steps={activitySteps(turn.items)} />}
       {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
       {settled && copyable && (
-        <TurnActions turn={turn} run={run} answer={lastAnswerText(turn)} last={last} />
+        <TurnActions
+          turn={turn}
+          run={run}
+          answer={lastAnswerText(
+            turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : [])),
+          )}
+          last={last}
+        />
       )}
     </section>
   );
