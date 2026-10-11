@@ -12,6 +12,7 @@ export const MAC_CHROME = {
       finder: ['File', 'Edit', 'View', 'Go', 'Window', 'Help'],
       reader: ['File', 'Edit', 'View', 'History', 'Bookmarks', 'Window', 'Help'],
       app: ['File', 'Edit', 'View', 'Window', 'Help'],
+      mail: ['File', 'Edit', 'View', 'Mailbox', 'Message', 'Format', 'Window', 'Help'],
     },
     sidebar: {
       favorites: 'Favorites',
@@ -33,6 +34,7 @@ export const MAC_CHROME = {
       finder: ['文件', '编辑', '显示', '前往', '窗口', '帮助'],
       reader: ['文件', '编辑', '显示', '历史记录', '书签', '窗口', '帮助'],
       app: ['文件', '编辑', '显示', '窗口', '帮助'],
+      mail: ['文件', '编辑', '显示', '邮箱', '邮件', '格式', '窗口', '帮助'],
     },
     sidebar: {
       favorites: '个人收藏',

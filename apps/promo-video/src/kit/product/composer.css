@@ -14,8 +14,8 @@
   justify-content: center;
 }
 
-/* A glass control: the control fill, a hairline edge and the backdrop it floats over. The attach
-   and send buttons sit inside its 8 pt padding. */
+/* System glass: the material and its inset edge, with no drop shadow. The attach and send buttons
+   sit inside its 8 pt padding. */
 .pk-composer__field {
   display: grid;
   grid-template-areas: 'attach prompt actions';
@@ -24,12 +24,10 @@
   gap: 8px;
   padding: 8px;
   border-radius: 999px;
-  background: var(--pk-control-fill);
-  backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow:
-    inset 0 0 0 1px var(--pk-control-edge),
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
-    0 1px 2px rgb(0 0 0 / 0.18);
+  background: var(--pk-sysglass-fill);
+  backdrop-filter: var(--pk-sysglass-backdrop);
+  -webkit-backdrop-filter: var(--pk-sysglass-backdrop);
+  box-shadow: var(--pk-sysglass-edge);
 }
 
 .pk-composer__field[data-expanded] {

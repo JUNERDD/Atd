@@ -154,3 +154,103 @@
   left: 760px;
   top: 560px;
 }
+
+/* ——— The 0.8 pages: everything placed in the sheet's points ——— */
+
+.pk-sheet__layer {
+  position: absolute;
+  inset: 0;
+}
+
+.pk-sheet__at[data-at='split'] {
+  left: 1500px;
+  top: 40px;
+}
+
+.pk-sheet__at[data-at='split-more'] {
+  left: 1500px;
+  top: 300px;
+}
+
+.pk-sheet__at[data-at='keys-hint'] {
+  left: 1480px;
+  top: 820px;
+}
+
+.pk-sheet__at[data-at='keys-macro'] {
+  left: 1470px;
+  top: 920px;
+}
+
+/* The Commands overview, as the window's content column lays it out. */
+.pk-sheet__page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--pk-fg);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pk-sheet__description {
+  margin: 0;
+  color: var(--pk-muted-fg);
+}
+
+.pk-sheet__toolbar {
+  display: flex;
+  gap: 12px;
+}
+
+.pk-sheet__toolbar > .rc-search {
+  flex: 1;
+}
+
+.pk-sheet__hint {
+  margin: 0;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.pk-sheet__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pk-sheet__row-slot {
+  translate: 0 calc(var(--dy) * 1px);
+}
+
+.pk-sheet__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* A settings field: its label 8 pt over its control, the open menu over what follows. */
+.pk-sheet__field {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+}
+
+.pk-sheet__field[data-at='effort'] {
+  left: 40px;
+  top: 680px;
+  width: 300px;
+}
+
+.pk-sheet__field[data-at='result'] {
+  left: 400px;
+  top: 680px;
+  width: 340px;
+}
+
+.pk-sheet__select {
+  position: relative;
+}

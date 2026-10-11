@@ -1,4 +1,6 @@
 import type { Lang } from '../../copy.ts';
+import { commandStrings } from './command-strings.ts';
+import { settingsStrings } from './settings/settings-strings.ts';
 
 /**
  * The product's own interface chrome, per language, as the app ships it: renderer copy from
@@ -60,6 +62,10 @@ const en = {
   memory: { remembered: 'Remembered', save: 'Save memory' },
   created: { command: 'Command', skill: 'Skill', automation: 'Automation' },
   selection: { ask: 'Ask Atd', more: 'More' },
+  /** The command island and the toolbar's options menus (`command-strings.ts`). */
+  command: commandStrings.en,
+  /** The settings window (`settings/settings-strings.ts`). */
+  settings: settingsStrings.en,
   capture: { undo: 'Undo', redo: 'Redo', cancel: 'Cancel', copy: 'Copy', done: 'Done' },
   notice: { app: 'Atd', now: 'now', delivered: 'Finished — open to see the result.' },
   /** Monday to Sunday, space-separated, for the habit tracker the film's agent builds. */
@@ -67,7 +73,7 @@ const en = {
 };
 
 /** The shape every language fills: the English keys, each a string. */
-type Shape<T> = { readonly [K in keyof T]: T[K] extends string ? string : Shape<T[K]> };
+export type Shape<T> = { readonly [K in keyof T]: T[K] extends string ? string : Shape<T[K]> };
 export type ProductStrings = Shape<typeof en>;
 
 const zh: ProductStrings = {
@@ -122,6 +128,8 @@ const zh: ProductStrings = {
   memory: { remembered: '已记住', save: '保存记忆' },
   created: { command: '命令', skill: '技能', automation: '自动化' },
   selection: { ask: '问 Atd', more: '更多' },
+  command: commandStrings.zh,
+  settings: settingsStrings.zh,
   capture: { undo: '撤销', redo: '重做', cancel: '取消', copy: '复制', done: '完成' },
   notice: { app: 'Atd', now: '现在', delivered: '已完成，打开即可查看结果。' },
   week: { narrow: '一 二 三 四 五 六 日', short: '周一 周二 周三 周四 周五 周六 周日' },

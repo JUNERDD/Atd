@@ -1,0 +1,459 @@
+/* The command island (apps/macos/Sources/AIShell/Island): one glass shape standing on the middle
+   of its bottom edge (--x, --y), --w × --h points with corner --r, scaled by --s about that edge
+   and dropped --drop points while it enters. Its contents are laid out at their own size
+   (--lw × --lh), centred in the shape and scaled by --ls; they fade (--lo) and blur (--lb) in and
+   out. The film's faces are measured without its stylistic sets, so they are set without them. */
+.pk-island {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: 0;
+  height: 0;
+  opacity: var(--o);
+  font-family: var(--font-text);
+  font-feature-settings: normal;
+  color: var(--pk-label);
+  white-space: nowrap;
+}
+
+.glass.pk-island__shape {
+  --glass-radius: calc(var(--r) * 1px);
+  position: absolute;
+  left: calc(var(--w) * -0.5px);
+  top: calc(var(--h) * -1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  overflow: hidden;
+  scale: var(--s);
+  translate: 0 calc(var(--drop) * 1px);
+  transform-origin: 50% 100%;
+}
+
+.pk-island__layer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--lw) * 1px);
+  height: calc(var(--lh) * 1px);
+  translate: -50% -50%;
+  scale: var(--ls);
+  opacity: var(--lo);
+  filter: blur(calc(var(--lb) * 1px));
+}
+
+/* ——— Capsules: 36 pt tall ——— */
+
+.pk-island__row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 36px;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+/* Press and status capsules: 8 pt in, 10 pt out, inside the 4 pt padding. */
+.pk-island__row[data-kind='press'] {
+  gap: 10px;
+  padding: 0 14px 0 12px;
+}
+
+.pk-island__row[data-kind='status'] {
+  gap: 8px;
+  padding: 0 14px 0 12px;
+}
+
+.pk-island__row[data-kind='working'] {
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.pk-island__label {
+  font-weight: 500;
+}
+
+.pk-island__secondary,
+.pk-island__hint {
+  font-size: 12px;
+  color: var(--pk-label-2);
+}
+
+/* The charge meter: a 36 × 4 pt track at 12% that fills to 70% (--fill, 0 → 1). */
+.pk-island__meter {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.12);
+  overflow: hidden;
+}
+
+.pk-island__meter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--fill) * 100%);
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.7);
+}
+
+.pk-island__grip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 28px;
+}
+
+.pk-island__grip > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The status group: 2 pt in, 4 pt before the close button, its items 12 pt apart. */
+.pk-island__status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px 0 2px;
+}
+
+.pk-island__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.pk-island__close {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.pk-island__close > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The values chip: 22 pt, 12 pt medium secondary, 8 pt in, on an 8% wash; cut past 160 pt. */
+.pk-island__chip {
+  box-sizing: content-box;
+  max-width: 160px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--pk-label-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.pk-island__hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pk-island__keycap {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--pk-label-2);
+  font-family: var(--pk-keys);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.pk-island__check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* The spinner: 16 pt, each spoke in the label colour at its step of the wave (--o). */
+.pk-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.pk-spinner > rect {
+  opacity: var(--o);
+}
+
+/* The shimmer: a band as wide as itself (2 × --spread pt), transparent → label → transparent, over
+   the name in the secondary colour; --phase 0 → 1 moves its centre from one half-width before the
+   text to one past it (the page's `.ai-shimmer` keyframes, evaluated per frame). */
+.pk-island__shimmer {
+  background-image:
+    linear-gradient(90deg, transparent, var(--pk-label), transparent),
+    linear-gradient(var(--pk-label-2), var(--pk-label-2));
+  background-size:
+    calc(var(--spread) * 2px) 100%,
+    auto;
+  background-repeat: no-repeat;
+  background-position:
+    calc(var(--phase) * 100% + (4 * var(--phase) - 2) * var(--spread) * 1px) center,
+    0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ——— The options card ——— */
+
+.pk-options {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 6px;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.pk-options__title {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  color: var(--pk-label-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pk-options__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.pk-options__row[data-selected] {
+  background: rgb(255 255 255 / 0.1);
+}
+
+/* The trailing marks: the check on the remembered value, then its number, 8 pt apart. */
+.pk-options__marks {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.pk-options__check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+}
+
+.pk-options__check[data-on] {
+  opacity: 1;
+}
+
+.pk-options__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pk-options__digit {
+  color: rgb(235 235 245 / 0.3);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A sheet row's value: 13 pt secondary, cut at the trailing edge. */
+.pk-options__detail {
+  flex: none;
+  max-width: 60%;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pk-label-2);
+  font-weight: 400;
+}
+
+/* The filter field over a long list: 28 pt on a 6% fill, 8 pt in, 4 pt above the rows. */
+.pk-options__filter {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 28px;
+  margin-bottom: 4px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.06);
+  font-weight: 400;
+}
+
+.pk-options__filter[data-empty] {
+  color: var(--pk-label-2);
+}
+
+.pk-options__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+.pk-options__hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pk-label-2);
+  font-size: 12px;
+}
+
+/* A labelled button (`IslandTextButton`): 28 pt, 10 pt in, with Run's ↩ keycap; Run and Copy
+   rest on an 8% wash, a pressed one deepens to 16%. */
+.pk-options__run {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0 10px;
+  border-radius: 14px;
+  font-weight: 500;
+}
+
+.pk-options__run[data-rest] {
+  background: rgb(255 255 255 / 0.08);
+}
+
+.pk-options__run[data-pressed] {
+  background: rgb(255 255 255 / 0.16);
+}
+
+/* ——— The answer card ——— */
+
+.pk-answer {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 6px;
+  font-size: 13px;
+  line-height: 16px;
+  white-space: normal;
+}
+
+.pk-answer__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+}
+
+.pk-answer__title {
+  flex: 1;
+  min-width: 0;
+  padding-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pk-label-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The note: 12 pt secondary, two lines at most, 2 pt above the answer. */
+.pk-answer__note {
+  display: -webkit-box;
+  flex: none;
+  margin-bottom: 2px;
+  padding: 0 8px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--pk-label-2);
+  font-size: 12px;
+  line-height: 15px;
+}
+
+/* The answer's room (--room pt, 4 pt above and below), scrolled by --offset, fading over --fade pt
+   at an edge with more past it. */
+.pk-answer__scroll {
+  position: relative;
+  flex: none;
+  height: calc(var(--room) * 1px);
+  margin: 4px 0;
+  overflow: hidden;
+  --top: 0px;
+  --bottom: 0px;
+  mask-image: linear-gradient(
+    transparent,
+    #000 var(--top),
+    #000 calc(100% - var(--bottom)),
+    transparent
+  );
+}
+
+.pk-answer__scroll[data-fade-top] {
+  --top: calc(var(--fade) * 1px);
+}
+
+.pk-answer__scroll[data-fade-bottom] {
+  --bottom: calc(var(--fade) * 1px);
+}
+
+.pk-answer__text {
+  display: block;
+  padding: 0 8px;
+  translate: 0 calc(var(--offset) * -1px);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Open in Atd beside Copy, the toolbar's 2 pt apart, at the footer's trailing edge. */
+.pk-answer__buttons {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.pk-answer__buttons > .pk-options__run {
+  margin-left: 0;
+}
+
+/* The answer's own 4 pt below it is the gap above the footer. */
+.pk-answer > .pk-options__footer {
+  flex: none;
+  margin-top: 0;
+}

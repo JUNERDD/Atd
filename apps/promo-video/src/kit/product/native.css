@@ -84,6 +84,29 @@
   height: 14px;
 }
 
+/* A split command button: the command's own button, then its options chevron with no gap. */
+.pk-capsule__split {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* The chevron: a 20 × 28 pt capsule (corner 10) around the shell's chevron.down (9 pt bold). One
+   that ends the capsule is a 28 pt circle, nesting in the capsule's round end. */
+.pk-native-button[data-chevron] {
+  width: 20px;
+  border-radius: 10px;
+}
+
+.pk-native-button[data-chevron][data-ends] {
+  width: 28px;
+  border-radius: 14px;
+}
+
+.pk-native-button[data-chevron] > .pk-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .pk-native-button[data-wash='hover'] {
   background: rgb(255 255 255 / 0.09);
 }
