@@ -39,6 +39,8 @@ export interface BuiltinStatusWire {
   id: string;
   version: number;
   status: 'current' | 'modified' | 'update_available';
+  /** Where an update backed up the user's changed copy before replacing it, until dismissed. */
+  backupPath?: string;
 }
 
 export interface RoleWire {
@@ -186,4 +188,19 @@ export function restoreBuiltin(
   fetchImpl?: typeof fetch,
 ): Promise<{ id: string; backupPath: string | null; builtin: BuiltinStatusWire }> {
   return request(options, `/v1/builtins/${encodeURIComponent(id)}/restore`, 'POST', {}, fetchImpl);
+}
+
+/** Dismisses the notice that an update replaced the user's copy of a product skill. */
+export function dismissBuiltinBackup(
+  options: AgentClientOptions,
+  id: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ id: string; builtin: BuiltinStatusWire }> {
+  return request(
+    options,
+    `/v1/builtins/${encodeURIComponent(id)}/dismiss-backup`,
+    'POST',
+    {},
+    fetchImpl,
+  );
 }

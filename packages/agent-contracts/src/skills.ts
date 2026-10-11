@@ -143,6 +143,8 @@ export type SkillSnapshot = Static<typeof SkillSnapshotSchema>;
  * Where a built-in resource's user copy stands against the version this build ships:
  * `modified` — the user edited the shipped content; `update_available` — the user's copy is based
  * on other content than what ships now (or its base is unknown). `version` is the shipped version.
+ * `backupPath` is set after an update replaced a copy the user had changed: where that copy was
+ * backed up, until the user dismisses the notice.
  */
 export const BuiltinStatusSchema = Type.Object(
   {
@@ -153,6 +155,7 @@ export const BuiltinStatusSchema = Type.Object(
       Type.Literal('modified'),
       Type.Literal('update_available'),
     ]),
+    backupPath: Type.Optional(Type.String({ minLength: 1, maxLength: 4096 })),
   },
   { additionalProperties: false },
 );

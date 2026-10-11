@@ -35,6 +35,11 @@ const restoreBuiltin = extensionWrite(
   ({ id }: { id: string }) => serviceApi().restoreBuiltin(id),
   { reload: serviceListKeys.skills, quiet: true },
 );
+const dismissBuiltinBackup = extensionWrite(
+  'builtin',
+  ({ id }: { id: string }) => serviceApi().dismissBuiltinBackup(id),
+  { reload: serviceListKeys.skills },
+);
 const putRole = extensionWrite(
   'role',
   (input: {
@@ -90,6 +95,7 @@ export function useExtensionMutations() {
   const removeSkill = useMutation(deleteSkill, queryClient).mutateAsync;
   const removeAgent = useMutation(deleteAgent, queryClient).mutateAsync;
   const restore = useMutation(restoreBuiltin, queryClient).mutateAsync;
+  const dismissBackup = useMutation(dismissBuiltinBackup, queryClient).mutateAsync;
   const saveRole = useMutation(putRole, queryClient).mutateAsync;
   const saveAgent = useMutation(putAgent, queryClient).mutateAsync;
   const savePermissions = useMutation(setAgentPermissions, queryClient).mutateAsync;
@@ -115,6 +121,8 @@ export function useExtensionMutations() {
           (result) => ({ backupPath: result.backupPath }),
           () => undefined,
         ),
+      /** Dismisses the notice that an update replaced the user's copy of a built-in skill. */
+      dismissBuiltinBackup: (id: string) => dismissBackup({ id }).then(succeeded, failed),
       putRole: (input: Parameters<typeof saveRole>[0]) => saveRole(input).then(succeeded, failed),
       putAgent: (input: Parameters<typeof saveAgent>[0]) =>
         saveAgent(input).then(succeeded, failed),
@@ -131,6 +139,7 @@ export function useExtensionMutations() {
     }),
     [
       agentSwitch,
+      dismissBackup,
       removeAgent,
       removeServer,
       removeSkill,
