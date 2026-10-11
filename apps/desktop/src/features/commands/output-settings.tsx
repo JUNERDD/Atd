@@ -1,11 +1,6 @@
 import { Fragment, useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  actsOnSelection,
-  readsSelection,
-  writesBack,
-  type CommandOutputAction,
-} from '@atd/agent-contracts';
+import { actsOnSelection, readsSelection, writesBack } from '@atd/agent-contracts';
 import { Card } from '@atd/ui/components/card';
 import {
   Item,
@@ -25,19 +20,9 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import type { CommandDefinition } from '../../client/agent/command-schema';
+import { OUTPUT_ACTION_GROUPS, OUTPUT_ACTIONS } from '../../client/agent/run-output';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
-
-/**
- * The actions as the menu groups them, divided by separators: the conversation, the write-backs
- * into the app the command ran from, then the clipboard.
- */
-const ACTION_GROUPS: readonly (readonly CommandOutputAction[])[] = [
-  ['panel'],
-  ['replaceSelection', 'insertAfterSelection', 'insertAtCursor'],
-  ['copy'],
-];
-const ACTIONS = ACTION_GROUPS.flat();
 
 /**
  * What happens with the answer once a run completes, as an editor group laid out like the other
@@ -85,7 +70,7 @@ export function OutputSettings({
                   <Select
                     value={action}
                     onValueChange={(value) => {
-                      const next = ACTIONS.find((candidate) => candidate === value);
+                      const next = OUTPUT_ACTIONS.find((candidate) => candidate === value);
                       if (next)
                         onChange({ ...command, output: { ...command.output, action: next } });
                     }}
@@ -98,7 +83,7 @@ export function OutputSettings({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ACTION_GROUPS.map((group, index) => (
+                      {OUTPUT_ACTION_GROUPS.map((group, index) => (
                         <Fragment key={group[0]}>
                           {index > 0 && <SelectSeparator />}
                           <SelectGroup>

@@ -4,8 +4,9 @@ import AppKit
 /// What the selection toolbar's menus show and do with commands' options (contract: selection
 /// toolbar, mouse path), as items for ``ToolbarOptionsCascade``:
 ///
-/// - A command whose only option is a choice lists its values, the current one checked; a click
-///   runs the command with that value.
+/// - A command whose only option is a choice (where the answer goes, for a command without
+///   parameters) lists its values, the current one checked at the trailing edge; a click runs the
+///   command with that value.
 /// - Any other command gets a row per option: a choice shows its value and opens its values to
 ///   the side, where a pick changes the row and returns to it; a toggle flips in place; a text or
 ///   number option offers Fill in Atd, which hands the command to the panel's command input
@@ -61,7 +62,7 @@ final class ToolbarOptionsContent {
   private func rows(of sheet: ToolbarOptionsSheet) -> [ToolbarMenuItem] {
     let id = sheet.id
     let strings = ShellStrings.shared
-    // Rows line up with the toggles' checkmarks when there are any.
+    // With toggles, every row keeps the trailing slot their checkmarks take, so details line up.
     let mark: ToolbarOptionsRow.Content.Mark =
       sheet.options.contains {
         if case .toggle = $0 { true } else { false }
@@ -128,7 +129,8 @@ final class ToolbarOptionsContent {
   private func sheet(_ id: String) -> ToolbarOptionsSheet? {
     if let sheet = sheets[id] { return sheet }
     guard let entry = catalog.entry(for: id) else { return nil }
-    let sheet = ToolbarOptionsSheet(entry)
+    let sheet = ToolbarOptionsSheet(
+      entry, names: CommandOutputChoice.Names(ShellStrings.shared.catalog))
     sheets[id] = sheet
     return sheet
   }

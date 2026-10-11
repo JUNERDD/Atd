@@ -14,11 +14,12 @@ import type { PreparedCommand } from '../../client/agent/bridge';
 import type { TaskInput } from '../../client/agent/task-schema';
 import { missingScreenshot, screenshotOf } from '../../client/agent/screenshot-input';
 import { ParameterField } from '../commands/parameter-field';
+import { RunOutputField } from './run-output-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
-import { isImageMime } from '@atd/agent-contracts';
+import { isImageMime, type CommandOutput } from '@atd/agent-contracts';
 import { ResourceImage } from './resource-image';
 import { ScreenshotField } from './screenshot-field';
 import { VisionNotice } from './vision-notice';
@@ -31,6 +32,7 @@ const SCREENSHOT_HINT_ID = 'command-screenshot-hint';
 export function CommandInput({
   prepared,
   onChange,
+  onOutputChange,
   onRun,
   onOpenSettings,
   pending,
@@ -46,6 +48,8 @@ export function CommandInput({
   model: ModelReference | null;
   prepared: PreparedCommand;
   onChange: (input: TaskInput) => void;
+  /** Where this run's answer goes (`PreparedCommand.output`), changed on the step. */
+  onOutputChange: (output: CommandOutput) => void;
   onRun: () => Promise<unknown>;
   onOpenSettings: () => void;
   pending: boolean;
@@ -223,6 +227,7 @@ export function CommandInput({
                 </Button>
               </div>
             ))}
+          <RunOutputField prepared={prepared} onChange={onOutputChange} />
           <div className="run-policy">
             <p>
               <Shield size={14} aria-hidden="true" />

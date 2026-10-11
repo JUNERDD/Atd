@@ -23,7 +23,8 @@ export function runsAsIs(prepared: PreparedCommand): boolean {
  * the first consumed failure (selection before clipboard, then the screenshot) is the one reported.
  * A screenshot command takes one capture; a cancelled one prepares the input without an image and
  * no notice, and the input page offers to take it again. The arguments start from the parameter
- * defaults, then the command's remembered values, then `overrides` (`commandValues`).
+ * defaults, then the command's remembered values, then `overrides` (`commandValues`); the answer
+ * goes where the command's saved output says (`withOutputAction` picks another for the run).
  */
 export async function prepareCommand(
   command: CommandDefinition,
@@ -63,5 +64,5 @@ export async function prepareCommand(
       if (expectCapture && !notice) notice = errorMessage(error);
     }
   }
-  return { command: structuredClone(command), input, notice };
+  return { command: structuredClone(command), input, output: { ...command.output }, notice };
 }

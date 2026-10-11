@@ -192,6 +192,7 @@ export function useTaskPanel() {
       sideChatOf,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
+      output: commandInput?.output,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
     try {
@@ -203,6 +204,7 @@ export function useTaskPanel() {
         commandRevision: commandInput?.command.revision ?? null,
         savedRun: null,
         input,
+        ...(commandInput ? { output: commandInput.output } : {}),
         ...(sideChatOf ? { sideChatOf } : {}),
       });
       submission.current = null;

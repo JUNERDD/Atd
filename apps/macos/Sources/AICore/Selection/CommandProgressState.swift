@@ -18,8 +18,8 @@ public struct CommandProgressState: Equatable, Sendable {
     /// The run is going: the command's name, and the values it runs with when it has options
     /// to change.
     case working(command: String, summary: String? = nil)
-    /// The command's options, to choose before it runs.
-    case choose(command: String, options: [CommandOption])
+    /// The command's options and where its answer goes, to choose before it runs.
+    case choose(command: String, options: [CommandOption], output: CommandOutputOption)
     /// The answer is being written into the target.
     case writing
     /// The answer is written.
@@ -57,8 +57,8 @@ public struct CommandProgressState: Equatable, Sendable {
       return .working(command: command, summary: summary?.isEmpty == false ? summary : nil)
     case .choose(let choose):
       let command = trimmed(choose.command)
-      guard !command.isEmpty, !choose.options.isEmpty else { return nil }
-      return .choose(command: command, options: choose.options)
+      guard !command.isEmpty else { return nil }
+      return .choose(command: command, options: choose.options, output: choose.output)
     case .notice(let notice):
       let message = trimmed(notice.message)
       return message.isEmpty ? nil : .notice(message: message)
@@ -144,7 +144,7 @@ public struct CommandProgressState: Equatable, Sendable {
       return event
     case (.change, .working(_, .some)):
       return event
-    case (.run, .choose(let command, _)):
+    case (.run, .choose(let command, _, _)):
       guard let arguments else { return nil }
       show(target: shown.target, phase: .working(command: command))
       return CommandProgressActionEvent(target: shown.target, action: .run, arguments: arguments)

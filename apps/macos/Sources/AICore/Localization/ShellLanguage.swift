@@ -151,6 +151,14 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case commandOptionsKeyMove = "commandOptions.key.move"
   case commandOptionsKeyChange = "commandOptions.key.change"
   case commandOptionsKeyOpen = "commandOptions.key.open"
+  case commandOptionsOutput = "commandOptions.output"
+  /// `%@` the destination's name.
+  case commandOptionsOutputSaved = "commandOptions.output.saved"
+  case commandOptionsOutputPanel = "commandOptions.output.panel"
+  case commandOptionsOutputReplaceSelection = "commandOptions.output.replaceSelection"
+  case commandOptionsOutputInsertAfterSelection = "commandOptions.output.insertAfterSelection"
+  case commandOptionsOutputInsertAtCursor = "commandOptions.output.insertAtCursor"
+  case commandOptionsOutputCopy = "commandOptions.output.copy"
 
   /// `%1$@` the app's name, `%2$@` the permission's name in System Settings.
   case permissionGuideTitle = "permissionGuide.title"

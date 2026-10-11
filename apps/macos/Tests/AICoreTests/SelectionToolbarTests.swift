@@ -238,6 +238,13 @@ struct SelectionToolbarTests {
 
   // MARK: Options
 
+  static let output = CommandOutputOption(value: .replaceSelection, saved: .panel, selection: false)
+  static let names = CommandOutputChoice.Names(
+    label: "Answer",
+    actions: [
+      .panel: "Panel", .replaceSelection: "Replace", .insertAfterSelection: "After",
+      .insertAtCursor: "Cursor", .copy: "Copy",
+    ], saved: "%@ (default)")
   static let entry = CommandOptionsCatalog.Entry(
     id: "c1", name: "Translate",
     options: [
@@ -247,17 +254,18 @@ struct SelectionToolbarTests {
           options: [.init(value: "en", label: "English"), .init(value: "fr", label: "French")])),
       .toggle(.init(key: "formal", label: "Formal", value: false)),
       .input(.init(key: "note", label: "Note")),
-    ])
+    ], output: output)
 
   @Test("Picks and flips change the sheet; every launch carries all choice and toggle values")
   func sheet() {
-    var sheet = ToolbarOptionsSheet(Self.entry)
+    var sheet = ToolbarOptionsSheet(Self.entry, names: Self.names)
     #expect(sheet.singleChoice == nil)
     #expect(sheet.summary == "English")
     sheet.pick("fr", for: "lang")
     sheet.pick("xx", for: "lang")
     sheet.flip("formal")
     sheet.flip("note")
+    sheet.pick("copy", for: CommandOutputChoice.key)
     #expect(sheet.summary == "French · Formal")
     // A choice without a value adds nothing to the line.
     var unset = ToolbarOptionsSheet(
@@ -267,17 +275,26 @@ struct SelectionToolbarTests {
           .choice(
             .init(key: "tone", label: "Tone", value: "", options: [.init(value: "a", label: "A")])),
           .toggle(.init(key: "formal", label: "Formal", value: true)),
-        ]))
+        ], output: Self.output), names: Self.names)
     #expect(unset.summary == "Formal")
     unset.pick("a", for: "tone")
     #expect(unset.summary == "A · Formal")
     let launch = sheet.launch(.edit)
     #expect(launch.id == "c1" && launch.intent == .edit)
     #expect(
-      launch.arguments == CommandArguments(choices: ["lang": "fr"], toggles: ["formal": true]))
+      launch.arguments
+        == CommandArguments(output: .copy, choices: ["lang": "fr"], toggles: ["formal": true]))
+    // Where the answer goes is one more row, so only a command without parameters lists values.
     let single = ToolbarOptionsSheet(
-      .init(id: "c2", name: "Tone", options: [Self.entry.options[0]]))
-    #expect(single.singleChoice?.key == "lang")
+      .init(id: "c2", name: "Tone", options: [Self.entry.options[0]], output: Self.output),
+      names: Self.names)
+    #expect(single.singleChoice == nil)
+    let bare = ToolbarOptionsSheet(
+      .init(id: "c4", name: "Fix", options: [], output: Self.output), names: Self.names)
+    #expect(bare.singleChoice?.key == CommandOutputChoice.key)
+    // Without the selection, the actions on it are left out; the saved one is the default.
+    #expect(
+      bare.singleChoice?.options.map(\.label) == ["Panel (default)", "Cursor", "Copy"])
   }
 
   @Test(

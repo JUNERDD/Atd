@@ -4,19 +4,25 @@ import AppKit
 /// A row of the selection toolbar's menus: the More menu's commands and the options menus' values
 /// and options. It keeps the toolbar's labelled button metrics (``AnnotationToolbarButton/Label``:
 /// a capsule ``AnnotationToolbarButton/side`` tall, the same padding, font and washes) and adds
-/// what a menu row needs: a leading mark column (a value's or a toggle's checkmark), a trailing
-/// detail in the secondary colour (a choice's current value, the Run row's values, Fill in Atd),
-/// and a trailing chevron for a row that opens a submenu. The title and the detail are cut with
-/// an ellipsis past their caps; the full text is the tooltip.
+/// what a menu row needs: a trailing slot (``slotSide``) for a value's or a toggle's checkmark or
+/// the chevron of a row that opens a submenu, as a pop-up menu marks its choice at the trailing
+/// edge, and a detail in the secondary colour right before it (a choice's current value, the Run
+/// row's values, Fill in Atd). Rows whose siblings use the slot keep it empty (``Mark/blank``),
+/// so every mark and chevron shares one column and every detail ends at the same edge. A title
+/// keeps ``detailGap`` from the slot, as from a detail, so a checkmark reads as the column's
+/// rather than the title's. The title and the detail are cut with
+/// an ellipsis past their caps; the full text is the tooltip. The title's cap
+/// (``maxTitleWidth``) is wider than a capsule button's, since a menu stacks its rows and an
+/// answer destination's name runs longer than a command's.
 ///
 /// Like the toolbar's buttons it never tracks the pointer itself: ``SelectionToolbarHover`` sets
 /// ``isHovered``. ``isActive`` keeps the hover wash while the row's submenu is open.
 final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
   struct Content: Equatable {
     enum Mark: Equatable {
-      /// No mark column: the More menu's rows.
+      /// No trailing slot unless the row opens a submenu: the More menu's rows.
       case none
-      /// The column, empty: rows aligned with marked siblings.
+      /// The slot, empty: rows aligned with marked siblings.
       case blank
       case check
     }
@@ -32,9 +38,11 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
     var toggle = false
   }
 
+  static let maxTitleWidth: CGFloat = 240
+  /// The trailing slot a checkmark or a submenu chevron takes, centred in it.
+  static let slotSide = AnnotationToolbarButton.Label.iconSide
   static let maxDetailWidth: CGFloat = 160
   static let detailGap: CGFloat = 16
-  static let chevronSide: CGFloat = 12
   static let detailFont = NSFont.systemFont(ofSize: 13)
 
   var content: Content {
@@ -81,11 +89,16 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
   /// The row's natural width: its parts at their measured widths, text up to its caps.
   static func width(_ content: Content) -> CGFloat {
     let label = AnnotationToolbarButton.Label.self
-    let title = min(measure(content.title, label.font), label.maxTextWidth)
+    let title = min(measure(content.title, label.font), maxTitleWidth)
     let detail = detailWidth(content)
-    return label.padding * 2 + (content.mark == .none ? 0 : label.iconSide + label.iconGap)
-      + title + (detail > 0 ? detailGap + detail : 0)
-      + (content.submenu ? label.iconGap + chevronSide : 0)
+    // The slot sits right after a detail, and as far from a bare title as a detail would.
+    let slot = hasSlot(content) ? slotSide + (detail > 0 ? label.iconGap : detailGap) : 0
+    return label.padding * 2 + title + (detail > 0 ? detailGap + detail : 0) + slot
+  }
+
+  /// Whether the row keeps the trailing slot: for its chevron, or a mark (shown or blank).
+  private static func hasSlot(_ content: Content) -> Bool {
+    content.submenu || content.mark != .none
   }
 
   private static func detailWidth(_ content: Content) -> CGFloat {
@@ -109,24 +122,18 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
       NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
     }
     let color = isEnabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
-    var x = bounds.minX + label.padding
+    let x = bounds.minX + label.padding
     var trailing = bounds.maxX - label.padding
-    if content.mark != .none {
-      if content.mark == .check, let check = ToolbarOptionsGlyphs.check {
-        ToolbarOptionsGlyphs.draw(
-          check, color: color,
-          centeredIn: NSRect(
-            x: x, y: bounds.midY - label.iconSide / 2, width: label.iconSide,
-            height: label.iconSide))
+    if Self.hasSlot(content) {
+      let slot = NSRect(
+        x: trailing - Self.slotSide, y: bounds.midY - Self.slotSide / 2, width: Self.slotSide,
+        height: Self.slotSide)
+      if content.submenu, let chevron = ToolbarOptionsGlyphs.submenu {
+        ToolbarOptionsGlyphs.draw(chevron, color: .secondaryLabelColor, centeredIn: slot)
+      } else if content.mark == .check, let check = ToolbarOptionsGlyphs.check {
+        ToolbarOptionsGlyphs.draw(check, color: color, centeredIn: slot)
       }
-      x += label.iconSide + label.iconGap
-    }
-    if content.submenu, let chevron = ToolbarOptionsGlyphs.submenu {
-      let box = NSRect(
-        x: trailing - Self.chevronSide, y: bounds.midY - Self.chevronSide / 2,
-        width: Self.chevronSide, height: Self.chevronSide)
-      ToolbarOptionsGlyphs.draw(chevron, color: .secondaryLabelColor, centeredIn: box)
-      trailing -= Self.chevronSide + label.iconGap
+      trailing -= Self.slotSide + label.iconGap
     }
     if let detail = content.detail, !detail.isEmpty {
       let width = min(Self.measure(detail, Self.detailFont), Self.maxDetailWidth)
@@ -134,6 +141,8 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
       text(detail, font: Self.detailFont, color: .secondaryLabelColor, alignment: .right)
         .draw(in: line(x: trailing - room, width: room, font: Self.detailFont))
       trailing -= room + Self.detailGap
+    } else if Self.hasSlot(content) {
+      trailing -= Self.detailGap - label.iconGap
     }
     text(content.title, font: label.font, color: color, alignment: .left)
       .draw(in: line(x: x, width: max(0, trailing - x), font: label.font))

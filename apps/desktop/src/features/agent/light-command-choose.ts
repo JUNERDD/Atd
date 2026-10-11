@@ -1,13 +1,19 @@
-import type { CommandProgressAction, LightCommandBridge } from '../../client/agent/bridge';
+import type {
+  CommandProgressAction,
+  LightCommandBridge,
+  PreparedCommand,
+} from '../../client/agent/bridge';
 import {
   argumentOverrides,
   commandOptions,
   type CommandArguments,
 } from '../../client/agent/command-arguments';
 import { runsAsIs } from '../../client/agent/command-prepare';
+import { outputOption, withOutputAction } from '../../client/agent/run-output';
 import {
   actOnProgress,
   changeLightRun,
+  isLightLaunch,
   startLightRun,
   supersedeLightRun,
   type LightHost,
@@ -27,8 +33,8 @@ function bridge(): LightCommandBridge | undefined {
 /**
  * Offers a light launch's options before it runs (its shortcut was held, or the person changed
  * the values of its run): the progress HUD of its target shows the options card with the values
- * the launch would use, replacing any other HUD as a newer launch does. The launch waits for the
- * card's answer (`actOnLightAction`).
+ * the launch would use and where its answer goes, replacing any other HUD as a newer launch does.
+ * The launch waits for the card's answer (`actOnLightAction`).
  */
 export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): void {
   supersedeLightRun();
@@ -37,6 +43,7 @@ export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): 
     phase: 'choose' as const,
     command: launch.command.name,
     options: commandOptions(launch.command, launch.input.arguments),
+    output: outputOption(launch.command, launch.output.action),
   };
   light.show(launch.target.id, state).catch((error: unknown) => {
     console.error('The options card did not show:', error);
@@ -51,19 +58,26 @@ function hideCard(launch: LightLaunch, light: LightCommandBridge | undefined): v
   });
 }
 
-/** `launch` with the values the card picked over the ones it showed. */
-function withArguments(launch: LightLaunch, picked: CommandArguments | undefined): LightLaunch {
+/**
+ * `launch` with the values the card picked over the ones it showed, and its answer going where
+ * the card picked; the launch may then no longer be a light one.
+ */
+function withPicks(launch: LightLaunch, picked: CommandArguments | undefined): PreparedCommand {
   if (!picked) return launch;
   const values = { ...launch.input.arguments, ...argumentOverrides(launch.command, picked) };
-  return { ...launch, input: { ...launch.input, arguments: values } };
+  return withOutputAction(
+    { ...launch, input: { ...launch.input, arguments: values } },
+    picked.output,
+  );
 }
 
 /**
  * The options card's answer for `launch`: `run` runs it with the picked values when they make it
- * ready (else its input step shows them, where the person completes it); `edit` shows its input
- * step with them, never running it; `cancel` (the card closed) drops it. Whatever does not run
- * hides the island first, since the shell keeps a working state up after the card's run or edit.
- * Other actions do not belong to the card and leave it waiting.
+ * ready (else its input step shows them, where the person completes it), light while its answer
+ * is still written back unreviewed, else in the panel as any launch that runs as-is; `edit` shows
+ * its input step with them, never running it; `cancel` (the card closed) drops it. Whatever does
+ * not run light hides the island first, since the shell keeps a working state up after the card's
+ * run or edit. Other actions do not belong to the card and leave it waiting.
  */
 function answerChoice(
   launch: LightLaunch,
@@ -73,9 +87,10 @@ function answerChoice(
   if (action !== 'run' && action !== 'edit' && action !== 'cancel') return;
   choosing = null;
   const light = bridge();
-  const chosen = withArguments(launch, picked);
+  const chosen = withPicks(launch, picked);
   if (action === 'cancel') return hideCard(launch, light);
-  if (action === 'run' && light && runsAsIs(chosen)) {
+  const ready = action === 'run' && runsAsIs(chosen);
+  if (ready && light && isLightLaunch(chosen)) {
     startLightRun(chosen, light).catch((error: unknown) => {
       console.error('The light command run failed:', error);
     });
@@ -83,6 +98,7 @@ function answerChoice(
   }
   // The shell already turned the card into its working state, which only a hide takes away.
   hideCard(launch, light);
+  if (ready) return host.run(chosen);
   host.showInput(chosen);
   host.reveal();
 }

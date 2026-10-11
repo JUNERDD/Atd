@@ -7,6 +7,7 @@ import type {
   AgentEvent,
   AgentSnapshot,
   MemorySnapshot,
+  PreparedCommand,
   TaskDetail,
 } from '../src/client/agent/bridge';
 import { fixtureCommands } from './command-fixtures';
@@ -16,6 +17,12 @@ import type { QueueState } from '../src/client/agent/transcript-schema';
 import type { ModelThinkingLevel } from '../src/client/providers/schema';
 
 /** Memory with nothing saved, as a fresh data directory has it. */
+/** The first fixture command, prepared as a launch with nothing captured. */
+function preparedFixture(): PreparedCommand {
+  const command = fixtureCommands()[0]!;
+  return { command, input: emptyInput(), output: { ...command.output }, notice: '' };
+}
+
 const noMemory = (): MemorySnapshot => ({
   units: [],
   proposals: [],
@@ -160,11 +167,7 @@ export function installBridge(extras?: {
       );
       return structuredClone(detail);
     }),
-    prepare: vi.fn(async () => ({
-      command: fixtureCommands()[0]!,
-      input: emptyInput(),
-      notice: '',
-    })),
+    prepare: vi.fn(async () => preparedFixture()),
     preview: vi.fn(async () => {
       throw new Error('Not used by this interaction');
     }),
@@ -173,11 +176,7 @@ export function installBridge(extras?: {
     deleteCommand: vi.fn(async () => {}),
     reorderCommands: vi.fn(async () => {}),
     launch: vi.fn(async () => {}),
-    prepareWithText: vi.fn(async () => ({
-      command: fixtureCommands()[0]!,
-      input: emptyInput(),
-      notice: '',
-    })),
+    prepareWithText: vi.fn(async () => preparedFixture()),
     stop: vi.fn(async () => ({ steering: [], followUp: [] })),
     answer: vi.fn(async () => {}),
     queueMessage: vi.fn(async () => {}),

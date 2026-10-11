@@ -92,17 +92,20 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
     public struct Choose: Codable, Equatable, Sendable {
       public let command: String
       public let options: [CommandOption]
+      public let output: CommandOutputOption
 
-      public init(command: String, options: [CommandOption]) {
+      public init(command: String, options: [CommandOption], output: CommandOutputOption) {
         self.command = command
         self.options = options
+        self.output = output
       }
 
       public init(from decoder: any Decoder) throws {
         let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
         try container.literal(.phase, "choose")
         command = try container.string(.command, minLength: 1, maxLength: 200)
-        options = try container.array(.options, of: CommandOption.self, minItems: 1, maxItems: 20)
+        options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+        output = try container.value(.output, CommandOutputOption.self)
       }
 
       public func encode(to encoder: any Encoder) throws {
@@ -110,12 +113,14 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         try container.encode("choose", forKey: .phase)
         try container.encode(command, forKey: .command)
         try container.encode(options, forKey: .options)
+        try container.encode(output, forKey: .output)
       }
 
       private enum CodingKeys: String, CodingKey, CaseIterable {
         case phase
         case command
         case options
+        case output
       }
     }
 
@@ -228,24 +233,28 @@ public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let options: [CommandOption]
+    public let output: CommandOutputOption
 
-    public init(id: String, name: String, options: [CommandOption]) {
+    public init(id: String, name: String, options: [CommandOption], output: CommandOutputOption) {
       self.id = id
       self.name = name
       self.options = options
+      self.output = output
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
       id = try container.string(.id, minLength: 1, maxLength: 128)
       name = try container.string(.name, minLength: 1, maxLength: 256)
-      options = try container.array(.options, of: CommandOption.self, minItems: 1, maxItems: 20)
+      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+      output = try container.value(.output, CommandOutputOption.self)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case id
       case name
       case options
+      case output
     }
   }
 }

@@ -60,6 +60,10 @@ struct CommandProgressStateTests {
       options: [.init(value: "casual", label: "Casual"), .init(value: "formal", label: "Formal")]))
   static let short = CommandOption.toggle(.init(key: "short", label: "Short", value: false))
   static let topic = CommandOption.input(.init(key: "topic", label: "Topic"))
+  static let output = CommandOutputOption(
+    value: .replaceSelection, saved: .replaceSelection, selection: true)
+  static let choosing = CommandProgressState.Phase.choose(
+    command: "Fix", options: [tone], output: output)
 
   @Test("A working run keeps its trimmed summary; a choose phase needs options")
   func richPhases() {
@@ -69,10 +73,16 @@ struct CommandProgressStateTests {
     let blank = CommandProgressShowParams.State.working(.init(command: "Fix", summary: "  "))
     #expect(CommandProgressState.phase(blank) == .working(command: "Fix", summary: nil))
     let choose = CommandProgressShowParams.State.choose(
-      .init(command: " Fix ", options: [Self.tone]))
-    #expect(CommandProgressState.phase(choose) == .choose(command: "Fix", options: [Self.tone]))
-    let empty = CommandProgressShowParams.State.choose(.init(command: "Fix", options: []))
-    #expect(CommandProgressState.phase(empty) == nil)
+      .init(command: " Fix ", options: [Self.tone], output: Self.output))
+    #expect(CommandProgressState.phase(choose) == Self.choosing)
+    // Where the answer goes is always offered, so a command without parameters has a card too.
+    let bare = CommandProgressShowParams.State.choose(
+      .init(command: "Fix", options: [], output: Self.output))
+    #expect(
+      CommandProgressState.phase(bare) == .choose(command: "Fix", options: [], output: Self.output))
+    let blankName = CommandProgressShowParams.State.choose(
+      .init(command: " ", options: [], output: Self.output))
+    #expect(CommandProgressState.phase(blankName) == nil)
   }
 
   @Test("The shell's writing shows over nothing or its own target's island, never another's")
@@ -81,14 +91,14 @@ struct CommandProgressStateTests {
     #expect(state.letsShellShow(for: "a"))
     state.show(target: "b", phase: .working(command: "Fix"))
     #expect(!state.letsShellShow(for: "a") && state.letsShellShow(for: "b"))
-    state.show(target: "b", phase: .choose(command: "Fix", options: [Self.tone]))
+    state.show(target: "b", phase: Self.choosing)
     #expect(!state.letsShellShow(for: "a"))
   }
 
   @Test("Only the cards take the keyboard; Escape stays with them rather than the hot key")
   func choosing() {
     var state = CommandProgressState()
-    state.show(target: "a", phase: .choose(command: "Fix", options: [Self.tone]))
+    state.show(target: "a", phase: Self.choosing)
     #expect(state.isChoosing && state.takesKeyboard && !state.cancelsWithEscape)
     state.show(target: "a", phase: .answer(command: "Fix", answer: "Fixed.", note: nil))
     #expect(!state.isChoosing && state.isAnswering && state.takesKeyboard)
@@ -148,7 +158,7 @@ struct CommandProgressStateTests {
       #expect(state.givesWayToPress)
     }
     let runs: [CommandProgressState.Phase] = [
-      .working(command: "Fix"), .choose(command: "Fix", options: [Self.tone]), .writing,
+      .working(command: "Fix"), Self.choosing, .writing,
     ]
     for phase in runs {
       state.show(target: "a", phase: phase)
@@ -176,17 +186,17 @@ struct CommandProgressStateTests {
     state.show(target: "a", phase: .working(command: "Fix", summary: "Formal"))
     #expect(state.press(.change) == .init(target: "a", action: .change, arguments: nil))
     #expect(state.shown?.phase == .working(command: "Fix", summary: "Formal"))
-    let values = CommandArguments(choices: ["tone": "casual"], toggles: [:])
-    state.show(target: "a", phase: .choose(command: "Fix", options: [Self.tone]))
+    let values = CommandArguments(output: nil, choices: ["tone": "casual"], toggles: [:])
+    state.show(target: "a", phase: Self.choosing)
     #expect(state.press(.run) == nil)
     #expect(
       state.press(.run, arguments: values) == .init(target: "a", action: .run, arguments: values))
     #expect(state.shown?.phase == .working(command: "Fix"))
-    state.show(target: "a", phase: .choose(command: "Fix", options: [Self.tone]))
+    state.show(target: "a", phase: Self.choosing)
     #expect(
       state.press(.edit, arguments: values) == .init(target: "a", action: .edit, arguments: values))
     #expect(state.shown == nil)
-    state.show(target: "a", phase: .choose(command: "Fix", options: [Self.tone]))
+    state.show(target: "a", phase: Self.choosing)
     #expect(state.press(.cancel) == .init(target: "a", action: .cancel, arguments: nil))
     #expect(state.shown == nil)
   }
@@ -204,13 +214,15 @@ struct CommandProgressStateTests {
     #expect(card.handle(.up) == .handled && card.selection == 0)
     #expect(card.handle(.left) == .ignored)
     #expect(card.handle(.space) == .ignored)
-    let casual = CommandArguments(choices: ["tone": "casual"], toggles: [:])
+    let casual = CommandArguments(output: nil, choices: ["tone": "casual"], toggles: [:])
     #expect(card.handle(.enter) == .outcome(.run(casual)))
     var digits = OptionsCard(options: [Self.tone])
     #expect(digits.handle(.digit(3)) == .handled)
     #expect(digits.handle(.digit(1)) == .outcome(.run(casual)))
     var button = OptionsCard(options: [Self.tone])
-    #expect(button.runButton() == .run(CommandArguments(choices: ["tone": "formal"], toggles: [:])))
+    #expect(
+      button.runButton()
+        == .run(CommandArguments(output: nil, choices: ["tone": "formal"], toggles: [:])))
     var closing = OptionsCard(options: [Self.tone])
     #expect(closing.handle(.escape) == .outcome(.close))
   }
@@ -252,7 +264,8 @@ struct CommandProgressStateTests {
     #expect(card.handle(.left) == .handled && card.arguments.toggles["short"] == false)
     #expect(card.handle(.tab) == .handled && card.handle(.tab) == .handled && card.selection == 0)
     #expect(card.handle(.backTab) == .handled && card.selection == 2)
-    let values = CommandArguments(choices: ["tone": "casual"], toggles: ["short": false])
+    let values = CommandArguments(
+      output: nil, choices: ["tone": "casual"], toggles: ["short": false])
     #expect(card.handle(.space) == .outcome(.edit(values)))
     #expect(card.handle(.enter) == .outcome(.run(values)))
     #expect(card.click(1) == .handled && card.arguments.toggles["short"] == true)

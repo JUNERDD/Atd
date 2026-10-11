@@ -6,6 +6,7 @@ import {
   parse,
   parseInstructionTokens,
   SubmitTaskRequestSchema,
+  type CommandOutput,
   type InputChip,
   type InputChipRange,
   type InstructionReference,
@@ -79,6 +80,8 @@ export interface LaunchCommandRequest {
     memory?: boolean;
   };
   sideChatOf?: string;
+  /** Where the answer goes for this run only, over the command's saved output. */
+  output?: CommandOutput;
   /**
    * Text around the rendered template, joined to it with blank lines: an automation's context
    * before it, its previous answer and trigger data after it. Plain text that never becomes a chip
@@ -103,7 +106,8 @@ export interface LaunchCommandRequest {
  * 5. The submit marks the text as command material (`fromCommand`), which memory never learns
  *    from, and a task the run creates is titled after the command unless `internal` names one.
  *    A command whose output is used verbatim also tells the model so, as the run's hidden
- *    instructions (`outputInstruction`), unless the run is unattended.
+ *    instructions (`outputInstruction`), unless the run is unattended; a launch may pick another
+ *    output for its run alone (`output`).
  * 6. A person's run that creates its task and needs no tools, tokens, files, folders or frame
  *    takes the lightweight session (commands/lite.ts `isLiteRun`).
  *
@@ -151,7 +155,9 @@ export async function launchCommand(
   });
   // An unattended run (`trigger`) has no app to write into and never touches the clipboard, so its
   // answer only stays in its conversation and the model is told nothing about where it goes.
-  const instructions = internal.trigger ? '' : (outputInstruction(command.output) ?? '');
+  const instructions = internal.trigger
+    ? ''
+    : (outputInstruction(request.output ?? command.output) ?? '');
   if (
     request.frame &&
     runInputSize({ ...snapshot, input: submit.input, instructions }) > CONTEXT_BUDGET

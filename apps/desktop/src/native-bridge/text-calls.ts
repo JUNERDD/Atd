@@ -8,7 +8,11 @@
  * their `.ts` names) and uses only erasable TypeScript syntax.
  */
 import { Type } from 'typebox';
-import { CommandArgumentsSchema, CommandOptionsSchema } from './command-options.ts';
+import {
+  CommandArgumentsSchema,
+  CommandOptionsSchema,
+  CommandOutputOptionSchema,
+} from './command-options.ts';
 import { Empty, MAX_NATIVE_TEXT_LENGTH } from './primitives.ts';
 
 /** A write target's opaque id (`NativeWriteTargetSchema.id`). */
@@ -94,8 +98,9 @@ export const NativeTextCalls = {
    * takes the focus, except in `choose`. `working`: an activity indicator, `command` (the command's
    * name), `summary` (the values it runs with, which a click reopens as `change`; absent: none
    * shown), an Esc hint and a close button that cancels; Escape cancels too while it shows,
-   * without reaching the app. `choose`: the command's `options` as a card the keyboard drives,
-   * answered by `run` (with every value), `edit` or `cancel`. `notice`: `message` with Open and a
+   * without reaching the app. `choose`: the command's `options` and where its answer goes
+   * (`output`) as a card the keyboard drives, answered by `run` (with every value), `edit` or
+   * `cancel`. `notice`: `message` with Open and a
    * close button that dismisses it, gone by itself after a few seconds. `answer`: the run's
    * `answer` where it could not be written (its target is not `writable`, or the write was
    * refused), as a card titled `command` with `note` (why it was not written; absent: nothing
@@ -124,6 +129,7 @@ export const NativeTextCalls = {
               phase: Type.Literal('choose'),
               command: Type.String({ minLength: 1, maxLength: 200 }),
               options: CommandOptionsSchema,
+              output: CommandOutputOptionSchema,
             },
             { additionalProperties: false },
           ),

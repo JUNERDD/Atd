@@ -36,6 +36,7 @@ export function useCommandLaunch({
     openTask,
     showInput,
     reveal: () => setRevealCount((count) => count + 1),
+    run: setAutoRun,
   });
   // The panel as of the latest commit: a launch arrives, and a run settles, after renders the
   // press did not see.
@@ -52,15 +53,11 @@ export function useCommandLaunch({
       const { light } = bridge;
       if (light && isLightLaunch(prepared)) {
         // A held shortcut offers the options of a light launch whose capture worked and whose
-        // text and number parameters have values (the card fills only choices and toggles); any
-        // other `choose` launch shows its input step, where the options are too.
+        // text and number parameters have values (the card fills only choices and toggles, and
+        // where the answer goes); any other `choose` launch shows its input step, where the
+        // options are too.
         const { command, input, notice } = prepared;
-        if (
-          choose &&
-          !notice &&
-          command.parameters.length &&
-          !needsInput(command, input.arguments)
-        ) {
+        if (choose && !notice && !needsInput(command, input.arguments)) {
           chooseLightRun(prepared, light);
           return;
         }

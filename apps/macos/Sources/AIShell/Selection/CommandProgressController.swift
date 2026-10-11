@@ -126,8 +126,10 @@ final class CommandProgressController: NSObject {
 
   private func present(target: String, phase: CommandProgressState.Phase) {
     let leaving = state.takesKeyboard ? state.shown?.target : nil
-    if case .choose(_, let options) = phase, state.shown?.phase != phase {
-      island.updateCard(OptionsCard(options: options))
+    if case .choose(_, let options, let output) = phase, state.shown?.phase != phase {
+      let names = CommandOutputChoice.Names(ShellStrings.shared.catalog)
+      island.updateCard(
+        OptionsCard(options: CommandOutputChoice.appending(output, to: options, names: names)))
     }
     pressing = false
     state.show(target: target, phase: phase)
@@ -145,7 +147,7 @@ final class CommandProgressController: NSObject {
   private func content(_ phase: CommandProgressState.Phase) -> IslandContent {
     switch phase {
     case .working(let command, let summary): .working(command: command, summary: summary)
-    case .choose(let command, _): .choose(command: command)
+    case .choose(let command, _, _): .choose(command: command)
     case .writing: .writing
     case .done: .done
     case .notice(let message): .notice(message: message)

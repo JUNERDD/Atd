@@ -1,5 +1,6 @@
 import { commandOptions, commandValues } from '../client/agent/command-arguments';
 import type { CommandDefinition } from '../client/agent/command-schema';
+import { outputOption } from '../client/agent/run-output';
 import type { CallParams, NativeBridge } from '../native-bridge/client';
 
 /** Commands `commandOptions.set` takes. */
@@ -7,20 +8,22 @@ const MAX_OPTION_COMMANDS = 256;
 
 /**
  * The commands whose options the shell offers (its toolbar options menu, the shortcut hold and
- * the HUD's options card): the enabled commands with at least one parameter, in command-list
- * order, each option showing the value a run would start from (defaults, then remembered values).
+ * the HUD's options card): every enabled command, in command-list order, each parameter's option
+ * showing the value a run would start from (defaults, then remembered values), and where its
+ * answer goes, starting from the command's saved output (a pick is never remembered).
  */
 export function commandOptionsParams(
   commands: readonly CommandDefinition[],
 ): CallParams<'commandOptions.set'> {
   return {
     commands: commands
-      .filter((command) => command.enabled && command.parameters.length > 0)
+      .filter((command) => command.enabled)
       .slice(0, MAX_OPTION_COMMANDS)
       .map((command) => ({
         id: command.id,
         name: command.name,
         options: commandOptions(command, commandValues(command)),
+        output: outputOption(command),
       })),
   };
 }

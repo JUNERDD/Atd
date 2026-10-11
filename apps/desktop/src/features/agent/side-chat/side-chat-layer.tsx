@@ -115,6 +115,7 @@ export function SideChatLayer({
             key={view.prepared.command.id}
             prepared={view.prepared}
             onChange={side.setInput}
+            onOutputChange={side.setOutput}
             policy={policy}
             onRun={side.runInput}
             onOpenSettings={() => void openCommandSettings(view.prepared.command.id)}

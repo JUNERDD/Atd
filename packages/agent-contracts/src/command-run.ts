@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { CommandOutputSchema } from './command-output.js';
 import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
 import { Identifier, OperationId } from './identifiers.js';
 import { ThinkingLevelSchema } from './models.js';
@@ -67,6 +68,11 @@ export const CommandRunRequestSchema = Type.Object(
     /** What the template reads: the `{{input}}` text, argument values, files and captures. */
     input: TaskInputSchema,
     policy: Type.Optional(CommandRunPolicySchema),
+    /**
+     * Where this run's answer goes, picked for this launch over the command's saved output; never
+     * remembered. It decides what the run's hidden instructions tell the model (`outputInstruction`).
+     */
+    output: Type.Optional(CommandOutputSchema),
     /** Starts the new task as a side chat of this conversation (`SubmitTaskRequest.sideChatOf`). */
     sideChatOf: Type.Optional(Identifier),
   },

@@ -116,9 +116,9 @@ struct IslandCard: View {
   }
 }
 
-/// A row of the card: a value of a list (a check on the current one, its number for 1–9), or an
-/// option of a sheet with what it shows now (a choice's value, a toggle's check, the panel
-/// hand-off of an input). The highlight is the card's selection, which the pointer moves too.
+/// A row of the card: a value of a list (a check on the current one and its number for 1–9, both
+/// at the trailing edge, where every mark of the card sits), or an option of a sheet with what it
+/// shows now (a choice's value, a toggle's check, the panel hand-off of an input). The highlight is the card's selection, which the pointer moves too.
 private struct IslandCardRow: View {
   let model: IslandModel
   let row: OptionsCard.Row
@@ -138,7 +138,6 @@ private struct IslandCardRow: View {
         model.cardEvent(.click(index))
       } label: {
         HStack(spacing: 8) {
-          leading
           Text(verbatim: label)
             .font(IslandType.label)
             .lineLimit(1)
@@ -181,20 +180,17 @@ private struct IslandCardRow: View {
     }
   }
 
-  @ViewBuilder private var leading: some View {
-    if case .value(_, let current) = row {
-      IslandGlyph(name: "check").opacity(current ? 1 : 0)
-    }
-  }
-
   @ViewBuilder private var trailing: some View {
     switch row {
-    case .value:
-      if index < 9 {
-        Text(verbatim: String(index + 1))
-          .font(IslandType.hint)
-          .foregroundStyle(.tertiary)
-          .monospacedDigit()
+    case .value(_, let current):
+      HStack(spacing: 8) {
+        IslandGlyph(name: "check").opacity(current ? 1 : 0)
+        if index < 9 {
+          Text(verbatim: String(index + 1))
+            .font(IslandType.hint)
+            .foregroundStyle(.tertiary)
+            .monospacedDigit()
+        }
       }
     case .option(.choice(let choice)):
       Text(verbatim: OptionsCard.valueLabel(of: choice))

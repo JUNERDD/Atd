@@ -1,5 +1,6 @@
 import { Type } from 'typebox';
 import {
+  CommandOutputSchema,
   MemoryCreateRequestSchema,
   MemorySaveRequestSchema,
   MemorySettingsRequestSchema,
@@ -67,6 +68,8 @@ export const AgentRequestSchema = Type.Union([
     commandRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     savedRun: Type.Union([Type.Object({ taskId: Identifier, runId: Identifier }), Type.Null()]),
     input: InputSchema,
+    /** A command run only: where its answer goes, over the command's saved output, for this run. */
+    output: Type.Optional(CommandOutputSchema),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
     branchBefore: Type.Optional(SessionEntryId),
     /**

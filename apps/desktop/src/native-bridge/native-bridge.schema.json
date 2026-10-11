@@ -1400,7 +1400,7 @@
                     },
                     {
                       "type": "object",
-                      "required": ["phase", "command", "options"],
+                      "required": ["phase", "command", "options", "output"],
                       "properties": {
                         "phase": {
                           "type": "string",
@@ -1510,8 +1510,65 @@
                               }
                             ]
                           },
-                          "minItems": 1,
                           "maxItems": 20
+                        },
+                        "output": {
+                          "type": "object",
+                          "required": ["value", "saved", "selection"],
+                          "properties": {
+                            "value": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "panel"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "replaceSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "insertAfterSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "insertAtCursor"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "copy"
+                                }
+                              ]
+                            },
+                            "saved": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "panel"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "replaceSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "insertAfterSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "insertAtCursor"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "copy"
+                                }
+                              ]
+                            },
+                            "selection": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -1621,7 +1678,7 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["id", "name", "options"],
+                    "required": ["id", "name", "options", "output"],
                     "properties": {
                       "id": {
                         "type": "string",
@@ -1732,8 +1789,65 @@
                             }
                           ]
                         },
-                        "minItems": 1,
                         "maxItems": 20
+                      },
+                      "output": {
+                        "type": "object",
+                        "required": ["value", "saved", "selection"],
+                        "properties": {
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "panel"
+                              },
+                              {
+                                "type": "string",
+                                "const": "replaceSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "insertAfterSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "insertAtCursor"
+                              },
+                              {
+                                "type": "string",
+                                "const": "copy"
+                              }
+                            ]
+                          },
+                          "saved": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "panel"
+                              },
+                              {
+                                "type": "string",
+                                "const": "replaceSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "insertAfterSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "insertAtCursor"
+                              },
+                              {
+                                "type": "string",
+                                "const": "copy"
+                              }
+                            ]
+                          },
+                          "selection": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
                       }
                     },
                     "additionalProperties": false
@@ -2477,6 +2591,30 @@
                   "type": "object",
                   "required": ["choices", "toggles"],
                   "properties": {
+                    "output": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
                     "choices": {
                       "type": "object",
                       "patternProperties": {
@@ -3195,6 +3333,30 @@
                   "type": "object",
                   "required": ["choices", "toggles"],
                   "properties": {
+                    "output": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
                     "choices": {
                       "type": "object",
                       "patternProperties": {
@@ -3413,6 +3575,30 @@
       "type": "object",
       "required": ["choices", "toggles"],
       "properties": {
+        "output": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "panel"
+            },
+            {
+              "type": "string",
+              "const": "replaceSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAtCursor"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
         "choices": {
           "type": "object",
           "patternProperties": {
@@ -3431,6 +3617,88 @@
             }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandOutputAction": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "panel"
+        },
+        {
+          "type": "string",
+          "const": "replaceSelection"
+        },
+        {
+          "type": "string",
+          "const": "insertAfterSelection"
+        },
+        {
+          "type": "string",
+          "const": "insertAtCursor"
+        },
+        {
+          "type": "string",
+          "const": "copy"
+        }
+      ]
+    },
+    "CommandOutputOption": {
+      "type": "object",
+      "required": ["value", "saved", "selection"],
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "panel"
+            },
+            {
+              "type": "string",
+              "const": "replaceSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAtCursor"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
+        "saved": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "panel"
+            },
+            {
+              "type": "string",
+              "const": "replaceSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAtCursor"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
+        "selection": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -4801,7 +5069,7 @@
             },
             {
               "type": "object",
-              "required": ["phase", "command", "options"],
+              "required": ["phase", "command", "options", "output"],
               "properties": {
                 "phase": {
                   "type": "string",
@@ -4911,8 +5179,65 @@
                       }
                     ]
                   },
-                  "minItems": 1,
                   "maxItems": 20
+                },
+                "output": {
+                  "type": "object",
+                  "required": ["value", "saved", "selection"],
+                  "properties": {
+                    "value": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
+                    "saved": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
+                    "selection": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4994,7 +5319,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "name", "options"],
+            "required": ["id", "name", "options", "output"],
             "properties": {
               "id": {
                 "type": "string",
@@ -5105,8 +5430,65 @@
                     }
                   ]
                 },
-                "minItems": 1,
                 "maxItems": 20
+              },
+              "output": {
+                "type": "object",
+                "required": ["value", "saved", "selection"],
+                "properties": {
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "panel"
+                      },
+                      {
+                        "type": "string",
+                        "const": "replaceSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "insertAfterSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "insertAtCursor"
+                      },
+                      {
+                        "type": "string",
+                        "const": "copy"
+                      }
+                    ]
+                  },
+                  "saved": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "panel"
+                      },
+                      {
+                        "type": "string",
+                        "const": "replaceSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "insertAfterSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "insertAtCursor"
+                      },
+                      {
+                        "type": "string",
+                        "const": "copy"
+                      }
+                    ]
+                  },
+                  "selection": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -5600,6 +5982,30 @@
           "type": "object",
           "required": ["choices", "toggles"],
           "properties": {
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "panel"
+                },
+                {
+                  "type": "string",
+                  "const": "replaceSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAtCursor"
+                },
+                {
+                  "type": "string",
+                  "const": "copy"
+                }
+              ]
+            },
             "choices": {
               "type": "object",
               "patternProperties": {
@@ -6078,6 +6484,30 @@
           "type": "object",
           "required": ["choices", "toggles"],
           "properties": {
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "panel"
+                },
+                {
+                  "type": "string",
+                  "const": "replaceSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAtCursor"
+                },
+                {
+                  "type": "string",
+                  "const": "copy"
+                }
+              ]
+            },
             "choices": {
               "type": "object",
               "patternProperties": {

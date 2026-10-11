@@ -63,7 +63,7 @@ function changed() {
  * write-back without a target leaves the answer in the conversation, so it is not remembered.
  */
 export function trackCommandRun(prepared: PreparedCommand, detail: TaskDetail): void {
-  const { output } = prepared.command;
+  const { output } = prepared;
   const target = writesBack(output.action) ? (prepared.target ?? null) : null;
   if (output.action !== 'copy' && !target) return;
   const run = detail.task.runs.at(-1);

@@ -9,17 +9,18 @@ public struct ToolbarOptionsSheet: Equatable, Sendable {
   public let id: String
   /// The command's name, user data shown untranslated.
   public let name: String
-  /// The options in parameter order, with their current values.
+  /// The options in parameter order, then where the answer goes, with their current values.
   public private(set) var options: [CommandOption]
 
-  public init(_ entry: CommandOptionsCatalog.Entry) {
+  public init(_ entry: CommandOptionsCatalog.Entry, names: CommandOutputChoice.Names) {
     id = entry.id
     name = entry.name
-    options = entry.options
+    options = entry.options(names)
   }
 
-  /// The command's only option when it is a choice: its menu lists the values, and picking one
-  /// runs the command with it. Any other command gets the rows sheet.
+  /// The command's only option when it is a choice (where the answer goes, for a command without
+  /// parameters): its menu lists the values, and picking one runs the command with it. Any other
+  /// command gets the rows sheet.
   public var singleChoice: CommandOption.Choice? {
     guard options.count == 1, case .choice(let choice) = options[0] else { return nil }
     return choice
@@ -53,14 +54,16 @@ public struct ToolbarOptionsSheet: Equatable, Sendable {
     }
   }
 
-  /// The values in a line for the Run row: each choice's current value, then the label of each
-  /// toggle that is on, in option order, as the page's values summary. A choice without a value
-  /// adds nothing; empty when there is nothing to show.
+  /// The values in a line for the Run row: each parameter choice's current value, then the label
+  /// of each toggle that is on, in option order, as the page's values summary. A choice without a
+  /// value adds nothing, nor does where the answer goes, which its own row shows; empty when there
+  /// is nothing to show.
   public var summary: String {
     var choices: [String] = []
     var toggles: [String] = []
     for option in options {
       switch option {
+      case .choice(let choice) where CommandOutputChoice.holds(choice): break
       case .choice(let choice):
         let label = Self.valueLabel(choice)
         if !label.isEmpty { choices.append(label) }

@@ -164,24 +164,68 @@ public enum CommandOption: Codable, Equatable, Sendable {
 }
 
 public struct CommandArguments: Codable, Equatable, Sendable {
+  public let output: CommandOutputAction?
   public let choices: [String: String]
   public let toggles: [String: Bool]
 
-  public init(choices: [String: String], toggles: [String: Bool]) {
+  public init(output: CommandOutputAction?, choices: [String: String], toggles: [String: Bool]) {
+    self.output = output
     self.choices = choices
     self.toggles = toggles
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    output = try container.optional(.output) { try container.value($0, CommandOutputAction.self) }
     choices = try container.dictionary(
       .choices, of: String.self, keyPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
     toggles = try container.dictionary(
       .toggles, of: Bool.self, keyPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
   }
 
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encodeIfPresent(output, forKey: .output)
+    try container.encode(choices, forKey: .choices)
+    try container.encode(toggles, forKey: .toggles)
+  }
+
   private enum CodingKeys: String, CodingKey, CaseIterable {
+    case output
     case choices
     case toggles
+  }
+}
+
+public enum CommandOutputAction: String, Codable, Equatable, Sendable {
+  case panel
+  case replaceSelection
+  case insertAfterSelection
+  case insertAtCursor
+  case copy
+}
+
+public struct CommandOutputOption: Codable, Equatable, Sendable {
+  public let value: CommandOutputAction
+  public let saved: CommandOutputAction
+  public let selection: Bool
+
+  public init(value: CommandOutputAction, saved: CommandOutputAction, selection: Bool) {
+    self.value = value
+    self.saved = saved
+    self.selection = selection
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    value = try container.value(.value, CommandOutputAction.self)
+    saved = try container.value(.saved, CommandOutputAction.self)
+    selection = try container.boolean(.selection)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case value
+    case saved
+    case selection
   }
 }

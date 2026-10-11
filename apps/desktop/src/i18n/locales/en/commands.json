@@ -187,7 +187,10 @@
     "review": {
       "title": "Review before applying",
       "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
-    }
+    },
+    "savedTitle": "{{title}} (default)",
+    "needsTarget": "Nothing is written back from here: the answer stays in the conversation. Writing back needs a run from another app, through the command's shortcut or the selection toolbar.",
+    "needsSelection": "This command doesn't read the selected text, so the answer stays in the conversation."
   },
   "typing": {
     "description": "Commands that write into another app type their answer there a few characters at a time. Turn off to paste it at once.",

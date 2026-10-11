@@ -69,6 +69,8 @@ function rendererSections(schema) {
     'SocketFrame',
     'CommandOption',
     'CommandArguments',
+    'CommandOutputAction',
+    'CommandOutputOption',
   ];
   const emitter = createEmitter({ defs, shared });
   return [

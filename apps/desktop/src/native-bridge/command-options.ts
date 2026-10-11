@@ -1,8 +1,8 @@
 /**
  * Command options in the shell (`NativeCommandOptionsCalls`, part of `NativeCalls` in `calls.ts`):
- * the parameters of a command the selection toolbar's options menu and the progress HUD's options
- * card offer, and the values the shell sends back with `shortcut.command` and
- * `commandProgress.action`. Loaded by the export script with Node's type stripping, so it imports
+ * the parameters of a command, and where its answer goes, as the selection toolbar's options menu
+ * and the progress HUD's options card offer them, and the values the shell sends back with
+ * `shortcut.command` and `commandProgress.action`. Loaded by the export script with Node's type stripping, so it imports
  * nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only erasable
  * TypeScript syntax.
  *
@@ -58,15 +58,45 @@ export const CommandOptionSchema = Type.Union([
   ),
 ]);
 
-/** A command's options in parameter order: at least one, as a command has at most 20 parameters. */
-export const CommandOptionsSchema = Type.Array(CommandOptionSchema, { minItems: 1, maxItems: 20 });
+/** A command's options in parameter order: none for a command without parameters, at most 20. */
+export const CommandOptionsSchema = Type.Array(CommandOptionSchema, { maxItems: 20 });
+
+/**
+ * Where a run's answer goes, as agent-contracts `CommandOutputActionSchema` names it (repeated
+ * here, since this file imports no workspace package). The shell names each one itself.
+ */
+export const CommandOutputActionSchema = Type.Union([
+  Type.Literal('panel'),
+  Type.Literal('replaceSelection'),
+  Type.Literal('insertAfterSelection'),
+  Type.Literal('insertAtCursor'),
+  Type.Literal('copy'),
+]);
+
+/**
+ * Where the answer of a run goes, offered beside the parameters: `value` for this run (the
+ * command's saved output until the person picks another), `saved` the command's saved one, which
+ * the shell marks as its default. A pick lasts for that run only. `selection` says whether the command reads the selection:
+ * without it, the two actions on the selection (`replaceSelection`, `insertAfterSelection`) are
+ * not offered.
+ */
+export const CommandOutputOptionSchema = Type.Object(
+  {
+    value: CommandOutputActionSchema,
+    saved: CommandOutputActionSchema,
+    selection: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
 
 /**
  * Argument overrides the shell sends with a launch or a run (see the file comment): the value
- * picked for each `choice` option in `choices`, and for each `toggle` in `toggles`.
+ * picked for each `choice` option in `choices`, for each `toggle` in `toggles`, and where the
+ * answer goes in `output` (absent: the command's saved output).
  */
 export const CommandArgumentsSchema = Type.Object(
   {
+    output: Type.Optional(CommandOutputActionSchema),
     choices: Type.Record(Type.String({ pattern: PARAMETER_KEY_PATTERN }), ChoiceText, {
       additionalProperties: false,
     }),
@@ -90,10 +120,10 @@ export const ShortcutCommandIntentSchema = Type.Union([
 
 export const NativeCommandOptionsCalls = {
   /**
-   * Replaces the commands whose options the shell offers: the enabled commands with at least one
-   * parameter, each with its options as they stand (remembered values applied). The panel pushes
-   * the whole set whenever it changes. A command shortcut or toolbar command in this set gets the
-   * shell's options menu, card and hold gesture; any other runs as it is.
+   * Replaces the commands whose options the shell offers: every enabled command, each with its
+   * parameters' options as they stand (remembered values applied) and where its answer goes. The
+   * panel pushes the whole set whenever it changes. A command shortcut or toolbar command in this
+   * set gets the shell's options menu, card and hold gesture; any other runs as it is.
    */
   'commandOptions.set': {
     params: Type.Object(
@@ -104,6 +134,7 @@ export const NativeCommandOptionsCalls = {
               id: Type.String({ minLength: 1, maxLength: 128 }),
               name: Type.String({ minLength: 1, maxLength: 256 }),
               options: CommandOptionsSchema,
+              output: CommandOutputOptionSchema,
             },
             { additionalProperties: false },
           ),

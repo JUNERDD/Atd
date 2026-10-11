@@ -208,7 +208,10 @@ export class AgentRequests<S> {
           const command = this.commands.find(request.commandId);
           if (!command.enabled || command.revision !== request.prepared.revision)
             throw new Error('This command changed or is disabled. Review before running.');
-          this.platform.launch({ command, input: request.prepared.input, notice: '' }, false);
+          this.platform.launch(
+            { command, input: request.prepared.input, output: { ...command.output }, notice: '' },
+            false,
+          );
         } else this.platform.launch(await this.commands.prepare(request.commandId), false);
         return null;
       }

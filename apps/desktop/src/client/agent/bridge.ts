@@ -3,6 +3,7 @@ import { Type, type Static } from 'typebox';
 import {
   AutomationDraftSchema,
   Identifier,
+  type CommandOutput,
   type CompactRefusal,
   type ContextBreakdown,
   type MemoryCreateRequest,
@@ -147,6 +148,11 @@ export interface LightCommandBridge {
 export interface PreparedCommand {
   command: CommandDefinition;
   input: TaskInput;
+  /**
+   * Where this run's answer goes: the command's saved output, unless another was picked for this
+   * launch (the shell's options, the input step). It lasts for this run only and is never saved.
+   */
+  output: CommandOutput;
   notice: string;
   /** Present only for a launch from another app that recorded a focused field. */
   target?: WriteTarget;

@@ -25,11 +25,11 @@ import { agentApi } from './use-agent';
  */
 export type LightLaunch = PreparedCommand & {
   target: WriteTarget;
-  command: { output: { action: CommandWriteAction } };
+  output: { action: CommandWriteAction };
 };
 
 export function isLightLaunch(prepared: PreparedCommand): prepared is LightLaunch {
-  const { output } = prepared.command;
+  const { output } = prepared;
   return writesBack(output.action) && !output.review && prepared.target !== undefined;
 }
 
@@ -41,6 +41,11 @@ export interface LightHost {
   showInput: (prepared: PreparedCommand) => void;
   /** Reveals the panel with what it now shows. */
   reveal: () => void;
+  /**
+   * Runs a launch in the panel, as a launch that runs as-is does: one whose options the card
+   * changed so that it no longer runs light (its answer now goes to the conversation, say).
+   */
+  run: (prepared: PreparedCommand) => void;
 }
 
 interface LightRun {
@@ -136,6 +141,7 @@ export async function startLightRun(launch: LightLaunch, light: LightCommandBrid
       commandRevision: launch.command.revision,
       savedRun: null,
       input: launch.input,
+      output: launch.output,
     });
   } catch (error) {
     release(run);
@@ -237,10 +243,10 @@ async function endLightRun(
       text(status === 'stopped' || status === 'cancelled' ? 'stopped' : 'failed', run),
     );
   if (!answer) return notice(run, text('empty', run));
-  const { target, command } = run.launch;
+  const { target, output } = run.launch;
   if (!target.writable) return offer(run, answer);
   await hide(run);
-  const reason = await writeInto(runId, target, command.output.action, answer);
+  const reason = await writeInto(runId, target, output.action, answer);
   if (!reason) return;
   if (reason !== 'interrupted') return offer(run, answer, unwrittenText(reason, target.app));
   // Only the beginning went in, while the person was working there: the whole answer goes on
