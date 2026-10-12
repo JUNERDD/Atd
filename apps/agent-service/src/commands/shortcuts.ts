@@ -82,24 +82,25 @@ export function assertShortcutFree(
 }
 
 /**
- * Refuses application bindings that change an action to a shortcut an enabled command or the
- * selection toolbar's double-tap holds (ConflictError). `next` is already valid
- * (`parseShortcutBindings`). Unchanged actions are not checked, so a save never fails over a
- * conflict it did not make.
+ * Refuses settings that make a shortcut collide (ConflictError): an application action changed to
+ * a shortcut an enabled command or the selection toolbar's double-tap holds, or the toolbar's
+ * double-tap changed to one an application action or an enabled command holds. Both sides are
+ * read as the patch leaves them, so a patch changing both is checked against itself; the
+ * bindings are already valid (`parseShortcutBindings`). Unchanged parts are not checked, so a
+ * save never fails over a conflict it did not make.
  */
-export function assertAppShortcutsFree(
-  next: ShortcutBindingsWire,
-  previous: ShortcutBindingsWire,
+export function assertSettingsShortcutsFree(
+  next: { shortcuts: ShortcutBindingsWire; selectionToolbar: SelectionToolbarGesture },
+  previous: { shortcuts: ShortcutBindingsWire; selectionToolbar: SelectionToolbarGesture },
   commands: ReadonlyArray<{ id: string; name: string; enabled: boolean; shortcut: string }>,
-  selectionToolbar: SelectionToolbarGesture,
 ): void {
-  const toolbarTap = selectionToolbarDoubleTap(selectionToolbar);
-  for (const [action, value] of Object.entries(next) as Array<
+  const toolbarTap = selectionToolbarDoubleTap(next.selectionToolbar);
+  for (const [action, value] of Object.entries(next.shortcuts) as Array<
     [keyof ShortcutBindingsWire, string]
   >) {
     if (
       effectiveAccelerator(value, process.platform) ===
-      effectiveAccelerator(previous[action], process.platform)
+      effectiveAccelerator(previous.shortcuts[action], process.platform)
     )
       continue;
     if (value === toolbarTap)
@@ -112,4 +113,18 @@ export function assertAppShortcutsFree(
         `The shortcut ${value} for "${APP_SHORTCUT_NAMES[action]}" is already used by the command "${holder.name}". Choose another combination.`,
       );
   }
+  if (!toolbarTap || toolbarTap === selectionToolbarDoubleTap(previous.selectionToolbar)) return;
+  const action = (Object.keys(next.shortcuts) as Array<keyof ShortcutBindingsWire>).find(
+    (key) => next.shortcuts[key] === toolbarTap,
+  );
+  const command = action
+    ? undefined
+    : commandHoldingShortcut(toolbarTap, commands, process.platform);
+  const owner = action
+    ? `the app shortcut "${APP_SHORTCUT_NAMES[action]}"`
+    : command && `the command "${command.name}"`;
+  if (owner)
+    throw new ConflictError(
+      `The selection toolbar's "Press keys twice" mode would turn on and off with ${toolbarTap}, which ${owner} already uses. Choose other keys or another way to show the toolbar.`,
+    );
 }
