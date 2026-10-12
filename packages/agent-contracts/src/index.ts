@@ -37,6 +37,7 @@ export * from './references.js';
 export * from './instruction-tokens.js';
 export * from './shell.js';
 export * from './tool-details.js';
+export * from './product-artifact.js';
 export * from './tool-names.js';
 export * from './workspace.js';
 export * from './shortcuts.js';

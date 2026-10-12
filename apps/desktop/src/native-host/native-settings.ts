@@ -26,6 +26,7 @@ import {
 } from '../client/settings-shell';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
+import { settingsItemOf, storeSettingsItem, takeSettingsItem } from './settings-item-link';
 import type { WindowMessages } from './window-messages';
 
 /**
@@ -157,6 +158,12 @@ export function nativeSettings(
       messages.post({ type: 'openSection', section });
       await native.call('settings.open', { commandId: null, section });
     },
+    openItem: async (item) => {
+      // An open settings window takes the message; a new one reads the stored item.
+      storeSettingsItem(item);
+      messages.post({ type: 'openItem', item });
+      await native.call('settings.open', { commandId: null, section: item.section });
+    },
     startCommandSession: async (commandId) => messages.post({ type: 'commandSession', commandId }),
     // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
     startAutomationSession: async (automation) =>
@@ -221,6 +228,16 @@ export function nativeSettings(
       messages.listen((message) => {
         if (message.type === 'openSection') listener(message.section);
       }),
+    onOpenItem: (listener) => {
+      const pending = takeSettingsItem();
+      if (pending) listener(pending);
+      return messages.listen((message) => {
+        if (message.type !== 'openItem') return;
+        takeSettingsItem();
+        const item = settingsItemOf(message.item);
+        if (item) listener(item);
+      });
+    },
   };
   return {
     bridge,

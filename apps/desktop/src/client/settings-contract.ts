@@ -1,3 +1,4 @@
+import { Type, type Static } from 'typebox';
 import {
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
@@ -10,6 +11,31 @@ import {
 import type { Connection, ProviderBridge } from './providers/schema';
 import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
+
+/**
+ * One saved item another window shows in Settings, such as a turn's artifact card: a memory or
+ * an automation by its id, or a Personal skill, subagent or MCP server by its name (an MCP
+ * server's is its server id). Commands keep their own link (`openCommand`).
+ */
+export const SettingsItemLinkSchema = Type.Union([
+  Type.Object(
+    { section: Type.Literal('memory'), id: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { section: Type.Literal('automations'), id: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      section: Type.Literal('extensions'),
+      kind: Type.Union([Type.Literal('skill'), Type.Literal('agent'), Type.Literal('mcp')]),
+      name: Type.String({ minLength: 1, maxLength: 256 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type SettingsItemLink = Static<typeof SettingsItemLinkSchema>;
 
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
 export type ShortcutBindings = Record<ShortcutAction, string>;
@@ -151,6 +177,8 @@ export interface SettingsBridge {
   openCommand: (commandId: string) => Promise<void>;
   /** Shows the settings window at `section` (a settings section id), open or not. */
   openSection: (section: string) => Promise<void>;
+  /** Shows the settings window at one saved item's page, open or not. */
+  openItem: (item: SettingsItemLink) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
   /**
@@ -204,4 +232,9 @@ export interface SettingsBridge {
   onOpenCommand: (listener: (commandId: string) => void) => () => void;
   /** A section another window asked an open settings window to show (`openSection`). */
   onOpenSection: (listener: (section: string) => void) => () => void;
+  /**
+   * An item another window asked this settings window to show (`openItem`): at once, the one left
+   * for it while it was not open yet, then each one asked while it is open.
+   */
+  onOpenItem: (listener: (item: SettingsItemLink) => void) => () => void;
 }

@@ -1,9 +1,10 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
+import { ArtifactCards } from './artifact-cards';
 import { BlockView } from './block-view';
 import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
@@ -72,6 +73,8 @@ export const TurnView = memo(function TurnView({
 }) {
   const { t } = useTranslation('tasks');
   const settled = !(live && last);
+  // A turn first shown while it ran settles in view, so its artifact cards arrive then.
+  const [shownLive] = useState(!settled);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
@@ -122,6 +125,9 @@ export const TurnView = memo(function TurnView({
         );
       })}
       {status}
+      {/* What the turn saved, as cards that open each item, once it settled: the items exist once
+          their calls complete, and the cards sit together instead of interrupting the stream. */}
+      {settled && <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />}
       {/* Collected from every activity group and held until the turn settles, so the banners sit
           together above the actions instead of interrupting the stream; the approval only
           applies from the next message anyway. */}

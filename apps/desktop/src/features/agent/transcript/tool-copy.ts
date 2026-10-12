@@ -254,8 +254,8 @@ export type RowDetails = Exclude<
  * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
  * the progress pill's subagent list and the drill-in view, a `todo` call's list feeds the
  * progress pill's Todos view, and a `configure_mcp` approval renders as a banner under its
- * activity group (mcp-approval-banner.tsx), and a published app's card shows under its row at all
- * times (`appDetails`); none renders in the row. A `codemode` call's steps render in its row while
+ * activity group (mcp-approval-banner.tsx), and a published app's card shows at its turn's end
+ * (artifact-cards.tsx); none renders in the row. A `codemode` call's steps render in its row while
  * it runs too. A `subagent` define call's definitions render in its row and also name what its
  * children ran as (task-agents/task-agents.ts); a define that recorded none (each name already
  * held that definition) reads like any call, by its arguments and result.
@@ -279,7 +279,7 @@ export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   }
 }
 
-/** The app an `app.build` call published, which its card under the row shows. */
+/** The app an `app.build` call published, which its row names by name and version. */
 export function appDetails(block: BlockOf<'tool'>): AppBuildDetails | null {
   const data = block.details.data;
   return data?.type === 'app' ? data : null;

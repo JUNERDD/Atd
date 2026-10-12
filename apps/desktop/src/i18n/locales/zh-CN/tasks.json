@@ -431,6 +431,21 @@
     "allowedTitle": "已允许 {{name}} 运行",
     "allowedDescription": "从下一条消息起即可使用它的工具。"
   },
+  "artifacts": {
+    "label": "本轮保存的内容",
+    "detail": "{{kind}} · {{action}}",
+    "created": "已创建",
+    "updated": "已更新",
+    "openLabel": "打开“{{name}}”，{{detail}}",
+    "kind": {
+      "command": "命令",
+      "automation": "自动化",
+      "skill": "技能",
+      "subagent": "子代理",
+      "mcp": "MCP 服务器",
+      "memory": "记忆"
+    }
+  },
   "selection": {
     "toolbar": "所选内容操作",
     "quote": "引用到回复"

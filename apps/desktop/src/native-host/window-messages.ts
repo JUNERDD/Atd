@@ -3,6 +3,7 @@ import type {
   AutomationSessionTarget,
   ExtensionSessionKind,
 } from '../client/agent/bridge';
+import type { SettingsItemLink } from '../client/settings-contract';
 
 /**
  * Messages between the shell's panel, settings and welcome guide windows. The shell's web views share the
@@ -25,6 +26,8 @@ export type WindowMessage =
   | { type: 'openCommand'; commandId: string }
   /** Any window → settings: show one section (a settings section id) in an open settings window. */
   | { type: 'openSection'; section: string }
+  /** Any window → settings: show one saved item's page in an open settings window. */
+  | { type: 'openItem'; item: SettingsItemLink }
   /** Settings → panel: start Create app on the new draft. */
   | { type: 'createApp' }
   /** Settings → panel: show one task, as Continue editing an app does. */

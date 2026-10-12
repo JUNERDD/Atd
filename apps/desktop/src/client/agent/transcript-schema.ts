@@ -1,5 +1,9 @@
 import { Type, type Static } from 'typebox';
-import { SessionEntryId, ToolBlockDetailsSchema } from '@atd/agent-contracts';
+import {
+  ProductArtifactSchema,
+  SessionEntryId,
+  ToolBlockDetailsSchema,
+} from '@atd/agent-contracts';
 import { Identifier } from './command-schema';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './permission-schema';
 
@@ -61,6 +65,8 @@ export const ToolDetailsSchema = Type.Object(
      * (`steps`) are too. The edit diff is never duplicated here.
      */
     data: Type.Optional(ToolBlockDetailsSchema),
+    /** The product item a completed call created or changed; the turn's end lists it as a card. */
+    artifact: Type.Optional(ProductArtifactSchema),
   },
   { additionalProperties: false },
 );

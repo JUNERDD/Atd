@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { FolderBridge } from '../src/client/contract';
-import type { SettingsSnapshot } from '../src/client/settings-contract';
+import type { SettingsItemLink, SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
   AgentEvent,
@@ -281,6 +281,7 @@ export function installBridge(extras?: {
       open,
       openCommand,
       openSection: vi.fn(async (_section: string) => {}),
+      openItem: vi.fn(async (_item: SettingsItemLink) => {}),
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
       startAutomationSession: vi.fn(async (_automation: { id: string; name: string } | null) => {}),
       startExtensionSession: vi.fn(
@@ -338,6 +339,7 @@ export function installBridge(extras?: {
       pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
       onOpenSection: () => () => {},
+      onOpenItem: () => () => {},
     },
   };
   return { api, setPinned, setPanelPlacement, hide, open, openCommand, askSelection };

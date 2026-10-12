@@ -8,9 +8,7 @@
     "widgets_one": "{{count}} widget",
     "widgets_other": "{{count}} widgets",
     "open": "Open",
-    "history": "Version history",
-    "building": "Type-checking and building version {{version}}…",
-    "failed": "The build failed. The current version still runs."
+    "history": "Version history"
   },
   "panel": {
     "label": "My apps",

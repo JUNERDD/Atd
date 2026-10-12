@@ -431,6 +431,21 @@
     "allowedTitle": "{{name}} is allowed to run",
     "allowedDescription": "Its tools are available from your next message."
   },
+  "artifacts": {
+    "label": "Saved in this turn",
+    "detail": "{{kind}} · {{action}}",
+    "created": "Created",
+    "updated": "Updated",
+    "openLabel": "Open {{name}}, {{detail}}",
+    "kind": {
+      "command": "Command",
+      "automation": "Automation",
+      "skill": "Skill",
+      "subagent": "Subagent",
+      "mcp": "MCP server",
+      "memory": "Memory"
+    }
+  },
   "selection": {
     "toolbar": "Selection actions",
     "quote": "Quote in reply"

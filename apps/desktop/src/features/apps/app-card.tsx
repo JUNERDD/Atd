@@ -8,43 +8,20 @@ import { AppIcon } from './app-icon';
 import { useAppActions } from './use-app-actions';
 
 /**
- * Where an `app.build` call stands: still building, failed (its row's output carries the error),
- * or published, with or without type errors.
+ * The app an `app.build` call published (Figma `App / App card`), shown at its turn's end with the
+ * turn's other saved items (agent/transcript/artifact-cards.tsx) as of the turn's last build: the
+ * icon, name, version and widget count, the build's change note, then Open and Version history.
+ * A later build of the same run updates the version an earlier one published, so its badge says
+ * the version was updated rather than naming it as if it were new. Type errors that did not stop
+ * the build read as a warning footer. Only a build that published has details, so the card never
+ * shows a build in progress or one that failed; its tool row does.
  */
-export type AppCardState = 'building' | 'failed' | 'ready';
-
-/**
- * The app an `app.build` call published (Figma `App / App card`), shown under its tool row as of
- * that build: the icon, name, version and widget count, the build's change note, then Open and
- * Version history. A later build of the same run updates the version an earlier one published,
- * so its badge says the version was updated rather than naming it as if it were new. Type errors
- * that did not stop the build read as a warning footer; a build still running shows its progress
- * instead of actions, and a failed one its error, with actions that open the last version that
- * built.
- */
-export function AppCard({
-  details,
-  state,
-  error,
-}: {
-  details: AppBuildDetails;
-  state: AppCardState;
-  /** The failed build's error, from the row's output. */
-  error?: string;
-}) {
+export function AppCard({ details }: { details: AppBuildDetails }) {
   const { t } = useTranslation('apps');
   const actions = useAppActions();
   const busy = actions.busy.has(details.appId);
   const available = Boolean(window.desktop?.apps);
   const errors = details.typecheck.ok ? 0 : details.typecheck.errorCount;
-  const footer =
-    state === 'building'
-      ? { tone: 'muted' as const, text: t('card.building', { version: details.version }) }
-      : state === 'failed'
-        ? { tone: 'destructive' as const, text: error || t('card.failed') }
-        : errors > 0
-          ? { tone: 'warning' as const, text: t('card.typecheckWarning', { count: errors }) }
-          : null;
   return (
     <ToolCard.Root aria-label={t('card.label', { name: details.name })}>
       <ToolCard.Body scroll="none" className="flex flex-col gap-2.5">
@@ -73,34 +50,32 @@ export function AppCard({
             )}
           </div>
         </div>
-        {state !== 'building' && (
-          <div className="flex flex-wrap gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!available}
-              aria-disabled={busy || undefined}
-              onClick={() => void actions.open(details.appId)}
-            >
-              <SquareArrowOutUpRight data-icon="inline-start" />
-              {t('card.open')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!available}
-              aria-disabled={busy || undefined}
-              onClick={() => void actions.showInSettings(details.appId)}
-            >
-              <History data-icon="inline-start" />
-              {t('card.history')}
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!available}
+            aria-disabled={busy || undefined}
+            onClick={() => void actions.open(details.appId)}
+          >
+            <SquareArrowOutUpRight data-icon="inline-start" />
+            {t('card.open')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!available}
+            aria-disabled={busy || undefined}
+            onClick={() => void actions.showInSettings(details.appId)}
+          >
+            <History data-icon="inline-start" />
+            {t('card.history')}
+          </Button>
+        </div>
       </ToolCard.Body>
-      {footer && (
-        <ToolCard.Footer tone={footer.tone} className="wrap-anywhere">
-          {footer.text}
+      {errors > 0 && (
+        <ToolCard.Footer tone="warning" className="wrap-anywhere">
+          {t('card.typecheckWarning', { count: errors })}
         </ToolCard.Footer>
       )}
     </ToolCard.Root>
