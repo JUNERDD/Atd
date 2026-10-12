@@ -16,11 +16,11 @@ public enum IslandMetrics {
   public static let gripWidth = SelectionToolbarLayout.gripWidth
   public static let glyphSide = MiniPanelMetrics.glyphSide
   /// The longest command name before it is cut with an ellipsis.
-  public static let maxCommandWidth = 220.0
+  public static let maxCommandWidth = 300.0
   /// The longest values summary on the working capsule's chip.
-  public static let maxSummaryWidth = 160.0
+  public static let maxSummaryWidth = 220.0
   /// A notice wraps past this width, to at most ``maxMessageLines`` lines.
-  public static let maxMessageWidth = 300.0
+  public static let maxMessageWidth = 420.0
   public static let maxMessageLines = 2
   /// How far a capsule too wide for ``maxShape`` cuts its values chip, its command name and a
   /// notice's message, in that order (``CapsuleLimits/fitting(overflow:command:summary:message:)``).
@@ -75,12 +75,12 @@ public enum IslandMetrics {
   public static let sectionGap = 4.0
   /// The card is as wide as its widest row or footer within these bounds.
   public static let minCardWidth = 300.0
-  public static let maxCardWidth = 420.0
+  public static let maxCardWidth = 560.0
   /// More rows than this scroll inside the card.
   public static let maxVisibleRows = 8
 
   /// The largest shape the island takes: the widest notice or card, the tallest card.
-  public static let maxShape = WindowSize(width: 480, height: 400)
+  public static let maxShape = WindowSize(width: 640, height: 400)
   /// Transparent room around the shape at rest, for its glass shadow and its overshoot.
   public static let inset = 24.0
 

@@ -288,16 +288,16 @@ struct CommandProgressStateTests {
     // A capsule wider than the island's largest shape cuts its chip first, then its name, then
     // a notice's message, each down to its floor.
     typealias Limits = IslandMetrics.CapsuleLimits
-    #expect(Limits.fitting(overflow: 0, command: 220, summary: 160, message: nil) == Limits())
-    let chip = Limits.fitting(overflow: 100, command: 220, summary: 160, message: nil)
-    #expect(chip.summary == 60 && chip.command == IslandMetrics.maxCommandWidth)
-    let name = Limits.fitting(overflow: 200, command: 220, summary: 160, message: nil)
-    #expect(name.summary == IslandMetrics.minSummaryWidth && name.command == 132)
-    let floors = Limits.fitting(overflow: 900, command: 220, summary: 160, message: nil)
+    #expect(Limits.fitting(overflow: 0, command: 300, summary: 220, message: nil) == Limits())
+    let chip = Limits.fitting(overflow: 100, command: 300, summary: 220, message: nil)
+    #expect(chip.summary == 120 && chip.command == IslandMetrics.maxCommandWidth)
+    let name = Limits.fitting(overflow: 300, command: 300, summary: 220, message: nil)
+    #expect(name.summary == IslandMetrics.minSummaryWidth && name.command == 172)
+    let floors = Limits.fitting(overflow: 900, command: 300, summary: 220, message: nil)
     #expect(floors.summary == IslandMetrics.minSummaryWidth)
     #expect(floors.command == IslandMetrics.minCommandWidth)
-    let notice = Limits.fitting(overflow: 50, command: nil, summary: nil, message: 300)
-    #expect(notice.message == 250 && notice.command == IslandMetrics.maxCommandWidth)
+    let notice = Limits.fitting(overflow: 50, command: nil, summary: nil, message: 420)
+    #expect(notice.message == 370 && notice.command == IslandMetrics.maxCommandWidth)
     #expect(abs(rest.maxY - (IslandMetrics.canvas.height - IslandMetrics.inset)) < 1e-9)
   }
 }
