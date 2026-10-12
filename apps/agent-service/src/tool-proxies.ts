@@ -305,7 +305,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
-    registerMcpCatalogTools(pi, host);
+    registerMcpCatalogTools(pi, host, authorize);
   };
 }
 

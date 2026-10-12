@@ -112,8 +112,9 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
       };
     },
     upsertMcp: async (serverId, request) => {
+      const created = !authority.configured().some((record) => record.serverId === serverId);
       const record = await authority.upsert(serverId, request);
-      return { record, approval: await authority.launches.state(record) };
+      return { record, approval: await authority.launches.state(record), created };
     },
     listMcp: () =>
       Promise.all(

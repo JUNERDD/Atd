@@ -253,12 +253,14 @@ test('an OAuth client secret is held by the keyring, read as set, and stays with
   // The model can neither set a client nor read the secret.
   const host = {
     upsertMcp: async () => assert.fail('a client draft never reaches the upsert'),
+    listMcp: async () => assert.fail('a client draft is refused before anything is read'),
     audit: () => undefined,
     taskId: 'task',
     runId: () => 'run',
   };
   const draft = { serverId: 'signin', transport: 'streamable-http', url: 'https://e.example/v2' };
-  await assert.rejects(configureMcp(host, { ...draft, auth: { type: 'oauth', client } }));
+  const confirm = { gate: async () => assert.fail('nor asked about'), toolCallId: 'call' };
+  await assert.rejects(configureMcp(host, { ...draft, auth: { type: 'oauth', client } }, confirm));
 });
 
 test('configure_mcp answers the saved settings with env names but not their values', async () => {
@@ -268,12 +270,15 @@ test('configure_mcp answers the saved settings with env names but not their valu
       upsertMcp: async (serverId, request) => ({
         record: upsertRecord(serverId, request, previous),
         approval: 'required',
+        created: false,
       }),
+      listMcp: async () => [],
       audit: () => undefined,
       taskId: 'task',
       runId: () => 'run',
     },
     { serverId: 'tool', transport: 'stdio', command: '/bin/echo', auth: { type: 'none' } },
+    { gate: async () => 'once', toolCallId: 'call' },
   );
   const text = result.content.map((block) => block.text).join('\n');
   assert.ok(!text.includes(ENV_SECRET));

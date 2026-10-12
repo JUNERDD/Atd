@@ -123,7 +123,7 @@
       },
       "bash": "Run a terminal command",
       "command": "Save or update a command",
-      "mcp": "Use an MCP tool",
+      "mcp": "Use an MCP tool or save an MCP server",
       "web": "Access the web",
       "app": "Build or run this task's app",
       "automation": "Save, delete or run an automation"
