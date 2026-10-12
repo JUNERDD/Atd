@@ -1448,3 +1448,7 @@ Figma 的 App / Model config content（`project/1544:58725`）Root 与 Root cont
 - 窗口分组没有独立的组合组件，MP12 的 en / zh-CN 两张卡片仍是各自的 frame，新行分别插入；G · 通用设置 (Figma `project/257:1454`) 是旧版布局（窗口偏好在页脚、快捷键行为 Item - Nova），没有窗口分组，本次未迁移。
 - 代码在窄列中让录制提示文字均衡换行；Figma 不能在实例中覆盖文字宽度，组件中提示保持单行，G2 的 264 列因此改为展示普通组合键（⌘ ⇧ 2）。
 - select row 在 Figma 中换行后选择器从左起，代码 `ml-auto` 靠右（组件说明已注明）。重置按钮、保存错误与「Press keys…」的非双击版本只写在组件说明中。App / Command shortcut · Rhea 仍以文字显示按键（32 高），与代码的键帽胶囊（28 高）不同，属任务前已有差异。
+
+同日补充（双击冲突）：App / Settings card shortcut row · Rhea (Figma `project/2781:188560`) 新增 `State=Conflict` (Figma `project/2783:188670`)：录制的双击与选择文字工具栏「连按两次」的手势相同时被拒绝，录制器保留已保存的按键（⌘ ⇧ Space），行脚同为 App / Field error · Rhea，文案 `shortcuts.errors.selectionToolbarDoubleTap`。审阅帧 G2b (Figma `project/2783:195878`) 位于 G2 下方，en / zh-CN 卡片 685（1000 窗口）与 264（320 窗口），展示该状态以及「呼出方式」行的 `selectionToolbar.activation.errors.heldByAction`（选「连按两次」被拒，仍为「按住按键」⌥）与 `heldByCommand`（「连按两次」下录制 ⌘，被命令「Translate selection / 翻译选区」占用）。错误与代码一样是整行行脚，从标题左缘起排；264 列中操作换到文字下方并靠右（代码 `ml-auto justify-end`）。已截图核对修改前后与 G2b，回读实例来源（行组件与 Field error 为项目组件，Select & Combobox - Nova、kbd - Nova 保持共享库连接，无分离）。
+
+- 「呼出方式」行（`features/settings/selection-toolbar-activation.tsx`，设置与欢迎指南共用）在 Figma 中没有自己的组件：设置版只出现在 G2b 的 frame 中，欢迎指南的 Activation (Figma `project/2294:133661`) 是 App / Onboarding controls 内的 frame；App / Selection toolbar settings · Rhea (Figma `project/1800:97639`) 仍是旧版，没有呼出方式与 HUD 开关行。G2b 264 列的靠右换行是在 frame 上设置的（ItemActions 填充并设最小宽度），不是组件行为。
