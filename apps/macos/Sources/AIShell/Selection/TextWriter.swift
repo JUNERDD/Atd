@@ -44,7 +44,8 @@ enum TextWriter {
     let insertion = TextWritePlan.insertion(
       of: params.text, mode: params.mode, selectedText: target.selectedText)
     if let reason = await ClipboardPaste.type(
-      insertion, into: target, mode: params.mode, typing: params.typing)
+      insertion, into: target, mode: params.mode, typing: params.typing,
+      animation: params.animation)
     {
       return .notOk(.init(reason: reason))
     }

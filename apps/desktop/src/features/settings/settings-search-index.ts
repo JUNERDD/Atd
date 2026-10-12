@@ -224,6 +224,15 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.commandTyping',
   },
   {
+    id: 'command-typing-animation',
+    section: 'commands',
+    // Both typing switches live in the popover the footer's typing button opens.
+    anchor: 'command-typing',
+    label: 'commands:typingAnimation.label',
+    description: 'commands:typingAnimation.description',
+    keywords: 'search.keywords.commandTypingAnimation',
+  },
+  {
     id: 'automations-new',
     section: 'automations',
     label: 'search.entries.newAutomation',

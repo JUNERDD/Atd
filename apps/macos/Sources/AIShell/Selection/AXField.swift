@@ -1,4 +1,5 @@
 import ApplicationServices
+import Foundation
 
 /// Why an Accessibility message about a text field could not be answered.
 nonisolated enum AXFieldError: Error, Equatable {
@@ -62,6 +63,69 @@ nonisolated enum AXField {
   static func isSecure(_ element: AXUIElement) throws(AXFieldError) -> Bool {
     let subrole: String? = try copy(element, kAXSubroleAttribute)
     return subrole == kAXSecureTextFieldSubrole
+  }
+
+  /// `AXBoundsForRange`: where `range` is drawn, in Quartz points; nil where the field does not
+  /// say.
+  static func bounds(of range: CFRange, in element: AXUIElement) throws(AXFieldError) -> CGRect? {
+    var range = range
+    guard let parameter = AXValueCreate(.cfRange, &range),
+      let value: AXValue = try copy(
+        element, kAXBoundsForRangeParameterizedAttribute, parameter)
+    else { return nil }
+    var rect = CGRect.zero
+    return AXValueGetValue(value, .cgRect, &rect) ? rect : nil
+  }
+
+  /// The caret's bounds from web content's text markers (`AXSelectedTextMarkerRange`, then
+  /// `AXBoundsForTextMarkerRange`): a zero-width rect at the insertion point, in Quartz points.
+  /// Chromium's editable content answers it only in complete accessibility, where
+  /// `AXBoundsForRange` still fails for contenteditable; nil where the field has no markers.
+  static func caretBounds(of element: AXUIElement) throws(AXFieldError) -> CGRect? {
+    guard let selection: CFTypeRef = try copy(element, "AXSelectedTextMarkerRange"),
+      let value: AXValue = try copy(element, "AXBoundsForTextMarkerRange", selection)
+    else { return nil }
+    var rect = CGRect.zero
+    return AXValueGetValue(value, .cgRect, &rect) ? rect : nil
+  }
+
+  /// `AXLineForIndex`: the line holding the character at `index`.
+  static func line(at index: Int, in element: AXUIElement) throws(AXFieldError) -> Int? {
+    let line: NSNumber? = try copy(
+      element, kAXLineForIndexParameterizedAttribute, index as CFNumber)
+    return line?.intValue
+  }
+
+  /// `AXRangeForLine`: the characters of `line`, in UTF-16 units.
+  static func range(ofLine line: Int, in element: AXUIElement) throws(AXFieldError) -> CFRange? {
+    guard
+      let value: AXValue = try copy(
+        element, kAXRangeForLineParameterizedAttribute, line as CFNumber)
+    else { return nil }
+    var range = CFRange()
+    return AXValueGetValue(value, .cfRange, &range) ? range : nil
+  }
+
+  /// The element's frame from `AXPosition` and `AXSize`, in Quartz points.
+  static func frame(of element: AXUIElement) throws(AXFieldError) -> CGRect? {
+    guard let position: AXValue = try copy(element, kAXPositionAttribute),
+      let size: AXValue = try copy(element, kAXSizeAttribute)
+    else { return nil }
+    var origin = CGPoint.zero
+    var extent = CGSize.zero
+    guard AXValueGetValue(position, .cgPoint, &origin), AXValueGetValue(size, .cgSize, &extent)
+    else { return nil }
+    return CGRect(origin: origin, size: extent)
+  }
+
+  private static func copy<T>(_ element: AXUIElement, _ attribute: String, _ parameter: CFTypeRef)
+    throws(AXFieldError) -> T?
+  {
+    var value: CFTypeRef?
+    let error = AXUIElementCopyParameterizedAttributeValue(
+      element, attribute as CFString, parameter, &value)
+    try check(error)
+    return error == .success ? value as? T : nil
   }
 
   private static func check(_ error: AXError) throws(AXFieldError) {

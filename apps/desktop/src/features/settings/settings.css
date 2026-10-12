@@ -1129,7 +1129,8 @@
 .settings-card .settings-card-row[data-slot='item'] {
   border-radius: 0;
 }
-.settings-card-row + .settings-card-row {
+/* Only inside a card too: standalone rows keep their rounded corners, which a hairline would bend. */
+.settings-card .settings-card-row + .settings-card-row {
   border-top-color: var(--border);
 }
 /* Restore defaults follows every group; its error sits before it on the same line. */

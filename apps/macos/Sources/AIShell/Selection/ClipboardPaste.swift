@@ -8,7 +8,8 @@ import AppKit
 /// in ``TypingPace`` chunks, each sized when it is due and pasted once the field's caret showed
 /// the one before in (``PasteProgress``, ``FieldCaret``); a field whose caret cannot be read, or
 /// whose selection was read by copying (``WriteTarget/Selection/copied``), gets the text in one
-/// paste, confirmed by its read (``PasteHandshake``). ``TypingPace`` owns the
+/// paste, confirmed by its read (``PasteHandshake``). Typed text leaves a trace on screen as it
+/// lands (``InsertionTracer``), which the write never waits for. ``TypingPace`` owns the
 /// clock: every step, the field's first caret read and each confirmation included, counts against
 /// its budget and deadline, so the last character is in within two seconds of the start, however
 /// long the text or slow the field. At most one ⌘V is ever outstanding. Items stay on this Mac (no
@@ -28,14 +29,17 @@ enum ClipboardPaste {
 
   /// Types `text` into `target`'s app, which must be frontmost with the field restored for
   /// `mode`, as `typing`, the user's typing setting, says (all at once when it is off, under
-  /// reduced motion or where the caret cannot be followed). Nil once every chunk is in; `failed`
-  /// when the first chunk did not go in within its limit; `interrupted` when the user pressed a key
+  /// reduced motion or where the caret cannot be followed), with a trace over the field as it
+  /// lands when `animation`, the user's typing animation setting, is on (``InsertionTracer``),
+  /// typed or pasted at once. Nil once every chunk is in; `failed` when the first chunk did not
+  /// go in within its limit; `interrupted` when the user pressed a key
   /// or a mouse button or another app came forward, or a later chunk did not go in within its
   /// limit, so only the beginning of the text arrived.
   /// A chunk that never went in stays on the pasteboard, so a ⌘V the target handles late pastes
   /// it rather than the user's items; the page puts the whole text there after every failure.
   static func type(
-    _ text: String, into target: WriteTarget, mode: TextWriteParams.Mode, typing: Bool
+    _ text: String, into target: WriteTarget, mode: TextWriteParams.Mode, typing: Bool,
+    animation: Bool
   ) async -> TextWriteResult.NotOk.Reason? {
     let start = ContinuousClock.now
     let caret = FieldCaret(target: target)
@@ -46,10 +50,14 @@ enum ClipboardPaste {
       progress = await caret.progress(mode: mode, within: caretLimit)
     }
     let tracked = progress != nil
+    let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     var pace = TypingPace(
-      text, typing: typing,
-      reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
-      caretTracked: tracked)
+      text, typing: typing, reduceMotion: reduceMotion, caretTracked: tracked)
+    // The trace follows the caret, typed or pasted at once: each confirmed chunk, or the whole
+    // text in one, says where it landed. Without the caret nothing says where the text went.
+    let trace =
+      animation && tracked ? InsertionTracer(target: target, reducesMotion: reduceMotion) : nil
+    defer { trace?.finish() }
     let pasteboard = NSPasteboard.general
     let saved = PasteboardSnapshot(of: pasteboard)
     let handshake = PasteHandshake()
@@ -74,6 +82,7 @@ enum ClipboardPaste {
       if let current = progress {
         guard let next = await confirm(chunk.text, from: current, by: caret, within: limit)
         else { return missed }
+        trace?.inserted(chunk.text, from: current.caret, to: next.caret)
         progress = next
       } else {
         guard await handshake.read(index, within: limit) else { return missed }

@@ -356,3 +356,19 @@
 .input-shortcut-field .shortcut-recorder {
   min-height: 32px;
 }
+/* The typing popover (typing-footer.tsx): a compact glass panel of a header and two switch rows.
+   Its 8px inset keeps each row's fill concentric with the popover's corner (radius-3xl − 8px is
+   radius-xl), and the header's inset lines its text up with the rows' text. */
+.command-typing-popover[data-slot='popover-content'] {
+  gap: 4px;
+  padding: 8px;
+}
+.command-typing-popover [data-slot='popover-header'] {
+  padding: 8px 14px 4px;
+}
+.command-typing-popover [data-slot='item-group'] {
+  gap: 2px;
+}
+.command-typing-popover [data-slot='item'] {
+  border-radius: var(--radius-xl);
+}

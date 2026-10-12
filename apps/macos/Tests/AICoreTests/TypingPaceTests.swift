@@ -161,6 +161,19 @@ struct TypingPaceTests {
     #expect(TypingPace.confirmationLimit(for: chunk, pastedAt: start) == .milliseconds(1_870))
   }
 
+  @Test("Only typing on, motion not reduced and a tracked caret pace the text")
+  func isPaced() {
+    for typing in [false, true] {
+      for reduceMotion in [false, true] {
+        for tracked in [false, true] {
+          let pace = TypingPace(
+            "hello", typing: typing, reduceMotion: reduceMotion, caretTracked: tracked)
+          #expect(pace.isPaced == (typing && !reduceMotion && tracked))
+        }
+      }
+    }
+  }
+
   @Test("Chunks never split a character")
   func graphemes() {
     let family = "👩‍👩‍👧‍👦"

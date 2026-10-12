@@ -25,6 +25,7 @@ export type {
 };
 export {
   DEFAULT_COMMAND_TYPING,
+  DEFAULT_COMMAND_TYPING_ANIMATION,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_KEYS,
 } from '@atd/agent-contracts';
@@ -121,6 +122,13 @@ export interface SettingsSnapshot {
    */
   commandTyping: boolean;
   /**
+   * Whether written-back answers leave a trace over the field as they land (a glow at the insertion
+   * point, a wash behind the new text), typed or pasted at once. The service keeps it unchosen
+   * (null) until the user picks it or first turns the typing effect on, which turns it on; until
+   * then, and until the service loads, it reads as the default.
+   */
+  commandTypingAnimation: boolean;
+  /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
    */
@@ -178,6 +186,8 @@ export interface SettingsBridge {
   saveSelectionToolbar: (value: SelectionToolbarSettings) => Promise<SettingsSnapshot>;
   /** Sets how write-back command answers arrive in other apps. */
   saveCommandTyping: (value: boolean) => Promise<SettingsSnapshot>;
+  /** Sets whether written-back answers leave a trace over the field they land in. */
+  saveCommandTypingAnimation: (value: boolean) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

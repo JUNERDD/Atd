@@ -43,8 +43,10 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
   }
   return parse(
     SettingsFileSchema,
-    withAddedCommandTyping(
-      withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    withAddedCommandTypingAnimation(
+      withAddedCommandTyping(
+        withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+      ),
     ),
   );
 }
@@ -85,6 +87,35 @@ function withAddedCommandTyping(file: unknown): unknown {
   const commandTyping =
     typeof stored === 'boolean' ? stored : stored === 'instant' ? false : DEFAULT_COMMAND_TYPING;
   return { ...file, settings: { ...settings, commandTyping } };
+}
+
+/**
+ * A file written before the typing animation setting existed reads as never chosen; so does a
+ * stored value that is not a switch.
+ */
+function withAddedCommandTypingAnimation(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  const stored = 'commandTypingAnimation' in settings ? settings.commandTypingAnimation : undefined;
+  const commandTypingAnimation = typeof stored === 'boolean' ? stored : null;
+  return { ...file, settings: { ...settings, commandTypingAnimation } };
+}
+
+/**
+ * The fields `request` writes, with the typing animation turned on alongside the typing effect's
+ * first turn-on: while the animation was never chosen (`previous` null) and the request does not
+ * choose it, turning typing on takes the animation with it. A user who chose the animation, on or
+ * off, keeps the choice.
+ */
+export function withFirstTypingAnimation(
+  previous: Pick<UserSettings, 'commandTyping' | 'commandTypingAnimation'>,
+  fields: Omit<PatchSettingsRequest, 'onlyIfUninitialized'>,
+): Omit<PatchSettingsRequest, 'onlyIfUninitialized'> {
+  const turnsTypingOn = fields.commandTyping === true && !previous.commandTyping;
+  if (!turnsTypingOn || previous.commandTypingAnimation !== null) return fields;
+  if (fields.commandTypingAnimation !== undefined) return fields;
+  return { ...fields, commandTypingAnimation: true };
 }
 
 /** The selection toolbar starts on, over every app, for selections made while Option is held. */
@@ -174,6 +205,7 @@ export class SettingsStore {
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
         commandTyping: DEFAULT_COMMAND_TYPING,
+        commandTypingAnimation: null,
         onboardingCompleted: false,
         onboardingProgress: null,
       };
@@ -230,7 +262,10 @@ export class SettingsStore {
           shortcutHolders({ ...this.state.settings, ...fields }),
           shortcutHolders(this.state.settings),
         );
-      return this.write({ ...this.state.settings, ...fields }, true);
+      return this.write(
+        { ...this.state.settings, ...withFirstTypingAnimation(this.state.settings, fields) },
+        true,
+      );
     });
   }
 

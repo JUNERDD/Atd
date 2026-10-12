@@ -104,6 +104,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       switch method {
       case "bridge.ready": post = try .bridgeReady(container.value(.params, BridgeReadyPost.self))
       case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
+      case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))
       case "window.dragRegions":
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
       case "onboarding.surface":

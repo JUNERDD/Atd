@@ -60,6 +60,7 @@
     "posts": [
       "bridge.ready",
       "language.set",
+      "typing.set",
       "window.dragRegions",
       "onboarding.surface",
       "onboarding.selection",
@@ -1356,7 +1357,7 @@
             },
             "params": {
               "type": "object",
-              "required": ["target", "mode", "text", "typing"],
+              "required": ["target", "mode", "text", "typing", "animation"],
               "properties": {
                 "target": {
                   "type": "string",
@@ -1385,6 +1386,9 @@
                   "maxLength": 1000000
                 },
                 "typing": {
+                  "type": "boolean"
+                },
+                "animation": {
                   "type": "boolean"
                 }
               },
@@ -2164,6 +2168,34 @@
                       "const": "zh-CN"
                     }
                   ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "typing.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["typing", "animation"],
+              "properties": {
+                "typing": {
+                  "type": "boolean"
+                },
+                "animation": {
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -5048,7 +5080,7 @@
     },
     "TextWriteParams": {
       "type": "object",
-      "required": ["target", "mode", "text", "typing"],
+      "required": ["target", "mode", "text", "typing", "animation"],
       "properties": {
         "target": {
           "type": "string",
@@ -5077,6 +5109,9 @@
           "maxLength": 1000000
         },
         "typing": {
+          "type": "boolean"
+        },
+        "animation": {
           "type": "boolean"
         }
       },
@@ -5836,6 +5871,19 @@
               "const": "zh-CN"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "TypingSetPost": {
+      "type": "object",
+      "required": ["typing", "animation"],
+      "properties": {
+        "typing": {
+          "type": "boolean"
+        },
+        "animation": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

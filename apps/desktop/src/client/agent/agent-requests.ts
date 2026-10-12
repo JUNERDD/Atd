@@ -297,6 +297,7 @@ export class AgentRequests<S> {
           mode: request.mode,
           text: request.text,
           typing: request.typing,
+          animation: request.animation,
         });
       case 'openLink': {
         const url = new URL(request.url);

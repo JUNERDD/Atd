@@ -1274,6 +1274,14 @@ Figma（02 · App components 的区块 33 · Command typing effect (2026-10-11) 
 
 验证范围：页脚组件、05.01 与 06.07（1000 宽）、Drawer320 样例的截图；6 个画面与 Drawer320 样例节点回读均无丢失的主组件，远程实例来自共享 shadcn 库，没有分离。删除 Settings action 属性前后，72 个变体与页面 01、02 上全部消费者的尺寸、填充、变量绑定与可见图层一致（AU2.04 的 Glass 页脚按钮截图核对）。Drawer320 样例的四行命令改为 `Layout=Narrow`（264 × 106），文案、图标、快捷键与运行、开关、更多状态保留；第四行在 320 × 640 下被列表滚动区裁到页脚上方，符合滚动区行为。
 
+### 2026-10-12 打字弹层（Typing effect popover）
+
+页脚尾部的开关药丸换成一个玻璃弹出按钮「Typing effect · On/Off ⌃」，打开向上弹出的弹层，内含两个互相独立的开关：「Type answers in」（`commandTyping`，关闭时一次性粘贴）与「Highlight new text」（`commandTypingAnimation`，原名 Typing animation，逐字打出或一次性粘贴都会显示）。两者默认关闭；首次开启打字时，服务会顺带开启从未设置过的高亮。弹层按 macOS 弹出面板组织：标题「Typing effect」与 Beta 徽标、一行适用范围说明，下面是两行开关；原先三处近似的名字（按钮、首行、次行）拆成分组名与两个开关名，说明缩短到一到两行。代码为准。
+
+- 代码：`features/commands/typing-footer.tsx`（`Popover` + `PopoverHeader`，`PopoverContent side="top" align="end"`，`w-88`），`features/commands/commands.css` 的 `.command-typing-popover`（内边距 8、间距 4，行圆角 `--radius-xl` 14 与弹层 22 同心；标题区内边距 8 / 14 / 4 / 14 与行文字对齐），行为 `SettingsSwitchRow`。`features/settings/settings.css` 的行间细线规则限定在 `.settings-card` 内，独立的圆角行不再出现弯曲的细线。文案为 `commands.json` 的 `typing.label`、`typing.scope`、`typing.switch`、`typing.description`、`typingAnimation.*`。
+- Figma（区块更名为 33 · Command typing effect (2026-10-11, popover 2026-10-12)，共享库未改动）：新增 App / Glass pop-up button · Rhea (Figma `project/2778:188514`，`State=Default / Open`，属性 Label、Value；已连接的共享按钮皮肤 Glass 覆盖，Open 叠加 `glass/control-wash-strong` 16%；尾部 Lucide / chevron-up 16) 与 App / Command typing popover · Rhea (Figma `project/2778:188515`，352 宽，材质与 App / Turn usage popover · Rhea 相同；两行为 App / Settings card switch row · Rhea 实例，无分隔线，圆角 14，开关为 Unchecked)。App / Command typing footer · Rhea 的「Typing effect」实例由 App / Glass switch pill · Rhea 换成新弹出按钮，画面与 Drawer320 样例随组件更新；App / Glass switch pill · Rhea 仍由记忆与自动化页脚使用。审阅帧：弹层展开（英文，Figma `project/2780:188529`）与 zh-CN（Figma `project/2780:188590`）。
+- 验证：区块、两个审阅帧与 Drawer320 中 05.01 样例的截图；中文首行说明保持一行。原生窗口中的系统玻璃未核对（开发中的 App 由用户自己的 `pnpm dev` 运行）。
+
 已知差异：
 
 - 浮动页脚的渐隐与「列表从页脚下方滚过」没有画：Figma 中页脚排在列表下方（与自动化、记忆一致）。

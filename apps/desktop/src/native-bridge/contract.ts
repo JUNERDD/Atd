@@ -16,7 +16,7 @@ import { NativeCalls } from './calls.ts';
 import { CommandArgumentsSchema, ShortcutCommandIntentSchema } from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
-import { NativeTextEvents, NativeWriteTargetSchema } from './text-calls.ts';
+import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
 import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
 
@@ -54,6 +54,7 @@ export const NativePosts = {
     { language: Type.Union([Type.Literal('en'), Type.Literal('zh-CN')]) },
     { additionalProperties: false },
   ),
+  ...NativeTextPosts,
   /**
    * The window drag regions in CSS pixels from the web view's top-left, interactive children
    * already cut out. Sent on every layout change; `[]` on teardown.

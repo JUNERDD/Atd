@@ -167,12 +167,20 @@ export async function installNativeHost(
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
+  let pushedTyping: string | null = null;
   settings.bridge.onChange((next) => {
     latest = next;
     if (surface !== 'panel' || !settings.loaded()) return;
     onboarding?.onSettings(next);
     shortcuts?.sync();
     toolbar?.sync();
+    // The shell prepares a browser for the typing animation when a command is summoned, before
+    // any write tells it the settings.
+    const typing = { typing: next.commandTyping, animation: next.commandTypingAnimation };
+    if (JSON.stringify(typing) !== pushedTyping) {
+      pushedTyping = JSON.stringify(typing);
+      native.post('typing.set', typing);
+    }
     if (next.language === pushedLanguage) return;
     pushedLanguage = next.language;
     native.post('language.set', { language: next.language });

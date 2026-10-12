@@ -52,6 +52,9 @@ public struct TypingPace: Sendable {
     paced = typing && !reduceMotion && caretTracked
   }
 
+  /// Whether the text goes in over several chunks, like typing, rather than in one paste.
+  public var isPaced: Bool { paced }
+
   /// The next chunk once the one before it is confirmed (or first), `elapsed` after the write
   /// started; nil when the text is all out. The chunks concatenate back to the text.
   public mutating func next(at elapsed: Duration) -> Chunk? {

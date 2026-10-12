@@ -36,6 +36,8 @@ final class ShellBridge {
     switch post {
     case .bridgeReady: host.pageDidBecomeReady()
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
+    case .typingSet(let post):
+      shell?.summoner.writeTargets.animatesTyping = post.animation
     case .windowDragRegions(let post): host.setDragRegions(post.rects)
     case .onboardingSurface(let post): shell?.onboarding.setSurface(post, from: host)
     case .onboardingSelection(let post): shell?.setPracticeSelection(post, from: host)

@@ -68,6 +68,7 @@
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
       "commandTyping": "typing typewriter type out animation paste at once write back insert replace reduce motion",
+      "commandTypingAnimation": "typing animation trace glow highlight new text insertion point cursor visual effect motion",
       "newAutomation": "create add automation schedule recurring task routine automate",
       "automationsPause": "pause stop disable all automations schedule hold resume",
       "memoryLearning": "learn automatically remember pause preferences corrections",

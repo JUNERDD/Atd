@@ -50,7 +50,12 @@ export const NativeTextCalls = {
    * resolves once the last of it is in; a piece the field does not take in time ends the write as
    * `failed` (the first) or `interrupted` (a later one). The clipboard is restored after a
    * complete write; a write that stopped short leaves its last piece there instead, so a paste still
-   * in flight cannot insert the user's own clipboard. A refusal
+   * in flight cannot insert the user's own clipboard. `animation` is the user's typing animation
+   * setting: on, the text leaves a trace over the field as it lands, drawn by the shell on a window
+   * of its own and never waited for: a glow at the insertion point and a wash behind each piece
+   * while it arrives like typing, or behind the whole text once it is in when it arrives at once.
+   * The trace needs the field's caret, so a field whose caret cannot be followed gets none, and
+   * under reduced motion only the wash shows. A refusal
    * changes nothing: `notTrusted` (no Accessibility), `targetGone` (unknown or expired target, or
    * the app quit), `targetChanged` (the field or its selection can no longer be restored),
    * `noSelection` (a selection action on a target that recorded none), `secureInput` (a password
@@ -69,6 +74,7 @@ export const NativeTextCalls = {
         ]),
         text: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }),
         typing: Type.Boolean(),
+        animation: Type.Boolean(),
       },
       { additionalProperties: false },
     ),
@@ -163,6 +169,20 @@ export const NativeTextCalls = {
     params: Type.Object({ target: WriteTargetId }, { additionalProperties: false }),
     result: Empty,
   },
+};
+
+/** The write-back posts, part of `NativePosts` in `contract.ts`. */
+export const NativeTextPosts = {
+  /**
+   * The user's typing settings (`text.write` `typing` and `animation`), after load and on every
+   * change. The shell reads them when a command is summoned, before any write: a summon from a
+   * Chromium browser prepares the browser's text geometry only while the animation is on (none
+   * until the first post).
+   */
+  'typing.set': Type.Object(
+    { typing: Type.Boolean(), animation: Type.Boolean() },
+    { additionalProperties: false },
+  ),
 };
 
 export const NativeTextEvents = {

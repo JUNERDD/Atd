@@ -193,11 +193,26 @@
     "needsSelection": "This command doesn't read the selected text, so the answer stays in the conversation."
   },
   "typing": {
-    "description": "Commands that write into another app type their answer there a few characters at a time. Turn off to paste it at once.",
+    "description": "Answers appear a few characters at a time. Turn off to paste them at once.",
     "reduceMotion": "Reduce Motion is on in System Settings, so answers appear all at once.",
     "label": "Typing effect",
+    "scope": "How commands write their answers into other apps.",
+    "switch": "Type answers in",
+    "beta": "Beta",
+    "state": {
+      "on": "On",
+      "off": "Off"
+    },
     "errors": {
       "save": "The typing effect couldn't be saved. Try again."
+    }
+  },
+  "typingAnimation": {
+    "label": "Highlight new text",
+    "description": "A glow at the insertion point and a brief highlight behind the new text, whether it is typed in or pasted at once.",
+    "reduceMotion": "Reduce Motion is on in System Settings, so the new text is highlighted without the moving glow.",
+    "errors": {
+      "save": "The new-text highlight couldn't be saved. Try again."
     }
   },
   "shortcut": {

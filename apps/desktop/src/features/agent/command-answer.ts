@@ -1,4 +1,9 @@
-import { DEFAULT_COMMAND_TYPING, writesBack, type CommandWriteAction } from '@atd/agent-contracts';
+import {
+  DEFAULT_COMMAND_TYPING,
+  DEFAULT_COMMAND_TYPING_ANIMATION,
+  writesBack,
+  type CommandWriteAction,
+} from '@atd/agent-contracts';
 import type { TextWriteRequest, TextWriteResult, WriteTarget } from '../../client/agent/bridge';
 import { showToast } from '../../components/toast-store';
 import i18n from '../../i18n';
@@ -16,15 +21,16 @@ const WRITE_MODES: Record<CommandWriteAction, TextWriteRequest['mode']> = {
 };
 
 /**
- * The user's typing setting for a write. A settings read that fails must not hold the answer back,
- * so the write then follows the default.
+ * The user's typing settings for a write: typing and its animation. A settings read that fails must
+ * not hold the answer back, so the write then follows the defaults.
  */
-async function typingSetting(): Promise<boolean> {
+async function typingSettings(): Promise<Pick<TextWriteRequest, 'typing' | 'animation'>> {
   try {
-    return (await readSettingsSnapshot()).commandTyping;
+    const settings = await readSettingsSnapshot();
+    return { typing: settings.commandTyping, animation: settings.commandTypingAnimation };
   } catch (error) {
-    console.error('The typing setting could not be read:', error);
-    return DEFAULT_COMMAND_TYPING;
+    console.error('The typing settings could not be read:', error);
+    return { typing: DEFAULT_COMMAND_TYPING, animation: DEFAULT_COMMAND_TYPING_ANIMATION };
   }
 }
 
@@ -43,8 +49,8 @@ export function unwrittenText(reason: Exclude<WriteRefusal, 'interrupted'>, app:
  * resolves with why it did not (null once written). The shell hides the panel and confirms the
  * write by showing it, so success says nothing more; a refusal changes nothing there, and the
  * caller decides where the answer goes instead. A target the shell no longer knows is forgotten,
- * which retires the turn's apply button. The text is typed or pasted at once as the user's typing
- * setting says.
+ * which retires the turn's apply button. The text is typed or pasted at once, with or without its
+ * animation, as the user's typing settings say.
  */
 export async function writeInto(
   runId: string,
@@ -53,13 +59,13 @@ export async function writeInto(
   answer: string,
 ): Promise<WriteRefusal | null> {
   let reason: WriteRefusal;
-  const typing = await typingSetting();
+  const typing = await typingSettings();
   try {
     const result = await agentApi().writeText({
       target: target.id,
       mode: WRITE_MODES[action],
       text: answer,
-      typing,
+      ...typing,
     });
     if (result.ok) return null;
     reason = result.reason;

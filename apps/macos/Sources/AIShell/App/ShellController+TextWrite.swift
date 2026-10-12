@@ -15,9 +15,12 @@ extension ShellController {
       return .notOk(.init(reason: .failed))
     }
     commandProgress.showWriting(target: params.target)
-    let result = await TextWriter.write(params, to: summoner.writeTargets.target(params.target)) {
+    let target = summoner.writeTargets.target(params.target)
+    if let target, params.animation { summoner.writeTargets.writing(target) }
+    let result = await TextWriter.write(params, to: target) {
       hidePanel()
     }
+    if let target { summoner.writeTargets.wrote(target) }
     if case .ok = result {
       commandProgress.showDone(target: params.target)
     } else {

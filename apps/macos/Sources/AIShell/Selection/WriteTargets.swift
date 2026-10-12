@@ -47,7 +47,10 @@ enum SummonSelection {
 
 /// Records write targets at summon time (``SummonStep/captureTarget``) and hands them to
 /// `text.write` by the opaque id the page received with `shortcut.command`. At most
-/// ``capacity`` targets are kept, each for ``lifetime``; the oldest goes first.
+/// ``capacity`` targets are kept, each for ``lifetime``; the oldest goes first. While the typing
+/// animation is on (``animatesTyping``), a writable target in a Chromium browser also arms the
+/// browser for the typing trace (``geometry``) from the summon on, since its character bounds come
+/// about two seconds after it is asked for them.
 final class WriteTargets {
   static let capacity = 16
   static let lifetime: Duration = .seconds(15 * 60)
@@ -59,6 +62,10 @@ final class WriteTargets {
   }
 
   private var entries: [Entry] = []
+  private let geometry = BrowserTextGeometryLeases()
+  /// Whether answers are typed with their animation, as the page's last `typing.set` said; off
+  /// until it says, so no browser is armed for a trace the settings may not want.
+  var animatesTyping = false
 
   /// Reads and records the frontmost app's focused field. Nothing is recorded without
   /// Accessibility (no prompt: the selection step asks), while Atd itself is frontmost, for a
@@ -92,6 +99,7 @@ final class WriteTargets {
     purge()
     entries.append(Entry(id: id, target: target, recordedAt: .now))
     if entries.count > Self.capacity { entries.removeFirst(entries.count - Self.capacity) }
+    if read.writable, animatesTyping { geometry.arm(app) }
     return ShortcutCommandEvent.Target(id: id, app: name, writable: read.writable)
   }
 
@@ -99,6 +107,17 @@ final class WriteTargets {
   func target(_ id: String) -> WriteTarget? {
     purge()
     return entries.first { $0.id == id }?.target
+  }
+
+  /// A write with the typing animation into `target` starts: its browser is armed again if its
+  /// lease ran out (late, but the trace takes what arrives) and stays armed through the write.
+  func writing(_ target: WriteTarget) {
+    if let app = NSRunningApplication(processIdentifier: target.pid) { geometry.arm(app) }
+  }
+
+  /// The write into `target` ended: its browser is let go after the trace's last reads.
+  func wrote(_ target: WriteTarget) {
+    geometry.wrote(target.pid)
   }
 
   private func purge() {

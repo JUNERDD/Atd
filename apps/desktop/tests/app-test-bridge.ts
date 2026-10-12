@@ -78,11 +78,18 @@ export function installBridge(extras?: {
       showHud: true,
     },
     commandTyping: true,
+    commandTypingAnimation: true,
     accessibilityTrusted: true,
     screenRecordingTrusted: true,
     onboardingCompleted: true,
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
+  /** Applies a settings write, tells the windows listening, and answers the new snapshot. */
+  const writeSettings = (patch: Partial<SettingsSnapshot>) => {
+    settings = { ...settings, ...patch };
+    settingsListeners.forEach((listener) => listener(settings));
+    return settings;
+  };
   const listeners = new Set<(event: AgentEvent) => void>();
   const snapshot: AgentSnapshot = {
     revision: 1,
@@ -300,23 +307,15 @@ export function installBridge(extras?: {
         openLink: vi.fn(async () => {}),
         onLogin: () => () => {},
       },
-      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) => {
-        settings = { ...settings, language };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) =>
+        writeSettings({ language }),
+      ),
       saveShortcuts: vi.fn(async () => settings),
       restoreShortcuts: vi.fn(async () => settings),
-      setPermissionTier: vi.fn(async (tier) => {
-        settings = { ...settings, permissionTier: tier };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
-      saveShellAllowlist: vi.fn(async (entries: string[]) => {
-        settings = { ...settings, shellAllowlist: [...entries] };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      setPermissionTier: vi.fn(async (tier) => writeSettings({ permissionTier: tier })),
+      saveShellAllowlist: vi.fn(async (entries: string[]) =>
+        writeSettings({ shellAllowlist: [...entries] }),
+      ),
       addShellAllowlistEntry: vi.fn(async (entry: string) => {
         if (!settings.shellAllowlist.includes(entry))
           settings = { ...settings, shellAllowlist: [...settings.shellAllowlist, entry] };
@@ -329,16 +328,11 @@ export function installBridge(extras?: {
           settingsListeners.delete(listener);
         };
       },
-      saveSelectionToolbar: vi.fn(async (selectionToolbar) => {
-        settings = { ...settings, selectionToolbar };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
-      saveCommandTyping: vi.fn(async (commandTyping) => {
-        settings = { ...settings, commandTyping };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
+      saveCommandTyping: vi.fn(async (commandTyping) => writeSettings({ commandTyping })),
+      saveCommandTypingAnimation: vi.fn(async (commandTypingAnimation) =>
+        writeSettings({ commandTypingAnimation }),
+      ),
       requestAccessibility: vi.fn(async () => {}),
       requestScreenRecording: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),

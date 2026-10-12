@@ -40,9 +40,20 @@ export type CommandOutput = Static<typeof CommandOutputSchema>;
  * The default of the user's typing setting (`commandTyping` in the user settings), shared by every
  * command: on, a write-back answer arrives in the other app like typing, a few characters at a time
  * (long text speeds up so it still finishes within about a second and a half); off, it is pasted at
- * once. The system's reduced-motion setting pastes every answer at once.
+ * once. The system's reduced-motion setting pastes every answer at once. Off by default while the
+ * effect is in beta, which the setting's switch shows.
  */
-export const DEFAULT_COMMAND_TYPING = true;
+export const DEFAULT_COMMAND_TYPING = false;
+
+/**
+ * The user's typing animation setting (`commandTypingAnimation`) while it was never chosen: off.
+ * On, an answer written into another app leaves a trace over the field as it lands, typed or
+ * pasted at once (`commandTyping`): a glow at the insertion point and a wash behind each new piece,
+ * or behind the whole answer once it is in; off, it lands without one. Under the system's reduced
+ * motion the wash stays and the glow does not move. The first time the typing effect is turned on
+ * while the animation was never chosen, the animation turns on with it.
+ */
+export const DEFAULT_COMMAND_TYPING_ANIMATION = false;
 
 /** The output of a command that never chose one: the answer stays in the conversation. */
 export function defaultCommandOutput(): CommandOutput {

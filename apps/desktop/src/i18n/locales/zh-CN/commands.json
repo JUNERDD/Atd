@@ -193,11 +193,26 @@
     "needsSelection": "此命令不读取选中的文字，回答将保留在对话中。"
   },
   "typing": {
-    "description": "命令将回答写入其他 App 时，逐字打出回答。关闭后将一次性粘贴。",
+    "description": "回答分几次打入；关闭后一次性粘贴。",
     "reduceMotion": "系统已开启“减弱动态效果”，回答会一次性出现。",
     "label": "打字效果",
+    "scope": "命令将回答写入其他 App 时的呈现方式。",
+    "switch": "逐字打出",
+    "beta": "Beta",
+    "state": {
+      "on": "开启",
+      "off": "关闭"
+    },
     "errors": {
       "save": "无法保存打字效果，请重试。"
+    }
+  },
+  "typingAnimation": {
+    "label": "高亮新文字",
+    "description": "插入点出现光晕，新文字短暂高亮。逐字打出或一次性粘贴都会显示。",
+    "reduceMotion": "系统已开启“减弱动态效果”，新文字只会短暂高亮，不显示移动的光晕。",
+    "errors": {
+      "save": "无法保存新文字高亮，请重试。"
     }
   },
   "shortcut": {

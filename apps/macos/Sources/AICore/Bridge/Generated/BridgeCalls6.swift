@@ -203,12 +203,14 @@ public struct TextWriteParams: Codable, Equatable, Sendable {
   public let mode: Mode
   public let text: String
   public let typing: Bool
+  public let animation: Bool
 
-  public init(target: String, mode: Mode, text: String, typing: Bool) {
+  public init(target: String, mode: Mode, text: String, typing: Bool, animation: Bool) {
     self.target = target
     self.mode = mode
     self.text = text
     self.typing = typing
+    self.animation = animation
   }
 
   public init(from decoder: any Decoder) throws {
@@ -217,6 +219,7 @@ public struct TextWriteParams: Codable, Equatable, Sendable {
     mode = try container.value(.mode, Mode.self)
     text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
     typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -224,6 +227,7 @@ public struct TextWriteParams: Codable, Equatable, Sendable {
     case mode
     case text
     case typing
+    case animation
   }
 
   public enum Mode: String, Codable, Equatable, Sendable {
