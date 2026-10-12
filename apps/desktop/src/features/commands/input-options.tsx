@@ -1,158 +1,72 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { actsOnSelection, defaultCommandOutput, readsSelection } from '@atd/agent-contracts';
-import { Label } from '@atd/ui/components/label';
 import { Button } from '@atd/ui/components/button';
 import { ChevronDown } from 'lucide-react';
+import { Label } from '@atd/ui/components/label';
 import { Switch } from '@atd/ui/components/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@atd/ui/components/select';
 import type { CommandDefinition } from '../../client/agent/command-schema';
-import { ShortcutConflictHint } from '../settings/shortcut-conflict-hint';
-import { FieldError } from './field-error';
-import { ShortcutInput } from './shortcut-input';
-import { errorId } from './use-command-problems';
 
+type CommandInput = CommandDefinition['input'];
+
+const SWITCHES = [
+  ['required', 'input.requireText'],
+  ['files', 'input.allowFiles'],
+  ['selection', 'input.selectionVariable'],
+  ['clipboard', 'input.clipboardVariable'],
+] as const;
+
+/**
+ * The Input options popover: whether a run needs text and what else it may attach. The flag the
+ * input source fills stays on and locked (a screenshot is an attached file), and a command without
+ * text input cannot require it. The editor opens it from an instruction variable that needs a
+ * source (`open`), then focuses the switch by its `input-<flag>` id.
+ */
 export function InputOptions({
-  command,
+  input,
   onChange,
   open,
   onOpenChange,
-  error,
-  onBlur,
 }: {
-  command: CommandDefinition;
-  onChange: (command: CommandDefinition) => void;
+  input: CommandInput;
+  onChange: (input: CommandInput) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** The input settings' problem in the app's language, or '' when there is none. */
-  error: string;
-  /** Focus left the input settings (the options popover included). */
-  onBlur: () => void;
 }) {
   const { t } = useTranslation('commands');
   const [internalOpen, setInternalOpen] = useState(false);
-  const isOpen = open ?? internalOpen;
-  const setIsOpen = onOpenChange ?? setInternalOpen;
-  function source(value: string) {
-    if (
-      value !== 'manual' &&
-      value !== 'selection' &&
-      value !== 'clipboard' &&
-      value !== 'screenshot' &&
-      value !== 'none'
-    )
-      return;
-    // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
-    // Switching to Selected text also puts the command on the selection toolbar over other apps,
-    // where a command that takes the selection as its input has always shown.
-    const toToolbar = value === 'selection' && command.input.source !== 'selection';
-    update(
-      {
-        ...command.input,
-        source: value,
-        required: value === 'none' ? false : command.input.required,
-        files: command.input.files || value === 'screenshot',
-        selection: command.input.selection || value === 'selection',
-        clipboard: command.input.clipboard || value === 'clipboard',
-      },
-      toToolbar ? { ...command.placement, selectionToolbar: true } : command.placement,
-    );
-  }
-  /**
-   * Applies an input change. An output that acts on the selection needs a command that reads it,
-   * so it returns to the conversation when the input stops reading the selection.
-   */
-  function update(input: CommandDefinition['input'], placement = command.placement) {
-    const strands = actsOnSelection(command.output.action) && !readsSelection(input);
-    onChange({
-      ...command,
-      input,
-      placement,
-      output: strands ? defaultCommandOutput() : command.output,
-    });
-  }
   return (
-    <div className="space-y-4" onBlur={onBlur}>
-      <div className="flex flex-col gap-2">
-        <div className="field-columns aligned-fields">
-          <div className="settings-field">
-            <Label htmlFor="command-source">{t('input.source')}</Label>
-            <Select value={command.input.source} onValueChange={source}>
-              <SelectTrigger
-                id="command-source"
-                className="w-full"
-                aria-invalid={Boolean(error) || undefined}
-                aria-describedby={error ? errorId('input') : undefined}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">{t('input.sourceManual')}</SelectItem>
-                <SelectItem value="selection">{t('input.sourceSelection')}</SelectItem>
-                <SelectItem value="clipboard">{t('input.sourceClipboard')}</SelectItem>
-                <SelectItem value="screenshot">{t('input.sourceScreenshot')}</SelectItem>
-                <SelectItem value="none">{t('input.sourceNone')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="settings-field input-shortcut-field">
-            <Label htmlFor="command-shortcut">{t('input.shortcut')}</Label>
-            <ShortcutInput
-              value={command.shortcut}
-              onChange={(shortcut) => onChange({ ...command, shortcut })}
-            />
-          </div>
+    <Popover open={open ?? internalOpen} onOpenChange={onOpenChange ?? setInternalOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="xs">
+          {t('input.options')}
+          <ChevronDown />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="input-options-popover rounded-2xl"
+        align="start"
+        collisionPadding={8}
+      >
+        <div className="space-y-3">
+          {SWITCHES.map(([key, labelKey]) => (
+            <div className="flex items-center justify-between gap-4" key={key}>
+              <Label htmlFor={`input-${key}`}>{t(labelKey)}</Label>
+              <Switch
+                id={`input-${key}`}
+                disabled={
+                  (key === 'required' && input.source === 'none') ||
+                  (key === 'files' && input.source === 'screenshot') ||
+                  (key === 'selection' && input.source === 'selection') ||
+                  (key === 'clipboard' && input.source === 'clipboard')
+                }
+                checked={input[key]}
+                onCheckedChange={(checked) => onChange({ ...input, [key]: checked })}
+              />
+            </div>
+          ))}
         </div>
-        {error && <FieldError id={errorId('input')}>{error}</FieldError>}
-        {/* Command shortcuts are global, and the shortcut column is too narrow for a note. */}
-        <ShortcutConflictHint />
-      </div>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="xs">
-            {t('input.options')}
-            <ChevronDown />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="input-options-popover rounded-2xl"
-          align="start"
-          collisionPadding={8}
-        >
-          <div className="space-y-3">
-            {(
-              [
-                ['required', 'input.requireText'],
-                ['files', 'input.allowFiles'],
-                ['selection', 'input.selectionVariable'],
-                ['clipboard', 'input.clipboardVariable'],
-              ] as const
-            ).map(([key, labelKey]) => (
-              <div className="flex items-center justify-between gap-4" key={key}>
-                <Label htmlFor={`input-${key}`}>{t(labelKey)}</Label>
-                <Switch
-                  id={`input-${key}`}
-                  disabled={
-                    (key === 'required' && command.input.source === 'none') ||
-                    (key === 'files' && command.input.source === 'screenshot') ||
-                    (key === 'selection' && command.input.source === 'selection') ||
-                    (key === 'clipboard' && command.input.source === 'clipboard')
-                  }
-                  checked={command.input[key]}
-                  onCheckedChange={(checked) => update({ ...command.input, [key]: checked })}
-                />
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

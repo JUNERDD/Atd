@@ -160,7 +160,6 @@
   },
   "output": {
     "title": "Result",
-    "description": "What happens with the answer when a run finishes.",
     "action": "When the answer is ready",
     "panel": {
       "title": "Show in the conversation",
@@ -182,8 +181,8 @@
       "title": "Copy to the clipboard",
       "description": "Also puts the answer on the clipboard."
     },
-    "unavailable": "To act on the selected text, have this command read it: set Input source to Selected text, or turn on the selected text variable in Input options.",
     "writeBackNote": "Writes only when the command runs from another app, through its shortcut or the selection toolbar. Anywhere else, the answer stays in the conversation.",
+    "cardNote": "If that app can’t take text there, the answer shows in a card for you to copy.",
     "review": {
       "title": "Review before applying",
       "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
@@ -219,7 +218,9 @@
     "error": "Include Command, Control, or Alt with a supported key.",
     "record": "Record command shortcut",
     "recordShortcut": "Record shortcut",
-    "clear": "Clear shortcut"
+    "clear": "Clear shortcut",
+    "description": "Press it in any app to run this command.",
+    "conflictHint": "If it does nothing, another app may hold this combination. Choose a different one."
   },
   "instruction": {
     "title": "Instructions",
@@ -237,9 +238,15 @@
     "opened": "Opened a new AI session in the task panel.",
     "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
   },
+  "io": {
+    "title": "Input and result",
+    "description": "What a run reads and where its answer goes.",
+    "composeNote": "Run from its shortcut with nothing selected, it asks you to type the text.",
+    "composeCursorNote": "Run from its shortcut with nothing selected, it asks you to type the text and puts the answer at the cursor."
+  },
   "start": {
-    "title": "Input and launch",
-    "description": "What it reads when it starts, the shortcut that runs it, and where else it’s offered."
+    "title": "Launch",
+    "description": "The shortcut that runs it and where else it’s offered."
   },
   "run": {
     "title": "Run settings",

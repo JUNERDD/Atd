@@ -31,9 +31,6 @@
 .aligned-fields > .settings-field > :nth-child(2) {
   align-self: start;
 }
-.input-shortcut-field {
-  max-width: 180px;
-}
 .run-settings {
   display: grid;
   gap: 16px;
@@ -351,10 +348,6 @@
 }
 .parameter-item > div {
   overflow-wrap: anywhere;
-}
-/* The recorder's 28px pill centers on the 32px track of the Select beside it. */
-.input-shortcut-field .shortcut-recorder {
-  min-height: 32px;
 }
 /* The typing popover (typing-footer.tsx): a compact glass panel of a header and two switch rows.
    Its 8px inset keeps each row's fill concentric with the popover's corner (radius-3xl − 8px is

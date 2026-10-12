@@ -15,13 +15,12 @@ import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
-import { InputOptions } from './input-options';
+import { InputResultSettings } from './input-result-settings';
 import { InstructionEditor } from './instruction-editor';
 import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
-import { OutputSettings } from './output-settings';
 import { ParameterList } from './parameter-list';
-import { PlacementSettings } from './placement-settings';
+import { LaunchSettings } from './launch-settings';
 import { RunSettings } from './run-settings';
 import { useCommandAiSession } from './use-command-ai-session';
 import { errorId, useCommandProblems } from './use-command-problems';
@@ -258,23 +257,16 @@ export function CommandEditor({
             onOpen={parameterPage.open}
             error={problems.text('parameters')}
           />
-          <SettingsGroup
-            id="command-start"
-            title={t('start.title')}
-            description={t('start.description')}
-          >
-            <InputOptions
-              command={draft}
-              onChange={setDraft}
-              open={inputOptionsOpen}
-              onOpenChange={setInputOptionsOpen}
-              error={problems.text('input')}
-              onBlur={() => problems.recheck('input')}
-            />
-            <PlacementSettings command={draft} onChange={setDraft} />
-          </SettingsGroup>
+          <InputResultSettings
+            command={draft}
+            onChange={setDraft}
+            optionsOpen={inputOptionsOpen}
+            onOptionsOpenChange={setInputOptionsOpen}
+            error={problems.text('input')}
+            onBlur={() => problems.recheck('input')}
+          />
+          <LaunchSettings command={draft} onChange={setDraft} />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
-          <OutputSettings command={draft} onChange={setDraft} />
           {error && (
             <div ref={errorMessage} className="space-y-2">
               <p role="alert" className="settings-inline-error">
