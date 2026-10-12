@@ -151,6 +151,17 @@ export const CommandArgumentValuesSchema = Type.Record(
 );
 export type CommandArgumentValues = Static<typeof CommandArgumentValuesSchema>;
 
+/**
+ * `PUT /v1/commands/:id/arguments`: the values the command's next run from the app starts from,
+ * remembered as a run's would be (`lastArguments`) without running it. The app sends it when the
+ * person changes a value in an options card or menu. Answers the command (`CommandGetResponse`).
+ */
+export const CommandArgumentsRequestSchema = Type.Object(
+  { arguments: CommandArgumentValuesSchema },
+  { additionalProperties: false },
+);
+export type CommandArgumentsRequest = Static<typeof CommandArgumentsRequestSchema>;
+
 export const CommandSkillRefSchema = Type.Object(
   {
     name: SkillName,

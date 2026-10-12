@@ -1,4 +1,5 @@
 import {
+  CommandArgumentsRequestSchema,
   CommandCreateSchema,
   CommandDeleteResponseSchema,
   CommandGetResponseSchema,
@@ -8,6 +9,7 @@ import {
   CommandUpdateRequestSchema,
   CommandsListResponseSchema,
   parse,
+  type CommandArgumentsRequest,
   type CommandCreate,
   type CommandDeleteResponse,
   type CommandGetResponse,
@@ -79,6 +81,26 @@ export function updateCommand(
     `/v1/commands/${encodeURIComponent(id)}`,
     'PUT',
     parse(CommandUpdateRequestSchema, body),
+    (json) => parse(CommandGetResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Remembers the argument values the command's next run from the app starts from, without
+ * running it; the service keeps those its parameters accept. Answers the command.
+ */
+export function rememberCommandArguments(
+  options: AgentClientOptions,
+  id: string,
+  body: CommandArgumentsRequest,
+  fetchImpl?: typeof fetch,
+): Promise<CommandGetResponse> {
+  return manageRequest(
+    options,
+    `/v1/commands/${encodeURIComponent(id)}/arguments`,
+    'PUT',
+    parse(CommandArgumentsRequestSchema, body),
     (json) => parse(CommandGetResponseSchema, json),
     fetchImpl,
   );

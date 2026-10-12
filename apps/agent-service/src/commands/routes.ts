@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
 import {
+  CommandArgumentsRequestSchema,
   CommandCreateSchema,
   CommandOrderRequestSchema,
   CommandRunRequestSchema,
@@ -48,7 +49,8 @@ const RevisionQuery = Type.Object(
  * Installed plugins' commands (plugins/commands.ts) are listed after the user's, carry their
  * `pluginId`, accept only an `enabled` change and cannot be deleted. `POST /v1/commands/:id/run`
  * launches one (launch.ts), answering like a task submit, and remembers its argument values for
- * the command's next run. Every command these routes answer carries those values as
+ * the command's next run; `PUT /v1/commands/:id/arguments` remembers values without a run (an
+ * options card or menu changed one). Every command these routes answer carries those values as
  * `lastArguments` (last-arguments.ts).
  */
 export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteContext): void {
@@ -128,6 +130,18 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
       );
     return response;
   });
+
+  app.put<{ Params: { id: string } }>(
+    '/v1/commands/:id/arguments',
+    RENDERER_ROUTE,
+    async (request) => {
+      const id = parse(Identifier, request.params.id);
+      const body = parse(CommandArgumentsRequestSchema, request.body);
+      const command = (await pluginCommand(ctx.dataDir, id))?.value ?? (await store()).get(id);
+      await recordLastArguments(ctx.dataDir, command, body.arguments);
+      return { command: await withLast(command) };
+    },
+  );
 
   app.delete<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);
