@@ -43,12 +43,21 @@ export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): 
     phase: 'choose' as const,
     command: launch.command.name,
     options: commandOptions(launch.command, launch.input.arguments),
-    output: outputOption(launch.command, launch.output.action),
+    // A composed launch's app has no selection, so the card offers no write over or after one.
+    output: {
+      ...outputOption(launch.command, launch.output.action),
+      ...(launch.composed ? { selection: false } : {}),
+    },
   };
   light.show(launch.target.id, state).catch((error: unknown) => {
     console.error('The options card did not show:', error);
     if (choosing === launch) choosing = null;
   });
+}
+
+/** Another card (the compose card) replaced the options card, whose launch then waits no more. */
+export function dropLightChoice(): void {
+  choosing = null;
 }
 
 /** Takes the island of `launch` away; a repeat for an island already gone does nothing. */
@@ -104,12 +113,32 @@ function answerChoice(
 }
 
 /**
- * A press on the progress HUD: the options card's answer when the card of that target waits for
- * one; a change of a working run's values stops the run and offers its options again with the
- * values it ran with (`changeLightRun`); anything else is the light run's (`actOnProgress`).
+ * The options card of `launch` changed a value: the values the launch would now run with are
+ * remembered at once as where the command's next run starts, whether the card then runs, edits
+ * or closes.
+ */
+function rememberPicks(launch: LightLaunch, picked: CommandArguments | undefined): void {
+  if (!picked) return;
+  const { command, input } = withPicks(launch, picked);
+  window.desktop?.agent
+    ?.rememberArguments?.(command.id, input.arguments)
+    .catch((error: unknown) => {
+      console.error('The picked command options were not remembered:', error);
+    });
+}
+
+/**
+ * A press on the progress HUD that the compose card did not take (`actOnIslandAction`): a change
+ * of the options card's values (`pick`), remembered at once, or the card's answer when the card of
+ * that target waits for one; a change of a working run's
+ * values stops the run and offers its options again with the values it ran with
+ * (`changeLightRun`); anything else is the light run's (`actOnProgress`).
  */
 export function actOnLightAction(action: CommandProgressAction, host: LightHost): void {
-  if (choosing?.target.id === action.target) return answerChoice(choosing, action, host);
+  if (choosing?.target.id === action.target) {
+    if (action.action === 'pick') return rememberPicks(choosing, action.arguments);
+    return answerChoice(choosing, action, host);
+  }
   if (action.action !== 'change') return actOnProgress(action, host);
   const light = bridge();
   const changed = changeLightRun(action.target);

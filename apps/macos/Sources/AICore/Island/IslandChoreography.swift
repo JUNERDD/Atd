@@ -63,11 +63,11 @@ public enum IslandMetrics {
   public static let meterHeight = 4.0
 
   // The options card.
-  public static let cardRadius = MiniPanelMetrics.cardRadius
-  public static let cardPadding = MiniPanelMetrics.cardPadding
-  public static let rowHeight = MiniPanelMetrics.rowHeight
-  public static let rowRadius = MiniPanelMetrics.rowRadius
-  public static let rowPadding = MiniPanelMetrics.rowPadding
+  public static let cardRadius = 18.0
+  public static let cardPadding = 6.0
+  public static let rowHeight = 28.0
+  public static let rowRadius = 8.0
+  public static let rowPadding = 8.0
   /// The card's title row and its filter field.
   public static let headerHeight = 28.0
   public static let filterHeight = 28.0
@@ -157,6 +157,13 @@ public enum IslandChoreography {
   /// A change within the same content (a chip arriving, the language): the shape follows on the
   /// expand springs while the content changes in place.
   public static let resize = MiniPanelChoreography.shape(.expand)
+
+  /// A card growing or shrinking under the person's own input (the compose card's field gaining
+  /// a line, a chip row coming or going, a note changing): a quick spring with no bounce, the
+  /// content moving with the shape at its own size, so the text under the caret holds still
+  /// rather than swelling and settling as a change of content does.
+  public static let inPlace = MiniPanelShapeMotion(
+    thickness: MiniPanelSpring(0.22, 0), length: MiniPanelSpring(0.22, 0))
 
   /// Leaving, the shape shrinks and the window fades out, its content in it, eased in over this
   /// long: quicker than the entrance, as dismissals are.

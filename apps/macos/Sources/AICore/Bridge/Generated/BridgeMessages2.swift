@@ -169,6 +169,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case userAppPins(UserAppPinsEvent)
   case taskOpen(TaskOpenEvent)
   case commandProgressAction(CommandProgressActionEvent)
+  case commandOptionsPicked(CommandOptionsPickedEvent)
 
   /// The contract name.
   public var name: String {
@@ -193,6 +194,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppPins: "userApp.pins"
     case .taskOpen: "task.open"
     case .commandProgressAction: "commandProgress.action"
+    case .commandOptionsPicked: "commandOptions.picked"
     }
   }
 
@@ -218,6 +220,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppPins(let payload): try payload.encode(to: encoder)
     case .taskOpen(let payload): try payload.encode(to: encoder)
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
+    case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
     }
   }
 }

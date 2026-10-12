@@ -14,7 +14,7 @@ import {
   type MemoryUnit,
   type TaskContextState,
 } from '@atd/agent-contracts';
-import type { CommandDefinition } from './command-schema';
+import type { ArgumentValues, CommandDefinition } from './command-schema';
 import type { AgentTask, Artifact, FileRef, RunSnapshot, TaskInput } from './task-schema';
 import type { PermissionAnswer, PermissionRequest, PermissionTier } from './permission-schema';
 import type { AgentRequestSchema } from './request-schema';
@@ -126,6 +126,8 @@ export type CommandProgressState = CallParams<'commandProgress.show'>['state'];
  * working, open a notice, or run, edit or close the options card.
  */
 export type CommandProgressAction = EventPayload<'commandProgress.action'>;
+/** What the island's compose card hands over in place of a missing selection: text and files. */
+export type ComposedInput = NonNullable<CommandProgressAction['compose']>;
 /**
  * A light command launch, only where the shell hosts the panel's page: a command that writes its
  * answer back runs without the panel, and the shell's progress HUD (its glass status HUD) stands
@@ -154,6 +156,16 @@ export interface PreparedCommand {
    */
   output: CommandOutput;
   notice: string;
+  /**
+   * The launch expected a capture, and the only one that failed is the selection the command
+   * consumes, which was empty (`notice` says so): a launch from the shell asks for the text instead.
+   */
+  selectionMissing?: true;
+  /**
+   * The text standing in for the selection was typed on the island's compose card: the app it ran
+   * from has no selection, so nothing offers to write over or after one.
+   */
+  composed?: true;
   /** Present only for a launch from another app that recorded a focused field. */
   target?: WriteTarget;
 }
@@ -164,7 +176,8 @@ export interface CommandLaunch {
   /**
    * The shell asked to offer the command's options first (its shortcut was held): a light launch
    * shows them in the progress HUD's options card and runs from there; any other launch shows
-   * the command's input step. Never set together with `autoRun`.
+   * the command's input step. Never set together with `autoRun`. A launch whose selection is
+   * missing (`PreparedCommand.selectionMissing`) first asks for the text on the progress HUD.
    */
   choose?: true;
 }
@@ -327,4 +340,9 @@ export interface AgentBridge {
   onExtensionSession: (listener: (session: ExtensionSession) => void) => () => void;
   /** Present only in the panel's page under the native shell. */
   light?: LightCommandBridge;
+  /**
+   * Remembers `values` as where command `commandId`'s next run starts, without running it (the
+   * person changed them on its input step or options card). Present under the native shell.
+   */
+  rememberArguments?: (commandId: string, values: ArgumentValues) => Promise<void>;
 }

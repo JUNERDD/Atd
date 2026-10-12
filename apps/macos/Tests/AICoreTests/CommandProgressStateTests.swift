@@ -35,13 +35,16 @@ struct CommandProgressStateTests {
     let openWhileWorking = state.press(.open)
     #expect(openWhileWorking == nil)
     let cancel = state.press(.cancel)
-    #expect(cancel == CommandProgressActionEvent(target: "a", action: .cancel, arguments: nil))
+    #expect(
+      cancel
+        == CommandProgressActionEvent(target: "a", action: .cancel, arguments: nil, compose: nil))
     #expect(state.shown == nil)
     state.show(target: "b", phase: .notice(message: "Failed."))
     let cancelOnNotice = state.press(.cancel)
     #expect(cancelOnNotice == nil)
     let open = state.press(.open)
-    #expect(open == CommandProgressActionEvent(target: "b", action: .open, arguments: nil))
+    #expect(
+      open == CommandProgressActionEvent(target: "b", action: .open, arguments: nil, compose: nil))
     let again = state.press(.open)
     #expect(again == nil)
   }
@@ -140,7 +143,7 @@ struct CommandProgressStateTests {
     for action in [CommandProgressActionEvent.Action.cancel, .change, .run, .edit] {
       #expect(state.press(action) == nil)
     }
-    #expect(state.press(.open) == .init(target: "a", action: .open, arguments: nil))
+    #expect(state.press(.open) == .init(target: "a", action: .open, arguments: nil, compose: nil))
     #expect(state.shown == nil && state.answerShown == nil)
     state.show(target: "a", phase: .copied)
     #expect(state.answerShown == nil && state.press(.open) == nil)
@@ -184,20 +187,24 @@ struct CommandProgressStateTests {
     state.show(target: "a", phase: .working(command: "Fix"))
     #expect(state.press(.change) == nil)
     state.show(target: "a", phase: .working(command: "Fix", summary: "Formal"))
-    #expect(state.press(.change) == .init(target: "a", action: .change, arguments: nil))
+    #expect(
+      state.press(.change) == .init(target: "a", action: .change, arguments: nil, compose: nil))
     #expect(state.shown?.phase == .working(command: "Fix", summary: "Formal"))
     let values = CommandArguments(output: nil, choices: ["tone": "casual"], toggles: [:])
     state.show(target: "a", phase: Self.choosing)
     #expect(state.press(.run) == nil)
     #expect(
-      state.press(.run, arguments: values) == .init(target: "a", action: .run, arguments: values))
+      state.press(.run, arguments: values)
+        == .init(target: "a", action: .run, arguments: values, compose: nil))
     #expect(state.shown?.phase == .working(command: "Fix"))
     state.show(target: "a", phase: Self.choosing)
     #expect(
-      state.press(.edit, arguments: values) == .init(target: "a", action: .edit, arguments: values))
+      state.press(.edit, arguments: values)
+        == .init(target: "a", action: .edit, arguments: values, compose: nil))
     #expect(state.shown == nil)
     state.show(target: "a", phase: Self.choosing)
-    #expect(state.press(.cancel) == .init(target: "a", action: .cancel, arguments: nil))
+    #expect(
+      state.press(.cancel) == .init(target: "a", action: .cancel, arguments: nil, compose: nil))
     #expect(state.shown == nil)
   }
 

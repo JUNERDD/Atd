@@ -15,10 +15,13 @@ import AppKit
 ///   them to the side, and a click on its row runs it with its remembered values.
 ///
 /// Every launch from the options carries all of the command's choice and toggle values. Values
-/// picked without running are kept while the menus stay open (``reset()`` forgets them).
+/// picked without running are kept while the menus stay open (``reset()`` forgets them), and each
+/// change of them goes to ``onPick`` at once, so the page remembers it whether or not it runs.
 final class ToolbarOptionsContent {
   /// A menu launched a command; the owner hides the toolbar and hands it on.
   var onLaunch: ((CommandLaunch) -> Void)?
+  /// A choice or a toggle of command `id` changed to the values given (every one its menu shows).
+  var onPick: ((String, CommandArguments) -> Void)?
   /// The commands with options (`commandOptions.set`).
   var catalog = CommandOptionsCatalog()
 
@@ -137,8 +140,11 @@ final class ToolbarOptionsContent {
 
   private func change(_ id: String, _ update: (inout ToolbarOptionsSheet) -> Void) {
     guard var sheet = sheet(id) else { return }
+    let shown = sheet.arguments
     update(&sheet)
     sheets[id] = sheet
+    let values = sheet.arguments
+    if shown.choices != values.choices || shown.toggles != values.toggles { onPick?(id, values) }
   }
 
   private func launch(_ id: String, _ intent: CommandLaunch.Intent) {

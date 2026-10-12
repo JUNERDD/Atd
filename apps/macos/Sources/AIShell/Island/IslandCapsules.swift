@@ -22,7 +22,7 @@ struct IslandCapsule: View {
       case .done: status(model.labels.done, running: false)
       case .copied: status(model.labels.copied, running: false)
       case .notice(let message): notice(message)
-      case .choose, .answer: EmptyView()
+      case .choose, .answer, .compose: EmptyView()
       }
     }
     .frame(height: IslandMetrics.capsuleHeight)

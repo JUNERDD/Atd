@@ -15,10 +15,14 @@ extension IslandController {
   /// ``IslandMetrics/maxShape`` (its values chip, then its command name, then a notice's message
   /// give way: ``IslandMetrics/CapsuleLimits/fitting(overflow:command:summary:message:)``); the
   /// card as wide as its widest row or footer within bounds and as tall as its rows make room
-  /// for; the answer card as ``measureAnswer(command:answer:note:)`` has it.
+  /// for; the answer card as ``measureAnswer(command:answer:note:)`` has it, the compose card as
+  /// ``measureCompose(command:attach:)`` does.
   func measure(_ content: IslandContent) -> IslandMeasure {
     if case .answer(let command, let answer, let note) = content {
       return measureAnswer(command: command, answer: answer, note: note)
+    }
+    if case .compose(let command, let attach) = content {
+      return measureCompose(command: command, attach: attach)
     }
     guard case .choose(let command) = content else { return measureCapsule(content) }
     guard let card = model.card else {
@@ -52,7 +56,7 @@ extension IslandController {
       command = IslandShimmer.width(of: name, limit: IslandMetrics.maxCommandWidth)
       summary = values
     case .notice(let text): message = text
-    case .choose, .answer, .writing, .done, .copied: break
+    case .choose, .answer, .compose, .writing, .done, .copied: break
     }
     let limits = IslandMetrics.CapsuleLimits.fitting(
       overflow: natural - limit, command: command,

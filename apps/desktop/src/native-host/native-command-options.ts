@@ -1,4 +1,8 @@
-import { commandOptions, commandValues } from '../client/agent/command-arguments';
+import {
+  commandOptions,
+  commandValues,
+  type CommandArguments,
+} from '../client/agent/command-arguments';
 import type { CommandDefinition } from '../client/agent/command-schema';
 import { outputOption } from '../client/agent/run-output';
 import type { CallParams, NativeBridge } from '../native-bridge/client';
@@ -32,12 +36,21 @@ export function commandOptionsParams(
  * The panel's side of the shell's command options: it pushes them whenever the commands change,
  * a run's remembered values included. The first push always goes, since the shell may still hold
  * the set of an earlier page; an unchanged set is not pushed again, and pushes run one at a time,
- * in order.
+ * in order. A value changed in the toolbar's options menu (`commandOptions.picked`) is remembered
+ * at once (`host.remember`).
  */
 export function nativeCommandOptions(
   bridge: NativeBridge,
-  host: { commands: () => readonly CommandDefinition[] },
+  host: {
+    commands: () => readonly CommandDefinition[];
+    remember: (id: string, picked: CommandArguments) => Promise<void>;
+  },
 ): { sync: () => void } {
+  bridge.on('commandOptions.picked', ({ id, arguments: picked }) => {
+    host.remember(id, picked).catch((error: unknown) => {
+      console.error('The picked command options were not remembered:', error);
+    });
+  });
   /** The set the shell last took. */
   let pushed = '';
   let queue = Promise.resolve();

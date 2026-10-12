@@ -40,7 +40,12 @@ public final class ShellController {
   var commandOptions = CommandOptionsCatalog()
   /// The island a command that writes back without the panel shows (`commandProgress.*`).
   lazy var commandProgress = CommandProgressController(
-    panelHost, toolbar: toolbar, returnFocus: { [weak self] in self?.returnFocus(to: $0) })
+    panelHost, toolbar: toolbar, returnFocus: { [weak self] in self?.returnFocus(to: $0) },
+    attachments: composeAttachments(),
+    answerWriter: { [weak self] answer, mode in
+      await self?.writeAnswer(answer, mode: mode)
+        ?? AnswerWriteOutcome(result: .notOk(.init(reason: .failed)), app: "")
+    })
   /// Command shortcuts' presses and releases, which hold for a command's options.
   lazy var shortcutHolds = makeShortcutHolds()
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
@@ -170,6 +175,10 @@ public final class ShellController {
     }
     toolbar.onAsk = { [weak self] text in self?.summon(.ask, selectedText: text) }
     toolbar.onCommand = { [weak self] launch in self?.summon(.toolbarCommand(launch)) }
+    toolbar.onPick = { [weak self] id, values in
+      self?.panelHost.send(
+        .commandOptionsPicked(.init(id: id, arguments: values)), scope: .document)
+    }
     wireUserApps()
     wireMiniPanel()
   }

@@ -13,7 +13,8 @@ import {
   CommandOptionsSchema,
   CommandOutputOptionSchema,
 } from './command-options.ts';
-import { Empty, MAX_NATIVE_TEXT_LENGTH } from './primitives.ts';
+import { NativeFileRefSchema } from './file-calls.ts';
+import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH } from './primitives.ts';
 
 /** A write target's opaque id (`NativeWriteTargetSchema.id`). */
 const WriteTargetId = Type.String({ minLength: 1, maxLength: 128 });
@@ -31,6 +32,20 @@ export const NativeWriteTargetSchema = Type.Object(
     id: Type.String({ minLength: 1, maxLength: 128 }),
     app: Type.String({ minLength: 1, maxLength: 255 }),
     writable: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
+/**
+ * What the island's `compose` card hands over (`commandProgress.action`): `text`, typed in place of
+ * the selection (empty when only files were attached), and `files`, the screenshots and files the
+ * shell attached and imported as resources, in the order they were added. The page checks both
+ * against the command as it would a capture and an attachment.
+ */
+export const ComposedInputSchema = Type.Object(
+  {
+    text: Type.String({ maxLength: MAX_CAPTURE_LENGTH }),
+    files: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
   },
   { additionalProperties: false },
 );
@@ -106,7 +121,13 @@ export const NativeTextCalls = {
    * shown), an Esc hint and a close button that cancels; Escape cancels too while it shows,
    * without reaching the app. `choose`: the command's `options` and where its answer goes
    * (`output`) as a card the keyboard drives, answered by `run` (with every value), `edit` or
-   * `cancel`. `notice`: `message` with Open and a
+   * `cancel`. `compose`: a command launched with nothing selected, as a card that takes the
+   * keyboard: `command` (its name) over a note that nothing is selected, a text field for the
+   * text that stands in for the selection, and, when `attach` is true (the command takes files),
+   * a control that attaches a screenshot or files, which the shell captures or picks and imports
+   * itself, up to 10, listed under the field with a way to remove each; answered by `run` or
+   * `open` (with `compose`, what was typed and attached) or `cancel`. Taking a screenshot or
+   * picking files leaves the card up and gives it the keyboard back. `notice`: `message` with Open and a
    * close button that dismisses it, gone by itself after a few seconds. `answer`: the run's
    * `answer` where it could not be written (its target is not `writable`, or the write was
    * refused), as a card titled `command` with `note` (why it was not written; absent: nothing
@@ -114,7 +135,13 @@ export const NativeTextCalls = {
    * close button; it takes the keyboard (Escape closes it, ⌘C copies the whole answer while none
    * of it is selected) and stays until it is acted on or replaced. Copy and close are the
    * shell's own: Copy puts the answer on the clipboard and confirms it in place before the card
-   * goes. One HUD shows at a time: a show for another target replaces it, one for the same target
+   * goes. Insert and Replace are the shell's own too: Insert shows while the person's focus (in
+   * the frontmost app other than Atd, followed while the card shows) is a field that can take
+   * text, and Replace as well while that field has a selection; the primary of them (Replace when
+   * shown) takes Return. A press writes the answer into that field as `text.write` would
+   * (`cursor` or `selection`, with the `typing.set` settings), showing writing and then done, and
+   * the card goes; a refused write brings the card back with why, and one that stopped partway
+   * puts the whole answer on the clipboard and says so in a notice. One HUD shows at a time: a show for another target replaces it, one for the same target
    * changes it in place. Only the panel's page may call it.
    */
   'commandProgress.show': {
@@ -136,6 +163,14 @@ export const NativeTextCalls = {
               command: Type.String({ minLength: 1, maxLength: 200 }),
               options: CommandOptionsSchema,
               output: CommandOutputOptionSchema,
+            },
+            { additionalProperties: false },
+          ),
+          Type.Object(
+            {
+              phase: Type.Literal('compose'),
+              command: Type.String({ minLength: 1, maxLength: 200 }),
+              attach: Type.Boolean(),
             },
             { additionalProperties: false },
           ),
@@ -191,8 +226,11 @@ export const NativeTextEvents = {
    * cancel button, or Escape) while it showed `working`, or the options card closed in `choose`;
    * `open` (its Open button) on a notice or an answer card; `change` (the values summary) while `working`; `run`
    * (with `arguments`, every value the card shows) or `edit` (an input option handed to the panel)
-   * in `choose`. After `change` the page shows `choose` for the same target; after any other
-   * action the HUD is already gone. Sent to the panel only.
+   * in `choose`, and `pick` (with `arguments`) whenever the card's choices or toggles change there,
+   * the card staying up, so the page remembers them at once; `run` (Return or its Run button) or `open` (Open in Atd) with `compose` in
+   * `compose`, or `cancel` (Escape or its close button). After `change` the page shows `choose`
+   * for the same target; after `pick` the card is still up; after any other action the HUD is
+   * already gone. Sent to the panel only.
    */
   'commandProgress.action': Type.Object(
     {
@@ -203,8 +241,10 @@ export const NativeTextEvents = {
         Type.Literal('change'),
         Type.Literal('run'),
         Type.Literal('edit'),
+        Type.Literal('pick'),
       ]),
       arguments: Type.Optional(CommandArgumentsSchema),
+      compose: Type.Optional(ComposedInputSchema),
     },
     { additionalProperties: false },
   ),

@@ -2,7 +2,8 @@
 /// (``CommandOptionsCatalog``) does not run on the press: the summon captures the selection and
 /// the write target at once, and the launch waits for the gesture. Released before
 /// ``threshold``, it runs with the remembered values; still held at ``threshold``, it asks the
-/// page to choose its options, and the release that follows does nothing. Any other shortcut
+/// page to choose its options, and the release that follows does nothing. The island shows the
+/// hold only from ``reveal`` on, so a tap shows nothing ahead of its run. Any other shortcut
 /// summons on the press, as it always has.
 ///
 /// One hold is undecided at a time: another press while it is (a second shortcut, or a repeat of
@@ -17,6 +18,9 @@
 public struct CommandHold: Equatable, Sendable {
   /// How long a press lasts before the options card opens instead of a run.
   public static let threshold: Duration = .milliseconds(300)
+  /// How long a press lasts before the island shows it charging toward ``threshold``: longer than
+  /// a tap, so only a press meant as a hold shows.
+  public static let reveal: Duration = .milliseconds(150)
   /// How long the press island stays up after the launch went to the page, waiting for the
   /// page to show something; it collapses after that (the panel opened instead, say).
   public static let pageWait: Duration = .milliseconds(600)
@@ -47,6 +51,9 @@ public struct CommandHold: Equatable, Sendable {
 
   /// A hold is waiting for its release or its threshold.
   public var isHolding: Bool { held != nil }
+
+  /// Hold `generation` is still waiting for its release or its threshold.
+  public func holds(generation: Int) -> Bool { held?.generation == generation }
 
   /// The shortcut `id` went down; `offersOptions` when its command is in the catalog,
   /// `cardOpen` while one of the island's cards has the keyboard.

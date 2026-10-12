@@ -11,3 +11,6 @@ export const Text = (maxLength: number) => Type.String({ maxLength });
 
 /** Longest text `share.text`, `speech.speak` and a text `files.save` take, as `clipboard.write`. */
 export const MAX_NATIVE_TEXT_LENGTH = 1000000;
+
+/** Input text limit shared with clipboard capture and the service's command input. */
+export const MAX_CAPTURE_LENGTH = 100000;

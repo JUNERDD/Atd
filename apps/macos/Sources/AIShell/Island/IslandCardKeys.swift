@@ -9,13 +9,15 @@ import Carbon.HIToolbox
 /// beep. While the field has marked text, every key belongs to the input method, so Return and
 /// the digits confirm a composition instead of running.
 ///
-/// The card closes without running when the window gives up the keyboard to another window (a
-/// click in another app): that app keeps the keyboard it took.
+/// The options card closes without running when the window gives up the keyboard to another
+/// window (a click in another app): that app keeps the keyboard it took. The compose card stays
+/// with its draft instead, as the answer card does, so the person can copy something from that
+/// app and come back to paste it: a click on the card gives it the keyboard again.
 extension CommandProgressController {
   func wireCard() {
     island.onKeyDown = { [weak self] event in
       guard let self else { return false }
-      return answerKey(event) || cardKey(event)
+      return answerKey(event) || composeKey(event) || cardKey(event)
     }
     island.onScroll = { [weak self] event in self?.cardScroll(event) ?? false }
     island.onResignKey = { [weak self] in
@@ -31,7 +33,7 @@ extension CommandProgressController {
     if field?.hasMarkedText() == true { return false }
     guard let key = Self.key(event) else { return field == nil }
     let response = card.handle(key)
-    island.updateCard(card)
+    update(card)
     switch response {
     case .ignored: return field == nil
     case .handled: return true
@@ -46,18 +48,30 @@ extension CommandProgressController {
     switch event {
     case .hover(let row):
       card.hover(row)
-      island.updateCard(card)
+      update(card)
     case .click(let row):
       let response = card.click(row)
-      island.updateCard(card)
+      update(card)
       if case .outcome(let outcome) = response { finish(outcome, card: card) }
     case .run:
       let outcome = card.runButton()
-      island.updateCard(card)
+      update(card)
       if let outcome { finish(outcome, card: card) }
     case .filter(let text):
       card.setFilter(text)
-      island.updateCard(card)
+      update(card)
+    }
+  }
+
+  /// Shows `card`. A change of its choices or toggles goes to the page at once (``picked(_:)``),
+  /// which remembers it whether or not the card then runs; where the answer goes is never
+  /// remembered, so a change of it alone sends nothing.
+  private func update(_ card: OptionsCard) {
+    let shown = island.model.card?.arguments
+    island.updateCard(card)
+    let values = card.arguments
+    if let shown, shown.choices != values.choices || shown.toggles != values.toggles {
+      picked(values)
     }
   }
 
@@ -69,7 +83,7 @@ extension CommandProgressController {
     let rows = Int((-points / IslandMetrics.rowHeight).rounded())
     guard rows != 0 else { return true }
     card.scroll(by: rows)
-    island.updateCard(card)
+    update(card)
     return true
   }
 

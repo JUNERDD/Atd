@@ -8,9 +8,12 @@ import SwiftUI
 /// button; the page's note, when it gave one, says under it why nothing was written; the
 /// answer, selectable, scrolls inside the card once the card would be taller than the island's
 /// largest shape, so the title and the footer always show, fading out at an edge with more of
-/// it past it (``IslandAnswerScroll``). The footer has the key hints and
-/// Open in Atd beside Copy. The command's name and the answer are user data, shown
-/// untranslated; the name is cut with an ellipsis.
+/// it past it (``IslandFadingScroll``). The footer has the key hints and
+/// Open in Atd beside Copy, and, while the person's focus is a field that can take text
+/// (``IslandModel/answerOffer``), Insert, with Replace beside it while that field has a
+/// selection; the primary of them carries the Return keycap. They come and go in a fade as the
+/// focus moves. The command's name and the answer are user data, shown untranslated; the name is
+/// cut with an ellipsis.
 ///
 /// `width` nil lays the card out at its ideal width and `height` nil with the answer at its
 /// full height, unscrolled, which is how the controller measures it (``measureAnswer``).
@@ -46,7 +49,7 @@ struct IslandAnswerCard: View {
       if height == nil {
         text
       } else {
-        IslandAnswerScroll(reduceMotion: model.reduceMotion) { text }
+        IslandFadingScroll(reduceMotion: model.reduceMotion) { text }
           .frame(maxHeight: .infinity, alignment: .top)
       }
       footer
@@ -93,10 +96,36 @@ struct IslandAnswerCard: View {
         IslandTextButton(title: labels.copy, rest: 0.08, action: { model.act(.copy) }) {
           EmptyView()
         }
+        if let offer = model.answerOffer {
+          write(.cursor, offer)
+          if offer.replaces { write(.selection, offer) }
+        }
       }
+      .animation(.easeOut(duration: 0.2), value: model.answerOffer)
     }
     .padding(.leading, 4)
     .frame(height: IslandMetrics.footerHeight)
+  }
+}
+
+extension IslandAnswerCard {
+  /// Insert (`cursor`) or Replace (`selection`) into the field the person's focus is in, its
+  /// tooltip and VoiceOver name naming the app, each with the keys that perform it
+  /// (``AnswerWriteOffer/keys(for:)``); the primary one (``AnswerWriteOffer/primary``) has the
+  /// Run button's fill.
+  fileprivate func write(_ mode: TextWriteParams.Mode, _ offer: AnswerWriteOffer) -> some View {
+    let labels = model.labels
+    let replace = mode == .selection
+    let tooltip = replace ? labels.replace(in: offer.app) : labels.insert(in: offer.app)
+    let primary = offer.primary == mode
+    return IslandTextButton(
+      title: replace ? labels.replace : labels.insert, tooltip: tooltip, rest: primary ? 0.08 : 0,
+      action: { model.act(.write(mode)) }
+    ) {
+      IslandKeycap(symbol: offer.keys(for: mode))
+    }
+    .accessibilityLabel(Text(verbatim: tooltip))
+    .transition(.opacity)
   }
 }
 
@@ -157,7 +186,8 @@ extension IslandController {
         height: IslandMetrics.answerCardHeight(note: noteHeight, answer: answerHeight)))
   }
 
-  private static func height(of view: some View, width: Double) -> Double {
+  /// The height `view` takes laid out `width` points wide, wrapping as it needs.
+  static func height(of view: some View, width: Double) -> Double {
     let framed = view.frame(width: width).fixedSize(horizontal: false, vertical: true)
     return NSHostingView(rootView: framed).fittingSize.height
   }

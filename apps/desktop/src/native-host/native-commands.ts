@@ -1,10 +1,17 @@
 import { parseAccelerator } from '@atd/agent-contracts';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
-import { prepareCommand } from '../client/agent/command-prepare';
+import { prepareCommand, SelectionMissingError } from '../client/agent/command-prepare';
+import {
+  argumentOverrides,
+  commandValues,
+  sanitizeArguments,
+  type CommandArguments,
+} from '../client/agent/command-arguments';
 import {
   deleteRemote,
   fetchCommands,
+  rememberRemote,
   reorderRemote,
   saveRemote,
 } from '../client/agent/command-remote';
@@ -45,6 +52,8 @@ function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
 export class NativeCommands implements CommandCatalog {
   readonly errors: Record<string, string> = {};
   private commands: CommandDefinition[] = [];
+  /** Remembered values go to the service one write after another (`remember`). */
+  private remembering = Promise.resolve();
 
   constructor(
     private readonly connection: NativeConnection,
@@ -93,11 +102,13 @@ export class NativeCommands implements CommandCatalog {
     );
   }
 
+  /** Nothing selected (or only whitespace) rejects with a `SelectionMissingError`. */
   async capture(source: 'selection' | 'clipboard') {
     if (source === 'selection') {
       const captured = await this.bridge.call('capture', { source });
+      if (captured.ok ? !captured.text.trim() : captured.reason === 'noSelection')
+        throw new SelectionMissingError(SELECTION_ERRORS.noSelection);
       if (!captured.ok) throw new Error(SELECTION_ERRORS[captured.reason]);
-      if (!captured.text.trim()) throw new Error(SELECTION_ERRORS.noSelection);
       return { text: captured.text, capturedAt: captured.capturedAt };
     }
     const { text } = await this.bridge.call('clipboard.read', {});
@@ -156,6 +167,31 @@ export class NativeCommands implements CommandCatalog {
       throw error;
     }
     this.changed();
+  }
+
+  /**
+   * Remembers `values` as where command `id`'s next run starts, as a run with them would, without
+   * running it: those its parameters accept, a blank text counting as none. Writes go in the
+   * order of the changes, so the last one stays.
+   */
+  remember(id: string, values: ArgumentValues): Promise<void> {
+    const write = this.remembering.then(async () => {
+      const kept = sanitizeArguments(this.find(id), values);
+      const saved = await rememberRemote(this.connection.options(), id, kept);
+      this.commands = this.commands.map((item) => (item.id === saved.id ? saved : item));
+      this.changed();
+    });
+    this.remembering = write.catch(() => undefined);
+    return write;
+  }
+
+  /**
+   * Remembers the choices and toggles `picked` in the shell's options menu for command `id`, over
+   * the values its next run would start from; where the answer goes is never remembered.
+   */
+  rememberPicks(id: string, picked: CommandArguments): Promise<void> {
+    const command = this.find(id);
+    return this.remember(id, commandValues(command, argumentOverrides(command, picked)));
   }
 
   async refreshFromService() {

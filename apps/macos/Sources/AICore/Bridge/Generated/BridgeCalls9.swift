@@ -4,47 +4,250 @@
 
 import Foundation
 
-/// Result of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestResult = NativeEmpty
+/// Params of the `commandOptions.set` call.
+public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
+  public let commands: [Command]
 
-/// Params of the `apps.pick` call.
-public typealias AppsPickParams = NativeEmpty
-
-/// Result of the `apps.pick` call.
-public struct AppsPickResult: Codable, Equatable, Sendable {
-  public let apps: [App]
-
-  public init(apps: [App]) {
-    self.apps = apps
+  public init(commands: [Command]) {
+    self.commands = commands
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    apps = try container.array(.apps, of: App.self, maxItems: 20)
+    commands = try container.array(.commands, of: Command.self, maxItems: 256)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case apps
+    case commands
   }
 
-  public struct App: Codable, Equatable, Sendable {
-    public let bundleId: String
+  public struct Command: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let options: [CommandOption]
+    public let output: CommandOutputOption
+
+    public init(id: String, name: String, options: [CommandOption], output: CommandOutputOption) {
+      self.id = id
+      self.name = name
+      self.options = options
+      self.output = output
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      name = try container.string(.name, minLength: 1, maxLength: 256)
+      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+      output = try container.value(.output, CommandOutputOption.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case options
+      case output
+    }
+  }
+}
+
+/// Result of the `commandOptions.set` call.
+public typealias CommandOptionsSetResult = NativeEmpty
+
+/// Params of the `approval.request` call.
+public struct ApprovalRequestParams: Codable, Equatable, Sendable {
+  public let serverId: String
+
+  public init(serverId: String) {
+    self.serverId = serverId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    try container.literal(.kind, "mcpServer")
+    serverId = try container.string(
+      .serverId, minLength: 1, maxLength: 193,
+      pattern:
+        "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+    )
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode("mcpServer", forKey: .kind)
+    try container.encode(serverId, forKey: .serverId)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case kind
+    case serverId
+  }
+}
+
+/// Result of the `approval.request` call.
+public enum ApprovalRequestResult: Codable, Equatable, Sendable {
+  case approved(Approved)
+  case notApproved(NotApproved)
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Discriminator.self)
+    switch try container.decode(Bool.self, forKey: .approved) {
+    case true: self = try .approved(Approved(from: decoder))
+    case false: self = try .notApproved(NotApproved(from: decoder))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .approved(let value): try value.encode(to: encoder)
+    case .notApproved(let value): try value.encode(to: encoder)
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case approved
+  }
+
+  public struct Approved: Codable, Equatable, Sendable {
+    public init() {}
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.approved, true)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(true, forKey: .approved)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case approved
+    }
+  }
+
+  public struct NotApproved: Codable, Equatable, Sendable {
+    public let reason: Reason
+
+    public init(reason: Reason) {
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.approved, false)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(false, forKey: .approved)
+      try container.encode(reason, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case approved
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case cancelled
+      case changed
+      case unavailable
+      case busy
+    }
+  }
+}
+
+/// Params of the `toolbar.set` call.
+public struct ToolbarSetParams: Codable, Equatable, Sendable {
+  public let enabled: Bool
+  public let activation: Activation
+  public let activationKeys: [ActivationKey]
+  public let showHud: Bool
+  public let excludedBundleIds: [String]
+  public let commands: [Command]
+
+  public init(
+    enabled: Bool, activation: Activation, activationKeys: [ActivationKey], showHud: Bool,
+    excludedBundleIds: [String], commands: [Command]
+  ) {
+    self.enabled = enabled
+    self.activation = activation
+    self.activationKeys = activationKeys
+    self.showHud = showHud
+    self.excludedBundleIds = excludedBundleIds
+    self.commands = commands
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    enabled = try container.boolean(.enabled)
+    activation = try container.value(.activation, Activation.self)
+    activationKeys = try container.array(
+      .activationKeys, of: ActivationKey.self, minItems: 1, maxItems: 3)
+    showHud = try container.boolean(.showHud)
+    excludedBundleIds = try container.array(.excludedBundleIds, of: String.self, maxItems: 100)
+    commands = try container.array(.commands, of: Command.self, maxItems: 64)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case enabled
+    case activation
+    case activationKeys
+    case showHud
+    case excludedBundleIds
+    case commands
+  }
+
+  public enum Activation: String, Codable, Equatable, Sendable {
+    case always
+    case hold
+    case toggle
+  }
+
+  public enum ActivationKey: String, Codable, Equatable, Sendable {
+    case option
+    case command
+    case shift
+  }
+
+  public struct Command: Codable, Equatable, Sendable {
+    public let id: String
     public let name: String
 
-    public init(bundleId: String, name: String) {
-      self.bundleId = bundleId
+    public init(id: String, name: String) {
+      self.id = id
       self.name = name
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
-      name = try container.string(.name, minLength: 1, maxLength: 255)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      name = try container.string(.name, minLength: 1, maxLength: 256)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
-      case bundleId
+      case id
       case name
     }
   }
 }
+
+/// Result of the `toolbar.set` call.
+public typealias ToolbarSetResult = NativeEmpty
+
+/// Params of the `accessibility.request` call.
+public typealias AccessibilityRequestParams = NativeEmpty
+
+/// Result of the `accessibility.request` call.
+public typealias AccessibilityRequestResult = NativeEmpty
+
+/// Params of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestParams = NativeEmpty
+
+/// Result of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestResult = NativeEmpty
+
+/// Params of the `apps.pick` call.
+public typealias AppsPickParams = NativeEmpty

@@ -57,8 +57,9 @@ struct IslandCard: View {
     .padding(.horizontal, IslandMetrics.rowPadding)
     .frame(height: IslandMetrics.filterHeight)
     .background {
-      RoundedRectangle(cornerRadius: IslandMetrics.rowRadius, style: .continuous)
-        .fill(Color.primary.opacity(0.06))
+      IslandWash(
+        level: 0.06,
+        shape: RoundedRectangle(cornerRadius: IslandMetrics.rowRadius, style: .continuous))
     }
     // The card arrives hidden and becomes active a frame later, and its window may take the
     // keyboard after that: the field takes focus once both hold.

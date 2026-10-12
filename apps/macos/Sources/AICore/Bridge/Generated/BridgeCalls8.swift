@@ -4,6 +4,223 @@
 
 import Foundation
 
+/// Params of the `commandProgress.show` call.
+public struct CommandProgressShowParams: Codable, Equatable, Sendable {
+  public let target: String
+  public let state: State
+
+  public init(target: String, state: State) {
+    self.target = target
+    self.state = state
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
+    state = try container.value(.state, State.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case target
+    case state
+  }
+
+  public enum State: Codable, Equatable, Sendable {
+    case working(Working)
+    case choose(Choose)
+    case compose(Compose)
+    case notice(Notice)
+    case answer(Answer)
+
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: Discriminator.self)
+      switch try container.decode(String.self, forKey: .phase) {
+      case "working": self = try .working(Working(from: decoder))
+      case "choose": self = try .choose(Choose(from: decoder))
+      case "compose": self = try .compose(Compose(from: decoder))
+      case "notice": self = try .notice(Notice(from: decoder))
+      case "answer": self = try .answer(Answer(from: decoder))
+      default:
+        throw DecodingError.dataCorruptedError(
+          forKey: .phase, in: container, debugDescription: "Unknown State phase.")
+      }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      switch self {
+      case .working(let value): try value.encode(to: encoder)
+      case .choose(let value): try value.encode(to: encoder)
+      case .compose(let value): try value.encode(to: encoder)
+      case .notice(let value): try value.encode(to: encoder)
+      case .answer(let value): try value.encode(to: encoder)
+      }
+    }
+
+    private enum Discriminator: String, CodingKey {
+      case phase
+    }
+
+    public struct Working: Codable, Equatable, Sendable {
+      public let command: String
+      public let summary: String?
+
+      public init(command: String, summary: String?) {
+        self.command = command
+        self.summary = summary
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        try container.literal(.phase, "working")
+        command = try container.string(.command, minLength: 1, maxLength: 200)
+        summary = try container.optional(.summary) {
+          try container.string($0, minLength: 1, maxLength: 200)
+        }
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("working", forKey: .phase)
+        try container.encode(command, forKey: .command)
+        try container.encodeIfPresent(summary, forKey: .summary)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case phase
+        case command
+        case summary
+      }
+    }
+
+    public struct Choose: Codable, Equatable, Sendable {
+      public let command: String
+      public let options: [CommandOption]
+      public let output: CommandOutputOption
+
+      public init(command: String, options: [CommandOption], output: CommandOutputOption) {
+        self.command = command
+        self.options = options
+        self.output = output
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        try container.literal(.phase, "choose")
+        command = try container.string(.command, minLength: 1, maxLength: 200)
+        options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+        output = try container.value(.output, CommandOutputOption.self)
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("choose", forKey: .phase)
+        try container.encode(command, forKey: .command)
+        try container.encode(options, forKey: .options)
+        try container.encode(output, forKey: .output)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case phase
+        case command
+        case options
+        case output
+      }
+    }
+
+    public struct Compose: Codable, Equatable, Sendable {
+      public let command: String
+      public let attach: Bool
+
+      public init(command: String, attach: Bool) {
+        self.command = command
+        self.attach = attach
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        try container.literal(.phase, "compose")
+        command = try container.string(.command, minLength: 1, maxLength: 200)
+        attach = try container.boolean(.attach)
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("compose", forKey: .phase)
+        try container.encode(command, forKey: .command)
+        try container.encode(attach, forKey: .attach)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case phase
+        case command
+        case attach
+      }
+    }
+
+    public struct Notice: Codable, Equatable, Sendable {
+      public let message: String
+
+      public init(message: String) {
+        self.message = message
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        try container.literal(.phase, "notice")
+        message = try container.string(.message, minLength: 1, maxLength: 500)
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("notice", forKey: .phase)
+        try container.encode(message, forKey: .message)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case phase
+        case message
+      }
+    }
+
+    public struct Answer: Codable, Equatable, Sendable {
+      public let command: String
+      public let answer: String
+      public let note: String?
+
+      public init(command: String, answer: String, note: String?) {
+        self.command = command
+        self.answer = answer
+        self.note = note
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        try container.literal(.phase, "answer")
+        command = try container.string(.command, minLength: 1, maxLength: 200)
+        answer = try container.string(.answer, minLength: 1, maxLength: 1_000_000)
+        note = try container.optional(.note) {
+          try container.string($0, minLength: 1, maxLength: 500)
+        }
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("answer", forKey: .phase)
+        try container.encode(command, forKey: .command)
+        try container.encode(answer, forKey: .answer)
+        try container.encodeIfPresent(note, forKey: .note)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case phase
+        case command
+        case answer
+        case note
+      }
+    }
+  }
+}
+
 /// Result of the `commandProgress.show` call.
 public typealias CommandProgressShowResult = NativeEmpty
 
@@ -27,245 +244,3 @@ public struct CommandProgressHideParams: Codable, Equatable, Sendable {
 
 /// Result of the `commandProgress.hide` call.
 public typealias CommandProgressHideResult = NativeEmpty
-
-/// Params of the `commandOptions.set` call.
-public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
-  public let commands: [Command]
-
-  public init(commands: [Command]) {
-    self.commands = commands
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    commands = try container.array(.commands, of: Command.self, maxItems: 256)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case commands
-  }
-
-  public struct Command: Codable, Equatable, Sendable {
-    public let id: String
-    public let name: String
-    public let options: [CommandOption]
-    public let output: CommandOutputOption
-
-    public init(id: String, name: String, options: [CommandOption], output: CommandOutputOption) {
-      self.id = id
-      self.name = name
-      self.options = options
-      self.output = output
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      id = try container.string(.id, minLength: 1, maxLength: 128)
-      name = try container.string(.name, minLength: 1, maxLength: 256)
-      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
-      output = try container.value(.output, CommandOutputOption.self)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case id
-      case name
-      case options
-      case output
-    }
-  }
-}
-
-/// Result of the `commandOptions.set` call.
-public typealias CommandOptionsSetResult = NativeEmpty
-
-/// Params of the `approval.request` call.
-public struct ApprovalRequestParams: Codable, Equatable, Sendable {
-  public let serverId: String
-
-  public init(serverId: String) {
-    self.serverId = serverId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    try container.literal(.kind, "mcpServer")
-    serverId = try container.string(
-      .serverId, minLength: 1, maxLength: 193,
-      pattern:
-        "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
-    )
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode("mcpServer", forKey: .kind)
-    try container.encode(serverId, forKey: .serverId)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case kind
-    case serverId
-  }
-}
-
-/// Result of the `approval.request` call.
-public enum ApprovalRequestResult: Codable, Equatable, Sendable {
-  case approved(Approved)
-  case notApproved(NotApproved)
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(Bool.self, forKey: .approved) {
-    case true: self = try .approved(Approved(from: decoder))
-    case false: self = try .notApproved(NotApproved(from: decoder))
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .approved(let value): try value.encode(to: encoder)
-    case .notApproved(let value): try value.encode(to: encoder)
-    }
-  }
-
-  private enum Discriminator: String, CodingKey {
-    case approved
-  }
-
-  public struct Approved: Codable, Equatable, Sendable {
-    public init() {}
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, true)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(true, forKey: .approved)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-    }
-  }
-
-  public struct NotApproved: Codable, Equatable, Sendable {
-    public let reason: Reason
-
-    public init(reason: Reason) {
-      self.reason = reason
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, false)
-      reason = try container.value(.reason, Reason.self)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(false, forKey: .approved)
-      try container.encode(reason, forKey: .reason)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-      case reason
-    }
-
-    public enum Reason: String, Codable, Equatable, Sendable {
-      case cancelled
-      case changed
-      case unavailable
-      case busy
-    }
-  }
-}
-
-/// Params of the `toolbar.set` call.
-public struct ToolbarSetParams: Codable, Equatable, Sendable {
-  public let enabled: Bool
-  public let activation: Activation
-  public let activationKeys: [ActivationKey]
-  public let showHud: Bool
-  public let excludedBundleIds: [String]
-  public let commands: [Command]
-
-  public init(
-    enabled: Bool, activation: Activation, activationKeys: [ActivationKey], showHud: Bool,
-    excludedBundleIds: [String], commands: [Command]
-  ) {
-    self.enabled = enabled
-    self.activation = activation
-    self.activationKeys = activationKeys
-    self.showHud = showHud
-    self.excludedBundleIds = excludedBundleIds
-    self.commands = commands
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    enabled = try container.boolean(.enabled)
-    activation = try container.value(.activation, Activation.self)
-    activationKeys = try container.array(
-      .activationKeys, of: ActivationKey.self, minItems: 1, maxItems: 3)
-    showHud = try container.boolean(.showHud)
-    excludedBundleIds = try container.array(.excludedBundleIds, of: String.self, maxItems: 100)
-    commands = try container.array(.commands, of: Command.self, maxItems: 64)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case enabled
-    case activation
-    case activationKeys
-    case showHud
-    case excludedBundleIds
-    case commands
-  }
-
-  public enum Activation: String, Codable, Equatable, Sendable {
-    case always
-    case hold
-    case toggle
-  }
-
-  public enum ActivationKey: String, Codable, Equatable, Sendable {
-    case option
-    case command
-    case shift
-  }
-
-  public struct Command: Codable, Equatable, Sendable {
-    public let id: String
-    public let name: String
-
-    public init(id: String, name: String) {
-      self.id = id
-      self.name = name
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      id = try container.string(.id, minLength: 1, maxLength: 128)
-      name = try container.string(.name, minLength: 1, maxLength: 256)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case id
-      case name
-    }
-  }
-}
-
-/// Result of the `toolbar.set` call.
-public typealias ToolbarSetResult = NativeEmpty
-
-/// Params of the `accessibility.request` call.
-public typealias AccessibilityRequestParams = NativeEmpty
-
-/// Result of the `accessibility.request` call.
-public typealias AccessibilityRequestResult = NativeEmpty
-
-/// Params of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestParams = NativeEmpty

@@ -12,7 +12,7 @@ import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeTextCalls } from './text-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
-import { Empty, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
+import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
 export {
   MAX_SAVE_PNG_BASE64_LENGTH,
@@ -101,7 +101,7 @@ const ScreenshotResultSchema = Type.Union([
 ]);
 
 /** Input text limit shared with clipboard capture and the service's command input. */
-export const MAX_CAPTURE_LENGTH = 100000;
+export { MAX_CAPTURE_LENGTH };
 
 /**
  * A rectangle in CSS pixels from the web view's top-left corner (what `getBoundingClientRect()`

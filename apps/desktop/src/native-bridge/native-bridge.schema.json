@@ -90,7 +90,8 @@
       "userApp.state",
       "userApp.pins",
       "task.open",
-      "commandProgress.action"
+      "commandProgress.action",
+      "commandOptions.picked"
     ]
   },
   "anyOf": [
@@ -1616,6 +1617,25 @@
                             }
                           },
                           "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": ["phase", "command", "attach"],
+                      "properties": {
+                        "phase": {
+                          "type": "string",
+                          "const": "compose"
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attach": {
+                          "type": "boolean"
                         }
                       },
                       "additionalProperties": false
@@ -3401,8 +3421,129 @@
                     {
                       "type": "string",
                       "const": "edit"
+                    },
+                    {
+                      "type": "string",
+                      "const": "pick"
                     }
                   ]
+                },
+                "arguments": {
+                  "type": "object",
+                  "required": ["choices", "toggles"],
+                  "properties": {
+                    "output": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
+                    "choices": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "string",
+                          "maxLength": 256
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "toggles": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "compose": {
+                  "type": "object",
+                  "required": ["text", "files"],
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 100000
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "name", "size", "type"],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "maxLength": 255
+                          },
+                          "size": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "type": {
+                            "type": "string",
+                            "maxLength": 100
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 10
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "commandOptions.picked"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["id", "arguments"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
                 },
                 "arguments": {
                   "type": "object",
@@ -5384,6 +5525,25 @@
             },
             {
               "type": "object",
+              "required": ["phase", "command", "attach"],
+              "properties": {
+                "phase": {
+                  "type": "string",
+                  "const": "compose"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "attach": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "required": ["phase", "message"],
               "properties": {
                 "phase": {
@@ -6630,8 +6790,114 @@
             {
               "type": "string",
               "const": "edit"
+            },
+            {
+              "type": "string",
+              "const": "pick"
             }
           ]
+        },
+        "arguments": {
+          "type": "object",
+          "required": ["choices", "toggles"],
+          "properties": {
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "panel"
+                },
+                {
+                  "type": "string",
+                  "const": "replaceSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAtCursor"
+                },
+                {
+                  "type": "string",
+                  "const": "copy"
+                }
+              ]
+            },
+            "choices": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "additionalProperties": false
+            },
+            "toggles": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "compose": {
+          "type": "object",
+          "required": ["text", "files"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "name", "size", "type"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "type": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 10
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandOptionsPickedEvent": {
+      "type": "object",
+      "required": ["id", "arguments"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
         },
         "arguments": {
           "type": "object",

@@ -28,11 +28,12 @@ final class HeldIntent {
 }
 
 /// Turns the global shortcuts' presses and releases into summons (contract D3, ``CommandHold``).
-/// A command whose options the shell offers shows the island's press capsule on the press and
-/// captures at once; its release before ``CommandHold/threshold`` runs it, and holding on past it
-/// opens its options card. Every other shortcut summons on the press, as it always has. Any
-/// shortcut pressed while a card has the keyboard (the options card, or the answer card while its
-/// window is key) only closes it (``CommandHold/Press/closeCard``).
+/// A command whose options the shell offers captures at once on the press and shows the island's
+/// press capsule once held for ``CommandHold/reveal``; its release before
+/// ``CommandHold/threshold`` runs it, and holding on past it opens its options card. Every other
+/// shortcut summons on the press, as it always has. Any shortcut pressed while a card has the
+/// keyboard (the options card, or the answer card while its window is key) only closes it
+/// (``CommandHold/Press/closeCard``).
 final class ShortcutHolds {
   private var hold = CommandHold()
   private var pending: HeldIntent?
@@ -71,10 +72,12 @@ final class ShortcutHolds {
         return
       }
       pending = held
-      progress.showPress(command: entry.name)
       Task { [weak self] in
-        try? await Task.sleep(for: CommandHold.threshold)
-        guard let self, let intent = hold.elapse(generation: generation) else { return }
+        try? await Task.sleep(for: CommandHold.reveal)
+        guard let self, hold.holds(generation: generation) else { return }
+        progress.showPress(command: entry.name)
+        try? await Task.sleep(for: CommandHold.threshold - CommandHold.reveal)
+        guard let intent = hold.elapse(generation: generation) else { return }
         decide(intent)
       }
     }

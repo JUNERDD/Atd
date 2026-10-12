@@ -66,6 +66,9 @@ final class WriteTargets {
   /// Whether answers are typed with their animation, as the page's last `typing.set` said; off
   /// until it says, so no browser is armed for a trace the settings may not want.
   var animatesTyping = false
+  /// Whether answers are typed rather than pasted at once, as the page's last `typing.set`
+  /// said; the shell's own writes (the answer card's Insert and Replace) follow it.
+  var typesAnswers = false
 
   /// Reads and records the frontmost app's focused field. Nothing is recorded without
   /// Accessibility (no prompt: the selection step asks), while Atd itself is frontmost, for a
@@ -149,6 +152,28 @@ nonisolated struct WriteTargetReader: Sendable {
   /// Read `AXSelectedText` too, when the summon did not read the selection itself.
   let readsText: Bool
 
+  /// How long the capture waits for a browser woken now to build the tree its focus is in.
+  static let webContentWait: Duration = .milliseconds(450)
+
+  /// The app's focused element. Chromium and Electron report none until an assistive tool asked
+  /// them something, then build their tree asynchronously: an app with no focus to report is
+  /// woken (``SelectionPresence/wakeWebContent(_:)``, usually already done when the shortcut
+  /// fired) and asked again until the tree answers or ``webContentWait`` passes.
+  private static func focusedElement(of app: AXUIElement) throws(AXFieldError) -> AXUIElement? {
+    if let focused: AXUIElement = try AXField.copy(app, kAXFocusedUIElementAttribute) {
+      return focused
+    }
+    SelectionPresence.wakeWebContent(app)
+    let deadline = ContinuousClock.now + webContentWait
+    while ContinuousClock.now < deadline {
+      Thread.sleep(forTimeInterval: 0.03)
+      if let focused: AXUIElement = try AXField.copy(app, kAXFocusedUIElementAttribute) {
+        return focused
+      }
+    }
+    return nil
+  }
+
   func read() -> Read? {
     do throws(AXFieldError) {
       let timeout = SelectionReader.messagingTimeout
@@ -158,7 +183,7 @@ nonisolated struct WriteTargetReader: Sendable {
       if focused == nil {
         let app = AXUIElementCreateApplication(frontmostPID)
         AXUIElementSetMessagingTimeout(app, timeout)
-        focused = try AXField.copy(app, kAXFocusedUIElementAttribute)
+        focused = try Self.focusedElement(of: app)
       }
       var pid: pid_t = 0
       guard let focused, AXUIElementGetPid(focused, &pid) == .success else { return nil }

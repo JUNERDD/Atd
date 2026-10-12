@@ -4,6 +4,7 @@ import { needsInput } from '../../client/agent/command-arguments';
 import { showErrorToast } from '../../components/toast-store';
 import { isLightLaunch, startLightRun } from './light-command';
 import { chooseLightRun } from './light-command-choose';
+import { composeLightRun } from './light-command-compose';
 import { useCommandResults } from './use-command-results';
 import { useLightCommands } from './use-light-commands';
 import { showPanel } from './use-panel-window';
@@ -17,8 +18,11 @@ import { showPanel } from './use-panel-window';
  * runs as-is and writes its answer back unreviewed, `isLightLaunch`) is the exception: it leaves
  * the panel hidden and as it was, and the shell's progress HUD reports it; the panel shows its
  * task (`openTask`) only when the run needs the person or they open it; a held shortcut first
- * offers a light launch's options in that HUD (`chooseLightRun`). It also acts on the answers of
- * the command runs the panel started (`useCommandResults`).
+ * offers a light launch's options in that HUD (`chooseLightRun`). A shell launch that found
+ * nothing selected for a command working on the selection (`PreparedCommand.selectionMissing`)
+ * leaves the panel hidden too: the HUD's compose card asks for the text, and the launch goes on
+ * from its answer (`composeLightRun`). It also acts on the answers of the command runs the panel
+ * started (`useCommandResults`).
  */
 export function useCommandLaunch({
   submit,
@@ -51,6 +55,10 @@ export function useCommandLaunch({
     if (!bridge) return;
     return bridge.onLaunch(({ prepared, autoRun: run, choose }) => {
       const { light } = bridge;
+      if (light && prepared.selectionMissing) {
+        composeLightRun(prepared, choose === true, light);
+        return;
+      }
       if (light && isLightLaunch(prepared)) {
         // A held shortcut offers the options of a light launch whose capture worked and whose
         // text and number parameters have values (the card fills only choices and toggles, and

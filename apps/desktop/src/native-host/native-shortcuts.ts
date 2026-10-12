@@ -1,7 +1,7 @@
 import { doubleTapModifier } from '@atd/agent-contracts';
 import type { CommandLaunch } from '../client/agent/bridge';
 import { argumentOverrides } from '../client/agent/command-arguments';
-import { runsAsIs } from '../client/agent/command-prepare';
+import { runsAsIs, withoutSelectionNotice } from '../client/agent/command-prepare';
 import { withOutputAction } from '../client/agent/run-output';
 import { errorMessage } from '../client/agent/validation';
 import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
@@ -45,7 +45,9 @@ export interface ShortcutSync {
  * run, else where the command's saved output says. Then by `intent`: `run` (or none) launches it
  * as the desktop's shortcut does, running it when it can be used as-is; `edit` shows its input
  * step and never runs it; `choose` asks the panel to offer its options first
- * (`CommandLaunch.choose`). The screenshot shortcut is the panel page's to run
+ * (`CommandLaunch.choose`). A `run` or `choose` launch whose selection was missing carries that
+ * to the launch channel, which asks for the text first; `edit` shows the input step, where the
+ * text is typed, without reporting it. The screenshot shortcut is the panel page's to run
  * (`DesktopBridge.onScreenshotShortcut`).
  */
 export function nativeShortcuts(
@@ -152,12 +154,9 @@ export function nativeShortcuts(
           picked?.output,
         );
         if (intent === 'run') host.launch({ prepared: launched, autoRun: runsAsIs(launched) });
-        else
-          host.launch({
-            prepared: launched,
-            autoRun: false,
-            ...(intent === 'choose' ? { choose: true as const } : {}),
-          });
+        else if (intent === 'edit')
+          host.launch({ prepared: withoutSelectionNotice(launched), autoRun: false });
+        else host.launch({ prepared: launched, autoRun: false, choose: true });
       })
       .catch((error: unknown) => {
         commands.errors[id] = errorMessage(error);

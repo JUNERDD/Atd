@@ -13,8 +13,9 @@ import SwiftUI
 /// lets the card read its keys ahead of the filter field, and key equivalents reach
 /// ``onKeyEquivalent`` ahead of the window's views and the menus, which lets the answer card
 /// take ⌘C; a press neither takes goes on as usual. Scrolling over the card goes to
-/// ``onScroll``.
-final class IslandWindow: NSPanel {
+/// ``onScroll``. Its glass keeps the active edge while the window is not key, as the other glass
+/// HUDs' do (``ActiveGlassPanel``).
+final class IslandWindow: ActiveGlassPanel {
   var keyCapable = false
   /// A key press while the window is key: true when it was taken.
   var onKeyDown: ((NSEvent) -> Bool)?

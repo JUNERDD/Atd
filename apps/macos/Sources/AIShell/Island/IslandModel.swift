@@ -17,14 +17,17 @@ enum IslandContent: Equatable {
   case answer(command: String, answer: String, note: String?)
   /// The answer card's answer went to the clipboard.
   case copied
+  /// The compose card (``IslandComposeCard``, its draft in ``IslandModel/compose``) of the named
+  /// command, launched with nothing selected; `attach` offers a screenshot or files.
+  case compose(command: String, attach: Bool)
 
   /// Content of the same kind changes in place; another kind replaces it through a morph.
   enum Kind {
-    case press, working, choose, writing, done, notice, answer, copied
+    case press, working, choose, writing, done, notice, answer, copied, compose
 
-    /// A card (the options card, the answer card), with the card's corner rather than a
-    /// capsule's.
-    var isCard: Bool { self == .choose || self == .answer }
+    /// A card (the options card, the answer card, the compose card), with the card's corner
+    /// rather than a capsule's.
+    var isCard: Bool { self == .choose || self == .answer || self == .compose }
   }
 
   var kind: Kind {
@@ -37,6 +40,7 @@ enum IslandContent: Equatable {
     case .notice: .notice
     case .answer: .answer
     case .copied: .copied
+    case .compose: .compose
     }
   }
 }
@@ -55,6 +59,9 @@ struct IslandLayer: Identifiable, Equatable {
   /// The card a leaving options card shows, frozen as it left, so it never draws the page that
   /// replaces it while it fades.
   var card: OptionsCard?
+  /// The content scales with its shape as it follows it; off while the compose card resizes in
+  /// place (``IslandChoreography/inPlace``), on again once it leaves.
+  var scales = true
 }
 
 /// The island's glass: where its shape rests in the canvas (y down) with its corner, and the
@@ -94,6 +101,23 @@ enum IslandAction: Equatable {
   case copy
   /// The working capsule's values chip.
   case change
+  /// The answer card's Insert (`cursor`) or Replace (`selection`), or Return on it.
+  case write(TextWriteParams.Mode)
+}
+
+/// What the compose card's field and controls do.
+enum IslandComposeEvent: Equatable {
+  /// The field's text changed.
+  case text(String)
+  /// The chip at this index was removed.
+  case remove(Int)
+  /// The attach control was pressed: its menu opens against the control's frame, in the
+  /// window's content coordinates (y down).
+  case attach(CGRect)
+  /// The Screen Recording note's Open System Settings.
+  case openScreenRecordingSettings
+  case run
+  case open
 }
 
 /// What the options card's pointer and filter field do.
@@ -141,6 +165,17 @@ struct IslandLabels: Equatable {
   var close = ""
   var openInAtd = ""
   var openInAtdTooltip = ""
+  var insert = ""
+  var replace = ""
+  var composeNote = ""
+  var composeNoteAttach = ""
+  var composePlaceholder = ""
+  var composeAttach = ""
+  var composeLimit = ""
+  var composeScreenRecording = ""
+  var composeScrollLeft = ""
+  var composeScrollRight = ""
+  var composeOpenSystemSettings = ""
 
   static func current() -> IslandLabels {
     let strings = ShellStrings.shared
@@ -162,7 +197,17 @@ struct IslandLabels: Equatable {
       copy: strings.text(.commandProgressCopy), copied: strings.text(.commandProgressCopied),
       close: strings.text(.commandProgressClose),
       openInAtd: strings.text(.commandProgressOpenInAtd),
-      openInAtdTooltip: strings.text(.commandProgressOpenInAtdTooltip))
+      openInAtdTooltip: strings.text(.commandProgressOpenInAtdTooltip),
+      insert: strings.text(.commandProgressInsert), replace: strings.text(.commandProgressReplace),
+      composeNote: strings.text(.commandComposeNote),
+      composeNoteAttach: strings.text(.commandComposeNoteAttach),
+      composePlaceholder: strings.text(.commandComposePlaceholder),
+      composeAttach: strings.text(.commandComposeAttach),
+      composeLimit: strings.text(.commandComposeLimit),
+      composeScreenRecording: strings.text(.commandComposeScreenRecording),
+      composeScrollLeft: strings.text(.commandComposeScrollLeft),
+      composeScrollRight: strings.text(.commandComposeScrollRight),
+      composeOpenSystemSettings: strings.text(.commandComposeOpenSystemSettings))
   }
 
   /// What VoiceOver reads for a working run of `command`.
@@ -179,6 +224,26 @@ struct IslandLabels: Equatable {
   func answer(_ command: String) -> String {
     ShellStrings.shared.text(.commandProgressAnswer, command)
   }
+
+  /// Insert's tooltip and VoiceOver name, naming the app the field is in.
+  func insert(in app: String) -> String {
+    ShellStrings.shared.text(.commandProgressInsertIn, app)
+  }
+
+  /// Replace's tooltip and VoiceOver name, naming the app the field is in.
+  func replace(in app: String) -> String {
+    ShellStrings.shared.text(.commandProgressReplaceIn, app)
+  }
+
+  /// The compose card's name for VoiceOver.
+  func compose(_ command: String) -> String {
+    ShellStrings.shared.text(.commandComposeCard, command)
+  }
+
+  /// An attachment chip's remove button, for VoiceOver and its tooltip.
+  func remove(_ name: String) -> String {
+    ShellStrings.shared.text(.commandComposeRemove, name)
+  }
 }
 
 /// The command island as drawn: its one glass shape, the contents riding in it, and the options
@@ -193,7 +258,13 @@ final class IslandModel {
   var layers: [IslandLayer] = []
   /// The options card the active `choose` content shows.
   var card: OptionsCard?
-  /// The options card has the keyboard: its filter field takes focus.
+  /// What the answer card offers to write where the person's focus is now
+  /// (``AnswerFocusWatch``); nil while that focus cannot take text.
+  var answerOffer: AnswerWriteOffer?
+  /// The compose card's text and attachments, kept while the card shows for one target.
+  var compose = ComposeDraft()
+  /// A card has the keyboard: the options card's filter field or the compose card's text field
+  /// takes focus.
   var cardIsKey = false
   /// Reduce Motion, followed live: no bounce, and content keeps its own size.
   var reduceMotion = false
@@ -201,5 +272,6 @@ final class IslandModel {
 
   @ObservationIgnored var act: (IslandAction) -> Void = { _ in }
   @ObservationIgnored var cardEvent: (IslandCardEvent) -> Void = { _ in }
+  @ObservationIgnored var composeEvent: (IslandComposeEvent) -> Void = { _ in }
   @ObservationIgnored var drag: (IslandDrag) -> Void = { _ in }
 }

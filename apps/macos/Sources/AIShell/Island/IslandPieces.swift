@@ -22,6 +22,35 @@ enum IslandType {
   }
 }
 
+/// The compose card's glyphs: Lucide template image sets in the App target's asset catalog
+/// (`App/Assets.xcassets/Island/lucide-<name>.imageset`; `camera` is the mini panel's own set,
+/// since asset names are global in the catalog), found in the main bundle by
+/// `NSImage(named:)` like every island glyph (``IslandGlyph``). Outside the app bundle (`swift
+/// test`) they are missing and the controls keep their tooltips and labels.
+///
+/// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
+/// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
+/// for the names below; the attach control and its menu use the panel composer's glyphs.
+enum IslandIcons {
+  static let attach = "plus"
+  static let screenshot = "camera"
+  static let files = "paperclip"
+  static let image = "image"
+  static let file = "file"
+  static let warning = "triangle-alert"
+  static let scrollLeft = "chevron-left"
+  static let scrollRight = "chevron-right"
+
+  /// The glyph `name` at `side` points for a menu item: a copy, so the shared image keeps its
+  /// own size.
+  static func menuImage(_ name: String, side: Double = 16) -> NSImage? {
+    guard let image = MiniPanelIcons.glyph(name).copy() as? NSImage else { return nil }
+    image.size = NSSize(width: side, height: side)
+    image.isTemplate = true
+    return image
+  }
+}
+
 /// A Lucide template glyph from the app's assets (``MiniPanelIcons/glyph(_:)``).
 struct IslandGlyph: View {
   let name: String
@@ -56,14 +85,29 @@ struct IslandWash<Outline: InsettableShape>: View {
 }
 
 /// The toolbars' button washes (`AnnotationToolbarButton`): `rest` at rest (none on the HUD's
-/// buttons), light on hover, deeper while pressed, in `shape` behind the label.
+/// buttons), light on hover, deeper while pressed, in `shape` behind the label. A disabled
+/// button is inert: it keeps its rest wash whatever the pointer does.
 struct IslandWashStyle<Outline: InsettableShape>: ButtonStyle {
   let shape: Outline
   let hovered: Bool
   var rest = 0.0
 
   func makeBody(configuration: Configuration) -> some View {
-    let level = configuration.isPressed ? 0.16 : hovered ? 0.09 : rest
+    IslandWashLabel(configuration: configuration, shape: shape, hovered: hovered, rest: rest)
+  }
+}
+
+/// ``IslandWashStyle``'s label, which reads whether its button is enabled.
+private struct IslandWashLabel<Outline: InsettableShape>: View {
+  let configuration: ButtonStyleConfiguration
+  let shape: Outline
+  let hovered: Bool
+  let rest: Double
+  @Environment(\.isEnabled) private var isEnabled
+
+  var body: some View {
+    let level =
+      !isEnabled ? rest : configuration.isPressed ? 0.16 : hovered ? 0.09 : rest
     configuration.label
       .background { IslandWash(level: level, shape: shape) }
       .contentShape(shape)
@@ -77,6 +121,7 @@ struct IslandIconButton: View {
   let label: String
   let action: () -> Void
   @State private var hovered = false
+  @Environment(\.isEnabled) private var isEnabled
 
   var body: some View {
     Button(action: action) {
@@ -86,7 +131,7 @@ struct IslandIconButton: View {
     .buttonStyle(IslandWashStyle(shape: Circle(), hovered: hovered))
     .foregroundStyle(.primary)
     .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .pointerStyle(isEnabled ? .link : nil)
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
   }
@@ -102,6 +147,7 @@ struct IslandTextButton<Trailing: View>: View {
   let action: () -> Void
   @ViewBuilder var trailing: () -> Trailing
   @State private var hovered = false
+  @Environment(\.isEnabled) private var isEnabled
 
   var body: some View {
     Button(action: action) {
@@ -115,7 +161,7 @@ struct IslandTextButton<Trailing: View>: View {
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered, rest: rest))
     .foregroundStyle(.primary)
     .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .pointerStyle(isEnabled ? .link : nil)
     .help(tooltip ?? title)
   }
 }
@@ -183,21 +229,21 @@ struct IslandKeyHint: View {
   }
 }
 
-/// The press capsule's charge: a track that fills over ``CommandHold/threshold`` from the press,
-/// full when the options card opens.
+/// The press capsule's charge: a track that fills from the hold's ``CommandHold/reveal``, when
+/// the capsule shows, to its ``CommandHold/threshold``, full when the options card opens.
 struct IslandMeter: View {
   @State private var charged = false
 
   var body: some View {
     let width = IslandMetrics.meterWidth
-    let threshold = CommandHold.threshold / .seconds(1)
+    let charge = (CommandHold.threshold - CommandHold.reveal) / .seconds(1)
     Capsule()
       .fill(Color.primary.opacity(0.12))
       .overlay(alignment: .leading) {
         Capsule()
           .fill(Color.primary.opacity(0.7))
           .frame(width: charged ? width : 0)
-          .animation(.linear(duration: threshold), value: charged)
+          .animation(.linear(duration: charge), value: charged)
       }
       .frame(width: width, height: IslandMetrics.meterHeight)
       .onAppear { charged = true }

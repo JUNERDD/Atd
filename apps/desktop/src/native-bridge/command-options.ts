@@ -2,9 +2,9 @@
  * Command options in the shell (`NativeCommandOptionsCalls`, part of `NativeCalls` in `calls.ts`):
  * the parameters of a command, and where its answer goes, as the selection toolbar's options menu
  * and the progress HUD's options card offer them, and the values the shell sends back with
- * `shortcut.command` and `commandProgress.action`. Loaded by the export script with Node's type stripping, so it imports
- * nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only erasable
- * TypeScript syntax.
+ * `shortcut.command`, `commandProgress.action` and `commandOptions.picked`. Loaded by the export
+ * script with Node's type stripping, so it imports nothing but TypeBox and its sibling contract
+ * files (by their `.ts` names) and uses only erasable TypeScript syntax.
  *
  * Argument overrides (`CommandArgumentsSchema`) cross as two records keyed by parameter key,
  * `choices` (the value of an enum parameter) and `toggles` (a boolean parameter), rather than one
@@ -145,4 +145,17 @@ export const NativeCommandOptionsCalls = {
     ),
     result: Empty,
   },
+};
+
+/** Command option events, part of `NativeEvents` in `contract.ts`. */
+export const NativeCommandOptionsEvents = {
+  /**
+   * The person changed a choice or a toggle of command `id` in the selection toolbar's options
+   * menu, without running it yet: `arguments` holds every value the menu now shows, which the
+   * page remembers at once as where the command's next run starts. Sent to the panel only.
+   */
+  'commandOptions.picked': Type.Object(
+    { id: Type.String({ minLength: 1, maxLength: 128 }), arguments: CommandArgumentsSchema },
+    { additionalProperties: false },
+  ),
 };

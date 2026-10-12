@@ -11,8 +11,10 @@ import Foundation
 /// going by itself after ``doneDuration``; a `notice` opens the run in the panel and goes by
 /// itself after ``noticeDuration``; an `answer` card, shown where the answer could not be
 /// written, opens the run in the panel or copies the answer (`copied`, the shell's own, going
-/// like `done`) and stays until it is acted on or replaced. The options card and the answer card
-/// take the keyboard (``takesKeyboard``).
+/// like `done`) and stays until it is acted on or replaced; the `compose` card, shown where a
+/// command was launched with nothing selected, asks for the text (and, when the command takes
+/// files, the attachments) that stand in for the selection, and runs, opens or cancels with them.
+/// The options card, the answer card and the compose card take the keyboard (``takesKeyboard``).
 public struct CommandProgressState: Equatable, Sendable {
   public enum Phase: Equatable, Sendable {
     /// The run is going: the command's name, and the values it runs with when it has options
@@ -20,6 +22,9 @@ public struct CommandProgressState: Equatable, Sendable {
     case working(command: String, summary: String? = nil)
     /// The command's options and where its answer goes, to choose before it runs.
     case choose(command: String, options: [CommandOption], output: CommandOutputOption)
+    /// Nothing was selected: the command's name, and whether it takes files, so the card offers
+    /// to attach a screenshot or files besides the text typed in place of the selection.
+    case compose(command: String, attach: Bool)
     /// The answer is being written into the target.
     case writing
     /// The answer is written.
@@ -59,6 +64,9 @@ public struct CommandProgressState: Equatable, Sendable {
       let command = trimmed(choose.command)
       guard !command.isEmpty else { return nil }
       return .choose(command: command, options: choose.options, output: choose.output)
+    case .compose(let compose):
+      let command = trimmed(compose.command)
+      return command.isEmpty ? nil : .compose(command: command, attach: compose.attach)
     case .notice(let notice):
       let message = trimmed(notice.message)
       return message.isEmpty ? nil : .notice(message: message)
@@ -85,7 +93,7 @@ public struct CommandProgressState: Equatable, Sendable {
   }
 
   /// Escape cancels only while a run is working; otherwise it stays with the apps, or with the
-  /// options card, which reads its own keys.
+  /// card up, which reads its own keys.
   public var cancelsWithEscape: Bool {
     if case .working = shown?.phase { return true }
     return false
@@ -114,44 +122,73 @@ public struct CommandProgressState: Equatable, Sendable {
   /// The answer card is up.
   public var isAnswering: Bool { answerShown != nil }
 
-  /// A card is up (options or answer): the island takes the keyboard, and gives it back to the
-  /// target's field once the card is gone.
-  public var takesKeyboard: Bool { isChoosing || isAnswering }
+  /// The compose card is up: its field, attachments and keys drive it.
+  public var isComposing: Bool {
+    if case .compose = shown?.phase { return true }
+    return false
+  }
+
+  /// A card is up (options, answer or compose): the island takes the keyboard, and gives it back
+  /// to the target's field once the card is gone.
+  public var takesKeyboard: Bool { isChoosing || isAnswering || isComposing }
 
   /// A command shortcut's press capsule replaces what shows: an outcome (`done`, `copied`, a
-  /// notice or an answer card) gives way to it; a run working or its options card stays.
+  /// notice or an answer card) gives way to it; a run working, its options card or the compose
+  /// card asking for its text stays.
   public var givesWayToPress: Bool {
     switch shown?.phase {
     case .done, .copied, .notice, .answer: true
-    case .working, .choose, .writing, nil: false
+    case .working, .choose, .compose, .writing, nil: false
     }
   }
 
   /// A press on the island: what it asks the page for, and what the island shows after it.
-  /// Cancel while working or choosing, Open on a notice or an answer card, Change on a working
-  /// run with a values summary, Run and Edit (with the card's values) while choosing; any other
-  /// press changes nothing. Cancel, Open and Edit take the island away. Change keeps the run on screen until
-  /// the page shows its options; Run turns the card into the run it starts, until the page shows
-  /// that run's own progress.
+  /// Cancel while working, choosing or composing, Open on a notice or an answer card, Change on a
+  /// working run with a values summary, Run, Edit and Pick (with the card's values) while
+  /// choosing, Run and Open (with what was typed and attached, `compose`) while composing; any
+  /// other press changes nothing. Cancel, Open and Edit take the island away; Pick (the card's
+  /// values changed) leaves the card as it is. Change keeps the run on screen
+  /// until the page shows its options; Run turns the card into the run it starts, until the page
+  /// shows that run's own progress.
   public mutating func press(
-    _ action: CommandProgressActionEvent.Action, arguments: CommandArguments? = nil
+    _ action: CommandProgressActionEvent.Action, arguments: CommandArguments? = nil,
+    compose: CommandProgressActionEvent.Compose? = nil
   ) -> CommandProgressActionEvent? {
     guard let shown else { return nil }
-    let event = CommandProgressActionEvent(target: shown.target, action: action, arguments: nil)
+    let target = shown.target
+    let event = CommandProgressActionEvent(
+      target: target, action: action, arguments: nil, compose: nil)
     switch (action, shown.phase) {
-    case (.cancel, .working), (.open, .notice), (.open, .answer), (.cancel, .choose):
-      hide(target: shown.target)
+    case (.cancel, .working), (.open, .notice), (.open, .answer), (.cancel, .choose),
+      (.cancel, .compose):
+      hide(target: target)
       return event
     case (.change, .working(_, .some)):
       return event
     case (.run, .choose(let command, _, _)):
       guard let arguments else { return nil }
-      show(target: shown.target, phase: .working(command: command))
-      return CommandProgressActionEvent(target: shown.target, action: .run, arguments: arguments)
+      show(target: target, phase: .working(command: command))
+      return CommandProgressActionEvent(
+        target: target, action: .run, arguments: arguments, compose: nil)
+    case (.pick, .choose):
+      guard let arguments else { return nil }
+      return CommandProgressActionEvent(
+        target: target, action: .pick, arguments: arguments, compose: nil)
     case (.edit, .choose):
       guard let arguments else { return nil }
-      hide(target: shown.target)
-      return CommandProgressActionEvent(target: shown.target, action: .edit, arguments: arguments)
+      hide(target: target)
+      return CommandProgressActionEvent(
+        target: target, action: .edit, arguments: arguments, compose: nil)
+    case (.run, .compose(let command, _)):
+      guard let compose else { return nil }
+      show(target: target, phase: .working(command: command))
+      return CommandProgressActionEvent(
+        target: target, action: .run, arguments: nil, compose: compose)
+    case (.open, .compose):
+      guard let compose else { return nil }
+      hide(target: target)
+      return CommandProgressActionEvent(
+        target: target, action: .open, arguments: nil, compose: compose)
     default:
       return nil
     }

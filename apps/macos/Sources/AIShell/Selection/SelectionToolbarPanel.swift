@@ -20,6 +20,8 @@ import AppKit
 final class SelectionToolbarPanel: NSObject {
   var onAsk: (() -> Void)?
   var onCommand: ((CommandLaunch) -> Void)?
+  /// A value of command `id` changed in its options menu (``ToolbarOptionsContent/onPick``).
+  var onPick: ((String, CommandArguments) -> Void)?
 
   /// The transparent margin around the capsule.
   static let inset: CGFloat = 24
@@ -51,6 +53,7 @@ final class SelectionToolbarPanel: NSObject {
       self?.hide()
       self?.onCommand?(launch)
     }
+    options.onPick = { [weak self] id, values in self?.onPick?(id, values) }
     menus.onClose = { [weak self] in
       self?.activeChevron?.isActive = false
       self?.activeChevron = nil
@@ -308,8 +311,9 @@ enum SelectionToolbarIcons {
 }
 
 /// A panel that never takes the keyboard: clicks act on its buttons, keys stay with the app
-/// that has the selection.
-final class ToolbarWindow: NSPanel {
+/// that has the selection. Its glass keeps the capture toolbar's active edge all the same
+/// (``ActiveGlassPanel``).
+final class ToolbarWindow: ActiveGlassPanel {
   override var canBecomeKey: Bool { false }
   override var canBecomeMain: Bool { false }
 }

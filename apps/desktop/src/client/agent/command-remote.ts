@@ -2,12 +2,13 @@ import {
   createCommand,
   deleteCommand,
   listCommands,
+  rememberCommandArguments,
   reorderCommands,
   updateCommand,
   type AgentClientOptions,
 } from '@atd/agent-client';
 import type { CommandCreate, ServiceCommandFull } from '@atd/agent-contracts';
-import type { CommandDefinition } from './command-schema';
+import type { ArgumentValues, CommandDefinition } from './command-schema';
 
 /**
  * Maps a service command to the desktop editor shape (drops migratedAt, keeps pluginId and the
@@ -80,6 +81,16 @@ export async function reorderRemote(
 ): Promise<CommandDefinition[]> {
   const listed = await reorderCommands(options, { ids });
   return listed.commands.map(toDesktopCommand);
+}
+
+/** Remembers `values` as where command `id`'s next run starts, without running it. */
+export async function rememberRemote(
+  options: AgentClientOptions,
+  id: string,
+  values: ArgumentValues,
+): Promise<CommandDefinition> {
+  const remembered = await rememberCommandArguments(options, id, { arguments: values });
+  return toDesktopCommand(remembered.command);
 }
 
 /** revision 0 → POST; otherwise PUT with the expected live revision. */

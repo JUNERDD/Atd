@@ -52,6 +52,12 @@ final class Summoner {
         selectionWanted: selectionWanted))
     guard !steps.isEmpty else { return false }
     isSummoning = true
+    if steps.contains(where: { if case .captureTarget = $0 { true } else { false } }),
+      let frontmost = NSWorkspace.shared.frontmostApplication,
+      frontmost != NSRunningApplication.current
+    {
+      SelectionPresence.wake(pid: frontmost.processIdentifier)
+    }
     Task {
       defer { isSummoning = false }
       var selection = SummonSelection.unread

@@ -42,6 +42,9 @@ final class SelectionToolbarController {
   /// selection, launching the command as given; the toolbar and the menu are already hidden. A
   /// practice toolbar's commands never get here: they would run.
   var onCommand: ((CommandLaunch) -> Void)?
+  /// A value of command `id` changed in its options menu over another app's selection, to be
+  /// remembered for its next run; a practice toolbar's picks are not.
+  var onPick: ((String, CommandArguments) -> Void)?
 
   static let debounce: Duration = .milliseconds(150)
 
@@ -83,6 +86,9 @@ final class SelectionToolbarController {
       let practice = self?.practiceText != nil
       self?.dismiss()
       if !practice { self?.onCommand?(launch) }
+    }
+    panel.onPick = { [weak self] id, values in
+      if self?.practiceText == nil { self?.onPick?(id, values) }
     }
     listening.onChange = { [weak self] on in
       self?.hud.setListening(on)

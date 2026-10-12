@@ -9,11 +9,13 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
   public let target: String
   public let action: Action
   public let arguments: CommandArguments?
+  public let compose: Compose?
 
-  public init(target: String, action: Action, arguments: CommandArguments?) {
+  public init(target: String, action: Action, arguments: CommandArguments?, compose: Compose?) {
     self.target = target
     self.action = action
     self.arguments = arguments
+    self.compose = compose
   }
 
   public init(from decoder: any Decoder) throws {
@@ -23,6 +25,7 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     arguments = try container.optional(.arguments) {
       try container.value($0, CommandArguments.self)
     }
+    compose = try container.optional(.compose) { try container.value($0, Compose.self) }
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -30,12 +33,14 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     try container.encode(target, forKey: .target)
     try container.encode(action, forKey: .action)
     try container.encodeIfPresent(arguments, forKey: .arguments)
+    try container.encodeIfPresent(compose, forKey: .compose)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case target
     case action
     case arguments
+    case compose
   }
 
   public enum Action: String, Codable, Equatable, Sendable {
@@ -44,5 +49,49 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     case change
     case run
     case edit
+    case pick
+  }
+
+  public struct Compose: Codable, Equatable, Sendable {
+    public let text: String
+    public let files: [FileRef]
+
+    public init(text: String, files: [FileRef]) {
+      self.text = text
+      self.files = files
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      text = try container.string(.text, maxLength: 100_000)
+      files = try container.array(.files, of: FileRef.self, maxItems: 10)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case text
+      case files
+    }
+  }
+}
+
+/// Payload of the `commandOptions.picked` event.
+public struct CommandOptionsPickedEvent: Codable, Equatable, Sendable {
+  public let id: String
+  public let arguments: CommandArguments
+
+  public init(id: String, arguments: CommandArguments) {
+    self.id = id
+    self.arguments = arguments
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    id = try container.string(.id, minLength: 1, maxLength: 128)
+    arguments = try container.value(.arguments, CommandArguments.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case id
+    case arguments
   }
 }

@@ -48,6 +48,8 @@ final class IslandController: NSObject, NSWindowDelegate {
   private var exiting = false
   private var reportedVisible = false
   var dragStart: (mouse: NSPoint, anchor: NSPoint)?
+  /// The compose card's width and note height as last measured (``measureCompose``).
+  var composeMeasures = ComposeMeasureCache()
   private var observers: [NSObjectProtocol] = []
 
   override init() {
@@ -144,11 +146,22 @@ final class IslandController: NSObject, NSWindowDelegate {
     finish()
   }
 
-  /// Lets the window take the keyboard, and takes it, or no longer lets it; the owner hands the
-  /// keyboard back to the app it came from.
+  /// Lets the window take the keyboard, and takes it, or no longer lets it and gives it up; the
+  /// owner then focuses the field the keyboard goes back to.
+  ///
+  /// A key window stays key after it can no longer become key, and this one never activated Atd:
+  /// the app in front is already active, so activating it again moves nothing, and every key
+  /// press, a write's ⌘V included, would keep reaching the island. Ordering the window out and
+  /// straight back in, within one turn of the run loop, hands the keyboard back to that app's
+  /// key window with no visible change.
   func setKeyCapable(_ capable: Bool) {
     window.keyCapable = capable
-    if capable, window.isVisible { window.makeKey() }
+    if capable, window.isVisible {
+      window.makeKey()
+    } else if !capable, window.isKeyWindow, window.isVisible {
+      window.orderOut(nil)
+      window.orderFrontRegardless()
+    }
   }
 
   /// The text field typing into the card, while it has the keyboard.
@@ -224,7 +237,10 @@ final class IslandController: NSObject, NSWindowDelegate {
     }
   }
 
-  /// The same kind of content changes in place; the shape follows a change of size.
+  /// The same kind of content changes in place; the shape follows a change of size, on the
+  /// expand springs, or for the compose card, which resizes under the person's typing and
+  /// attaching, and the answer card, whose write actions follow the person's focus, without
+  /// bounce and with its content moving at its own size (``IslandChoreography/inPlace``).
   private func update(_ next: IslandContent, size measured: IslandMeasure) {
     let target = measured.size
     guard let index = model.layers.firstIndex(where: { $0.id == activeLayer }) else {
@@ -234,7 +250,9 @@ final class IslandController: NSObject, NSWindowDelegate {
     model.layers[index].limits = measured.limits
     guard target != size else { return }
     model.layers[index].rest = IslandMetrics.rest(target)
-    let resize = IslandChoreography.resize
+    let inPlace = next.kind == .compose || next.kind == .answer
+    model.layers[index].scales = !inPlace
+    let resize = inPlace ? IslandChoreography.inPlace : IslandChoreography.resize
     morph(
       to: target,
       motion: MiniPanelShapeMotion(
@@ -279,6 +297,7 @@ final class IslandController: NSObject, NSWindowDelegate {
     for index in model.layers.indices {
       model.layers[index].presence = MiniPanelPresence(
         shown: false, motion: IslandChoreography.content)
+      model.layers[index].scales = true
       if model.layers[index].content.kind == .choose, model.layers[index].card == nil {
         model.layers[index].card = leavingCard
       }

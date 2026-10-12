@@ -23,6 +23,7 @@ import { isImageMime, type CommandOutput } from '@atd/agent-contracts';
 import { ResourceImage } from './resource-image';
 import { ScreenshotField } from './screenshot-field';
 import { VisionNotice } from './vision-notice';
+import { useRememberedArguments } from './use-remembered-arguments';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 
 /** Runs the command from anywhere in the form, like a sheet's default button. */
@@ -58,6 +59,7 @@ export function CommandInput({
   const footerRef = useOverlayFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
+  useRememberedArguments(command.id, input.arguments);
   const [validate, setValidate] = useState(false);
   // A screenshot command runs with an image only; the field below says so while Run is off.
   const needsScreenshot = missingScreenshot(input);

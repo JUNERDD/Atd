@@ -89,6 +89,7 @@ export class NativeBridge {
     'miniPanel.state': new Set(),
     'task.open': new Set(),
     'commandProgress.action': new Set(),
+    'commandOptions.picked': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

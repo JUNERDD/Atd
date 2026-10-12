@@ -13,7 +13,11 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCalls } from './calls.ts';
-import { CommandArgumentsSchema, ShortcutCommandIntentSchema } from './command-options.ts';
+import {
+  CommandArgumentsSchema,
+  NativeCommandOptionsEvents,
+  ShortcutCommandIntentSchema,
+} from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
@@ -300,6 +304,7 @@ export const NativeEvents = {
     { additionalProperties: false },
   ),
   ...NativeTextEvents,
+  ...NativeCommandOptionsEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

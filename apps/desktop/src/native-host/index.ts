@@ -163,7 +163,12 @@ export async function installNativeHost(
     surface === 'panel' ? nativeMiniPanel(native, { commands: () => commands.list() }) : null;
   // Likewise the options the shell offers, which follow the commands and their remembered values.
   const commandOptions =
-    surface === 'panel' ? nativeCommandOptions(native, { commands: () => commands.list() }) : null;
+    surface === 'panel'
+      ? nativeCommandOptions(native, {
+          commands: () => commands.list(),
+          remember: (id, picked) => commands.rememberPicks(id, picked),
+        })
+      : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
@@ -265,6 +270,7 @@ export async function installNativeHost(
         }
         return requests.handle(request, 'page');
       }, listen),
+      rememberArguments: (commandId, values) => commands.remember(commandId, values),
       ...(surface === 'panel' ? { light: nativeLightCommand(native, requests) } : {}),
     },
     service: createServiceBridge(
