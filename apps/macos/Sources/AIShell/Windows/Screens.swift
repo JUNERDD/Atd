@@ -6,8 +6,7 @@ import AppKit
 enum Screens {
   /// The work area (`visibleFrame`) of the display under the cursor, or the nearest one.
   static func workAreaUnderCursor() -> ScreenRect {
-    let cursor = NSEvent.mouseLocation
-    return workArea(nearestTo: cursor.x, cursor.y)
+    displayUnderCursor().workArea
   }
 
   /// The full `frame` (menu bar and Dock included) of the display under the cursor, or the
@@ -19,12 +18,35 @@ enum Screens {
 
   /// The work area of the display holding most of `frame`, or the one nearest its center.
   static func workArea(containing frame: ScreenRect) -> ScreenRect {
+    display(containing: frame).workArea
+  }
+
+  /// A display a panel is placed on: its work area and its stable identifier, nil while the
+  /// display is gone (``fallback``).
+  struct Display {
+    let workArea: ScreenRect
+    let uuid: String?
+  }
+
+  /// The display under the cursor, or the nearest one.
+  static func displayUnderCursor() -> Display {
+    let cursor = NSEvent.mouseLocation
+    return display(screen(nearestTo: cursor.x, cursor.y))
+  }
+
+  /// The display holding most of `frame`, or the one nearest its center.
+  static func display(containing frame: ScreenRect) -> Display {
     let rect = NSRect(frame)
     let best = NSScreen.screens.max {
       area($0.frame.intersection(rect)) < area($1.frame.intersection(rect))
     }
-    if let best, area(best.frame.intersection(rect)) > 0 { return ScreenRect(best.visibleFrame) }
-    return workArea(nearestTo: rect.midX, rect.midY)
+    if let best, area(best.frame.intersection(rect)) > 0 { return display(best) }
+    return display(screen(nearestTo: rect.midX, rect.midY))
+  }
+
+  private static func display(_ screen: NSScreen?) -> Display {
+    guard let screen else { return Display(workArea: fallback, uuid: nil) }
+    return Display(workArea: ScreenRect(screen.visibleFrame), uuid: screen.displayUUID)
   }
 
   /// The full frame of the display holding most of `frame`, or the one nearest the cursor when
@@ -36,11 +58,6 @@ enum Screens {
     }
     if let best, area(best.frame.intersection(rect)) > 0 { return ScreenRect(best.frame) }
     return frameUnderCursor()
-  }
-
-  private static func workArea(nearestTo x: Double, _ y: Double) -> ScreenRect {
-    guard let screen = screen(nearestTo: x, y) else { return fallback }
-    return ScreenRect(screen.visibleFrame)
   }
 
   private static func frame(nearestTo x: Double, _ y: Double) -> ScreenRect {

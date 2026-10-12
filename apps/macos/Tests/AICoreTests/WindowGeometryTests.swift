@@ -56,15 +56,16 @@ struct WindowGeometryTests {
   func followWorkArea() {
     let before = ScreenRect(x: 0, y: 60, width: 1440, height: 815)
     let after = ScreenRect(x: 0, y: 100, width: 1440, height: 775)
+    let anchor = PanelAnchor(point: .bottomRight, workArea: before)
     let docked = PanelGeometry.dockedFrame(in: before)
-    let followed = PanelGeometry.follow(docked, docked: before, workArea: after)
+    let followed = PanelGeometry.follow(docked, anchor: anchor, workArea: after)
     #expect(followed.frame == PanelGeometry.dockedFrame(in: after))
-    #expect(followed.docked == after)
+    #expect(followed.anchor == PanelAnchor(point: .bottomRight, workArea: after))
 
     let moved = ScreenRect(x: 10, y: 20, width: 420, height: 580)
-    let kept = PanelGeometry.follow(moved, docked: before, workArea: after)
+    let kept = PanelGeometry.follow(moved, anchor: anchor, workArea: after)
     #expect(kept.frame == ScreenRect(x: 10, y: 100, width: 420, height: 580))
-    #expect(kept.docked == nil)
+    #expect(kept.anchor == nil)
   }
 
   @Test("The settings window centers inside the work area")

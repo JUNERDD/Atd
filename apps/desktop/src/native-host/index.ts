@@ -33,6 +33,7 @@ import { nativeMiniPanel } from './native-mini-panel';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
+import { nativeShellPreferences } from './native-shell-preferences';
 import { nativeHeldRequest } from './native-held-request';
 import { nativeLightCommand, type PageHolder } from './native-light-command';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
@@ -287,31 +288,7 @@ export async function installNativeHost(
       shortcut: latest.shortcuts.togglePanel,
       shortcutAvailable: settings.shell().shortcutAvailable,
     }),
-    setPinned: async (pinned) => {
-      const applied = await native.call('window.setPinned', { pinned });
-      settings.setShell(applied);
-      return applied.pinned;
-    },
-    setShowInDock: async (show) => {
-      const applied = await native.call('app.setShowInDock', { show });
-      settings.setShell({ showInDock: applied.show });
-      return applied.show;
-    },
-    setOpenAtLogin: async (open) => {
-      const applied = await native.call('app.setOpenAtLogin', { open });
-      settings.setShell({ openAtLogin: applied.open });
-      return applied.open;
-    },
-    setMiniPanelShown: async (shown) => {
-      const applied = await native.call('miniPanel.setShown', { shown });
-      settings.setShell({ miniPanelShown: applied.shown });
-      return applied.shown;
-    },
-    setMiniPanelOpenOn: async (openOn) => {
-      const applied = await native.call('miniPanel.setOpenOn', { openOn });
-      settings.setShell({ miniPanelOpenOn: applied.openOn });
-      return applied.openOn;
-    },
+    ...nativeShellPreferences(native, settings),
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
     screenshot: () => commands.screenshot(),

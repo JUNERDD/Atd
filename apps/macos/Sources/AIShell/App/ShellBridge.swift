@@ -77,6 +77,8 @@ final class ShellBridge {
     case .windowSetPinned(let params):
       shell.setPinned(params.pinned)
       return try Self.encode(WindowSetPinnedResult(pinned: params.pinned))
+    case .windowSetPlacement(let params):
+      return try Self.encode(shell.setPanelPlacement(params.placement))
     case .appState:
       return try Self.encode(shell.appState())
     case .appSetShowInDock(let params):

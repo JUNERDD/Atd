@@ -4,6 +4,60 @@
 
 import Foundation
 
+/// Result of the `app.setOpenAtLogin` call.
+public struct AppSetOpenAtLoginResult: Codable, Equatable, Sendable {
+  public let open: Bool
+
+  public init(open: Bool) {
+    self.open = open
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    open = try container.boolean(.open)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case open
+  }
+}
+
+/// Params of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownParams: Codable, Equatable, Sendable {
+  public let shown: Bool
+
+  public init(shown: Bool) {
+    self.shown = shown
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    shown = try container.boolean(.shown)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case shown
+  }
+}
+
+/// Result of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownResult: Codable, Equatable, Sendable {
+  public let shown: Bool
+
+  public init(shown: Bool) {
+    self.shown = shown
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    shown = try container.boolean(.shown)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case shown
+  }
+}
+
 /// Params of the `miniPanel.setOpenOn` call.
 public struct MiniPanelSetOpenOnParams: Codable, Equatable, Sendable {
   public let openOn: OpenOn
@@ -205,53 +259,3 @@ public struct UserAppCloseParams: Codable, Equatable, Sendable {
 
 /// Result of the `userApp.close` call.
 public typealias UserAppCloseResult = NativeEmpty
-
-/// Params of the `userApp.widgetPreview` call.
-public struct UserAppWidgetPreviewParams: Codable, Equatable, Sendable {
-  public let appId: String
-  public let widgetId: String
-  public let family: Family
-
-  public init(appId: String, widgetId: String, family: Family) {
-    self.appId = appId
-    self.widgetId = widgetId
-    self.family = family
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-    widgetId = try container.string(.widgetId, minLength: 1, maxLength: 64)
-    family = try container.value(.family, Family.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-    case widgetId
-    case family
-  }
-
-  public enum Family: String, Codable, Equatable, Sendable {
-    case systemSmall
-    case systemMedium
-    case systemLarge
-  }
-}
-
-/// Result of the `userApp.widgetPreview` call.
-public struct UserAppWidgetPreviewResult: Codable, Equatable, Sendable {
-  public let pngBase64: String
-
-  public init(pngBase64: String) {
-    self.pngBase64 = pngBase64
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    pngBase64 = try container.string(.pngBase64)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case pngBase64
-  }
-}

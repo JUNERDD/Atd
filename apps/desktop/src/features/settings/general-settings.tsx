@@ -6,6 +6,7 @@ import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
+import { PanelPlacementRow } from './panel-placement-row';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSwitchRow } from './settings-switch-row';
@@ -157,6 +158,7 @@ export function GeneralSettings({
                   note={settings.errors.pin}
                   onCheckedChange={(value) => void settings.changePinned(value)}
                 />
+                <PanelPlacementRow snapshot={snapshot} />
                 {/* The mini panel on the screen edge: its switch waits for the shell's first report. */}
                 <SettingsSwitchRow
                   id="settings-mini-panel"

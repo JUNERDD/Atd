@@ -140,10 +140,12 @@ struct BridgeOutboxTests {
       id: 7,
       value: try JSONValue(
         encoding: AppStateResult(
-          pinned: true, showInDock: false, openAtLogin: nil, widgetsAvailable: true)))
+          pinned: true, showInDock: false, openAtLogin: nil, widgetsAvailable: true,
+          panelPlacement: .center)))
     #expect(
       String(decoding: try JSONEncoder.sorted.encode(result), as: UTF8.self)
-        == #"{"id":7,"type":"result","value":{"openAtLogin":null,"pinned":true,"showInDock":false,"#
+        == #"{"id":7,"type":"result","value":{"openAtLogin":null,"panelPlacement":"center","#
+        + #""pinned":true,"showInDock":false,"#
         + #""widgetsAvailable":true}}"#
     )
   }

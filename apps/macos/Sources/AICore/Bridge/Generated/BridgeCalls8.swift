@@ -4,6 +4,80 @@
 
 import Foundation
 
+/// Result of the `commandProgress.show` call.
+public typealias CommandProgressShowResult = NativeEmpty
+
+/// Params of the `commandProgress.hide` call.
+public struct CommandProgressHideParams: Codable, Equatable, Sendable {
+  public let target: String
+
+  public init(target: String) {
+    self.target = target
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case target
+  }
+}
+
+/// Result of the `commandProgress.hide` call.
+public typealias CommandProgressHideResult = NativeEmpty
+
+/// Params of the `commandOptions.set` call.
+public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
+  public let commands: [Command]
+
+  public init(commands: [Command]) {
+    self.commands = commands
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    commands = try container.array(.commands, of: Command.self, maxItems: 256)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case commands
+  }
+
+  public struct Command: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let options: [CommandOption]
+    public let output: CommandOutputOption
+
+    public init(id: String, name: String, options: [CommandOption], output: CommandOutputOption) {
+      self.id = id
+      self.name = name
+      self.options = options
+      self.output = output
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      name = try container.string(.name, minLength: 1, maxLength: 256)
+      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+      output = try container.value(.output, CommandOutputOption.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case options
+      case output
+    }
+  }
+}
+
+/// Result of the `commandOptions.set` call.
+public typealias CommandOptionsSetResult = NativeEmpty
+
 /// Params of the `approval.request` call.
 public struct ApprovalRequestParams: Codable, Equatable, Sendable {
   public let serverId: String
@@ -195,48 +269,3 @@ public typealias AccessibilityRequestResult = NativeEmpty
 
 /// Params of the `screenRecording.request` call.
 public typealias ScreenRecordingRequestParams = NativeEmpty
-
-/// Result of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestResult = NativeEmpty
-
-/// Params of the `apps.pick` call.
-public typealias AppsPickParams = NativeEmpty
-
-/// Result of the `apps.pick` call.
-public struct AppsPickResult: Codable, Equatable, Sendable {
-  public let apps: [App]
-
-  public init(apps: [App]) {
-    self.apps = apps
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    apps = try container.array(.apps, of: App.self, maxItems: 20)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case apps
-  }
-
-  public struct App: Codable, Equatable, Sendable {
-    public let bundleId: String
-    public let name: String
-
-    public init(bundleId: String, name: String) {
-      self.bundleId = bundleId
-      self.name = name
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
-      name = try container.string(.name, minLength: 1, maxLength: 255)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case bundleId
-      case name
-    }
-  }
-}

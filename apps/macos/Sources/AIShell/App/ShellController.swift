@@ -300,7 +300,8 @@ public final class ShellController {
   func appState() -> AppStateResult {
     AppStateResult(
       pinned: isPinned, showInDock: defaults.bool(forKey: Self.showInDockKey),
-      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable)
+      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable,
+      panelPlacement: panelPlacementState())
   }
 
   /// A state event for every page, so a window opened later still learns the latest value.

@@ -36,6 +36,14 @@ export {
 export const MINI_PANEL_OPEN_ON = ['hover', 'click'] as const;
 export type MiniPanelOpenOn = (typeof MINI_PANEL_OPEN_ON)[number];
 
+/**
+ * Where a summon shows the task panel, on the display under the cursor: docked in the bottom-right
+ * corner of its work area (the default), centered in it, or where the user last left it on that
+ * display, centered until they have. The shell keeps it.
+ */
+export const PANEL_PLACEMENTS = ['bottomRight', 'center', 'lastPosition'] as const;
+export type PanelPlacement = (typeof PANEL_PLACEMENTS)[number];
+
 /** The selection toolbar before the service's settings load, as the service defaults it. */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
   enabled: true,
@@ -87,6 +95,11 @@ export interface SettingsSnapshot {
    * included; null until the shell reports it. Optional for test hosts, which read as not reported.
    */
   miniPanelOpenOn?: MiniPanelOpenOn | null;
+  /**
+   * Where summons show the panel (`PANEL_PLACEMENTS`); null until the shell reports it. Optional
+   * for test hosts, which read as not reported.
+   */
+  panelPlacement?: PanelPlacement | null;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */

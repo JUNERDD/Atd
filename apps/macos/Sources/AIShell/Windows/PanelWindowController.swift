@@ -12,8 +12,18 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   let panel: ShellPanel
   let host: WebViewHost
   private let defaults: UserDefaults
-  /// The work area the panel was last docked against; see `PanelGeometry.follow`.
-  private var dockedWorkArea: ScreenRect?
+  private let placements: PanelPlacementStore
+  /// The anchor the panel was last placed against, which it keeps to across display changes
+  /// while it stays there; see `PanelGeometry.follow`.
+  private var anchor: PanelAnchor?
+  /// The user is moving the panel: AppKit sent `windowWillMove`, which it sends when the user
+  /// starts a drag (on the title bar or a page drag region, `performDrag`); the shell's own
+  /// frame changes never set it (``placing``). Moves made while it is set are remembered as where
+  /// the user left the panel; programmatic placement, display changes and hiding clear it, as
+  /// does the first move once the mouse button is up.
+  private var userMoving = false
+  /// The shell itself is setting the frame, which never counts as the user's move.
+  private var placing = false
   /// Called with the new visibility after every show and hide.
   var onVisibilityChange: ((Bool) -> Void)?
   /// Called when the panel is hidden while it held key status, to pass focus on.
@@ -25,15 +35,18 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   init(host: WebViewHost, pinned: Bool, defaults: UserDefaults = .standard) {
     self.host = host
     self.defaults = defaults
-    let workArea = Screens.workAreaUnderCursor()
+    let placements = PanelPlacementStore(defaults: defaults)
+    self.placements = placements
+    let display = Screens.displayUnderCursor()
+    let placed = Self.summonFrame(on: display, size: Self.savedSize(defaults), placements)
     panel = ShellPanel(
-      contentRect: NSRect(PanelGeometry.dockedFrame(in: workArea, size: Self.savedSize(defaults))),
+      contentRect: NSRect(placed.frame),
       styleMask: [
         .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView, .nonactivatingPanel,
       ],
       backing: .buffered, defer: false)
     super.init()
-    dockedWorkArea = workArea
+    anchor = placed.anchor
     // The page's 52px header sits on this bar, so the traffic lights center on its controls.
     UnifiedTitleBar.apply(to: panel, identifier: "panel.titleBar")
     panel.isOpaque = false
@@ -46,7 +59,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.collectionBehavior = [.fullScreenNone, .moveToActiveSpace]
     panel.contentView = GlassBackground.make(content: host.container)
     panel.delegate = self
-    applyMinimumSize(workArea)
+    applyMinimumSize(display.workArea)
     setPinned(pinned)
     // Resident from launch: ordered in, invisible, not clickable.
     panel.alphaValue = 0
@@ -76,13 +89,23 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
 
   func restoreLevel(_ level: NSWindow.Level) { panel.level = level }
 
-  /// Re-docks at the bottom-right of the display under the cursor, keeping the user's size.
-  func dockAtCursor() {
-    let workArea = Screens.workAreaUnderCursor()
+  /// Where summons show the panel. A change applies from the next summon: a visible panel
+  /// stays where it is.
+  var placement: PanelPlacement {
+    get { placements.placement }
+    set { placements.placement = newValue }
+  }
+
+  /// Places the panel for a summon on the display under the cursor, keeping the user's size:
+  /// in the work area's bottom-right corner, its center, or where the user last left it on that
+  /// display (its center until they have), as ``placement`` says.
+  func placeForSummon() {
+    let display = Screens.displayUnderCursor()
     let size = panel.isZoomed ? Self.savedSize(defaults) : ScreenRect(panel.frame).size
-    applyMinimumSize(workArea)
-    panel.setFrame(NSRect(PanelGeometry.dockedFrame(in: workArea, size: size)), display: true)
-    dockedWorkArea = workArea
+    let placed = Self.summonFrame(on: display, size: size, placements)
+    applyMinimumSize(display.workArea)
+    place(placed.frame)
+    anchor = placed.anchor
   }
 
   func show() {
@@ -96,6 +119,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
 
   func hide() {
     let wasKey = panel.isKeyWindow
+    userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
     if wasKey { onGaveUpKey?() }
@@ -125,10 +149,24 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     return false
   }
 
-  /// Only an edge drag by the user replaces the remembered size.
+  /// Only an edge drag by the user replaces the remembered size; a drag on the left or top edge
+  /// moves the panel as well.
   func windowDidEndLiveResize(_ notification: Notification) {
     defaults.set(panel.frame.width, forKey: Self.widthKey)
     defaults.set(panel.frame.height, forKey: Self.heightKey)
+    rememberPosition()
+  }
+
+  func windowWillMove(_ notification: Notification) {
+    if !placing { userMoving = true }
+  }
+
+  /// AppKit may report a drag's last move after the button is released, so that move still
+  /// counts before the drag ends.
+  func windowDidMove(_ notification: Notification) {
+    guard userMoving else { return }
+    rememberPosition()
+    if NSEvent.pressedMouseButtons & 1 == 0 { userMoving = false }
   }
 
   func windowDidBecomeKey(_ notification: Notification) {
@@ -139,14 +177,42 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     host.setState(.windowActive(.init(active: false)))
   }
 
-  /// A display change: a panel still docked follows its corner, a moved one stays inside.
+  /// A display change: a panel still at its corner or center follows it, a moved one or one
+  /// shown where the user left it stays inside. Moves AppKit makes for the change are not the
+  /// user's.
   @objc private func screensChanged() {
+    userMoving = false
     let frame = ScreenRect(panel.frame)
     let workArea = Screens.workArea(containing: frame)
     applyMinimumSize(workArea)
-    let next = PanelGeometry.follow(frame, docked: dockedWorkArea, workArea: workArea)
-    dockedWorkArea = next.docked
-    if next.frame != frame { panel.setFrame(NSRect(next.frame), display: true) }
+    let next = PanelGeometry.follow(frame, anchor: anchor, workArea: workArea)
+    anchor = next.anchor
+    if next.frame != frame { place(next.frame) }
+  }
+
+  private func place(_ frame: ScreenRect) {
+    userMoving = false
+    placing = true
+    defer { placing = false }
+    panel.setFrame(NSRect(frame), display: true)
+  }
+
+  /// Records where the panel sits on the display holding most of it. A zoomed panel fills the
+  /// work area by the system's choice, not where the user put it.
+  private func rememberPosition() {
+    guard !panel.isZoomed else { return }
+    let frame = ScreenRect(panel.frame)
+    let display = Screens.display(containing: frame)
+    guard let uuid = display.uuid else { return }
+    placements.remember(PanelGeometry.offset(of: frame, in: display.workArea), onDisplay: uuid)
+  }
+
+  private static func summonFrame(
+    on display: Screens.Display, size: WindowSize, _ placements: PanelPlacementStore
+  ) -> (frame: ScreenRect, anchor: PanelAnchor?) {
+    PanelGeometry.summonFrame(
+      placements.placement, in: display.workArea, size: size,
+      remembered: display.uuid.flatMap(placements.position(onDisplay:)))
   }
 
   private func applyMinimumSize(_ workArea: ScreenRect) {

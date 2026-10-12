@@ -15,6 +15,7 @@
       "window.show",
       "window.hide",
       "window.setPinned",
+      "window.setPlacement",
       "app.state",
       "app.setShowInDock",
       "app.setOpenAtLogin",
@@ -214,6 +215,48 @@
               "properties": {
                 "pinned": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "window.setPlacement"
+            },
+            "params": {
+              "type": "object",
+              "required": ["placement"],
+              "properties": {
+                "placement": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "bottomRight"
+                    },
+                    {
+                      "type": "string",
+                      "const": "center"
+                    },
+                    {
+                      "type": "string",
+                      "const": "lastPosition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -3833,6 +3876,52 @@
       },
       "additionalProperties": false
     },
+    "WindowSetPlacementParams": {
+      "type": "object",
+      "required": ["placement"],
+      "properties": {
+        "placement": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "bottomRight"
+            },
+            {
+              "type": "string",
+              "const": "center"
+            },
+            {
+              "type": "string",
+              "const": "lastPosition"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowSetPlacementResult": {
+      "type": "object",
+      "required": ["placement"],
+      "properties": {
+        "placement": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "bottomRight"
+            },
+            {
+              "type": "string",
+              "const": "center"
+            },
+            {
+              "type": "string",
+              "const": "lastPosition"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "AppStateParams": {
       "type": "object",
       "properties": {},
@@ -3840,7 +3929,7 @@
     },
     "AppStateResult": {
       "type": "object",
-      "required": ["pinned", "showInDock", "openAtLogin", "widgetsAvailable"],
+      "required": ["pinned", "showInDock", "openAtLogin", "widgetsAvailable", "panelPlacement"],
       "properties": {
         "pinned": {
           "type": "boolean"
@@ -3860,6 +3949,22 @@
         },
         "widgetsAvailable": {
           "type": "boolean"
+        },
+        "panelPlacement": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "bottomRight"
+            },
+            {
+              "type": "string",
+              "const": "center"
+            },
+            {
+              "type": "string",
+              "const": "lastPosition"
+            }
+          ]
         }
       },
       "additionalProperties": false

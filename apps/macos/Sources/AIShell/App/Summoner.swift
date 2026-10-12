@@ -68,7 +68,7 @@ final class Summoner {
         case .captureTarget:
           target = await writeTargets.capture(after: selection)
         case .showPanel:
-          panel.dockAtCursor()
+          panel.placeForSummon()
           panel.show()
         case .deliverCommand(var launch):
           if let held {

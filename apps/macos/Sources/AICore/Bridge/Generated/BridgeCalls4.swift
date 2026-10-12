@@ -4,6 +4,95 @@
 
 import Foundation
 
+/// Result of the `capture` call.
+public enum CaptureResult: Codable, Equatable, Sendable {
+  case ok(Ok)
+  case notOk(NotOk)
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Discriminator.self)
+    switch try container.decode(Bool.self, forKey: .ok) {
+    case true: self = try .ok(Ok(from: decoder))
+    case false: self = try .notOk(NotOk(from: decoder))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .ok(let value): try value.encode(to: encoder)
+    case .notOk(let value): try value.encode(to: encoder)
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case ok
+  }
+
+  public struct Ok: Codable, Equatable, Sendable {
+    public let text: String
+    public let capturedAt: String
+
+    public init(text: String, capturedAt: String) {
+      self.text = text
+      self.capturedAt = capturedAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, true)
+      text = try container.string(.text, minLength: 1, maxLength: 100_000)
+      capturedAt = try container.string(.capturedAt, maxLength: 64)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(true, forKey: .ok)
+      try container.encode(text, forKey: .text)
+      try container.encode(capturedAt, forKey: .capturedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+      case text
+      case capturedAt
+    }
+  }
+
+  public struct NotOk: Codable, Equatable, Sendable {
+    public let reason: Reason
+
+    public init(reason: Reason) {
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, false)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(false, forKey: .ok)
+      try container.encode(reason, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case notTrusted
+      case noSelection
+      case tooLong
+    }
+  }
+}
+
+/// Params of the `clipboard.read` call.
+public typealias ClipboardReadParams = NativeEmpty
+
 /// Result of the `clipboard.read` call.
 public struct ClipboardReadResult: Codable, Equatable, Sendable {
   public let text: String
@@ -152,95 +241,5 @@ public struct ScreenshotEditParams: Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case resourceId
-  }
-}
-
-/// Result of the `screenshot.edit` call.
-public enum ScreenshotEditResult: Codable, Equatable, Sendable {
-  case ok(Ok)
-  case notOk(NotOk)
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(Bool.self, forKey: .ok) {
-    case true: self = try .ok(Ok(from: decoder))
-    case false: self = try .notOk(NotOk(from: decoder))
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .ok(let value): try value.encode(to: encoder)
-    case .notOk(let value): try value.encode(to: encoder)
-    }
-  }
-
-  private enum Discriminator: String, CodingKey {
-    case ok
-  }
-
-  public struct Ok: Codable, Equatable, Sendable {
-    public let file: FileRef
-    public let context: FileRef?
-    public let capturedAt: String
-
-    public init(file: FileRef, context: FileRef?, capturedAt: String) {
-      self.file = file
-      self.context = context
-      self.capturedAt = capturedAt
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.ok, true)
-      file = try container.value(.file, FileRef.self)
-      context = try container.nullable(.context) { try container.value($0, FileRef.self) }
-      capturedAt = try container.string(.capturedAt, maxLength: 64)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(true, forKey: .ok)
-      try container.encode(file, forKey: .file)
-      try container.encode(context, forKey: .context)
-      try container.encode(capturedAt, forKey: .capturedAt)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case ok
-      case file
-      case context
-      case capturedAt
-    }
-  }
-
-  public struct NotOk: Codable, Equatable, Sendable {
-    public let reason: Reason
-
-    public init(reason: Reason) {
-      self.reason = reason
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.ok, false)
-      reason = try container.value(.reason, Reason.self)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(false, forKey: .ok)
-      try container.encode(reason, forKey: .reason)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case ok
-      case reason
-    }
-
-    public enum Reason: String, Codable, Equatable, Sendable {
-      case cancelled
-      case notPermitted
-    }
   }
 }

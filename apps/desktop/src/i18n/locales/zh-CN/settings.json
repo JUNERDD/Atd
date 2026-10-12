@@ -60,6 +60,7 @@
       "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
       "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
+      "panelPlacement": "位置 显示位置 出现 打开 居中 中央 中间 右下角 角落 记住 上次 拖动 移动 显示器 屏幕 多屏 position center corner remember display",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
@@ -277,6 +278,16 @@
       "hints": {
         "hover": "指针移到屏幕边缘的迷你面板上就会展开。",
         "click": "点击迷你面板才会展开，指针经过时它只会稍稍鼓起。"
+      }
+    },
+    "panelPlacement": {
+      "title": "面板位置",
+      "description": "打开面板时，它在当前所用显示器上的显示位置。“上次位置”会按显示器分别记住。",
+      "label": "面板的显示位置",
+      "modes": {
+        "bottomRight": "右下角",
+        "center": "屏幕中央",
+        "lastPosition": "上次位置"
       }
     },
     "preferenceNotes": {

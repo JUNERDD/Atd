@@ -95,6 +95,14 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.alwaysOnTop',
   },
   {
+    id: 'window-panel-placement',
+    section: 'general',
+    anchor: 'settings-panel-placement',
+    label: 'shortcuts.panelPlacement.title',
+    description: 'shortcuts.panelPlacement.description',
+    keywords: 'search.keywords.panelPlacement',
+  },
+  {
     id: 'window-mini-panel',
     section: 'general',
     anchor: 'settings-mini-panel',

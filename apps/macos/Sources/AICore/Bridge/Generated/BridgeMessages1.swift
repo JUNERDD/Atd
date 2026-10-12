@@ -38,6 +38,7 @@ public enum NativeCall: Equatable, Sendable {
   case windowShow(WindowShowParams)
   case windowHide(WindowHideParams)
   case windowSetPinned(WindowSetPinnedParams)
+  case windowSetPlacement(WindowSetPlacementParams)
   case appState(AppStateParams)
   case appSetShowInDock(AppSetShowInDockParams)
   case appSetOpenAtLogin(AppSetOpenAtLoginParams)
@@ -86,6 +87,7 @@ public enum NativeCall: Equatable, Sendable {
     case .windowShow: "window.show"
     case .windowHide: "window.hide"
     case .windowSetPinned: "window.setPinned"
+    case .windowSetPlacement: "window.setPlacement"
     case .appState: "app.state"
     case .appSetShowInDock: "app.setShowInDock"
     case .appSetOpenAtLogin: "app.setOpenAtLogin"

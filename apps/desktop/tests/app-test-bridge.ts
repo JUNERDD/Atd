@@ -65,6 +65,7 @@ export function installBridge(extras?: {
     pinned: true,
     showInDock: false,
     openAtLogin: null,
+    panelPlacement: 'bottomRight',
     shortcutAvailable: true,
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
@@ -231,16 +232,15 @@ export function installBridge(extras?: {
       };
     },
   };
-  const setPinned = vi.fn(async (pinned: boolean) => {
-    settings = { ...settings, pinned };
-    settingsListeners.forEach((listener) => listener(settings));
-    return pinned;
-  });
-  const setShowInDock = vi.fn(async (showInDock: boolean) => {
-    settings = { ...settings, showInDock };
-    settingsListeners.forEach((listener) => listener(settings));
-    return showInDock;
-  });
+  const shellSetter = <Key extends 'pinned' | 'showInDock' | 'panelPlacement'>(key: Key) =>
+    vi.fn(async (value: NonNullable<SettingsSnapshot[Key]>) => {
+      settings = { ...settings, [key]: value };
+      settingsListeners.forEach((listener) => listener(settings));
+      return value;
+    });
+  const setPinned = shellSetter('pinned');
+  const setShowInDock = shellSetter('showInDock');
+  const setPanelPlacement = shellSetter('panelPlacement');
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
@@ -262,6 +262,7 @@ export function installBridge(extras?: {
     })),
     setPinned,
     setShowInDock,
+    setPanelPlacement,
     setOpenAtLogin: vi.fn(async (_open: boolean) => false),
     show: vi.fn(async () => {}),
     hide,
@@ -345,5 +346,5 @@ export function installBridge(extras?: {
       onOpenSection: () => () => {},
     },
   };
-  return { api, setPinned, hide, open, openCommand, askSelection };
+  return { api, setPinned, setPanelPlacement, hide, open, openCommand, askSelection };
 }

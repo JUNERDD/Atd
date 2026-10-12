@@ -23,6 +23,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "window.hide": call = try .windowHide(container.value(.params, WindowHideParams.self))
       case "window.setPinned":
         call = try .windowSetPinned(container.value(.params, WindowSetPinnedParams.self))
+      case "window.setPlacement":
+        call = try .windowSetPlacement(container.value(.params, WindowSetPlacementParams.self))
       case "app.state": call = try .appState(container.value(.params, AppStateParams.self))
       case "app.setShowInDock":
         call = try .appSetShowInDock(container.value(.params, AppSetShowInDockParams.self))

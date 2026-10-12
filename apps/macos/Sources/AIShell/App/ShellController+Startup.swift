@@ -15,7 +15,7 @@ extension ShellController {
       // The hidden page can focus its composer before settings arrive. A toggle would hide
       // that key panel again; launch explicitly shows it. An already open guide stays in front.
       if !panel.isVisible, onboarding.host == nil {
-        panel.dockAtCursor()
+        panel.placeForSummon()
         showPanel()
       }
     case nil:
