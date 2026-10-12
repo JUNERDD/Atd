@@ -12,14 +12,15 @@ import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
 import { withCanonicalShortcut } from './shortcuts.js';
 import { CommandStore } from './store.js';
-import { validateCommandShape } from './templates.js';
+import { validateCommandSave } from './templates.js';
 import { createDetail, updateDetail } from './tool-detail.js';
 
 /**
  * The `command` tool: the Agent lists, reads and saves the user's saved commands in the service
  * command store (`commands.json`, the store behind `/v1/commands`). list/get are read-only;
- * every save is confirmed through the gate (`{ tool: 'command' }`) after it validated, so the
- * user approves exactly what will be stored. The argument shape (`operation`, `commandId`,
+ * every save is confirmed through the gate (`{ tool: 'command' }`) after it validated
+ * (`validateCommandSave`), so the user approves exactly what will be stored, where its answer goes
+ * included. The argument shape (`operation`, `commandId`,
  * `expectedRevision`, `fields`) is the one the desktop transcript labels rows by.
  */
 
@@ -28,28 +29,38 @@ const Fields = ServiceCommandFullSchema.properties;
 /** The stored instructions field, described for the model that writes it. */
 const InstructionsField = {
   ...Fields.instructions,
-  description: `The prompt the command runs. It may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters, and these tokens, each after a space or at the start: /skill:<name> loads that skill, @agent:<name> allows that subagent, @mcp:<serverId> suggests that MCP server's tools, @task:<taskId> includes an excerpt of that conversation. At most ${MAX_RUN_SKILLS} skills and ${MAX_RUN_REFERENCES} other tokens.`,
+  description: `The prompt the command runs. It may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters. A variable it uses must have a value on every run, or the run stops to ask for it ({{files}} needs an attached file each time), so the text the command works on goes in {{input}} alone, which input.source fills; never write a fallback order between variables. It may also carry these tokens, each after a space or at the start: /skill:<name> loads that skill, @agent:<name> allows that subagent, @mcp:<serverId> suggests that MCP server's tools, @task:<taskId> includes an excerpt of that conversation. At most ${MAX_RUN_SKILLS} skills and ${MAX_RUN_REFERENCES} other tokens.`,
 };
 
 /** The input field, described for the model that writes it. */
 const InputField = {
   ...Fields.input,
   description:
-    'Where a run takes its input. source: manual (typed text), selection (text selected in another app), clipboard, screenshot (an image the user captures when the command runs; it needs files: true, and the image reaches the model as image input) or none. required: the user must supply text before running. files, selection and clipboard enable file attachments and the {{files}}, {{selection}} and {{clipboard}} variables.',
+    'Where a run takes its input. source: manual (text the user types in the panel), selection (text selected in another app), clipboard, screenshot (an image the user captures when the command runs; it needs files: true, and the image reaches the model as image input) or none. Use selection for a command that works on text the user points at, such as translating, rewriting or explaining it; manual is for text the user writes for the command, and a manual required input always opens the panel to ask for it, also from a shortcut or the toolbar. required: the user must supply text before running. files, selection and clipboard enable file attachments and the {{files}}, {{selection}} and {{clipboard}} variables.',
 };
 
 /** The reasoning level field, described for the model that writes it. */
 const ThinkingLevelField = Type.Optional({
   ...Fields.thinkingLevel,
   description:
-    "How much the model reasons before it answers when the command runs, whichever model runs it: inherit uses the connection's default level; off, minimal, low, medium, high, xhigh and max ask for that level, which the run lowers to what the model supports. Lower is faster and cheaper: off suits simple text transforms such as translating or polishing; analysis such as reviewing code warrants more. Omit it to keep the current level; a new command inherits.",
+    "How much the model reasons before it answers when the command runs, whichever model runs it: inherit uses the connection's default level; off, minimal, low, medium, high, xhigh and max ask for that level, which the run lowers to what the model supports. Lower is faster and cheaper, higher more thorough. Set it only when the user asks for a level; omit it to keep the current level, and a new command inherits.",
+});
+
+/** The output field, described for the model that writes it. */
+const OutputField = Type.Optional({
+  ...Fields.output,
+  description:
+    "What happens with the answer when a run finishes; it always also stays in the conversation. action: panel (only the conversation), replaceSelection (written over the selected text), insertAfterSelection (written right after it), insertAtCursor (typed at the cursor of the app the command ran from) or copy (put on the clipboard). replaceSelection and insertAfterSelection need a command that reads the selection (input.source selection or input.selection true). Write-backs apply to runs from the command's shortcut or the selection toolbar; a command that reads the selection, run from its shortcut with nothing selected, asks the user for the text and puts an answer meant for the selection at the cursor, and where the app cannot take text the answer shows in a card to copy. review: for the three write-backs, true holds the answer in the conversation until the user applies it, so runs from the shortcut or the toolbar open the panel instead of writing the answer back in place; leave it false unless the user asks to check answers before they land. Omit output to keep the current one; a new command keeps the answer in the conversation. A save whose output acts on the selection of a command that does not read it is refused, also when an input change strands the stored output, so send output whenever you change input.",
 });
 
 /**
- * What the Agent may author; identity, enabled state, model, placement and output stay with the
- * stored command: a create takes the default placement of its input source and the default
- * output, an update keeps the current ones. The model is the user's choice in Settings, but the
- * reasoning level is a property of the task the command does, so the Agent may set it.
+ * What the Agent may author; identity, enabled state, model and placement stay with the stored
+ * command: a create takes the default placement of its input source, an update keeps the current
+ * one. The output is the Agent's to set because where the answer goes is part of what the user
+ * asks a command to do; an omitted output keeps the stored one (the default for a create), and a
+ * save refuses an output the input cannot serve (`validateCommandSave`) instead of resetting it.
+ * The model is the user's choice in Settings, but the reasoning level is a property of the task
+ * the command does, so the Agent may set it.
  */
 const CommandFieldsSchema = Type.Object(
   {
@@ -57,6 +68,7 @@ const CommandFieldsSchema = Type.Object(
     description: Fields.description,
     instructions: InstructionsField,
     input: InputField,
+    output: OutputField,
     parameters: Fields.parameters,
     tools: Fields.tools,
     memory: Fields.memory,
@@ -122,7 +134,7 @@ export const CommandToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions carry variables and /skill:, @agent:, @mcp: and @task: tokens (see the instructions field); a command has no separate skill or subagent setting. A save may set the command's global shortcut; one already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
+  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions carry variables and /skill:, @agent:, @mcp: and @task: tokens (see the instructions field); a command has no separate skill or subagent setting. A save may set where the answer goes (see the output field) and the command's global shortcut; a shortcut already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
 
 /** The save result the model reads; a shortcut adds where the user sees whether it registered. */
 function savedResult(saved: ServiceCommandFull): string {
@@ -178,7 +190,7 @@ async function save(store: CommandStore, call: SaveCall, approve: ApproveSave) {
   const next = withCanonicalShortcut(
     parse(ServiceCommandFullSchema, { ...previous, ...call.fields }),
   );
-  validateCommandShape(next);
+  validateCommandSave(next);
   await store.assertShortcutFree(next);
   await approve({
     title: `Update the command "${next.name}"?`,

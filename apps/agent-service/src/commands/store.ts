@@ -21,7 +21,7 @@ import { LedgerNotFound } from '../ledger.js';
 import { SettingsStore } from '../settings/store.js';
 import { withoutLegacySelection } from './legacy-selection.js';
 import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
-import { validateCommandShape } from './templates.js';
+import { validateCommandSave } from './templates.js';
 
 /** The command store file; its path and format are persisted data and stay fixed. */
 function commandsFile(dataDir: string): string {
@@ -181,8 +181,8 @@ export class CommandStore {
 
   /**
    * The command a create would store: defaults filled, identity assigned (a draft without `id`
-   * gets a fresh one), shape and templates validated. A draft without a placement gets the
-   * default of its input source. Throws TypeError on invalid drafts.
+   * gets a fresh one), shape, templates and output validated (`validateCommandSave`). A draft
+   * without a placement gets the default of its input source. Throws TypeError on invalid drafts.
    */
   static compose(draft: CommandCreate): ServiceCommandFull {
     const input: CommandInput = draft.input ?? {
@@ -213,7 +213,7 @@ export class CommandStore {
         migratedAt: null,
       }),
     );
-    validateCommandShape(full);
+    validateCommandSave(full);
     return full;
   }
 
@@ -249,7 +249,7 @@ export class CommandStore {
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
     command = withCanonicalShortcut(withoutLegacySelection(command));
-    validateCommandShape(command);
+    validateCommandSave(command);
     return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);
       const live = data.commands.find((item) => item.id === id);

@@ -1,13 +1,17 @@
-import type {
-  CommandInput,
-  CommandParameter,
-  CommandThinkingLevel,
-  ServiceCommandFull,
+import {
+  writesBack,
+  type CommandInput,
+  type CommandOutput,
+  type CommandOutputAction,
+  type CommandParameter,
+  type CommandThinkingLevel,
+  type ServiceCommandFull,
 } from '@atd/agent-contracts';
 
 /**
  * What the user approves when the Agent saves a command: every authored field for a create, a
- * change summary for an update.
+ * change summary for an update. Both say where the answer goes, so a write-back is approved
+ * knowingly.
  */
 
 const DETAIL_LIMIT = 2000;
@@ -21,6 +25,14 @@ const INPUT_SOURCES = {
   none: 'no text',
 } as const;
 
+const OUTPUT_ACTIONS = {
+  panel: 'kept in the conversation',
+  replaceSelection: 'written over the selected text',
+  insertAfterSelection: 'inserted after the selected text',
+  insertAtCursor: 'inserted at the cursor',
+  copy: 'copied to the clipboard',
+} as const satisfies Record<CommandOutputAction, string>;
+
 function clip(value: string, limit: number): string {
   return value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
 }
@@ -33,6 +45,11 @@ function inputSummary(input: CommandInput): string {
     ...(input.selection && input.source !== 'selection' ? ['selected text'] : []),
     ...(input.clipboard && input.source !== 'clipboard' ? ['clipboard'] : []),
   ].join(' · ');
+}
+
+function outputSummary(output: CommandOutput): string {
+  const where = OUTPUT_ACTIONS[output.action];
+  return writesBack(output.action) && output.review ? `${where} · after you review it` : where;
 }
 
 function parameterLine(parameter: CommandParameter): string {
@@ -57,6 +74,7 @@ export function createDetail(command: ServiceCommandFull): string {
       `Name: ${command.name}`,
       `Description: ${command.description || 'none'}`,
       `Input: ${inputSummary(command.input)}`,
+      `Answer: ${outputSummary(command.output)}`,
       `Shortcut: ${command.shortcut || 'none'}`,
       'Parameters:',
       ...(command.parameters.length
@@ -95,6 +113,8 @@ export function updateDetail(previous: ServiceCommandFull, next: ServiceCommandF
     lines.push(`Description: ${previous.description} → ${next.description}`);
   if (JSON.stringify(previous.input) !== JSON.stringify(next.input))
     lines.push(`Input: ${inputSummary(previous.input)} → ${inputSummary(next.input)}`);
+  if (outputSummary(previous.output) !== outputSummary(next.output))
+    lines.push(`Answer: ${outputSummary(previous.output)} → ${outputSummary(next.output)}`);
   if (previous.shortcut !== next.shortcut)
     lines.push(`Shortcut: ${previous.shortcut || 'none'} → ${next.shortcut || 'none'}`);
   if (JSON.stringify(previous.parameters) !== JSON.stringify(next.parameters))
