@@ -33,7 +33,7 @@ public enum InsertionTrace {
     public private(set) var span: Span
     public private(set) var anchor: Span?
     /// The field locations of the run's line breaks, counted from `span`'s start as
-    /// ``PasteProgress`` counts the text (a "\r\n" once).
+    /// a field stores the text (a "\r\n" once).
     public private(set) var breaks: Set<Int>
 
     /// The run of `text`, confirmed in when the caret moved from `start` to `end`.
@@ -68,7 +68,7 @@ public enum InsertionTrace {
   }
 
   /// The last visible character of `text` when its end sits at `end`: trailing line breaks are
-  /// stepped over (a "\r\n" counted once, as ``PasteProgress`` counts it), since a break's bounds
+  /// stepped over (a "\r\n" counted once, as a field stores it), since a break's bounds
   /// say nothing about where the glyphs end. Nil when `text` is only line breaks.
   public static func anchor(of text: String, endingAt end: Int) -> Span? {
     var breaks = 0

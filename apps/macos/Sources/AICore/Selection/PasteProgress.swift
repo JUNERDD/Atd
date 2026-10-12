@@ -5,12 +5,14 @@
 /// in before the target pasted it makes that ⌘V paste the next chunk instead, dropping text.
 ///
 /// A paste replaces the field's selection, so a chunk goes in at the selection's start, or at its
-/// end for `afterSelection`, which collapses the selection there first; the caret then sits at
-/// least the chunk's length further on. "At least" admits what a field adds on its own, such as
-/// smart spacing; the next chunk goes in wherever the caret actually is. A field without a
-/// readable caret gets the text in one paste (``TypingPace``). How long a chunk may take to show
-/// in is ``TypingPace/confirmationLimit(for:pastedAt:)``, so a slow field cannot hold the write
-/// past its deadline.
+/// end for `afterSelection`, which collapses the selection there first, and a field handles a ⌘V
+/// in one edit: the caret moving past that point at all proves the chunk went in. How far it
+/// moves is the field's own business: a rich editor merges a run of line breaks into one
+/// paragraph break or turns Markdown into formatting, so the text can come in shorter than it was
+/// pasted, and a field may add smart spacing; the next chunk goes in wherever the caret actually
+/// is. A field without a readable caret gets the text in one paste (``TypingPace``). How long a
+/// chunk may take to show in is ``TypingPace/confirmationLimit(for:pastedAt:)``, so a slow field
+/// cannot hold the write past its deadline.
 public struct PasteProgress: Equatable, Sendable {
   /// Where the next chunk goes in, in UTF-16 units.
   public private(set) var caret: Int
@@ -22,15 +24,10 @@ public struct PasteProgress: Equatable, Sendable {
     caret = mode == .afterSelection ? location + length : location
   }
 
-  /// The fewest UTF-16 units `chunk` moves the caret: its length, with each "\r\n" counted once,
-  /// since a field may store it as a single line break. At least 1 for a non-empty chunk.
-  public static func minimumAdvance(of chunk: String) -> Int {
-    chunk.utf16.count - chunk.reduce(0) { $1 == "\r\n" ? $0 + 1 : $0 }
-  }
-
-  /// The caret location at or past which `chunk`, pasted next, is in.
+  /// The caret location at or past which `chunk`, pasted next, is in: any move past where it goes
+  /// in, since a pasted chunk always adds at least one unit.
   public func threshold(for chunk: String) -> Int {
-    caret + Self.minimumAdvance(of: chunk)
+    caret + (chunk.isEmpty ? 0 : 1)
   }
 
   /// Takes `chunk` as in when the caret, now at `location`, reached its threshold, and moves the

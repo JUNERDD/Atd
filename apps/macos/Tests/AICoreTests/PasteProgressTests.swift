@@ -14,32 +14,23 @@ struct PasteProgressTests {
     #expect(PasteProgress(selection: 15, length: 0, mode: .afterSelection).caret == 15)
   }
 
-  @Test("A chunk moves the caret by its UTF-16 length, a CRLF counted as one line break")
-  func minimumAdvance() {
-    #expect(PasteProgress.minimumAdvance(of: "he") == 2)
-    #expect(PasteProgress.minimumAdvance(of: "👨‍👩‍👧") == 8)
-    #expect(PasteProgress.minimumAdvance(of: "e\u{301}") == 2)
-    #expect(PasteProgress.minimumAdvance(of: "a\r\n") == 2)
-    #expect(PasteProgress.minimumAdvance(of: "\r\n") == 1)
-    #expect(PasteProgress.minimumAdvance(of: "\n") == 1)
-  }
-
-  @Test("A chunk is in only once the caret passed it; the next one starts where the caret is")
+  @Test("A chunk is in once the caret moved past where it went in; the next starts at the caret")
   func confirmation() {
     var progress = PasteProgress(selection: 10, length: 0, mode: .cursor)
-    #expect(progress.threshold(for: "he") == 12)
+    #expect(progress.threshold(for: "he") == 11)
     let atStart = progress.confirm("he", caretAt: 10)
     #expect(!atStart)
-    let partway = progress.confirm("he", caretAt: 11)
-    #expect(!partway)
     #expect(progress.caret == 10)
     let reached = progress.confirm("he", caretAt: 12)
     #expect(reached)
     #expect(progress.caret == 12)
+    // A rich editor that merged "\n\n" into one paragraph break: shorter, but in.
+    let merged = progress.confirm("a\n\nb", caretAt: 15)
+    #expect(merged)
     // A field that added a space of its own: the next chunk goes in after it.
-    let spaced = progress.confirm("ll", caretAt: 15)
+    let spaced = progress.confirm("ll", caretAt: 18)
     #expect(spaced)
-    #expect(progress.threshold(for: "o") == 16)
+    #expect(progress.threshold(for: "o") == 19)
   }
 
   @Test("A selection or the arrow that collapses it never passes for a pasted chunk")
