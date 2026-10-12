@@ -31,11 +31,12 @@ struct MiniPanelGeometryTests {
   func capsuleHeight() {
     #expect(MiniPanelMetrics.capsuleHeight(hasCommands: false) == 157)
     #expect(MiniPanelMetrics.capsuleHeight(hasCommands: true) == 193)
-    #expect(MiniPanelMetrics.flyoutHeight(rows: 1) == 40)
-    #expect(MiniPanelMetrics.flyoutHeight(rows: 20) == 236)
-    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 10) == 180)
-    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 200) == 228)
-    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 900) == 280)
+    #expect(MiniPanelMetrics.flyoutHeight(rows: 1) == 36)
+    #expect(MiniPanelMetrics.flyoutHeight(rows: 20) == 232)
+    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 10, rows: 1) == 180)
+    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 200, rows: 1) == 224)
+    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 200, rows: 20) == 226)
+    #expect(MiniPanelMetrics.flyoutWidth(textWidth: 900, rows: 1) == 280)
   }
 
   @Test("On the right edge the pill rests 4 pt and the capsule 8 pt inside, centered on the pill")
@@ -85,10 +86,10 @@ struct MiniPanelGeometryTests {
     let layout = Self.layout(commands: 3)
     let flyout = try #require(layout.flyout)
     let commands = layout.buttons[4]
-    #expect(flyout.y + 6 + 14 == commands.midY)
-    #expect(flyout.height == 6 * 2 + 3 * 28)
+    #expect(flyout.y + 4 + 14 == commands.midY)
+    #expect(flyout.height == 4 * 2 + 3 * 28)
     #expect(flyout.width == 200)
-    #expect(Self.layout(commands: 30).flyout?.height == 236)
+    #expect(Self.layout(commands: 30).flyout?.height == 232)
   }
 
   @Test("Near the top or bottom the pill keeps 8 pt and the larger shapes shift inward")

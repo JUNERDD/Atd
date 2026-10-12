@@ -78,7 +78,7 @@ struct MiniPanelMotionTests {
     #expect(Choreography.flyoutCloseDelay > 0)
   }
 
-  @Test("Touch, the snap and the drop keep motion-v2's values; the label hover-label-v2's")
+  @Test("Touch, the snap and the drop keep motion-v2's values; the label hover-label-v3's")
   func fixedMoments() {
     #expect(Choreography.bodyPressScale == 0.96)
     #expect(Choreography.bodyPress == .easeOut(0.08))
@@ -97,9 +97,10 @@ struct MiniPanelMotionTests {
     #expect(Choreography.labelText.delay == 0.04 && Choreography.labelText.exit == 0.1)
     #expect(Choreography.labelText.hiddenBlur == 3)
     #expect(Choreography.labelGlide == MiniPanelSpring(0.35, 0.30))
-    // The shape draws back once the text has faded, without overshoot.
-    #expect(Choreography.labelRetractDelay == Choreography.labelText.exit)
-    #expect(Choreography.labelRetract == MiniPanelSpring(0.28, 0))
+    // The bubble leaves with its text, without overshoot.
+    #expect(Choreography.labelLeave == MiniPanelSpring(0.2, 0))
+    // A card closing into the button leaves as a label does, its glass going once its fill has.
+    #expect(Choreography.flyoutFillLag == 0.06)
   }
 
   @Test("Reduce Motion keeps every timing, without bounce")

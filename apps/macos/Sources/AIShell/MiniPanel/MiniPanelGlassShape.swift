@@ -6,8 +6,9 @@ import SwiftUI
 /// the shape's outline and the content that follows it (``MiniPanelFollowEffect``) are interpolated
 /// from the same values on every frame and can never drift apart. The body's thickness axis (x,
 /// width and the corner) and length axis (y, height) can still move on their own springs: the
-/// animation splits the vector (``MiniPanelAxisAnimation``), for the clip and the content; the
-/// glass, whose shape `glassEffect(in:)` erases, moves as a whole on the length's.
+/// animation splits the vector (``MiniPanelAxisAnimation``) for the content; the glass, whose
+/// shape `glassEffect(in:)` erases, and the clip, which takes it erased alike
+/// (``View/clippedGlass(in:)``), move as a whole on the length's.
 nonisolated struct MiniPanelGlassRect: VectorArithmetic {
   var x = 0.0
   var y = 0.0
@@ -125,24 +126,23 @@ struct MiniPanelFollowEffect: GeometryEffect {
   }
 }
 
-/// The hover label's text following its capsule (``MiniPanelLabelPath``) as it grows out of a
-/// control, glides from control to control and draws back in: the same animated values as the
-/// label's outline, with the text laid out at the label's rest (`layout`).
+/// The hover label's text following its capsule (``MiniPanelLabelPath``) as it grows out of its
+/// anchor, glides from control to control and leaves: the same animated values as the label's
+/// outline, with the text laid out at the label's rest (`layout`).
 struct MiniPanelLabelFollowEffect: GeometryEffect {
-  var progress: Double
+  var fade: Double
   var rest: CGRect
-  var point: CGPoint
   let edge: MiniPanelEdge
   let layout: CGRect
   let scales: Bool
 
   var animatableData: MiniPanelLabelOutline.AnimatableData {
-    get { MiniPanelLabelOutline.data(progress: progress, rest: rest, point: point) }
-    set { (progress, rest, point) = MiniPanelLabelOutline.values(newValue, height: rest.height) }
+    get { MiniPanelLabelOutline.data(fade: fade, rest: rest) }
+    set { (fade, rest) = MiniPanelLabelOutline.values(newValue, height: rest.height) }
   }
 
   func effectValue(size: CGSize) -> ProjectionTransform {
-    let shape = MiniPanelLabelPath.rect(progress: progress, rest: rest, point: point, edge: edge)
+    let shape = MiniPanelLabelPath.rect(fade: fade, rest: rest, edge: edge)
     return MiniPanelFollowEffect.transform(
       following: shape, from: layout, size: size, scales: scales)
   }

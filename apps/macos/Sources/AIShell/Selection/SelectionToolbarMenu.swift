@@ -69,7 +69,8 @@ final class SelectionToolbarMenu: NSObject {
 
   /// The glass panel around the rows' list, which scrolls when the panel is shorter than the
   /// list. The list is clipped to the glass's own corners (the glass does not clip its content),
-  /// so a row scrolled half out of sight never shows past them.
+  /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's fixed
+  /// dark surface (``GlassSurface``), the fill drawn in the same rounded clip.
   private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSGlassEffectView {
     let layout = SelectionToolbarMenuLayout.self
     let list = MenuList(views: items)
@@ -91,16 +92,19 @@ final class SelectionToolbarMenu: NSObject {
     scroll.scrollerInsets = NSEdgeInsets(
       top: layout.cornerRadius, left: 0, bottom: layout.cornerRadius, right: 0)
     scroll.documentView = list
-    // A scroll view clips to its bounds; rounding its layer like the glass rounds that clip.
-    scroll.wantsLayer = true
-    scroll.clipsToBounds = true
-    scroll.layer?.cornerRadius = layout.cornerRadius
-    scroll.layer?.cornerCurve = .continuous
+    scroll.autoresizingMask = [.width, .height]
     // The rows are the menu's items, not a scroll area's.
     scroll.setAccessibilityElement(false)
+    // The surface is a plain view around the scroll view, not the scroll view itself: a scroll
+    // view clears its own layer's background whenever it draws, which dropped the fill and left
+    // the menus lighter than the capsule. It clips to its bounds, rounded by the surface like
+    // the glass.
+    let surface = NSView()
+    surface.clipsToBounds = true
+    surface.addSubview(scroll)
     let glass = NSGlassEffectView()
-    glass.cornerRadius = layout.cornerRadius
-    glass.contentView = scroll
+    GlassSurface.attach(glass, content: surface)
+    GlassSurface.shape(glass, content: surface, cornerRadius: layout.cornerRadius)
     glass.setAccessibilityElement(true)
     glass.setAccessibilityRole(.menu)
     glass.setAccessibilityLabel(label)

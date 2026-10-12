@@ -112,27 +112,29 @@ struct MiniPanelBodyFactors: Equatable {
   var shiftAnimation: Animation?
 }
 
-/// The commands card's glass: closed, it has shrunk to nothing in the Commands button's middle,
+/// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule,
 /// and it grows out of there to the card. Its glass stays on, shrunk to nothing, since switching a
 /// shape's glass off or on makes the glass container rebuild itself at once (measured: 4 to 12 ms
 /// of main thread, and dropped frames), while an empty shape costs next to nothing.
 struct MiniPanelCardShape: Equatable {
   var frame = CGRect.zero
+  /// Its fill and rows, under the glass: 0 while closed, trailing the glass on the way in and
+  /// leading it on the way out.
+  var opacity = 1.0
   var animation: Animation?
 }
 
-/// The hover label (hover-label-v2), in the glass container: where it rests, the control's middle
-/// it grows out of and draws back into, and how far out it is (``MiniPanelLabelPath``), drawn in
-/// a fixed lane that holds every label beside its shape. Its text rides inside it, centered and
-/// sized with it, and shows through its own presence. Like the card's, its glass stays on: drawn
-/// in, it is empty.
+/// The hover label (hover-label-v4), in the glass container: where it rests and how far out of
+/// sight it is (``MiniPanelLabelPath``), drawn in a fixed lane that holds every label beside its
+/// shape. Its text rides inside it, centered and sized with it, and shows through its own
+/// presence. Like the card's, its glass stays on: out of sight, it is empty.
 struct MiniPanelLabelShape: Equatable {
   var text = ""
   var rest = CGRect.zero
-  var point = CGPoint.zero
   var lane = CGRect.zero
-  var progress = 0.0
-  /// Out, or still drawing back: a label for another control glides from it, never grows anew.
+  /// How far out of sight it is: 0 at rest, 1 drawn in to nothing at its anchor.
+  var fade = 1.0
+  /// Out, or still leaving: a label for another control glides from it, never grows anew.
   var drawn = false
   var animation: Animation?
 }
