@@ -65,7 +65,7 @@ const CommandFieldsSchema = Type.Object(
       Type.String({
         maxLength: 100,
         description:
-          'Global shortcut as an Electron accelerator, e.g. CommandOrControl+Alt+S (Alt is Option on macOS). An empty string removes it; omit it to keep the current one.',
+          'Global shortcut as an Electron accelerator, e.g. CommandOrControl+Alt+S (Alt is Option on macOS), or on macOS a double-tap of one modifier: DoubleTap+Command, DoubleTap+Alt, DoubleTap+Control or DoubleTap+Shift (needs Accessibility access). An empty string removes it; omit it to keep the current one.',
       }),
     ),
   },

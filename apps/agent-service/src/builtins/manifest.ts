@@ -87,7 +87,8 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 2 says that where a command is offered and what happens with its answer are set in
   // Settings, not by the Agent, that the Agent may set a command's own reasoning level but never
   // its model, that a command without tools or references runs on the lightweight path, and that
-  // a write-back command shows its answer in a card where the selection cannot take text.
+  // a write-back command shows its answer in a card where the selection cannot take text, and
+  // that on macOS a shortcut may be a modifier's double-tap, which needs Accessibility.
   skill('create-command', 2, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
   ]),

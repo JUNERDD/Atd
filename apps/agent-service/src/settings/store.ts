@@ -171,11 +171,20 @@ export class SettingsStore {
   }
 
   /**
-   * The application shortcuts in effect, read from the file the live store writes atomically:
-   * for callers that load stores per call (the Agent's `command` tool) and hold no instance.
+   * What a command shortcut can collide with in the settings: the application shortcuts and the
+   * selection toolbar's activation in effect, read from the file the live store writes
+   * atomically, for callers that load stores per call (the Agent's `command` tool) and hold no
+   * instance.
    */
-  static async readShortcuts(root: string): Promise<ShortcutBindingsWire> {
-    return (await readStored(settingsFile(root)))?.settings.shortcuts ?? DEFAULT_SHORTCUTS;
+  static async readShortcutHolders(root: string): Promise<{
+    shortcuts: ShortcutBindingsWire;
+    selectionToolbar: SelectionToolbarSettings;
+  }> {
+    const settings = (await readStored(settingsFile(root)))?.settings;
+    return {
+      shortcuts: settings?.shortcuts ?? DEFAULT_SHORTCUTS,
+      selectionToolbar: settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR,
+    };
   }
 
   current(): SettingsResponse {

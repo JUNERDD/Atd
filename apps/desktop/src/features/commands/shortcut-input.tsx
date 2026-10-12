@@ -24,6 +24,7 @@ export function ShortcutInput({
         id="command-shortcut"
         keys={value ? shortcutKeys(value, platform) : []}
         recording={capture.isRecording}
+        doubleTap={platform === 'darwin'}
         emptyText={t('shortcut.recordShortcut')}
         aria-label={t('shortcut.record')}
         aria-describedby={error ? ERROR_ID : undefined}

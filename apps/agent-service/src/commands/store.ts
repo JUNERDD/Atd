@@ -218,7 +218,8 @@ export class CommandStore {
   }
 
   /**
-   * Throws a ConflictError when the app or another enabled command holds `command`'s shortcut;
+   * Throws a ConflictError when the app, the selection toolbar's double-tap or another enabled
+   * command holds `command`'s shortcut;
    * lets a caller refuse before asking the user to approve a save. Writes check it again.
    */
   async assertShortcutFree(
@@ -226,7 +227,8 @@ export class CommandStore {
     commands: ServiceCommand[] = this.data.commands,
   ): Promise<void> {
     const stored = commands.map((item) => parse(ServiceCommandFullSchema, item));
-    assertShortcutFree(command, stored, await SettingsStore.readShortcuts(this.dataDir));
+    const { shortcuts, selectionToolbar } = await SettingsStore.readShortcutHolders(this.dataDir);
+    assertShortcutFree(command, stored, shortcuts, selectionToolbar);
   }
 
   async create(draft: CommandCreate): Promise<ServiceCommandFull> {

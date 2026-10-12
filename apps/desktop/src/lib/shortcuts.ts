@@ -1,3 +1,5 @@
+import { doubleTapModifier } from '@atd/agent-contracts';
+
 const recordedKeyNames = new Map([
   ['comma', ','],
   ['period', '.'],
@@ -29,7 +31,11 @@ const hotkeyKeyNames = new Map(
 );
 const recordedModifiers = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
-/** Converts validated Electron accelerators for useHotkeys with physical keys and delimiter "|". */
+/**
+ * Converts validated Electron accelerators for useHotkeys with physical keys and delimiter "|".
+ * A double-tap (`DoubleTap+Command`) answers its modifier twice (`meta+meta`): only the shell
+ * detects double-taps, so no in-page binding uses one, and held-key displays read both caps.
+ */
 export function acceleratorToHotkey(accelerator: string, platform: string): string {
   const modifiers: Record<string, string> = {
     CommandOrControl: platform === 'darwin' ? 'meta' : 'ctrl',
@@ -39,6 +45,8 @@ export function acceleratorToHotkey(accelerator: string, platform: string): stri
     Alt: 'alt',
     Shift: 'shift',
   };
+  const tapped = doubleTapModifier(accelerator);
+  if (tapped) return `${modifiers[tapped]}+${modifiers[tapped]}`;
   return accelerator
     .split('+')
     .map((key) => modifiers[key] ?? hotkeyKeyNames.get(key) ?? key.toLowerCase())
@@ -92,7 +100,10 @@ export function recordedKeysToAccelerator(
   return [...modifiers, key].join('+');
 }
 
+/** The keycap labels of an accelerator; a double-tap shows its modifier twice (⌘ ⌘). */
 export function shortcutKeys(accelerator: string, platform: string): string[] {
+  const tapped = doubleTapModifier(accelerator);
+  if (tapped) return shortcutKeys(tapped, platform).flatMap((label) => [label, label]);
   const mac = platform === 'darwin';
   const labels: Record<string, string> = {
     CommandOrControl: mac ? '⌘' : 'Ctrl',

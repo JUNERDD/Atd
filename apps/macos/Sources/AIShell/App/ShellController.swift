@@ -158,6 +158,9 @@ public final class ShellController {
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
     panelHost.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
     trust.onChange = { [weak self] trusted in
+      // Double-tap shortcuts arm or disarm with the trust before the pages learn it, so the
+      // panel's next push reports them as they now are.
+      self?.registrar?.reapply()
       self?.broadcast(.accessibilityTrust(.init(trusted: trusted)))
       self?.toolbar.update()
     }
@@ -176,6 +179,7 @@ public final class ShellController {
   public func start(revealPanel: Bool) {
     launchPresentation = LaunchPresentation(revealPanel: revealPanel)
     registrar = HotKeyRegistrar(
+      canWatchKeyboard: { [trust] in trust.isTrusted },
       onPress: { [weak self] id in self?.shortcutHolds.pressed(id) },
       onRelease: { [weak self] id in self?.shortcutHolds.released(id) })
     statusItem = StatusItemController(

@@ -198,7 +198,9 @@
       },
       "keysLabel": "呼出按键",
       "errors": {
-        "keys": "请使用 ⌥ Option、⌘ Command 或 ⇧ Shift，可单独或组合使用。其他按键按住时会输入字符，⌃ Control 会让点击变成右键。"
+        "keys": "请使用 ⌥ Option、⌘ Command 或 ⇧ Shift，可单独或组合使用。其他按键按住时会输入字符，⌃ Control 会让点击变成右键。",
+        "heldByAction": "“{{action}}”已使用这个双击。请换其他按键或呼出方式。",
+        "heldByCommand": "命令“{{name}}”已使用这个双击。请换其他按键或呼出方式。"
       }
     },
     "hud": {
@@ -307,7 +309,8 @@
       "modifierRequired": "请包含 Command、Control 或 Alt 等修饰键。",
       "shortcutSave": "无法保存快捷键。",
       "defaultsRestore": "无法恢复默认快捷键。",
-      "windowPreferenceSave": "无法保存窗口偏好。"
+      "windowPreferenceSave": "无法保存窗口偏好。",
+      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。"
     }
   },
   "extensions": {

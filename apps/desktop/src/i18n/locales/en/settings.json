@@ -198,7 +198,9 @@
       },
       "keysLabel": "Activation keys",
       "errors": {
-        "keys": "Use ⌥ Option, ⌘ Command or ⇧ Shift, alone or together. Other keys would type while held, and ⌃ Control turns a click into a right-click."
+        "keys": "Use ⌥ Option, ⌘ Command or ⇧ Shift, alone or together. Other keys would type while held, and ⌃ Control turns a click into a right-click.",
+        "heldByAction": "“{{action}}” already uses this double‑tap. Choose other keys or another way to bring up the toolbar.",
+        "heldByCommand": "The command “{{name}}” already uses this double‑tap. Choose other keys or another way to bring up the toolbar."
       }
     },
     "hud": {
@@ -307,7 +309,8 @@
       "modifierRequired": "Include a modifier such as Command, Control, or Alt.",
       "shortcutSave": "The shortcut could not be saved.",
       "defaultsRestore": "Default shortcuts could not be restored.",
-      "windowPreferenceSave": "The window preference could not be saved."
+      "windowPreferenceSave": "The window preference could not be saved.",
+      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut."
     }
   },
   "extensions": {

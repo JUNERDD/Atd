@@ -153,6 +153,7 @@ export function CommandRow({
             <ShortcutRecorder
               keys={keys}
               recording={capture.isRecording}
+              doubleTap={platform === 'darwin'}
               emptyText={t('list.setShortcut')}
               aria-label={
                 capture.isRecording
@@ -171,8 +172,8 @@ export function CommandRow({
             />
           ) : keys.length ? (
             <KbdGroup>
-              {keys.map((key) => (
-                <Kbd key={key}>{key}</Kbd>
+              {keys.map((key, index) => (
+                <Kbd key={`${index}-${key}`}>{key}</Kbd>
               ))}
             </KbdGroup>
           ) : (

@@ -1,3 +1,4 @@
+import { doubleTapModifier } from '@atd/agent-contracts';
 import type { CommandLaunch } from '../client/agent/bridge';
 import { argumentOverrides } from '../client/agent/command-arguments';
 import { runsAsIs } from '../client/agent/command-prepare';
@@ -20,6 +21,10 @@ const REGISTRATION_ERRORS: Record<RegistrationFailure, string> = {
   unavailable: 'This global shortcut is unavailable. Choose another combination.',
   invalid: 'This shortcut cannot be registered on this Mac. Choose another combination.',
 };
+
+/** The shell watches the keyboard for a double-tap only with Accessibility access. */
+const DOUBLE_TAP_UNAVAILABLE =
+  'Double-tap shortcuts need Accessibility access. Allow Atd in System Settings › Privacy & Security › Accessibility.';
 
 export interface ShortcutSync {
   /**
@@ -61,6 +66,8 @@ export function nativeShortcuts(
   let pushed = '';
   /** The shell's answer to that set, shared with settings windows; null before the first. */
   let state: Extract<WindowMessage, { type: 'shortcutState' }> | null = null;
+  /** The shell's Accessibility trust, which a double-tap needs; null before it reports it. */
+  let trusted: boolean | null = null;
   messages.listen((message) => {
     if (message.type === 'shortcutStateRequest' && state) messages.post(state);
   });
@@ -83,13 +90,22 @@ export function nativeShortcuts(
     if (signature === pushed) return;
     const { results } = await bridge.call('shortcuts.set', params);
     pushed = signature;
+    const doubleTaps = new Set(
+      params.registrations.flatMap(({ id, accelerator }) =>
+        doubleTapModifier(accelerator) ? [id] : [],
+      ),
+    );
     const available: GlobalShortcutState = { panelAvailable: false, screenshotAvailable: false };
     for (const id of Object.keys(commands.errors)) delete commands.errors[id];
     for (const result of results) {
       if (result.id === PANEL_SHORTCUT_ID) available.panelAvailable = result.registered;
       else if (result.id === SCREENSHOT_SHORTCUT_ID)
         available.screenshotAvailable = result.registered;
-      else if (!result.registered) commands.errors[result.id] = REGISTRATION_ERRORS[result.reason];
+      else if (!result.registered)
+        commands.errors[result.id] =
+          result.reason === 'unavailable' && doubleTaps.has(result.id) && trusted === false
+            ? DOUBLE_TAP_UNAVAILABLE
+            : REGISTRATION_ERRORS[result.reason];
     }
     host.applied(available);
     state = { type: 'shortcutState', ...available, errors: { ...commands.errors } };
@@ -113,6 +129,16 @@ export function nativeShortcuts(
       running = false;
     }
   }
+
+  // A double-tap registers only with Accessibility access, which the shell re-applies as it
+  // changes; pushing again learns the new answer for the settings and the command errors.
+  bridge.on('accessibility.trust', ({ trusted: now }) => {
+    if (trusted !== null && trusted !== now) {
+      pushed = '';
+      void run();
+    }
+    trusted = now;
+  });
 
   // The target is the field the summon found focused in another app; a write-back output writes
   // the answer there once the run completes.

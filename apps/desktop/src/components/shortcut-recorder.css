@@ -7,12 +7,16 @@
   max-width: 100%;
 }
 /* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. Text
-   (Press keys, or an unset shortcut's prompt) takes the button's usual inset instead. */
+   (Press keys, or an unset shortcut's prompt) takes the button's usual inset instead, and wraps
+   in balanced lines where the column is narrower than it (a command row's shortcut column). */
 .shortcut-recorder-keys {
   height: auto;
   min-height: 28px;
   max-width: 100%;
   padding: 3px;
+  white-space: normal;
+  text-wrap: balance;
+  text-align: center;
 }
 .shortcut-recorder-keys:not(:has([data-slot='kbd-group'])) {
   padding-inline: 12px;

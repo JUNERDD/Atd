@@ -123,7 +123,11 @@ export class NativeCommands implements CommandCatalog {
     // service enforces), so only the user's own commands pass the desktop instruction checks.
     const old = this.commands.find((item) => item.id === command.id);
     if (!old?.pluginId) validateCommand(command);
-    if (command.shortcut) command.shortcut = parseAccelerator(command.shortcut, true, 'darwin');
+    // The shell registers command shortcuts globally, so one may be a modifier's double-tap.
+    if (command.shortcut)
+      command.shortcut = parseAccelerator(command.shortcut, true, 'darwin', {
+        allowDoubleTap: true,
+      });
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);
     // A new command is the last of the user's, ahead of the plugins' as the service lists it.
     const own = this.commands.filter((item) => !item.pluginId);
