@@ -54,20 +54,31 @@ function skill(name: string, version: number, history: string[]): BuiltinEntry {
  * shipped each.
  */
 export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
-  skill('create-skill', 5, [
+  // Version 6 asks, through ask_user with recommended options, only when a skill applies and the
+  // steps the request leaves open; saves one model-loadable SKILL.md by default and reports the
+  // defaults it assumed, since the write may not ask; and keeps the description's intent within
+  // the 250 characters the catalog shows.
+  skill('create-skill', 6, [
     '52ab561a0217ae8a36d38f325cac6ad50fef2e9a08ebe2b909cf583a49c1f4ae', // v0.1.0
     'd1a926174cf39e889bb828f533cd6e5025753dd5f5b58a907d1298207240a261', // v0.2.0
     '507a3dd5b0aaf1bad22e95b69a725d70f57c4be00dbd1c0517d1705a360a177b', // v0.3.0
     '2140d55c1734d3af7e809a67179880c6d4b202c5ec6911ceebb4219746940945', // v0.4.0
     '291d1d6f98f5267e6363b205e6e4cf27929929830374e1b1420135383b6dbb2f', // v0.7.0
   ]),
-  skill('create-subagent', 4, [
+  // Version 5 drops the subagent model, which runs never apply (children use the parent run's
+  // model with reasoning off), asks through ask_user what the subagent may do (its tools) and, when
+  // vague, when to delegate to it, and saves without a draft since the write always shows the file.
+  skill('create-subagent', 5, [
     'afcd5e17fcd95c7a24175b9ad23b1d34fa5d7ec91a2ba2535b3708d2f8a18716', // v0.1.0
     '8d375554aef2b10a951ae07c8fa1b08e8ca14a4099fbb160c61e74ccd43217f9', // v0.2.0
     '037b52d1b12f3eb384c20b4613592d4b166fd6cd6ab88ceb656cbfea5e472e5a', // v0.3.0
     'd9b472312c181712db6891c44c99eac33ba131b5f8fa9e65ed333321a510126a', // v0.7.0
   ]),
-  skill('create-mcp', 3, [
+  // Version 4 asks through ask_user only which server to add when the request names a capability
+  // and how a remote server signs in, never for commands, URLs or secrets; relies on configure_mcp
+  // asking the user to confirm every save; and tells the user which environment variable holds a
+  // bearer token and how to set it for the app.
+  skill('create-mcp', 4, [
     'a6b2db9e4c7a64c07d796c9a185485c3066891e5347cabca2c60e9493fe53a9a', // v0.1.0
     '0218f3a2554a829f7a8b88804ff7ed3b5735256d72b82cd9b1f79afe0d0f6917', // v0.2.0
     '077f36db740d59e1db3a53a8fd6a5e6edfd21a6d19b54c7d10bf136cc0c08588', // v0.3.0
@@ -79,24 +90,37 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   skill('grill-me', 1, [
     '67b57791c003d7a625a77ffa09057ddfbfe303a8c38bc2d5e5b310346e5c848f', // v0.1.0
   ]),
-  skill('create-memory', 3, [
+  // Version 4 saves the user's own wording at once and otherwise asks once, through ask_user,
+  // whether to save the proposed memory as written, reword it or not save it.
+  skill('create-memory', 4, [
     'f313bd78fc680783f18d1eacc387bb04acac33890c5d9e51121ab3f9a2ebdf2e', // v0.1.0
     '27713671066dcb1661f796a5bca20b420c6aff4890966a865ed188cac3d8cbc9', // v0.3.0
     '3dbd0e3190798314786266117667c12532b6ba366fb7746fc0e5ce702e6a0453', // v0.7.0
   ]),
-  // Version 2 says that where a command is offered and what happens with its answer are set in
-  // Settings, not by the Agent, that the Agent may set a command's own reasoning level but never
-  // its model, that a command without tools or references runs on the lightweight path, and that
-  // a write-back command shows its answer in a card where the selection cannot take text, and
-  // that on macOS a shortcut may be a modifier's double-tap, which needs Accessibility.
+  // Version 2 says that the Agent sets where a command's answer goes (its output) but leaves where
+  // it is offered and its model to Settings, that it may set a command's own reasoning level only
+  // when the user asks for one, that a command without tools or references runs on the
+  // lightweight path, and that a light command (a self-contained text transform) gets no tools or
+  // memory and short result-only instructions. Before saving, the Agent asks the user, through
+  // ask_user with recommended options, only about the few choices the request leaves open: where
+  // the text comes from, where the answer goes, and whether each named value is fixed or a choice.
+  // It relies on the run asking for the text when a selection command finds nothing selected,
+  // writing that answer at the cursor, and showing an answer the app cannot take in a card. On
+  // macOS a shortcut may be a modifier's double-tap, which needs Accessibility. The instructions
+  // take the text a command works on through {{input}} alone, since a used variable is required
+  // on every run. A parameter value is remembered once a run uses it or the user changes it in a
+  // command's options or input step, and changing a parameter's default replaces it.
   skill('create-command', 2, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
   ]),
-  // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent.
+  // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
+  // asks through ask_user only when an automation runs, what each run produces and, for work that
+  // writes or runs commands, what a run may do, and saves without a draft since the save confirms.
   skill('create-automation', 2, [
     'f390806f5e7adad1ce065e0c01c93ce4aaab1422bd7b776ffe6e05e1213f2fc1', // v0.7.0
   ]),
-  // Version 2 requires ChatGPT background consent for both model calls and app-started agents.
+  // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
+  // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
   skill('create-app', 2, [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
   ]),
