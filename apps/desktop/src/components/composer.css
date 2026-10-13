@@ -115,6 +115,10 @@
   line-height: 20px;
   scrollbar-width: none;
 }
+/* `scrollbar-width` reaches WebKit in 18.2; 18.0 and 18.1 hide the bar through the pseudo-element. */
+.composer-input .cm-editor .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
 .composer-input .cm-editor .cm-content {
   min-height: 20px;
   padding: 0;
