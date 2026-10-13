@@ -179,9 +179,8 @@ final class MiniPanelController {
     let widths = commands.map {
       Double(($0.name as NSString).size(withAttributes: [.font: font]).width.rounded(.up))
     }
-    flyoutWidth = MiniPanelMetrics.flyoutWidth(textWidth: widths.max() ?? 0)
-    let room =
-      flyoutWidth - (MiniPanelMetrics.cardPadding + MiniPanelMetrics.rowPadding) * 2
+    flyoutWidth = MiniPanelMetrics.flyoutWidth(textWidth: widths.max() ?? 0, rows: commands.count)
+    let room = MiniPanelMetrics.nameRoom(flyoutWidth: flyoutWidth, rows: commands.count)
     truncatedRows = Set(widths.indices.filter { widths[$0] > room })
     // Rows that fit have no scroll view, so nothing scrolls them.
     if commands.count <= MiniPanelMetrics.maxVisibleRows { model.flyoutScroll = 0 }

@@ -21,6 +21,7 @@ import {
   type WriteCall,
 } from './atd-agents/catalog-writes.js';
 import type { CapabilityRegistry } from './capabilities.js';
+import { catalogArtifactWrite } from './catalog-artifacts.js';
 import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
@@ -258,7 +259,10 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         // A wrapper that needs another cwd must derive from the context, as in
         // `Object.create(ctx, { cwd: { value } })`, never spread it.
         const call: WriteCall = { toolCallId: id, signal: signal ?? undefined, catalogWrite };
+        // A Personal skill or subagent it saves is recorded for the turn's artifact cards.
+        const saves = written === null ? null : await catalogArtifactWrite(written);
         const done = await calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
+        await saves?.record(host.sessions, id);
         // What an unattended run wrote is audited, so its folder automation skips its own output.
         if (written !== null && name !== 'read' && host.unattended()) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
@@ -305,7 +309,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
-    registerMcpCatalogTools(pi, host);
+    registerMcpCatalogTools(pi, host, authorize);
   };
 }
 

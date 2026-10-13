@@ -1,32 +1,48 @@
 import CoreGraphics
 
-/// The hover label's way in and out (hover-label-v2): it grows out of, and draws back into, the
-/// hovered control's middle, which lies inside the capsule (or the commands card for a row's
-/// label), so it never pokes past the capsule's rounded ends as a stub.
+/// The hover label's way in and out (hover-label-v4): as a popover does, it grows out of an
+/// anchor on its own side facing the capsule (or the commands card, for a row's label), level with
+/// its control, and leaves into that anchor. No part of it ever lies over the capsule, whose glass
+/// and base fill it would darken where the two overlap, and it never stretches across the gap.
 ///
-/// At `progress` 1 the label rests beside the capsule; at 0 it has shrunk to nothing at the
-/// control's middle. Its width and height shrink in step, so it stays a capsule all the way. Its
-/// side nearest the capsule holds its place while the rest draws in, and moves in only in the
-/// last part of the way (`1 − (1 − p)⁴` of its way out, so at half the way it has moved
-/// in only 1/16), so the label shrinks as one shape first and reaches the capsule glass, and
-/// merges with it, only as it is nearly gone. Values past 1 (an elastic entrance) grow it a
-/// little past its rest.
+/// `fade` is how far it is out of sight: 0 at rest, 1 gone. Its glass cannot fade in the glass
+/// container (an opacity or a transform on the glass itself is dropped), so its size carries the
+/// way out (``scale(fade:)``): it draws a little toward its anchor while its fill and text fade
+/// under the glass, by ``leaveShrink`` at most, and from ``leaveCollapse`` on, once the fill has
+/// mostly gone, its bare glass draws in to nothing at the anchor. The way in runs the same values
+/// backward, so its glass grows first and its fill follows; a fade below 0 (an elastic entrance)
+/// grows it a little past its rest, away from the capsule.
 public enum MiniPanelLabelPath {
-  /// The label at `progress`, resting at `rest`, converging into `point`, beside a shape on
-  /// `edge` of the work area (the label is on the shape's interior side). Works in any
-  /// coordinates whose x grows toward the right.
-  public static func rect(
-    progress p: Double, rest: CGRect, point: CGPoint, edge: MiniPanelEdge
-  ) -> CGRect {
-    let width = rest.width * max(p, 0)
-    let height = rest.height * max(p, 0)
-    let left = max(1 - p, 0)
-    let near = 1 - left * left * left * left
-    // The side facing the capsule: the right side of a label beside a right-edge capsule.
-    let restNear = edge == .right ? rest.maxX : rest.minX
-    let nearX = point.x + (restNear - point.x) * near
-    let midY = point.y + (rest.midY - point.y) * p
-    let minX = edge == .right ? nearX - width : nearX
-    return CGRect(x: minX, y: midY - height / 2, width: width, height: height)
+  /// How much smaller the label has drawn toward its anchor as its fill fades: a hint of where
+  /// it goes, not a way back.
+  public static let leaveShrink = 0.12
+  /// How far out of sight the glass starts to draw in to nothing, the fill mostly gone by then.
+  public static let leaveCollapse = 0.6
+
+  /// The label's size `fade` of its way out of sight, as a factor of its size at rest: drawing
+  /// toward its anchor by ``leaveShrink``, then, from ``leaveCollapse``, in to nothing
+  /// (smoothstep). Below 0 it grows past its rest by the same slope.
+  public static func scale(fade: Double) -> Double {
+    let f = min(fade, 1)
+    let t = min(max((f - leaveCollapse) / (1 - leaveCollapse), 0), 1)
+    return (1 - leaveShrink * f) * (1 - t * t * (3 - 2 * t))
+  }
+
+  /// Where a label resting at `rest` beside a shape on `edge` of the work area grows out of and
+  /// leaves into: the middle of its side facing that shape (the label is on the shape's interior
+  /// side). Works in any coordinates whose x grows toward the right.
+  public static func anchor(of rest: CGRect, edge: MiniPanelEdge) -> CGPoint {
+    CGPoint(x: edge == .right ? rest.maxX : rest.minX, y: rest.midY)
+  }
+
+  /// The label `fade` of its way out of sight, resting at `rest` beside a shape on `edge`: the
+  /// rest scaled by ``scale(fade:)`` about its ``anchor(of:edge:)``.
+  public static func rect(fade: Double, rest: CGRect, edge: MiniPanelEdge) -> CGRect {
+    let anchor = anchor(of: rest, edge: edge)
+    let scale = max(scale(fade: fade), 0)
+    let width = rest.width * scale
+    let height = rest.height * scale
+    let minX = edge == .right ? anchor.x - width : anchor.x
+    return CGRect(x: minX, y: anchor.y - height / 2, width: width, height: height)
   }
 }

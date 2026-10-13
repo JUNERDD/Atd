@@ -13,6 +13,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as calls from '../src/native-bridge/calls.ts';
+import * as commandOptions from '../src/native-bridge/command-options.ts';
 import * as contract from '../src/native-bridge/contract.ts';
 import * as userApp from '../src/native-bridge/user-app-contract.ts';
 
@@ -36,6 +37,10 @@ function schemaDocument() {
     FileRef: json(calls.NativeFileRefSchema),
     ShortcutRegistration: json(calls.ShortcutRegistrationSchema),
     ShortcutResult: json(calls.ShortcutResultSchema),
+    CommandOption: json(commandOptions.CommandOptionSchema),
+    CommandArguments: json(commandOptions.CommandArgumentsSchema),
+    CommandOutputAction: json(commandOptions.CommandOutputActionSchema),
+    CommandOutputOption: json(commandOptions.CommandOutputOptionSchema),
     SocketFrame: json(contract.SocketFrameSchema),
   };
   for (const [method, { params, result }] of Object.entries(calls.NativeCalls)) {

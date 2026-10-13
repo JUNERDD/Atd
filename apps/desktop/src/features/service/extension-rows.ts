@@ -18,10 +18,14 @@ import { readCount, readEnabled, readFlag, readString } from './wire-read';
  */
 export type ExtensionRoleTool = 'read' | 'write' | 'edit' | 'bash' | 'command';
 
-/** Install state of a resource that ships with the app; `modified` copies are never overwritten. */
+/**
+ * Install state of a resource that ships with the app. `backupPath` is where an update backed up
+ * the user's edited copy before replacing it, until the user dismisses the notice; null otherwise.
+ */
 export interface ExtensionBuiltin {
   id: string;
   status: 'current' | 'modified' | 'update_available';
+  backupPath: string | null;
 }
 
 /** Which plugin contributes a row, and whether that makes the row read-only. */
@@ -129,7 +133,7 @@ function asBuiltin(value: unknown): ExtensionBuiltin | null {
   const status = readString(builtin, 'status');
   if (!id) return null;
   if (status === 'current' || status === 'modified' || status === 'update_available')
-    return { id, status };
+    return { id, status, backupPath: readString(builtin, 'backupPath') || null };
   return null;
 }
 

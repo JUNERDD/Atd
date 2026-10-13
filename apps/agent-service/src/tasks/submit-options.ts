@@ -18,6 +18,17 @@ export interface InternalSubmitOptions {
   title?: string;
   /** Frozen as `RunSnapshot.trigger`, which makes the run unattended. */
   trigger?: RunTrigger;
+  /**
+   * Frozen as `RunSnapshot.instructions`, which reaches the model as hidden run material: what
+   * only this run needs to be told (a command's output directive). A follow-up does not carry it.
+   */
+  instructions?: string;
+  /**
+   * Frozen as `RunSnapshot.lite`: the run takes the lightweight session (lite-session.ts). Only
+   * `launchCommand` sets it, for a run it found eligible (commands/lite.ts); a follow-up does not
+   * carry it.
+   */
+  lite?: true;
 }
 
 /**

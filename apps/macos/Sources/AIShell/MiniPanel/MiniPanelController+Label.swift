@@ -3,16 +3,16 @@ import AppKit
 import QuartzCore
 import SwiftUI
 
-/// The hover label (hover-label-v1, its way in and out from hover-label-v2): the panel's own
+/// The hover label (hover-label-v1, its way in and out from hover-label-v4): the panel's own
 /// tooltip, since AppKit delays or drops an inactive app's tooltips and Atd stays inactive while
 /// the panel is used. A capsule button's name, or a commands row's full name when the card cuts it
 /// short, shows beside the capsule (or the card) toward the interior after the pointer rests on it
-/// (``MiniPanelLabelTimer``). The label grows out of the hovered control's middle, glides from
-/// control to control while warm with its text cross-fading, and leaves the way it came: its text
-/// fades, then it draws back into that middle (``MiniPanelLabelPath``). A press, a drag, the
-/// panel closing, the card opening over it or a drag session sends it away at once, except that
-/// a press on Commands keeps it for the card to grow out of. It is visual only: the controls keep
-/// their own labels.
+/// (``MiniPanelLabelTimer``). As a popover does, the label grows out of an anchor on its side
+/// facing the capsule, level with the hovered control, glides from control to control while warm
+/// with its text cross-fading, and leaves into that anchor, never over the capsule
+/// (``MiniPanelLabelPath``). A press, a drag, the panel closing, the card opening over it or a
+/// drag session sends it away at once, except that a press on Commands keeps it for the card to
+/// grow out of. It is visual only: the controls keep their own labels.
 extension MiniPanelController {
   /// One frame of the label, with the control under the pointer. Writes only when the label
   /// changes.
@@ -28,8 +28,11 @@ extension MiniPanelController {
       item: suppressed ? hovered : item, suppressed: suppressed, at: now)
     if shown != previous {
       showLabel(shown, hadLabel: previous != nil)
-    } else if shown == nil, let item, !model.label.drawn, !isSeeded(for: item) {
-      // Warming up: the hidden label waits where it will grow from, so it starts from there.
+    } else if shown == nil, let item, !model.label.drawn,
+      model.label.fade < 1 || model.label.text != labelText(item)
+    {
+      // Warming up: the hidden label waits at the rest it will grow into, so it starts there.
+      // Checked by its text alone on every frame; showing it checks its rest too.
       seedLabel(for: item)
     }
   }
@@ -69,8 +72,8 @@ extension MiniPanelController {
     }
   }
 
-  /// The middle of `control`, which its label grows out of and draws back into, and the shape
-  /// the label shows beside (the capsule, or the card for a row), in global points.
+  /// The middle of `control`, which its label is level with, and the shape the label shows beside
+  /// (the capsule, or the card for a row), in global points.
   private func labelAnchor(_ control: MiniPanelControl) -> (point: CGPoint, beside: ScreenRect)? {
     guard let layout else { return nil }
     if case .row(let index) = control {
@@ -89,25 +92,17 @@ extension MiniPanelController {
     )
   }
 
-  /// The control's middle in the glass container.
-  private func labelPoint(_ control: MiniPanelControl) -> CGPoint? {
-    labelAnchor(control).map {
-      local(ScreenRect(x: $0.point.x, y: $0.point.y, width: 0, height: 0)).origin
-    }
-  }
-
-  /// Where `control`'s label rests and the middle it grows out of, in the glass container. Measures
-  /// the text, so it runs only when the label changes.
+  /// Where `control`'s label rests, out of sight, in the glass container. Measures the text, so
+  /// it runs only when the label changes.
   private func labelShape(_ control: MiniPanelControl) -> MiniPanelLabelShape? {
-    guard let layout, let anchor = labelAnchor(control), let point = labelPoint(control)
-    else { return nil }
+    guard let layout, let anchor = labelAnchor(control) else { return nil }
     let text = labelText(control)
     let font = NSFont.systemFont(ofSize: MiniPanelMetrics.labelTextSize, weight: .medium)
     let measured = (text as NSString).size(withAttributes: [.font: font]).width
     let width = Double(measured.rounded(.up)) + MiniPanelMetrics.labelPadding * 2
     let rest = layout.hoverLabel(beside: anchor.beside, centerY: anchor.point.y, width: width)
     let lane = labelLane(beside: anchor.beside, middle: anchor.point.x, edge: layout.edge)
-    return MiniPanelLabelShape(text: text, rest: local(rest), point: point, lane: local(lane))
+    return MiniPanelLabelShape(text: text, rest: local(rest), lane: local(lane))
   }
 
   /// Where any label beside `shape` can show, its controls' middles at `middle`: from the
@@ -124,13 +119,12 @@ extension MiniPanelController {
       x: minX, y: shape.y - room, width: maxX - minX, height: shape.height + room * 2)
   }
 
-  /// The hidden label already waits at `control`'s middle with its text.
-  private func isSeeded(for control: MiniPanelControl) -> Bool {
-    model.label.progress == 0 && model.label.text == labelText(control)
-      && model.label.point == labelPoint(control)
+  /// The hidden label already waits, out of sight, at `control`'s label's rest with its text.
+  private func isSeeded(as shape: MiniPanelLabelShape) -> Bool {
+    model.label.fade == 1 && model.label.text == shape.text && model.label.rest == shape.rest
   }
 
-  /// Puts the hidden label at `control`'s middle, drawn in, with its text gone.
+  /// Puts the hidden label at `control`'s label's rest, out of sight, with its text gone.
   private func seedLabel(for control: MiniPanelControl) {
     guard let shape = labelShape(control) else { return }
     model.label = shape
@@ -138,8 +132,8 @@ extension MiniPanelController {
       .labelText, MiniPanelPresence(shown: false, motion: MiniPanelChoreography.labelText))
   }
 
-  /// Shows `control`'s label (nil hides it): growing out of its middle, or gliding there from the
-  /// control it showed for, or from wherever it was drawing back.
+  /// Shows `control`'s label (nil hides it): growing out of its anchor, or gliding there from the
+  /// control it showed for, or from where it was leaving, coming back as it glides.
   private func showLabel(_ control: MiniPanelControl?, hadLabel: Bool) {
     guard let control, let shape = labelShape(control) else { return hideLabel() }
     labelToken += 1
@@ -148,24 +142,24 @@ extension MiniPanelController {
     let kind = Self.isRow(control) ? "row" : control.identifier
     Self.log.debug("Mini panel hover label: \(kind, privacy: .public)")
     if hadLabel || model.label.drawn {
-      // On screen, or still drawing back: it glides to the new control, its text cross-fading.
+      // On screen, or still leaving: it glides to the new control, its text cross-fading.
       model.label = MiniPanelLabelShape(
-        text: shape.text, rest: shape.rest, point: shape.point, lane: shape.lane, progress: 1,
-        drawn: true, animation: MiniPanelChoreography.labelGlide.reduced(reduce).animation)
+        text: shape.text, rest: shape.rest, lane: shape.lane, fade: 0, drawn: true,
+        animation: MiniPanelChoreography.labelGlide.reduced(reduce).animation)
       reveal(.labelText, MiniPanelChoreography.labelText)
       return
     }
     let appear = { [weak self] in
       guard let self, token == labelToken else { return }
       var label = model.label
-      label.progress = 1
+      label.fade = 0
       label.drawn = true
       label.animation = MiniPanelChoreography.labelAppear.reduced(reduce).animation
       model.label = label
       reveal(.labelText, MiniPanelChoreography.labelText)
     }
-    guard isSeeded(for: control), model.label.rest == shape.rest else {
-      // The drawn-in label must be drawn where it grows from before it grows.
+    guard isSeeded(as: shape) else {
+      // The hidden label must be drawn at its rest before it grows into it.
       seedLabel(for: control)
       Task {
         try? await Task.sleep(for: .seconds(MiniPanelMotion.frame))
@@ -176,31 +170,24 @@ extension MiniPanelController {
     appear()
   }
 
-  /// The label leaves the way it came: its text fades first, then its shape draws back into the
-  /// control's middle without overshoot, merging with the capsule's glass until nothing is left of
-  /// it. Anything still waiting to show it stops.
+  /// The label leaves into its anchor without overshoot: its fill and text fade as it draws a
+  /// little toward the anchor, then its bare glass draws in to nothing there, never over the
+  /// capsule; it then waits out of sight at its rest. Anything still waiting to show it stops.
   private func hideLabel() {
     labelToken += 1
     conceal(.labelText, MiniPanelChoreography.labelText)
     guard model.label.drawn else { return }
     Self.log.debug("Mini panel hover label: hidden")
-    retractLabel(after: MiniPanelChoreography.labelRetractDelay)
-  }
-
-  /// After `delay`, the label's bubble draws back into its control's middle without overshoot,
-  /// merging with the capsule's glass, and its glass goes once it has.
-  private func retractLabel(after delay: Double) {
     let token = labelToken
-    let retract = MiniPanelChoreography.labelRetract
+    let leave = MiniPanelChoreography.labelLeave
+    var label = model.label
+    label.fade = 1
+    label.animation = leave.animation
+    model.label = label
     Task { [weak self] in
-      try? await Task.sleep(for: .seconds(delay))
+      try? await Task.sleep(for: .seconds(MiniPanelMotion.settling(leave)))
       guard let self, token == labelToken else { return }
       var label = model.label
-      label.progress = 0
-      label.animation = retract.animation
-      model.label = label
-      try? await Task.sleep(for: .seconds(MiniPanelMotion.settling(retract)))
-      guard token == labelToken else { return }
       label.drawn = false
       label.animation = nil
       model.label = label
@@ -232,7 +219,7 @@ extension MiniPanelController {
 
   /// A held label that no card took once the press's click has run leaves as any label does.
   func releaseHeldLabel() {
-    guard model.label.drawn, model.label.progress == 1 else { return }
+    guard model.label.drawn, model.label.fade == 0 else { return }
     let token = labelToken
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(Self.labelHoldGrace))
@@ -247,7 +234,7 @@ extension MiniPanelController {
   /// card's, leaves nothing to see. Otherwise the label goes as a press takes it. Returns where
   /// the bubble rests, in the glass container.
   func takeLabelBubble(of control: MiniPanelControl) -> CGRect? {
-    guard model.label.drawn, model.label.progress == 1, model.label.point == labelPoint(control)
+    guard model.label.drawn, model.label.fade == 0, model.label.rest == labelShape(control)?.rest
     else {
       dropLabel()
       return nil
@@ -261,15 +248,11 @@ extension MiniPanelController {
       try? await Task.sleep(for: .seconds(text.exit))
       guard let self, token == labelToken else { return }
       var label = model.label
-      label.progress = 0
+      label.fade = 1
       label.drawn = false
       label.animation = nil
       model.label = label
     }
     return model.label.rest
   }
-
-  /// Where `control`'s label bubble rests, in the glass container: what the card closes through
-  /// on its way into the control.
-  func labelBubble(of control: MiniPanelControl) -> CGRect? { labelShape(control)?.rest }
 }

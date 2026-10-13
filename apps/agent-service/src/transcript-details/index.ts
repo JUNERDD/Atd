@@ -3,10 +3,12 @@ import { Compile } from 'typebox/compile';
 import {
   CODEMODE_TOOL,
   CONFIGURE_MCP_TOOL,
+  ProductArtifactSchema,
   TODO_TOOL,
   ToolBlockDetailsSchema,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
+  type ProductArtifact,
   type ServiceToolStatus,
   type SubagentAgentEntry,
   type SubagentChildEntry,
@@ -16,6 +18,7 @@ import type { Logger } from '../logging.js';
 import { APP_TOOL } from '../apps/tool-name.js';
 import { isSubagentLaunch, SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 import { projectAppDetails } from './app.js';
+import { projectArtifact } from './artifact.js';
 import { projectCodemodeDetails, type CodemodeDetailsInput, type StepList } from './codemode.js';
 import { projectEditDetails } from './edit.js';
 import { projectMcpApprovalDetails } from './mcp-approval.js';
@@ -28,6 +31,7 @@ type Projector = (raw: unknown) => ToolBlockDetails | undefined;
 
 /** Compiled once: live projection checks every detailed row on each reprojection. */
 const ToolBlockDetailsValidator = Compile(ToolBlockDetailsSchema);
+const ProductArtifactValidator = Compile(ProductArtifactSchema);
 
 /**
  * Per-tool projectors from a result's raw `details` (Pi `ToolResultMessage.details`, untrusted
@@ -132,5 +136,23 @@ function checked(
   if (ToolBlockDetailsValidator.Check(details)) return details;
   // Debug level: live projection reruns on every streamed delta and would repeat the entry.
   log?.debug('Dropped tool details that failed the contract.', { tool, type });
+  return undefined;
+}
+
+/**
+ * The product item a completed call created or changed (artifact.ts), beside its details: a call
+ * still running, failed, declined or interrupted saved nothing to open. `recorded` holds the
+ * branch's `app-artifact` entries by call id. Checked against the contract like details.
+ */
+export function projectBlockArtifact(
+  call: DetailsCall,
+  recorded: ReadonlyMap<string, ProductArtifact>,
+  log?: Pick<Logger, 'debug'>,
+): ProductArtifact | undefined {
+  const { id, name, args, status, result } = call;
+  if (!result || status !== 'completed') return undefined;
+  const artifact = projectArtifact(name, args, result, recorded.get(id));
+  if (!artifact || ProductArtifactValidator.Check(artifact)) return artifact;
+  log?.debug('Dropped a product artifact that failed the contract.', { tool: name });
   return undefined;
 }

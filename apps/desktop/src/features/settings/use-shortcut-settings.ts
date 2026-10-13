@@ -4,8 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useShortcutCapture } from './use-shortcut-capture';
 import { showSettingsSnapshot } from './use-settings';
-import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@atd/agent-contracts';
 import {
+  DEFAULT_SHORTCUTS,
+  doubleTapModifier,
+  effectiveAccelerator,
+  selectionToolbarDoubleTap,
+} from '@atd/agent-contracts';
+import {
+  DEFAULT_SELECTION_TOOLBAR,
   type MiniPanelOpenOn,
   type SettingsSnapshot,
   type ShortcutAction,
@@ -14,6 +20,9 @@ import {
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
 
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
+
+/** The actions the shell registers globally, which alone may be a modifier's double-tap. */
+const GLOBAL_ACTIONS: readonly ShortcutAction[] = ['togglePanel', 'captureScreenshot'];
 
 /** A desktop window preference the Shortcuts page switches. */
 type WindowPreference = 'pin' | 'dock' | 'login' | 'miniPanel' | 'miniPanelOpenOn';
@@ -25,8 +34,12 @@ function shortcutError(
   t: TFunction<'settings'>,
   action: ShortcutAction,
   shortcut: string | null,
+  toolbarTap: string | null,
 ): string {
   if (!shortcut) return t('shortcuts.errors.unsupportedCombination');
+  // The selection toolbar's `toggle` mode watches the same gesture as this double-tap.
+  if (shortcut === toolbarTap) return t('shortcuts.errors.selectionToolbarDoubleTap');
+  if (doubleTapModifier(shortcut)) return '';
   if (
     ['togglePanel', 'captureScreenshot', 'newConversation', 'openSettings'].includes(action) &&
     !shortcut
@@ -63,8 +76,11 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   // host has no mini panel to switch, the state is unknown and its controls stay disabled.
   const miniPanelShown = setMiniPanelShown ? (snapshot?.miniPanelShown ?? null) : null;
   const miniPanelOpenOn = setMiniPanelOpenOn ? (snapshot?.miniPanelOpenOn ?? null) : null;
-  const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
+  const { keys, start, stop, resetKeys, isRecording, doubleTap } = useShortcutCapture({
+    doubleTap:
+      platform === 'darwin' && recordingAction !== null && GLOBAL_ACTIONS.includes(recordingAction),
+  });
   // `all` while Restore defaults runs; an action while its Reset runs.
   const [mutation, setMutation] = useState<ShortcutAction | 'all' | null>(null);
   const [preferencePending, setPreferencePending] = useState<
@@ -82,10 +98,15 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     setErrors({});
   });
   const unavailable = !snapshot || !bridge;
-  const hasRecordedKey = [...keys].some((key) => !MODIFIER_KEYS.has(key));
-  const capturedShortcut = recordedKeysToAccelerator(keys, platform);
+  const hasRecordedKey = doubleTap !== null || [...keys].some((key) => !MODIFIER_KEYS.has(key));
+  const capturedShortcut = doubleTap ?? recordedKeysToAccelerator(keys, platform);
+  const toolbarTap = selectionToolbarDoubleTap(
+    snapshot?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR,
+  );
   const captureError =
-    recordingAction && hasRecordedKey ? shortcutError(t, recordingAction, capturedShortcut) : '';
+    recordingAction && hasRecordedKey
+      ? shortcutError(t, recordingAction, capturedShortcut, toolbarTap)
+      : '';
   const capturePending = recordingAction !== null && hasRecordedKey && !captureError;
   /** The shortcut change in flight: the action whose row is saving, or `all` for every row. */
   const shortcutBusy = capturePending ? recordingAction : mutation;
@@ -230,6 +251,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     loginApprovalNeeded: loginApproval && openAtLogin === false,
     unavailable,
     platform,
+    /** Whether the shell may watch the keyboard, which a double-tap needs; null while unknown. */
+    accessibilityTrusted: snapshot?.accessibilityTrusted ?? null,
     isDefault,
     allDefault,
     startRecording,

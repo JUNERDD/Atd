@@ -1,7 +1,6 @@
 import AICore
 import AIRelay
 import AppKit
-import OSLog
 
 /// Wires the shell together: the panel, settings and welcome guide windows, the summon flow and
 /// its selection stash (``Summoner``), global hot keys, the selection toolbar and the
@@ -13,7 +12,7 @@ public final class ShellController {
   private let defaults: UserDefaults
   let panelHost: WebViewHost
   let panel: PanelWindowController
-  private let settings: SettingsWindowController
+  let settings: SettingsWindowController
   let onboarding: OnboardingWindowController
   var launchPresentation = LaunchPresentation(revealPanel: false)
   let systemPanels: SystemPanels
@@ -37,6 +36,18 @@ public final class ShellController {
   let screenRecording: ScreenRecordingTrust
   let summoner: Summoner
   let toolbar: SelectionToolbarController
+  /// The commands whose options the shell offers (`commandOptions.set`).
+  var commandOptions = CommandOptionsCatalog()
+  /// The island a command that writes back without the panel shows (`commandProgress.*`).
+  lazy var commandProgress = CommandProgressController(
+    panelHost, toolbar: toolbar, returnFocus: { [weak self] in self?.returnFocus(to: $0) },
+    attachments: composeAttachments(),
+    answerWriter: { [weak self] answer, mode in
+      await self?.writeAnswer(answer, mode: mode)
+        ?? AnswerWriteOutcome(result: .notOk(.init(reason: .failed)), app: "")
+    })
+  /// Command shortcuts' presses and releases, which hold for a command's options.
+  lazy var shortcutHolds = makeShortcutHolds()
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
   let miniPanel: MiniPanelController
   /// Generated apps' windows (`userApp.*`).
@@ -45,13 +56,13 @@ public final class ShellController {
   let widgets: WidgetSyncController
   let automationNotices: AutomationNoticeFeed?
   let systemActivity: SystemActivityReporter
-  private var statusItem: StatusItemController?
+  /// The menu bar item and what it shows, kept current by ``refreshStatus()``.
+  var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
-  private(set) var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
+  var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
   /// The first `toolbar.set` of this launch has arrived.
   private var toolbarConfigured = false
 
-  private static let log = Logger(subsystem: "com.junerdd.ai", category: "shell")
   private static let pinnedKey = "panel.pinned"
   private static let showInDockKey = "app.showInDock"
 
@@ -144,12 +155,17 @@ public final class ShellController {
       guard let self else { return }
       panelHost.setState(.updateState(.init(version: updater.readyVersion)))
     }
-    panel.onVisibilityChange = { [weak panelHost] visible in
+    panel.onVisibilityChange = { [weak self, weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
+      // A command the page took to the panel ends its shortcut's press capsule.
+      if visible { self?.commandProgress.panelShown() }
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
     panelHost.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
     trust.onChange = { [weak self] trusted in
+      // Double-tap shortcuts arm or disarm with the trust before the pages learn it, so the
+      // panel's next push reports them as they now are.
+      self?.registrar?.reapply()
       self?.broadcast(.accessibilityTrust(.init(trusted: trusted)))
       self?.toolbar.update()
     }
@@ -158,7 +174,11 @@ public final class ShellController {
       self?.broadcast(.screenRecordingTrust(.init(trusted: trusted)))
     }
     toolbar.onAsk = { [weak self] text in self?.summon(.ask, selectedText: text) }
-    toolbar.onCommand = { [weak self] id in self?.summon(.toolbarCommand(id: id)) }
+    toolbar.onCommand = { [weak self] launch in self?.summon(.toolbarCommand(launch)) }
+    toolbar.onPick = { [weak self] id, values in
+      self?.panelHost.send(
+        .commandOptionsPicked(.init(id: id, arguments: values)), scope: .document)
+    }
     wireUserApps()
     wireMiniPanel()
   }
@@ -167,7 +187,10 @@ public final class ShellController {
   /// which pushes the shortcut set, `selectionWanted` and the language.
   public func start(revealPanel: Bool) {
     launchPresentation = LaunchPresentation(revealPanel: revealPanel)
-    registrar = HotKeyRegistrar { [weak self] id in self?.summon(SummonTrigger(hotKeyID: id)) }
+    registrar = HotKeyRegistrar(
+      canWatchKeyboard: { [trust] in trust.isTrusted },
+      onPress: { [weak self] id in self?.shortcutHolds.pressed(id) },
+      onRelease: { [weak self] id in self?.shortcutHolds.released(id) })
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
@@ -290,7 +313,8 @@ public final class ShellController {
   func appState() -> AppStateResult {
     AppStateResult(
       pinned: isPinned, showInDock: defaults.bool(forKey: Self.showInDockKey),
-      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable)
+      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable,
+      panelPlacement: panelPlacementState())
   }
 
   /// A state event for every page, so a window opened later still learns the latest value.
@@ -298,51 +322,5 @@ public final class ShellController {
     panelHost.setState(event)
     settings.host?.setState(event)
     onboarding.host?.setState(event)
-  }
-
-  // MARK: App surfaces
-
-  /// The status item follows the control stream: reachability, then the `status` counts.
-  private func refreshStatus() {
-    let availability: ServiceAvailability =
-      switch control.state {
-      case .connecting: .connecting
-      case .connected: .available
-      case .reconnecting: .unavailable(development: false)
-      case .disconnected:
-        .unavailable(development: control.unavailable == .developmentServiceNotRunning)
-      }
-    menuStatus = MenuBarStatus(
-      availability: availability, running: control.status?.running ?? 0,
-      attention: control.status?.attention ?? 0)
-    statusItem?.update(menuStatus)
-    #if DEBUG
-      Self.log.info(
-        "menu bar \(self.menuStatus.state.rawValue, privacy: .public) running \(self.menuStatus.running) attention \(self.menuStatus.attention)"
-      )
-    #endif
-  }
-
-  private func applyLanguage() {
-    NSApp.mainMenu = AppMenus.mainMenu(menuActions)
-    panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
-    settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))
-    onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
-  }
-
-  /// Undo and Redo go to the page of the key window, which runs them in its editor.
-  func sendEditCommand(_ command: EditCommandEvent.Command) {
-    let host: WebViewHost? =
-      if panel.isKey {
-        panelHost
-      } else if settings.isKey {
-        settings.host
-      } else if onboarding.isKey {
-        onboarding.host
-      } else {
-        nil
-      }
-    guard let host else { return sendUserAppEditCommand(command) }
-    host.send(.editCommand(.init(command: command)), scope: .document)
   }
 }

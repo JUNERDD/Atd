@@ -27,3 +27,25 @@ export function textWidthEm(text: string, weight: number, trackingEm = 0): numbe
   if (document.fonts.check(context.font, text)) cache.set(key, width);
   return width;
 }
+
+const sizedCache = new Map<string, number>();
+
+/**
+ * The advance width of `text` in px when set at `size` px: unlike `textWidthEm`, which measures
+ * at 100 px, it measures at the size the text is shown, where Inter's optical-size axis picks a
+ * wider cut for small text (interface labels at 12–13 pt are a few percent wider than the display
+ * cut). Falls back to an estimate where no canvas exists (Node).
+ */
+export function textWidthAt(text: string, weight: number, size: number): number {
+  const key = `${weight}|${size}|${text}`;
+  const known = sizedCache.get(key);
+  if (known !== undefined) return known;
+  if (typeof document === 'undefined') return graphemes(text).length * 0.62 * size;
+  context ??= document.createElement('canvas').getContext('2d');
+  if (!context) return graphemes(text).length * 0.62 * size;
+  context.font = `${weight} ${size}px 'Inter Variable', 'Noto Sans SC Variable', sans-serif`;
+  context.letterSpacing = '0px';
+  const width = context.measureText(text).width;
+  if (document.fonts.check(context.font, text)) sizedCache.set(key, width);
+  return width;
+}

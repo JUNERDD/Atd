@@ -98,8 +98,8 @@ describe('task panel', () => {
     );
   });
 
-  it('uses the isolated desktop bridge for pinning and hiding', async () => {
-    const { open, setPinned, hide } = installBridge();
+  it('uses the isolated desktop bridge for pinning, placement and hiding', async () => {
+    const { open, setPinned, setPanelPlacement, hide } = installBridge();
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Settings' }));
@@ -109,6 +109,15 @@ describe('task panel', () => {
     await user.click(screen.getByRole('switch', { name: 'Always on top' }));
     await waitFor(() => expect(setPinned).toHaveBeenLastCalledWith(false));
     expect(screen.getByRole('switch', { name: 'Always on top' })).not.toBeChecked();
+    const placement = screen.getByRole('combobox', { name: 'Where the panel appears' });
+    expect(placement).toHaveTextContent('Bottom-right corner');
+    // By keyboard: jsdom has no pointer capture for Radix's pointer path.
+    placement.focus();
+    await user.keyboard('{Enter}');
+    (await screen.findByRole('option', { name: 'Last position' })).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(setPanelPlacement).toHaveBeenLastCalledWith('lastPosition'));
+    expect(placement).toHaveTextContent('Last position');
     settingsView.unmount();
     // macOS dismisses the panel through the native traffic lights, so Escape is the only
     // renderer-side path to the hide bridge.

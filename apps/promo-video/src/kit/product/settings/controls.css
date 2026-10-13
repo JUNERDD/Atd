@@ -1,0 +1,204 @@
+/* The shadcn Rhea controls the settings scenes show (packages/ui/src/components), resolved to the
+   app's dark Neutral values, in points. */
+.rc-icon-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 18px;
+  color: var(--pk-fg);
+}
+
+.rc-icon-button > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.rc-icon-button[data-disabled] {
+  opacity: 0.5;
+}
+
+/* `Switch`: `bg-input/90` off with the foreground thumb, primary on with its dark thumb. */
+.rc-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.135);
+}
+
+.rc-switch__thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 18px;
+  background: var(--pk-fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.rc-switch[data-checked] {
+  border-color: var(--pk-primary);
+  background: var(--pk-primary);
+}
+
+.rc-switch[data-checked] > .rc-switch__thumb {
+  translate: 12px 0;
+  background: var(--pk-primary-fg);
+}
+
+.rc-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* `Kbd`: Inter with the system face behind it for the modifier symbols. */
+.rc-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--pk-muted);
+  color: var(--pk-muted-fg);
+  font-family: var(--pk-keys);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* An outline `sm` Button: 28 pt, a hairline, transparent in the dark theme. */
+.rc-shortcut {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid var(--pk-border);
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rc-shortcut[data-empty] {
+  padding: 0 12px;
+}
+
+/* An `InputGroup` at rest: `bg-input/50` with a transparent edge, its icon and placeholder muted. */
+.rc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.075);
+  color: var(--pk-muted-fg);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.rc-search__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.rc-search__placeholder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  border-radius: 18px;
+  background: var(--pk-primary);
+  color: var(--pk-primary-fg);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rc-button > .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The general Button: the primary fill by default, an outline on the surface otherwise; its
+   label 12 pt in, 10 pt with a leading glyph. Held down, the fill dims (`hover:bg-primary/80`). */
+.rc-button[data-variant='default'] {
+  padding: 0 12px;
+}
+
+.rc-button[data-lead] {
+  padding: 0 12px 0 10px;
+}
+
+.rc-button[data-variant='outline'] {
+  border: 1px solid var(--pk-border);
+  background: transparent;
+  color: var(--pk-fg);
+}
+
+.rc-button[data-pressed][data-variant='default'] {
+  background: color-mix(in srgb, var(--pk-primary) 80%, transparent);
+}
+
+.rc-button[data-pressed][data-variant='outline'] {
+  background: var(--pk-lift);
+}
+
+.rc-button[data-disabled] {
+  opacity: 0.5;
+}
+
+/* A provider mark in the label's colour: its SVG as a mask over the current colour. */
+.rc-brand {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: var(--brand) center / contain no-repeat;
+}
+
+/* A field's `Label`: 14 pt medium, the hint's 14 pt question mark in a 20 pt muted target. */
+.rc-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.rc-label__hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--pk-muted-fg);
+}
+
+.rc-label__hint > .pk-icon {
+  width: 14px;
+  height: 14px;
+}

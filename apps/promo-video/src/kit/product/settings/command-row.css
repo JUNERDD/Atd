@@ -1,0 +1,94 @@
+/* A command row (apps/desktop/src/features/commands/command-row.tsx, commands.css): an outline
+   `Item` at `sm` (14 pt across, 12 pt down, a 1 pt hairline, 18 pt corners), held to one height
+   so the list's pitch is exact. */
+.rk-row {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  height: 69px;
+  padding: 12px 14px;
+  border: 1px solid var(--pk-border);
+  border-radius: 18px;
+  font-size: 14px;
+  /* The lift's shadow (`0 8px 24px rgb(0 0 0 / 35%)`), scaled by --shadow as it rises. */
+  box-shadow: 0 8px 24px rgb(0 0 0 / calc(var(--shadow, 0) * 0.35));
+}
+
+/* Held, the row keeps its resting look but turns opaque in the window surface's own colour
+   (`--ata-glass-fill-opaque`), so the rows it passes over never show through. */
+.rk-row[data-lifted] {
+  z-index: 1;
+  background: var(--pk-glass-opaque);
+}
+
+.rk-row__identity {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* `ItemMedia` beside a description: it tops the row, nudged 2 pt to the title's line. */
+.rk-row__icon {
+  align-self: flex-start;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--pk-fg);
+}
+
+.rk-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rk-row__title,
+.rk-row__description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rk-row__title {
+  font-weight: 500;
+  line-height: 19px;
+}
+
+.rk-row__description {
+  color: var(--pk-muted-fg);
+  line-height: 20px;
+}
+
+.rk-row__controls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+/* A width, not a basis: it fits the recorder's longest prompt, so the actions never move. */
+.rk-row__shortcut {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  width: 116px;
+}
+
+.rk-row__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The pointer on the row: the ghost hover wash (`--ata-surface-ghost-hover`) inside its border. */
+.rk-row[data-hover] {
+  background: rgb(255 255 255 / 0.1);
+}

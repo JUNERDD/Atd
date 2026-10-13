@@ -405,6 +405,7 @@
         .settings-extension-settings,
         .memory-settings,
         .automation-overview,
+        .command-overview,
         .app-settings
       )
   ) {
@@ -444,12 +445,13 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
-/* Extensions, memory, the automations overview and apps keep their heading fixed above a
+/* Extensions, memory, the automations and commands overviews and apps keep their heading fixed above a
  * scrolling list, so the page never outgrows the viewport. */
 .settings-page:has(
   .settings-extension-settings,
   .memory-settings,
   .automation-overview,
+  .command-overview,
   .app-settings
 ) {
   flex: 1;
@@ -461,6 +463,7 @@
     .settings-extension-settings,
     .memory-settings,
     .automation-overview,
+    .command-overview,
     .app-settings
   ) {
   display: none;
@@ -1126,7 +1129,8 @@
 .settings-card .settings-card-row[data-slot='item'] {
   border-radius: 0;
 }
-.settings-card-row + .settings-card-row {
+/* Only inside a card too: standalone rows keep their rounded corners, which a hairline would bend. */
+.settings-card .settings-card-row + .settings-card-row {
   border-top-color: var(--border);
 }
 /* Restore defaults follows every group; its error sits before it on the same line. */

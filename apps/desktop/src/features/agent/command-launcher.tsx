@@ -42,9 +42,11 @@ export function CommandLauncher({
           </span>
           {command.shortcut && (
             <KbdGroup className="justify-self-end">
-              {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
+              {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map(
+                (key, index) => (
+                  <Kbd key={`${index}-${key}`}>{key}</Kbd>
+                ),
+              )}
             </KbdGroup>
           )}
         </Button>

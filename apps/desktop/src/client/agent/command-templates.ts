@@ -1,4 +1,4 @@
-import { defaultCommandPlacement } from '@atd/agent-contracts';
+import { defaultCommandOutput, defaultCommandPlacement } from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 
 /** An editable copy the user owns: a copy of a plugin command leaves the plugin behind. */
@@ -50,8 +50,10 @@ export function newCommand(id: string): CommandDefinition {
     templateId: null,
     input,
     placement: defaultCommandPlacement(input.source),
+    output: defaultCommandOutput(),
     parameters: [],
     model: { mode: 'inherit' },
+    thinkingLevel: 'inherit',
     tools: [],
     memory: 'inherit',
   };

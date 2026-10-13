@@ -19,7 +19,7 @@
     "build": "node scripts/build.mjs"
   },
   "devDependencies": {
-    "@napi-rs/cli": "3.10.5"
+    "@napi-rs/cli": "3.10.8"
   },
   "napi": {
     "binaryName": "file-index",

@@ -1,14 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai';
-import type { ProviderLoginState, ServiceConnection } from '@atd/agent-contracts';
+import { CredentialSynchronizationError } from '@earendil-works/pi-coding-agent';
+import type {
+  ProviderLoginRequest,
+  ProviderLoginState,
+  ServiceConnection,
+} from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { connectionRuntime, type ProviderStores } from './runtime.js';
+import { hasLoginErrorCode, loginFailureDiagnostic, loginFailureMessage } from './login-errors.js';
+import { isChatGPT, requireChatGPTNotice } from './chatgpt-usage.js';
+import type { OAuthCallback } from './oauth-callback.js';
 
 interface Login {
   state: ProviderLoginState;
   abort: AbortController;
   answer: ((value: string) => void) | null;
+  done: Promise<void>;
+  deviceCode: boolean;
+  interruption: 'cancelled' | 'timed-out' | null;
 }
 
 /**
@@ -21,9 +32,16 @@ export class ProviderLogins {
   private readonly sessions = new Map<string, Login>();
   private starting = false;
 
-  async start(stores: ProviderStores, connection: ServiceConnection): Promise<ProviderLoginState> {
+  async start(
+    stores: ProviderStores,
+    connection: ServiceConnection,
+    options: ProviderLoginRequest = {},
+  ): Promise<ProviderLoginState> {
     if (connection.authType !== 'oauth')
       throw new TypeError('Only account-login connections sign in.');
+    requireChatGPTNotice(connection);
+    if (options.enablePlanUsage && !isChatGPT(connection))
+      throw new TypeError('Plan authorization requires a ChatGPT connection.');
     if (
       this.starting ||
       [...this.sessions.values()].some((login) => login.state.status === 'waiting')
@@ -31,8 +49,15 @@ export class ProviderLogins {
       throw new ConflictError('Finish or cancel the current sign-in first.');
     this.starting = true;
     let models;
+    let callback: OAuthCallback | undefined;
     try {
-      models = await connectionRuntime(stores, connection);
+      await Promise.all([...this.sessions.values()].map((login) => login.done));
+      models = await connectionRuntime(stores, connection, undefined, undefined, {
+        ...options,
+        onCallback: (value) => {
+          callback = value;
+        },
+      });
     } finally {
       this.starting = false;
     }
@@ -40,6 +65,9 @@ export class ProviderLogins {
     const login: Login = {
       abort: new AbortController(),
       answer: null,
+      done: Promise.resolve(),
+      deviceCode: false,
+      interruption: null,
       state: {
         id: randomUUID(),
         connectionId: connection.connectionId,
@@ -51,33 +79,97 @@ export class ProviderLogins {
       },
     };
     this.sessions.set(login.state.id, login);
-    void models
-      .login(connection.provider, 'oauth', {
-        signal: login.abort.signal,
-        prompt: (prompt) => this.prompt(login, prompt),
-        notify: (event) => this.notify(login, event),
+    const timeout = setTimeout(() => this.interrupt(login, 'timed-out'), 15 * 60 * 1000);
+    timeout.unref();
+    const attempt = async () => {
+      try {
+        await models.login(
+          connection.provider,
+          'oauth',
+          {
+            signal: login.abort.signal,
+            prompt: (prompt) => this.prompt(login, prompt),
+            notify: (event) => this.notify(login, event),
+          },
+          { agentName: 'Atd' },
+        );
+      } catch (error) {
+        // Pi raises this only after this attempt's credential commit succeeded. A late abort
+        // can prevent its local snapshot refresh, but cannot undo the persisted sign-in.
+        if (
+          error instanceof CredentialSynchronizationError &&
+          error.operation === 'login' &&
+          error.providerId === connection.provider
+        )
+          return;
+        throw error;
+      }
+    };
+    login.done = attempt()
+      .catch(async (error: unknown) => {
+        if (
+          connection.provider !== 'radius' ||
+          !hasLoginErrorCode(error, 'EADDRINUSE') ||
+          login.abort.signal.aborted
+        )
+          throw error;
+        login.deviceCode = true;
+        login.state = {
+          ...login.state,
+          url: '',
+          code: '',
+          prompt: null,
+          message: 'Browser callback unavailable. Starting device sign-in…',
+        };
+        await attempt();
       })
-      .then(
-        () => {
-          if (login.abort.signal.aborted) return;
-          login.state = {
-            ...login.state,
-            status: 'complete',
-            message: 'Signed in. Choose a default model.',
-            prompt: null,
-          };
-        },
-        () => {
-          login.state = {
-            ...login.state,
-            status: login.abort.signal.aborted ? 'cancelled' : 'error',
-            message: login.abort.signal.aborted
-              ? 'Sign-in cancelled.'
-              : 'Sign-in failed or expired. Try again.',
-            prompt: null,
-          };
-        },
-      );
+      .then(async () => {
+        await stores.connections.reload();
+        const live = stores.connections.connection(connection.connectionId);
+        const plan = isChatGPT(live) ? Boolean(live.chatgptPlanEnabled) : undefined;
+        login.state = {
+          ...login.state,
+          status: 'complete',
+          message:
+            plan === false
+              ? 'Signed in. ChatGPT plan usage is not enabled.'
+              : 'Signed in. Choose a default model.',
+          ...(plan === undefined ? {} : { chatgptPlanEnabled: plan }),
+          prompt: null,
+          url: '',
+          code: '',
+        };
+        await callback?.finish({
+          status: 'complete',
+          planEnabled: plan === true,
+          backgroundAllowed: live.chatgptConsent?.backgroundAllowed === true,
+        });
+      })
+      .catch((error: unknown) => {
+        if (login.state.status !== 'waiting') return;
+        const cancelled = login.interruption === 'cancelled';
+        const diagnostic = login.interruption ? undefined : loginFailureDiagnostic(error);
+        login.state = {
+          ...login.state,
+          status: cancelled ? 'cancelled' : 'error',
+          ...(diagnostic ? { diagnostic } : {}),
+          message:
+            login.interruption === 'timed-out'
+              ? 'Sign-in timed out. Start a new sign-in.'
+              : cancelled
+                ? 'Sign-in cancelled.'
+                : loginFailureMessage(error),
+          prompt: null,
+          url: '',
+          code: '',
+        };
+      })
+      .then(async () => {
+        clearTimeout(timeout);
+        await callback?.finish({
+          status: login.interruption === 'cancelled' ? 'cancelled' : 'error',
+        });
+      });
     return login.state;
   }
 
@@ -99,24 +191,34 @@ export class ProviderLogins {
     return login.state;
   }
 
-  cancel(id: string): ProviderLoginState {
+  async cancel(id: string): Promise<ProviderLoginState> {
     const login = this.session(id);
-    if (login.state.status === 'waiting') {
-      login.abort.abort();
-      login.state = {
-        ...login.state,
-        status: 'cancelled',
-        message: 'Sign-in cancelled.',
-        prompt: null,
-      };
-    }
+    this.interrupt(login, 'cancelled');
+    await login.done;
     return login.state;
   }
 
+  private interrupt(login: Login, reason: NonNullable<Login['interruption']>): void {
+    if (login.state.status !== 'waiting' || login.interruption) return;
+    login.interruption = reason;
+    // Only the settled attempt can distinguish an early cancellation from a committed sign-in.
+    login.state = {
+      ...login.state,
+      message: reason === 'cancelled' ? 'Cancelling sign-in…' : 'Sign-in timed out. Finishing…',
+      prompt: null,
+      url: '',
+      code: '',
+    };
+    login.abort.abort();
+  }
+
   /** Disconnecting a connection ends its pending sign-in. */
-  cancelConnection(connectionId: string): void {
-    for (const login of this.sessions.values())
-      if (login.state.connectionId === connectionId) this.cancel(login.state.id);
+  async cancelConnection(connectionId: string): Promise<void> {
+    await Promise.all(
+      [...this.sessions.values()]
+        .filter((login) => login.state.connectionId === connectionId)
+        .map((login) => this.cancel(login.state.id)),
+    );
   }
 
   private session(id: string): Login {
@@ -126,6 +228,10 @@ export class ProviderLogins {
   }
 
   private prompt(login: Login, prompt: AuthPrompt): Promise<string> {
+    login.abort.signal.throwIfAborted();
+    // The desktop has a browser. Pi's browser/headless transport choice needs no user input.
+    if (prompt.type === 'select' && prompt.options.some((option) => option.id === 'browser'))
+      return Promise.resolve(login.deviceCode ? 'device-code' : 'browser');
     const signal = prompt.signal
       ? AbortSignal.any([login.abort.signal, prompt.signal])
       : login.abort.signal;

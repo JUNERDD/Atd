@@ -21,6 +21,7 @@ export function createServiceBridge(
     setSkillEnabled: (name, enabled) => invoke({ action: 'skillsSetEnabled', name, enabled }),
     deleteSkill: (name) => invoke({ action: 'skillsDelete', name }),
     restoreBuiltin: (id) => invoke({ action: 'builtinRestore', id }),
+    dismissBuiltinBackup: (id) => invoke({ action: 'builtinDismissBackup', id }),
     roles: () => invoke({ action: 'roles' }),
     putRole: (input) => invoke({ action: 'rolesPut', ...input }),
     agents: () => invoke({ action: 'agents' }),

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  DEFAULT_COMMAND_TYPING,
   DEFAULT_SHORTCUTS,
   parse,
   parseShortcutBindings,
@@ -42,7 +43,11 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
   }
   return parse(
     SettingsFileSchema,
-    withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    withAddedCommandTypingAnimation(
+      withAddedCommandTyping(
+        withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+      ),
+    ),
   );
 }
 
@@ -67,6 +72,50 @@ function withAddedOnboarding(file: unknown): unknown {
         : {}),
     },
   };
+}
+
+/**
+ * A file written before the typing setting existed reads with its default. One written while it
+ * chose a rate (`instant`, `slow`, `normal` or `fast`) keeps typing for every rate and pastes at
+ * once for `instant`; any other value that is not a switch reads as the default.
+ */
+function withAddedCommandTyping(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  const stored = 'commandTyping' in settings ? settings.commandTyping : undefined;
+  const commandTyping =
+    typeof stored === 'boolean' ? stored : stored === 'instant' ? false : DEFAULT_COMMAND_TYPING;
+  return { ...file, settings: { ...settings, commandTyping } };
+}
+
+/**
+ * A file written before the typing animation setting existed reads as never chosen; so does a
+ * stored value that is not a switch.
+ */
+function withAddedCommandTypingAnimation(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  const stored = 'commandTypingAnimation' in settings ? settings.commandTypingAnimation : undefined;
+  const commandTypingAnimation = typeof stored === 'boolean' ? stored : null;
+  return { ...file, settings: { ...settings, commandTypingAnimation } };
+}
+
+/**
+ * The fields `request` writes, with the typing animation turned on alongside the typing effect's
+ * first turn-on: while the animation was never chosen (`previous` null) and the request does not
+ * choose it, turning typing on takes the animation with it. A user who chose the animation, on or
+ * off, keeps the choice.
+ */
+export function withFirstTypingAnimation(
+  previous: Pick<UserSettings, 'commandTyping' | 'commandTypingAnimation'>,
+  fields: Omit<PatchSettingsRequest, 'onlyIfUninitialized'>,
+): Omit<PatchSettingsRequest, 'onlyIfUninitialized'> {
+  const turnsTypingOn = fields.commandTyping === true && !previous.commandTyping;
+  if (!turnsTypingOn || previous.commandTypingAnimation !== null) return fields;
+  if (fields.commandTypingAnimation !== undefined) return fields;
+  return { ...fields, commandTypingAnimation: true };
 }
 
 /** The selection toolbar starts on, over every app, for selections made while Option is held. */
@@ -112,6 +161,22 @@ function withAddedShortcuts(file: unknown): unknown {
   return { ...file, settings: { ...settings, shortcuts: { ...DEFAULT_SHORTCUTS, ...shortcuts } } };
 }
 
+/** The settings a shortcut can collide with: the application bindings and the toolbar's gesture. */
+export interface ShortcutHolders {
+  shortcuts: ShortcutBindingsWire;
+  selectionToolbar: SelectionToolbarSettings;
+}
+
+/** The holders in effect for `settings`, null bindings reading as the defaults. */
+function shortcutHolders(
+  settings: Pick<UserSettings, 'shortcuts' | 'selectionToolbar'>,
+): ShortcutHolders {
+  return {
+    shortcuts: settings.shortcuts ?? DEFAULT_SHORTCUTS,
+    selectionToolbar: settings.selectionToolbar,
+  };
+}
+
 /**
  * The user settings every client shares (`settings.json` in the data dir). A missing file means
  * no client has written settings yet: the store answers defaults with `initialized: false`, so
@@ -139,6 +204,8 @@ export class SettingsStore {
         shellAllowlist: [],
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+        commandTyping: DEFAULT_COMMAND_TYPING,
+        commandTypingAnimation: null,
         onboardingCompleted: false,
         onboardingProgress: null,
       };
@@ -152,11 +219,16 @@ export class SettingsStore {
   }
 
   /**
-   * The application shortcuts in effect, read from the file the live store writes atomically:
-   * for callers that load stores per call (the Agent's `command` tool) and hold no instance.
+   * What a command shortcut can collide with in the settings: the application shortcuts and the
+   * selection toolbar's activation in effect, read from the file the live store writes
+   * atomically, for callers that load stores per call (the Agent's `command` tool) and hold no
+   * instance.
    */
-  static async readShortcuts(root: string): Promise<ShortcutBindingsWire> {
-    return (await readStored(settingsFile(root)))?.settings.shortcuts ?? DEFAULT_SHORTCUTS;
+  static async readShortcutHolders(root: string): Promise<ShortcutHolders> {
+    const settings = (await readStored(settingsFile(root)))?.settings;
+    return settings
+      ? shortcutHolders(settings)
+      : { shortcuts: DEFAULT_SHORTCUTS, selectionToolbar: DEFAULT_SELECTION_TOOLBAR };
   }
 
   current(): SettingsResponse {
@@ -170,12 +242,14 @@ export class SettingsStore {
 
   /**
    * Applies a settings patch. Application bindings it sets are validated for this machine's
-   * platform (the desktop there registers them) and stored canonical; `checkShortcuts` then sees
-   * the bindings in effect before and after, inside the write order, and throws to refuse.
+   * platform (the desktop there registers them) and stored canonical. A patch that sets the
+   * bindings or the selection toolbar, whose `toggle` gesture can hold a double-tap, then has
+   * `checkShortcuts` see both as in effect before and after it, inside the write order; it throws
+   * to refuse.
    */
   patch(
     request: PatchSettingsRequest,
-    checkShortcuts: (next: ShortcutBindingsWire, previous: ShortcutBindingsWire) => Promise<void>,
+    checkShortcuts: (next: ShortcutHolders, previous: ShortcutHolders) => Promise<void>,
   ): Promise<SettingsResponse> {
     return this.serialize(async () => {
       if (request.onlyIfUninitialized && this.state.initialized) return this.current();
@@ -183,12 +257,15 @@ export class SettingsStore {
       void _seed;
       if (fields.shortcuts)
         fields.shortcuts = parseShortcutBindings(fields.shortcuts, process.platform);
-      if (fields.shortcuts !== undefined)
+      if (fields.shortcuts !== undefined || fields.selectionToolbar !== undefined)
         await checkShortcuts(
-          fields.shortcuts ?? DEFAULT_SHORTCUTS,
-          this.state.settings.shortcuts ?? DEFAULT_SHORTCUTS,
+          shortcutHolders({ ...this.state.settings, ...fields }),
+          shortcutHolders(this.state.settings),
         );
-      return this.write({ ...this.state.settings, ...fields }, true);
+      return this.write(
+        { ...this.state.settings, ...withFirstTypingAnimation(this.state.settings, fields) },
+        true,
+      );
     });
   }
 

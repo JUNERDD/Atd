@@ -1,15 +1,19 @@
 import {
+  CommandArgumentsRequestSchema,
   CommandCreateSchema,
   CommandDeleteResponseSchema,
   CommandGetResponseSchema,
+  CommandOrderRequestSchema,
   CommandRunRequestSchema,
   CommandRunResponseSchema,
   CommandUpdateRequestSchema,
   CommandsListResponseSchema,
   parse,
+  type CommandArgumentsRequest,
   type CommandCreate,
   type CommandDeleteResponse,
   type CommandGetResponse,
+  type CommandOrderRequest,
   type CommandRunRequest,
   type CommandRunResponse,
   type CommandsListResponse,
@@ -18,7 +22,7 @@ import {
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
 
-/** Lists service commands, alphabetically by name. */
+/** Lists service commands: the user's in their saved order, then each plugin's by name. */
 export function listCommands(
   options: AgentClientOptions,
   fetchImpl?: typeof fetch,
@@ -78,6 +82,45 @@ export function updateCommand(
     'PUT',
     parse(CommandUpdateRequestSchema, body),
     (json) => parse(CommandGetResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Remembers the argument values the command's next run from the app starts from, without
+ * running it; the service keeps those its parameters accept. Answers the command.
+ */
+export function rememberCommandArguments(
+  options: AgentClientOptions,
+  id: string,
+  body: CommandArgumentsRequest,
+  fetchImpl?: typeof fetch,
+): Promise<CommandGetResponse> {
+  return manageRequest(
+    options,
+    `/v1/commands/${encodeURIComponent(id)}/arguments`,
+    'PUT',
+    parse(CommandArgumentsRequestSchema, body),
+    (json) => parse(CommandGetResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Saves the order of the user's commands; `ids` names each of them once (409 otherwise). Answers
+ * the list in its new order.
+ */
+export function reorderCommands(
+  options: AgentClientOptions,
+  body: CommandOrderRequest,
+  fetchImpl?: typeof fetch,
+): Promise<CommandsListResponse> {
+  return manageRequest(
+    options,
+    '/v1/commands/order',
+    'PUT',
+    parse(CommandOrderRequestSchema, body),
+    (json) => parse(CommandsListResponseSchema, json),
     fetchImpl,
   );
 }

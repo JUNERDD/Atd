@@ -1,26 +1,32 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
-import type { ConnectionStore } from '../credentials/connections.js';
+import { ConnectionStorageLimitError, type ConnectionStore } from '../credentials/connections.js';
 import type { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError, UpstreamError } from '../errors.js';
-import { isLocalProvider, toServiceModel } from './catalog.js';
+import { directoryModels, isLocalProvider, toServiceModel } from './catalog.js';
 import { uniqueModels } from './connection-view.js';
 import { contextOverrideFile, type ContextOverride } from './context-override.js';
 import { discoverCompatibleModels } from './discovery.js';
-import { LLAMA_PROVIDER, llamaProvider } from './llama.js';
+import { LLAMA_PROVIDER, llamaProvider, migrateLlamaCatalog } from './llama.js';
+import { assertCredential, assertProviderAuth } from './auth-policy.js';
+import { connectionAuthContext } from './auth-context.js';
+import { chatgptOAuth } from './chatgpt-oauth.js';
+import { chatgptProvider, loadChatGPTModels } from './chatgpt-provider.js';
+import { chatgptUsage, requireChatGPTNotice } from './chatgpt-usage.js';
+import { inferenceError } from './inference-result.js';
+import type { ChatGPTLoginOptions } from './oauth-callback.js';
+import { CatalogFailure, catalogFailureReason } from './catalog-http.js';
+import { loadOpenRouterModels, openRouterProvider } from './openrouter-catalog.js';
 
 export interface ProviderStores {
   dataDir: string;
   connections: ConnectionStore;
   keyring: KeyringBackend;
 }
-
-const CATALOG_REFRESH_FAILED =
-  'Could not refresh models. Your saved catalog and model preference are preserved.';
 
 /** The keyring-backed credential store of one connection. */
 export function connectionCredentials(
@@ -47,9 +53,25 @@ export async function connectionRuntime(
   connection: ServiceConnection,
   credentials: ServiceCredentialStore = connectionCredentials(stores, connection),
   contextOverride?: ContextOverride,
+  loginOptions?: ChatGPTLoginOptions,
 ): Promise<ModelRuntime> {
+  assertProviderAuth(connection);
+  const usesChatGPT = connection.provider === 'openai' && connection.authType === 'oauth';
+  if (usesChatGPT) requireChatGPTNotice(connection);
   const root = path.join(stores.dataDir, 'providers', connection.connectionId);
   await mkdir(root, { recursive: true });
+  // llama.cpp catalogs depend on the endpoint. Pi may persist a response after its connection
+  // changes, so an old endpoint's cache must stay separate from the new configuration's cache.
+  const legacyStorePath = path.join(root, 'models-store.json');
+  const modelsStorePath =
+    connection.provider === LLAMA_PROVIDER
+      ? path.join(
+          root,
+          `models-store.${createHash('sha256').update(connection.configurationId).digest('hex')}.json`,
+        )
+      : legacyStorePath;
+  if (connection.provider === LLAMA_PROVIDER)
+    await migrateLlamaCatalog(connection, legacyStorePath, modelsStorePath);
   const models = await ModelRuntime.create({
     credentials,
     // The SDK only enables its file-backed catalog store when a config path is set. Without an
@@ -57,63 +79,96 @@ export async function connectionRuntime(
     modelsPath: contextOverride
       ? await contextOverrideFile(root, connection.provider, contextOverride)
       : path.join(root, 'models.json'),
-    modelsStorePath: path.join(root, 'models-store.json'),
+    modelsStorePath,
     refreshOnCreate: false,
   });
-  if (connection.provider === LLAMA_PROVIDER)
-    models.registerNativeProvider(await llamaProvider(connection));
-  else if (isLocalProvider(connection.provider)) {
-    models.registerProvider(connection.provider, {
-      name: connection.name,
-      baseUrl: connection.baseUrl,
-      api: 'openai-completions',
-      models: uniqueModels([...(connection.catalog ?? []), ...(connection.customModels ?? [])]),
-    });
-  } else if (connection.baseUrl)
-    models.registerProvider(connection.provider, { baseUrl: connection.baseUrl });
-  const provider = models.getProvider(connection.provider);
-  if (!provider) throw new ConflictError('This provider is no longer registered in Pi.');
-  const { apiKey, oauth } = provider.auth;
-  const options = connection.options ?? {};
-  models.registerNativeProvider({
-    ...provider,
-    auth:
-      connection.authType === 'oauth'
-        ? { ...(oauth && { oauth }) }
-        : {
-            apiKey: {
-              name: apiKey?.name ?? 'Connection credentials',
-              resolve: async (input) => {
-                const current = stores.connections.connection(connection.connectionId);
-                if (!current.connected || current.configurationId !== connection.configurationId)
-                  return undefined;
-                if (connection.authType === 'none')
-                  return {
-                    auth: {
-                      apiKey: 'unused',
-                      headers: { Authorization: null, 'x-api-key': null, 'x-goog-api-key': null },
-                    },
-                    env: options,
-                  };
-                if (!apiKey) return undefined;
-                const resolved = await apiKey.resolve({
-                  ...input,
-                  ...(input.credential && { credential: { ...input.credential, env: options } }),
-                  ctx: {
-                    ...input.ctx,
-                    env: (name) =>
-                      options[name] !== undefined
-                        ? Promise.resolve(options[name])
-                        : connection.authType === 'ambient'
-                          ? input.ctx.env(name)
-                          : Promise.resolve(undefined),
-                  },
-                });
-                return resolved ? { ...resolved, env: { ...resolved.env, ...options } } : undefined;
+  // Pi 1.1.0 registration starts unawaited refreshes. Drain them before the explicit restore:
+  // a late config read could otherwise cancel that restore or the next network refresh.
+  const refresh = models.refresh.bind(models);
+  const registrations: Promise<unknown>[] = [];
+  models.refresh = (options) => {
+    const operation = refresh(options);
+    registrations.push(operation);
+    return operation;
+  };
+  try {
+    if (connection.provider === LLAMA_PROVIDER)
+      models.registerNativeProvider(await llamaProvider(connection));
+    else if (isLocalProvider(connection.provider)) {
+      models.registerProvider(connection.provider, {
+        name: connection.name,
+        baseUrl: connection.baseUrl,
+        api: 'openai-completions',
+        models: uniqueModels([...(connection.catalog ?? []), ...(connection.customModels ?? [])]),
+      });
+    } else if (
+      connection.baseUrl &&
+      connection.baseUrl !== models.getProvider(connection.provider)?.baseUrl &&
+      !usesChatGPT &&
+      connection.provider !== 'openrouter'
+    )
+      // Providers such as Fireworks have per-protocol model endpoints under one provider URL.
+      // Only an intentional endpoint override should replace those model URLs.
+      models.registerProvider(connection.provider, { baseUrl: connection.baseUrl });
+    let provider = models.getProvider(connection.provider);
+    if (!provider) throw new ConflictError('This provider is no longer registered in Pi.');
+    if (usesChatGPT)
+      provider = chatgptProvider(
+        provider,
+        chatgptOAuth(stores.dataDir, connection.connectionId, loginOptions),
+        connection.catalog ?? [],
+        chatgptUsage(stores, connection),
+      );
+    if (connection.provider === 'openrouter') provider = openRouterProvider(provider, connection);
+    const { apiKey, oauth } = provider.auth;
+    const options: Record<string, string> = {
+      ...connection.options,
+      // Azure's transport consults its env overlay before model.baseUrl. Keep an explicitly saved
+      // endpoint authoritative even when the service process has a different Azure resource set.
+      ...(connection.provider === 'azure' && connection.baseUrl
+        ? { AZURE_OPENAI_BASE_URL: connection.baseUrl }
+        : {}),
+    };
+    models.registerNativeProvider({
+      ...provider,
+      auth:
+        connection.authType === 'oauth'
+          ? { ...(oauth && { oauth }) }
+          : {
+              apiKey: {
+                name: apiKey?.name ?? 'Connection credentials',
+                resolve: async (input) => {
+                  const current = stores.connections.connection(connection.connectionId);
+                  if (!current.connected || current.configurationId !== connection.configurationId)
+                    return undefined;
+                  if (connection.authType === 'none')
+                    return {
+                      auth: {
+                        apiKey: 'unused',
+                        headers: { Authorization: null, 'x-api-key': null, 'x-goog-api-key': null },
+                      },
+                      env: options,
+                    };
+                  if (!apiKey) return undefined;
+                  if (input.credential) assertCredential(connection, input.credential);
+                  const resolved = await apiKey.resolve({
+                    ...input,
+                    ...(input.credential && { credential: { ...input.credential, env: options } }),
+                    ctx: connectionAuthContext(connection, input.ctx, options),
+                  });
+                  if (resolved?.auth.apiKey)
+                    assertCredential(connection, { type: 'api_key', key: resolved.auth.apiKey });
+                  return resolved
+                    ? { ...resolved, env: { ...resolved.env, ...options } }
+                    : undefined;
+                },
               },
             },
-          },
-  });
+    });
+  } finally {
+    models.refresh = refresh;
+    await Promise.allSettled(registrations);
+  }
   await models.refresh({ providers: [connection.provider], allowNetwork: false });
   return models;
 }
@@ -135,7 +190,21 @@ async function loadCatalog(
   connection: ServiceConnection,
   background: boolean,
 ): Promise<ServiceModelDefinition[]> {
+  if (connection.provider === 'openrouter')
+    return loadOpenRouterModels(await directoryModels('openrouter'));
   const models = await connectionRuntime(stores, connection);
+  if (connection.provider === 'openai' && connection.authType === 'oauth') {
+    if (!connection.chatgptPlanEnabled) return [];
+    requireChatGPTNotice(connection);
+    const auth = await models.getAuth(connection.provider);
+    if (!auth?.auth.apiKey)
+      throw new ConflictError('Sign in with ChatGPT before refreshing models.');
+    return loadChatGPTModels(
+      await directoryModels('openai'),
+      auth.auth.apiKey,
+      AbortSignal.timeout(15000),
+    );
+  }
   if (isLocalProvider(connection.provider)) {
     const auth = await models.getAuth(connection.provider);
     if (!auth) throw new ConflictError('Complete authentication before refreshing.');
@@ -149,8 +218,10 @@ async function loadCatalog(
     force: !background,
     signal: AbortSignal.timeout(15000),
   });
-  if (result.aborted || result.errors.size)
-    throw new Error('The model catalog could not be refreshed.');
+  const error = result.errors.get(connection.provider);
+  if (error) throw error;
+  if (result.aborted)
+    throw new CatalogFailure('The model directory request timed out or was cancelled.');
   return models.getModels(connection.provider).map(toServiceModel);
 }
 
@@ -173,16 +244,26 @@ export async function refreshCatalog(
 ): Promise<void> {
   if (!connection.connected) throw new ConflictError('Reconnect before refreshing models.');
   if (background && offline()) return;
-  let catalog: ServiceModelDefinition[];
   try {
-    catalog = await loadCatalog(stores, connection, background);
+    const catalog = await loadCatalog(stores, connection, background);
+    await recordCatalog(stores, connection, { catalog, catalogError: '' });
   } catch (error) {
+    const reason =
+      error instanceof ConflictError || error instanceof ConnectionStorageLimitError
+        ? error.message
+        : catalogFailureReason(error);
+    const message = `Could not refresh models. ${reason} Your saved catalog and model preference are preserved.`;
+    if (!background) {
+      try {
+        await recordCatalog(stores, connection, { catalogError: message });
+      } catch (recordError) {
+        // A nearly full file may not fit even this diagnostic. Return it without replacing data.
+        if (!(recordError instanceof ConnectionStorageLimitError)) throw recordError;
+      }
+    }
     if (error instanceof ConflictError) throw error;
-    if (!background)
-      await recordCatalog(stores, connection, { catalogError: CATALOG_REFRESH_FAILED });
-    throw new UpstreamError(CATALOG_REFRESH_FAILED);
+    throw new UpstreamError(message);
   }
-  await recordCatalog(stores, connection, { catalog, catalogError: '' });
 }
 
 function recordCatalog(
@@ -192,14 +273,15 @@ function recordCatalog(
 ): Promise<void> {
   return stores.connections.change((data) => {
     const current = data.connections.find((item) => item.connectionId === connection.connectionId);
-    if (current && current.configurationId === connection.configurationId)
+    if (current?.connected && current.configurationId === connection.configurationId)
       Object.assign(current, patch);
   });
 }
 
 /**
  * Sends one small model request (it may use credits, never runs tools) and
- * records the verified model when the configuration is still the one tested.
+ * records the verified model when the connected configuration and credential revision still
+ * match. Even an OAuth token rotation during the request requires another verification.
  */
 export async function verifyModel(
   stores: ProviderStores,
@@ -217,13 +299,20 @@ export async function verifyModel(
     // rejects requests without `x-opencode-session`) read this id the way they read a task's.
     { maxTokens: 16, signal: AbortSignal.timeout(30000), sessionId: randomUUID() },
   );
-  if (result.stopReason === 'error' || result.stopReason === 'aborted')
+  if (inferenceError(result))
     throw new UpstreamError(
       'Model verification failed. Check the connection, model access and available quota.',
     );
   await stores.connections.change((data) => {
     const current = data.connections.find((item) => item.connectionId === connection.connectionId);
-    if (current && current.configurationId === connection.configurationId)
-      current.verifiedModel = modelId;
+    if (
+      !current?.connected ||
+      current.configurationId !== connection.configurationId ||
+      current.revision !== connection.revision
+    )
+      throw new ConflictError(
+        'The connection or credential changed during verification. Try again.',
+      );
+    current.verifiedModel = modelId;
   });
 }

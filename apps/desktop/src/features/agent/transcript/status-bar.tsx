@@ -2,6 +2,8 @@ import { CircleAlert, CircleQuestionMark, CircleSlash, CircleStop } from 'lucide
 import { useTranslation } from 'react-i18next';
 import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import type { TaskRun } from '../../../client/agent/task-schema';
+import { ChatGPTUsageError } from '../../providers/chatgpt-plan';
+import { chatgptUsageError } from '@atd/agent-contracts';
 
 const NOTES = {
   stopped: { icon: CircleStop, key: 'conversation.stopped' },
@@ -32,7 +34,11 @@ export function StatusBar({ run }: { run: TaskRun | undefined }) {
     <Alert variant={status === 'failed' ? 'destructive' : 'default'}>
       <Icon aria-hidden />
       <AlertTitle>{t(key)}</AlertTitle>
-      {run?.error && <AlertDescription className="wrap-anywhere">{run.error}</AlertDescription>}
+      {run?.error && (
+        <AlertDescription className="wrap-anywhere">
+          {chatgptUsageError(run.error) ? <ChatGPTUsageError error={run.error} /> : run.error}
+        </AlertDescription>
+      )}
     </Alert>
   );
 }

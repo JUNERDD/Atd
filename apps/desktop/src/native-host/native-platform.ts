@@ -5,7 +5,8 @@ import type { NativeBridge } from '../native-bridge/client';
 
 /**
  * Host abilities through the shell: its open panel (which also imports the picked files), its save
- * panel for the page's content, the pasteboard, the default browser, and artifact files on disk.
+ * panel for the page's content, the pasteboard, writing a command's answer into the app it ran
+ * from, the default browser, and artifact files on disk.
  */
 export function nativePlatform(
   bridge: NativeBridge,
@@ -19,6 +20,7 @@ export function nativePlatform(
     async copy(text) {
       await bridge.call('clipboard.write', { text });
     },
+    writeText: (request) => bridge.call('text.write', request),
     async openLink(url) {
       await bridge.call('link.open', { url });
     },

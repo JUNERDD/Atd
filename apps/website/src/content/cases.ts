@@ -25,17 +25,34 @@ export const cases = [
     label: { en: 'Selection toolbar', zh: '选区工具栏' },
     title: { en: 'Start with the words in front of you.', zh: '选中文字，就能接着做。' },
     description: {
-      en: 'Ask Atd, translate, summarize or explain, right beside your selection.',
-      zh: '工具栏就在选区旁，提问、翻译、总结或解释，顺手完成。',
+      en: 'Ask Atd or run a command right beside your selection, and choose where its answer goes.',
+      zh: '工具栏就在选区旁，提问或运行命令，还能选好回答放到哪里。',
     },
     image: {
       src: mediaUrl('/cases/ui/selection-toolbar.png'),
       alt: {
-        en: 'Atd selection toolbar above highlighted text, with Ask Atd, Translate, Summarize and Explain actions.',
-        zh: '文字选区上方的 Atd 工具栏，包含提问、翻译、总结和解释操作。',
+        en: 'Atd selection toolbar above highlighted text, with Fix grammar’s options open: show in the conversation, replace the selected text, insert after it, insert at the cursor or copy.',
+        zh: '文字选区上方的 Atd 工具栏，「修正语法」的选项已展开：在对话中显示、替换选中文字、插入到选区后、插入到光标处或复制。',
       },
     },
     layers: caseLayers['selection-toolbar'],
+  },
+  {
+    id: 'write-back',
+    label: { en: 'Write-back', zh: '写回原处' },
+    title: { en: 'The answer lands where you asked.', zh: '回答，直接写回原处。' },
+    description: {
+      en: 'Run a command from its shortcut, and the result replaces your selection right where it is.',
+      zh: '用快捷键运行命令，结果直接替换选中的文字，不用切换窗口。',
+    },
+    image: {
+      src: mediaUrl('/cases/ui/write-back.png'),
+      alt: {
+        en: 'A rough draft line rewritten in place by a command, with the command island at the bottom of the screen showing Written.',
+        zh: '一行潦草的草稿被命令原地改写，屏幕底部的命令灵动岛显示“已写入”。',
+      },
+    },
+    layers: caseLayers['write-back'],
   },
   {
     id: 'mini-panel',

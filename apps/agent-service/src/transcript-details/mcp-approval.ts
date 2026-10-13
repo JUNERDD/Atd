@@ -3,8 +3,8 @@ import { Compile } from 'typebox/compile';
 import { McpServerIdSchema, type McpApprovalDetails } from '@atd/agent-contracts';
 
 /**
- * `configure_mcp`'s details (configure-mcp-tool.ts): present only when the saved server waits for
- * the user's launch approval. An empty object, from a save that needs none, projects to nothing.
+ * `configure_mcp`'s details (configure-mcp-tool.ts) while the saved server waits for the user's
+ * launch approval. Details without an approval, from a save that needs none, project to nothing.
  */
 const RawMcpApprovalValidator = Compile(
   Type.Object({

@@ -12,7 +12,13 @@ import {
   type BuiltinEntry,
   type BuiltinStatus,
 } from './manifest.js';
-import { readInstallState, recordInstall, withBuiltinLock, type InstallRecord } from './state.js';
+import {
+  clearBackupNotice,
+  readInstallState,
+  recordInstall,
+  withBuiltinLock,
+  type InstallRecord,
+} from './state.js';
 
 /** Where product skills come from and go to. Defaults to the shipped templates and `atdHome()`. */
 export interface BuiltinSkillsContext {
@@ -46,8 +52,12 @@ function layout(ctx: BuiltinSkillsContext) {
 
 /**
  * Reconciles every product skill whose template this build ships (see `reconcileAction`): installs
- * absent ones, upgrades untouched ones, records identical ones, and keeps changed ones as they
- * are. Idempotent and serialized per ATD home; a skill that fails is reported and the others go on.
+ * absent ones, upgrades untouched ones and records identical ones. A copy the user changed is kept
+ * while it builds on the content this build ships; once the shipped content moves past the base of
+ * their edit (`update_available`), the copy is backed up to `backups/skills/<name>-<UTC stamp>/`
+ * and replaced, so product skills always teach the capabilities this build has; the install record
+ * keeps the backup path for the notice that tells the user (`dismissBuiltinBackup`). Idempotent and
+ * serialized per ATD home; a skill that fails is reported and the others go on.
  */
 export function reconcileBuiltinSkills(
   ctx: BuiltinSkillsContext = defaultContext(),
@@ -100,6 +110,25 @@ export function restoreBuiltinSkill(
   });
 }
 
+/**
+ * Dismisses the notice that a reconcile replaced the user's copy of one product skill (the backup
+ * stays where it is), and answers the skill's status without it.
+ */
+export function dismissBuiltinBackup(
+  entry: BuiltinEntry,
+  ctx: BuiltinSkillsContext = defaultContext(),
+): Promise<BuiltinStatus> {
+  return withBuiltinLock(ctx.atdHome, async () => {
+    const paths = layout(ctx);
+    const template = await templateOf(ctx, entry);
+    if (!template)
+      throw new ConflictError(`Built-in skill "${entry.name}" is not shipped with this build.`);
+    const record = await clearBackupNotice(paths.stateFile, entry);
+    const copy = await fingerprintDir(path.join(paths.skillsDir, entry.name));
+    return builtinStatus(entry, copy ?? template.fingerprint, template.fingerprint, record);
+  });
+}
+
 async function reconcileSkill(
   ctx: BuiltinSkillsContext,
   entry: BuiltinEntry,
@@ -111,14 +140,19 @@ async function reconcileSkill(
   const target = path.join(paths.skillsDir, entry.name);
   const copy = await fingerprintDir(target);
   const action = reconcileAction(entry, copy, template.fingerprint, recorded);
-  if (action === 'keep' && copy !== null)
-    return builtinStatus(entry, copy, template.fingerprint, recorded);
-  if (action === 'install')
+  // A notice the user has not dismissed yet survives later installs; a new backup replaces it.
+  let backupPath = recorded?.backupPath;
+  if (action === 'keep' && copy !== null) {
+    const kept = builtinStatus(entry, copy, template.fingerprint, recorded);
+    if (kept.status !== 'update_available') return kept;
+    backupPath = await backupDir(target, paths.backupRoot, entry.name);
+  }
+  if (action !== 'record' && action !== 'none')
     await installDirAtomic({ source: template.dir, target, workDir: paths.workDir });
   const record =
     action === 'none'
       ? recorded
-      : await recordInstall(paths.stateFile, entry, template.fingerprint);
+      : await recordInstall(paths.stateFile, entry, template.fingerprint, backupPath);
   return builtinStatus(entry, template.fingerprint, template.fingerprint, record);
 }
 

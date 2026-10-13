@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
+import { USER_PLUGIN_ID } from '../service/plugin-rows';
 import type { SettingsAutomationTarget, SettingsExtensionItem } from './settings-navigation';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
@@ -120,7 +121,10 @@ export function useSettingsSection(
     },
     [locked, leave],
   );
-  /** Shows a new automation's editor that runs one command ("Automate…" on a command's row). */
+  /**
+   * Shows an automation's editor: a new one that runs one command ("Automate…" on a command's
+   * row), or a saved one (a turn's artifact card).
+   */
   const showAutomation = useCallback(
     (target: SettingsAutomationTarget) => {
       if (locked) return;
@@ -153,6 +157,16 @@ export function useSettingsSection(
   useEffect(
     () => window.desktop?.settings.onOpenSection?.((target) => navigate(target)),
     [navigate],
+  );
+  // A turn's artifact card in the task panel asks for one saved item's page.
+  useEffect(
+    () =>
+      window.desktop?.settings.onOpenItem?.((item) => {
+        if (item.section === 'memory') showMemory(item.id);
+        else if (item.section === 'automations') showAutomation({ automationId: item.id });
+        else showExtension({ pluginId: USER_PLUGIN_ID, kind: item.kind, name: item.name });
+      }),
+    [showMemory, showAutomation, showExtension],
   );
   return {
     section,

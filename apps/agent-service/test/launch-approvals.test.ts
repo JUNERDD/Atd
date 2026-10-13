@@ -10,6 +10,7 @@ import {
 } from '@atd/agent-contracts';
 import { approveMcp } from '../dist/cli-approve.js';
 import { configureMcp } from '../dist/configure-mcp-tool.js';
+import type { GateRequest } from '../dist/harness/gate.js';
 import { LAUNCH_APPROVAL_KEY_ACCOUNT } from '../dist/credentials/keyring.js';
 import { upsertRecord } from '../dist/mcp/server-edits.js';
 import { client, errorCode, exists, launcher, spawnedWithin } from './launch-helpers.ts';
@@ -267,14 +268,17 @@ test('configure_mcp tells the model when a server needs the user to approve it',
       return {
         record: upsertRecord(serverId, request, undefined),
         approval: await api.approvalOf(serverId),
+        created: false,
       };
     },
+    listMcp: async () => [],
     audit: () => undefined,
     taskId: 'task',
     runId: () => 'run',
   };
+  const confirm = { gate: async () => 'once' as const, toolCallId: 'call' };
   const run = async (args: Record<string, unknown>) => {
-    const result = await configureMcp(host, { serverId: 'agent-made', ...args });
+    const result = await configureMcp(host, { serverId: 'agent-made', ...args }, confirm);
     return result.content.map((block) => block.text);
   };
   const created = await run({ transport: 'stdio', command, args: ['x'], auth: { type: 'none' } });
@@ -291,6 +295,35 @@ test('configure_mcp tells the model when a server needs the user to approve it',
   });
   assert.equal(JSON.parse(plain[0] ?? '').approval, 'notRequired');
   assert.equal(plain.length, 1, 'no approval note for a server that needs none');
+});
+
+test('configure_mcp saves nothing when the user declines its confirm', async () => {
+  const asked: GateRequest[] = [];
+  const host = {
+    upsertMcp: async () => assert.fail('a declined server is never saved'),
+    listMcp: async () => [],
+    audit: () => undefined,
+    taskId: 'task',
+    runId: () => 'run',
+  };
+  const gate = async (request: GateRequest): Promise<never> => {
+    asked.push(request);
+    throw new Error(request.declinedMessage);
+  };
+  const draft = { transport: 'stdio', command: 'npx', args: ['-y', 'some server'] };
+  await assert.rejects(
+    configureMcp(
+      host,
+      { serverId: 'nope', ...draft, auth: { type: 'none' } },
+      { gate, toolCallId: 'c' },
+    ),
+    /declined saving the MCP server "nope", so nothing was saved/,
+  );
+  assert.equal(asked[0]?.askAlways, true, 'every save asks, whatever the tier');
+  assert.match(
+    asked[0]?.detail ?? '',
+    /^Adds the MCP server "nope"[^]*Command: npx -y "some server"$/,
+  );
 });
 
 test('the CLI approves only after a terminal confirmation or --yes', async () => {

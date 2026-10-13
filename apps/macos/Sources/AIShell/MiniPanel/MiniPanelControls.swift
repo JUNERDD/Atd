@@ -126,7 +126,7 @@ struct MiniPanelButton: View {
 /// leave on their own presence. Inside a scroll view they do so about the middle of the rows
 /// that show: the scroll view itself takes no transform, since AppKit moves its scroll position
 /// when the view it lies in is moved or scaled. A list that scrolls shows its own scrollbar in the
-/// card's trailing padding (``MiniPanelScrollThumb``) rather than the system scroller, so the
+/// card's scrollbar lane (``MiniPanelScrollThumb``, ``MiniPanelMetrics/scrollLane``) rather than the system scroller, so the
 /// padding is the same on both sides and nothing covers a row; its thumb is dragged through the
 /// controller, which holds every press on the panel, and scrolls the rows through
 /// ``MiniPanelModel/flyoutScrollTarget``.
@@ -161,7 +161,8 @@ struct MiniPanelFlyout: View {
         rows(middleY: nil)
       }
     }
-    .padding(MiniPanelMetrics.cardPadding)
+    .padding([.top, .bottom, .leading], MiniPanelMetrics.cardPadding)
+    .padding(.trailing, MiniPanelMetrics.rightPadding(rows: model.commands.count))
     .overlay {
       if scrolls {
         MiniPanelScrollThumb(model: model, metrics: scroll, size: rest.size)

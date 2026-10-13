@@ -1,6 +1,7 @@
 import { useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, RotateCcw } from 'lucide-react';
+import { doubleTapModifier } from '@atd/agent-contracts';
 import {
   Item,
   ItemActions,
@@ -36,6 +37,7 @@ export function ShortcutRow({
   error?: string | undefined;
 }) {
   const { t } = useTranslation('settings');
+  const { t: tCommon } = useTranslation('common');
   const keysButton = useRef<HTMLButtonElement>(null);
   const recording = settings.recording === action;
   const keys = shortcutKeys(settings.bindings[action], settings.platform);
@@ -51,8 +53,16 @@ export function ShortcutRow({
       if (recordingElsewhere) event.preventDefault();
     },
   };
-  // The latest attempt's error in this row outranks the standing registration error.
-  const shownError = settings.errors[action] ?? error;
+  // Only the shell's global shortcuts take a double-tap, which needs Accessibility to be detected.
+  const globalAction = action === 'togglePanel' || action === 'captureScreenshot';
+  const tapNeedsAccess =
+    doubleTapModifier(settings.bindings[action]) !== null &&
+    settings.accessibilityTrusted === false;
+  // The latest attempt's error in this row outranks the standing registration error, which a
+  // double-tap without Accessibility explains by its cause.
+  const shownError =
+    settings.errors[action] ??
+    (tapNeedsAccess ? tCommon('shortcuts.doubleTapNeedsAccessibility') : error);
   const errorId = `settings-shortcut-${action}-error`;
 
   return (
@@ -67,6 +77,7 @@ export function ShortcutRow({
             ref={keysButton}
             keys={keys}
             recording={recording}
+            doubleTap={globalAction && settings.platform === 'darwin'}
             className="data-recording-elsewhere:opacity-50"
             aria-label={
               recording

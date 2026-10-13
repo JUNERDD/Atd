@@ -1,0 +1,104 @@
+/* The selection toolbar's menus (apps/macos/Sources/AIShell/Selection/ToolbarOptionsRow.swift): at
+   --x, --y in points, rows --rw points wide. Set without the film's stylistic sets, which the
+   measurements leave out. */
+.glass.pk-menu {
+  --glass-radius: 18px;
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  color: var(--pk-label);
+  font-family: var(--font-text);
+  font-feature-settings: normal;
+  font-size: 13px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.pk-menu__row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: calc(var(--rw) * 1px);
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+}
+
+.pk-menu__row[data-wash='hover'] {
+  background: rgb(255 255 255 / 0.09);
+}
+
+.pk-menu__row[data-wash='pressed'] {
+  background: rgb(255 255 255 / 0.16);
+}
+
+/* The title takes the room left of the detail and the slot, cut with an ellipsis there; the
+   menu's width counts it up to 240 pt (`menuRowWidth`). */
+.pk-menu__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+/* The detail: right-aligned 16 pt past the title, cut past 160 pt, ending at the slot. */
+.pk-menu__detail {
+  flex: none;
+  max-width: 160px;
+  margin-left: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  color: var(--pk-label-2);
+}
+
+/* The trailing slot: 14 pt, 6 pt after a detail or 16 pt after a bare title; its glyph centred
+   at its own size, as the shell draws its SF Symbols (checkmark 11 semibold, chevron 10). */
+.pk-menu__slot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 16px;
+}
+
+.pk-menu__row[data-detail] > .pk-menu__slot {
+  margin-left: 6px;
+}
+
+.pk-menu__check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.pk-menu__chevron {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--pk-label-2);
+}
+
+/* The hairline between the options and Run: 1 pt, inset 10 pt, in a 9 pt row. */
+.pk-menu__separator {
+  position: relative;
+  display: block;
+  height: 9px;
+}
+
+.pk-menu__separator::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 4px;
+  height: 1px;
+  background: rgb(255 255 255 / 0.1);
+}

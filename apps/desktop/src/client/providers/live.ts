@@ -4,6 +4,7 @@ import {
   getProvider,
   listCatalog,
   listProviders,
+  removeProvider,
   updateProvider,
   type AgentClientOptions,
 } from '@atd/agent-client';
@@ -13,7 +14,6 @@ import type {
   ServiceConnection,
 } from '@atd/agent-contracts';
 import { validateConfig } from './configuration';
-import { LOCAL_PROVIDERS } from './metadata';
 import type { Connection, ConnectionDraft, ProviderCatalogEntry } from './schema';
 
 /** Maps a secret-free service connection into the desktop settings row. */
@@ -31,6 +31,15 @@ export function toDesktopConnection(connection: ServiceConnection): Connection {
     ...(connection.contextTiers ? { contextTiers: { ...connection.contextTiers } } : {}),
     revision: connection.revision,
     connected: connection.connected,
+    ...(connection.authNotice ? { authNotice: connection.authNotice } : {}),
+    ...(connection.accountLabel ? { accountLabel: connection.accountLabel } : {}),
+    ...(connection.chatgptConsent ? { chatgptConsent: connection.chatgptConsent } : {}),
+    ...(connection.chatgptPlanEnabled === undefined
+      ? {}
+      : { chatgptPlanEnabled: connection.chatgptPlanEnabled }),
+    ...(connection.chatgptUsagePaused === undefined
+      ? {}
+      : { chatgptUsagePaused: connection.chatgptUsagePaused }),
     hasCredential: connection.hasCredential,
     verifiedModel: connection.verifiedModel,
     // The service fills these on every response; absent only on stored records.
@@ -39,19 +48,6 @@ export function toDesktopConnection(connection: ServiceConnection): Connection {
     catalog: connection.catalog ?? [],
     catalogError: connection.catalogError ?? '',
   };
-}
-
-/** Local fallback catalog from LOCAL_PROVIDERS; never empty (5 entries). */
-export function localCatalog(): ProviderCatalogEntry[] {
-  return LOCAL_PROVIDERS.map((provider) => ({
-    ...provider,
-    category: 'local' as const,
-    auth: [
-      { type: 'none' as const, label: 'No API key' },
-      { type: 'api_key' as const, label: 'API key' },
-    ],
-    models: [],
-  }));
 }
 
 /** Maps a service catalog entry onto the desktop shape (contract v1: identical). */
@@ -66,19 +62,11 @@ export function toCatalogEntry(entry: ProviderCatalogEntry): ProviderCatalogEntr
   };
 }
 
-/** Service catalog when connected, else the local fallback. Never resolves []. */
-export async function fetchCatalog(
-  options: AgentClientOptions | null,
-): Promise<ProviderCatalogEntry[]> {
-  const fallback = localCatalog();
-  if (!options) return fallback;
-  try {
-    const { catalog } = await listCatalog(options);
-    if (catalog.length === 0) return fallback;
-    return catalog.map(toCatalogEntry);
-  } catch {
-    return fallback;
-  }
+/** A failed read must remain a failure: a partial fallback hides saved providers in the UI. */
+export async function fetchCatalog(options: AgentClientOptions): Promise<ProviderCatalogEntry[]> {
+  const { catalog } = await listCatalog(options);
+  if (!catalog.length) throw new Error('The provider catalog could not be loaded.');
+  return catalog.map(toCatalogEntry);
 }
 
 export async function fetchLiveProviders(options: AgentClientOptions): Promise<{
@@ -153,6 +141,9 @@ export async function saveLive(
     ...(draft.defaultThinkingLevel ? { defaultThinkingLevel: draft.defaultThinkingLevel } : {}),
     options: draft.options,
     customModels: draft.customModels,
+    ...(draft.provider === 'openai' && draft.authType === 'oauth' && draft.chatgptConsent
+      ? { chatgptConsent: draft.chatgptConsent }
+      : {}),
   };
   if (!draft.connectionId) {
     const created = await createProvider(options, {
@@ -172,6 +163,7 @@ export async function saveLive(
     ...configuration,
     expectedRevision: draft.expectedRevision,
     credential: credentialChange(draft, live),
+    ...(draft.resumeChatGPTUsage ? { resumeChatGPTUsage: true } : {}),
   });
   return toDesktopConnection(updated.connection);
 }
@@ -183,4 +175,12 @@ export async function disconnectLive(
 ): Promise<Connection> {
   const disconnected = await disconnectProvider(options, connectionId, expectedRevision);
   return toDesktopConnection(disconnected.connection);
+}
+
+export async function removeLive(
+  options: AgentClientOptions,
+  connectionId: string,
+  expectedRevision: number,
+): Promise<string | undefined> {
+  return (await removeProvider(options, connectionId, expectedRevision)).warning;
 }

@@ -36,6 +36,9 @@ final class ShellBridge {
     switch post {
     case .bridgeReady: host.pageDidBecomeReady()
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
+    case .typingSet(let post):
+      shell?.summoner.writeTargets.animatesTyping = post.animation
+      shell?.summoner.writeTargets.typesAnswers = post.typing
     case .windowDragRegions(let post): host.setDragRegions(post.rects)
     case .onboardingSurface(let post): shell?.onboarding.setSurface(post, from: host)
     case .onboardingSelection(let post): shell?.setPracticeSelection(post, from: host)
@@ -77,6 +80,8 @@ final class ShellBridge {
     case .windowSetPinned(let params):
       shell.setPinned(params.pinned)
       return try Self.encode(WindowSetPinnedResult(pinned: params.pinned))
+    case .windowSetPlacement(let params):
+      return try Self.encode(shell.setPanelPlacement(params.placement))
     case .appState:
       return try Self.encode(shell.appState())
     case .appSetShowInDock(let params):
@@ -126,6 +131,20 @@ final class ShellBridge {
       return try Self.encode(await shell.captureScreenshot())
     case .screenshotEdit(let params):
       return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
+    case .textWrite(let params):
+      return try Self.encode(await shell.writeText(params))
+    case .commandProgressShow(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can show command progress.")
+      }
+      try shell.commandProgress.show(params)
+      return try Self.encode(NativeEmpty())
+    case .commandProgressHide(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can hide command progress.")
+      }
+      shell.commandProgress.hide(target: params.target)
+      return try Self.encode(NativeEmpty())
     case .clipboardWrite(let params):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(params.text, forType: .string)
@@ -162,6 +181,9 @@ final class ShellBridge {
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
     case .toolbarSet(let params):
       shell.applyToolbar(SelectionToolbarSettings(params))
+      return try Self.encode(NativeEmpty())
+    case .commandOptionsSet(let params):
+      shell.applyCommandOptions(CommandOptionsCatalog(params))
       return try Self.encode(NativeEmpty())
     case .accessibilityRequest:
       shell.trust.openSystemSettings()

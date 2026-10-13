@@ -285,7 +285,7 @@ extension MiniPanelController {
     case .screenshot: actions.screenshot()
     case .commands:
       if model.flyoutOpen {
-        closeFlyout(trigger: "commands", throughLabel: true)
+        closeFlyout(trigger: "commands")
       } else {
         openFlyout()
       }

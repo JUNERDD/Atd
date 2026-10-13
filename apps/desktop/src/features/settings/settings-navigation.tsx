@@ -21,12 +21,13 @@ export function useOpenSettingsCommand() {
   return open;
 }
 
-/** What "Automate…" on a command asks of the Automations section: a new automation running it. */
-export interface SettingsAutomationTarget {
-  commandId: string;
-}
+/**
+ * What a link asks of the Automations section: a new automation running one command ("Automate…"
+ * on a command), or one saved automation's page (a turn's artifact card).
+ */
+export type SettingsAutomationTarget = { commandId: string } | { automationId: string };
 
-/** Opens the Automations section at a new automation's editor, prefilled with one command. */
+/** Opens the Automations section at a new automation's editor or at a saved automation. */
 export const SettingsAutomationLinkContext = createContext<
   ((target: SettingsAutomationTarget) => void) | null
 >(null);

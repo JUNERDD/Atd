@@ -9,7 +9,7 @@ import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
-import type { MiniPanelOpenOn, SettingsBridge } from './settings-contract';
+import type { MiniPanelOpenOn, PanelPlacement, SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
@@ -139,6 +139,12 @@ export interface DesktopBridge {
    * `SettingsSnapshot.miniPanelOpenOn` follows. Optional for test compat.
    */
   setMiniPanelOpenOn?: (openOn: MiniPanelOpenOn) => Promise<MiniPanelOpenOn>;
+  /**
+   * Sets where summons show the panel and resolves to the applied value, which
+   * `SettingsSnapshot.panelPlacement` follows; a visible panel stays put until the next summon.
+   * Optional for test compat.
+   */
+  setPanelPlacement?: (placement: PanelPlacement) => Promise<PanelPlacement>;
   chooseFiles: () => Promise<ContextFile[]>;
   /**
    * Captures the screen for a screenshot command's input with the commands' own capture (the one

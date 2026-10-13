@@ -33,6 +33,7 @@
     "loading": "Loading commands…",
     "personal": "Personal",
     "pluginGroupFor": "Commands from {{plugin}}",
+    "reorderHint": "Press and hold a command to drag it into place, or move the focused one with ⌥↑ and ⌥↓.",
     "deleteTitle": "Delete {{name}}?",
     "deleteDescription": "This removes the command and its shortcut. Existing tasks keep their saved command version.",
     "status": {
@@ -157,11 +158,69 @@
     },
     "unavailable": "To show this command in these places, have it read the selected text: set Input source to Selected text, or turn on the selected text variable in Input options."
   },
+  "output": {
+    "title": "Result",
+    "action": "When the answer is ready",
+    "panel": {
+      "title": "Show in the conversation",
+      "description": "The answer stays in the conversation."
+    },
+    "replaceSelection": {
+      "title": "Replace the selected text",
+      "description": "Writes the answer over the text you selected."
+    },
+    "insertAfterSelection": {
+      "title": "Insert after the selected text",
+      "description": "Writes the answer after the text you selected, keeping that text."
+    },
+    "insertAtCursor": {
+      "title": "Insert at the cursor",
+      "description": "Types the answer where the cursor was."
+    },
+    "copy": {
+      "title": "Copy to the clipboard",
+      "description": "Also puts the answer on the clipboard."
+    },
+    "writeBackNote": "Writes only when the command runs from another app, through its shortcut or the selection toolbar. Anywhere else, the answer stays in the conversation.",
+    "cardNote": "If that app can’t take text there, the answer shows in a card for you to copy.",
+    "review": {
+      "title": "Review before applying",
+      "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
+    },
+    "savedTitle": "{{title}} (default)",
+    "needsTarget": "Nothing is written back from here: the answer stays in the conversation. Writing back needs a run from another app, through the command's shortcut or the selection toolbar.",
+    "needsSelection": "This command doesn't read the selected text, so the answer stays in the conversation."
+  },
+  "typing": {
+    "description": "Answers appear a few characters at a time. Turn off to paste them at once.",
+    "reduceMotion": "Reduce Motion is on in System Settings, so answers appear all at once.",
+    "label": "Typing effect",
+    "scope": "How commands write their answers into other apps.",
+    "switch": "Type answers in",
+    "beta": "Beta",
+    "state": {
+      "on": "On",
+      "off": "Off"
+    },
+    "errors": {
+      "save": "The typing effect couldn't be saved. Try again."
+    }
+  },
+  "typingAnimation": {
+    "label": "Highlight new text",
+    "description": "A glow at the insertion point and a brief highlight behind the new text, whether it is typed in or pasted at once.",
+    "reduceMotion": "Reduce Motion is on in System Settings, so the new text is highlighted without the moving glow.",
+    "errors": {
+      "save": "The new-text highlight couldn't be saved. Try again."
+    }
+  },
   "shortcut": {
     "error": "Include Command, Control, or Alt with a supported key.",
     "record": "Record command shortcut",
     "recordShortcut": "Record shortcut",
-    "clear": "Clear shortcut"
+    "clear": "Clear shortcut",
+    "description": "Press it in any app to run this command.",
+    "conflictHint": "If it does nothing, another app may hold this combination. Choose a different one."
   },
   "instruction": {
     "title": "Instructions",
@@ -179,18 +238,26 @@
     "opened": "Opened a new AI session in the task panel.",
     "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
   },
+  "io": {
+    "title": "Input and result",
+    "description": "What a run reads and where its answer goes.",
+    "composeNote": "Run from its shortcut with nothing selected, it asks you to type the text.",
+    "composeCursorNote": "Run from its shortcut with nothing selected, it asks you to type the text and puts the answer at the cursor."
+  },
   "start": {
-    "title": "Input and launch",
-    "description": "What it reads when it starts, the shortcut that runs it, and where else it’s offered."
+    "title": "Launch",
+    "description": "The shortcut that runs it and where else it’s offered."
   },
   "run": {
     "title": "Run settings",
-    "description": "The model, memory and tools each run may use.",
+    "description": "The model, effort, memory and tools each run may use.",
     "model": "Model",
     "useAppDefault": "Use app default",
     "useFixedModel": "Use a fixed model",
     "fixedModel": "Fixed command model",
     "thinkingLevel": "Effort",
+    "thinkingLevelInherit": "Use connection default",
+    "thinkingLevelHint": "How much the model reasons before it answers, whichever model runs the command. Lower is faster and cheaper. Each run adjusts the level to what its model supports.",
     "memory": "Memory",
     "memoryInherit": "Use memory · Follow global learning setting",
     "memoryOff": "Off for this task and follow-ups",

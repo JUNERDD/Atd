@@ -8,7 +8,10 @@
   "shortcuts": {
     "conflictHint": "如果按下快捷键后没有反应，可能是其他应用占用了相同的组合键，请换一个。",
     "pressKeys": "请按下按键…",
-    "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。"
+    "pressKeysDoubleTap": "按下组合键或双击修饰键…",
+    "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
+    "recordingHintDoubleTap": "请按下快捷键，或快速连按两次 Command、Option、Control 或 Shift。按 Escape 取消，按 Tab 移到下一个控件。",
+    "doubleTapNeedsAccessibility": "双击修饰键的快捷键需要辅助功能权限。请在“系统设置 › 隐私与安全性 › 辅助功能”中允许 Atd。"
   },
   "tools": {
     "read": {

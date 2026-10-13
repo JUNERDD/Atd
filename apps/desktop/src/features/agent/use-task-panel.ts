@@ -19,6 +19,7 @@ import { readChoices, readDrafts, useRememberComposers, usableChoice } from './u
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
 import { useCommandLaunch } from './use-command-launch';
+import { trackCommandRun } from './command-results';
 import { usePanelHotkeys } from './use-panel-hotkeys';
 import { useSideChat } from './side-chat/use-side-chat';
 import { showErrorToast } from '../../components/toast-store';
@@ -107,13 +108,6 @@ export function useTaskPanel() {
       else void hide();
     },
   });
-  useCommandLaunch({
-    submit: (launched) => submit(launched),
-    showInput: (value) => {
-      setPrepared(value);
-      setView('input');
-    },
-  });
   const { dismiss: dismissSide } = side;
   /** Shows a task, as choosing it from the history does, with no side chat over it. */
   const openTask = useCallback(
@@ -124,6 +118,14 @@ export function useTaskPanel() {
     },
     [dismissSide],
   );
+  useCommandLaunch({
+    submit: (launched) => submit(launched),
+    showInput: (value) => {
+      setPrepared(value);
+      setView('input');
+    },
+    openTask,
+  });
   // Settings and an automation's notification show a task the same way, and an automation's
   // result counts as read once its task shows.
   useTaskOpenRequests(openTask);
@@ -190,6 +192,7 @@ export function useTaskPanel() {
       sideChatOf,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
+      output: commandInput?.output,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
     try {
@@ -201,9 +204,11 @@ export function useTaskPanel() {
         commandRevision: commandInput?.command.revision ?? null,
         savedRun: null,
         input,
+        ...(commandInput ? { output: commandInput.output } : {}),
         ...(sideChatOf ? { sideChatOf } : {}),
       });
       submission.current = null;
+      if (commandInput) trackCommandRun(commandInput, detail);
       if (!launched)
         setPolicies((previous) => {
           const next = { ...previous };

@@ -139,6 +139,32 @@ export function oscillator(
   return out;
 }
 
+/**
+ * A band-limited pulse (polyBLEP at both edges), its frequency and duty cycle fixed or following
+ * functions of seconds, centred on zero. A width of 0.5 is a square; narrower widths turn nasal
+ * and reedy.
+ */
+export function pulse(
+  frequency: number | ((t: number) => number),
+  width: number | ((t: number) => number),
+  seconds: number,
+  phase0 = 0,
+): Float32Array {
+  const out = new Float32Array(samples(seconds));
+  let phase = phase0 % 1;
+  for (let i = 0; i < out.length; i++) {
+    const t = i / SAMPLE_RATE;
+    const step = (typeof frequency === 'number' ? frequency : frequency(t)) / SAMPLE_RATE;
+    const duty = Math.min(0.95, Math.max(0.05, typeof width === 'number' ? width : width(t)));
+    const fall = (phase - duty + 1) % 1;
+    // Subtracting the duty cycle's offset keeps every width centred on zero (no DC).
+    out[i] = (phase < duty ? 1 : -1) + blep(phase, step) - blep(fall, step) + 1 - 2 * duty;
+    phase += step;
+    if (phase >= 1) phase -= 1;
+  }
+  return out;
+}
+
 export function noise(seconds: number, random: () => number): Float32Array {
   const out = new Float32Array(samples(seconds));
   for (let i = 0; i < out.length; i++) out[i] = random() * 2 - 1;
@@ -161,9 +187,12 @@ export function arEnvelope(length: number, attack: number, release: number): (t:
   return (t) => Math.min(1, t / attack, Math.max(0, (length - t) / release));
 }
 
-type BiquadKind = 'lowpass' | 'highpass' | 'bandpass' | 'highshelf';
+export type BiquadKind = 'lowpass' | 'highpass' | 'bandpass' | 'highshelf' | 'lowshelf' | 'peaking';
 
-/** An RBJ-cookbook biquad. Coefficients can be retuned per sample for sweeps. */
+/**
+ * An RBJ-cookbook biquad. Coefficients can be retuned per sample for sweeps. The shelves and the
+ * peaking bell take their boost or cut in `gainDb`; `q` is their slope or bandwidth.
+ */
 export class Biquad {
   private b0 = 1;
   private b1 = 0;
@@ -200,6 +229,19 @@ export class Biquad {
       a0 = a + 1 - (a - 1) * cos + root;
       a1 = 2 * (a - 1 - (a + 1) * cos);
       a2 = a + 1 - (a - 1) * cos - root;
+    } else if (this.kind === 'lowshelf') {
+      const a = 10 ** (gainDb / 40);
+      const root = 2 * Math.sqrt(a) * alpha;
+      b0 = a * (a + 1 - (a - 1) * cos + root);
+      b1 = 2 * a * (a - 1 - (a + 1) * cos);
+      b2 = a * (a + 1 - (a - 1) * cos - root);
+      a0 = a + 1 + (a - 1) * cos + root;
+      a1 = -2 * (a - 1 + (a + 1) * cos);
+      a2 = a + 1 + (a - 1) * cos - root;
+    } else if (this.kind === 'peaking') {
+      const a = 10 ** (gainDb / 40);
+      [b0, b1, b2] = [1 + alpha * a, -2 * cos, 1 - alpha * a];
+      [a0, a1, a2] = [1 + alpha / a, -2 * cos, 1 - alpha / a];
     } else {
       a0 = 1 + alpha;
       a1 = -2 * cos;
@@ -226,17 +268,18 @@ export class Biquad {
   }
 }
 
-/** Runs a voice through a filter whose cutoff may follow `cutoff(t)`. */
+/** Runs a voice through a filter whose cutoff may follow `cutoff(t)`; `gainDb` for shelves and bells. */
 export function filter(
   voice: Float32Array,
   kind: BiquadKind,
   cutoff: number | ((t: number) => number),
   q = Math.SQRT1_2,
+  gainDb = 0,
 ): Float32Array {
   const fixed = typeof cutoff === 'number';
-  const biquad = new Biquad(kind, fixed ? cutoff : cutoff(0), q);
+  const biquad = new Biquad(kind, fixed ? cutoff : cutoff(0), q, gainDb);
   for (let i = 0; i < voice.length; i++) {
-    if (!fixed && i % 32 === 0) biquad.tune(cutoff(i / SAMPLE_RATE), q);
+    if (!fixed && i % 32 === 0) biquad.tune(cutoff(i / SAMPLE_RATE), q, gainDb);
     voice[i] = biquad.process(voice[i] ?? 0);
   }
   return voice;

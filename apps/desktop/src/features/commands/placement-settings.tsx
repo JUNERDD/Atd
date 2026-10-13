@@ -12,7 +12,7 @@ const PLACES: readonly CommandPlace[] = ['selectionToolbar', 'turnSelection', 't
 
 /**
  * Where the command is offered beyond the command list, its shortcut and the launcher, as a field
- * of the editor's "How it starts" group. Every place hands the command text that stands in for a selection, so a place
+ * of the editor's launch group (`LaunchSettings`). Every place hands the command text that stands in for a selection, so a place
  * offers only a command that reads the selection (`offeredAt`): until it does, the switches show
  * off and stay disabled, with a note saying why. The stored choices stay as they are meanwhile, so
  * reading the selection again restores them.

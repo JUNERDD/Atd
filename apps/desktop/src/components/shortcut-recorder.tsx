@@ -11,7 +11,8 @@ import './shortcut-recorder.css';
  * combination when clicked and reads Press keys while it records. An unset shortcut shows
  * `emptyText` in the same pill. `action` (Reset, Clear) sits before the keys, so the keys keep the
  * trailing edge whether it shows or not, and it hides while recording. The recording hint is read
- * with the pill, which itself only shows Press keys.
+ * with the pill, which itself only shows Press keys (or, where a double-tap records too, says so;
+ * the text wraps in a narrow column rather than clipping).
  *
  * Recording takes focus into the pill as it starts, so callers can end it on blur: WebKit on macOS
  * does not focus a button that is clicked, and a pill that never held focus never loses it when
@@ -24,6 +25,7 @@ export function ShortcutRecorder({
   recording,
   emptyText,
   action,
+  doubleTap = false,
   className,
   ref,
   'aria-describedby': describedBy,
@@ -35,6 +37,8 @@ export function ShortcutRecorder({
   /** What the pill reads for an unset shortcut. */
   emptyText?: string;
   action?: ReactNode;
+  /** The recording also takes a lone modifier's double-tap, which its text and hint mention. */
+  doubleTap?: boolean;
 }) {
   const { t } = useTranslation('common');
   const hintId = useId();
@@ -63,7 +67,11 @@ export function ShortcutRecorder({
         {...props}
       >
         {recording ? (
-          t('shortcuts.pressKeys')
+          doubleTap ? (
+            t('shortcuts.pressKeysDoubleTap')
+          ) : (
+            t('shortcuts.pressKeys')
+          )
         ) : keys.length ? (
           <KbdGroup aria-hidden="true">
             {keys.map((key, index) => (
@@ -75,7 +83,7 @@ export function ShortcutRecorder({
         )}
       </Button>
       <span id={hintId} className="sr-only">
-        {t('shortcuts.recordingHint')}
+        {doubleTap ? t('shortcuts.recordingHintDoubleTap') : t('shortcuts.recordingHint')}
       </span>
     </div>
   );

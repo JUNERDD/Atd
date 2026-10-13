@@ -7,6 +7,7 @@ import {
 } from './atd-agents/run-agents.js';
 import { McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
+import type { MemoryRuntimeStore } from './memory/engine-types.js';
 import { logMemoryEvents, MemoryAuthority } from './memory/index.js';
 import {
   EMPTY_RUN_MEMORY,
@@ -84,7 +85,10 @@ export async function freezeRunSelections(
   const { disabled: disabledAgents, permissions: agentPermissions } = harness;
   // Memory takes what the run's input and skills leave of the budget, before references.
   const chars = skillChars(run.id, skills.loaded, catalog);
-  const memory = await freezeMemory(deps, run, CONTEXT_BUDGET - runInputSize(run.snapshot) - chars);
+  const room = CONTEXT_BUDGET - runInputSize(run.snapshot) - chars;
+  const memory = await freezeMemory(deps, run, (store) =>
+    freezeRunMemory(store, run.snapshot.memory, room),
+  );
   const catalogAgents = await freezeAgents(deps, run, {
     toolCeiling,
     disabled: disabledAgents,
@@ -129,16 +133,21 @@ async function freezeAgents(
 }
 
 /**
- * Freezes the memory the run's model is told about (memory/run-memory.ts) within `room`. Memory
- * is optional for a run: a store that cannot load never fails it, it runs without memory sections,
+ * Freezes the memory the run's model is told about with `freeze` (memory/run-memory.ts: the full
+ * sections, or a lite run's core only) from the memory store, and audits what it holds. Memory is
+ * optional for a run: a store that cannot load never fails it, it runs without memory sections,
  * and the log and audit say so.
  */
-async function freezeMemory(deps: RunFreezeDeps, run: TaskRun, room: number): Promise<RunMemory> {
+export async function freezeMemory(
+  deps: RunFreezeDeps,
+  run: TaskRun,
+  freeze: (store: Pick<MemoryRuntimeStore, 'enabledUnits'>) => Promise<RunMemory>,
+): Promise<RunMemory> {
   if (!run.snapshot.memory) return EMPTY_RUN_MEMORY;
   try {
     const { agentDir } = deps.ctx.paths;
     const store = await MemoryAuthority.authorityFor(agentDir, logMemoryEvents(deps.ctx.log));
-    const memory = await freezeRunMemory(store, run.snapshot.memory, room);
+    const memory = await freeze(store);
     deps.audit({
       taskId: deps.taskId,
       runId: run.id,

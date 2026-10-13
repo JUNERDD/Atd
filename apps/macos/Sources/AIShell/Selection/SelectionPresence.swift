@@ -58,8 +58,9 @@ nonisolated struct SelectionPresence: Sendable {
   /// complete mode instead, which VS Code and Cursor take for a screen reader: they prompt,
   /// switch the editor to screen-reader mode, and a "No" writes a user setting. Other apps just
   /// answer. Electron keeps the basic mode for the life of the process, so repeating the read
-  /// costs one message.
-  private static func wakeWebContent(_ app: AXUIElement) {
+  /// costs one message. The write target's capture and the answer card's focus check wake the
+  /// app the same way before they ask for its focus.
+  static func wakeWebContent(_ app: AXUIElement) {
     var role: CFTypeRef?
     _ = AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
   }
@@ -111,6 +112,17 @@ extension SelectionPresence {
       let framework = bundleURL.appendingPathComponent(
         "Contents/Frameworks/Electron Framework.framework", isDirectory: true)
       guard FileManager.default.fileExists(atPath: framework.path) else { return }
+      let app = AXUIElementCreateApplication(pid)
+      AXUIElementSetMessagingTimeout(app, messagingTimeout)
+      wakeWebContent(app)
+    }
+  }
+
+  /// Wakes the web content of the app a command is summoned from, off the main thread, as soon
+  /// as the shortcut fires: a browser that had no accessibility mode yet builds its tree while
+  /// the selection is read, so its focused field answers by the time the write target is.
+  nonisolated static func wake(pid: pid_t) {
+    prepareQueue.async {
       let app = AXUIElementCreateApplication(pid)
       AXUIElementSetMessagingTimeout(app, messagingTimeout)
       wakeWebContent(app)

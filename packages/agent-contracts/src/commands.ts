@@ -1,9 +1,8 @@
 import { Type, type Static } from 'typebox';
-import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
-import { Identifier, OperationId } from './identifiers.js';
-import { ThinkingLevelSchema } from './models.js';
+import { CommandOutputSchema } from './command-output.js';
+import { CommandModelSchema, CommandThinkingLevelSchema } from './command-run.js';
+import { Identifier } from './identifiers.js';
 import { SkillName } from './skills.js';
-import { ModelSelectionSchema, ServiceToolIdSchema, TaskInputSchema } from './task.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
@@ -142,19 +141,26 @@ export function offeredAt(
   return command.enabled && command.placement[place] && readsSelection(command.input);
 }
 
-export const CommandModelSchema = Type.Union([
-  Type.Object({ mode: Type.Literal('inherit') }, { additionalProperties: false }),
-  Type.Object(
-    {
-      mode: Type.Literal('fixed'),
-      connectionId: Type.String({ maxLength: 4096 }),
-      modelId: Type.String({ minLength: 1, maxLength: 256 }),
-      thinkingLevel: Type.Optional(ThinkingLevelSchema),
-    },
-    { additionalProperties: false },
-  ),
-]);
-export type CommandModel = Static<typeof CommandModelSchema>;
+/**
+ * Argument values of one command run keyed by parameter key, the value type of a run input's
+ * `arguments` (`TaskInput`).
+ */
+export const CommandArgumentValuesSchema = Type.Record(
+  Type.String(),
+  Type.Union([Type.String({ maxLength: 10000 }), Type.Number(), Type.Boolean()]),
+);
+export type CommandArgumentValues = Static<typeof CommandArgumentValuesSchema>;
+
+/**
+ * `PUT /v1/commands/:id/arguments`: the values the command's next run from the app starts from,
+ * remembered as a run's would be (`lastArguments`) without running it. The app sends it when the
+ * person changes a value in an options card or menu. Answers the command (`CommandGetResponse`).
+ */
+export const CommandArgumentsRequestSchema = Type.Object(
+  { arguments: CommandArgumentValuesSchema },
+  { additionalProperties: false },
+);
+export type CommandArgumentsRequest = Static<typeof CommandArgumentsRequestSchema>;
 
 export const CommandSkillRefSchema = Type.Object(
   {
@@ -181,8 +187,11 @@ export const ServiceCommandFullSchema = Type.Object({
   templateId: Type.Union([Identifier, Type.Null()]),
   input: CommandInputSchema,
   placement: CommandPlacementSchema,
+  output: CommandOutputSchema,
   parameters: Type.Array(CommandParameterSchema, { maxItems: 20 }),
   model: CommandModelSchema,
+  /** The reasoning level the command asks for, independent of its model (`CommandThinkingLevel`). */
+  thinkingLevel: CommandThinkingLevelSchema,
   tools: Type.Array(CommandToolSchema, { uniqueItems: true }),
   memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
   migratedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
@@ -192,6 +201,13 @@ export const ServiceCommandFullSchema = Type.Object({
    * `enabled`, and their `name` is qualified (`<plugin>:<item>`).
    */
   pluginId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+  /**
+   * The argument values the user's last run from the app used, computed by the service and never
+   * persisted with the command (nor part of its `revision`). Holds only parameters the command
+   * still declares, with values its current parameters accept; absent when none remain or the
+   * command never ran from the app. Clients prefill a run with it over the parameter defaults.
+   */
+  lastArguments: Type.Optional(CommandArgumentValuesSchema),
 });
 export type ServiceCommandFull = Static<typeof ServiceCommandFullSchema>;
 
@@ -207,8 +223,12 @@ export const CommandCreateSchema = Type.Object({
   input: Type.Optional(CommandInputSchema),
   /** Omitted: `defaultCommandPlacement` of the input source. */
   placement: Type.Optional(CommandPlacementSchema),
+  /** Omitted: `defaultCommandOutput()`. */
+  output: Type.Optional(CommandOutputSchema),
   parameters: Type.Optional(Type.Array(CommandParameterSchema, { maxItems: 20 })),
   model: Type.Optional(CommandModelSchema),
+  /** Omitted: `inherit`, the connection's default level. */
+  thinkingLevel: Type.Optional(CommandThinkingLevelSchema),
   tools: Type.Optional(Type.Array(CommandToolSchema, { uniqueItems: true })),
   memory: Type.Optional(Type.Union([Type.Literal('inherit'), Type.Literal('off')])),
 });
@@ -229,6 +249,20 @@ export const CommandsListResponseSchema = Type.Object(
 );
 export type CommandsListResponse = Static<typeof CommandsListResponseSchema>;
 
+/**
+ * `PUT /v1/commands/order`: the user's own commands in their new order, every one of them once.
+ * A list that names a command the store lacks or leaves one out is refused (409), so a reorder
+ * made against a stale list never drops or misplaces a command another client just added. Plugin
+ * commands keep their own order after the user's. Answers like `GET /v1/commands`.
+ */
+export const CommandOrderRequestSchema = Type.Object(
+  {
+    ids: Type.Array(Identifier, { maxItems: 500, uniqueItems: true }),
+  },
+  { additionalProperties: false },
+);
+export type CommandOrderRequest = Static<typeof CommandOrderRequestSchema>;
+
 export const CommandGetResponseSchema = Type.Object(
   {
     command: ServiceCommandFullSchema,
@@ -245,50 +279,6 @@ export const CommandDeleteResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type CommandDeleteResponse = Static<typeof CommandDeleteResponseSchema>;
-
-/**
- * Run-time picks over a command's saved settings, as the panel's pickers set them; each absent
- * field keeps the command's own. A picked model wins over the command's fixed model
- * (`runModelSelection`).
- */
-export const CommandRunPolicySchema = Type.Object(
-  {
-    model: Type.Optional(ModelSelectionSchema),
-    thinkingLevel: Type.Optional(ThinkingLevelSchema),
-    tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
-    memory: Type.Optional(Type.Boolean()),
-  },
-  { additionalProperties: false },
-);
-export type CommandRunPolicy = Static<typeof CommandRunPolicySchema>;
-
-/**
- * `POST /v1/commands/:id/run`: launches a saved command, the user's own or a plugin's, as one run.
- * Every launcher takes this path: the service renders the template with `input`, stages the
- * skills and references the template names, shows its tokens as the run's chips (the input's own
- * chips are replaced), freezes the text as command material and titles a new task after the
- * command. 404 for an unknown command, 409 for a disabled one or a busy task, 400 for input the
- * template cannot run with.
- */
-export const CommandRunRequestSchema = Type.Object(
-  {
-    /** Repeats with the same id answer the original run (`duplicate: true`). */
-    operationId: OperationId,
-    /** The task to run in; absent starts a new task. */
-    taskId: Type.Optional(Identifier),
-    /** What the template reads: the `{{input}}` text, argument values, files and captures. */
-    input: TaskInputSchema,
-    policy: Type.Optional(CommandRunPolicySchema),
-    /** Starts the new task as a side chat of this conversation (`SubmitTaskRequest.sideChatOf`). */
-    sideChatOf: Type.Optional(Identifier),
-  },
-  { additionalProperties: false },
-);
-export type CommandRunRequest = Static<typeof CommandRunRequestSchema>;
-
-/** A command run is accepted like a task submit. */
-export const CommandRunResponseSchema = SubmitTaskResponseSchema;
-export type CommandRunResponse = SubmitTaskResponse;
 
 /**
  * Stored command core in `commands.json`. `migratedAt` stays so files written
@@ -310,9 +300,14 @@ export const ServiceCommandSchema = Type.Object(
 );
 export type ServiceCommand = Static<typeof ServiceCommandSchema>;
 
+/**
+ * The command store file. In version 2 the array order is the order the user gave their commands;
+ * version 1 files were listed by name, so the store reads them in name order and writes them back
+ * as version 2.
+ */
 export const ServiceCommandsFileSchema = Type.Object(
   {
-    version: Type.Literal(1),
+    version: Type.Union([Type.Literal(1), Type.Literal(2)]),
     commands: Type.Array(ServiceCommandSchema, { maxItems: 500 }),
   },
   { additionalProperties: false },

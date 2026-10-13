@@ -43,7 +43,7 @@ public struct MiniPanelLayout: Equatable, Sendable {
   /// - Parameters:
   ///   - displayFrame: the display's full frame, which the canvas stays inside vertically.
   ///   - commands: how many commands the pushed list holds.
-  ///   - flyoutWidth: the card's width (``MiniPanelMetrics/flyoutWidth(textWidth:)``).
+  ///   - flyoutWidth: the card's width (``MiniPanelMetrics/flyoutWidth(textWidth:rows:)``).
   ///   - backingScale: the display's device pixels per point, which can widen the pill
   ///     (``MiniPanelMetrics/pillWidth(backingScale:)``); Retina's unless given.
   public init(

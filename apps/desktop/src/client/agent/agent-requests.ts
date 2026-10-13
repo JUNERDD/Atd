@@ -22,6 +22,14 @@ import { TaskClient, type TaskConnection } from './service-tasks';
 import { submitTask } from './task-submit';
 import type { FileRef } from './task-schema';
 import type { SaveContent } from '../../native-bridge/calls';
+import type { CallParams, CallResult } from '../../native-bridge/client';
+
+/** The requests that write the command list; they run one at a time (`AgentRequests.handle`). */
+const COMMAND_WRITES: ReadonlySet<AgentRequest['action']> = new Set([
+  'saveCommand',
+  'deleteCommand',
+  'reorderCommands',
+]);
 
 /** The command list as each client keeps it: the desktop also binds global shortcuts. */
 export interface CommandCatalog {
@@ -43,6 +51,8 @@ export interface CommandCatalog {
   screenshot(): Promise<Screenshot | null>;
   save(command: CommandDefinition, expectedRevision: number): Promise<CommandDefinition>;
   delete(id: string, revision: number): Promise<void>;
+  /** Saves the order of the user's commands; `ids` names each of them once. */
+  reorder(ids: string[]): Promise<void>;
   /** Reloads the list from the service (connect, or another client changed it). */
   refreshFromService(): Promise<void>;
 }
@@ -52,6 +62,8 @@ export interface AgentPlatform {
   /** Lets the user pick files and uploads them; resolves `[]` when cancelled. */
   chooseFiles(http: AgentHttpClient): Promise<FileRef[]>;
   copy(text: string): Promise<void>;
+  /** Writes a command's answer into the app it ran from; a refusal resolves with its reason. */
+  writeText(request: CallParams<'text.write'>): Promise<CallResult<'text.write'>>;
   /** `url` is already checked to be http(s). */
   openLink(url: string): Promise<void>;
   /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
@@ -169,7 +181,7 @@ export class AgentRequests<S> {
   /** Command writes run one at a time so revisions never race each other. */
   handle(request: AgentRequest, subscriber?: S): Promise<unknown> {
     const run = () => this.dispatch(request, subscriber).finally(() => this.flushBroadcast());
-    if (request.action !== 'saveCommand' && request.action !== 'deleteCommand') return run();
+    if (!COMMAND_WRITES.has(request.action)) return run();
     const pending = this.mutation.then(run);
     this.mutation = pending.then(
       () => undefined,
@@ -196,7 +208,10 @@ export class AgentRequests<S> {
           const command = this.commands.find(request.commandId);
           if (!command.enabled || command.revision !== request.prepared.revision)
             throw new Error('This command changed or is disabled. Review before running.');
-          this.platform.launch({ command, input: request.prepared.input, notice: '' }, false);
+          this.platform.launch(
+            { command, input: request.prepared.input, output: { ...command.output }, notice: '' },
+            false,
+          );
         } else this.platform.launch(await this.commands.prepare(request.commandId), false);
         return null;
       }
@@ -210,6 +225,9 @@ export class AgentRequests<S> {
         return this.commands.save(request.command, request.expectedRevision);
       case 'deleteCommand':
         await this.commands.delete(request.commandId, request.revision);
+        return null;
+      case 'reorderCommands':
+        await this.commands.reorder(request.commandIds);
         return null;
       case 'preview':
         return previewRun(
@@ -273,6 +291,14 @@ export class AgentRequests<S> {
       case 'copy':
         await this.platform.copy(request.text);
         return null;
+      case 'writeText':
+        return this.platform.writeText({
+          target: request.target,
+          mode: request.mode,
+          text: request.text,
+          typing: request.typing,
+          animation: request.animation,
+        });
       case 'openLink': {
         const url = new URL(request.url);
         if (!['http:', 'https:'].includes(url.protocol))

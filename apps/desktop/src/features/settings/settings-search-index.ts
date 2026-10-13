@@ -95,6 +95,14 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.alwaysOnTop',
   },
   {
+    id: 'window-panel-placement',
+    section: 'general',
+    anchor: 'settings-panel-placement',
+    label: 'shortcuts.panelPlacement.title',
+    description: 'shortcuts.panelPlacement.description',
+    keywords: 'search.keywords.panelPlacement',
+  },
+  {
     id: 'window-mini-panel',
     section: 'general',
     anchor: 'settings-mini-panel',
@@ -206,6 +214,23 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'search.entries.newCommand',
     description: 'commands:list.description',
     keywords: 'search.keywords.newCommand',
+  },
+  {
+    id: 'command-typing',
+    section: 'commands',
+    anchor: 'command-typing',
+    label: 'commands:typing.label',
+    description: 'commands:typing.description',
+    keywords: 'search.keywords.commandTyping',
+  },
+  {
+    id: 'command-typing-animation',
+    section: 'commands',
+    // Both typing switches live in the popover the footer's typing button opens.
+    anchor: 'command-typing',
+    label: 'commands:typingAnimation.label',
+    description: 'commands:typingAnimation.description',
+    keywords: 'search.keywords.commandTypingAnimation',
   },
   {
     id: 'automations-new',

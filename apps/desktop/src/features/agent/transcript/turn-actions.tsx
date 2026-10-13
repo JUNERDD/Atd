@@ -25,6 +25,7 @@ import { IconButton } from '../../../components/icon-button';
 import type { AdaptedTurn } from './adapter';
 import { showErrorToast } from '../../../components/toast-store';
 import { CommandMenuItems } from './command-menu-items';
+import { TurnApplyButton } from './turn-apply-button';
 import { speakableText } from './turn-markdown';
 import { useCopyFeedback } from './use-copy-feedback';
 import { useTurnActions } from './use-turn-actions';
@@ -32,9 +33,10 @@ import { useTurnSpeech } from './use-turn-speech';
 
 /**
  * The action bar that closes a settled turn, below everything the turn shows (tool activity, a
- * stop note and approval banners included): Copy for the final answer `answer`, Regenerate on the
- * task's last turn, Read aloud, Fork, and a More menu with the exports, Share and Remember, then
- * the commands placed on turn actions, which run on the answer. Only what applies is listed, and
+ * stop note and approval banners included): Copy for the final answer `answer`, applying it to the
+ * app a command ran from (`TurnApplyButton`), Regenerate on the task's last turn, Read aloud, Fork,
+ * and a More menu with the exports, Share and Remember, then the commands placed on turn actions,
+ * which run on the answer. Only what applies is listed, and
  * nothing renders when nothing does. The last turn's bar always shows; an earlier turn's appears
  * on hover or keyboard focus (`data-reveal`) in space it always keeps.
  */
@@ -87,6 +89,7 @@ export function TurnActions({
           {copy.copied ? <Check /> : <Copy />}
         </IconButton>
       )}
+      <TurnApplyButton run={run} answer={answer} />
       {regenerate && (
         <IconButton
           label={t('turnActions.regenerate')}

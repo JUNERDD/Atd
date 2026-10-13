@@ -14,14 +14,16 @@ import type { PreparedCommand } from '../../client/agent/bridge';
 import type { TaskInput } from '../../client/agent/task-schema';
 import { missingScreenshot, screenshotOf } from '../../client/agent/screenshot-input';
 import { ParameterField } from '../commands/parameter-field';
+import { RunOutputField } from './run-output-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
-import { isImageMime } from '@atd/agent-contracts';
+import { isImageMime, type CommandOutput } from '@atd/agent-contracts';
 import { ResourceImage } from './resource-image';
 import { ScreenshotField } from './screenshot-field';
 import { VisionNotice } from './vision-notice';
+import { useRememberedArguments } from './use-remembered-arguments';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 
 /** Runs the command from anywhere in the form, like a sheet's default button. */
@@ -31,6 +33,7 @@ const SCREENSHOT_HINT_ID = 'command-screenshot-hint';
 export function CommandInput({
   prepared,
   onChange,
+  onOutputChange,
   onRun,
   onOpenSettings,
   pending,
@@ -46,6 +49,8 @@ export function CommandInput({
   model: ModelReference | null;
   prepared: PreparedCommand;
   onChange: (input: TaskInput) => void;
+  /** Where this run's answer goes (`PreparedCommand.output`), changed on the step. */
+  onOutputChange: (output: CommandOutput) => void;
   onRun: () => Promise<unknown>;
   onOpenSettings: () => void;
   pending: boolean;
@@ -54,6 +59,7 @@ export function CommandInput({
   const footerRef = useOverlayFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
+  useRememberedArguments(command.id, input.arguments);
   const [validate, setValidate] = useState(false);
   // A screenshot command runs with an image only; the field below says so while Run is off.
   const needsScreenshot = missingScreenshot(input);
@@ -223,6 +229,7 @@ export function CommandInput({
                 </Button>
               </div>
             ))}
+          <RunOutputField prepared={prepared} onChange={onOutputChange} />
           <div className="run-policy">
             <p>
               <Shield size={14} aria-hidden="true" />

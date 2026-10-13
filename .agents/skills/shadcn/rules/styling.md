@@ -84,7 +84,7 @@ Use `className` for layout (e.g. `max-w-md`, `mx-auto`, `mt-4`), **not** for ove
 **Incorrect:**
 
 ```tsx
-<Card className="bg-blue-100 text-blue-900 font-bold">
+<Card className="bg-blue-100 font-bold text-blue-900">
   <CardContent>Dashboard</CardContent>
 </Card>
 ```
@@ -92,7 +92,7 @@ Use `className` for layout (e.g. `max-w-md`, `mx-auto`, `mt-4`), **not** for ove
 **Correct:**
 
 ```tsx
-<Card className="max-w-md mx-auto">
+<Card className="mx-auto max-w-md">
   <CardContent>Dashboard</CardContent>
 </Card>
 ```
@@ -172,7 +172,7 @@ For scroll-aware edge fading on a scroll container, use `scroll-fade` (and the a
 **Incorrect:**
 
 ```tsx
-<span className="animate-pulse bg-gradient-to-r from-muted-foreground/40 via-foreground/70 to-muted-foreground/40 bg-clip-text text-transparent [animation:shimmer_1.6s_infinite]">
+<span className="[animation:shimmer_1.6s_infinite] animate-pulse bg-gradient-to-r from-muted-foreground/40 via-foreground/70 to-muted-foreground/40 bg-clip-text text-transparent">
   Thinking…
 </span>
 ```

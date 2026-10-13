@@ -61,6 +61,53 @@ public struct MiniPanelShapeMotion: Hashable, Sendable {
   }
 }
 
+/// Which way a shape's thickness runs, for the two axis springs of ``MiniPanelShapeMotion``.
+/// The mini panel docks to a left or right edge, so its thickness runs across the screen
+/// (`horizontal`: x, width and corner on the thickness spring, y and height on the length's);
+/// the command island stands on the bottom of the screen, so its thickness is its height
+/// (`vertical`: y, height and corner on the thickness spring, x and width on the length's). The
+/// corner always follows the thickness, which it is at most half of.
+public enum MiniPanelShapeAxis: Sendable {
+  case horizontal
+  case vertical
+
+  /// A shape's frame and corner as one value, in the order the animation reads them.
+  public struct Components: Equatable, Sendable {
+    public var x: Double
+    public var y: Double
+    public var width: Double
+    public var height: Double
+    public var corner: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double, corner: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+      self.corner = corner
+    }
+  }
+
+  /// How far along its change each component is when the thickness spring has gone `across` of
+  /// the way and the length spring `along`.
+  public func progress(across: Double, along: Double) -> Components {
+    switch self {
+    case .horizontal: Components(x: across, y: along, width: across, height: along, corner: across)
+    case .vertical: Components(x: along, y: across, width: along, height: across, corner: across)
+    }
+  }
+
+  /// How far a change of `shape` moves it across (thickness) and along (length), in points.
+  public func extent(of shape: Components) -> (across: Double, along: Double) {
+    let horizontal = max(abs(shape.x), abs(shape.x + shape.width))
+    let vertical = max(abs(shape.y), abs(shape.y + shape.height))
+    switch self {
+    case .horizontal: return (max(horizontal, abs(shape.corner)), vertical)
+    case .vertical: return (max(vertical, abs(shape.corner)), horizontal)
+    }
+  }
+}
+
 /// How content arrives and leaves (motion-v3): it arrives after ``delay``, its opacity and its
 /// blur from ``hiddenBlur`` clearing together on ``MiniPanelChoreography/contentOpacity``, and
 /// leaves at once, eased in over ``exit`` to transparent and blurred. Its size is not its own: it
@@ -174,11 +221,12 @@ public enum MiniPanelChoreography {
   public static let flyoutClose = MiniPanelSpring(0.225, 0.10)
   /// The card's shape closes this long after its rows start leaving.
   public static let flyoutCloseDelay = 0.04
-  /// Closed by a click on Commands, the card closes through the button's label the way it opened
-  /// out of it: this long after its shape starts closing it has all but become the label's
-  /// bubble, and it draws on into the button's middle as a label draws back (``labelRetract``)
-  /// without stopping there.
-  public static let flyoutCloseThroughLabel = 0.15
+  /// The card grows out of and leaves into its anchor beside the capsule, as the hover label
+  /// does, never out of or into the Commands button, where its fill would darken the capsule's.
+  /// Its glass cannot fade, so the glass leads the fill by this much on the way in, and the fill
+  /// (on ``labelLeave``) leads the glass by this much on the way out, about when a label's glass
+  /// starts to draw in (``MiniPanelLabelPath/leaveCollapse`` of the way along ``labelLeave``).
+  public static let flyoutFillLag = 0.06
   public static let rows = MiniPanelContentMotion(delay: 0.038, exit: 0.075, hiddenBlur: 4)
 
   // MARK: Touch
@@ -211,17 +259,19 @@ public enum MiniPanelChoreography {
   /// How long after the drop the card collapses into the pill.
   public static let absorbHold = 0.25
 
-  // MARK: The hover label (hover-label-v2)
+  // MARK: The hover label (hover-label-v4)
 
-  /// The label grows out of the hovered control's middle…
+  /// The label grows out of its anchor beside the capsule, level with the hovered control, its
+  /// glass first and its fill just after (``MiniPanelLabelPath``), a little past its rest…
   public static let labelAppear = MiniPanelSpring(0.30, 0.25)
-  /// …its text arrives just after, growing with it from that middle…
+  /// …its text arrives just after, growing with it…
   public static let labelText = MiniPanelContentMotion(delay: 0.04, exit: 0.1, hiddenBlur: 3)
   /// …it glides from control to control while warm, its text riding along and swapping through a
   /// blur…
   public static let labelGlide = MiniPanelSpring(0.35, 0.30)
-  /// …and on leaving, once its text has faded, draws back into that middle without overshoot,
-  /// merging into the capsule's glass; its glass goes once it has.
-  public static let labelRetractDelay = 0.1
-  public static let labelRetract = MiniPanelSpring(0.28, 0)
+  /// …and leaves into that anchor without overshoot: its fill fades with its text as it draws a
+  /// little toward the anchor, then its bare glass draws in to nothing there
+  /// (``MiniPanelLabelPath/scale(fade:)``), never over the capsule, whose fill it would darken
+  /// where the two overlap.
+  public static let labelLeave = MiniPanelSpring(0.2, 0)
 }

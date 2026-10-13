@@ -1,14 +1,15 @@
 /**
- * Renders the film with visible progress: scores the soundtrack, bundles the compositions once,
- * then renders each cut in turn to `out/`. Phases are labeled; on a terminal each redraws one line
- * (bar, percent, frames rendered and encoded, render fps, elapsed, ETA), and anywhere else (CI, a
- * pipe, an agent's shell) a phase prints a plain line at most every 2 s, once it has moved 5% or
- * 15 s have passed.
+ * Renders the films with visible progress: scores the soundtracks the chosen cuts play, bundles the
+ * compositions once, then renders each cut in turn to `out/`. Phases are labeled; on a terminal
+ * each redraws one line (bar, percent, frames rendered and encoded, render fps, elapsed, ETA), and
+ * anywhere else (CI, a pipe, an agent's shell) a phase prints a plain line at most every 2 s, once
+ * it has moved 5% or 15 s have passed.
  *
- *   node scripts/render.ts [en] [zh] [--frames=0-299]
+ *   node scripts/render.ts [en] [zh] [release-en] [release-zh] [--frames=0-299]
  *
- * With no cut named it renders both. `--frames` takes `N` or `A-B` (inclusive) for a quick preview
- * and writes to the same output path. The encode comes from `render-settings.ts`.
+ * With no cut named it renders the launch film's two cuts. `--frames` takes `N` or `A-B`
+ * (inclusive) for a quick preview and writes to the same output path. The encode comes from
+ * `render-settings.ts`.
  */
 import { spawnSync } from 'node:child_process';
 import { rmSync, statSync } from 'node:fs';
@@ -24,12 +25,17 @@ import {
   type OnBrowserDownload,
 } from '@remotion/renderer';
 import { ENCODING } from '../render-settings.ts';
+import type { FilmName } from './soundtrack.ts';
 
+/** Each cut: its composition, its output and the film whose soundtrack it plays. */
 const CUTS = {
-  en: { id: 'AtdPromo', output: 'out/atd-promo-en.mp4' },
-  zh: { id: 'AtdPromoZh', output: 'out/atd-promo-zh.mp4' },
-} as const;
+  en: { id: 'AtdPromo', output: 'out/atd-promo-en.mp4', film: 'launch' },
+  zh: { id: 'AtdPromoZh', output: 'out/atd-promo-zh.mp4', film: 'launch' },
+  'release-en': { id: 'AtdRelease', output: 'out/atd-release-0.8-en.mp4', film: 'release-en' },
+  'release-zh': { id: 'AtdReleaseZh', output: 'out/atd-release-0.8-zh.mp4', film: 'release-zh' },
+} as const satisfies Record<string, { id: string; output: string; film: FilmName }>;
 type Cut = keyof typeof CUTS;
+const CUT_NAMES = Object.keys(CUTS) as Cut[];
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -153,12 +159,12 @@ function isCut(name: string): name is Cut {
 function parseCuts(names: string[]): Cut[] {
   if (names.length === 0) return ['en', 'zh'];
   return names.map((name) => {
-    if (!isCut(name)) throw new Error(`Unknown cut "${name}"; use en or zh`);
+    if (!isCut(name)) throw new Error(`Unknown cut "${name}"; use ${CUT_NAMES.join(', ')}`);
     return name;
   });
 }
 
-const USAGE = 'usage: node scripts/render.ts [en] [zh] [--frames=N|A-B]';
+const USAGE = `usage: node scripts/render.ts ${CUT_NAMES.map((name) => `[${name}]`).join(' ')} [--frames=N|A-B]`;
 
 /** Reads the command line, or exits with the problem and the usage line instead of a stack. */
 function readArguments(): {
@@ -181,15 +187,16 @@ function readArguments(): {
 
 // ---- Pipeline ----
 
-/** Runs the soundtrack script as its own process, exactly as `pnpm soundtrack` does. */
-function scoreSoundtrack(): void {
-  heading('scoring soundtrack');
-  const result = spawnSync(process.execPath, [join(root, 'scripts', 'soundtrack.ts')], {
+/** Runs the soundtrack script as its own process for one film, as `pnpm soundtrack` does. */
+function scoreSoundtrack(film: string): void {
+  heading(`scoring ${film} soundtrack`);
+  const result = spawnSync(process.execPath, [join(root, 'scripts', 'soundtrack.ts'), film], {
     cwd: root,
     stdio: 'inherit',
   });
   if (result.error !== undefined) throw result.error;
-  if (result.status !== 0) throw new Error(`Scoring the soundtrack failed (${result.status})`);
+  if (result.status !== 0)
+    throw new Error(`Scoring the ${film} soundtrack failed (${result.status})`);
 }
 
 /** Reports the Chrome Headless Shell download, which happens only on the first render. */
@@ -257,7 +264,7 @@ async function main(): Promise<void> {
   );
 
   try {
-    scoreSoundtrack();
+    for (const film of new Set(cuts.map((cut) => CUTS[cut].film))) scoreSoundtrack(film);
     await ensureBrowser({ onBrowserDownload, logLevel: 'warn' });
 
     heading('bundling');

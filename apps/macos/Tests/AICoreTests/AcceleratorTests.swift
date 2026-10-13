@@ -43,7 +43,7 @@ struct AcceleratorTests {
   @Test("Maps every key of the grammar to its virtual key code", arguments: grammarKeys)
   func keyCodes(key: String, code: Int) throws {
     let combination = try Accelerator.parse("CommandOrControl+\(key)")
-    #expect(combination == HotKeyCombination(keyCode: UInt32(code), modifiers: .command))
+    #expect(combination == .chord(HotKeyCombination(keyCode: UInt32(code), modifiers: .command)))
   }
 
   @Test("Covers the whole grammar")
@@ -75,7 +75,17 @@ struct AcceleratorTests {
       ),
     ])
   func modifiers(accelerator: String, expected: HotKeyCombination) throws {
-    #expect(try Accelerator.parse(accelerator) == expected)
+    #expect(try Accelerator.parse(accelerator) == .chord(expected))
+  }
+
+  @Test(
+    "Reads a double-tap of one modifier as written",
+    arguments: [
+      ("DoubleTap+Command", TapModifier.command), ("DoubleTap+Alt", .option),
+      ("DoubleTap+Control", .control), ("DoubleTap+Shift", .shift),
+    ])
+  func doubleTap(accelerator: String, modifier: TapModifier) throws {
+    #expect(try Accelerator.parse(accelerator) == .doubleTap(modifier))
   }
 
   @Test(
@@ -104,6 +114,12 @@ struct AcceleratorTests {
       ("A", .missingModifier),
       ("Shift+A", .missingModifier),
       ("Space", .missingModifier),
+      ("DoubleTap+CommandOrControl", .unknownDoubleTap("CommandOrControl")),
+      ("DoubleTap+Option", .unknownDoubleTap("Option")),
+      ("DoubleTap+A", .unknownDoubleTap("A")),
+      ("DoubleTap+Command+Shift", .unknownDoubleTap("Command+Shift")),
+      ("DoubleTap+", .unknownDoubleTap("")),
+      ("Shift+DoubleTap+A", .unknownModifier("DoubleTap")),
     ])
   func refuses(accelerator: String, error: AcceleratorError) {
     #expect(throws: error) { try Accelerator.parse(accelerator) }

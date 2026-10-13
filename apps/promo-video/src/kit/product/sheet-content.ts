@@ -1,5 +1,6 @@
 import type { Lang } from '../../copy.ts';
 import type { RichBlock } from './rich.ts';
+import { sheet08 } from './sheet-content-08.ts';
 
 /**
  * Stand-in content for the product kit's review sheet only. Scenes bring their own from their
@@ -171,5 +172,6 @@ export function sheetText(lang: Lang): string {
     else if (value && typeof value === 'object') Object.values(value).forEach(collect);
   };
   collect(sheetContent[lang]);
+  collect(sheet08[lang]);
   return parts.join('');
 }

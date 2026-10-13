@@ -32,10 +32,6 @@
   content: '';
   pointer-events: none;
 }
-/* A published app's card sits under its tool row at the inset of an expanded tool body. */
-.app-card-slot {
-  padding: 4px 0 8px 8px;
-}
 /* The purpose an app declared for a capability, on the tool card's detail surface. */
 .app-consent-purpose {
   display: flex;

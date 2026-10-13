@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import type { AuthResult } from '@earendil-works/pi-ai';
 import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
+import { CatalogFailure, readCatalogJson } from './catalog-http.js';
 
 /**
  * Model discovery for OpenAI-compatible local and custom endpoints, which have no Pi directory
@@ -8,41 +9,11 @@ import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd
  * unload or download models.
  */
 
-const DISCOVERY_TIMEOUT_MS = 15000;
-
-async function readModelMetadata(
-  url: string,
-  auth: AuthResult,
-  signal: AbortSignal,
-): Promise<unknown> {
-  const response = await fetch(url, {
-    headers:
-      auth.auth.apiKey && auth.auth.apiKey !== 'unused'
-        ? { Authorization: `Bearer ${auth.auth.apiKey}` }
-        : {},
-    redirect: 'error',
-    signal,
-  });
-  if (!response.ok || !response.body) {
-    await response.body?.cancel();
-    throw new Error('The model directory could not be loaded.');
-  }
-  const reader = response.body.getReader();
-  let size = 0;
-  const chunks: Uint8Array[] = [];
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      size += chunk.value.byteLength;
-      if (size > 1048576) throw new Error('The model directory is too large.');
-      chunks.push(chunk.value);
-    }
-  } finally {
-    await reader.cancel();
-  }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-}
+const CatalogSchema = Type.Object({
+  data: Type.Array(Type.Object({ id: Type.String({ minLength: 1, maxLength: 256 }) }), {
+    maxItems: 10000,
+  }),
+});
 
 function discovered(
   connection: ServiceConnection,
@@ -68,18 +39,20 @@ export async function discoverCompatibleModels(
   const customModels = connection.customModels ?? [];
   if (customModels.some((model) => !['openai-completions', 'openai-responses'].includes(model.api)))
     return customModels;
-  const result = parse(
-    Type.Object({
-      data: Type.Array(Type.Object({ id: Type.String({ minLength: 1, maxLength: 256 }) }), {
-        maxItems: 5000,
-      }),
-    }),
-    await readModelMetadata(
-      `${connection.baseUrl}/models`,
-      auth,
-      AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
-    ),
+  const value = await readCatalogJson(
+    `${connection.baseUrl}/models`,
+    auth.auth.apiKey && auth.auth.apiKey !== 'unused'
+      ? { Authorization: `Bearer ${auth.auth.apiKey}` }
+      : {},
   );
+  let result;
+  try {
+    result = parse(CatalogSchema, value);
+  } catch {
+    throw new CatalogFailure(
+      'Expected an OpenAI-compatible models response: data must be an array of up to 10000 models with non-empty id strings (at most 256 characters).',
+    );
+  }
   return [...new Set(result.data.map((model) => model.id))].map(
     (id) =>
       customModels.find((model) => model.id === id) ??

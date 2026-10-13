@@ -13,8 +13,14 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCalls } from './calls.ts';
+import {
+  CommandArgumentsSchema,
+  NativeCommandOptionsEvents,
+  ShortcutCommandIntentSchema,
+} from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
+import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
 import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
 
@@ -52,6 +58,7 @@ export const NativePosts = {
     { language: Type.Union([Type.Literal('en'), Type.Literal('zh-CN')]) },
     { additionalProperties: false },
   ),
+  ...NativeTextPosts,
   /**
    * The window drag regions in CSS pixels from the web view's top-left, interactive children
    * already cut out. Sent on every layout change; `[]` on teardown.
@@ -161,9 +168,20 @@ export const NativeEvents = {
     { reduce: Type.Boolean() },
     { additionalProperties: false },
   ),
-  /** A command shortcut fired; Swift already captured the selection and showed the panel. */
+  /**
+   * A command shortcut or selection toolbar command fired; Swift already captured the selection.
+   * `target`: the text field focused in the app the command ran from (absent when none was found,
+   * Accessibility is off, or the panel had the focus), which `text.write` can write the answer into.
+   * `arguments`: values picked in the shell's options, over the remembered ones; `intent`: what to
+   * do with the command (`ShortcutCommandIntentSchema`, absent: `run`).
+   */
   'shortcut.command': Type.Object(
-    { id: Type.String({ minLength: 1, maxLength: 128 }) },
+    {
+      id: Type.String({ minLength: 1, maxLength: 128 }),
+      target: Type.Optional(NativeWriteTargetSchema),
+      arguments: Type.Optional(CommandArgumentsSchema),
+      intent: Type.Optional(ShortcutCommandIntentSchema),
+    },
     { additionalProperties: false },
   ),
   /**
@@ -285,6 +303,8 @@ export const NativeEvents = {
     { taskId: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }) },
     { additionalProperties: false },
   ),
+  ...NativeTextEvents,
+  ...NativeCommandOptionsEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

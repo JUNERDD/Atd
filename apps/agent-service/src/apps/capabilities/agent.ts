@@ -109,28 +109,28 @@ export async function agentRun(
   };
   const unsubscribe = deps.events.onPublish(onEvent);
   try {
-    const accepted = await deps.manager.submit({
-      operationId: randomUUID(),
-      taskId,
-      input: {
-        text: input.prompt,
-        source: 'manual',
-        capturedAt: new Date().toISOString(),
-        selection: '',
-        clipboard: '',
-        files: [],
-        arguments: {},
-        // Plain text: an app's prompt never turns into skill chips.
-        chips: [],
-        folders: [],
+    const accepted = await deps.manager.submit(
+      {
+        operationId: randomUUID(),
+        taskId,
+        input: {
+          text: input.prompt,
+          source: 'manual',
+          capturedAt: new Date().toISOString(),
+          selection: '',
+          clipboard: '',
+          files: [],
+          arguments: {},
+          // Plain text: an app's prompt never turns into skill chips.
+          chips: [],
+          folders: [],
+        },
+        ...(input.tools ? { tools: snapshotToolsFor(input.tools) } : {}),
       },
-      ...(input.tools ? { tools: snapshotToolsFor(input.tools) } : {}),
-    });
+      // Acceptance records the source and inference purpose before dispatch can start the run.
+      { origin: { kind: 'app', appId } },
+    );
     runId = accepted.runId;
-    await deps.ledger.change((data) => {
-      const task = data.tasks.find((item) => item.id === taskId);
-      if (task) task.origin = { kind: 'app', appId };
-    });
     const cancel = () =>
       void deps.manager
         .cancel(taskId, runId)

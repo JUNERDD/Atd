@@ -1,4 +1,6 @@
+import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
 import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
 import type { ExtensionBuiltin } from './extension-rows';
 
 /**
@@ -69,4 +72,41 @@ export function RestoreBuiltinDialog({
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+/**
+ * Tells the user that updates replaced their edited copies of built-in skills, one notice per
+ * skill with where its copy was backed up. Dismissing one is saved by the service, for every
+ * client; the backup itself stays.
+ */
+export function BuiltinBackupNotices({
+  skills,
+  disabled,
+  onDismiss,
+}: {
+  skills: readonly { name: string; id: string; backupPath: string }[];
+  disabled: boolean;
+  onDismiss: (id: string) => void;
+}) {
+  const { t } = useTranslation('settings');
+  return skills.map((skill) => (
+    <Alert key={skill.id}>
+      <RefreshCw />
+      <AlertTitle>{t('extensions.builtinUpdatedTitle', { name: skill.name })}</AlertTitle>
+      <AlertDescription className="wrap-anywhere select-text">
+        {t('extensions.builtinUpdated', { path: skill.backupPath })}
+      </AlertDescription>
+      <AlertAction>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => onDismiss(skill.id)}
+        >
+          {t('extensions.builtinUpdatedDismiss')}
+        </Button>
+      </AlertAction>
+    </Alert>
+  ));
 }

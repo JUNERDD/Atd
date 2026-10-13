@@ -30,6 +30,28 @@ public struct LanguageSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `typing.set` post.
+public struct TypingSetPost: Codable, Equatable, Sendable {
+  public let typing: Bool
+  public let animation: Bool
+
+  public init(typing: Bool, animation: Bool) {
+    self.typing = typing
+    self.animation = animation
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case typing
+    case animation
+  }
+}
+
 /// Params of the `window.dragRegions` post.
 public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
   public let rects: [Rect]
@@ -221,28 +243,3 @@ public struct SocketOpenPost: Codable, Equatable, Sendable {
     case path
   }
 }
-
-/// Params of the `socket.send` post.
-public struct SocketSendPost: Codable, Equatable, Sendable {
-  public let socketId: String
-  public let data: String
-
-  public init(socketId: String, data: String) {
-    self.socketId = socketId
-    self.data = data
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    socketId = try container.string(.socketId, minLength: 1, maxLength: 64)
-    data = try container.string(.data)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case socketId
-    case data
-  }
-}
-
-/// Params of the `update.install` post.
-public typealias UpdateInstallPost = NativeEmpty

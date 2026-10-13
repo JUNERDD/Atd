@@ -12,6 +12,7 @@ import { content as open } from './scenes/open/content.ts';
 import { content as yours } from './scenes/yours/content.ts';
 import { strings as product } from './kit/product/strings.ts';
 import { MAC_CHROME as mac } from './kit/world/chrome.ts';
+import { RELEASE_CONTENT } from './release/content.ts';
 
 export const LANGS = ['en', 'zh'] as const;
 export type Lang = (typeof LANGS)[number];
@@ -107,8 +108,21 @@ export const copy: Record<Lang, FilmCopy> = {
   },
 };
 
-/** Each scene's in-interface content, which the fonts must cover as well. */
-const CONTENT = [mac, product, open, anywhere, anything, anytime, yours, finale] as const;
+/**
+ * Each scene's in-interface content, and everything the release film shows (its copy, scenes and
+ * world sheet, registered by `release/content.ts`), which the fonts must cover as well.
+ */
+const CONTENT = [
+  mac,
+  product,
+  open,
+  anywhere,
+  anything,
+  anytime,
+  yours,
+  finale,
+  ...RELEASE_CONTENT,
+] as const;
 
 /** Every string a language shows, so its font subsets can load before the first frame. */
 export function allText(lang: Lang): string {

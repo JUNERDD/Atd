@@ -1,0 +1,109 @@
+/* The ChatGPT sign-in pieces (apps/desktop/src/features/providers/provider-form.tsx,
+   chatgpt-plan.tsx) and the shared Dialog (packages/ui/src/components/dialog.tsx), in points. */
+.rg-note {
+  margin: 0;
+  color: var(--pk-muted-fg);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+/* The overlay: the window's web view under a 30% black scrim with a small blur, corner 16 like
+   the window, the dialog centred in it. --x, --y, --w, --h place it; --o fades the scrim and the
+   dialog each, never their parent, which would become a backdrop root and leave the dialog's
+   glass nothing to blur. */
+.rg-scrim {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  display: grid;
+  place-items: center;
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+.rg-scrim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: var(--o);
+}
+
+/* `DialogContent`: surface glass (as the select menu draws it), corner 24, 24 pt in, 24 pt gaps,
+   448 pt at most (less 16 pt either side), zooming from 95% as it opens (--zoom). */
+.glass.rg-dialog {
+  --glass-radius: 24px;
+  --pk-muted: var(--pk-wash);
+  position: relative;
+  display: grid;
+  gap: 24px;
+  box-sizing: border-box;
+  width: min(448px, calc(100% - 32px));
+  padding: 24px;
+  background: var(--pk-sysglass-fill);
+  backdrop-filter: var(--pk-sysglass-backdrop);
+  -webkit-backdrop-filter: var(--pk-sysglass-backdrop);
+  box-shadow: var(--pk-sysglass-edge);
+  font-size: 14px;
+  opacity: var(--o);
+  scale: var(--zoom);
+}
+
+/* `DialogHeader`: 6 pt between title and description, 28 pt clear of the close button. */
+.rg-dialog__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 28px;
+}
+
+.rg-dialog__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.rg-dialog__description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pk-muted-fg);
+  line-height: 20px;
+}
+
+.rg-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* The close button: a ghost `icon-sm` (28 pt) on the secondary fill, 16 pt from the corner. */
+.rg-dialog__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 18px;
+  background: #262626;
+}
+
+.rg-dialog__close > .pk-icon {
+  width: 16px;
+  height: 16px;
+}

@@ -98,15 +98,15 @@
 }
 
 /* Liquid Glass, the one recipe every product surface uses: a translucent dark fill that blurs and
-   saturates what is behind it, a hairline rim brighter at the top-left, and a soft, wide shadow.
-   Radius comes from the surface (data-glass) or from --glass-radius. */
+   saturates what is behind it (--glass-backdrop), a hairline rim brighter at the top-left, and a
+   soft, wide shadow. Radius comes from the surface (data-glass) or from --glass-radius. */
 .glass {
   position: relative;
   border-radius: var(--glass-radius, var(--radius-card));
   background:
     linear-gradient(160deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03) 45%), var(--ui-bg);
-  backdrop-filter: blur(28px) saturate(1.7);
-  -webkit-backdrop-filter: blur(28px) saturate(1.7);
+  backdrop-filter: var(--glass-backdrop, blur(28px) saturate(1.7));
+  -webkit-backdrop-filter: var(--glass-backdrop, blur(28px) saturate(1.7));
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.08),
     inset 1px 1px 0 0 rgb(255 255 255 / 0.16),
@@ -120,6 +120,30 @@
 
 .glass[data-glass='window'] {
   --glass-radius: var(--radius-window);
+}
+
+/* Glass that hosts other glass (the panel, windows) blurs from a layer under its content instead
+   of from itself: in Chromium an element with a backdrop filter is a backdrop root, so the glass
+   inside it (menus, popovers, the composer) would blur nothing and show sharp text through. The
+   layer stops inside the 1 pt rim; blurring the fill with the backdrop equals laying it over the
+   blur, since the fill is even and the filters are linear. */
+.glass[data-glass='panel'],
+.glass[data-glass='window'] {
+  isolation: isolate;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.glass[data-glass='panel']::before,
+.glass[data-glass='window']::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: var(--glass-backdrop, blur(28px) saturate(1.7));
+  -webkit-backdrop-filter: var(--glass-backdrop, blur(28px) saturate(1.7));
+  pointer-events: none;
 }
 
 .glass[data-glass='toast'] {

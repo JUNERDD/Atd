@@ -33,6 +33,7 @@
     "loading": "正在加载命令…",
     "personal": "个人",
     "pluginGroupFor": "来自 {{plugin}} 的命令",
+    "reorderHint": "长按命令即可拖动排序，也可以用 ⌥↑ / ⌥↓ 移动当前聚焦的命令。",
     "deleteTitle": "删除 {{name}}？",
     "deleteDescription": "将删除该命令及其快捷键。已有任务会保留其保存的命令版本。",
     "status": {
@@ -157,11 +158,69 @@
     },
     "unavailable": "命令需要读取选中的文本，才能显示在这些位置：请将“输入来源”设为“选中的文本”，或在“输入选项”中开启选中文本变量。"
   },
+  "output": {
+    "title": "结果",
+    "action": "回答完成后",
+    "panel": {
+      "title": "显示在对话中",
+      "description": "回答只保留在对话中。"
+    },
+    "replaceSelection": {
+      "title": "替换选中的文字",
+      "description": "用回答替换你选中的文字。"
+    },
+    "insertAfterSelection": {
+      "title": "插入到选中文字之后",
+      "description": "在选中的文字之后写入回答，保留原文。"
+    },
+    "insertAtCursor": {
+      "title": "插入到光标处",
+      "description": "在光标所在处输入回答。"
+    },
+    "copy": {
+      "title": "拷贝到剪贴板",
+      "description": "同时将回答拷贝到剪贴板。"
+    },
+    "writeBackNote": "仅在通过快捷键或选择文字工具栏从其他 App 运行时写入；在其他地方运行时，回答保留在对话中。",
+    "cardNote": "如果该 App 无法在此写入文字，回答会显示在卡片中，供你拷贝。",
+    "review": {
+      "title": "应用前确认",
+      "description": "回答先留在对话中，点击其“在…中替换”或“插入到…”按钮后再写入。"
+    },
+    "savedTitle": "{{title}}（默认）",
+    "needsTarget": "从这里运行不会写回，回答保留在对话中。写回需要通过命令快捷键或选择文字工具栏从其他 App 运行。",
+    "needsSelection": "此命令不读取选中的文字，回答将保留在对话中。"
+  },
+  "typing": {
+    "description": "回答分几次打入；关闭后一次性粘贴。",
+    "reduceMotion": "系统已开启“减弱动态效果”，回答会一次性出现。",
+    "label": "打字效果",
+    "scope": "命令将回答写入其他 App 时的呈现方式。",
+    "switch": "逐字打出",
+    "beta": "Beta",
+    "state": {
+      "on": "开启",
+      "off": "关闭"
+    },
+    "errors": {
+      "save": "无法保存打字效果，请重试。"
+    }
+  },
+  "typingAnimation": {
+    "label": "高亮新文字",
+    "description": "插入点出现光晕，新文字短暂高亮。逐字打出或一次性粘贴都会显示。",
+    "reduceMotion": "系统已开启“减弱动态效果”，新文字只会短暂高亮，不显示移动的光晕。",
+    "errors": {
+      "save": "无法保存新文字高亮，请重试。"
+    }
+  },
   "shortcut": {
     "error": "请将 Command、Control 或 Alt 与支持的按键组合使用。",
     "record": "录制命令快捷键",
     "recordShortcut": "录制快捷键",
-    "clear": "清除快捷键"
+    "clear": "清除快捷键",
+    "description": "在任意 App 中按下即可运行此命令。",
+    "conflictHint": "如果按下后没有反应，可能是其他 App 占用了这个组合，请换一个。"
   },
   "instruction": {
     "title": "指令",
@@ -179,18 +238,26 @@
     "opened": "已在任务面板中打开新的 AI 会话。",
     "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
   },
+  "io": {
+    "title": "输入与结果",
+    "description": "运行时读取什么，以及回答去往哪里。",
+    "composeNote": "未选中文字时用快捷键运行，会请你输入要处理的文字。",
+    "composeCursorNote": "未选中文字时用快捷键运行，会请你输入要处理的文字，并将回答写入光标处。"
+  },
   "start": {
-    "title": "输入与启动",
-    "description": "启动时读取什么、用哪个快捷键运行，以及还会出现在哪些位置。"
+    "title": "启动",
+    "description": "运行它的快捷键，以及它还会出现在哪些位置。"
   },
   "run": {
     "title": "运行设置",
-    "description": "每次运行可以使用的模型、记忆和工具。",
+    "description": "每次运行可以使用的模型、推理强度、记忆和工具。",
     "model": "模型",
     "useAppDefault": "使用应用默认值",
     "useFixedModel": "使用固定模型",
     "fixedModel": "固定的命令模型",
     "thinkingLevel": "推理强度",
+    "thinkingLevelInherit": "使用连接默认值",
+    "thinkingLevelHint": "模型回答前推理的程度，无论由哪个模型运行此命令。强度越低，速度越快、成本越低。每次运行会按所用模型支持的强度进行调整。",
     "memory": "记忆",
     "memoryInherit": "使用记忆 · 跟随全局学习设置",
     "memoryOff": "对此任务及后续任务关闭",

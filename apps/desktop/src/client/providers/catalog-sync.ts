@@ -58,6 +58,12 @@ export class CatalogSync {
       const now = Date.now();
       for (const connection of this.connections()) {
         if (!connection.connected) continue;
+        if (
+          connection.provider === 'openai' &&
+          connection.authType === 'oauth' &&
+          !connection.chatgptPlanEnabled
+        )
+          continue;
         if (now - (this.syncedAt.get(connection.connectionId) ?? 0) < maxAge) continue;
         await this.sync(connection.connectionId);
       }

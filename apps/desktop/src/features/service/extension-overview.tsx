@@ -11,6 +11,7 @@ import { SettingsSearchField } from '../settings/settings-search-field';
 import { ExtensionAddMenu, type PersonalCreateKind } from './extension-add-menu';
 import { ExtensionLoadError } from './extension-detail-fields';
 import { ExtensionGroup } from './extension-group';
+import { BuiltinBackupNotices } from './extension-skill-builtin';
 import { McpApprovalNotice } from './mcp-approval-notice';
 import { PluginItemGroups } from './plugin-item-groups';
 import { PluginCard, PluginUninstallDialog } from './plugin-card';
@@ -26,7 +27,8 @@ import { usePluginLabels } from './use-plugin-labels';
  * the shared skills folder and every installed plugin), with search and the Add menu in the heading. A search spans the plugins and everything they
  * contribute, so the sections step aside for the matching plugins' cards, then each plugin's
  * matching items by kind. The heading and search stay above the scrolling list, which opens with
- * the one-time notice that MCP servers need approving until it is dismissed. Until the list has
+ * the one-time notice that MCP servers need approving and a notice for each built-in skill an
+ * update replaced (with where the user's copy went), each until it is dismissed. Until the list has
  * plugins it says why: loading, a failed read (with Try again), a disconnected service, or none
  * installed; a failed later read keeps the cards and shows its error above them.
  */
@@ -63,6 +65,9 @@ export function ExtensionOverview({
     mcp: mcp.mcp?.servers ?? [],
   });
   const searching = Boolean(search.query.trim());
+  const replacedSkills = (skills.skills?.skills ?? []).flatMap(({ name, builtin }) =>
+    builtin?.backupPath ? [{ name, id: builtin.id, backupPath: builtin.backupPath }] : [],
+  );
 
   const card = (plugin: PluginSummary, match: (typeof groups)[number]['match'] = null) => (
     <PluginCard
@@ -226,6 +231,11 @@ export function ExtensionOverview({
                 onDismiss={() => mcp.dismissApprovalNotice()}
               />
             ) : null}
+            <BuiltinBackupNotices
+              skills={replacedSkills}
+              disabled={!connected || busy !== null}
+              onDismiss={(id) => void extensions.mutations.dismissBuiltinBackup(id)}
+            />
             {list.length && plugins.error ? (
               <ExtensionLoadError
                 message={t('extensions.plugins.loadFailed', { message: plugins.error })}

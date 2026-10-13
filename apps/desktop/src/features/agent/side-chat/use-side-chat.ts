@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { CommandOutput } from '@atd/agent-contracts';
 import type { PreparedCommand, TaskDetail } from '../../../client/agent/bridge';
 import { runsAsIs } from '../../../client/agent/command-prepare';
 import type { CommandDefinition } from '../../../client/agent/command-schema';
@@ -198,6 +199,10 @@ export function useSideChat({
     setInput: (input: TaskInput) =>
       setShown((view) =>
         view?.phase === 'input' ? { ...view, prepared: { ...view.prepared, input } } : view,
+      ),
+    setOutput: (output: CommandOutput) =>
+      setShown((view) =>
+        view?.phase === 'input' ? { ...view, prepared: { ...view.prepared, output } } : view,
       ),
     /** The input step's Run: the side chat starts in place; a failure rejects for the step. */
     runInput: async () => {

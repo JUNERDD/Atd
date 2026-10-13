@@ -1,9 +1,21 @@
 import { parseAccelerator } from '@atd/agent-contracts';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
-import { prepareCommand } from '../client/agent/command-prepare';
-import { deleteRemote, fetchCommands, saveRemote } from '../client/agent/command-remote';
-import type { CommandDefinition } from '../client/agent/command-schema';
+import { prepareCommand, SelectionMissingError } from '../client/agent/command-prepare';
+import {
+  argumentOverrides,
+  commandValues,
+  sanitizeArguments,
+  type CommandArguments,
+} from '../client/agent/command-arguments';
+import {
+  deleteRemote,
+  fetchCommands,
+  rememberRemote,
+  reorderRemote,
+  saveRemote,
+} from '../client/agent/command-remote';
+import type { ArgumentValues, CommandDefinition } from '../client/agent/command-schema';
 import { validateCommand } from '../client/agent/command-validation';
 import type { Screenshot } from '../client/agent/screenshot-input';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
@@ -40,6 +52,8 @@ function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
 export class NativeCommands implements CommandCatalog {
   readonly errors: Record<string, string> = {};
   private commands: CommandDefinition[] = [];
+  /** Remembered values go to the service one write after another (`remember`). */
+  private remembering = Promise.resolve();
 
   constructor(
     private readonly connection: NativeConnection,
@@ -58,16 +72,23 @@ export class NativeCommands implements CommandCatalog {
     return command;
   }
 
-  /** `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice. */
-  prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
-    return prepareCommand(this.find(id), this, expectCapture);
+  /**
+   * `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice.
+   * `overrides`: argument values picked for this launch, over the remembered ones.
+   */
+  prepare(id: string, expectCapture = false, overrides?: ArgumentValues): Promise<PreparedCommand> {
+    return prepareCommand(this.find(id), this, expectCapture, overrides);
   }
 
   /**
    * Prepared like a shortcut launch (a failed capture becomes a notice), but the selection the
    * command reads is `text`, captured now, so the shell's stashed selection stays untouched.
    */
-  async prepareWithText(id: string, text: string): Promise<PreparedCommand> {
+  async prepareWithText(
+    id: string,
+    text: string,
+    overrides?: ArgumentValues,
+  ): Promise<PreparedCommand> {
     if (text.length > MAX_CAPTURE_LENGTH) throw new Error(PAGE_TEXT_TOO_LONG);
     const selection = { text, capturedAt: new Date().toISOString() };
     return prepareCommand(
@@ -77,14 +98,17 @@ export class NativeCommands implements CommandCatalog {
         screenshot: () => this.screenshot(),
       },
       true,
+      overrides,
     );
   }
 
+  /** Nothing selected (or only whitespace) rejects with a `SelectionMissingError`. */
   async capture(source: 'selection' | 'clipboard') {
     if (source === 'selection') {
       const captured = await this.bridge.call('capture', { source });
+      if (captured.ok ? !captured.text.trim() : captured.reason === 'noSelection')
+        throw new SelectionMissingError(SELECTION_ERRORS.noSelection);
       if (!captured.ok) throw new Error(SELECTION_ERRORS[captured.reason]);
-      if (!captured.text.trim()) throw new Error(SELECTION_ERRORS.noSelection);
       return { text: captured.text, capturedAt: captured.capturedAt };
     }
     const { text } = await this.bridge.call('clipboard.read', {});
@@ -110,11 +134,17 @@ export class NativeCommands implements CommandCatalog {
     // service enforces), so only the user's own commands pass the desktop instruction checks.
     const old = this.commands.find((item) => item.id === command.id);
     if (!old?.pluginId) validateCommand(command);
-    if (command.shortcut) command.shortcut = parseAccelerator(command.shortcut, true, 'darwin');
+    // The shell registers command shortcuts globally, so one may be a modifier's double-tap.
+    if (command.shortcut)
+      command.shortcut = parseAccelerator(command.shortcut, true, 'darwin', {
+        allowDoubleTap: true,
+      });
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);
+    // A new command is the last of the user's, ahead of the plugins' as the service lists it.
+    const own = this.commands.filter((item) => !item.pluginId);
     this.commands = this.commands.some((item) => item.id === saved.id)
       ? this.commands.map((item) => (item.id === saved.id ? saved : item))
-      : [...this.commands, saved];
+      : [...own, saved, ...this.commands.filter((item) => item.pluginId)];
     delete this.errors[saved.id];
     this.changed();
     return saved;
@@ -126,6 +156,42 @@ export class NativeCommands implements CommandCatalog {
     this.commands = this.commands.filter((item) => item.id !== id);
     delete this.errors[id];
     this.changed();
+  }
+
+  /** A refused order (the list changed meanwhile) reloads the list before it rejects. */
+  async reorder(ids: string[]) {
+    try {
+      this.commands = await reorderRemote(this.connection.options(), ids);
+    } catch (error) {
+      await this.refreshFromService().catch(() => undefined);
+      throw error;
+    }
+    this.changed();
+  }
+
+  /**
+   * Remembers `values` as where command `id`'s next run starts, as a run with them would, without
+   * running it: those its parameters accept, a blank text counting as none. Writes go in the
+   * order of the changes, so the last one stays.
+   */
+  remember(id: string, values: ArgumentValues): Promise<void> {
+    const write = this.remembering.then(async () => {
+      const kept = sanitizeArguments(this.find(id), values);
+      const saved = await rememberRemote(this.connection.options(), id, kept);
+      this.commands = this.commands.map((item) => (item.id === saved.id ? saved : item));
+      this.changed();
+    });
+    this.remembering = write.catch(() => undefined);
+    return write;
+  }
+
+  /**
+   * Remembers the choices and toggles `picked` in the shell's options menu for command `id`, over
+   * the values its next run would start from; where the answer goes is never remembered.
+   */
+  rememberPicks(id: string, picked: CommandArguments): Promise<void> {
+    const command = this.find(id);
+    return this.remember(id, commandValues(command, argumentOverrides(command, picked)));
   }
 
   async refreshFromService() {

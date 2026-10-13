@@ -24,10 +24,11 @@
   font-weight: 600;
 }
 
+/* Inline code: the muted chip (`bg-muted`, a 4 pt corner) as the lift over the panel. */
 .pk-reply__code {
-  padding: 1px 5px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--pk-lift);
   font-family: var(--pk-mono);
   font-size: 12px;
 }
@@ -47,7 +48,8 @@
   overflow: hidden;
   border: 1px solid var(--pk-border);
   border-radius: 10px;
-  background: rgb(38 38 38 / 0.6);
+  /* `--muted` at 60% over the panel, as a translucent lift. */
+  background: rgb(255 255 255 / 0.035);
 }
 
 .pk-reply__table table {
@@ -76,5 +78,6 @@
 
 .pk-reply__table th {
   font-weight: 600;
-  background: rgb(38 38 38 / 0.8);
+  /* `bg-muted/80` over the wrapper's fill: together about the lift. */
+  background: rgb(255 255 255 / 0.025);
 }

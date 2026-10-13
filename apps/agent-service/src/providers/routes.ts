@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { recordChatGPTConsent } from './chatgpt-usage.js';
+import { rm } from 'node:fs/promises';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import {
   Identifier,
@@ -6,6 +9,7 @@ import {
   ProviderConnectRequestSchema,
   ProviderCreateRequestSchema,
   ProviderDisconnectRequestSchema,
+  ProviderRemoveQuerySchema,
   type ServiceConnection,
 } from '@atd/agent-contracts';
 import { ConnectionStore, serviceConfigurationId } from '../credentials/connections.js';
@@ -15,10 +19,19 @@ import { ConflictError } from '../errors.js';
 import { getServiceCatalog } from './catalog.js';
 import { modelCheck, storeConnectionCredential, type CredentialCheck } from './credential.js';
 import { registerConnectionRoutes } from './connection-routes.js';
-import { mustConnection, presentConnection, presentStored } from './connection-view.js';
+import {
+  assertProviderModels,
+  mustConnection,
+  presentConnection,
+  presentStored,
+} from './connection-view.js';
 import { ProviderLogins } from './login.js';
 import type { ProviderStores } from './runtime.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import { assertProviderAuth, assertUploadedCredential } from './auth-policy.js';
+import { cleanupRetiredCredentials } from './retire-credentials.js';
+import { discardCreatedConnection } from './credential-transactions.js';
+import { invalidateOffRoute } from '../invalidate.js';
 
 export interface ProviderRouteContext {
   serviceId: string;
@@ -30,17 +43,25 @@ const CONNECTION_LIMIT = 100;
 
 /**
  * Live provider routes (T6b) over the T2 connection store, keyring backend
- * and credential store: list/get/status/create/connect/disconnect here, edits,
+ * and credential store: list/get/status/create/connect/disconnect/remove here, edits,
  * preferences, thinking levels, refresh, verification and sign-in in
  * connection-routes. Status, create and connect run the local model check
  * (credential resolution only, never network).
  */
 export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteContext): void {
-  const stores = async (): Promise<ProviderStores> => ({
-    dataDir: ctx.dataDir,
-    connections: await ConnectionStore.load(ctx.dataDir),
-    keyring: new KeyringBackend(ctx.serviceId),
-  });
+  const stopWatching = ConnectionStore.onChanged(ctx.dataDir, () =>
+    invalidateOffRoute(app, { type: 'invalidate', scope: 'providers' }),
+  );
+  app.addHook('onClose', async () => stopWatching());
+  const stores = async (): Promise<ProviderStores> => {
+    const opened = {
+      dataDir: ctx.dataDir,
+      connections: await ConnectionStore.load(ctx.dataDir),
+      keyring: new KeyringBackend(ctx.serviceId),
+    };
+    await cleanupRetiredCredentials(opened);
+    return opened;
+  };
   const logins = new ProviderLogins();
 
   app.get('/v1/providers', RENDERER_ROUTE, async () => {
@@ -58,13 +79,16 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
 
   /**
    * Create and connect in one step. The record and its credential land
-   * together: a keyring failure removes the connection again, so a retry
-   * cannot accumulate half-created rows the caller never saw. Without a
-   * credential the connection is saved disconnected; account-login
-   * connections receive theirs from sign-in.
+   * together: a failure removes the credential and record, retaining an unusable
+   * cleanup record only while the keyring cannot delete it. Without a credential
+   * the connection is saved disconnected; account-login connections receive theirs
+   * from sign-in.
    */
   app.post('/v1/providers', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderCreateRequestSchema, request.body);
+    assertProviderAuth(body);
+    assertProviderModels(body);
+    if (body.credential) assertUploadedCredential(body, body.credential);
     const { connections, keyring } = await stores();
     const connection: ServiceConnection = {
       connectionId: randomUUID(),
@@ -72,6 +96,9 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       name: body.name,
       baseUrl: body.baseUrl,
       authType: body.authType,
+      ...(body.provider === 'openai' && body.authType === 'oauth'
+        ? { oauthProtocol: 'siwc' as const }
+        : {}),
       defaultModel: body.defaultModel,
       revision: 1,
       connected: false,
@@ -89,7 +116,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       customModels: body.customModels,
       ...(body.defaultThinkingLevel ? { defaultThinkingLevel: body.defaultThinkingLevel } : {}),
     };
-    const previousDefault = connections.data.defaultConnectionId;
+    recordChatGPTConsent(connection, body.chatgptConsent);
     await connections.change((data) => {
       if (data.connections.length >= CONNECTION_LIMIT)
         throw new TypeError('The connection limit is reached. Remove one before adding another.');
@@ -104,25 +131,31 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         readable: false,
         modelCheck: 'unchecked' as const,
       };
+    let ownedRevision = connection.revision;
     try {
-      const outcome = await storeConnectionCredential(connections, keyring, {
-        connectionId: connection.connectionId,
-        providerId: connection.provider,
-        configurationId: connection.configurationId,
-        credential: body.credential,
-      });
+      const outcome = await storeConnectionCredential(
+        connections,
+        keyring,
+        {
+          connectionId: connection.connectionId,
+          providerId: connection.provider,
+          configurationId: connection.configurationId,
+          credential: body.credential,
+        },
+        {
+          expectedRevision: connection.revision,
+          onCommitted: (revision) => {
+            ownedRevision = revision;
+          },
+        },
+      );
       return {
         connection: await presentStored(connections, connection.connectionId),
         readable: outcome.readable,
         modelCheck: outcome.modelCheck,
       };
     } catch (error) {
-      await connections.change((data) => {
-        data.connections = data.connections.filter(
-          (item) => item.connectionId !== connection.connectionId,
-        );
-        data.defaultConnectionId = previousDefault;
-      });
+      await discardCreatedConnection(connections, keyring, connection.connectionId, ownedRevision);
       throw mapUploadError(error);
     }
   });
@@ -201,28 +234,52 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       const live = mustConnection(connections, pathId);
       if (live.revision !== body.expectedRevision)
         throw new ConflictError('This connection changed. Reload before disconnecting.');
-      logins.cancelConnection(pathId);
-      if (live.hasCredential) {
-        // Persisted secret: the keyring delete must succeed before flags clear;
-        // a keyring failure stays an honest 500, never a faked disconnect.
-        const credentialStore = new ServiceCredentialStore(
-          keyring,
-          connections,
-          live.connectionId,
-          live.provider,
-          live.configurationId,
-        );
-        await credentialStore.delete(live.provider);
-      } else {
-        await connections.change((data) => {
-          const item = data.connections.find((entry) => entry.connectionId === pathId);
-          if (item) {
-            item.hasCredential = false;
-            item.connected = false;
-          }
-        });
-      }
+      await logins.cancelConnection(pathId);
+      await new ServiceCredentialStore(
+        keyring,
+        connections,
+        live.connectionId,
+        live.provider,
+        live.configurationId,
+      ).disconnect(live.provider, { expectedRevision: body.expectedRevision });
       return { connection: await presentStored(connections, pathId) };
+    },
+  );
+
+  /**
+   * Removes a connection for good: its secret, its record and its model files. The secret goes
+   * first, like a disconnect, so a keyring failure leaves the connection as it was. Tasks,
+   * commands and automations that named it keep the reference and report it as removed.
+   */
+  app.delete<{ Params: { connectionId: string } }>(
+    '/v1/providers/:connectionId',
+    RENDERER_ROUTE,
+    async (request) => {
+      const pathId = parse(Identifier, request.params.connectionId);
+      // Query values arrive as strings; coerce before the integer check.
+      const raw = (request.query as { expectedRevision?: unknown }).expectedRevision;
+      const { expectedRevision } = parse(ProviderRemoveQuerySchema, {
+        expectedRevision: typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw,
+      });
+      const { connections, keyring } = await stores();
+      const live = mustConnection(connections, pathId);
+      if (live.revision !== expectedRevision)
+        throw new ConflictError('This connection changed. Reload before removing it.');
+      await logins.cancelConnection(pathId);
+      const warning = await new ServiceCredentialStore(
+        keyring,
+        connections,
+        pathId,
+        live.provider,
+        live.configurationId,
+      ).remove(live.provider, expectedRevision);
+      await rm(path.join(ctx.dataDir, 'providers', pathId), { recursive: true, force: true });
+      return {
+        removed: true as const,
+        connectionId: pathId,
+        defaultConnectionId: connections.data.defaultConnectionId,
+        ...(warning ? { warning } : {}),
+      };
     },
   );
 

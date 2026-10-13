@@ -13,23 +13,19 @@ import {
 } from '@atd/ui/components/empty';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@atd/ui/components/alert-dialog';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
+import {
+  ConnectionConfirmDialog,
+  type ConnectionConfirm,
+} from '../providers/connection-confirm-dialog';
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { queryClient } from '../../lib/query-client';
+import { bridgeKeys } from '../../lib/bridge-cache';
+import { useServiceStatus } from '../service/use-service';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSearchField } from './settings-search-field';
 import { useSettingsSectionExit } from './settings-navigation';
@@ -49,30 +45,32 @@ const OVERVIEW: ProviderRoute = { page: 'overview' };
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings.providers;
+  const connected = useServiceStatus().status?.state === 'connected';
   // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
   const catalogQuery = useQuery(
     {
-      queryKey: ['providers', 'catalog'],
+      queryKey: [...bridgeKeys.serviceLists, 'providers', 'catalog'],
       queryFn: () => {
         if (!bridge) throw new Error('Open the desktop app to manage providers.');
         return bridge.catalog();
       },
-      enabled: Boolean(bridge),
-      // Read once, as when the section kept its own copy; Retry reads again after a failure.
-      staleTime: Infinity,
+      enabled: Boolean(bridge) && connected,
+      // Like the other service lists, reload on section entry and service reconnect.
       gcTime: Infinity,
       meta: { errorToast: false },
     },
     queryClient,
   );
   const catalog = catalogQuery.data ?? [];
-  const catalogStatus = catalogQuery.data
-    ? 'ready'
-    : catalogQuery.errorUpdateCount === 0
-      ? 'loading'
-      : catalogQuery.isFetching
-        ? 'retrying'
-        : 'failed';
+  const catalogHasError =
+    catalogQuery.isError || (!catalogQuery.data && catalogQuery.errorUpdateCount > 0);
+  const catalogStatus = catalogHasError
+    ? catalogQuery.isFetching
+      ? 'retrying'
+      : 'failed'
+    : catalogQuery.data
+      ? 'ready'
+      : 'loading';
   const connections = snapshot?.connections ?? [];
   // Forward cannot reopen a connection that was disconnected meanwhile.
   const history = useSettingsPageHistory<ProviderRoute>(
@@ -96,7 +94,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   );
   const pending = operation.isPending;
   const retryable = operation.isError;
-  const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
+  const [confirming, setConfirming] = useState<ConnectionConfirm | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const catalogReady = catalogStatus === 'ready';
   const catalogFailed = catalogStatus === 'failed' || catalogStatus === 'retrying';
@@ -109,13 +107,19 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     if (pending) return Promise.resolve();
     return operation.mutateAsync(run).catch(() => {});
   }
-  function manage(connection: Connection) {
-    const provider = catalog.find((item) => item.id === connection.provider);
+  async function manage(connection: Connection) {
+    let provider = catalog.find((item) => item.id === connection.provider);
+    if (!provider) {
+      // Only a fresh, successful catalog can establish that a provider was removed.
+      const refreshed = await catalogQuery.refetch({ cancelRefetch: false });
+      if (refreshed.isError) return;
+      provider = refreshed.data?.find((item) => item.id === connection.provider);
+    }
     if (!provider) {
       showErrorToast(t('providers.overview.disconnect.missingProvider'));
       return;
     }
-    history.open({ page: 'form', provider, connectionId: connection.connectionId });
+    history.replace({ page: 'form', provider, connectionId: connection.connectionId }, view);
   }
   if (view.page === 'catalog')
     return (
@@ -218,9 +222,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         rows={visible}
         defaultConnectionId={snapshot?.defaultConnectionId ?? null}
         pending={pending}
-        canManage={catalogReady}
-        onManage={manage}
-        onDisconnect={setDisconnecting}
+        canManage={catalogReady && !catalogQuery.isFetching}
+        onManage={(connection) => void manage(connection)}
+        onConfirm={setConfirming}
         perform={perform}
       />
       {!visible.length && (
@@ -252,44 +256,22 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           </EmptyContent>
         </Empty>
       )}
-      <AlertDialog
-        open={Boolean(disconnecting)}
-        onOpenChange={(open) => {
-          if (!open && !pending) setDisconnecting(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('providers.overview.disconnect.title', { name: disconnecting?.name ?? '' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('providers.overview.disconnect.description')}
-              {disconnecting?.connectionId === snapshot?.defaultConnectionId &&
-                t('providers.overview.disconnect.defaultNote')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>
-              {t('providers.overview.disconnect.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={pending}
-              onClick={(event) => {
-                event.preventDefault();
-                if (disconnecting)
-                  void perform(async () => {
-                    await bridge!.disconnect(disconnecting.connectionId, disconnecting.revision);
-                    setDisconnecting(null);
-                  });
-              }}
-            >
-              {t('providers.overview.disconnect.confirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConnectionConfirmDialog
+        confirm={confirming}
+        isDefault={confirming?.connection.connectionId === snapshot?.defaultConnectionId}
+        pending={pending}
+        onDismiss={() => setConfirming(null)}
+        onConfirm={({ action, connection }) =>
+          void perform(async () => {
+            const { connectionId, revision } = connection;
+            if (action === 'remove') {
+              const warning = await bridge!.remove(connectionId, revision);
+              if (warning) showToast({ kind: 'info', text: warning });
+            } else await bridge!.disconnect(connectionId, revision);
+            setConfirming(null);
+          })
+        }
+      />
     </section>
   );
 }

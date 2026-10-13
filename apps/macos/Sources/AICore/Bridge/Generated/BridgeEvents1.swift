@@ -61,18 +61,71 @@ public struct AccessibilityReduceTransparencyEvent: Codable, Equatable, Sendable
 /// Payload of the `shortcut.command` event.
 public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
   public let id: String
+  public let target: Target?
+  public let arguments: CommandArguments?
+  public let intent: Intent?
 
-  public init(id: String) {
+  public init(id: String, target: Target?, arguments: CommandArguments?, intent: Intent?) {
     self.id = id
+    self.target = target
+    self.arguments = arguments
+    self.intent = intent
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     id = try container.string(.id, minLength: 1, maxLength: 128)
+    target = try container.optional(.target) { try container.value($0, Target.self) }
+    arguments = try container.optional(.arguments) {
+      try container.value($0, CommandArguments.self)
+    }
+    intent = try container.optional(.intent) { try container.value($0, Intent.self) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encodeIfPresent(target, forKey: .target)
+    try container.encodeIfPresent(arguments, forKey: .arguments)
+    try container.encodeIfPresent(intent, forKey: .intent)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case id
+    case target
+    case arguments
+    case intent
+  }
+
+  public struct Target: Codable, Equatable, Sendable {
+    public let id: String
+    public let app: String
+    public let writable: Bool
+
+    public init(id: String, app: String, writable: Bool) {
+      self.id = id
+      self.app = app
+      self.writable = writable
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      app = try container.string(.app, minLength: 1, maxLength: 255)
+      writable = try container.boolean(.writable)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case app
+      case writable
+    }
+  }
+
+  public enum Intent: String, Codable, Equatable, Sendable {
+    case run
+    case choose
+    case edit
   }
 }
 
@@ -190,50 +243,3 @@ public struct FilesDragEvent: Codable, Equatable, Sendable {
     case none
   }
 }
-
-/// Payload of the `edit.command` event.
-public struct EditCommandEvent: Codable, Equatable, Sendable {
-  public let command: Command
-
-  public init(command: Command) {
-    self.command = command
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    command = try container.value(.command, Command.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case command
-  }
-
-  public enum Command: String, Codable, Equatable, Sendable {
-    case undo
-    case redo
-  }
-}
-
-/// Payload of the `speech.state` event.
-public struct SpeechStateEvent: Codable, Equatable, Sendable {
-  public let speaking: Bool
-
-  public init(speaking: Bool) {
-    self.speaking = speaking
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    speaking = try container.boolean(.speaking)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case speaking
-  }
-}
-
-/// Payload of the `selection.ask` event.
-public typealias SelectionAskEvent = NativeEmpty
-
-/// Payload of the `task.new` event.
-public typealias TaskNewEvent = NativeEmpty

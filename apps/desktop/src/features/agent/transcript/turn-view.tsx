@@ -1,29 +1,18 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
+import { ArtifactCards } from './artifact-cards';
 import { BlockView } from './block-view';
+import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
 import { UserMessage } from './user-message';
-
-/**
- * The turn's final answer: the last assistant text. A stopped turn can end in tool activity or an
- * empty aborted message, so the copied answer is not always the last block.
- */
-function lastAnswerText(turn: AdaptedTurn): string {
-  for (let index = turn.items.length - 1; index >= 0; index -= 1) {
-    const item = turn.items[index];
-    if (item?.type === 'block' && item.block.kind === 'assistant' && item.block.text.trim())
-      return item.block.text;
-  }
-  return '';
-}
 
 /** Every step of the turn's activity groups, in order. */
 function activitySteps(items: AdaptedTurn['items']) {
@@ -84,6 +73,8 @@ export const TurnView = memo(function TurnView({
 }) {
   const { t } = useTranslation('tasks');
   const settled = !(live && last);
+  // A turn first shown while it ran settles in view, so its artifact cards arrive then.
+  const [shownLive] = useState(!settled);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
@@ -134,13 +125,23 @@ export const TurnView = memo(function TurnView({
         );
       })}
       {status}
+      {/* What the turn saved, as cards that open each item, once it settled: the items exist once
+          their calls complete, and the cards sit together instead of interrupting the stream. */}
+      {settled && <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />}
       {/* Collected from every activity group and held until the turn settles, so the banners sit
           together above the actions instead of interrupting the stream; the approval only
           applies from the next message anyway. */}
       {settled && <McpApprovalBanners steps={activitySteps(turn.items)} />}
       {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
       {settled && copyable && (
-        <TurnActions turn={turn} run={run} answer={lastAnswerText(turn)} last={last} />
+        <TurnActions
+          turn={turn}
+          run={run}
+          answer={lastAnswerText(
+            turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : [])),
+          )}
+          last={last}
+        />
       )}
     </section>
   );
