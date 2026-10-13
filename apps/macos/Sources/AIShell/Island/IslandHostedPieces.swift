@@ -90,6 +90,11 @@ final class IslandPlainHost<Content: NSView>: NSView {
     addSubview(content)
   }
 
+  // Declared, though empty, because Swift 6.2.4's optimizer crashes (EarlyPerfInliner, signal 11)
+  // on the synthesized deinit of a generic main-actor class when the deployment target is below
+  // macOS 26. Remove once the toolchain no longer does.
+  deinit {}
+
   override func layout() {
     super.layout()
     if content.frame != bounds { content.frame = bounds }
