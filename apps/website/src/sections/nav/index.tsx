@@ -9,7 +9,8 @@ import './nav.css';
 /**
  * The page's control strip: a matte bar as wide as the content column, floating over the page. It
  * carries the name, the section links (a status light marks the one being read), the language
- * switch and the download key. Under it, the kit's scroll edge softly blurs content as it passes.
+ * switch and the download key, which leads to the download plate, where the visitor picks their
+ * Mac's chip. Under it, the kit's scroll edge softly blurs content as it passes.
  */
 export function SiteNav() {
   const t = useCopy(navCopy);
@@ -45,7 +46,7 @@ export function SiteNav() {
           </ul>
           <div className="nav__end">
             <LanguageMenu />
-            <a className="btn-filled nav__cta" href={site.downloadUrl}>
+            <a className="btn-filled nav__cta" href="#download">
               {t.download}
             </a>
           </div>

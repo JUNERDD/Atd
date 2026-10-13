@@ -1,17 +1,19 @@
 import { site } from '../../content/site';
-import { useCopy } from '../../i18n/lang';
+import { useCopy, useLang } from '../../i18n/lang';
 import { Section } from '../../ui/section';
 import { downloadCopy } from './copy';
 import { LedWord } from './led-word';
 import './download.css';
 
 /**
- * The finale: the name on an LED board, the download key under it, and the requirements and the
- * license as readouts in the legend column. The board powers on and lights column by column; the
- * key rises, the readouts decode and the first-launch line follows.
+ * The finale: the name on an LED board, a download key per chip family under it, and the
+ * requirements and the license as readouts in the legend column. The visitor picks their Mac's chip;
+ * nothing guesses it. The board powers on and lights column by column; the keys rise, the readouts
+ * decode and the notes follow.
  */
 export function DownloadSection() {
   const t = useCopy(downloadCopy);
+  const lang = useLang();
 
   return (
     <Section id="download" title={t.title} lede={t.lede}>
@@ -41,17 +43,24 @@ export function DownloadSection() {
             <LedWord />
           </div>
           <div className="download__actions">
-            <a
-              className="btn-filled btn-large download__cta"
-              href={site.downloadUrl}
-              data-reveal="rise"
-              data-reveal-delay="420"
-            >
-              {t.cta}
-            </a>
-            <p className="download__note legend" data-reveal="fade" data-reveal-delay="520">
-              {t.firstLaunch}
-            </p>
+            <ul className="download__keys" aria-label={t.choose}>
+              {site.downloads.map((download, index) => (
+                <li className="download__key" key={download.arch}>
+                  <a
+                    className="btn-filled btn-large download__cta"
+                    href={download.url}
+                    data-reveal="rise"
+                    data-reveal-delay={420 + index * 80}
+                  >
+                    {t.key(download.chip[lang])}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <div className="download__notes" data-reveal="fade" data-reveal-delay="580">
+              <p className="download__note legend">{t.which}</p>
+              <p className="download__note legend">{t.firstLaunch}</p>
+            </div>
           </div>
         </div>
       </div>
