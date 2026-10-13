@@ -1,5 +1,9 @@
 {
   "extends": "@atd/typescript-config/react.json",
-  "compilerOptions": { "paths": { "@atd/ui/*": ["./src/*"] } },
+  "compilerOptions": {
+    // Runs in WebKit 18.0 (macOS 15.0): ES2024 plus the Set methods (Safari 17), as in apps/desktop.
+    "lib": ["ES2024", "ES2025.Collection", "DOM", "DOM.Iterable"],
+    "paths": { "@atd/ui/*": ["./src/*"] }
+  },
   "include": ["src"]
 }

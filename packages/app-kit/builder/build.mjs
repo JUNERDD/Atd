@@ -85,7 +85,7 @@ async function buildWeb() {
     base: './',
     plugins: [policy('web', root), react(), tailwind()],
     // WKWebView still needs prefixes such as `-webkit-user-select`.
-    build: { outDir: path.join(config.outDir, 'web'), emptyOutDir: true, target: 'safari26' },
+    build: { outDir: path.join(config.outDir, 'web'), emptyOutDir: true, target: 'safari18' },
   });
 }
 

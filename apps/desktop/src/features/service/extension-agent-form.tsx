@@ -210,6 +210,7 @@ export function AgentForm({
           id={fieldId('systemPrompt')}
           value={draft.systemPrompt}
           rows={10}
+          autoSize={false}
           maxLength={AGENT_LIMITS.systemPrompt}
           placeholder={t('extensions.agentPage.systemPromptPlaceholder')}
           disabled={disabled}

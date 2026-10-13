@@ -1,9 +1,10 @@
 {
   "extends": "@atd/typescript-config/react.json",
   "compilerOptions": {
-    // The renderer runs only in WKWebView on macOS 26, which ships ES2025 (Set methods,
-    // iterator helpers, `Promise.try`).
-    "lib": ["ES2025", "DOM", "DOM.Iterable"],
+    // The renderer runs in WKWebView on macOS 15.0 and later, so WebKit 18.0 is the baseline:
+    // ES2024 plus the Set methods (Safari 17). ES2025 adds `Promise.try`, iterator helpers and
+    // `Float16Array`, which arrive in WebKit 18.2 and 18.4.
+    "lib": ["ES2024", "ES2025.Collection", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"],
     // The native bridge contract imports its parts by `.ts` file name, which Node's type
     // stripping needs when the schema export script loads it.
