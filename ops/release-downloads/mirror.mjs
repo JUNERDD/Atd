@@ -1,323 +1,179 @@
-import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises';
+// Mirrors the latest release's DMGs and update feeds, per architecture, to the R2 download
+// bucket. See README.md for the stages, failure behavior, and rehearsal flags.
+import { randomUUID } from 'node:crypto';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseArgs } from 'node:util';
-import { waitForHttpRetry } from '../../scripts/http-retry.mjs';
+import { readOptions } from './args.mjs';
+import {
+  ARCHES,
+  assertStillLatest,
+  downloadGitHubRelease,
+  readGitHubRelease,
+  readSourceDir,
+} from './artifacts.mjs';
+import { feedKey, latestKey, metadataKey, openBucket, versionedKey } from './bucket.mjs';
+import {
+  freshUrl,
+  holdsArtifact,
+  IMMUTABLE_CACHE,
+  LATEST_CACHE,
+  publicUrl,
+  verifyAbsent,
+  verifyDelivery,
+  verifyText,
+} from './delivery.mjs';
+import { EMPTY_FEED, mirrorFeed } from './feeds.mjs';
 
-const { values } = parseArgs({
-  options: {
-    tag: { type: 'string', default: 'latest' },
-    'dry-run': { type: 'boolean', default: false },
-  },
-});
-const repo = 'JUNERDD/Atd';
-const bucket = 'atd-releases';
-const base = 'https://downloads.atd.best';
-const latestKey = 'latest/Atd-arm64.dmg';
-// Installed Release builds read this feed (SUFeedURL in apps/macos/project.yml).
-const feedKey = 'appcast.xml';
-const immutableCache = 'public, max-age=31536000, immutable';
-const latestCache = 'public, max-age=60, must-revalidate';
-const sensitive = ['R2_DOWNLOAD_ACCOUNT_ID', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
+const options = readOptions();
+const { baseUrl, prefix, sourceDir } = options;
+const release = sourceDir ? await readSourceDir(sourceDir) : readGitHubRelease(options.tag);
+const nonce = `${release.version}-${randomUUID()}`;
+const href = (key) => publicUrl(baseUrl, key).href;
 
-function command(executable, args) {
-  const result = spawnSync(executable, args, { encoding: 'utf8', maxBuffer: 16 * 1024 ** 2 });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    let message = result.stderr || result.stdout;
-    for (const name of sensitive) {
-      if (process.env[name]) message = message.replaceAll(process.env[name], '[redacted]');
-    }
-    throw new Error(`${executable} failed (${result.status}): ${message}`);
-  }
-  return result.stdout;
-}
-
-function latestRelease() {
-  return JSON.parse(command('gh', ['api', `repos/${repo}/releases/latest`]));
-}
-
-const release = latestRelease();
-assert(!release.draft && !release.prerelease, 'Only stable public releases are mirrored.');
-assert(/^v\d+\.\d+\.\d+$/.test(release.tag_name), 'Expected a stable version tag.');
-assert(
-  values.tag === 'latest' || values.tag === release.tag_name,
-  'Refusing to replace the latest download with an older release.',
-);
-const version = release.tag_name.slice(1);
-const name = `Atd-${version}-arm64.dmg`;
-const asset = release.assets.find((item) => item.name === name);
-assert(asset && asset.state === 'uploaded', 'The versioned release DMG is missing.');
-assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest), 'GitHub must provide a SHA-256 asset digest.');
-assert(asset.size > 0 && asset.size <= 512 * 1024 ** 2, 'The DMG exceeds the CDN cache limit.');
-const sha256 = asset.digest.slice('sha256:'.length);
-const feedAsset = release.assets.find((item) => item.name === feedKey);
-assert(feedAsset && feedAsset.state === 'uploaded', 'The release update feed is missing.');
-const versionKey = `releases/${release.tag_name}/${name}`;
-const disposition = `attachment; filename="${name}"`;
-const runNonce = randomUUID();
-const metadata = { version, sha256, bytes: asset.size, url: `${base}/${versionKey}` };
-console.log(
-  JSON.stringify({
-    ...metadata,
-    latest: `${base}/${latestKey}`,
-    feed: `${base}/${feedKey}`,
-    dryRun: values['dry-run'],
-  }),
-);
-if (values['dry-run']) process.exit(0);
-
-for (const key of sensitive) assert(process.env[key], `Missing ${key}.`);
-assert(/^[a-f0-9]{32}$/.test(process.env.R2_DOWNLOAD_ACCOUNT_ID), 'Invalid R2 account ID.');
-const endpoint = `https://${process.env.R2_DOWNLOAD_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-const directory = await mkdtemp(join(tmpdir(), 'atd-release-mirror-'));
-const file = join(directory, name);
-const metadataFile = join(directory, 'latest.json');
-const releaseFeedFile = join(directory, feedKey);
-const mirrorFeedFile = join(directory, 'mirror-appcast.xml');
-
-function aws(args) {
-  return command('aws', [...args, '--endpoint-url', endpoint, '--region', 'auto']);
-}
-
-async function hashFile(path) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest('hex');
-}
-
-function pruneOldMirrors() {
-  const listing = JSON.parse(
-    aws(['s3api', 'list-objects-v2', '--bucket', bucket, '--prefix', 'releases/']),
+/**
+ * What latest.json records once both architectures advanced. The top-level fields keep their
+ * original arm64 meaning for existing readers; `architectures` indexes every served build and
+ * leaves out one the release does not have.
+ */
+function describe() {
+  const architectures = Object.fromEntries(
+    release.artifacts.map((artifact) => [
+      artifact.arch,
+      {
+        version: release.version,
+        sha256: artifact.sha256,
+        bytes: artifact.size,
+        url: href(versionedKey(prefix, release, artifact)),
+        latest: href(latestKey(prefix, artifact.arch)),
+        feed: href(feedKey(prefix, artifact.feedName)),
+      },
+    ]),
   );
-  const previous = (listing.Contents ?? [])
-    .filter(
-      (item) =>
-        item.Key !== versionKey && /^releases\/v(\d+\.\d+\.\d+)\/Atd-\1-arm64\.dmg$/.test(item.Key),
-    )
-    .sort((a, b) => b.LastModified.localeCompare(a.LastModified));
-  // Only this mirror's versioned keys are eligible. GitHub keeps the full archive.
-  for (const item of previous.slice(2)) {
-    aws(['s3api', 'delete-object', '--bucket', bucket, '--key', item.Key]);
-    console.log(`Removed old mirror: ${item.Key}`);
+  const { version, sha256, bytes, url } = architectures.arm64;
+  return { version, sha256, bytes, url, architectures };
+}
+
+/** Each artifact's versioned key and mirror feed. Every feed is checked before any write. */
+async function prepare() {
+  const entries = [];
+  for (const artifact of release.artifacts) {
+    const key = versionedKey(prefix, release, artifact);
+    const feed = mirrorFeed({
+      feed: await readFile(artifact.feedFile, 'utf8'),
+      release,
+      artifact,
+      mirrorUrl: href(key),
+    });
+    entries.push({ artifact, key, feed });
   }
+  return entries;
+}
+
+function stopsAt(point) {
+  if (options.stopAfter !== point) return false;
+  console.log(`Stopped at ${point} as requested; rerun without --stop-after to finish.`);
+  return true;
 }
 
 /**
- * The release's signed feed, re-pointed at the verified mirror copy. Sparkle's EdDSA signature
- * covers the dmg's bytes, not its URL, and the mirror holds exactly those bytes, so the release
- * job's signature and length stay valid. The GitHub feed keeps the GitHub URL for installs that
- * still read it.
+ * R2 has no multi-object transaction, so the run moves forward in an order where every public
+ * state is valid and a rerun recovers from any stop: upload and verify every versioned DMG, then
+ * move each architecture's permanent DMG and feed in turn, then the manifest, then cleanup. A feed
+ * only ever names a verified DMG of its own architecture, and cleanup never removes one a current
+ * feed names.
  */
-async function mirrorFeed() {
-  const feed = await readFile(releaseFeedFile, 'utf8');
-  const source = `url="https://github.com/${repo}/releases/download/${release.tag_name}/${name}"`;
-  assert.equal(feed.split(source).length, 2, 'The release feed must name its dmg exactly once.');
-  assert(feed.includes(` length="${asset.size}"`), 'The release feed names a different dmg size.');
-  return feed.replace(source, `url="${base}/${versionKey}"`);
-}
+async function run(directory) {
+  const bucket = openBucket({ bucket: options.bucket, prefix, directory });
+  if (!sourceDir) await downloadGitHubRelease(release, directory);
+  const entries = await prepare();
 
-async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, verify) {
-  const label = `${url.pathname.slice(1)}: ${method}${range ? ` ${range}` : ''}`;
-  const attempts = 3;
-  for (let attempt = 1; ; attempt += 1) {
-    const signal = AbortSignal.timeout(timeout);
-    let response;
-    let failure;
-    let retryAfter;
-    try {
-      response = await fetch(url, {
-        method,
-        headers: range ? { Range: range } : undefined,
-        signal,
-      });
-      // Keep body reads inside the attempt; a full-download retry starts a fresh hash.
-      if (![502, 503, 504].includes(response.status)) return await verify(response);
-      failure = new Error(`HTTP ${response.status}`);
-      retryAfter = response.headers.get('retry-after');
-    } catch (error) {
-      const code = error.cause?.code ?? error.code;
-      const timedOut =
-        (signal.aborted && ['TimeoutError', 'AbortError'].includes(error.name)) ||
-        [
-          'ETIMEDOUT',
-          'UND_ERR_CONNECT_TIMEOUT',
-          'UND_ERR_HEADERS_TIMEOUT',
-          'UND_ERR_BODY_TIMEOUT',
-        ].includes(code);
-      if (!timedOut) throw new Error(`${label}: verification failed`, { cause: error });
-      failure = new Error(
-        signal.aborted ? `Timed out after ${timeout} ms` : `Transport timeout (${code})`,
-        { cause: error },
-      );
-    } finally {
-      // Discard unread error responses without replacing the original failure with a cleanup error.
-      await response?.body?.cancel().catch(() => {});
+  for (const { artifact, key } of entries) {
+    // A rerun keeps an object that already holds these exact bytes.
+    if (await holdsArtifact(freshUrl(baseUrl, key, nonce), artifact)) {
+      console.log(`Already mirrored: ${key}`);
+    } else {
+      bucket.uploadImmutable(artifact, key, release.version);
     }
-    await waitForHttpRetry({ label, attempt, attempts, failure, retryAfter });
-  }
-}
-
-async function verifyFeed(expected) {
-  const url = new URL(`${base}/${feedKey}`);
-  url.searchParams.set('verify', `${version}-${runNonce}`);
-  await verifyRequest(url, {}, async (response) => {
-    assert.equal(response.status, 200, `GET failed for ${feedKey}`);
-    assert.equal(response.headers.get('cache-control'), latestCache);
-    assert.equal(await response.text(), expected, 'The public update feed differs.');
-  });
-  console.log(`Verified ${feedKey}: content, cache policy`);
-}
-
-async function verifyDelivery(key, cacheControl, full) {
-  // A query unique to this run bypasses every earlier cached copy of the latest object. A version
-  // alone is not enough on a rerun: the promoted bytes keep their ETag, so the edge revalidates its
-  // earlier entry with a 304 and goes on serving that entry's headers.
-  const url = new URL(`${base}/${key}`);
-  if (key === latestKey) url.searchParams.set('verify', `${version}-${runNonce}`);
-  await verifyRequest(url, { method: 'HEAD' }, (head) => {
-    assert.equal(head.status, 200, `HEAD failed for ${key}`);
-    assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
-    assert.equal(head.headers.get('content-type'), 'application/x-apple-diskimage');
-    assert.equal(head.headers.get('cache-control'), cacheControl);
-    // Both keys save under the versioned name, so a download from the permanent URL names its version.
-    assert.equal(head.headers.get('content-disposition'), disposition, 'Wrong download filename.');
-  });
-  const source = await open(file, 'r');
-  try {
-    for (const start of [0, asset.size - 65536]) {
-      const end = start + 65535;
-      const expected = Buffer.alloc(65536);
-      await source.read(expected, 0, expected.length, start);
-      await verifyRequest(url, { range: `bytes=${start}-${end}` }, async (response) => {
-        assert.equal(response.status, 206, 'Byte-range downloads must work.');
-        assert.equal(response.headers.get('content-range'), `bytes ${start}-${end}/${asset.size}`);
-        assert.deepEqual(
-          Buffer.from(await response.arrayBuffer()),
-          expected,
-          'Range bytes changed.',
-        );
-      });
-    }
-  } finally {
-    await source.close();
-  }
-  if (full) {
-    await verifyRequest(url, { timeout: 300000 }, async (response) => {
-      assert.equal(response.status, 200);
-      const hash = createHash('sha256');
-      let bytes = 0;
-      for await (const chunk of response.body) {
-        hash.update(chunk);
-        bytes += chunk.length;
-      }
-      assert.equal(bytes, asset.size);
-      assert.equal(
-        hash.digest('hex'),
-        sha256,
-        'The public mirror differs from the signed GitHub DMG.',
-      );
+    await verifyDelivery({
+      url: publicUrl(baseUrl, key),
+      artifact,
+      cacheControl: IMMUTABLE_CACHE,
+      full: true,
     });
   }
-  console.log(`Verified ${key}: size, cache policy, byte ranges${full ? ', SHA-256' : ''}`);
+  if (stopsAt('after-immutable-upload')) return false;
+  // A rehearsal source is not a GitHub release, so there is nothing newer to defer to.
+  if (!sourceDir) assertStillLatest(release);
+
+  for (const [index, { arch, feedName }] of ARCHES.entries()) {
+    if (index > 0 && stopsAt('between-arches')) return false;
+    const entry = entries.find(({ artifact }) => artifact.arch === arch);
+    const latest = latestKey(prefix, arch);
+    if (entry) {
+      bucket.promote(entry.artifact, entry.key, latest, release.version);
+      await verifyDelivery({
+        url: freshUrl(baseUrl, latest, nonce),
+        artifact: entry.artifact,
+        cacheControl: LATEST_CACHE,
+        full: false,
+      });
+    } else {
+      // A release without this architecture (an older release, or a rollback to one) withdraws
+      // its download rather than leave a build the latest release no longer offers.
+      bucket.remove(latest);
+      await verifyAbsent(freshUrl(baseUrl, latest, nonce));
+    }
+    if (index === 0 && stopsAt('before-feed-advance')) return false;
+    const feed = feedKey(prefix, feedName);
+    const body = entry ? entry.feed : EMPTY_FEED;
+    await bucket.putText(feed, body, 'application/xml');
+    await verifyText({
+      url: freshUrl(baseUrl, feed, nonce),
+      expected: body,
+      cacheControl: LATEST_CACHE,
+    });
+  }
+
+  const metadata = `${JSON.stringify(describe(), null, 2)}\n`;
+  const manifestKey = metadataKey(prefix);
+  await bucket.putText(manifestKey, metadata, 'application/json');
+  await verifyText({
+    url: freshUrl(baseUrl, manifestKey, nonce),
+    expected: metadata,
+    cacheControl: LATEST_CACHE,
+  });
+  bucket.prune({
+    referenced: new Set(entries.map(({ key }) => key)),
+    allowRc: Boolean(sourceDir),
+  });
+  return true;
 }
 
+console.log(
+  JSON.stringify({
+    ...describe(),
+    absent: release.absent,
+    source: sourceDir ? 'source-dir' : 'github',
+    bucket: options.bucket,
+    prefix,
+    dryRun: options.dryRun,
+  }),
+);
+if (options.dryRun) {
+  // A local source can be checked completely; a GitHub release's feeds are not downloaded.
+  if (sourceDir) await prepare();
+  process.exit(0);
+}
+
+const directory = await mkdtemp(join(tmpdir(), 'atd-release-mirror-'));
 try {
-  command('gh', [
-    'release',
-    'download',
-    release.tag_name,
-    '--repo',
-    repo,
-    '--pattern',
-    name,
-    '--pattern',
-    feedKey,
-    '--dir',
-    directory,
-  ]);
-  assert.equal(await hashFile(file), sha256, 'Downloaded release digest does not match GitHub.');
-  const feed = await mirrorFeed();
-  // The official AWS CLI owns multipart uploads, retries, and S3 authentication.
-  // Wrangler's single-upload limit is smaller than the current DMG.
-  aws([
-    's3',
-    'cp',
-    file,
-    `s3://${bucket}/${versionKey}`,
-    '--content-type',
-    'application/x-apple-diskimage',
-    '--content-disposition',
-    disposition,
-    '--cache-control',
-    immutableCache,
-    '--metadata',
-    `sha256=${sha256},version=${version}`,
-    '--only-show-errors',
-    '--no-progress',
-  ]);
-  await verifyDelivery(versionKey, immutableCache, true);
-  assert.equal(
-    latestRelease().id,
-    release.id,
-    'A newer GitHub release appeared; rerun the mirror.',
-  );
-  aws([
-    's3api',
-    'copy-object',
-    '--bucket',
-    bucket,
-    '--key',
-    latestKey,
-    '--copy-source',
-    `${bucket}/${versionKey}`,
-    '--metadata-directive',
-    'REPLACE',
-    '--content-type',
-    'application/x-apple-diskimage',
-    '--content-disposition',
-    disposition,
-    '--cache-control',
-    latestCache,
-    '--metadata',
-    `sha256=${sha256},version=${version}`,
-  ]);
-  await verifyDelivery(latestKey, latestCache, false);
-  // Published only after the versioned dmg it names passed verification, so an installed app is
-  // never offered an update the mirror cannot serve.
-  await writeFile(mirrorFeedFile, feed);
-  aws([
-    's3',
-    'cp',
-    mirrorFeedFile,
-    `s3://${bucket}/${feedKey}`,
-    '--content-type',
-    'application/xml',
-    '--cache-control',
-    latestCache,
-    '--only-show-errors',
-  ]);
-  await verifyFeed(feed);
-  await writeFile(metadataFile, `${JSON.stringify(metadata, null, 2)}\n`);
-  aws([
-    's3',
-    'cp',
-    metadataFile,
-    `s3://${bucket}/latest.json`,
-    '--content-type',
-    'application/json',
-    '--cache-control',
-    latestCache,
-    '--only-show-errors',
-  ]);
-  pruneOldMirrors();
-  console.log(
-    `Published ${version}; the stable download and feed caches expire within 60 seconds.`,
-  );
+  if (await run(directory)) {
+    const served = release.artifacts.map(({ arch }) => arch).join(', ');
+    console.log(
+      `Published ${release.version} (${served}); the stable downloads and feeds expire within 60 seconds.`,
+    );
+  }
 } finally {
   await rm(directory, { recursive: true, force: true });
 }

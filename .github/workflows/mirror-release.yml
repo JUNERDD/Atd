@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   mirror:
-    name: Mirror and verify the latest stable DMG and update feed
+    name: Mirror and verify the latest stable DMGs and update feeds
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +44,7 @@ jobs:
         run: |
           aws --version
           gh --version
+      # Mirrors every architecture the release has (ops/release-downloads/README.md).
       - name: Upload and verify the official release
         env:
           GH_TOKEN: ${{ github.token }}
