@@ -31,7 +31,7 @@
         "$TURBO_ROOT$/rust-toolchain.toml",
         "$TURBO_ROOT$/crates/**"
       ],
-      "outputs": ["*.node", "index.js", "index.d.ts"]
+      "cache": false
     },
     "dev": {
       "dependsOn": ["^build"],
