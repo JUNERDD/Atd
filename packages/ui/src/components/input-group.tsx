@@ -6,7 +6,7 @@ import { cn } from '@atd/ui/lib/utils';
 
 import { Button } from '@atd/ui/components/button';
 import { Input } from '@atd/ui/components/input';
-import { Textarea } from '@atd/ui/components/textarea';
+import { Textarea, type TextareaProps } from '@atd/ui/components/textarea';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (
@@ -113,7 +113,7 @@ function InputGroupInput({ className, ...props }: React.ComponentProps<'input'>)
   );
 }
 
-function InputGroupTextarea({ className, ...props }: React.ComponentProps<'textarea'>) {
+function InputGroupTextarea({ className, ...props }: TextareaProps) {
   return (
     <Textarea
       data-slot="input-group-control"
