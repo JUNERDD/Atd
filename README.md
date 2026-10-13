@@ -11,11 +11,11 @@
 
 Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversation. Atd brings your models, tools, and local context into a small desktop panel—for everyday work, coding tasks, and apps of your own.
 
-**macOS 26+ · Apple silicon**
+**macOS 15+ · Apple silicon and Intel**
 
-[![Download Atd for Mac](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg)
+[![Download Atd for Apple silicon](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg) [![Download Atd for Intel](https://img.shields.io/badge/Download_for_Mac-Intel-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-x64.dmg)
 
-[Website](https://atd.best) · [GitHub download mirror](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
+[Website](https://atd.best) · GitHub download mirror: [Apple silicon](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg), [Intel](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-x64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
 
 [![Atd main panel on the desktop, with a new task, composer, model selector, and permission controls](apps/website/public/cases/ui/main-panel.png)](apps/website/public/cases/ui/main-panel.png)
 
@@ -23,7 +23,7 @@ _Interface preview of the main panel._
 
 ## Get started
 
-1. [Download the latest Apple silicon DMG](https://downloads.atd.best/latest/Atd-arm64.dmg) (saved as `Atd-<version>-arm64.dmg`), open it, and drag **Atd** to **Applications**.
+1. Download the latest DMG for your Mac — [Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg) (saved as `Atd-<version>-arm64.dmg`) or [Intel](https://downloads.atd.best/latest/Atd-x64.dmg) (saved as `Atd-<version>-x64.dmg`); both need macOS 15 or later. Open it and drag **Atd** to **Applications**.
 2. Open **Atd**. If macOS blocks it, follow the first-launch instructions in the warning above.
 3. Open **Settings → Models**, add a provider connection, and choose your default provider and model. Connect with a supported account sign-in, API key, or local endpoint.
 4. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text or a screenshot.
