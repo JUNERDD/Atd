@@ -30,7 +30,8 @@ final class AnnotationStyleBar: NSView {
   private let bar: AnnotationGlassBar
 
   override init(frame: NSRect) {
-    bar = AnnotationGlassBar(groups: [redactions, colors, [size], [background]])
+    bar = AnnotationGlassBar(
+      groups: [redactions, colors, [size], [background]], blending: .withinWindow)
     super.init(frame: frame)
     for button in redactions + colors + [background] { button.target = self }
     size.target = self

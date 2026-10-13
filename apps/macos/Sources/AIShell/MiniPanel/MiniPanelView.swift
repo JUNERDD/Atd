@@ -21,7 +21,9 @@ import SwiftUI
 /// never glass on glass; a state shows through shape and content alone.
 ///
 /// No piece carries a `glassEffectID`: none is ever inserted or removed, so no glass transition
-/// has anything to match; the container blends the pieces by their distance alone.
+/// has anything to match; the container blends the pieces by their distance alone. macOS 15 has
+/// no container (``Backport``): each piece stands on its own material
+/// (``View/clippedGlass(in:)``), and the pieces never merge.
 struct MiniPanelView: View {
   let model: MiniPanelModel
 
@@ -32,35 +34,34 @@ struct MiniPanelView: View {
 
   var body: some View {
     let region = model.glassFrame
-    GlassEffectContainer(spacing: Self.glassSpacing) {
-      ZStack(alignment: .topLeading) {
-        if let zone = model.dropZone {
-          // Invisible, but drawn: the window server gives a drag's release to drawn pixels only,
-          // so a drop anywhere in the magnet's reach lands on the panel (as DesktopDropCatcher's).
-          // The body's own shape is cut out of it, so nothing lies under the glass.
-          MiniPanelZoneShape(zone: zone)
-            .fill(Color.black.opacity(1.0 / 255), style: FillStyle(eoFill: true))
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-        if model.phase == .tucked, let zone = model.clickZone {
-          // Invisible, but drawn, as the drop zone is: opening on click, the window server gives
-          // the panel a click anywhere the pill swells for, the screen edge included.
-          Rectangle()
-            .fill(Color.black.opacity(1.0 / 255))
-            .frame(width: zone.width, height: zone.height)
-            .offset(x: zone.minX, y: zone.minY)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-        if model.phase != .hidden {
-          MiniPanelBody(model: model)
-        }
-        MiniPanelCard(model: model)
-        MiniPanelLabelView(model: model)
+    ZStack(alignment: .topLeading) {
+      if let zone = model.dropZone {
+        // Invisible, but drawn: the window server gives a drag's release to drawn pixels only,
+        // so a drop anywhere in the magnet's reach lands on the panel (as DesktopDropCatcher's).
+        // The body's own shape is cut out of it, so nothing lies under the glass.
+        MiniPanelZoneShape(zone: zone)
+          .fill(Color.black.opacity(1.0 / 255), style: FillStyle(eoFill: true))
+          .allowsHitTesting(false)
+          .accessibilityHidden(true)
       }
-      .frame(width: region.width, height: region.height, alignment: .topLeading)
+      if model.phase == .tucked, let zone = model.clickZone {
+        // Invisible, but drawn, as the drop zone is: opening on click, the window server gives
+        // the panel a click anywhere the pill swells for, the screen edge included.
+        Rectangle()
+          .fill(Color.black.opacity(1.0 / 255))
+          .frame(width: zone.width, height: zone.height)
+          .offset(x: zone.minX, y: zone.minY)
+          .allowsHitTesting(false)
+          .accessibilityHidden(true)
+      }
+      if model.phase != .hidden {
+        MiniPanelBody(model: model)
+      }
+      MiniPanelCard(model: model)
+      MiniPanelLabelView(model: model)
     }
+    .frame(width: region.width, height: region.height, alignment: .topLeading)
+    .backport.glassEffectContainer(spacing: Self.glassSpacing)
     .offset(x: region.minX, y: region.minY)
     .frame(width: model.canvas.width, height: model.canvas.height, alignment: .topLeading)
     // The glass draws its first frame in this scheme, whatever the system appearance.

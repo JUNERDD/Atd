@@ -1,11 +1,14 @@
 import AppKit
 
-/// The capsule both annotation bars are built on: a row of ``AnnotationToolbarButton``s on a
-/// Liquid Glass capsule (`NSGlassEffectView`), in groups split by hairlines. The capsule's radius
+/// The capsule both annotation bars are built on: a row of ``AnnotationToolbarButton``s on a glass
+/// capsule (``NativeMaterialView``), in groups split by hairlines. The capsule's radius
 /// is the buttons' radius plus the even ``padding``, so the outline and the circular buttons nest
 /// concentrically. A divider shows only between visible groups, and the capsule shrinks to fit.
 /// The glass is the shell's fixed dark surface (``GlassSurface``): it never adapts to what lies
-/// behind it, and its row stands on the panel's base fill, rounded like the capsule.
+/// behind it, and its row stands on the panel's base fill, rounded like the capsule. Where the
+/// material is macOS 15's, the owner says what it blurs (`blending`): the capture overlay's
+/// toolbars blur the frozen screen under them within their window, every other capsule the
+/// desktop behind its window.
 ///
 /// The bar's own surface (anywhere but a control, including an ``AnnotationBarGrip``) moves it:
 /// a drag reports ``Drag`` to the owner, which places the bars. A bar without ``onDrag`` (the
@@ -26,7 +29,7 @@ final class AnnotationGlassBar: NSView {
 
   var onDrag: ((Drag) -> Void)?
 
-  private let glass = NSGlassEffectView()
+  private let material: NativeMaterialView
   private let stack = NSStackView()
   private let groups: [[NSView]]
   /// Each group's divider (none before the first group).
@@ -37,8 +40,12 @@ final class AnnotationGlassBar: NSView {
   /// make the drag jitter. (The capture overlay's window never moves, so both agree there.)
   private var dragStart: CGPoint?
 
-  init(groups: [[NSView]], padding: CGFloat = AnnotationGlassBar.padding) {
+  init(
+    groups: [[NSView]], blending: NSVisualEffectView.BlendingMode,
+    padding: CGFloat = AnnotationGlassBar.padding
+  ) {
     self.groups = groups
+    material = NativeMaterialView(.capsule(blending))
     super.init(frame: .zero)
     stack.orientation = .horizontal
     stack.alignment = .centerY
@@ -57,20 +64,20 @@ final class AnnotationGlassBar: NSView {
       dividers.append(divider)
       for view in group { stack.addArrangedSubview(view) }
     }
-    GlassSurface.attach(glass, content: stack)
-    addSubview(glass)
+    GlassSurface.attach(material, content: stack)
+    addSubview(material.view)
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-  /// The bar's natural size; ``layout()`` makes the glass a capsule of that height.
+  /// The bar's natural size; ``layout()`` makes the material a capsule of that height.
   override var fittingSize: NSSize { stack.fittingSize }
 
   override func layout() {
     super.layout()
-    glass.frame = bounds
-    GlassSurface.shape(glass, content: stack, cornerRadius: bounds.height / 2)
+    material.view.frame = bounds
+    GlassSurface.shape(material, content: stack, cornerRadius: bounds.height / 2)
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

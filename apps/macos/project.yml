@@ -5,11 +5,11 @@ name: AI
 options:
   developmentLanguage: en
   deploymentTarget:
-    macOS: '26.0'
+    macOS: '15.0'
   createIntermediateGroups: true
 settings:
   base:
-    MACOSX_DEPLOYMENT_TARGET: '26.0'
+    MACOSX_DEPLOYMENT_TARGET: '15.0'
     # Covers this project's targets only: Release builds of the AIMac package targets default to
     # arm64 and x86_64, so `build:release` also passes ARCHS=arm64 to xcodebuild.
     ARCHS: arm64

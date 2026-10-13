@@ -16,15 +16,30 @@ import SwiftUI
 /// window every appearance of a dark surface went from black to white. With adaptation off
 /// (``disableAdaptation(_:)``) the glass looks the same from its first frame over any backdrop;
 /// the fill keeps its labels readable over a bright one.
+///
+/// On macOS 15 the material is `NSVisualEffectView` (``NativeMaterialView``), which does not adapt:
+/// it takes the dark appearance directly. Its blur shows only through a thinner fill
+/// (``fillOpacity``).
 enum GlassSurface {
   /// The appearance every such surface pins, on the glass rather than its window.
   static let appearance = NSAppearance(named: .darkAqua)
   /// ``appearance`` for SwiftUI content.
   static let colorScheme = ColorScheme.dark
 
-  /// `--ata-surface-panel`: `rgb(24 24 24 / 80%)`, opaque under Reduce Transparency.
+  /// `--ata-surface-panel`: `rgb(24 24 24 / 80%)` on Liquid Glass, opaque under Reduce
+  /// Transparency.
   static func fill(reduceTransparency: Bool) -> NSColor {
-    NSColor(srgbRed: 24 / 255, green: 24 / 255, blue: 24 / 255, alpha: reduceTransparency ? 1 : 0.8)
+    NSColor(
+      srgbRed: 24 / 255, green: 24 / 255, blue: 24 / 255,
+      alpha: reduceTransparency ? 1 : fillOpacity)
+  }
+
+  /// The fill's opacity over the material. Liquid Glass takes the token's 80%. Over macOS 15's
+  /// `NSVisualEffectView` 80% would hide most of the blur, so it takes 50%, the first value: the
+  /// macOS 15 verification build judges it and the Sequoia design variant confirms it (plan M2,
+  /// M4).
+  private static var fillOpacity: CGFloat {
+    if #available(macOS 26, *) { 0.8 } else { 0.5 }
   }
 
   /// ``fill(reduceTransparency:)`` for SwiftUI.
@@ -32,7 +47,8 @@ enum GlassSurface {
     Color(nsColor: fill(reduceTransparency: reduceTransparency))
   }
 
-  /// Pins `glass` to ``appearance`` and stops it adapting to the backdrop's brightness.
+  /// Pins `material` to ``appearance`` and, on Liquid Glass, stops it adapting to the backdrop's
+  /// brightness. macOS 15's material has no such adaptation and takes the appearance alone.
   ///
   /// Adaptation has no public switch (`NSGlassEffectView` has `style` and `tintColor` only, and
   /// SwiftUI's `Glass` none at all); the private `_adaptiveAppearance` is 0 for automatic, 1 for
@@ -41,26 +57,31 @@ enum GlassSurface {
   /// cannot be reached this way; its surfaces cover the adaptation with the fill instead, and pin
   /// ``colorScheme`` one container inside the glass content's root, since the glass writes its
   /// adapted scheme into that root's children (``GlassSurfaceFace``).
-  static func disableAdaptation(_ glass: NSGlassEffectView) {
+  static func disableAdaptation(_ material: NativeMaterialView) {
+    guard #available(macOS 26, *), let glass = material.glass else {
+      material.view.appearance = appearance
+      return
+    }
     glass.appearance = appearance
     guard glass.responds(to: NSSelectorFromString("set_adaptiveAppearance:")) else { return }
     glass.setValue(1, forKey: "_adaptiveAppearance")
   }
 
-  /// Makes `content` the surface of `glass`: the glass's content, standing on the base fill, with
-  /// the glass pinned dark. The glass does not clip its content, so `content`'s own layer carries
-  /// the fill and its rounding (``shape(_:content:cornerRadius:)``); `content` must therefore
-  /// leave its layer's background alone, which a scroll view does not (wrap one in a plain view).
-  static func attach(_ glass: NSGlassEffectView, content: NSView) {
+  /// Makes `content` the surface of `material`: the material's content, standing on the base
+  /// fill, with the material pinned dark. The material does not clip its content, so `content`'s
+  /// own layer carries the fill and its rounding (``shape(_:content:cornerRadius:)``); `content`
+  /// must therefore leave its layer's background alone, which a scroll view does not (wrap one in
+  /// a plain view).
+  static func attach(_ material: NativeMaterialView, content: NSView) {
     content.wantsLayer = true
-    glass.contentView = content
-    disableAdaptation(glass)
+    material.contentView = content
+    disableAdaptation(material)
   }
 
-  /// Rounds `glass` and its attached `content` alike and paints the fill as the system's Reduce
-  /// Transparency now stands; call it again when either changes (a layout pass does).
-  static func shape(_ glass: NSGlassEffectView, content: NSView, cornerRadius: CGFloat) {
-    glass.cornerRadius = cornerRadius
+  /// Rounds `material` and its attached `content` alike and paints the fill as the system's
+  /// Reduce Transparency now stands; call it again when either changes (a layout pass does).
+  static func shape(_ material: NativeMaterialView, content: NSView, cornerRadius: CGFloat) {
+    material.cornerRadius = cornerRadius
     content.layer?.cornerRadius = cornerRadius
     content.layer?.cornerCurve = .continuous
     content.layer?.backgroundColor =
@@ -89,10 +110,45 @@ extension View {
   /// clip given the shape itself would move per axis instead, and a fill inside it would slide
   /// off the glass. Set inside the piece's scoped animation; bare, it is glass without the
   /// surface, so pieces take it through ``glassSurface(in:animation:opacity:)``.
-  func clippedGlass(in outline: some Shape) -> some View {
+  ///
+  /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
+  /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows
+  /// the outline frame by frame as the glass does; neighbouring shapes never merge. SwiftUI's own
+  /// `Material` cannot stand in: it blurs only the window's content, and these windows are
+  /// transparent. Whether a behind-window material follows a clip that changes on every frame is
+  /// what the macOS 15 verification build checks (plan M2); should it not, the agreed fallback is
+  /// a fill of the surface tokens inside the window with no desktop blur, keeping the morph and
+  /// the interaction.
+  @ViewBuilder func clippedGlass(in outline: some Shape) -> some View {
     let shape = AnyShape(outline)
-    return clipShape(shape).glassEffect(.regular, in: shape)
+    if #available(macOS 26, *) {
+      clipShape(shape).glassEffect(.regular, in: shape)
+    } else {
+      clipShape(shape).background { SwiftUIGlassMaterial().clipShape(shape) }
+    }
   }
+}
+
+/// SwiftUI glass's material on macOS 15: an `NSVisualEffectView` blurring the desktop behind the
+/// window, configured as ``NativeMaterialView`` records for SwiftUI glass and pinned to
+/// ``GlassSurface/appearance``. It lies under the surface's fill and content and takes no clicks
+/// or VoiceOver focus, as the glass takes none.
+private struct SwiftUIGlassMaterial: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSVisualEffectView {
+    let effect = PassiveEffectView()
+    NativeMaterialView.configure(effect, for: .swiftUIGlass)
+    effect.appearance = GlassSurface.appearance
+    effect.setAccessibilityElement(false)
+    return effect
+  }
+
+  func updateNSView(_ effect: NSVisualEffectView, context: Context) {}
+}
+
+/// An effect view that never takes the pointer: clicks go to the content over it, or to the
+/// window, as they do through the glass.
+private final class PassiveEffectView: NSVisualEffectView {
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// The shell's glass surface under SwiftUI content: the main panel's base fill, opaque under
