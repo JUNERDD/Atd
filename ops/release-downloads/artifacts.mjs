@@ -1,0 +1,201 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { command } from './command.mjs';
+
+export const REPO = 'JUNERDD/Atd';
+/** The CDN's object cache limit (README: Costs and delivery). */
+const MAX_DMG_BYTES = 512 * 1024 ** 2;
+const STABLE_VERSION = /^\d+\.\d+\.\d+$/;
+const RC_VERSION = /^\d+\.\d+\.\d+-rc\.\d+$/;
+
+/**
+ * Every architecture the mirror serves, in the order their entries advance. arm64 goes first and
+ * is required: its feed is the one every installed 0.7.10+ Apple silicon build reads. Releases
+ * before 0.9.0 have no x64 assets; the mirror then serves an empty x64 feed.
+ */
+export const ARCHES = [
+  { arch: 'arm64', feedName: 'appcast.xml', required: true },
+  { arch: 'x64', feedName: 'appcast-x64.xml', required: false },
+];
+
+export function dmgName(version, arch) {
+  return `Atd-${version}-${arch}.dmg`;
+}
+
+export async function hashFile(path) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+function checkSize(size, name) {
+  assert(Number.isInteger(size) && size > 0, `${name} has no size.`);
+  assert(size <= MAX_DMG_BYTES, `${name} exceeds the CDN cache limit.`);
+}
+
+/**
+ * One architecture's validated DMG. `file` and `feedFile` are filled once the bytes are local.
+ * @typedef {{ arch: string, name: string, size: number, sha256: string, feedName: string,
+ *   file?: string, feedFile?: string }} Artifact
+ */
+
+/**
+ * A release to mirror: its version, the build version its feeds declare, and the artifacts it
+ * has. `absent` lists the optional architectures it lacks.
+ * @typedef {{ version: string, buildVersion: string, tag: string, releaseId?: number,
+ *   artifacts: Artifact[], absent: string[] }} Release
+ */
+
+function latestRelease() {
+  return JSON.parse(command('gh', ['api', `repos/${REPO}/releases/latest`]));
+}
+
+/** GitHub's latest stable release, before anything is downloaded. */
+export function readGitHubRelease(tag) {
+  const release = latestRelease();
+  assert(!release.draft && !release.prerelease, 'Only stable public releases are mirrored.');
+  assert(/^v\d+\.\d+\.\d+$/.test(release.tag_name), 'Expected a stable version tag.');
+  assert(
+    tag === 'latest' || tag === release.tag_name,
+    'Refusing to replace the latest download with an older release.',
+  );
+  const version = release.tag_name.slice(1);
+  const uploaded = (name) => {
+    const asset = release.assets.find((item) => item.name === name);
+    return asset && asset.state === 'uploaded' ? asset : undefined;
+  };
+  const artifacts = [];
+  const absent = [];
+  for (const { arch, feedName, required } of ARCHES) {
+    const name = dmgName(version, arch);
+    const asset = uploaded(name);
+    const feed = uploaded(feedName);
+    if (!asset && !feed && !required) {
+      absent.push(arch);
+      continue;
+    }
+    assert(asset, `The versioned ${arch} release DMG is missing.`);
+    assert(feed, `The release's ${arch} update feed (${feedName}) is missing.`);
+    assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest), 'GitHub must provide a SHA-256 digest.');
+    checkSize(asset.size, name);
+    artifacts.push({
+      arch,
+      name,
+      size: asset.size,
+      sha256: asset.digest.slice('sha256:'.length),
+      feedName,
+    });
+  }
+  return {
+    version,
+    buildVersion: version,
+    tag: release.tag_name,
+    releaseId: release.id,
+    artifacts,
+    absent,
+  };
+}
+
+/** Downloads the release's DMGs and feeds and checks each DMG against GitHub's digest. */
+export async function downloadGitHubRelease(release, directory) {
+  const patterns = release.artifacts.flatMap(({ name, feedName }) => [
+    '--pattern',
+    name,
+    '--pattern',
+    feedName,
+  ]);
+  command('gh', [
+    'release',
+    'download',
+    release.tag,
+    '--repo',
+    REPO,
+    ...patterns,
+    '--dir',
+    directory,
+  ]);
+  for (const artifact of release.artifacts) {
+    artifact.file = join(directory, artifact.name);
+    artifact.feedFile = join(directory, artifact.feedName);
+    assert.equal(
+      await hashFile(artifact.file),
+      artifact.sha256,
+      `The downloaded ${artifact.arch} DMG does not match GitHub's digest.`,
+    );
+  }
+}
+
+/** Fails the run when GitHub's latest release changed while this one was being mirrored. */
+export function assertStillLatest(release) {
+  assert.equal(
+    latestRelease().id,
+    release.releaseId,
+    'A newer GitHub release appeared; rerun the mirror.',
+  );
+}
+
+/**
+ * A flat `artifacts`-mode download (DMGs, feeds, manifest.json), or a rollback source assembled
+ * the same way from an older release. Only here are RC versions accepted. Every listed DMG is
+ * hashed and sized against the manifest before anything is uploaded.
+ */
+export async function readSourceDir(directory) {
+  const manifest = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'));
+  const version = manifest.marketingVersion;
+  const { buildVersion } = manifest;
+  assert(
+    typeof version === 'string' && (STABLE_VERSION.test(version) || RC_VERSION.test(version)),
+    'manifest.json needs a marketingVersion such as 0.9.0 or 0.9.0-rc.3.',
+  );
+  assert(
+    typeof buildVersion === 'string' && /^\d+(\.\d+)*(rc\.\d+)?$/.test(buildVersion),
+    'manifest.json needs a buildVersion without "-", such as 0.9.0 or 0.9.0rc.3.',
+  );
+  assert(Array.isArray(manifest.artifacts), 'manifest.json lists no artifacts.');
+  const known = new Set(ARCHES.map(({ arch }) => arch));
+  const listed = new Map();
+  for (const entry of manifest.artifacts) {
+    assert(known.has(entry?.arch), `manifest.json names an unknown architecture: ${entry?.arch}`);
+    assert(!listed.has(entry.arch), `manifest.json lists ${entry.arch} twice.`);
+    listed.set(entry.arch, entry);
+  }
+  const artifacts = [];
+  const absent = [];
+  for (const { arch, feedName, required } of ARCHES) {
+    const entry = listed.get(arch);
+    if (!entry && !required) {
+      absent.push(arch);
+      continue;
+    }
+    assert(entry, `manifest.json has no ${arch} artifact.`);
+    const name = dmgName(version, arch);
+    assert.equal(entry.dmg, name, `manifest.json names the wrong ${arch} DMG.`);
+    assert.equal(entry.feed, feedName, `manifest.json names the wrong ${arch} feed.`);
+    assert(/^[a-f0-9]{64}$/.test(entry.sha256), `manifest.json has no ${arch} SHA-256.`);
+    checkSize(entry.size, name);
+    const file = join(directory, name);
+    const feedFile = join(directory, feedName);
+    const actual = await stat(file).catch(() => undefined);
+    assert(actual?.isFile(), `${name} is missing from the source directory.`);
+    assert((await stat(feedFile).catch(() => undefined))?.isFile(), `${feedName} is missing.`);
+    assert.equal(actual.size, entry.size, `${name} differs from the manifest's size.`);
+    assert.equal(
+      await hashFile(file),
+      entry.sha256,
+      `${name} differs from the manifest's SHA-256.`,
+    );
+    artifacts.push({
+      arch,
+      name,
+      size: entry.size,
+      sha256: entry.sha256,
+      feedName,
+      file,
+      feedFile,
+    });
+  }
+  return { version, buildVersion, tag: `v${version}`, artifacts, absent };
+}
