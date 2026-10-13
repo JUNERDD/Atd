@@ -6,6 +6,7 @@ import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import { waitForHttpRetry } from '../../scripts/http-retry.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -120,13 +121,55 @@ async function mirrorFeed() {
   return feed.replace(source, `url="${base}/${versionKey}"`);
 }
 
+async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, verify) {
+  const label = `${url.pathname.slice(1)}: ${method}${range ? ` ${range}` : ''}`;
+  const attempts = 3;
+  for (let attempt = 1; ; attempt += 1) {
+    const signal = AbortSignal.timeout(timeout);
+    let response;
+    let failure;
+    let retryAfter;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: range ? { Range: range } : undefined,
+        signal,
+      });
+      // Keep body reads inside the attempt; a full-download retry starts a fresh hash.
+      if (![502, 503, 504].includes(response.status)) return await verify(response);
+      failure = new Error(`HTTP ${response.status}`);
+      retryAfter = response.headers.get('retry-after');
+    } catch (error) {
+      const code = error.cause?.code ?? error.code;
+      const timedOut =
+        (signal.aborted && ['TimeoutError', 'AbortError'].includes(error.name)) ||
+        [
+          'ETIMEDOUT',
+          'UND_ERR_CONNECT_TIMEOUT',
+          'UND_ERR_HEADERS_TIMEOUT',
+          'UND_ERR_BODY_TIMEOUT',
+        ].includes(code);
+      if (!timedOut) throw new Error(`${label}: verification failed`, { cause: error });
+      failure = new Error(
+        signal.aborted ? `Timed out after ${timeout} ms` : `Transport timeout (${code})`,
+        { cause: error },
+      );
+    } finally {
+      // Discard unread error responses without replacing the original failure with a cleanup error.
+      await response?.body?.cancel().catch(() => {});
+    }
+    await waitForHttpRetry({ label, attempt, attempts, failure, retryAfter });
+  }
+}
+
 async function verifyFeed(expected) {
   const url = new URL(`${base}/${feedKey}`);
   url.searchParams.set('verify', `${version}-${runNonce}`);
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
-  assert.equal(response.status, 200, `GET failed for ${feedKey}`);
-  assert.equal(response.headers.get('cache-control'), latestCache);
-  assert.equal(await response.text(), expected, 'The public update feed differs.');
+  await verifyRequest(url, {}, async (response) => {
+    assert.equal(response.status, 200, `GET failed for ${feedKey}`);
+    assert.equal(response.headers.get('cache-control'), latestCache);
+    assert.equal(await response.text(), expected, 'The public update feed differs.');
+  });
   console.log(`Verified ${feedKey}: content, cache policy`);
 }
 
@@ -136,45 +179,49 @@ async function verifyDelivery(key, cacheControl, full) {
   // earlier entry with a 304 and goes on serving that entry's headers.
   const url = new URL(`${base}/${key}`);
   if (key === latestKey) url.searchParams.set('verify', `${version}-${runNonce}`);
-  const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(30000) });
-  assert.equal(head.status, 200, `HEAD failed for ${key}`);
-  assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
-  assert.equal(head.headers.get('content-type'), 'application/x-apple-diskimage');
-  assert.equal(head.headers.get('cache-control'), cacheControl);
-  // Both keys save under the versioned name, so a download from the permanent URL names its version.
-  assert.equal(head.headers.get('content-disposition'), disposition, 'Wrong download filename.');
+  await verifyRequest(url, { method: 'HEAD' }, (head) => {
+    assert.equal(head.status, 200, `HEAD failed for ${key}`);
+    assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
+    assert.equal(head.headers.get('content-type'), 'application/x-apple-diskimage');
+    assert.equal(head.headers.get('cache-control'), cacheControl);
+    // Both keys save under the versioned name, so a download from the permanent URL names its version.
+    assert.equal(head.headers.get('content-disposition'), disposition, 'Wrong download filename.');
+  });
   const source = await open(file, 'r');
   try {
     for (const start of [0, asset.size - 65536]) {
       const end = start + 65535;
-      const response = await fetch(url, {
-        headers: { Range: `bytes=${start}-${end}` },
-        signal: AbortSignal.timeout(30000),
-      });
-      assert.equal(response.status, 206, 'Byte-range downloads must work.');
-      assert.equal(response.headers.get('content-range'), `bytes ${start}-${end}/${asset.size}`);
       const expected = Buffer.alloc(65536);
       await source.read(expected, 0, expected.length, start);
-      assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected, 'Range bytes changed.');
+      await verifyRequest(url, { range: `bytes=${start}-${end}` }, async (response) => {
+        assert.equal(response.status, 206, 'Byte-range downloads must work.');
+        assert.equal(response.headers.get('content-range'), `bytes ${start}-${end}/${asset.size}`);
+        assert.deepEqual(
+          Buffer.from(await response.arrayBuffer()),
+          expected,
+          'Range bytes changed.',
+        );
+      });
     }
   } finally {
     await source.close();
   }
   if (full) {
-    const response = await fetch(url, { signal: AbortSignal.timeout(300000) });
-    assert.equal(response.status, 200);
-    const hash = createHash('sha256');
-    let bytes = 0;
-    for await (const chunk of response.body) {
-      hash.update(chunk);
-      bytes += chunk.length;
-    }
-    assert.equal(bytes, asset.size);
-    assert.equal(
-      hash.digest('hex'),
-      sha256,
-      'The public mirror differs from the signed GitHub DMG.',
-    );
+    await verifyRequest(url, { timeout: 300000 }, async (response) => {
+      assert.equal(response.status, 200);
+      const hash = createHash('sha256');
+      let bytes = 0;
+      for await (const chunk of response.body) {
+        hash.update(chunk);
+        bytes += chunk.length;
+      }
+      assert.equal(bytes, asset.size);
+      assert.equal(
+        hash.digest('hex'),
+        sha256,
+        'The public mirror differs from the signed GitHub DMG.',
+      );
+    });
   }
   console.log(`Verified ${key}: size, cache policy, byte ranges${full ? ', SHA-256' : ''}`);
 }

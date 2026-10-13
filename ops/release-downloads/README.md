@@ -32,6 +32,20 @@ passes verification, and its public content must match before the manifest is wr
 permanent URL, feed, and manifest use a 60-second cache lifetime, so a cached previous release
 can remain visible for up to one minute after promotion.
 
+Uploads and server-side copies use the AWS CLI's
+[standard retry mode](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-retries.html)
+with up to three total attempts per request. Public DMG and update-feed checks also try each request
+up to three times on request/body timeouts or HTTP 502, 503, and 504. They share the
+[HTTP retry timing policy](../../scripts/http-retry.mjs) with the website asset checks: random
+backoff of 0–1 seconds before the second attempt and 0–2 seconds before the third. A valid
+`Retry-After` (integer seconds or an HTTP date) sets a minimum wait, with jitter added within a
+30-second per-wait limit. A server minimum above that limit stops the request with an explicit
+error instead of retrying early; missing, invalid, or expired values use random backoff alone.
+Each attempt keeps a 30-second timeout for headers, byte ranges, and the feed, or five minutes
+for a full DMG download. A full-download retry restarts the stream and SHA-256 calculation.
+Missing files, invalid headers, changed bytes, and mismatched feed content still fail immediately.
+Retry logs identify the object, method, and byte range when present.
+
 A failed upload or verification does not promote the candidate. The previous verified download
 remains available. A failure after promotion is visible in Actions and can be retried. Manually
 rerun **Mirror release downloads** on `main` with `tag: latest` to bootstrap the mirror or recover
