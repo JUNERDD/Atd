@@ -78,19 +78,42 @@
   min-inline-size: 0;
 }
 
+/* The keys, one per chip family and equal in weight, then the notes: which chip a Mac has, and the
+   first launch. The keys share a row while it holds both and stack, each as wide as the column,
+   when it doesn't. */
 .download__actions {
+  display: grid;
+  gap: 24px;
+}
+
+.download__keys {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 16px 32px;
+  gap: 16px;
+}
+
+.download__key {
+  display: flex;
+  flex: 1 1 auto;
 }
 
 .download__cta {
+  flex: 1 1 auto;
   padding-inline: 28px;
 }
 
+@media (width >= 700px) {
+  .download__key {
+    flex-grow: 0;
+  }
+}
+
+.download__notes {
+  display: grid;
+  gap: 8px;
+}
+
 .download__note {
-  flex: 1 1 18rem;
   max-inline-size: 30rem;
   text-wrap: pretty;
 }
