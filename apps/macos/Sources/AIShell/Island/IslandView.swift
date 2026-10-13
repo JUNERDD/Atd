@@ -21,17 +21,16 @@ struct IslandView: View {
     let canvas = IslandMetrics.canvas
     let shape = model.shape
     let outline = MiniPanelGlassOutline(shape: shape.glass)
-    GlassEffectContainer {
-      ZStack(alignment: .topLeading) {
-        ForEach(model.layers) { layer in
-          IslandLayerView(model: model, layer: layer)
-        }
+    ZStack(alignment: .topLeading) {
+      ForEach(model.layers) { layer in
+        IslandLayerView(model: model, layer: layer)
       }
-      .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
-      .glassSurface(in: outline, animation: shape.animation)
-      // The island times its own entrance; the glass adds no transition of its own.
-      .glassEffectTransition(.identity)
     }
+    .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
+    .glassSurface(in: outline, animation: shape.animation)
+    // The island times its own entrance; the glass adds no transition of its own.
+    .backport.glassEffectTransition(.identity)
+    .backport.glassEffectContainer()
     .id(model.appearance)
     .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
     // The glass draws its first frame in this scheme, whatever the system appearance.

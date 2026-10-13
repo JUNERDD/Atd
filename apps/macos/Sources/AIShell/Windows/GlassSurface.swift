@@ -110,10 +110,45 @@ extension View {
   /// clip given the shape itself would move per axis instead, and a fill inside it would slide
   /// off the glass. Set inside the piece's scoped animation; bare, it is glass without the
   /// surface, so pieces take it through ``glassSurface(in:animation:opacity:)``.
-  func clippedGlass(in outline: some Shape) -> some View {
+  ///
+  /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
+  /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows
+  /// the outline frame by frame as the glass does; neighbouring shapes never merge. SwiftUI's own
+  /// `Material` cannot stand in: it blurs only the window's content, and these windows are
+  /// transparent. Whether a behind-window material follows a clip that changes on every frame is
+  /// what the macOS 15 verification build checks (plan M2); should it not, the agreed fallback is
+  /// a fill of the surface tokens inside the window with no desktop blur, keeping the morph and
+  /// the interaction.
+  @ViewBuilder func clippedGlass(in outline: some Shape) -> some View {
     let shape = AnyShape(outline)
-    return clipShape(shape).glassEffect(.regular, in: shape)
+    if #available(macOS 26, *) {
+      clipShape(shape).glassEffect(.regular, in: shape)
+    } else {
+      clipShape(shape).background { SwiftUIGlassMaterial().clipShape(shape) }
+    }
   }
+}
+
+/// SwiftUI glass's material on macOS 15: an `NSVisualEffectView` blurring the desktop behind the
+/// window, configured as ``NativeMaterialView`` records for SwiftUI glass and pinned to
+/// ``GlassSurface/appearance``. It lies under the surface's fill and content and takes no clicks
+/// or VoiceOver focus, as the glass takes none.
+private struct SwiftUIGlassMaterial: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSVisualEffectView {
+    let effect = PassiveEffectView()
+    NativeMaterialView.configure(effect, for: .swiftUIGlass)
+    effect.appearance = GlassSurface.appearance
+    effect.setAccessibilityElement(false)
+    return effect
+  }
+
+  func updateNSView(_ effect: NSVisualEffectView, context: Context) {}
+}
+
+/// An effect view that never takes the pointer: clicks go to the content over it, or to the
+/// window, as they do through the glass.
+private final class PassiveEffectView: NSVisualEffectView {
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// The shell's glass surface under SwiftUI content: the main panel's base fill, opaque under
