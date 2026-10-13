@@ -15,8 +15,6 @@ import { Badge } from '@atd/ui/components/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
@@ -31,6 +29,7 @@ import {
 import { Switch } from '@atd/ui/components/switch';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { IconButton } from '../../components/icon-button';
+import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { formatWhen } from './automation-time';
 import { outcomeTone, outcomeWords, problemWords } from './automation-words';
 import { OutcomeIcon, TriggerIcon } from './run-outcome';
@@ -128,97 +127,103 @@ export function AutomationRow({
       : status.problem
         ? t('list.runProblem')
         : t('list.run');
+  // More's items, which a right-click on the row opens too.
+  const menu = (
+    <>
+      <ItemMenuItem onSelect={() => onOpen(item)}>
+        <Pencil />
+        {t('list.edit')}
+      </ItemMenuItem>
+      <ItemMenuItem onSelect={() => onRuns(item)}>
+        <History />
+        {t('list.runHistory')}
+      </ItemMenuItem>
+      <ItemMenuItem disabled={unavailable} onSelect={() => onDuplicate(item)}>
+        <Copy />
+        {t('list.duplicate')}
+      </ItemMenuItem>
+      <ItemMenuSeparator />
+      <ItemMenuItem variant="destructive" onSelect={() => onDelete(item)}>
+        <Trash2 />
+        {t('list.delete')}
+      </ItemMenuItem>
+    </>
+  );
   return (
-    <Item asChild size="sm" variant="outline" className="automation-row open-row">
-      <li>
-        <button
-          type="button"
-          className="open-row-button"
-          aria-label={t('list.editFor', { name: automation.name })}
-          onClick={() => onOpen(item)}
-        />
-        <div className="automation-row-identity">
-          <ItemMedia variant="icon">
-            <TriggerIcon kind={automation.trigger.kind} />
-          </ItemMedia>
-          <ItemContent className="min-w-0">
-            <ItemTitle className="automation-row-title">
-              <span className="truncate" title={automation.name}>
-                <HighlightedText text={automation.name} ranges={match?.ranges.name} />
-              </span>
-              {status.unread > 0 && (
-                <Badge
-                  variant="secondary"
-                  title={t('status.unreadLabel', { count: status.unread })}
-                >
-                  {t('status.unread', { count: status.unread })}
-                </Badge>
-              )}
-            </ItemTitle>
-            <ItemDescription title={summary}>
-              <HighlightedText text={summary} ranges={match?.ranges.summary} />
-            </ItemDescription>
-            <p className="automation-status-line" data-tone={line.tone ?? undefined}>
-              {line.icon}
-              <span>{line.text}</span>
-            </p>
-          </ItemContent>
-        </div>
-        <ItemActions className="shrink-0">
-          <IconButton
-            label={runLabel}
-            aria-label={t('list.runFor', { name: automation.name })}
-            aria-disabled={runBlocked || busy || undefined}
-            aria-busy={busy || undefined}
-            className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-            onClick={() => {
-              if (!runBlocked && !busy) onRun(item);
-            }}
-          >
-            <Play />
-          </IconButton>
-          <Switch
-            aria-label={t('list.enableFor', { name: automation.name })}
-            checked={automation.enabled}
-            aria-disabled={busy || unavailable || undefined}
-            aria-busy={busy || undefined}
-            className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-            onCheckedChange={(enabled) => {
-              if (!busy && !unavailable) onToggle(item, enabled);
-            }}
+    <ItemContextMenu menu={menu}>
+      <Item asChild size="sm" variant="outline" className="automation-row open-row">
+        <li>
+          <button
+            type="button"
+            className="open-row-button"
+            aria-label={t('list.editFor', { name: automation.name })}
+            onClick={() => onOpen(item)}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                label={t('list.more')}
-                aria-label={t('list.moreActionsFor', { name: automation.name })}
-                tooltipDismissOnClick
-              >
-                <MoreHorizontal />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => onOpen(item)}>
-                <Pencil />
-                {t('list.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onRuns(item)}>
-                <History />
-                {t('list.runHistory')}
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={unavailable} onSelect={() => onDuplicate(item)}>
-                <Copy />
-                {t('list.duplicate')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(item)}>
-                <Trash2 />
-                {t('list.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ItemActions>
-      </li>
-    </Item>
+          <div className="automation-row-identity">
+            <ItemMedia variant="icon">
+              <TriggerIcon kind={automation.trigger.kind} />
+            </ItemMedia>
+            <ItemContent className="min-w-0">
+              <ItemTitle className="automation-row-title">
+                <span className="truncate" title={automation.name}>
+                  <HighlightedText text={automation.name} ranges={match?.ranges.name} />
+                </span>
+                {status.unread > 0 && (
+                  <Badge
+                    variant="secondary"
+                    title={t('status.unreadLabel', { count: status.unread })}
+                  >
+                    {t('status.unread', { count: status.unread })}
+                  </Badge>
+                )}
+              </ItemTitle>
+              <ItemDescription title={summary}>
+                <HighlightedText text={summary} ranges={match?.ranges.summary} />
+              </ItemDescription>
+              <p className="automation-status-line" data-tone={line.tone ?? undefined}>
+                {line.icon}
+                <span>{line.text}</span>
+              </p>
+            </ItemContent>
+          </div>
+          <ItemActions className="shrink-0">
+            <IconButton
+              label={runLabel}
+              aria-label={t('list.runFor', { name: automation.name })}
+              aria-disabled={runBlocked || busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              onClick={() => {
+                if (!runBlocked && !busy) onRun(item);
+              }}
+            >
+              <Play />
+            </IconButton>
+            <Switch
+              aria-label={t('list.enableFor', { name: automation.name })}
+              checked={automation.enabled}
+              aria-disabled={busy || unavailable || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              onCheckedChange={(enabled) => {
+                if (!busy && !unavailable) onToggle(item, enabled);
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  label={t('list.more')}
+                  aria-label={t('list.moreActionsFor', { name: automation.name })}
+                  tooltipDismissOnClick
+                >
+                  <MoreHorizontal />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">{menu}</DropdownMenuContent>
+            </DropdownMenu>
+          </ItemActions>
+        </li>
+      </Item>
+    </ItemContextMenu>
   );
 }

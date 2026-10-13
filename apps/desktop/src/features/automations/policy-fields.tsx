@@ -61,12 +61,13 @@ export function PolicyFields({
   const fallback =
     usable.find(({ connectionId }) => connectionId === settings?.defaultConnectionId) ?? usable[0];
   // The level a run really uses: the automation's own, else the command's (a command action), else
-  // the pinned model's connection default (`commandThinkingLevel` is the service's own precedence).
+  // the pinned model's connection default (`commandThinkingLevel` is the service's own precedence);
+  // none of those leaves the popover to show the pinned model's own default.
   const pinned = connections.find(
     ({ connectionId }) => connectionId === policy.model?.connectionId,
   );
   const inherited = commandThinkingLevel(undefined, command?.thinkingLevel);
-  const effort = policy.thinkingLevel ?? inherited ?? pinned?.defaultThinkingLevel ?? 'off';
+  const effort = policy.thinkingLevel ?? inherited ?? pinned?.defaultThinkingLevel;
   const durations = [...new Set([...DURATIONS, policy.maxDurationMinutes])].sort((a, b) => a - b);
   const missable = trigger.kind === 'schedule' || trigger.kind === 'folder' ? trigger : null;
   return (

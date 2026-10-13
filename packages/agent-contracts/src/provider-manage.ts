@@ -2,7 +2,12 @@ import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ChatGPTConsentRequestSchema } from './chatgpt.js';
 import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
-import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
+import {
+  ContextTierSchema,
+  CustomContextWindowSchema,
+  ServiceModelDefinitionSchema,
+  ThinkingLevelSchema,
+} from './models.js';
 
 /**
  * Provider connection edits, preference writes, catalog refresh, model
@@ -104,9 +109,12 @@ export const ProviderLevelsQuerySchema = Type.Object(
 );
 export type ProviderLevelsQuery = Static<typeof ProviderLevelsQuerySchema>;
 
-/** Pi's selectable levels for the model, lowest first; empty when the model is unknown. */
+/**
+ * Pi's selectable levels for the model, lowest first, empty when the model is unknown; and the
+ * level it runs at when the connection saves none (`off` for an unknown model).
+ */
 export const ProviderLevelsResponseSchema = Type.Object(
-  { levels: Type.Array(ThinkingLevelSchema, { maxItems: 7 }) },
+  { levels: Type.Array(ThinkingLevelSchema, { maxItems: 7 }), defaultLevel: ThinkingLevelSchema },
   { additionalProperties: false },
 );
 export type ProviderLevelsResponse = Static<typeof ProviderLevelsResponseSchema>;
@@ -134,33 +142,50 @@ export const ProviderContextOptionSchema = Type.Object(
 export type ProviderContextOption = Static<typeof ProviderContextOptionSchema>;
 
 /**
- * The model's context tiers, `standard` first. A model without a real choice has no options and
- * null `defaultTier` / `selected`, and its Context row stays read-only.
+ * The model's context windows. `options` are its tiers, `standard` first; a model without a real
+ * tier choice has none and null `defaultTier` / `selected`. `choices` are the other windows the
+ * user may pick for it (the service derives them); the picked one is `custom`, which new runs use
+ * instead of the tier or catalog window.
  */
 export const ProviderContextsResponseSchema = Type.Object(
   {
     options: Type.Array(ProviderContextOptionSchema, { maxItems: 2 }),
     defaultTier: Type.Union([ContextTierSchema, Type.Null()]),
-    /** The tier new runs of this model use: the saved choice, else `defaultTier`. */
+    /** The tier new runs of this model use without a custom window: the saved one, else the default. */
     selected: Type.Union([ContextTierSchema, Type.Null()]),
+    /** The model's own window in the connection's catalog; null for an unknown model. */
+    catalogWindow: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    /** Windows the user may pick besides the catalog window and tiers, smallest first. */
+    choices: Type.Array(CustomContextWindowSchema, { maxItems: 12 }),
+    /** The window the user picked for the model; null when none is picked. */
+    custom: Type.Union([CustomContextWindowSchema, Type.Null()]),
   },
   { additionalProperties: false },
 );
 export type ProviderContextsResponse = Static<typeof ProviderContextsResponseSchema>;
 
+const ContextTarget = {
+  expectedRevision: Type.Integer({ minimum: 1 }),
+  modelId: Type.String({ minLength: 1, maxLength: 256 }),
+};
+
 /**
- * Remembers a model's context tier on the connection for later runs; choosing the model's default
- * tier removes the saved entry. Revision-guarded; answers with `ProviderConnectionResponse`.
+ * Remembers a model's context window on the connection for later runs; revision-guarded, answers
+ * with `ProviderConnectionResponse`. A `tier` clears any custom window, and choosing the default
+ * tier removes the saved tier. A `contextWindow` picks one of the model's `choices`; null clears it.
  */
-export const ProviderContextRequestSchema = Type.Object(
-  {
-    expectedRevision: Type.Integer({ minimum: 1 }),
-    modelId: Type.String({ minLength: 1, maxLength: 256 }),
-    tier: ContextTierSchema,
-  },
-  { additionalProperties: false },
-);
+export const ProviderContextRequestSchema = Type.Union([
+  Type.Object({ ...ContextTarget, tier: ContextTierSchema }, { additionalProperties: false }),
+  Type.Object(
+    { ...ContextTarget, contextWindow: Type.Union([CustomContextWindowSchema, Type.Null()]) },
+    { additionalProperties: false },
+  ),
+]);
 export type ProviderContextRequest = Static<typeof ProviderContextRequestSchema>;
+/** What a context write chooses: a tier, or a custom window (null clears it). */
+export type ProviderContextChoice =
+  | { tier: Static<typeof ContextTierSchema> }
+  | { contextWindow: Static<typeof CustomContextWindowSchema> | null };
 
 /** Safe protocol diagnostics only; never include upstream messages, URLs, or token claims. */
 export const ProviderLoginDiagnosticSchema = Type.Object(

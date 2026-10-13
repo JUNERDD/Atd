@@ -5,6 +5,8 @@ import {
   type ProviderLoginRequest,
   type ProviderLoginDiagnostic,
   type ProviderContextsResponse,
+  type ProviderLevelsResponse,
+  type ProviderContextChoice,
 } from '@atd/agent-contracts';
 
 const text = Type.String({ maxLength: 2048 });
@@ -34,6 +36,10 @@ export const ContextTierSchema = Type.Union([Type.Literal('standard'), Type.Lite
 export type ContextTier = Static<typeof ContextTierSchema>;
 /** The tiers one model offers; no options when the model has no real choice. */
 export type ModelContexts = ProviderContextsResponse;
+/** A context write: a tier, or a custom window (null clears it). */
+export type ModelContextChoice = ProviderContextChoice;
+/** The levels one model offers, and the level it runs at when nothing names one. */
+export type ModelLevels = ProviderLevelsResponse;
 
 export const ModelDefinitionSchema = Type.Object(
   {
@@ -53,8 +59,10 @@ export const ModelDefinitionSchema = Type.Object(
         max: Type.Optional(Type.Union([Type.String(), Type.Null()])),
       }),
     ),
+    defaultThinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     input: Type.Array(Type.Union([Type.Literal('text'), Type.Literal('image')])),
     contextWindow: Type.Integer({ minimum: 1 }),
+    maxContextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
     maxTokens: Type.Integer({ minimum: 1 }),
     cost: Type.Object({
       input: Type.Number(),
@@ -98,6 +106,10 @@ export const ConnectionConfigSchema = Type.Object(
      * Written through `ProviderBridge.setContext` only; connection saves never send it.
      */
     contextTiers: Type.Optional(Type.Record(id, ContextTierSchema)),
+    /** Custom context window per model id; written through `ProviderBridge.setContext` only. */
+    contextWindows: Type.Optional(
+      Type.Record(id, Type.Integer({ minimum: 1024, maximum: 100_000_000 })),
+    ),
     options: Type.Record(Type.String(), text),
     customModels: Type.Array(ModelDefinitionSchema, { maxItems: 100 }),
   },
@@ -204,15 +216,26 @@ export interface ProviderBridge {
     revision: number,
     thinkingLevel?: ModelThinkingLevel,
   ) => Promise<void>;
-  /** Thinking levels Pi accepts for one model, in Pi's order; empty when the model is unknown. */
-  levels: (reference: ModelReference) => Promise<ModelThinkingLevel[]>;
-  /** Context window tiers one model offers; no options when the model is unknown or has none. */
+  /**
+   * Thinking levels Pi accepts for one model, in Pi's order, empty when the model is unknown; and
+   * the level the model runs at when neither the run nor the connection names one.
+   */
+  levels: (reference: ModelReference) => Promise<ModelLevels>;
+  /**
+   * One model's context windows: its tiers (none when it has no real choice), its catalog window
+   * and the custom window the user set.
+   */
   contexts: (reference: ModelReference) => Promise<ModelContexts>;
   /**
-   * Remembers a model's context tier on its connection for later runs; revision-guarded. Both
-   * windows may write it: the panel composer's model popover offers the choice too.
+   * Remembers a model's context window on its connection for later runs: a tier, or a custom
+   * window (null clears it); revision-guarded. Both windows may write it: the panel composer's
+   * model popover offers the choice too.
    */
-  setContext: (reference: ModelReference, tier: ContextTier, revision: number) => Promise<void>;
+  setContext: (
+    reference: ModelReference,
+    choice: ModelContextChoice,
+    revision: number,
+  ) => Promise<void>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   /**
    * Removes a connection with its credential and model files; revision-guarded. Removing the

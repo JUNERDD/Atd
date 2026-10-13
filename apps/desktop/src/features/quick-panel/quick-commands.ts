@@ -46,8 +46,8 @@ export interface QuickCommandContext {
   hasModel: boolean;
   /** Effort levels the model offers; `null` while they load. */
   effortLevels: number | null;
-  /** Context tiers the model offers (two, or none); `null` while they load. */
-  contextTiers: number | null;
+  /** Whether the model's context window is known, so it can be chosen; `null` while it loads. */
+  contextKnown: boolean | null;
   /** Something waits above the composer: an approval, a question, or a queued message. */
   hasPending: boolean;
   /** Why the open task cannot be compacted now; null when it can. */
@@ -99,8 +99,8 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
     id: 'context',
     icon: Layers,
     keywords: ['window', 'tokens', 'long'],
-    blockedBy: ({ hasModel, contextTiers }) =>
-      !hasModel ? 'noModel' : contextTiers !== null && contextTiers < 2 ? 'noContext' : null,
+    blockedBy: ({ hasModel, contextKnown }) =>
+      !hasModel ? 'noModel' : contextKnown === false ? 'noContext' : null,
   },
   {
     kind: 'run',

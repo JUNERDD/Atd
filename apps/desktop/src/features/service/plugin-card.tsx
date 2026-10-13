@@ -12,12 +12,12 @@ import {
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
 import { Badge } from '@atd/ui/components/badge';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ItemMedia } from '@atd/ui/components/item';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { ListCard } from '../../components/list-card';
-import { ExtensionRowActions } from './extension-row';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
+import { ExtensionMenu, ExtensionRowActions } from './extension-row';
 import { USER_PLUGIN_ID, pluginSourceBadge } from './plugin-rows';
 import { usePluginLabels } from './use-plugin-labels';
 
@@ -102,7 +102,10 @@ export function PluginCard({
     .filter(Boolean)
     .join(' · ');
   const locked = !connected || busy;
-  const menu = plugin.updatable || plugin.needsConfig || plugin.removable;
+  const menu =
+    plugin.updatable || plugin.needsConfig || plugin.removable ? (
+      <PluginMenu plugin={plugin} locked={locked} {...{ onUpdate, onConfigure, onUninstall }} />
+    ) : null;
   return (
     <ListCard
       media={
@@ -123,17 +126,10 @@ export function PluginCard({
           reserveMore={false}
           onEnabledChange={onEnabled}
           onDetails={onOpen}
-          menu={
-            menu ? (
-              <PluginMenu
-                plugin={plugin}
-                locked={locked}
-                {...{ onUpdate, onConfigure, onUninstall }}
-              />
-            ) : null
-          }
+          menu={menu}
         />
       }
+      menu={menu ? <ExtensionMenu onDetails={onOpen} menu={menu} /> : null}
       description={
         description ? (
           <HighlightedText text={description} ranges={match?.ranges.description} />
@@ -167,24 +163,24 @@ function PluginMenu({
   return (
     <>
       {plugin.updatable ? (
-        <DropdownMenuItem disabled={locked} onSelect={onUpdate}>
+        <ItemMenuItem disabled={locked} onSelect={onUpdate}>
           <RefreshCw />
           {t('extensions.plugins.update')}
-        </DropdownMenuItem>
+        </ItemMenuItem>
       ) : null}
       {plugin.needsConfig ? (
-        <DropdownMenuItem onSelect={onConfigure}>
+        <ItemMenuItem onSelect={onConfigure}>
           <Settings2 />
           {t('extensions.plugins.configure')}
-        </DropdownMenuItem>
+        </ItemMenuItem>
       ) : null}
       {plugin.removable ? (
         <>
-          {plugin.updatable || plugin.needsConfig ? <DropdownMenuSeparator /> : null}
-          <DropdownMenuItem variant="destructive" disabled={locked} onSelect={onUninstall}>
+          {plugin.updatable || plugin.needsConfig ? <ItemMenuSeparator /> : null}
+          <ItemMenuItem variant="destructive" disabled={locked} onSelect={onUninstall}>
             <Trash2 />
             {t('extensions.plugins.uninstall')}
-          </DropdownMenuItem>
+          </ItemMenuItem>
         </>
       ) : null}
     </>

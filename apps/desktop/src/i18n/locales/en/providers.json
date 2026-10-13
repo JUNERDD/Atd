@@ -124,7 +124,7 @@
   "customModels": {
     "title": "Custom models",
     "add": "Add model",
-    "description": "For services without a model directory, enter the exact model ID and capabilities. Discovered compatible models initially use text input, a 32,768-token context and 4,096-token output limit. Configure a model to match your server.",
+    "description": "For services without a model directory, enter the exact model ID and capabilities. Discovered compatible models use the context window, output limit, reasoning and image input the server reports, or the model maker's published values for a known model ID; anything still unknown starts at text input, a 32,768-token context and a 16,384-token output limit. Configure a model to match your server, or set its context window from the model menu.",
     "configure": "Configure {{name}}",
     "modelId": "Model ID",
     "remove": "Remove",
@@ -161,8 +161,12 @@
       "standard": "Standard",
       "long": "Long context"
     },
-    "pricedAbove": "Billed at a higher rate above {{tokens}} tokens",
-    "contextApplies": "Applies to this model's later tasks."
+    "pricedAbove": "Higher rate above {{tokens}}",
+    "contextApplies": "Applies to this model's later tasks.",
+    "modelDefault": "Model default",
+    "custom": {
+      "row": "Custom"
+    }
   },
   "chatgpt": {
     "continue": "Continue with ChatGPT",

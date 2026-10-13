@@ -2,7 +2,7 @@ import { DEFAULT_PERMISSION_TIER, errorMessage, type PermissionTier } from '@atd
 import { AutomationService } from './automations/service.js';
 import { CapabilityRegistry } from './capabilities.js';
 import { launchCommand } from './commands/launch.js';
-import { seedStarterCommands } from './commands/starters.js';
+import { syncStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
   readBuildId,
@@ -22,6 +22,7 @@ import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, type ServerDeps } from './server.js';
+import { effectiveLanguage } from './settings/language.js';
 import { SettingsStore } from './settings/store.js';
 import { SystemActivity } from './system-activity.js';
 import type { RunnerContext } from './task-runner.js';
@@ -102,8 +103,11 @@ export async function createService(
       error: errorMessage(error),
     }),
   );
-  await seedStarterCommands(config.paths.root).catch((error: unknown) =>
-    log.warn('The starter commands were not added; the next start retries.', {
+  await syncStarterCommands(
+    config.paths.root,
+    await effectiveLanguage(settings.current().settings.language),
+  ).catch((error: unknown) =>
+    log.warn('The starter commands were not added or updated; the next start retries.', {
       error: errorMessage(error),
     }),
   );

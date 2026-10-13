@@ -14,6 +14,14 @@ export const APP_LANGUAGES = ['en', 'zh-CN'] as const;
 export type AppLanguage = (typeof APP_LANGUAGES)[number];
 export const AppLanguageSchema = Type.Union([Type.Literal('en'), Type.Literal('zh-CN')]);
 
+/**
+ * Maps an OS or browser locale such as `zh-Hans-CN` to the nearest shipped language; clients and
+ * the service resolve an unset `language` setting through it, so they agree.
+ */
+export function resolveLanguage(locale: string): AppLanguage {
+  return locale.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
+}
+
 const AcceleratorSchema = Type.String({ minLength: 1, maxLength: 100 });
 
 /**

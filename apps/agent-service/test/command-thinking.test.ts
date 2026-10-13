@@ -12,7 +12,7 @@ import {
   type CommandCreate,
   type TaskInput,
 } from '@atd/agent-contracts';
-import { STARTER_COMMANDS, seedStarterCommands } from '../dist/commands/starters.js';
+import { starterCommands, syncStarterCommands } from '../dist/commands/starters.js';
 import { CommandStore } from '../dist/commands/store.js';
 import { ConnectionStore } from '../dist/credentials/connections.js';
 import { resolvePreview } from '../dist/tasks/preview.js';
@@ -20,8 +20,8 @@ import { startTestService } from './service-harness.ts';
 
 /**
  * A command's own reasoning level: commands stored before it existed take the level their fixed
- * model pinned, starters a version 1 seed added get their shipped level once unless the user
- * changed them, and a run asks for the level picked for it, else the command's, else the
+ * model pinned, starters a version 1 seed added get their shipped level unless the user changed
+ * them, and a run asks for the level picked for it, else the command's, else the
  * connection's default.
  */
 
@@ -89,9 +89,9 @@ test('a stored command takes the level its fixed model pinned, once', async () =
   await rm(dir, { recursive: true, force: true });
 });
 
-test('an unmodified starter a version 1 seed added gets its shipped level, once', async () => {
+test('an unmodified starter a version 1 seed added gets its shipped level', async () => {
   const dir = await scratch();
-  const starters = STARTER_COMMANDS.map((draft) =>
+  const starters = starterCommands('en').map((draft) =>
     CommandStore.storable(CommandStore.compose(draft)),
   );
   const stored = starters.map((command) => {
@@ -111,7 +111,7 @@ test('an unmodified starter a version 1 seed added gets its shipped level, once'
   const marker = path.join(dir, 'commands-starters.json');
   await writeFile(marker, JSON.stringify({ version: 1, seededAt: '2026-01-01T00:00:00Z', added }));
 
-  await seedStarterCommands(dir);
+  await syncStarterCommands(dir, 'en');
   const levels = Object.fromEntries(
     (await CommandStore.load(dir)).list().map((command) => [command.id, command.thinkingLevel]),
   );
@@ -125,23 +125,22 @@ test('an unmodified starter a version 1 seed added gets its shipped level, once'
     'summarize-files': 'inherit',
     'ask-screenshot': 'inherit',
   });
+  // The seed's record stays as it was.
   const written = JSON.parse(await readFile(marker, 'utf8')) as Record<string, unknown>;
-  assert.equal(written.version, 2);
-  assert.deepEqual(written.added, added);
-  assert.equal(written.seededAt, '2026-01-01T00:00:00Z');
+  assert.deepEqual(written, { version: 1, seededAt: '2026-01-01T00:00:00Z', added });
 
-  // The pass ran: a level the user sets back afterwards stays.
+  // A level the user sets back afterwards stays: their save made the starter theirs.
   const store = await CommandStore.load(dir);
   const translate = store.get('translate');
   await store.update('translate', { ...translate, thinkingLevel: 'inherit' }, translate.revision);
-  await seedStarterCommands(dir);
+  await syncStarterCommands(dir, 'en');
   assert.equal((await CommandStore.load(dir)).get('translate').thinkingLevel, 'inherit');
   await rm(dir, { recursive: true, force: true });
 });
 
 test('a fresh seed stores the shipped levels', async () => {
   const dir = await scratch();
-  await seedStarterCommands(dir);
+  await syncStarterCommands(dir, 'en');
   const store = await CommandStore.load(dir);
   assert.equal(store.get('polish').thinkingLevel, 'off');
   assert.equal(store.get('review-code').thinkingLevel, 'inherit');

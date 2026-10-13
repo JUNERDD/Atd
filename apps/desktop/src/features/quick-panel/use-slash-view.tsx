@@ -77,7 +77,7 @@ export function skillsView(
  * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model`,
  * `/effort` and `/context` drill lists and the `/compact <focus>` row; an inline `/` lists skills
  * only, since commands act on the whole draft. Model and effort changes stay on this draft's
- * policy and never touch the app defaults; a context tier is the connection's remembered choice
+ * policy and never touch the app defaults; a context window is the connection's remembered choice
  * for the model. Every drill pick clears the trigger text.
  */
 export function useSlashView({
@@ -111,10 +111,10 @@ export function useSlashView({
   const shown = policy.model ?? model;
   // Levels load once a leading `/` opens; they gate `/effort` and fill its drill list.
   const leading = trigger?.placement === 'leading' ? shown : null;
-  const effort = useThinkingLevels(leading);
   const shownConnection = connections.find((item) => item.connectionId === shown?.connectionId);
-  // Tiers load with the levels; they gate `/context` and fill its drill list.
-  const contexts = useModelContexts(leading, shownConnection?.revision ?? null);
+  const effort = useThinkingLevels(leading, shownConnection);
+  // Windows load with the levels; they gate `/context` and fill its drill list.
+  const contexts = useModelContexts(leading, shownConnection);
   useCatalogRefresh(trigger?.drill?.command === 'model');
   if (!trigger) return { groups: [], empty: null };
   if (trigger.drill?.command === 'compact')
@@ -168,9 +168,14 @@ export function useSlashView({
   }
 
   if (drill?.command === 'effort') {
-    const current = policy.thinkingLevel ?? shownConnection?.defaultThinkingLevel ?? 'off';
+    // Like the model popover, the model's own default is unknown until its levels load.
+    const current =
+      policy.thinkingLevel ??
+      shownConnection?.defaultThinkingLevel ??
+      (effort.loading ? undefined : effort.defaultLevel);
     // Same substitution as the model popover: an unsupported level shows the first offered one.
-    const selected = effort.levels.includes(current) ? current : (effort.levels[0] ?? current);
+    const selected =
+      current && !effort.levels.includes(current) ? (effort.levels[0] ?? current) : current;
     // Why no level can be chosen replaces the list as the panel's empty line.
     const reason = !shown
       ? t('quickPanel.blocked.noModel')
@@ -208,7 +213,7 @@ export function useSlashView({
   const context: QuickCommandContext = {
     hasModel: shown !== null,
     effortLevels: effort.loading ? null : effort.levels.length,
-    contextTiers: contexts.loading ? null : contexts.options.length,
+    contextKnown: contexts.catalogWindow !== null ? true : contexts.loading ? null : false,
     hasPending: pending,
     compact,
   };

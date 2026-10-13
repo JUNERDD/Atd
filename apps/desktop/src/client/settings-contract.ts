@@ -42,6 +42,7 @@ export type ShortcutBindings = Record<ShortcutAction, string>;
 
 /** Languages the UI ships translations for; the list lives in the contracts all clients share. */
 export const LANGUAGE_CODES = APP_LANGUAGES;
+export { resolveLanguage } from '@atd/agent-contracts';
 export type {
   AppLanguage,
   ExcludedApp,
@@ -85,11 +86,6 @@ export const MAX_EXCLUDED_APPS = 100;
 
 export function isAppLanguage(value: unknown): value is AppLanguage {
   return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);
-}
-
-/** Maps an OS or browser locale such as `zh-Hans-CN` to the nearest shipped language. */
-export function resolveLanguage(locale: string): AppLanguage {
-  return locale.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
 
 export interface SettingsSnapshot {

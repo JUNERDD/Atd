@@ -296,7 +296,7 @@
     "blocked": {
       "noModel": "Choose a model first.",
       "noEffort": "This model has no effort levels to choose from.",
-      "noContext": "This model has a single context window.",
+      "noContext": "This model's context window is unknown.",
       "noPending": "Nothing is waiting.",
       "noTask": "Open a task first.",
       "taskRunning": "Wait for the current run to finish.",

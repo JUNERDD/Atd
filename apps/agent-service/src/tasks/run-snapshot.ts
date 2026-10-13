@@ -12,24 +12,24 @@ import type { RunnerContext, TaskRunner } from '../task-runner.js';
 import { taskView } from '../task-view.js';
 import { CONTEXT_BUDGET, runInputSize } from './run-budget.js';
 import {
-  loadRunContextWindow,
+  loadRunCatalog,
   resolveRunModel,
   resolveRunThinkingLevel,
   selectRunModel,
-  type RunContextWindow,
+  type RunCatalog,
 } from './run-selection.js';
 import type { InternalSubmitOptions } from './submit-options.js';
 
 /**
- * Loads the context window of the model `freezeRunSnapshot` selects for the request, before
+ * Loads the catalog facts of the model `freezeRunSnapshot` selects for the request, before
  * acceptance so the freeze stays synchronous. `last` is the task's last run, as the freeze reads it.
  */
-export function loadSubmitContextWindow(
+export function loadSubmitCatalog(
   connections: ConnectionStore,
   request: SubmitTaskRequest,
   last: TaskRun | undefined,
-): Promise<RunContextWindow> {
-  return loadRunContextWindow(connections, submitModelSelection(connections, request, last));
+): Promise<RunCatalog> {
+  return loadRunCatalog(connections, submitModelSelection(connections, request, last));
 }
 
 /**
@@ -62,7 +62,7 @@ function submitModelSelection(
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
   connections: ConnectionStore,
-  contextWindowOf: RunContextWindow,
+  catalog: RunCatalog,
   task: AgentTask | null,
   onBranch: BranchUserEntries | null,
   internal: InternalSubmitOptions = {},
@@ -70,8 +70,8 @@ export function freezeRunSnapshot(
   const { trigger, instructions = '', lite } = internal;
   const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
-  const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
-  const contextWindow = contextWindowOf(model);
+  const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel, catalog);
+  const contextWindow = catalog.contextWindow(model);
   const snapshot: RunSnapshot = {
     input: request.input,
     instructions,

@@ -124,7 +124,7 @@
   "customModels": {
     "title": "自定义模型",
     "add": "添加模型",
-    "description": "对于没有模型目录的服务，请输入确切的模型 ID 和能力。自动发现的兼容模型初始采用文本输入、32,768 token 上下文和 4,096 token 输出上限。请根据服务器实际情况配置模型。",
+    "description": "对于没有模型目录的服务，请输入确切的模型 ID 和能力。自动发现的兼容模型会采用服务器报告的上下文窗口、输出上限、推理和图片输入能力；对已知模型 ID，则采用模型厂商公布的数值。仍无法确定的部分初始为文本输入、32,768 token 上下文和 16,384 token 输出上限。请根据服务器实际情况配置模型，或在模型菜单中设置它的上下文窗口。",
     "configure": "配置 {{name}}",
     "modelId": "模型 ID",
     "remove": "移除",
@@ -161,8 +161,12 @@
       "standard": "标准",
       "long": "长上下文"
     },
-    "pricedAbove": "超过 {{tokens}} tokens 按更高价格计费",
-    "contextApplies": "对此模型后续任务生效。"
+    "pricedAbove": "{{tokens}} 以上按高价计费",
+    "contextApplies": "对此模型后续任务生效。",
+    "modelDefault": "模型默认",
+    "custom": {
+      "row": "自定义"
+    }
   },
   "chatgpt": {
     "continue": "继续使用 ChatGPT",

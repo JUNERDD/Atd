@@ -1,7 +1,12 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ChatGPTConsentSchema } from './chatgpt.js';
-import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
+import {
+  ContextTierSchema,
+  CustomContextWindowSchema,
+  ServiceModelDefinitionSchema,
+  ThinkingLevelSchema,
+} from './models.js';
 
 /**
  * Provider connections as the service persists them: the secret-free metadata
@@ -79,7 +84,10 @@ export const ServiceConnectionSchema = Type.Object(
     catalog: Type.Optional(Type.Array(ServiceModelDefinitionSchema, { maxItems: 10000 })),
     /** Why the last manual refresh failed; cleared by the next success. */
     catalogError: Type.Optional(Type.String({ maxLength: 2000 })),
-    /** Level for runs on this connection that name none; absent means off. */
+    /**
+     * Level for runs on this connection that name none; absent means each model's own default
+     * (providers/default-thinking.ts).
+     */
     defaultThinkingLevel: Type.Optional(ThinkingLevelSchema),
     /**
      * Context window tier per model id, holding only choices that differ from the model's default
@@ -89,6 +97,16 @@ export const ServiceConnectionSchema = Type.Object(
       Type.Record(Type.String(), ContextTierSchema, {
         maxProperties: 10000,
         // Record key schemas are not validated; bound the model ids here.
+        propertyNames: { minLength: 1, maxLength: 256 },
+      }),
+    ),
+    /**
+     * Context window the user set per model id. It takes precedence over the model's tier and
+     * catalog window, for every provider; a missing model id means none is set.
+     */
+    contextWindows: Type.Optional(
+      Type.Record(Type.String(), CustomContextWindowSchema, {
+        maxProperties: 10000,
         propertyNames: { minLength: 1, maxLength: 256 },
       }),
     ),

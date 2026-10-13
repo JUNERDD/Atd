@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Bot, Shield, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SubagentPermissions } from '@atd/agent-contracts';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRemoveDialog } from './extension-remove-dialog';
@@ -74,53 +74,61 @@ export function ExtensionAgentsGroup({
         hasRows={items.length > 0}
         emptyIcon={<Bot />}
       >
-        {items.map(({ row, description, match }) => (
-          <ExtensionRow key={row.name} name={row.name} onDetails={() => onOpen(row.name)}>
-            <ItemMedia variant="icon">
-              <Bot />
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle title={row.name}>
-                <HighlightedText text={row.name} ranges={match?.ranges.name} />
-              </ItemTitle>
-              {description ? (
-                <ItemDescription title={description}>
-                  <HighlightedText text={description} ranges={match?.ranges.description} />
-                </ItemDescription>
-              ) : null}
-            </ItemContent>
-            <ExtensionRowActions
-              name={row.name}
-              enabled={row.enabled}
-              disabled={!connected}
-              pending={busyId === row.name}
-              onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
-              onDetails={() => onOpen(row.name)}
-              lockedReason={lockedReason}
-              menu={
+        {items.map(({ row, description, match }) => {
+          const menu = (
+            <>
+              <ItemMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
+                <Shield />
+                {t('extensions.agentPermissionsAction')}
+              </ItemMenuItem>
+              {row.readOnly ? null : (
                 <>
-                  <DropdownMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
-                    <Shield />
-                    {t('extensions.agentPermissionsAction')}
-                  </DropdownMenuItem>
-                  {row.readOnly ? null : (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={!connected || busyId === row.name}
-                        onSelect={() => setDeleting(row.name)}
-                      >
-                        <Trash2 />
-                        {t('extensions.delete')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  <ItemMenuSeparator />
+                  <ItemMenuItem
+                    variant="destructive"
+                    disabled={!connected || busyId === row.name}
+                    onSelect={() => setDeleting(row.name)}
+                  >
+                    <Trash2 />
+                    {t('extensions.delete')}
+                  </ItemMenuItem>
                 </>
-              }
-            />
-          </ExtensionRow>
-        ))}
+              )}
+            </>
+          );
+          return (
+            <ExtensionRow
+              key={row.name}
+              name={row.name}
+              onDetails={() => onOpen(row.name)}
+              menu={menu}
+            >
+              <ItemMedia variant="icon">
+                <Bot />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle title={row.name}>
+                  <HighlightedText text={row.name} ranges={match?.ranges.name} />
+                </ItemTitle>
+                {description ? (
+                  <ItemDescription title={description}>
+                    <HighlightedText text={description} ranges={match?.ranges.description} />
+                  </ItemDescription>
+                ) : null}
+              </ItemContent>
+              <ExtensionRowActions
+                name={row.name}
+                enabled={row.enabled}
+                disabled={!connected}
+                pending={busyId === row.name}
+                onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
+                onDetails={() => onOpen(row.name)}
+                lockedReason={lockedReason}
+                menu={menu}
+              />
+            </ExtensionRow>
+          );
+        })}
       </ExtensionGroup>
       {permissionsRow ? (
         <AgentPermissionsDialog

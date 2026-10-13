@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@atd/ui/components/card';
 import { cn } from '@atd/ui/lib/utils';
+import { ItemContextMenu } from './item-menu';
 import './list-card.css';
 import './open-row.css';
 
@@ -38,7 +39,8 @@ export type ListCardOpenGesture = Pick<
  * centered on the media; then the description, clamped to two lines with room for two, so cards
  * keep one height; and at the foot the meta line, which truncates before the badges after it. With
  * `open` the whole card opens a page: its button fills the card beneath the content and paints
- * hover and focus (open-row.css), and takes the list's `gesture` handlers.
+ * hover and focus (open-row.css), and takes the list's `gesture` handlers. A card whose actions
+ * hold a More menu passes its items as `menu` too, so a right-click on the card opens them.
  */
 export function ListCard({
   media,
@@ -46,6 +48,7 @@ export function ListCard({
   nameText,
   detail,
   actions,
+  menu,
   description,
   descriptionText,
   meta,
@@ -62,6 +65,8 @@ export function ListCard({
   detail?: string | undefined;
   /** Controls at the end of the header. */
   actions?: ReactNode;
+  /** The items of the More menu in `actions` (`item-menu.tsx`), which a right-click opens too. */
+  menu?: ReactNode;
   /** The description as shown, or what stands in for a missing one. */
   description: ReactNode;
   /** The description as plain text, for its tooltip. */
@@ -79,47 +84,49 @@ export function ListCard({
 }) {
   return (
     <li className="list-card-cell" aria-busy={busy || undefined}>
-      <Card
-        size="sm"
-        className={open ? 'list-card open-row dark:bg-input/40' : 'list-card dark:bg-input/40'}
-      >
-        {open && (
-          <button
-            {...open.gesture}
-            type="button"
-            className="open-row-button"
-            aria-label={open.label}
-            onClick={open.onOpen}
-          />
-        )}
-        <CardHeader>
-          <div className="flex min-w-0 items-center gap-3">
-            {media}
-            <div className="min-w-0">
-              <CardTitle className="truncate text-sm" title={nameText}>
-                {name}
-              </CardTitle>
-              {detail ? (
-                <p className="truncate text-xs text-muted-foreground" title={detail}>
-                  {detail}
-                </p>
-              ) : null}
+      <ItemContextMenu menu={menu}>
+        <Card
+          size="sm"
+          className={open ? 'list-card open-row dark:bg-input/40' : 'list-card dark:bg-input/40'}
+        >
+          {open && (
+            <button
+              {...open.gesture}
+              type="button"
+              className="open-row-button"
+              aria-label={open.label}
+              onClick={open.onOpen}
+            />
+          )}
+          <CardHeader>
+            <div className="flex min-w-0 items-center gap-3">
+              {media}
+              <div className="min-w-0">
+                <CardTitle className="truncate text-sm" title={nameText}>
+                  {name}
+                </CardTitle>
+                {detail ? (
+                  <p className="truncate text-xs text-muted-foreground" title={detail}>
+                    {detail}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-          {actions ? <CardAction>{actions}</CardAction> : null}
-        </CardHeader>
-        <CardContent>
-          <p className="list-card-description text-muted-foreground" title={descriptionText}>
-            {description}
-          </p>
-        </CardContent>
-        <CardFooter className="list-card-footer">
-          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={meta}>
-            {meta}
-          </span>
-          {badges}
-        </CardFooter>
-      </Card>
+            {actions ? <CardAction>{actions}</CardAction> : null}
+          </CardHeader>
+          <CardContent>
+            <p className="list-card-description text-muted-foreground" title={descriptionText}>
+              {description}
+            </p>
+          </CardContent>
+          <CardFooter className="list-card-footer">
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={meta}>
+              {meta}
+            </span>
+            {badges}
+          </CardFooter>
+        </Card>
+      </ItemContextMenu>
     </li>
   );
 }

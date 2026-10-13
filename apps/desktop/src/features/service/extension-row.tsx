@@ -4,46 +4,69 @@ import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { Item, ItemActions } from '@atd/ui/components/item';
 import { Switch } from '@atd/ui/components/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { IconButton } from '../../components/icon-button';
+import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import '../../components/open-row.css';
 
 /**
  * One plugin, skill, subagent, MCP server or command row. A button under the row's content opens the details, so a click
  * anywhere on the row does; the content ignores the pointer (settings.css) while the trailing
- * actions and any inline field stay interactive above that button.
+ * actions and any inline field stay interactive above that button. A row with secondary actions
+ * passes them as `menu` here and to its `ExtensionRowActions`, so a right-click opens its More.
  */
 export function ExtensionRow({
   name,
   onDetails,
+  menu,
   className,
   children,
 }: {
   name: string;
   onDetails: () => void;
+  /** The row's secondary actions (`ExtensionRowActions`' `menu`). */
+  menu?: ReactNode;
   /** A row layout on top of the shared anatomy, such as the plugin row's two-line grid. */
   className?: string;
   children: ReactNode;
 }) {
   const { t } = useTranslation('settings');
   return (
-    <Item asChild size="xs" className={className ? `open-row ${className}` : 'open-row'}>
-      <li>
-        <button
-          type="button"
-          className="open-row-button"
-          aria-label={t('extensions.viewDetailsFor', { name })}
-          onClick={onDetails}
-        />
-        {children}
-      </li>
-    </Item>
+    <ItemContextMenu menu={menu ? <ExtensionMenu onDetails={onDetails} menu={menu} /> : null}>
+      <Item asChild size="xs" className={className ? `open-row ${className}` : 'open-row'}>
+        <li>
+          <button
+            type="button"
+            className="open-row-button"
+            aria-label={t('extensions.viewDetailsFor', { name })}
+            onClick={onDetails}
+          />
+          {children}
+        </li>
+      </Item>
+    </ItemContextMenu>
+  );
+}
+
+/**
+ * A row's or card's More items: the details first, since a click on the row opens them anyway,
+ * then its own `menu` of `ItemMenuItem`s. More and the right-click menu both show it.
+ */
+export function ExtensionMenu({ onDetails, menu }: { onDetails: () => void; menu: ReactNode }) {
+  const { t } = useTranslation('settings');
+  return (
+    <>
+      <ItemMenuItem onSelect={onDetails}>
+        <Info />
+        {t('extensions.viewDetails')}
+      </ItemMenuItem>
+      <ItemMenuSeparator />
+      {menu}
+    </>
   );
 }
 
@@ -76,7 +99,10 @@ export function ExtensionRowActions({
   disabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
   onDetails: () => void;
-  /** Secondary actions; without them there is no More, since a click on the row opens details. */
+  /**
+   * Secondary actions as `ItemMenuItem`s; without them there is no More, since a click on the row
+   * opens details. The row's `ExtensionRow` or `ListCard` takes them too, for its right-click menu.
+   */
   menu?: ReactNode;
   /** A control in More's column instead of More, such as Open in Commands. */
   trailing?: ReactNode;
@@ -153,16 +179,7 @@ export function ExtensionRowActions({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onDetails}>
-              <Info />
-              {t('extensions.viewDetails')}
-            </DropdownMenuItem>
-            {menu ? (
-              <>
-                <DropdownMenuSeparator />
-                {menu}
-              </>
-            ) : null}
+            <ExtensionMenu onDetails={onDetails} menu={menu} />
           </DropdownMenuContent>
         </DropdownMenu>
       ) : reserveMore ? (

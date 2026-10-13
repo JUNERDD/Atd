@@ -1,26 +1,35 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type {
+  AppLanguage,
   CommandCreate,
   CommandInput,
-  CommandParameter,
-  CommandThinkingLevel,
+  CommandOutput,
   ServiceCommand,
 } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
+import { STARTER_COPY, STARTER_IDS, type StarterCopy, type StarterId } from './starter-copy.js';
 import { CommandStore } from './store.js';
 
 /**
- * The commands every data dir gets once (`seedStarterCommands`). They become the user's own
+ * The commands every data dir gets once (`syncStarterCommands`). They become the user's own
  * commands: editable, deletable, and never restored after the seed. None takes a global
  * shortcut: one could collide with the user's other apps or their own app shortcuts. None chooses
  * a placement either: the ones that work on selected text take the selection as their input, so
  * their default placement (`defaultCommandPlacement`) shows them on the selection toolbar, and in
- * no conversation until the user places them there. Quick text transforms ask for no reasoning
- * (`off`), which keeps them fast and cheap; the others take the connection's default level. Names
- * and instructions are English, like the other content the service ships.
+ * no conversation until the user places them there.
+ *
+ * They are written as light commands (product-skills/create-command): no tools, and quick text
+ * transforms ask for no reasoning (`off`), which keeps them fast and cheap, while the others take
+ * the connection's default level. Transforms whose result does not depend on who the user is
+ * leave memory out. Translating and polishing rework the selected text, so their answers replace
+ * it (an app that cannot take text shows the answer to copy instead); the other answers are meant
+ * to be read, not to change the text they came from, and stay in the conversation.
+ *
+ * Their words follow the language the clients show (`starter-copy.ts`) until the user saves them.
  */
 
 const SELECTION: CommandInput = {
@@ -31,138 +40,23 @@ const SELECTION: CommandInput = {
   clipboard: false,
 };
 
-/** A required enum parameter whose option values are the phrases the instructions read. */
-function choice(
-  key: string,
-  label: string,
-  options: ReadonlyArray<[value: string, label: string]>,
-  fallback: string,
-): CommandParameter {
-  return {
-    key,
-    label,
-    description: '',
-    type: 'enum',
-    required: true,
-    default: fallback,
-    options: options.map(([value, option]) => ({ value, label: option })),
-  };
-}
+const REPLACE: CommandOutput = { action: 'replaceSelection', review: false };
 
-/** A command that works on the text selected in another app. */
-function onSelection(
-  id: string,
-  name: string,
-  description: string,
-  instructions: string,
-  thinkingLevel: CommandThinkingLevel,
-  parameters: CommandParameter[] = [],
-): CommandCreate {
-  return { id, name, description, instructions, input: SELECTION, thinkingLevel, parameters };
-}
+/** Everything of a starter but its words, which are the same in every language. */
+type StarterShape = Omit<CommandCreate, 'id' | keyof StarterCopy>;
 
-const LANGUAGES = [
-  'English',
-  'Simplified Chinese',
-  'Traditional Chinese',
-  'Japanese',
-  'Korean',
-  'French',
-  'German',
-  'Spanish',
-] as const;
-
-export const STARTER_COMMANDS: readonly CommandCreate[] = [
-  onSelection(
-    'translate',
-    'Translate',
-    'Translate the selected text and keep its formatting.',
-    'Translate the text below into {{argument.language}}. Preserve its meaning, tone and formatting, including Markdown, line breaks, code, links and names. Return only the translation.\n\n{{input}}',
-    'off',
-    [
-      choice(
-        'language',
-        'Target language',
-        LANGUAGES.map((language) => [language, language]),
-        'English',
-      ),
-    ],
-  ),
-  onSelection(
-    'polish',
-    'Polish writing',
-    'Make the selected writing clear and natural.',
-    'Improve the clarity, grammar and flow of the text below while keeping its meaning, voice, language and formatting. Return only the revised text.\n\n{{input}}',
-    'off',
-  ),
-  onSelection(
-    'summarize',
-    'Summarize',
-    'Condense the selected text to what matters.',
-    'Summarize the text below as {{argument.length}}. Keep the facts, decisions and numbers that matter, and write in the same language as the text.\n\n{{input}}',
-    'off',
-    [
-      choice(
-        'length',
-        'Length',
-        [
-          ['a single sentence', 'One sentence'],
-          ['a short paragraph', 'Short paragraph'],
-          ['a bulleted list of key points', 'Key points'],
-        ],
-        'a bulleted list of key points',
-      ),
-    ],
-  ),
-  onSelection(
-    'explain',
-    'Explain',
-    'Explain the selected text or code in plain language.',
-    'Explain the text below in plain language: what it means, the key terms, and any context needed to understand it. If it is code, explain what it does step by step and point out anything surprising. Answer in the same language as the text.\n\n{{input}}',
-    'off',
-  ),
-  onSelection(
-    'action-items',
-    'Extract action items',
-    'Turn notes into a list of next steps.',
-    'Extract the action items from the text below as a checklist grouped by {{argument.group_by}}. Keep named owners and dates, and mark missing ones as unspecified. Write in the same language as the text.\n\n{{input}}',
-    'off',
-    [
-      choice(
-        'group_by',
-        'Group by',
-        [
-          ['owner', 'Owner'],
-          ['due date', 'Due date'],
-          ['priority', 'Priority'],
-        ],
-        'owner',
-      ),
-    ],
-  ),
-  onSelection(
-    'review-code',
-    'Review code',
-    'Find bugs and risks in the selected code.',
-    'Review the code below. List concrete problems, most severe first: bugs, unhandled edge cases, security risks and misleading names. Give each a one-line reason and a short fix. If you find none, say so plainly. Do not rewrite the whole code.\n\n{{input}}',
-    'inherit',
-  ),
-  {
-    id: 'summarize-files',
-    name: 'Summarize files',
-    description: 'Find the key points in attached files.',
-    instructions:
-      'Summarize the attached files: the key points of each and any next steps they imply, citing file names.\n\n{{input}}\n\n{{files}}',
-    thinkingLevel: 'inherit',
+const SHAPES: Record<StarterId, StarterShape> = {
+  translate: { input: SELECTION, output: REPLACE, thinkingLevel: 'off', memory: 'off' },
+  polish: { input: SELECTION, output: REPLACE, thinkingLevel: 'off', memory: 'off' },
+  summarize: { input: SELECTION, thinkingLevel: 'off', memory: 'off' },
+  explain: { input: SELECTION, thinkingLevel: 'off' },
+  'action-items': { input: SELECTION, thinkingLevel: 'off', memory: 'off' },
+  'review-code': { input: SELECTION, thinkingLevel: 'inherit' },
+  'summarize-files': {
     input: { source: 'manual', required: false, files: true, selection: false, clipboard: false },
-  },
-  {
-    id: 'ask-screenshot',
-    name: 'Ask about screenshot',
-    description: 'Capture part of the screen and ask about it.',
-    instructions:
-      'Answer the request below about the attached screenshot. When there is no request, describe what the screenshot shows and point out anything that needs attention, such as errors or warnings.\n\n{{input}}',
     thinkingLevel: 'inherit',
+  },
+  'ask-screenshot': {
     input: {
       source: 'screenshot',
       required: false,
@@ -170,18 +64,27 @@ export const STARTER_COMMANDS: readonly CommandCreate[] = [
       selection: false,
       clipboard: false,
     },
+    thinkingLevel: 'inherit',
   },
-];
+};
 
-/** Run-once marker of the seed; its path is persisted data and stays fixed. */
-function markerFile(dataDir: string): string {
+/** The starter commands in `language`, in the order the seed adds them. */
+export function starterCommands(language: AppLanguage): CommandCreate[] {
+  return STARTER_IDS.map((id) => ({ id, ...SHAPES[id], ...STARTER_COPY[language][id] }));
+}
+
+/**
+ * Run-once marker of the seed; its path is persisted data and stays fixed. It describes the
+ * command store beside it, so whatever replaces `commands.json` replaces or drops it too.
+ */
+export function starterMarkerFile(dataDir: string): string {
   return path.join(dataDir, 'commands-starters.json');
 }
 
 /**
- * What the marker records. Version 1 seeded the starters before they had their own reasoning
- * level; version 2 seeded them with it, or gave the version 1 seed its levels
- * (`upgradeStarterLevels`). `added` names the starters the seed added.
+ * What the marker records: `added` names the starters the seed added, the only ones the service
+ * ever updates. Version 1 seeded the starters before they had their own reasoning level and
+ * version 2 with it; the version no longer changes what the service does.
  */
 const MarkerSchema = Type.Object({
   version: Type.Integer({ minimum: 1 }),
@@ -189,11 +92,11 @@ const MarkerSchema = Type.Object({
 });
 const MARKER_VERSION = 2;
 
-/** The marker, null before the seed ran; one that cannot be read as a marker counts as current. */
+/** The marker, null before the seed ran; one that cannot be read as a marker added nothing. */
 async function readMarker(dataDir: string): Promise<{ version: number; added: string[] } | null> {
   let text: string;
   try {
-    text = await readFile(markerFile(dataDir), 'utf8');
+    text = await readFile(starterMarkerFile(dataDir), 'utf8');
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw error;
@@ -207,70 +110,77 @@ async function readMarker(dataDir: string): Promise<{ version: number; added: st
   return Value.Check(MarkerSchema, marker) ? marker : { version: MARKER_VERSION, added: [] };
 }
 
-/**
- * The level a starter the seed added now ships with, when the stored copy is still the shipped
- * one: never saved again (revision 1), its instructions unchanged and its level `inherit`, the
- * level every command had before levels existed. Null leaves the command as the user has it.
- */
-function shippedLevel(
-  stored: ServiceCommand,
-  added: readonly string[],
-): CommandThinkingLevel | null {
-  const starter = STARTER_COMMANDS.find((draft) => draft.id === stored.id);
-  if (!starter?.thinkingLevel || starter.thinkingLevel === 'inherit') return null;
-  const level = 'thinkingLevel' in stored ? stored.thinkingLevel : undefined;
-  const unmodified =
-    added.includes(stored.id) &&
-    stored.revision === 1 &&
-    stored.instructions === starter.instructions &&
-    level === 'inherit';
-  return unmodified ? starter.thinkingLevel : null;
+/** The stored form of a starter, as a seed would write it. */
+function stored(draft: CommandCreate): ServiceCommand {
+  return CommandStore.storable(CommandStore.compose(draft));
+}
+
+/** The words of a stored command, to compare with a starter's copy. */
+function wordsOf(command: ServiceCommand) {
+  const { name, description, instructions } = command;
+  return {
+    name,
+    description,
+    instructions,
+    parameters: 'parameters' in command && command.parameters,
+  };
 }
 
 /**
- * Gives the starters a version 1 seed added the level they now ship with, once, unless the user
- * changed them. The revision stays: the level is the starter's own, not the user's edit.
+ * The stored starter `command` should become, or null to leave it as it is. Only a starter the
+ * seed added that was never saved (revision 1; every save, the Agent's included, raises it) and
+ * still reads as some language's copy is the service's to update: it takes the current shape and
+ * the words of `language`. One with older words, which a user may have edited by hand, stays.
  */
-async function upgradeStarterLevels(dataDir: string, added: readonly string[]): Promise<void> {
-  const store = await CommandStore.load(dataDir);
-  if (!store.data.commands.some((command) => shippedLevel(command, added))) return;
-  await store.change((data) => {
-    data.commands = data.commands.map((command) => {
-      const level = shippedLevel(command, added);
-      return level ? { ...command, thinkingLevel: level } : command;
-    });
-  });
+function refreshed(
+  command: ServiceCommand,
+  added: readonly string[],
+  language: AppLanguage,
+): ServiceCommand | null {
+  const id = STARTER_IDS.find((starter) => starter === command.id);
+  if (!id || !added.includes(id) || command.revision !== 1) return null;
+  const words = wordsOf(command);
+  const shipped = Object.values(STARTER_COPY).some((copy) =>
+    isDeepStrictEqual(wordsOf(stored({ id, ...SHAPES[id], ...copy[id] })), words),
+  );
+  if (!shipped) return null;
+  const next = { ...command, ...stored({ id, ...SHAPES[id], ...STARTER_COPY[language][id] }) };
+  return isDeepStrictEqual(next, command) ? null : next;
 }
 
 /**
  * Adds the starter commands to the command store once per data dir, whether it is new or already
- * holds the user's commands, then writes the marker so a starter the user deletes never returns.
- * Ids are fixed: a store that already holds one (a crash between the store write and the marker)
- * keeps its copy, so a retry adds nothing twice. A data dir seeded before starters had their own
- * reasoning level gets those levels once instead (`upgradeStarterLevels`).
+ * holds the user's commands, in `language`, then writes the marker so a starter the user deletes
+ * never returns. Ids are fixed: a store that already holds one (a crash between the store write
+ * and the marker) keeps its copy, so a retry adds nothing twice.
+ *
+ * Once seeded, it brings the starters the user never saved up to date instead: the shape this
+ * build ships them with, in `language`. The service calls it at every start and whenever the
+ * language the clients show changes, so they read in the app's language until the user saves
+ * them, and writes only when one changes.
  */
-export async function seedStarterCommands(dataDir: string): Promise<void> {
+export async function syncStarterCommands(dataDir: string, language: AppLanguage): Promise<void> {
   const marker = await readMarker(dataDir);
-  if (marker && marker.version >= MARKER_VERSION) return;
+  const store = await CommandStore.load(dataDir);
   if (marker) {
-    await upgradeStarterLevels(dataDir, marker.added);
-    await atomicWrite(markerFile(dataDir), {
-      ...marker,
-      version: MARKER_VERSION,
-      upgradedAt: new Date().toISOString(),
+    const { added } = marker;
+    if (!store.data.commands.some((command) => refreshed(command, added, language))) return;
+    await store.change((data) => {
+      data.commands = data.commands.map(
+        (command) => refreshed(command, added, language) ?? command,
+      );
     });
     return;
   }
-  const store = await CommandStore.load(dataDir);
   const added = await store.change((data) => {
     const held = new Set(data.commands.map((command) => command.id));
-    const starters = STARTER_COMMANDS.map((draft) => CommandStore.compose(draft)).filter(
-      (command) => !held.has(command.id),
-    );
-    data.commands.push(...starters.map((command) => CommandStore.storable(command)));
+    const starters = starterCommands(language)
+      .map(stored)
+      .filter((command) => !held.has(command.id));
+    data.commands.push(...starters);
     return starters.map((command) => command.id);
   });
-  await atomicWrite(markerFile(dataDir), {
+  await atomicWrite(starterMarkerFile(dataDir), {
     version: MARKER_VERSION,
     seededAt: new Date().toISOString(),
     added,

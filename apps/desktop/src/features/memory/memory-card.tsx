@@ -5,8 +5,6 @@ import { Badge } from '@atd/ui/components/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
@@ -14,6 +12,7 @@ import { ItemActions, ItemMedia } from '@atd/ui/components/item';
 import { Switch } from '@atd/ui/components/switch';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { IconButton } from '../../components/icon-button';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { ListCard } from '../../components/list-card';
 import {
   MEMORY_ACTIVATIONS,
@@ -40,7 +39,7 @@ interface CardProps {
  * icon and its description, with its name under it; then the start of what it holds; and at the
  * foot its type, category and how runs use it, before badges for a source other than the user, New
  * until a learned memory is opened, and Disabled while it is off. The switch and More sit at the
- * top right; a click anywhere else on the card opens its page.
+ * top right; a click anywhere else on the card opens its page, and a right-click opens More.
  */
 export function MemoryCard({ match, ...props }: CardProps & { match: MemoryMatch | null }) {
   const { unit, busy, onOpen } = props;
@@ -64,6 +63,7 @@ export function MemoryCard({ match, ...props }: CardProps & { match: MemoryMatch
       nameText={unit.description}
       detail={unit.name}
       actions={<MemoryCardActions {...props} />}
+      menu={<MemoryCardMenu {...props} />}
       // The page shows the whole text; the card shows its start, without a tooltip that could be
       // pages long.
       description={<HighlightedText text={unit.body} ranges={match?.ranges.body} />}
@@ -119,17 +119,27 @@ function MemoryCardActions({ unit, busy, onOpen, onToggle, onDelete }: CardProps
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem disabled={busy} onSelect={() => onOpen(unit)}>
-            <Pencil />
-            {t('memory.list.edit')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" disabled={busy} onSelect={() => onDelete(unit)}>
-            <Trash2 />
-            {t('memory.list.delete')}
-          </DropdownMenuItem>
+          <MemoryCardMenu {...{ unit, busy, onOpen, onToggle, onDelete }} />
         </DropdownMenuContent>
       </DropdownMenu>
     </ItemActions>
+  );
+}
+
+/** More's items, Edit then Delete; the card's right-click menu shows them too. */
+function MemoryCardMenu({ unit, busy, onOpen, onDelete }: CardProps) {
+  const { t } = useTranslation('memory');
+  return (
+    <>
+      <ItemMenuItem disabled={busy} onSelect={() => onOpen(unit)}>
+        <Pencil />
+        {t('memory.list.edit')}
+      </ItemMenuItem>
+      <ItemMenuSeparator />
+      <ItemMenuItem variant="destructive" disabled={busy} onSelect={() => onDelete(unit)}>
+        <Trash2 />
+        {t('memory.list.delete')}
+      </ItemMenuItem>
+    </>
   );
 }

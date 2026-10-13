@@ -296,7 +296,7 @@
     "blocked": {
       "noModel": "请先选择模型。",
       "noEffort": "此模型没有可选的推理强度。",
-      "noContext": "此模型只有一种上下文窗口。",
+      "noContext": "此模型的上下文窗口未知。",
       "noPending": "当前没有等待中的内容。",
       "noTask": "请先打开一个任务。",
       "taskRunning": "请等待当前运行结束。",

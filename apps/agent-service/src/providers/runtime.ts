@@ -99,7 +99,10 @@ export async function connectionRuntime(
         name: connection.name,
         baseUrl: connection.baseUrl,
         api: 'openai-completions',
-        models: uniqueModels([...(connection.catalog ?? []), ...(connection.customModels ?? [])]),
+        models: uniqueModels([
+          ...(connection.catalog ?? []),
+          ...(connection.customModels ?? []),
+        ]).map(endpointModel(connection.provider)),
       });
     } else if (
       connection.baseUrl &&
@@ -223,6 +226,29 @@ async function loadCatalog(
   if (result.aborted)
     throw new CatalogFailure('The model directory request timed out or was cancelled.');
   return models.getModels(connection.provider).map(toServiceModel);
+}
+
+/**
+ * Servers whose Chat Completions request reads only `max_tokens`: Ollama silently drops Pi's
+ * default `max_completion_tokens` (its request struct has no such field), and LM Studio documents
+ * only `max_tokens`, so without this no output cap would apply.
+ */
+const MAX_TOKENS_FIELD_SERVERS = new Set(['ollama', 'lm-studio']);
+
+/**
+ * Pi reads an unknown base URL as OpenAI's own API and sends reasoning models their instructions
+ * in the `developer` role, which generic servers and relays often reject. `system` is accepted
+ * by every Chat Completions server, OpenAI's included, so custom endpoints always use it.
+ */
+function endpointModel(provider: string) {
+  const maxTokensField = MAX_TOKENS_FIELD_SERVERS.has(provider) ? 'max_tokens' : undefined;
+  return (model: ServiceModelDefinition) =>
+    model.api === 'openai-completions'
+      ? {
+          ...model,
+          compat: { supportsDeveloperRole: false, ...(maxTokensField ? { maxTokensField } : {}) },
+        }
+      : model;
 }
 
 /** Pi's offline switch, read the way Pi reads it: 1, true or yes. */

@@ -33,6 +33,7 @@ export async function discardCreatedConnection(
         delete connection.catalog;
         delete connection.catalogError;
         delete connection.contextTiers;
+        delete connection.contextWindows;
         delete connection.defaultThinkingLevel;
         if (data.defaultConnectionId === connectionId) data.defaultConnectionId = null;
         commit = async () => {

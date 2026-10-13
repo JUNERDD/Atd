@@ -25,6 +25,7 @@ export function AppListCard({
   actions,
   onShow,
   onDragOut,
+  menu,
   children,
 }: {
   app: AppSummary;
@@ -39,6 +40,8 @@ export function AppListCard({
   onDragOut?: (() => void) | undefined;
   /** Actions at the top right in place of Open (the panel's pin toggle, Continue editing, More). */
   children?: ReactNode;
+  /** The items of the More in `children`, which a right-click on the card opens too. */
+  menu?: ReactNode;
 }) {
   const { t } = useTranslation('apps');
   const { t: tSettings } = useTranslation('settings');
@@ -68,6 +71,7 @@ export function AppListCard({
           {children}
         </ItemActions>
       }
+      menu={menu}
       description={description || tSettings('extensions.detailNoDescription')}
       descriptionText={description || undefined}
       meta={meta}

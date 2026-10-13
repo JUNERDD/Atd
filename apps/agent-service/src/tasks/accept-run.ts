@@ -14,7 +14,7 @@ import {
   branchUserEntries,
   checkBranchBefore,
   freezeRunSnapshot,
-  loadSubmitContextWindow,
+  loadSubmitCatalog,
 } from './run-snapshot.js';
 import { checkSideChatOf, newTaskRecord, type InternalSubmitOptions } from './submit-options.js';
 
@@ -59,7 +59,7 @@ export class RunAcceptance {
     const connections = await ConnectionStore.load(ctx.paths.root);
     const ledger = ctx.ledger;
     const last = ledger.data.tasks.find((item) => item.id === request.taskId)?.runs.at(-1);
-    const contextWindowOf = await loadSubmitContextWindow(connections, request, last);
+    const catalog = await loadSubmitCatalog(connections, request, last);
     const onBranch = await branchUserEntries(ctx, this.deps.runner(request.taskId ?? ''), request);
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
@@ -81,14 +81,7 @@ export class RunAcceptance {
     }
     const folderIds = request.input.folders ?? [];
     this.deps.folders.resolve(folderIds);
-    const snapshot = freezeRunSnapshot(
-      request,
-      connections,
-      contextWindowOf,
-      previous,
-      onBranch,
-      internal,
-    );
+    const snapshot = freezeRunSnapshot(request, connections, catalog, previous, onBranch, internal);
     const runId = randomUUID();
     const now = new Date().toISOString();
     this.accepting.add(taskId);

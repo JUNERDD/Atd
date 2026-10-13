@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { CircleAlert, KeyRound, Plug, PlugZap, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { Input } from '@atd/ui/components/input';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { isComposingKey } from '@atd/ui/lib/ime';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
@@ -74,8 +74,38 @@ function McpRow({
     if (!on || row.disabled) onEnabled(on);
     if (on && needsApproval && canConfirmMcpApproval()) onRequestApproval();
   };
+  const menu =
+    steps || !row.readOnly ? (
+      <>
+        {showConnect ? (
+          <ItemMenuItem disabled={locked} onSelect={onConnect}>
+            <PlugZap />
+            {t('extensions.connect')}
+          </ItemMenuItem>
+        ) : null}
+        {showAuth ? (
+          <ItemMenuItem disabled={locked} onSelect={onAuthStart}>
+            <KeyRound />
+            {t('extensions.authenticate')}
+          </ItemMenuItem>
+        ) : null}
+        {showWithdraw ? (
+          <ItemMenuItem disabled={locked} onSelect={onWithdrawApproval}>
+            <ShieldOff />
+            {t('extensions.mcpApproval.withdraw')}
+          </ItemMenuItem>
+        ) : null}
+        {steps && !row.readOnly ? <ItemMenuSeparator /> : null}
+        {row.readOnly ? null : (
+          <ItemMenuItem variant="destructive" disabled={locked} onSelect={onRemove}>
+            <Trash2 />
+            {t('extensions.remove')}
+          </ItemMenuItem>
+        )}
+      </>
+    ) : null;
   return (
-    <ExtensionRow name={row.serverId} onDetails={onDetails}>
+    <ExtensionRow name={row.serverId} onDetails={onDetails} menu={menu}>
       <ItemMedia variant="icon">
         <Plug />
       </ItemMedia>
@@ -135,37 +165,7 @@ function McpRow({
         onEnabledChange={setRunnable}
         onDetails={onDetails}
         lockedReason={lockedReason}
-        menu={
-          steps || !row.readOnly ? (
-            <>
-              {showConnect ? (
-                <DropdownMenuItem disabled={locked} onSelect={onConnect}>
-                  <PlugZap />
-                  {t('extensions.connect')}
-                </DropdownMenuItem>
-              ) : null}
-              {showAuth ? (
-                <DropdownMenuItem disabled={locked} onSelect={onAuthStart}>
-                  <KeyRound />
-                  {t('extensions.authenticate')}
-                </DropdownMenuItem>
-              ) : null}
-              {showWithdraw ? (
-                <DropdownMenuItem disabled={locked} onSelect={onWithdrawApproval}>
-                  <ShieldOff />
-                  {t('extensions.mcpApproval.withdraw')}
-                </DropdownMenuItem>
-              ) : null}
-              {steps && !row.readOnly ? <DropdownMenuSeparator /> : null}
-              {row.readOnly ? null : (
-                <DropdownMenuItem variant="destructive" disabled={locked} onSelect={onRemove}>
-                  <Trash2 />
-                  {t('extensions.remove')}
-                </DropdownMenuItem>
-              )}
-            </>
-          ) : null
-        }
+        menu={menu}
       />
     </ExtensionRow>
   );

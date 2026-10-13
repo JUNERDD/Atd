@@ -16,8 +16,6 @@ import { Button } from '@atd/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import {
@@ -30,6 +28,7 @@ import {
 } from '@atd/ui/components/empty';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { IconButton } from '../../components/icon-button';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { rowDate } from '../agent/history-view';
 import { ListCardGrid } from '../../components/list-card';
 import { AppConfirmDialog, RenameAppDialog } from './app-dialogs';
@@ -44,7 +43,8 @@ import { useApps } from './use-apps';
  * Settings' (`ListCardGrid`). A click on a card opens the app, and dragging the card out of the
  * panel pins it to the desktop; its actions are the pin toggle (Pin to Desktop or Remove from
  * Desktop), Continue editing (the conversation that builds the app) and More (Figma
- * `App / App actions menu`: Rename, Versions in Settings, Delete). An empty list offers Create
+ * `App / App actions menu`: Rename, Versions in Settings, Delete), which a right-click on the card
+ * opens too. An empty list offers Create
  * app, which starts the same seeded conversation as the new-task entry.
  */
 export function AppsView({
@@ -72,6 +72,27 @@ export function AppsView({
                 const busy = actions.busy.has(app.id);
                 const pinned = pins.pinned.has(app.id);
                 const date = rowDate(new Date(app.updatedAt), now, i18n.language, false);
+                const menu = (
+                  <>
+                    <ItemMenuItem onSelect={() => setRenaming(app)}>
+                      <Pencil />
+                      {t('panel.rename')}
+                    </ItemMenuItem>
+                    <ItemMenuItem onSelect={() => void actions.showInSettings(app.id)}>
+                      <History />
+                      {t('panel.versions')}
+                    </ItemMenuItem>
+                    <ItemMenuSeparator />
+                    <ItemMenuItem
+                      variant="destructive"
+                      disabled={busy}
+                      onSelect={() => confirmations.confirmDelete(app)}
+                    >
+                      <Trash2 />
+                      {t('panel.delete')}
+                    </ItemMenuItem>
+                  </>
+                );
                 return (
                   <AppListCard
                     key={app.id}
@@ -79,6 +100,7 @@ export function AppsView({
                     actions={actions}
                     meta={t('panel.rowMeta', { date, version: app.currentVersion })}
                     onDragOut={() => pins.dragOut(app)}
+                    menu={menu}
                   >
                     <IconButton
                       label={pinned ? t('pin.remove') : t('pin.addHint')}
@@ -115,25 +137,7 @@ export function AppsView({
                           <Ellipsis />
                         </IconButton>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setRenaming(app)}>
-                          <Pencil />
-                          {t('panel.rename')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => void actions.showInSettings(app.id)}>
-                          <History />
-                          {t('panel.versions')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={busy}
-                          onSelect={() => confirmations.confirmDelete(app)}
-                        >
-                          <Trash2 />
-                          {t('panel.delete')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
+                      <DropdownMenuContent align="end">{menu}</DropdownMenuContent>
                     </DropdownMenu>
                   </AppListCard>
                 );

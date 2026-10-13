@@ -1,19 +1,10 @@
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Copy, Ellipsis, History, Pencil, SearchIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@atd/ui/components/context-menu';
-import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
@@ -41,6 +32,7 @@ import {
 import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
+import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { agentApi } from './use-agent';
 import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -52,23 +44,14 @@ import { useCopyTaskId } from './use-copy-task-id';
 import { useHistoryView } from './use-history-view';
 import { messageOf } from '../../lib/errors';
 
-/** Row actions, rendered once by the More dropdown and once by the right-click context menu. */
+/** Row actions, shown by the More dropdown and by the right-click menu (`item-menu.tsx`). */
 function TaskMenuItems({
   task,
-  Item,
-  Separator,
   onRename,
   onCopyId,
   onDelete,
 }: {
   task: AgentTask;
-  Item: ComponentType<{
-    onSelect: () => void;
-    disabled?: boolean;
-    variant?: 'default' | 'destructive';
-    children: ReactNode;
-  }>;
-  Separator: ComponentType;
   onRename: () => void;
   onCopyId: () => void;
   onDelete: () => void;
@@ -76,19 +59,23 @@ function TaskMenuItems({
   const { t } = useTranslation('tasks');
   return (
     <>
-      <Item onSelect={onRename}>
+      <ItemMenuItem onSelect={onRename}>
         <Pencil />
         {t('history.rename')}
-      </Item>
-      <Item onSelect={onCopyId}>
+      </ItemMenuItem>
+      <ItemMenuItem onSelect={onCopyId}>
         <Copy />
         {t('history.copyId')}
-      </Item>
-      <Separator />
-      <Item variant="destructive" disabled={isActive(task.runs.at(-1)?.status)} onSelect={onDelete}>
+      </ItemMenuItem>
+      <ItemMenuSeparator />
+      <ItemMenuItem
+        variant="destructive"
+        disabled={isActive(task.runs.at(-1)?.status)}
+        onSelect={onDelete}
+      >
         <Trash2 />
         {t('history.delete')}
-      </Item>
+      </ItemMenuItem>
     </>
   );
 }
@@ -196,73 +183,60 @@ export function TaskHistory({
                       onDelete: () => setDeleting({ task, open: true }),
                     };
                     return (
-                      <ContextMenu key={task.id}>
-                        <ContextMenuTrigger asChild>
-                          <li className="history-row">
-                            <Button
-                              variant="ghost"
-                              className="task-row min-w-0"
-                              onClick={() => onChoose(task.id)}
-                            >
-                              <span className="task-row-head">
-                                <span className="task-row-title" title={task.title}>
-                                  <HighlightedText text={task.title} ranges={match?.ranges.title} />
-                                </span>
-                                {task.origin && <TaskOriginBadge origin={task.origin} />}
+                      <ItemContextMenu key={task.id} menu={<TaskMenuItems {...menuActions} />}>
+                        <li className="history-row">
+                          <Button
+                            variant="ghost"
+                            className="task-row min-w-0"
+                            onClick={() => onChoose(task.id)}
+                          >
+                            <span className="task-row-head">
+                              <span className="task-row-title" title={task.title}>
+                                <HighlightedText text={task.title} ranges={match?.ranges.title} />
                               </span>
-                              <span className="task-row-meta">
-                                <time dateTime={stamp} title={updated.toLocaleString()}>
-                                  {rowDate(updated, now, i18n.language, view.group === 'date')}
-                                </time>
-                                {statusLabel && (
-                                  <span
-                                    className="task-row-status"
-                                    data-tone={
-                                      status && ERROR_STATUSES.has(status) ? 'error' : undefined
-                                    }
-                                  >
-                                    {/* Shimmer animates plain text only, so a running status stays unmarked. */}
-                                    {progressing ? (
-                                      <Shimmer as="span">{statusLabel}</Shimmer>
-                                    ) : (
-                                      <HighlightedText
-                                        text={statusLabel}
-                                        ranges={match?.ranges.status}
-                                      />
-                                    )}
-                                  </span>
-                                )}
-                              </span>
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  label={t('history.more')}
-                                  aria-label={t('history.moreActionsFor', { title: task.title })}
-                                  className="history-row-more"
-                                  tooltipDismissOnClick
+                              {task.origin && <TaskOriginBadge origin={task.origin} />}
+                            </span>
+                            <span className="task-row-meta">
+                              <time dateTime={stamp} title={updated.toLocaleString()}>
+                                {rowDate(updated, now, i18n.language, view.group === 'date')}
+                              </time>
+                              {statusLabel && (
+                                <span
+                                  className="task-row-status"
+                                  data-tone={
+                                    status && ERROR_STATUSES.has(status) ? 'error' : undefined
+                                  }
                                 >
-                                  <Ellipsis />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <TaskMenuItems
-                                  {...menuActions}
-                                  Item={DropdownMenuItem}
-                                  Separator={DropdownMenuSeparator}
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </li>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <TaskMenuItems
-                            {...menuActions}
-                            Item={ContextMenuItem}
-                            Separator={ContextMenuSeparator}
-                          />
-                        </ContextMenuContent>
-                      </ContextMenu>
+                                  {/* Shimmer animates plain text only, so a running status stays unmarked. */}
+                                  {progressing ? (
+                                    <Shimmer as="span">{statusLabel}</Shimmer>
+                                  ) : (
+                                    <HighlightedText
+                                      text={statusLabel}
+                                      ranges={match?.ranges.status}
+                                    />
+                                  )}
+                                </span>
+                              )}
+                            </span>
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                label={t('history.more')}
+                                aria-label={t('history.moreActionsFor', { title: task.title })}
+                                className="history-row-more"
+                                tooltipDismissOnClick
+                              >
+                                <Ellipsis />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <TaskMenuItems {...menuActions} />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </li>
+                      </ItemContextMenu>
                     );
                   })}
                 </ul>
