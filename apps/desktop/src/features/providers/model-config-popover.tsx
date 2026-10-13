@@ -6,7 +6,8 @@ import { cn } from '@atd/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow } from './context-window';
-import { ConfigBackHeader, ContextOptions, EffortOptions } from './model-config-subviews';
+import { ConfigBackHeader, EffortOptions } from './model-config-subviews';
+import { ContextOptions } from './model-context-view';
 import { ModelList } from './model-list';
 import { ProviderBrand } from './provider-brand';
 import { saveModelContext, useModelContexts } from './use-model-contexts';
@@ -22,7 +23,8 @@ type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
 type EffortControl =
   | {
       hideEffort?: false;
-      thinkingLevel: ModelThinkingLevel;
+      /** The level chosen for the run; none shows the model's own default. */
+      thinkingLevel: ModelThinkingLevel | undefined;
       onThinkingLevelChange: (level: ModelThinkingLevel) => void;
     }
   | { hideEffort: true; thinkingLevel?: undefined; onThinkingLevelChange?: undefined };
@@ -43,10 +45,11 @@ type ModelConfigPopoverProps = EffortControl & {
  * is a ModelList; effort options come from useThinkingLevels, disabled until the model offers a
  * choice and falling back to levels[0] when the given level is unsupported.
  *
- * Context is a drill-in row only when the service offers the model two tiers; otherwise it reads
- * the catalog window. Unlike model and effort, the tier is the connection's remembered choice for
- * the model, so picking one saves it on the connection (every consumer alike) instead of calling
- * back. The trigger and root row show the selected tier's window, else the catalog window.
+ * Context is a drill-in row once the model's catalog window is known, for every provider: its
+ * tiers or its catalog window, and the other windows the service offers for it. Unlike model and effort, the window is the
+ * connection's remembered choice for the model, so picking one saves it on the connection (every
+ * consumer alike) instead of calling back. The trigger and root row show the window new runs use:
+ * the custom one, else the selected tier's, else the catalog's.
  *
  * `scopeLabel` names the one connection a scoped popover configures (a provider overview row):
  * its list shows only that connection without a heading, and the trigger drops the brand the row
@@ -91,11 +94,14 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     (!connection?.connected || !connection.catalog.some((item) => item.id === model.modelId)),
   );
   const displayName = unavailable ? t('models.unavailable', { name }) : name;
-  const contexts = useModelContexts(model, connection?.revision ?? null);
+  const contexts = useModelContexts(model, connection);
   const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
-  const contextChoice = Boolean(model) && contexts.options.length === 2;
-  const { levels, loading } = useThinkingLevels(effort ? model : null);
-  const thinkingLevel = effort?.thinkingLevel;
+  const contextChoice = Boolean(model && connection) && contexts.catalogWindow !== null;
+  const { levels, defaultLevel, loading } = useThinkingLevels(effort ? model : null, connection);
+  // No chosen level runs with the model's default, known once its levels load.
+  const thinkingLevel = effort
+    ? (effort.thinkingLevel ?? (loading ? undefined : defaultLevel))
+    : undefined;
   const selected =
     thinkingLevel && !levels.includes(thinkingLevel) ? (levels[0] ?? thinkingLevel) : thinkingLevel;
   const effortText = selected ? t(`thinkingLevels.levels.${selected}`) : null;
@@ -208,14 +214,14 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
                 <span className="model-config-row-value">{contextText}</span>
               </div>
             )}
-            {thinkingLevel && (
+            {effort && (
               <button
                 ref={effortRowRef}
                 type="button"
                 className="model-config-row model-config-row-nav"
                 disabled={effortDisabled}
                 title={
-                  selected === thinkingLevel
+                  !thinkingLevel || selected === thinkingLevel
                     ? t('thinkingLevels.label')
                     : t('thinkingLevels.unavailable', {
                         level: t(`thinkingLevels.levels.${thinkingLevel}`),
@@ -244,13 +250,11 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           <div className="model-config-subview">
             <ConfigBackHeader title={t('modelConfig.context')} onBack={() => show('root')} />
             <ContextOptions
-              options={contexts.options}
-              selected={contexts.selected}
+              contexts={contexts}
               listRef={optionListRef}
-              onSelect={(tier) => {
+              onSelect={(choice) => {
                 show('root');
-                if (tier !== contexts.selected)
-                  void saveModelContext(model, tier, connection.revision);
+                if (choice) void saveModelContext(model, choice, connection.revision);
               }}
             />
           </div>

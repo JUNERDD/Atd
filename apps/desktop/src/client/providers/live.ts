@@ -29,6 +29,7 @@ export function toDesktopConnection(connection: ServiceConnection): Connection {
       ? { defaultThinkingLevel: connection.defaultThinkingLevel }
       : {}),
     ...(connection.contextTiers ? { contextTiers: { ...connection.contextTiers } } : {}),
+    ...(connection.contextWindows ? { contextWindows: { ...connection.contextWindows } } : {}),
     revision: connection.revision,
     connected: connection.connected,
     ...(connection.authNotice ? { authNotice: connection.authNotice } : {}),

@@ -182,7 +182,8 @@ export function nativeSettings(
       setModel: (reference, revision, level) => providers.setModel(reference, revision, level),
       levels: (reference) => providers.levels(reference),
       contexts: (reference) => providers.contexts(reference),
-      setContext: (reference, tier, revision) => providers.setContext(reference, tier, revision),
+      setContext: (reference, choice, revision) =>
+        providers.setContext(reference, choice, revision),
       disconnect: (id, revision) => providers.disconnect(id, revision),
       remove: (id, revision) => providers.remove(id, revision),
       refresh: (id) => providers.refresh(id),

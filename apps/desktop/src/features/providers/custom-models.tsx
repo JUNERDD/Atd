@@ -52,7 +52,7 @@ export function CustomModels({
                 reasoning: false,
                 input: ['text'],
                 contextWindow: 32768,
-                maxTokens: 4096,
+                maxTokens: 16384,
                 cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
               },
             ])
@@ -105,7 +105,15 @@ export function CustomModels({
           </div>
           <div className="settings-field">
             <Label>{t('customModels.protocol')}</Label>
-            <Select value={model.api} onValueChange={(api) => update(index, { api })}>
+            <Select
+              value={model.api}
+              // A discovered level map names efforts in its own protocol's terms, so it does not
+              // carry over to another protocol.
+              onValueChange={(api) => {
+                const { thinkingLevelMap: _discarded, ...rest } = model;
+                onChange(models.map((item, i) => (i === index ? { ...rest, api } : item)));
+              }}
+            >
               <SelectTrigger aria-label={t('customModels.protocolLabel', { index: index + 1 })}>
                 <SelectValue />
               </SelectTrigger>

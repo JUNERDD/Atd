@@ -234,14 +234,19 @@ button.model-config-row-nav:disabled:hover {
   white-space: nowrap;
   font-weight: 500;
 }
+/* A long list (many offered context windows) scrolls between the back header and the footnote
+   within the popover's bounded height; the padding keeps focus outlines inside the scroller. */
 .model-config-effort-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
   padding: 4px;
+  overflow-y: auto;
 }
 .model-config-effort-option {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -271,8 +276,10 @@ button.model-config-row-nav:disabled:hover {
   flex-shrink: 0;
   color: var(--muted-foreground);
 }
-/* The hint and the footnote wrap within the width the rows already set (width 0, min-width 100%),
-   so a long translation never widens the popover. */
+/* The hint and the footnote stay within the width the rows already set (width 0, min-width 100%),
+   so a long translation never widens the popover. The footnote wraps; an option's hint keeps one
+   line, so every row of a list keeps one height, and a translation too long for it ends in an
+   ellipsis with the full text in its tooltip. */
 .model-config-option-hint,
 .model-config-note {
   width: 0;
@@ -281,7 +288,13 @@ button.model-config-row-nav:disabled:hover {
   font-size: 12px;
   line-height: 16px;
 }
+.model-config-option-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .model-config-note {
+  flex-shrink: 0;
   margin: 0;
   padding: 0 12px 8px;
 }

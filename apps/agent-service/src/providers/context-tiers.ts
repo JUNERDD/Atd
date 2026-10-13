@@ -94,31 +94,103 @@ export function selectedTier(
 }
 
 /**
- * The effective window a run of the model freezes, or undefined when the model has no tiers
- * (the run then keeps the catalog window).
+ * Windows current models are offered at (Pi's catalog clusters at 128k, 200k, 256k, 400k, 500k
+ * and 1M), in round numbers so they read as such; a limit slightly under a model's real window
+ * is safe. Local servers also serve the small windows a machine's memory allows.
+ */
+const HOSTED_WINDOWS = [128_000, 200_000, 256_000, 400_000, 500_000, 1_000_000, 2_000_000];
+const LOCAL_WINDOWS = [8_000, 16_000, 32_000, 64_000, ...HOSTED_WINDOWS];
+
+/** Choices reach down this factor below the model's largest window, keeping lists short. */
+const LADDER_SPAN = 32;
+
+/** How close a common window may come to a listed one before it counts as the same. */
+const NEAR_FRACTION = 0.1;
+
+/** The bound of a model whose window is a fallback: no source says how much it takes. */
+const UNKNOWN_LIMIT = 2_000_000;
+
+/**
+ * The windows a user may pick for one of the connection's models, smallest first, besides its
+ * catalog window and tiers, from the windows models are commonly run at. A directory catalog knows the model's window, so it only offers
+ * smaller ones. A local or custom endpoint's model is bounded by the largest window a source
+ * names (`maxContextWindow`, which may exceed the served window it runs at by default), else by
+ * `UNKNOWN_LIMIT`; a named maximum off the ladder is offered itself, so it stays reachable.
+ */
+export function contextChoices(
+  connection: ServiceConnection,
+  catalog: readonly ServiceModelDefinition[],
+  modelId: string,
+): number[] {
+  const model = catalog.find((item) => item.id === modelId);
+  if (!model) return [];
+  const tiers = connectionModelTiers(connection, catalog, modelId);
+  const shown = new Set([
+    model.contextWindow,
+    ...(tiers?.options ?? []).map((o) => o.contextWindow),
+  ]);
+  const endpoint =
+    isLocalProvider(connection.provider) ||
+    Boolean(connection.customModels?.some((item) => item.id === modelId));
+  const limit = endpoint ? (model.maxContextWindow ?? UNKNOWN_LIMIT) : Math.max(...shown);
+  // Half the model's own window stays offered even under a high bound, so a smaller one is near.
+  const floor = Math.min(limit / LADDER_SPAN, model.contextWindow / 2);
+  // A custom endpoint relays hosted models; the other local providers serve models themselves.
+  const ladder =
+    endpoint && connection.provider !== 'openai-compatible' ? LOCAL_WINDOWS : HOSTED_WINDOWS;
+  // A named maximum off the ladder is offered itself, so the model's full window stays reachable.
+  const maximum = endpoint && model.maxContextWindow && !shown.has(limit) ? limit : undefined;
+  const fixed = maximum ? [...shown, maximum] : [...shown];
+  // A common window within 10% of one already listed would read as the same choice twice.
+  const distinct = (window: number) =>
+    fixed.every((other) => Math.abs(window - other) > other * NEAR_FRACTION);
+  const choices = ladder.filter((window) => window <= limit && window >= floor && distinct(window));
+  if (maximum) choices.push(maximum);
+  return choices.sort((a, b) => a - b);
+}
+
+/** The window the user set for one of the connection's models, for any provider. */
+export function customContextWindow(
+  connection: ServiceConnection,
+  modelId: string,
+): number | undefined {
+  return connection.contextWindows?.[modelId];
+}
+
+/**
+ * The effective window a run of the model freezes: the user's custom window, else the selected
+ * tier's; undefined when neither applies (the run then keeps the catalog window).
  */
 export function effectiveContextWindow(
   connection: ServiceConnection,
   catalog: readonly ServiceModelDefinition[],
   modelId: string,
 ): number | undefined {
+  const custom = customContextWindow(connection, modelId);
+  if (custom) return custom;
   const derived = connectionModelTiers(connection, catalog, modelId);
   if (!derived) return undefined;
   const tier = selectedTier(connection, modelId, derived);
   return derived.options.find((option) => option.tier === tier)?.contextWindow;
 }
 
-/** The contexts response for one model; empty without tiers. */
+/** The contexts response for one model: its tiers (none without a real choice) and windows. */
 export function contextsResponse(
   connection: ServiceConnection,
   catalog: readonly ServiceModelDefinition[],
   modelId: string,
 ): ProviderContextsResponse {
+  const windows = {
+    catalogWindow: catalog.find((item) => item.id === modelId)?.contextWindow ?? null,
+    choices: contextChoices(connection, catalog, modelId),
+    custom: customContextWindow(connection, modelId) ?? null,
+  };
   const derived = connectionModelTiers(connection, catalog, modelId);
-  if (!derived) return { options: [], defaultTier: null, selected: null };
+  if (!derived) return { options: [], defaultTier: null, selected: null, ...windows };
   return {
     options: derived.options,
     defaultTier: derived.defaultTier,
     selected: selectedTier(connection, modelId, derived),
+    ...windows,
   };
 }

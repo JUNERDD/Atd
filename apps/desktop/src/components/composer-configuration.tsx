@@ -43,7 +43,7 @@ export function ComposerConfiguration({
           compact
           connections={connections}
           model={shown}
-          thinkingLevel={policy.thinkingLevel ?? connection?.defaultThinkingLevel ?? 'off'}
+          thinkingLevel={policy.thinkingLevel ?? connection?.defaultThinkingLevel}
           onModelChange={(next) => onPolicyChange({ ...policy, model: next })}
           onThinkingLevelChange={(thinkingLevel) => onPolicyChange({ ...policy, thinkingLevel })}
           onOpenProviders={onOpenSettings}

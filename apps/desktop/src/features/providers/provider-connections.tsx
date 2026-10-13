@@ -122,8 +122,8 @@ export function ProviderConnections({
                 <ModelConfigPopover
                   connections={[connection]}
                   model={model}
-                  // Runs without a saved level run with reasoning off.
-                  thinkingLevel={connection.defaultThinkingLevel ?? 'off'}
+                  // Without a saved level the popover shows the model's own default.
+                  thinkingLevel={connection.defaultThinkingLevel}
                   scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
                   disabled={pending}
                   onModelChange={(reference) =>

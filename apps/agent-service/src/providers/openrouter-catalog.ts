@@ -4,6 +4,7 @@ import type { Provider } from '@earendil-works/pi-ai';
 import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
 import { CatalogFailure, readCatalogJson } from './catalog-http.js';
 import { toServiceModel } from './catalog.js';
+import { publishedDefaultLevel } from './endpoint-capabilities.js';
 import { uniqueModels } from './connection-view.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1';
@@ -105,7 +106,8 @@ export async function loadOpenRouterModels(
       const contextWindow = entry.context_length ?? model?.contextWindow;
       if (!contextWindow) return [];
       // Keep Pi's native Anthropic transport where supported; new models use OpenRouter's
-      // documented Chat Completions API. Unknown output limits use a conservative request cap.
+      // documented Chat Completions API. An unknown output limit takes Pi's own default for a
+      // registered model (16384); Pi sends it as the request cap, so less truncates reasoning.
       const api = model?.api === 'anthropic-messages' ? model.api : 'openai-completions';
       // The service can represent token thresholds. Skip time-based or unknown conditions,
       // as OpenRouter requires, instead of applying their prices to every request.
@@ -128,23 +130,27 @@ export async function loadOpenRouterModels(
             cacheWrite: perMillion(rates.input_cache_write),
           };
         });
+      const reasoning =
+        entry.supported_parameters.includes('reasoning') ||
+        entry.supported_parameters.includes('include_reasoning');
+      // Parse keeps the entry's `reasoning` object, which carries OpenRouter's default effort.
+      const defaultThinkingLevel = reasoning ? publishedDefaultLevel(entry) : undefined;
       return [
         {
           id: entry.id,
           name: entry.name,
           api,
           baseUrl: api === 'anthropic-messages' ? 'https://openrouter.ai/api' : OPENROUTER_URL,
-          reasoning:
-            entry.supported_parameters.includes('reasoning') ||
-            entry.supported_parameters.includes('include_reasoning'),
+          reasoning,
           ...(model?.thinkingLevelMap ? { thinkingLevelMap: model.thinkingLevelMap } : {}),
+          ...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
           input: entry.architecture.input_modalities.includes('image')
             ? ['text', 'image']
             : ['text'],
           contextWindow,
           maxTokens: Math.min(
             contextWindow,
-            entry.top_provider.max_completion_tokens ?? model?.maxTokens ?? 4096,
+            entry.top_provider.max_completion_tokens ?? model?.maxTokens ?? 16384,
           ),
           cost: {
             input: perMillion(entry.pricing.prompt),

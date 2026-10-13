@@ -14,7 +14,7 @@ import { fixtureCommands } from './command-fixtures';
 import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
 import type { PermissionRequest } from '../src/client/agent/permission-schema';
 import type { QueueState } from '../src/client/agent/transcript-schema';
-import type { ModelThinkingLevel } from '../src/client/providers/schema';
+import { providerBridgeFixture } from './provider-bridge-fixture';
 
 /** Memory with nothing saved, as a fresh data directory has it. */
 /** The first fixture command, prepared as a launch with nothing captured. */
@@ -289,25 +289,7 @@ export function installBridge(extras?: {
       ),
       close: vi.fn(async () => {}),
       get: vi.fn(async () => settings),
-      providers: {
-        catalog: vi.fn(async () => []),
-        save: vi.fn(async () => settings.connections[0]!),
-        setDefault: vi.fn(async () => {}),
-        setModel: vi.fn(async () => {}),
-        levels: vi.fn(async (): Promise<ModelThinkingLevel[]> => ['off', 'low', 'high']),
-        contexts: vi.fn(async () => ({ options: [], defaultTier: null, selected: null })),
-        setContext: vi.fn(async () => {}),
-        disconnect: vi.fn(async () => {}),
-        remove: vi.fn(async () => undefined),
-        refresh: vi.fn(async () => {}),
-        refreshCatalogs: vi.fn(async () => {}),
-        verify: vi.fn(async () => {}),
-        login: vi.fn(async () => Promise.reject(new Error('Not used'))),
-        answer: vi.fn(async () => {}),
-        cancel: vi.fn(async () => {}),
-        openLink: vi.fn(async () => {}),
-        onLogin: () => () => {},
-      },
+      providers: providerBridgeFixture(() => settings.connections[0]!),
       setLanguage: vi.fn(async (language: SettingsSnapshot['language']) =>
         writeSettings({ language }),
       ),

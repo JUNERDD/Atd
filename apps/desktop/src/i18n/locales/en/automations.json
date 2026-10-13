@@ -246,7 +246,7 @@
     "effortOwn": "This automation sets its own effort.",
     "effortReset": "Use inherited effort",
     "effortFromCommand": "Effort follows the command ({{level}}) until you choose one here.",
-    "effortFromConnection": "Effort follows the connection’s default until you choose one here.",
+    "effortFromConnection": "Effort follows the connection’s default, or the model’s own when the connection has none, until you choose one here.",
     "tools": "Allowed tools",
     "commandTools": "Runs use the command’s own tools.",
     "memory": "Use memory",

@@ -244,7 +244,7 @@
     "effortOwn": "此自动化使用自己设定的强度。",
     "effortReset": "恢复继承",
     "effortFromCommand": "强度沿用命令的设置（{{level}}），在此选择后将覆盖。",
-    "effortFromConnection": "强度沿用连接的默认值，在此选择后将覆盖。",
+    "effortFromConnection": "强度沿用连接的默认值；连接未设置时沿用模型自身的默认值。在此选择后将覆盖。",
     "tools": "允许的工具",
     "commandTools": "运行时使用命令自己的工具。",
     "memory": "使用记忆",

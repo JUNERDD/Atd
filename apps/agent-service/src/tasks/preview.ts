@@ -16,7 +16,7 @@ import { defaultArguments, resolveCommandInstructions } from '../commands/templa
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
 import {
-  loadRunContextWindow,
+  loadRunCatalog,
   resolveRunModel,
   resolveRunThinkingLevel,
   selectRunModel,
@@ -71,12 +71,14 @@ export async function resolvePreview(
     body.policy?.tools ?? (command ? snapshotToolsFor(command.tools) : [...DEFAULT_RUN_TOOLS]);
   const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : true);
   // The policy's pick, else the command's own level, else the connection's default.
+  const catalog = await loadRunCatalog(connections, selection);
   const thinkingLevel = resolveRunThinkingLevel(
     connections,
     model,
     commandThinkingLevel(body.policy?.thinkingLevel, command?.thinkingLevel),
+    catalog,
   );
-  const contextWindow = (await loadRunContextWindow(connections, selection))(model);
+  const contextWindow = catalog.contextWindow(model);
   const snapshot = parse(RunSnapshotSchema, {
     input,
     instructions,

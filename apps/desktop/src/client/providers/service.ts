@@ -14,9 +14,10 @@ import { ProviderLoginClient } from './login-client';
 import type {
   Connection,
   ConnectionDraft,
-  ContextTier,
   LoginState,
   ModelContexts,
+  ModelContextChoice,
+  ModelLevels,
   ModelReference,
   ModelThinkingLevel,
   ProviderCatalogEntry,
@@ -129,9 +130,13 @@ export class ProviderService {
     );
   }
 
-  async setContext(reference: ModelReference, tier: ContextTier, revision: number): Promise<void> {
+  async setContext(
+    reference: ModelReference,
+    choice: ModelContextChoice,
+    revision: number,
+  ): Promise<void> {
     await this.write((options) =>
-      setProviderContext(options, reference.connectionId, reference.modelId, tier, revision),
+      setProviderContext(options, reference.connectionId, reference.modelId, choice, revision),
     );
   }
 
@@ -169,27 +174,28 @@ export class ProviderService {
   }
 
   /**
-   * The thinking levels Pi accepts for one saved connection's model, lowest first. Until the
-   * live list loads, the settings snapshot carries the local store's connections, whose ids the
-   * service does not know; a reference outside the live list answers no levels, and the renderer
-   * asks again once the live snapshot replaces that reference.
+   * The thinking levels Pi accepts for one saved connection's model, lowest first, and the level
+   * it runs at when none is chosen. A connection outside the service's live list answers no
+   * levels and defaults to off.
    */
-  async levels(reference: ModelReference): Promise<ModelThinkingLevel[]> {
-    if (!(await this.isLive(reference.connectionId))) return [];
-    const { levels } = await getProviderLevels(
-      this.options(),
-      reference.connectionId,
-      reference.modelId,
-    );
-    return levels;
+  async levels(reference: ModelReference): Promise<ModelLevels> {
+    if (!(await this.isLive(reference.connectionId))) return { levels: [], defaultLevel: 'off' };
+    return getProviderLevels(this.options(), reference.connectionId, reference.modelId);
   }
 
   /**
-   * The context tiers one saved connection's model offers. Like `levels`, a reference outside the
-   * live list (the local store's connections before the live list loads) answers no tiers.
+   * One saved connection's model's context windows. Like `levels`, a connection outside the live
+   * list answers no tiers and no windows.
    */
   async contexts(reference: ModelReference): Promise<ModelContexts> {
-    const none: ModelContexts = { options: [], defaultTier: null, selected: null };
+    const none: ModelContexts = {
+      options: [],
+      defaultTier: null,
+      selected: null,
+      catalogWindow: null,
+      choices: [],
+      custom: null,
+    };
     if (!(await this.isLive(reference.connectionId))) return none;
     return getProviderContexts(this.options(), reference.connectionId, reference.modelId);
   }

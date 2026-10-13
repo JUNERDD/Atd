@@ -35,8 +35,19 @@ export const ServiceModelDefinitionSchema = Type.Object(
         max: Type.Optional(Type.Union([Type.String(), Type.Null()])),
       }),
     ),
+    /**
+     * The level the server or model maker publishes as the model's default, when it publishes
+     * one. Runs fall back to it only when neither the request nor the connection names a level.
+     */
+    defaultThinkingLevel: Type.Optional(ThinkingLevelSchema),
     input: Type.Array(Type.Union([Type.Literal('text'), Type.Literal('image')])),
     contextWindow: Type.Integer({ minimum: 1 }),
+    /**
+     * The largest window the model takes, when a source names it: the server's published maximum
+     * (Ollama's trained length, LM Studio's maximum load) or the window the server or the model
+     * maker reports. Bounds the windows a user may choose; absent on a fallback window.
+     */
+    maxContextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
     maxTokens: Type.Integer({ minimum: 1 }),
     cost: Type.Object({
       input: Type.Number(),
@@ -67,3 +78,9 @@ export type ServiceModelDefinition = Static<typeof ServiceModelDefinitionSchema>
  */
 export const ContextTierSchema = Type.Union([Type.Literal('standard'), Type.Literal('long')]);
 export type ContextTier = Static<typeof ContextTierSchema>;
+
+/**
+ * A context window the user sets for one model, overriding its catalog window and tiers. The floor
+ * leaves room for the compaction reserve; the ceiling is far above any served window.
+ */
+export const CustomContextWindowSchema = Type.Integer({ minimum: 1024, maximum: 100_000_000 });

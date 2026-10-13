@@ -26,7 +26,8 @@ import {
   presentConnection,
   presentStored,
 } from './connection-view.js';
-import { connectionModelTiers, contextsResponse } from './context-tiers.js';
+import { modelDefaultThinkingLevel } from './default-thinking.js';
+import { connectionModelTiers, contextChoices, contextsResponse } from './context-tiers.js';
 import type { ProviderLogins } from './login.js';
 import { connectionModel, refreshCatalog, verifyModel, type ProviderStores } from './runtime.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
@@ -136,9 +137,13 @@ export function registerConnectionRoutes(
       const current = data.connections.find((item) => item.connectionId === live.connectionId);
       if (!current || current.revision !== body.expectedRevision) throw new ConflictError(STALE);
       current.defaultModel = body.modelId;
-      // A requested level, or the saved one that belonged to the previous model, is kept only as
-      // far as this model supports it.
-      if (model && level) current.defaultThinkingLevel = clampThinkingLevel(model, level);
+      // A requested level is kept as far as this model supports it. A saved one that belonged to
+      // the previous model is kept only if this model offers it; otherwise it is forgotten, so the
+      // model's own default applies instead of a clamped leftover such as `off`.
+      if (model && body.thinkingLevel)
+        current.defaultThinkingLevel = clampThinkingLevel(model, body.thinkingLevel);
+      else if (model && level && !getSupportedThinkingLevels(model).includes(level))
+        delete current.defaultThinkingLevel;
       current.revision += 1;
       if (!data.defaultConnectionId && current.connected)
         data.defaultConnectionId = current.connectionId;
@@ -150,7 +155,13 @@ export function registerConnectionRoutes(
     const { modelId } = parse(ProviderLevelsQuerySchema, request.query);
     const { live, ...opened } = await load(request.params.connectionId);
     const model = await connectionModel(opened, live, modelId);
-    return { levels: model ? getSupportedThinkingLevels(model) : [] };
+    const { catalog = [] } = await presentConnection(live);
+    const definition = catalog.find((item) => item.id === modelId);
+    return {
+      levels: model ? getSupportedThinkingLevels(model) : [],
+      defaultLevel:
+        model && definition ? modelDefaultThinkingLevel(live.provider, definition) : 'off',
+    };
   });
 
   app.get<Params>('/v1/providers/:connectionId/contexts', RENDERER_ROUTE, async (request) => {
@@ -165,17 +176,33 @@ export function registerConnectionRoutes(
     const { live, connections } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
     const { catalog = [] } = await presentConnection(live);
+    if (!catalog.some((model) => model.id === body.modelId))
+      throw new TypeError('This model is unavailable in the connection catalog.');
     const derived = connectionModelTiers(live, catalog, body.modelId);
-    if (!derived) throw new TypeError('This model has no context window choice.');
+    if ('tier' in body && !derived) throw new TypeError('This model has no context window tiers.');
+    if (
+      'contextWindow' in body &&
+      body.contextWindow !== null &&
+      !contextChoices(live, catalog, body.modelId).includes(body.contextWindow)
+    )
+      throw new TypeError('This model does not offer that context window.');
     await connections.change((data) => {
       const current = data.connections.find((item) => item.connectionId === live.connectionId);
       if (!current || current.revision !== body.expectedRevision) throw new ConflictError(STALE);
-      // Only choices that differ from the default are stored; choosing the default forgets one.
-      const tiers = { ...current.contextTiers };
-      if (body.tier === derived.defaultTier) delete tiers[body.modelId];
-      else tiers[body.modelId] = body.tier;
-      if (Object.keys(tiers).length) current.contextTiers = tiers;
-      else delete current.contextTiers;
+      // A tier write also forgets the custom window, so the chosen tier is what runs use.
+      const windows = { ...current.contextWindows };
+      if ('tier' in body || body.contextWindow === null) delete windows[body.modelId];
+      else windows[body.modelId] = body.contextWindow;
+      if (Object.keys(windows).length) current.contextWindows = windows;
+      else delete current.contextWindows;
+      if ('tier' in body && derived) {
+        // Only tiers that differ from the default are stored; choosing the default forgets one.
+        const tiers = { ...current.contextTiers };
+        if (body.tier === derived.defaultTier) delete tiers[body.modelId];
+        else tiers[body.modelId] = body.tier;
+        if (Object.keys(tiers).length) current.contextTiers = tiers;
+        else delete current.contextTiers;
+      }
       current.revision += 1;
     });
     return { connection: await presentStored(connections, live.connectionId) };

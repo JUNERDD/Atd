@@ -1,7 +1,8 @@
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceConnection, TaskRun } from '@atd/agent-contracts';
+import type { ServiceModelDefinition, TaskRun } from '@atd/agent-contracts';
 import { AuthRequired, TempCredentialStore } from './credentials.js';
 import { ConnectionStore } from './credentials/connections.js';
 import { KeyringBackend } from './credentials/keyring.js';
@@ -28,14 +29,16 @@ export interface RunModel {
    */
   childRuntime: () => Promise<ModelRuntime>;
   /**
-   * The saved connection the runtime is bound to, and the frozen window it applies to one model
-   * (null: every model keeps its catalog window); null on temporary credentials.
+   * The saved connection the runtime is bound to, the frozen window it applies to one model
+   * (null: every model keeps its catalog window), and the connection's presented catalog the
+   * runtime was built from; null on temporary credentials.
    */
   binding: {
     stores: ProviderStores;
     connectionId: string;
     configurationId: string;
     override: ContextOverride | null;
+    catalog: readonly ServiceModelDefinition[];
   } | null;
 }
 
@@ -79,7 +82,8 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
       `${connection.name} is disconnected. Reconnect it in Settings → Providers, then send again.`,
     );
   const credentials = connectionCredentials(stores, connection);
-  const override = await contextOverrideFor(connection, run);
+  const { catalog = [] } = await presentConnection(connection);
+  const override = contextOverrideFor(catalog, run);
   const models = await connectionRuntime(stores, connection, credentials, override);
   const model = models.getModel(connection.provider, selected.modelId);
   if (!model)
@@ -95,7 +99,7 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
     models,
     model,
     childRuntime: () => connectionRuntime(stores, connection, credentials, override),
-    binding: { stores, connectionId, configurationId, override: override ?? null },
+    binding: { stores, connectionId, configurationId, override: override ?? null, catalog },
   };
 }
 
@@ -103,13 +107,12 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
  * The override that gives the run's model its frozen window, or undefined when the catalog
  * window already is that window. The output limit is capped at the window when it exceeds it.
  */
-async function contextOverrideFor(
-  connection: ServiceConnection,
+function contextOverrideFor(
+  catalog: readonly ServiceModelDefinition[],
   run: TaskRun,
-): Promise<ContextOverride | undefined> {
+): ContextOverride | undefined {
   const { contextWindow, model } = run.snapshot;
   if (!contextWindow) return undefined;
-  const { catalog = [] } = await presentConnection(connection);
   const definition = catalog.find((item) => item.id === model.modelId);
   const maxTokens = definition && definition.maxTokens > contextWindow ? contextWindow : undefined;
   if (definition?.contextWindow === contextWindow && maxTokens === undefined) return undefined;
@@ -119,9 +122,11 @@ async function contextOverrideFor(
 /**
  * The model for a later run of the same task on this runtime, or null when
  * that run needs a new runtime: another connection, a changed configuration,
- * lost credentials, a model the runtime was not built with, or a frozen window
- * the runtime does not give the model. Connectivity is reread first, so a
- * reconnect or disconnect since the last run applies.
+ * lost credentials, a model the runtime was not built with, a model whose
+ * catalog definition changed since (a refresh that corrected its window or
+ * reasoning), or a frozen window the runtime does not give the model.
+ * Connectivity is reread first, so a reconnect or disconnect since the last
+ * run applies.
  */
 export async function reuseRunModel(current: RunModel, run: TaskRun): Promise<Model<Api> | null> {
   const selected = run.snapshot.model;
@@ -143,6 +148,10 @@ export async function reuseRunModel(current: RunModel, run: TaskRun): Promise<Mo
     return null;
   const model = current.models.getModel(connection.provider, selected.modelId);
   if (!model) return null;
+  const { catalog = [] } = await presentConnection(connection);
+  const definitionOf = (models: readonly ServiceModelDefinition[]) =>
+    models.find((item) => item.id === selected.modelId);
+  if (!isDeepStrictEqual(definitionOf(binding.catalog), definitionOf(catalog))) return null;
   // A run without a frozen window expects the catalog one, which an override would replace.
   const expected = run.snapshot.contextWindow;
   const overridden = binding.override?.modelId === selected.modelId;

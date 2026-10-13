@@ -9,6 +9,7 @@ import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { presentConnection } from '../providers/connection-view.js';
 import { effectiveContextWindow } from '../providers/context-tiers.js';
+import { modelDefaultThinkingLevel } from '../providers/default-thinking.js';
 
 /** Connection id of runs on the operator's environment-injected credentials. */
 export const TEMP_CONNECTION_ID = 'temp';
@@ -77,43 +78,63 @@ export function resolveRunModel(
 }
 
 /**
- * The requested level, else the level saved on the run's connection; absent
- * runs with reasoning off. Pi clamps it to the model when the run starts.
+ * The requested level, else the level saved on the run's connection, else the model's own
+ * default (`modelDefaultThinkingLevel`). Absent only for a model outside the loaded catalog,
+ * which then runs with reasoning off. Pi clamps the level to the model when the run starts.
  */
 export function resolveRunThinkingLevel(
   connections: ConnectionStore,
   model: ServiceModel,
   requested: ThinkingLevel | undefined,
+  catalog: RunCatalog,
 ): ThinkingLevel | undefined {
   return (
     requested ??
     connections.data.connections.find((item) => item.connectionId === model.connectionId)
-      ?.defaultThinkingLevel
+      ?.defaultThinkingLevel ??
+    catalog.defaultThinkingLevel(model)
   );
 }
 
-/** Resolves the context window a run of a model freezes; undefined keeps the catalog window. */
-export type RunContextWindow = (model: ServiceModel) => number | undefined;
+/** What a run freezes from its connection's catalog; undefined for a model outside it. */
+export interface RunCatalog {
+  /** The window to freeze; undefined keeps the catalog window. */
+  contextWindow(model: ServiceModel): number | undefined;
+  /** The model's level when neither the request nor the connection names one. */
+  defaultThinkingLevel(model: ServiceModel): ThinkingLevel | undefined;
+}
+
+const NO_CATALOG: RunCatalog = {
+  contextWindow: () => undefined,
+  defaultThinkingLevel: () => undefined,
+};
 
 /**
- * Loads what `RunContextWindow` needs for the connection a selection (else the default) names:
- * its presented catalog and saved tiers. Submit loads it before acceptance, so the freeze itself
- * stays synchronous; a model on another connection, or the temp connection, gets no window.
+ * Loads `RunCatalog` for the connection a selection (else the default) names: its presented
+ * catalog and saved tiers. Submit loads it before acceptance, so the freeze itself stays
+ * synchronous; a model on another connection, or the temp connection, gets nothing from it.
  */
-export async function loadRunContextWindow(
+export async function loadRunCatalog(
   connections: ConnectionStore,
   selection: ModelSelection | undefined,
-): Promise<RunContextWindow> {
+): Promise<RunCatalog> {
   const connectionId = selection?.connectionId ?? connections.data.defaultConnectionId;
   const connection = connections.data.connections.find(
     (item) => item.connectionId === connectionId,
   );
-  if (!connection) return () => undefined;
+  if (!connection) return NO_CATALOG;
   const { catalog = [] } = await presentConnection(connection);
-  return (model) =>
-    model.connectionId === connection.connectionId
-      ? effectiveContextWindow(connection, catalog, model.modelId)
-      : undefined;
+  const owns = (model: ServiceModel) => model.connectionId === connection.connectionId;
+  return {
+    contextWindow: (model) =>
+      owns(model) ? effectiveContextWindow(connection, catalog, model.modelId) : undefined,
+    defaultThinkingLevel: (model) => {
+      const definition = owns(model)
+        ? catalog.find((item) => item.id === model.modelId)
+        : undefined;
+      return definition && modelDefaultThinkingLevel(connection.provider, definition);
+    },
+  };
 }
 
 function tempModel(): ServiceModel {

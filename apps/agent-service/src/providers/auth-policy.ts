@@ -104,6 +104,7 @@ export function retireLegacyLogin(connection: ServiceConnection): boolean {
   delete connection.catalog;
   delete connection.catalogError;
   delete connection.contextTiers;
+  delete connection.contextWindows;
   connection.customModels = [];
   connection.options = {};
   connection.revision += 1;

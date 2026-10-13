@@ -16,7 +16,7 @@ import {
   ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
   ProviderVerifyRequestSchema,
-  type ContextTier,
+  type ProviderContextChoice,
   type ProviderConnectionResponse,
   type ProviderContextsResponse,
   type ProviderDefaultResponse,
@@ -162,12 +162,15 @@ export function getProviderContexts(
   );
 }
 
-/** Remembers a model's context tier for later runs on the connection; revision-guarded. */
+/**
+ * Remembers a model's context window for later runs on the connection: a tier, or a custom window
+ * (null clears it); revision-guarded.
+ */
 export function setProviderContext(
   options: AgentClientOptions,
   connectionId: string,
   modelId: string,
-  tier: ContextTier,
+  choice: ProviderContextChoice,
   expectedRevision: number,
   fetchImpl?: typeof fetch,
 ): Promise<ProviderConnectionResponse> {
@@ -175,7 +178,7 @@ export function setProviderContext(
     options,
     connectionPath(connectionId, '/context'),
     'PUT',
-    parse(ProviderContextRequestSchema, { expectedRevision, modelId, tier }),
+    parse(ProviderContextRequestSchema, { expectedRevision, modelId, ...choice }),
     decodeConnection,
     fetchImpl,
   );

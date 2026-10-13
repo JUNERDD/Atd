@@ -102,6 +102,40 @@ export async function directoryModels(providerId: string): Promise<ServiceModelD
   }
 }
 
+/**
+ * Model makers whose Pi directory entries describe their own models, in lookup order. Aggregators
+ * are left out: they may list the same id with their own limits (opencode serves `gpt-6-sol` with
+ * a 1,050,000-token window, openai with 272,000).
+ */
+const MODEL_MAKERS = [
+  'openai',
+  'anthropic',
+  'google',
+  'xai',
+  'deepseek',
+  'mistral',
+  'moonshotai',
+  'zai',
+  'minimax',
+  'xiaomi',
+  'meta',
+];
+
+/**
+ * The model makers' own definitions by lower-cased model id, for endpoints that relay their models
+ * under the maker's id (in any case: `MiniMax-M2` is served as `minimax-m2`) and publish nothing
+ * else about them. The first maker listing an id wins.
+ */
+export async function modelMakerDirectory(): Promise<Map<string, ServiceModelDefinition>> {
+  const byId = new Map<string, ServiceModelDefinition>();
+  for (const provider of MODEL_MAKERS)
+    for (const model of await directoryModels(provider)) {
+      const key = model.id.toLowerCase();
+      if (!byId.has(key)) byId.set(key, model);
+    }
+  return byId;
+}
+
 /** Pi providers plus locals; a failed directory read is retryable, not a partial success. */
 export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
   try {
