@@ -2,7 +2,7 @@
 
 Status: Ready（需先满足[实施前置条件](#实施前置条件)）— 目标版本 0.9.0；macOS 15 与 Intel 同一轮交付，Intel 验收优先；`release/0.9.0` 已切出，实施未开始
 Created: 2026-10-11
-Revised: 2026-10-13（第七次修订：按 0.8.1 之后的代码校正事实与引用，不改变范围与决策，见 [Review Outcome](#review-outcome)）
+Revised: 2026-10-13（第八次修订：明确兼容代码的封装方式；第七次修订按 0.8.1 之后的代码校正事实与引用。两次都不改变范围与验收，见 [Review Outcome](#review-outcome)）
 Approval: 已授权调研、计划编写与计划修订；实施及各项对外动作按[授权模型](#授权模型)另行授权
 
 ## Summary
@@ -304,6 +304,16 @@ runner 现状：
   - 26.0/26.1 上使用 `rows` 的 Textarea 改为按内容增高，与 26.2+ 的现有行为一致；
   - 15 上不复现液态玻璃（见 M1/M2）。
 
+### 兼容代码的封装
+
+兼容代码按能力封装，不建全局的版本开关或版本枚举。
+
+- **判断能力，不判断版本号：** Swift 用 `#available`/`@available`，私有 API 用 `responds(to:)` 探测，Web 用 `@supports` 与 `CSS.supports`。不读取 `ProcessInfo.operatingSystemVersion` 来决定功能。Swift 只在 `#available` 的词法范围内放行新 API，包装成返回 `Bool` 的函数会失去编译器的可用性检查，这也是不建全局开关的原因。
+- **有设计取舍的能力归所属类型：** 15 与 26 的表现不同、需要设计决定的能力，分支放在拥有它的类型内部：材质归 `NativeMaterialView` 与 `GlassSurface`（M1/M2），截图归 `DisplayFreezer`（M2），WebKit 私有设置归 `WebKitPrivate`，Web 输入控件归共享 `Textarea`（M3）。调用方拿到的是与版本无关的接口。
+- **纯 API 补丁集中在 `Backport`：** 15 上只需"不做"或"直接返回内容"、不涉及设计的 SwiftUI 补丁，统一放在 `apps/macos/Sources/AIShell/Support/Backport.swift`（拟新增），以 `extension View { var backport: Backport<Self> }` 的命名空间调用，例如 `.backport.scrollEdgeEffectHidden()`。首批成员见 M2：`scrollEdgeEffectHidden`、`glassEffectTransition` 与 `GlassEffectContainer` 的包装。文件遵守 350 行上限；出现 AppKit 的纯补丁时同样放在这里。
+- **标注删除时机：** `Backport` 的每个成员都标注 `@available(macOS, deprecated: 26, message: "…")`，消息写明对应的原生 API。最低系统提到 26 时，编译器会在每个调用点给出弃用警告；所属类型内的 `#available(macOS 26, *)` 届时也会被报为多余检查。两者都是警告（项目未开启 warnings-as-errors），由提升最低系统的那次改动负责清理。分支在 M2 降低部署目标之前仍以 26 为目标，这段时间内这些警告属于预期，不加抑制。
+- **两条路径都要验证：** 两个分支都由编译覆盖，`macos-26` 与 `macos-15` 上都运行 `swift test`（I4），Web 侧由 `lib` 约束与真实页面验收覆盖（M3）。
+
 ## Plan Todos
 
 I 项负责架构与分发，M 项负责系统兼容，R1 是正式发布门槛，G1 是发布后的上线步骤。编号只区分工作内容；I1–I7 与 M1–M4 全部属于 0.9.0 的同一个交付里程碑。原 M5（macOS 15/26 兼容矩阵检查）已并入 I7。
@@ -424,14 +434,14 @@ I 项负责架构与分发，M 项负责系统兼容，R1 是正式发布门槛�
     - 宣传片的规格文案（原 `apps/promo-video/src/copy.ts`）已迁到 atd-films 仓库，不随本 PR 修改；需要时在该仓库另行处理。
   - **更新 `AGENTS.md`：**
     - Commands And Local Runtime：按宿主架构构建 Debug；release 在两种原生 runner 上构建，发布两种 dmg 与两个 feed；产物模式与 RC 版本号。
-    - Native Shell And Design Boundaries：`NSGlassEffectView` 与 WebKit 系统玻璃只在 26 可用；15 由 `NativeMaterialView` 的 `NSVisualEffectView` 路径持有外层材质，页面走 `surface-glass` 的 fallback。
+    - Native Shell And Design Boundaries：`NSGlassEffectView` 与 WebKit 系统玻璃只在 26 可用；15 由 `NativeMaterialView` 的 `NSVisualEffectView` 路径持有外层材质，页面走 `surface-glass` 的 fallback。同时写入[兼容代码的封装](#兼容代码的封装)的规则：新增的 macOS 26 专用 API 只能放在所属类型内部或 `Backport` 中，调用方不写版本判断，不引入全局版本开关，`Backport` 成员标注 `deprecated: 26`。
     - Validation：CI 新增 Intel 打包演练与 `macos-15` 的 Swift 测试。
   - 按 AGENTS 的设计同步规则，把下载区的 Apple silicon / Intel 选择同步到项目 Figma 的 Website 页面（宽版与窄版），保留官网现有的设计数值。官网 PR 保持草稿状态。它的 Vercel 预览会链接尚不存在的 x64 DMG，属于预期情况，不对外分享。
   - 验收：
     - 官网分支用 `pnpm --filter @atd/website build` 构建通过。
     - 两种语言的链接、文件名、支持范围与 feed 一致。
     - 项目 Figma 的 Website 页面有下载区的架构选择（宽版与窄版），官网原有的设计数值未变。
-    - AGENTS 不再描述已不成立的单架构、单材质约束。
+    - AGENTS 不再描述已不成立的单架构、单材质约束，并写明兼容代码的封装规则。
 - [ ] **I7：完成联合交付验收，Intel + macOS 15 为硬门槛（含原 M5）。** 依赖 I1–I6 和 M1–M4。
   - **执行方式：** 按[验收机器上的操作](#验收机器上的操作)，由用户在机器上执行，agent 准备清单与构建，并整理证据。
   - **隔离要求：** 验收只在专用机器或专用 macOS 账户上进行。`defaults write com.junerdd.ai`、数据保留检查与 0.8.x → RC 升级会改动正式 bundle ID 与默认数据目录，绝不在日常使用的安装上进行。测试结束后删除写入的 defaults 键。
@@ -523,7 +533,7 @@ I 项负责架构与分发，M 项负责系统兼容，R1 是正式发布门槛�
   - **顺序：** 分支保持部署目标 26，先写出下面三部分的 15 分支，再做 15 验证构建，最后降低部署目标：
     1. `DisplayFreezer` 的 15 分支；
     2. 现有共享玻璃修饰器 `GlassSurface` 的 15 分支第一版，用候选的 behind-window representable；
-    3. `Island/IslandAnswerScroll.swift` 的 `.scrollEdgeEffectHidden`：用一个带可用性检查的扩展，15 上不做任何事（15 没有滚动边缘效果）。
+    3. `Island/IslandAnswerScroll.swift` 的 `.scrollEdgeEffectHidden`：改用 `Backport` 的同名成员（见[兼容代码的封装](#兼容代码的封装)），15 上不做任何事（15 没有滚动边缘效果）。
 
     评审实测，在这三部分写出之前，15 部署目标下 MiniPanel、命令岛和 DisplayFreezer 都编译不过；而桩掉它们又会去掉要验证的对象。
 
@@ -538,7 +548,7 @@ I 项负责架构与分发，M 项负责系统兼容，R1 是正式发布门槛�
     - 两种结果都记为 15 上已接受的设计差异，由 M4 的设计变体体现。
   - **共享玻璃修饰器：** 不新增修饰器。MiniPanel 与 `Island/IslandView.swift` 已共用 `Windows/GlassSurface.swift` 的 `glassSurface(in:animation:opacity:)` → `clippedGlass(in:)`，形状来自 `MiniPanelGlassOutline`；15/26 的可用性分支放在 `clippedGlass(in:)` 内部。
     - 26 保留 `GlassEffectContainer`、`glassEffect` 与 `glassEffectTransition`；15 无法复现相邻形状融合。
-    - `GlassEffectContainer` 在修饰器之外直接包住 `MiniPanelView` 与 `IslandView` 的内容，`glassEffectTransition` 也在修饰器之外。为它们在 `GlassSurface.swift` 中加一个同样带可用性分支的容器包装与过渡扩展（15 上直接返回内容、不做过渡），两个视图改用它们；`GlassSurfaceFace` 等其余消费者以重编通过为准。
+    - `GlassEffectContainer` 在修饰器之外直接包住 `MiniPanelView` 与 `IslandView` 的内容，`glassEffectTransition` 也在修饰器之外。它们在 15 上只需直接返回内容、不做过渡，不涉及设计，所以作为 `Backport` 的成员（容器包装与 `glassEffectTransition`），不放进 `GlassSurface`；两个视图改用它们。`GlassSurface` 只保留有设计取舍的材质逻辑；`GlassSurfaceFace` 等其余消费者以重编通过为准。
     - 控制器与窗口文件以重编通过为准。
   - **`DisplayFreezer` 按 API availability 分支：**
     - 26 保留现有 5 个 API；`sdrImage` 为 nil 时返回 nil、调用方跳过该显示器的行为不变。
@@ -793,6 +803,12 @@ M3 的复用依据：
 - **镜像：** I5 保留 #59 的重试与回读校验，并为 `mirror.mjs` 计划模块拆分；I3 要求 `prepare-service-pack.mjs` 回到 350 行以内。
 - **移除的代码：** `apps/promo-video` 已迁到 atd-films，删去相关文案与 tsconfig 继承项。
 - **路径与计数：** `toolchain.ts` 改为 `packages/app-kit/src/node/toolchain.ts`；`text-pretty` 为 6 处；补全 `Textarea` 的消费者与 `InputGroupTextarea` 的类型调整；补充中文下载区写死的芯片文案；`create-app` 在 0.8.x 之间未变，只需追加一条 v0.8.0 指纹。
+
+**第八次修订（2026-10-13）。** 按用户确认的三点明确兼容代码的封装方式，不改变范围与验收：
+
+- 新增[兼容代码的封装](#兼容代码的封装)：判断能力而不是版本号；有设计取舍的能力留在所属类型；不建全局版本开关。
+- 不涉及设计的 SwiftUI 补丁集中到拟新增的 `Support/Backport.swift`：M2 中的 `scrollEdgeEffectHidden`、`glassEffectTransition` 与 `GlassEffectContainer` 包装改放这里，`GlassSurface` 只保留材质逻辑。`Backport` 成员标注 `deprecated: 26`，提升最低系统时由编译器提示清理。
+- I6 把上述规则写入 AGENTS 的 Native Shell And Design Boundaries，并纳入其验收。
 
 ## Grill-Me Outcome
 
