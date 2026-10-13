@@ -476,7 +476,7 @@ I 项负责架构与分发，M 项负责系统兼容，R1 是正式发布门槛�
   - 其余失败按[发布、镜像与失败处理](#发布镜像与失败处理)恢复，不跳过任何校验。
 
 - [ ] **G1：上线入口与发布后核对。** 依赖 R1；需要用户单独授权。
-  - 通过 PR 合并 I6 的官网分支。
+  - 官网下载区已随 0.9.0 PR 合入（见[实施进度](#实施进度)）：核对线上两个架构的下载链接、文件名与支持范围，Intel 链接在镜像完成后可用。
   - 在专用 Intel 机器上，用镜像入口下载并安装 x64 DMG。
   - 观察一台专用的、已安装 0.8.x 的 arm64 机器经生产 feed 升到 0.9.0。
   - 出现问题时按[回滚](#rollback)处理。
@@ -846,7 +846,7 @@ flowchart LR
 
 ## 实施进度
 
-2026-10-13 按用户"执行"指示开始实施。各工作项在隔离 worktree 中完成后合入 `release/0.9.0`；官网改动在独立分支 `website/0.9.0-arch-downloads`，以草稿 PR #61 打开，到 G1 才合并。
+2026-10-13 按用户"执行"指示开始实施。各工作项在隔离 worktree 中完成后合入 `release/0.9.0`。官网改动先在独立分支 `website/0.9.0-arch-downloads`（草稿 PR #61）完成，随后按用户"把所有 worktree 都合入 0.9.0"的决定也合入了 `release/0.9.0`：官网的按架构下载区不再等到 G1 单独合并，而是随 R1 合并 0.9.0 PR 一起上线；从合并到镜像 job 完成的几分钟内 Intel 链接会返回 404，属于已接受的短暂状态。G1 只保留发布后的安装与升级核对。
 
 | 项         | 代码与文档                                                                                                                                                | 尚缺的验收                                                                 |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -855,7 +855,7 @@ flowchart LR
 | I3         | `prepare-service-pack.mjs` 拆为 122 行加 `scripts/service-pack/`；`verify-app.mjs` 与 `scripts/verify-app/` 的 pack/app 两种模式；按架构裁剪与补签        | x64 的裁剪、补签与加载（Intel 打包演练、产物模式的 `macos-15-intel` 校验） |
 | I4         | `release.yml` 的模式、双架构构建、macOS 15 校验、收集 job 与 `scripts/release/feeds.mjs`；`ci.yml` 的 `swift-macos-15` 与 `intel-package`；DMG 按架构命名 | PR CI；产物模式（授权模型第 1 项）                                         |
 | I5         | 草稿/彩排/发布流程；`mirror.mjs` 按架构拆模块并加演练参数；镜像 README 的回滚步骤；`AppUpdater` 的 Rosetta 回流                                           | 彩排（第 1 项）；预发布 bucket 演练（第 2 项，需 P5）                      |
-| I6         | 官网分支与项目 Figma Website 页（下载区宽版、窄版）；root README、`apps/website/README.md`、AGENTS                                                        | 官网 PR 保持草稿到 G1                                                      |
+| I6         | 官网下载区与导航（已合入 `release/0.9.0`）与项目 Figma Website 页（下载区宽版、窄版）；root README、`apps/website/README.md`、AGENTS                      | 随 R1 上线后的线上核对（G1）                                               |
 | M1         | `NativeMaterialView`、`MaterialEffectView`；各 AppKit 表面接入，模糊方式由所有者传入                                                                      | 基线截图（P3）；15 真机表现（I7 第 5 项）                                  |
 | M2         | `Support/Backport.swift`；`GlassSurface` 的 15 分支；`DisplayFreezer` 的 15 分支；部署目标降为 15.0，`WebKitPrivateTests` 按能力断言                      | 技术验证与 15 验证构建的运行（P3/P4）                                      |
 | M3         | `safari18` 目标、`lib` 约束、`tsconfig.web.json`、Textarea fallback（`autoSize`）、composer 滚动条                                                        | WebKit 18.0 真实页面验收（P4）                                             |

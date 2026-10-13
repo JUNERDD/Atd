@@ -242,7 +242,9 @@ download buckets' public endpoints when the shared account approaches its allowa
 
 ### Installer downloads
 
-Installers are published per architecture, both for macOS 15 or later:
+The download section offers an explicit Apple silicon / Intel choice, and the nav's download key
+jumps to it rather than guessing the visitor's architecture. Installers are published per
+architecture, both for macOS 15 or later:
 `https://downloads.atd.best/latest/Atd-arm64.dmg` (Apple silicon) and
 `https://downloads.atd.best/latest/Atd-x64.dmg` (Intel). These permanent URLs track the newest
 verified stable installer without rebuilding the website for each release, and save as
