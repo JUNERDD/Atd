@@ -26,11 +26,10 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { MACHO_ARCHS, nativeHostArch } from './arch.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const X64_FEED_URL = 'https://downloads.atd.best/appcast-x64.xml';
-/** Node's architecture names mapped to Xcode's and Mach-O's. */
-const XCODE_ARCHS = { arm64: 'arm64', x64: 'x86_64' };
 const CONFIGURATIONS = ['Debug', 'Release'];
 
 function fail(message) {
@@ -38,14 +37,12 @@ function fail(message) {
   process.exit(1);
 }
 
-/** The architecture this Mac runs natively, whatever architecture this Node process runs as. */
 function hostArch() {
-  if (process.platform !== 'darwin')
-    fail(`the native app builds on macOS only, not ${process.platform}.`);
-  const probe = spawnSync('sysctl', ['-n', 'hw.optional.arm64'], { encoding: 'utf8' });
-  if (probe.stdout?.trim() === '1') return 'arm64';
-  if (process.arch === 'x64') return 'x64';
-  fail(`unsupported macOS architecture ${process.arch}; the app builds for arm64 or x64.`);
+  try {
+    return nativeHostArch();
+  } catch (error) {
+    fail(error.message);
+  }
 }
 
 function readOptions() {
@@ -69,7 +66,7 @@ function readOptions() {
     fail(
       `--configuration must be ${CONFIGURATIONS.join(' or ')}, not ${configuration ?? '(none)'}.`,
     );
-  if (parsed.arch !== undefined && !(parsed.arch in XCODE_ARCHS))
+  if (parsed.arch !== undefined && !(parsed.arch in MACHO_ARCHS))
     fail(`--arch must be arm64 or x64, not ${parsed.arch}.`);
   const marketingVersion = parsed['marketing-version'];
   const buildVersion = parsed['build-version'];
@@ -97,7 +94,7 @@ function readOptions() {
 
 /** The xcodebuild arguments for one configuration and architecture. */
 function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion }) {
-  const xcodeArch = XCODE_ARCHS[arch];
+  const xcodeArch = MACHO_ARCHS[arch];
   return [
     '-project',
     'AI.xcodeproj',
