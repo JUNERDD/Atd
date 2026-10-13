@@ -13,12 +13,11 @@ import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
+import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import type { ConnectionConfirm } from './connection-confirm-dialog';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
@@ -87,129 +86,130 @@ export function ProviderConnections({
                           ? 'connections.status.apiKeyVerified'
                           : 'connections.status.apiKeyUnverified',
                       );
-        return (
-          <Item
-            asChild
-            variant="outline"
-            key={connection.connectionId}
-            className="provider-connection-row open-row"
-          >
-            <li>
-              <button
-                type="button"
-                className="open-row-button"
-                aria-label={t('connections.manageLabel', { name: connection.name })}
-                disabled={!canManage}
-                onClick={() => onManage(connection)}
-              />
-              <div className="provider-identity">
-                <ProviderBrand provider={connection.provider} />
-                <ItemContent>
-                  <div className="provider-name-track">
-                    <ItemTitle className="min-w-0" title={connection.name}>
-                      <HighlightedText text={connection.name} ranges={nameRanges} />
-                    </ItemTitle>
-                    {isDefault && (
-                      <span className="provider-default-badge">
-                        {t('connections.defaultBadge')}
-                      </span>
-                    )}
-                  </div>
-                  <ItemDescription className="whitespace-normal">{description}</ItemDescription>
-                </ItemContent>
-              </div>
-              <ItemActions className="provider-model-controls">
-                <ModelConfigPopover
-                  connections={[connection]}
-                  model={model}
-                  // Without a saved level the popover shows the model's own default.
-                  thinkingLevel={connection.defaultThinkingLevel}
-                  scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
-                  disabled={pending}
-                  onModelChange={(reference) =>
-                    void perform(() => bridge!.setModel(reference, connection.revision))
-                  }
-                  onThinkingLevelChange={(level) => {
-                    // The popover offers levels only once a model is chosen.
-                    if (!model) return;
-                    void perform(() => bridge!.setModel(model, connection.revision, level));
-                  }}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      label={t('connections.more')}
-                      aria-label={t('connections.actionsLabel', { name: connection.name })}
-                      disabled={pending}
-                      tooltipDismissOnClick
-                    >
-                      <Ellipsis />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" sideOffset={4} collisionPadding={8}>
-                    <DropdownMenuItem
-                      disabled={isDefault || !connection.defaultModel || !connection.connected}
-                      onSelect={() =>
-                        void perform(() =>
-                          bridge!.setDefault(connection.connectionId, connection.revision),
-                        )
-                      }
-                    >
-                      <Check />
-                      <div>
-                        {isDefault ? t('connections.currentDefault') : t('connections.makeDefault')}
-                        {!connection.defaultModel && (
-                          <p className="text-xs text-muted-foreground">
-                            {t('connections.chooseDefaultModel')}
-                          </p>
-                        )}
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem disabled={!canManage} onSelect={() => onManage(connection)}>
-                      <Settings2 />
-                      {t('connections.manage')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={!connection.connected}
-                      onSelect={() => void perform(() => bridge!.refresh(connection.connectionId))}
-                    >
-                      <RefreshCw />
-                      {t('connections.refresh')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!connection.connected}
-                      onSelect={() => onConfirm({ action: 'disconnect', connection })}
-                    >
-                      <Unplug />
-                      {t('connections.disconnect')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={() => onConfirm({ action: 'remove', connection })}
-                    >
-                      <Trash2 />
-                      {t('connections.remove')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </ItemActions>
-              {connection.catalogError && (
-                <output className="provider-row-notice">{connection.catalogError}</output>
-              )}
-              {connection.authNotice && (
-                <output className="provider-row-notice">{connection.authNotice}</output>
-              )}
-              {connection.defaultModel &&
-                !connection.catalog.some((model) => model.id === connection.defaultModel) && (
-                  <p className="provider-row-notice">
-                    {t('connections.unavailableModel', { model: connection.defaultModel })}
+        // More's items, which a right-click on the row opens too while More is enabled.
+        const menu = (
+          <>
+            <ItemMenuItem
+              disabled={isDefault || !connection.defaultModel || !connection.connected}
+              onSelect={() =>
+                void perform(() => bridge!.setDefault(connection.connectionId, connection.revision))
+              }
+            >
+              <Check />
+              <div>
+                {isDefault ? t('connections.currentDefault') : t('connections.makeDefault')}
+                {!connection.defaultModel && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('connections.chooseDefaultModel')}
                   </p>
                 )}
-            </li>
-          </Item>
+              </div>
+            </ItemMenuItem>
+            <ItemMenuSeparator />
+            <ItemMenuItem disabled={!canManage} onSelect={() => onManage(connection)}>
+              <Settings2 />
+              {t('connections.manage')}
+            </ItemMenuItem>
+            <ItemMenuItem
+              disabled={!connection.connected}
+              onSelect={() => void perform(() => bridge!.refresh(connection.connectionId))}
+            >
+              <RefreshCw />
+              {t('connections.refresh')}
+            </ItemMenuItem>
+            <ItemMenuSeparator />
+            <ItemMenuItem
+              variant="destructive"
+              disabled={!connection.connected}
+              onSelect={() => onConfirm({ action: 'disconnect', connection })}
+            >
+              <Unplug />
+              {t('connections.disconnect')}
+            </ItemMenuItem>
+            <ItemMenuItem
+              variant="destructive"
+              onSelect={() => onConfirm({ action: 'remove', connection })}
+            >
+              <Trash2 />
+              {t('connections.remove')}
+            </ItemMenuItem>
+          </>
+        );
+        return (
+          <ItemContextMenu key={connection.connectionId} menu={pending ? null : menu}>
+            <Item asChild variant="outline" className="provider-connection-row open-row">
+              <li>
+                <button
+                  type="button"
+                  className="open-row-button"
+                  aria-label={t('connections.manageLabel', { name: connection.name })}
+                  disabled={!canManage}
+                  onClick={() => onManage(connection)}
+                />
+                <div className="provider-identity">
+                  <ProviderBrand provider={connection.provider} />
+                  <ItemContent>
+                    <div className="provider-name-track">
+                      <ItemTitle className="min-w-0" title={connection.name}>
+                        <HighlightedText text={connection.name} ranges={nameRanges} />
+                      </ItemTitle>
+                      {isDefault && (
+                        <span className="provider-default-badge">
+                          {t('connections.defaultBadge')}
+                        </span>
+                      )}
+                    </div>
+                    <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+                  </ItemContent>
+                </div>
+                <ItemActions className="provider-model-controls">
+                  <ModelConfigPopover
+                    connections={[connection]}
+                    model={model}
+                    // Without a saved level the popover shows the model's own default.
+                    thinkingLevel={connection.defaultThinkingLevel}
+                    scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
+                    disabled={pending}
+                    onModelChange={(reference) =>
+                      void perform(() => bridge!.setModel(reference, connection.revision))
+                    }
+                    onThinkingLevelChange={(level) => {
+                      // The popover offers levels only once a model is chosen.
+                      if (!model) return;
+                      void perform(() => bridge!.setModel(model, connection.revision, level));
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        label={t('connections.more')}
+                        aria-label={t('connections.actionsLabel', { name: connection.name })}
+                        disabled={pending}
+                        tooltipDismissOnClick
+                      >
+                        <Ellipsis />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={4} collisionPadding={8}>
+                      {menu}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </ItemActions>
+                {connection.catalogError && (
+                  <output className="provider-row-notice">{connection.catalogError}</output>
+                )}
+                {connection.authNotice && (
+                  <output className="provider-row-notice">{connection.authNotice}</output>
+                )}
+                {connection.defaultModel &&
+                  !connection.catalog.some((model) => model.id === connection.defaultModel) && (
+                    <p className="provider-row-notice">
+                      {t('connections.unavailableModel', { model: connection.defaultModel })}
+                    </p>
+                  )}
+              </li>
+            </Item>
+          </ItemContextMenu>
         );
       })}
     </ItemGroup>

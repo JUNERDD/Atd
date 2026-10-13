@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { BookOpen, CircleAlert, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
+import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
@@ -93,8 +93,40 @@ export function ExtensionSkillsGroup({
           const builtin = row.builtin;
           const showRestore = builtin !== null && builtin.status !== 'current';
           const rowBusy = busyId === (builtin ? builtin.id : row.name);
+          const menu =
+            showRestore || !row.readOnly ? (
+              <>
+                {builtin && showRestore ? (
+                  <ItemMenuItem
+                    disabled={!connected || rowBusy}
+                    onSelect={() => setRestoring({ id: builtin.id, name: row.name })}
+                  >
+                    <RotateCcw />
+                    {t('extensions.restoreAction')}
+                  </ItemMenuItem>
+                ) : null}
+                {row.readOnly ? null : (
+                  <>
+                    {showRestore ? <ItemMenuSeparator /> : null}
+                    <ItemMenuItem
+                      variant="destructive"
+                      disabled={!connected || rowBusy}
+                      onSelect={() => setDeleting(row.name)}
+                    >
+                      <Trash2 />
+                      {t('extensions.delete')}
+                    </ItemMenuItem>
+                  </>
+                )}
+              </>
+            ) : null;
           return (
-            <ExtensionRow key={row.name} name={row.name} onDetails={() => onOpen(row.name)}>
+            <ExtensionRow
+              key={row.name}
+              name={row.name}
+              onDetails={() => onOpen(row.name)}
+              menu={menu}
+            >
               <ItemMedia variant="icon">
                 <BookOpen />
               </ItemMedia>
@@ -119,34 +151,7 @@ export function ExtensionSkillsGroup({
                 onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
                 onDetails={() => onOpen(row.name)}
                 lockedReason={lockedReason}
-                menu={
-                  showRestore || !row.readOnly ? (
-                    <>
-                      {builtin && showRestore ? (
-                        <DropdownMenuItem
-                          disabled={!connected || rowBusy}
-                          onSelect={() => setRestoring({ id: builtin.id, name: row.name })}
-                        >
-                          <RotateCcw />
-                          {t('extensions.restoreAction')}
-                        </DropdownMenuItem>
-                      ) : null}
-                      {row.readOnly ? null : (
-                        <>
-                          {showRestore ? <DropdownMenuSeparator /> : null}
-                          <DropdownMenuItem
-                            variant="destructive"
-                            disabled={!connected || rowBusy}
-                            onSelect={() => setDeleting(row.name)}
-                          >
-                            <Trash2 />
-                            {t('extensions.delete')}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </>
-                  ) : null
-                }
+                menu={menu}
               />
             </ExtensionRow>
           );

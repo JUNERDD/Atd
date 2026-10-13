@@ -16,13 +16,12 @@ import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
+import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';
@@ -105,6 +104,50 @@ export function CommandRow({
   const drag = useDragControls();
   const hold = useLongPressDrag(drag, Boolean(order?.movable));
   const open = useRef<HTMLButtonElement>(null);
+  // More's items, which a right-click on the row opens too.
+  const menu = plugin ? (
+    <>
+      <ItemMenuItem onSelect={() => onDuplicate(command)}>
+        <Copy />
+        {t('list.duplicateToPersonal')}
+      </ItemMenuItem>
+      {automatable && (
+        <ItemMenuItem onSelect={() => automate({ commandId: command.id })}>
+          <Zap />
+          {tAutomations('command.automate')}
+        </ItemMenuItem>
+      )}
+    </>
+  ) : (
+    <>
+      <ItemMenuItem onSelect={() => onOpen(command)}>
+        <Pencil />
+        {t('common.edit')}
+      </ItemMenuItem>
+      <ItemMenuItem onSelect={() => onDuplicate(command)}>
+        <Copy />
+        {t('list.duplicate')}
+      </ItemMenuItem>
+      {/* A new automation that runs this command, opened in Automations. */}
+      {automatable && (
+        <ItemMenuItem onSelect={() => automate({ commandId: command.id })}>
+          <Zap />
+          {tAutomations('command.automate')}
+        </ItemMenuItem>
+      )}
+      {command.shortcut ? (
+        <ItemMenuItem disabled={busy} onSelect={() => onShortcut(command, '')}>
+          <KeyboardOff />
+          {t('list.removeShortcut')}
+        </ItemMenuItem>
+      ) : null}
+      <ItemMenuSeparator />
+      <ItemMenuItem variant="destructive" onSelect={() => onDelete(command)}>
+        <Trash2 />
+        {t('common.delete')}
+      </ItemMenuItem>
+    </>
+  );
   const content = (
     <>
       {/* A click anywhere on the row opens the editor, like the memory and skill rows;
@@ -217,78 +260,36 @@ export function CommandRow({
                 <MoreHorizontal />
               </IconButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {plugin ? (
-                <>
-                  <DropdownMenuItem onSelect={() => onDuplicate(command)}>
-                    <Copy />
-                    {t('list.duplicateToPersonal')}
-                  </DropdownMenuItem>
-                  {automatable && (
-                    <DropdownMenuItem onSelect={() => automate({ commandId: command.id })}>
-                      <Zap />
-                      {tAutomations('command.automate')}
-                    </DropdownMenuItem>
-                  )}
-                </>
-              ) : (
-                <>
-                  <DropdownMenuItem onSelect={() => onOpen(command)}>
-                    <Pencil />
-                    {t('common.edit')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => onDuplicate(command)}>
-                    <Copy />
-                    {t('list.duplicate')}
-                  </DropdownMenuItem>
-                  {/* A new automation that runs this command, opened in Automations. */}
-                  {automatable && (
-                    <DropdownMenuItem onSelect={() => automate({ commandId: command.id })}>
-                      <Zap />
-                      {tAutomations('command.automate')}
-                    </DropdownMenuItem>
-                  )}
-                  {command.shortcut ? (
-                    <DropdownMenuItem disabled={busy} onSelect={() => onShortcut(command, '')}>
-                      <KeyboardOff />
-                      {t('list.removeShortcut')}
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => onDelete(command)}>
-                    <Trash2 />
-                    {t('common.delete')}
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
+            <DropdownMenuContent align="end">{menu}</DropdownMenuContent>
           </DropdownMenu>
         </ItemActions>
       </div>
     </>
   );
   return (
-    <Item
-      asChild
-      size="sm"
-      variant="outline"
-      className="command-management-row open-row"
-      data-hold={order ? hold.phase : undefined}
-    >
-      {order ? (
-        <Reorder.Item
-          value={command.id}
-          dragListener={false}
-          dragControls={drag}
-          transition={SETTLE}
-          {...hold.item}
-          onDragEnd={order.onDrop}
-        >
-          {content}
-        </Reorder.Item>
-      ) : (
-        <li>{content}</li>
-      )}
-    </Item>
+    <ItemContextMenu menu={menu}>
+      <Item
+        asChild
+        size="sm"
+        variant="outline"
+        className="command-management-row open-row"
+        data-hold={order ? hold.phase : undefined}
+      >
+        {order ? (
+          <Reorder.Item
+            value={command.id}
+            dragListener={false}
+            dragControls={drag}
+            transition={SETTLE}
+            {...hold.item}
+            onDragEnd={order.onDrop}
+          >
+            {content}
+          </Reorder.Item>
+        ) : (
+          <li>{content}</li>
+        )}
+      </Item>
+    </ItemContextMenu>
   );
 }

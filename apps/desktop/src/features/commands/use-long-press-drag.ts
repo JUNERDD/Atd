@@ -121,6 +121,9 @@ export function useLongPressDrag(controls: DragControls, enabled: boolean) {
       },
       onPointerUp: cancel,
       onPointerCancel: cancel,
+      // A Control-click is a primary press that opens the row's context menu, which then takes
+      // the release: the press ends here, so the row never lifts under the open menu.
+      onContextMenu: cancel,
     },
     /** For the dragged item: its element, its rendered values, and the start of Motion's drag. */
     item: {

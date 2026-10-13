@@ -30,13 +30,17 @@
 .open-row[data-variant='outline'] > .open-row-button {
   border-radius: calc(var(--radius-2xl) - 1px);
 }
+/* An open More menu (`aria-expanded`) or right-click menu (`data-state` on the row,
+ * `ItemContextMenu`) keeps the row lit to show what its actions apply to. */
 .open-row:hover > .open-row-button,
 .open-row:has([aria-expanded='true']) > .open-row-button,
+.open-row[data-state='open'] > .open-row-button,
 .open-row-button:focus-visible {
   background: var(--muted);
 }
 .dark .open-row:hover > .open-row-button,
 .dark .open-row:has([aria-expanded='true']) > .open-row-button,
+.dark .open-row[data-state='open'] > .open-row-button,
 .dark .open-row-button:focus-visible {
   background: var(--ata-surface-ghost-hover);
 }
