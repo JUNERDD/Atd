@@ -885,6 +885,7 @@ M1/M2 在 15 上的初选（由 15 验证构建判断、M4 设计变体确认）
 - **release.yml：** `release` 模式下只有 `build_version` 与 `marketing_version` 不同时才传 `--build-version`，因此 `main` 上带 `-` 的预发布仍以现有方式构建；`-` 的限制只作用于 `artifacts` 与 `rehearsal`。收集 job 依赖两个校验 job，上传的 artifact 一定已通过 macOS 15 校验。
 - **镜像清理：** 每种架构保留最近两次上传，另加当前 feed 引用的 DMG（原逻辑为当前版本加两个旧版）；回滚时被清理的旧 DMG 由镜像从 GitHub 重新上传。`--source-dir` 要求显式的非生产 `--bucket` 与 `--base-url`，非 HTTPS 只允许回环地址。
 - **Release 构建的编译器崩溃：** 部署目标降到 15.0 后，Swift 6.2.4 的优化器（`EarlyPerfInliner`，signal 11）会在泛型主 actor 类的合成 deinit 上崩溃，Debug 构建与 26 目标都不受影响，所以 `check:swift` 发现不了，集成后的 `build:release` 才暴露。`BoundedWaiters` 与 `IslandPlainHost` 改为显式声明空的 `deinit` 并注明原因；`nonisolated` 的 `FirstAnswer` 不受影响。新增泛型主 actor 类时同样处理；`ci.yml` 的 Intel 打包演练与 `release.yml` 的构建都是优化构建，能拦住遗漏。
+- **ScreenCaptureKit 的强引用：** SDK 没有把 `SCScreenshotConfiguration`、`SCScreenshotOutput` 标为 26 专用，即使代码在 `#available(macOS 26, *)` 之内，链接器也生成强引用，dyld 在 macOS 15 上拒绝加载（PR 上 `macos-15` 的 Swift 测试报 `Symbol not found: _OBJC_CLASS_$_SCScreenshotConfiguration`）。唯一导入它的 `DisplayFreezer` 改为 `@_weakLinked import ScreenCaptureKit`。复查 App 与 Widget 的全部强引用类和 C 函数，均为 macOS 14 及以前的 API。`verify-app.mjs` 不启动应用，检查不到主程序的 dyld 加载失败；目前由 `macos-15` 的 Swift 测试（加载包内代码）与 I7 的实机安装覆盖，新增 SDK 未标注可用性的类时要用 `nm -m` 确认是弱引用。
 - **兼容代码的封装：** 所属类型内的 `#available(macOS 26, *)` 不会因提升最低系统而被报警，已在[兼容代码的封装](#兼容代码的封装)中改正。
 
 ## Validation
