@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Runs every job, including the Intel packaging rehearsal, on the chosen branch.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -67,7 +69,7 @@ jobs:
       - run: pnpm check
 
   # A pull request runs the Swift and Rust checks only when it touches their inputs; a push to
-  # main always runs both.
+  # main always runs both. The Intel packaging rehearsal follows `package` on release/ branches.
   changes:
     name: Detect changed areas
     if: github.event_name == 'pull_request'
@@ -77,6 +79,7 @@ jobs:
     outputs:
       swift: ${{ steps.filter.outputs.swift }}
       rust: ${{ steps.filter.outputs.rust }}
+      package: ${{ steps.filter.outputs.package }}
     steps:
       - id: filter
         uses: dorny/paths-filter@v4.0.3
@@ -103,6 +106,19 @@ jobs:
               - Cargo.lock
               - rust-toolchain.toml
               - scripts/check-rust-file-length.mjs
+              - packages/file-index/**
+            # Everything the Release app packs: the shell, the service and its workspace packages
+            # (packages/file-index among them), the renderer and the Rust addon's crates.
+            package:
+              - *shared
+              - apps/macos/**
+              - apps/agent-service/**
+              - apps/desktop/**
+              - packages/**
+              - crates/**
+              - Cargo.toml
+              - Cargo.lock
+              - rust-toolchain.toml
 
   # The Swift and Rust checks run as two parallel macOS jobs instead of one after the other.
   swift:
@@ -165,6 +181,75 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Rust checks (file length, fmt, clippy, test)
         run: pnpm check:rust
+
+  # AIShellTests on the oldest supported system. The image defaults to Xcode 16.4 (Swift 6.1);
+  # the package needs Swift 6.2, so the job selects the Xcode 26.3 the image also carries. Not part
+  # of the required summary check.
+  swift-macos-15:
+    name: Swift tests on macOS 15
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true') }}
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+          swift --version
+          sw_vers -productVersion
+      - name: Swift tests
+        working-directory: apps/macos
+        run: swift test
+
+  # Packages the Release app natively on Intel as the release workflow does, but unsigned (ad
+  # hoc) and without secrets, then checks it with verify-app.mjs and the app's own Node. It runs
+  # on pull requests from release/ branches that touch the app's inputs and on manual runs; it is
+  # not part of the required summary check.
+  intel-package:
+    name: Intel packaging rehearsal
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'release/') && needs.changes.outputs.package == 'true')) }}
+    runs-on: macos-26-intel
+    steps:
+      - name: Check the runner architecture
+        run: |
+          echo "$(uname -m), macOS $(sw_vers -productVersion)"
+          [ "$(uname -m)" = x86_64 ]
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      # The file index is a Rust addon that `bundle` builds for the host.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install
+          cargo --version
+      - run: pnpm install --frozen-lockfile
+      # With no AI_CODE_SIGN_IDENTITY, project.yml signs ad hoc; build.mjs targets the host (x64).
+      - name: Build the Release app
+        run: pnpm --filter @atd/macos build:release
+      - name: Verify the app
+        run: |
+          app=apps/macos/DerivedData/Build/Products/Release/Atd.app
+          key=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)
+          "$app/Contents/Resources/node/bin/node" apps/macos/scripts/verify-app.mjs app \
+            --app "$app" \
+            --feed-url https://downloads.atd.best/appcast-x64.xml \
+            --arm64-feed-url https://downloads.atd.best/appcast.xml \
+            --public-ed-key "$key"
 
   # The "Protect main" ruleset requires a status check with this exact name, so this job keeps
   # the id and name of the former single macOS job. It passes when each macOS job passed or was
