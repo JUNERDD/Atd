@@ -11,8 +11,31 @@ import { ModelList } from './model-list';
 import { ProviderBrand } from './provider-brand';
 import { saveModelContext, useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
+import { ChatGPTPlan } from './chatgpt-plan';
 
 type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
+
+/**
+ * The effort the popover edits, or `hideEffort` where the level is set elsewhere (a command's own
+ * level, which applies whichever model runs it): the popover then offers no effort at all.
+ */
+type EffortControl =
+  | {
+      hideEffort?: false;
+      thinkingLevel: ModelThinkingLevel;
+      onThinkingLevelChange: (level: ModelThinkingLevel) => void;
+    }
+  | { hideEffort: true; thinkingLevel?: undefined; onThinkingLevelChange?: undefined };
+
+type ModelConfigPopoverProps = EffortControl & {
+  connections: Connection[];
+  model: ModelReference | null;
+  onModelChange: (value: ModelReference) => void;
+  onOpenProviders?: () => void;
+  scopeLabel?: string;
+  compact?: boolean;
+  disabled?: boolean;
+};
 
 /**
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context,
@@ -27,29 +50,20 @@ type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
  *
  * `scopeLabel` names the one connection a scoped popover configures (a provider overview row):
  * its list shows only that connection without a heading, and the trigger drops the brand the row
- * already shows and carries the label for assistive technology.
+ * already shows and carries the label for assistive technology. `hideEffort` drops the effort
+ * from the trigger and the root view.
  */
-export function ModelConfigPopover({
-  connections,
-  model,
-  thinkingLevel,
-  onModelChange,
-  onThinkingLevelChange,
-  onOpenProviders,
-  scopeLabel,
-  compact = false,
-  disabled = false,
-}: {
-  connections: Connection[];
-  model: ModelReference | null;
-  thinkingLevel: ModelThinkingLevel;
-  onModelChange: (value: ModelReference) => void;
-  onThinkingLevelChange: (level: ModelThinkingLevel) => void;
-  onOpenProviders?: () => void;
-  scopeLabel?: string;
-  compact?: boolean;
-  disabled?: boolean;
-}) {
+export function ModelConfigPopover(props: ModelConfigPopoverProps) {
+  const {
+    connections,
+    model,
+    onModelChange,
+    onOpenProviders,
+    scopeLabel,
+    compact = false,
+    disabled = false,
+  } = props;
+  const effort = props.hideEffort ? null : props;
   const { t } = useTranslation('providers');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<ModelConfigView>('root');
@@ -80,13 +94,17 @@ export function ModelConfigPopover({
   const contexts = useModelContexts(model, connection?.revision ?? null);
   const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
   const contextChoice = Boolean(model) && contexts.options.length === 2;
-  const { levels, loading } = useThinkingLevels(model);
-  const selected = levels.includes(thinkingLevel) ? thinkingLevel : (levels[0] ?? thinkingLevel);
-  const effortText = t(`thinkingLevels.levels.${selected}`);
+  const { levels, loading } = useThinkingLevels(effort ? model : null);
+  const thinkingLevel = effort?.thinkingLevel;
+  const selected =
+    thinkingLevel && !levels.includes(thinkingLevel) ? (levels[0] ?? thinkingLevel) : thinkingLevel;
+  const effortText = selected ? t(`thinkingLevels.levels.${selected}`) : null;
   const effortDisabled = !model || loading || levels.length < 2;
   const scoped = scopeLabel !== undefined;
-  const summary = { model: displayName, contextSize: contextText, effort: effortText };
-  const details = model ? `${displayName} · ${contextText} · ${effortText}` : displayName;
+  const summary = { model: displayName, contextSize: contextText, effort: effortText ?? '' };
+  const details = model
+    ? [displayName, contextText, ...(effortText ? [effortText] : [])].join(' · ')
+    : displayName;
   const title = connection && model && !scoped ? `${connection.name} · ${details}` : details;
 
   /** What a view focuses as its content mounts; null leaves focus on the content itself. */
@@ -129,14 +147,18 @@ export function ModelConfigPopover({
           aria-label={
             scoped
               ? t('modelConfig.scopedTriggerLabel', { label: scopeLabel, ...summary })
-              : t('modelConfig.triggerLabel', summary)
+              : effortText
+                ? t('modelConfig.triggerLabel', summary)
+                : t('modelConfig.modelOnlyTriggerLabel', summary)
           }
           title={title}
         >
           {connection && !scoped && <ProviderBrand provider={connection.provider} />}
           <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
-          {model && <span className="model-config-effort shrink-0">{effortText}</span>}
+          {model && effortText && (
+            <span className="model-config-effort shrink-0">{effortText}</span>
+          )}
           <ChevronDown className="size-4 shrink-0" />
         </Button>
       </PopoverTrigger>
@@ -168,6 +190,7 @@ export function ModelConfigPopover({
       >
         {view === 'root' && (
           <div className="model-config-root">
+            <ChatGPTPlan connection={connection} variant="menu" />
             {contextChoice ? (
               <button
                 ref={contextRowRef}
@@ -185,24 +208,26 @@ export function ModelConfigPopover({
                 <span className="model-config-row-value">{contextText}</span>
               </div>
             )}
-            <button
-              ref={effortRowRef}
-              type="button"
-              className="model-config-row model-config-row-nav"
-              disabled={effortDisabled}
-              title={
-                selected === thinkingLevel
-                  ? t('thinkingLevels.label')
-                  : t('thinkingLevels.unavailable', {
-                      level: t(`thinkingLevels.levels.${thinkingLevel}`),
-                    })
-              }
-              onClick={() => show('effort')}
-            >
-              <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
-              <span className="model-config-row-value">{effortText}</span>
-              <ChevronRight className="size-4 shrink-0" />
-            </button>
+            {thinkingLevel && (
+              <button
+                ref={effortRowRef}
+                type="button"
+                className="model-config-row model-config-row-nav"
+                disabled={effortDisabled}
+                title={
+                  selected === thinkingLevel
+                    ? t('thinkingLevels.label')
+                    : t('thinkingLevels.unavailable', {
+                        level: t(`thinkingLevels.levels.${thinkingLevel}`),
+                      })
+                }
+                onClick={() => show('effort')}
+              >
+                <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
+                <span className="model-config-row-value">{effortText}</span>
+                <ChevronRight className="size-4 shrink-0" />
+              </button>
+            )}
             <button
               ref={modelRowRef}
               type="button"
@@ -230,7 +255,7 @@ export function ModelConfigPopover({
             />
           </div>
         )}
-        {view === 'effort' && (
+        {view === 'effort' && effort && selected && (
           <div className="model-config-subview">
             <ConfigBackHeader title={t('thinkingLevels.label')} onBack={() => show('root')} />
             <EffortOptions
@@ -238,7 +263,7 @@ export function ModelConfigPopover({
               selected={selected}
               listRef={optionListRef}
               onSelect={(level) => {
-                onThinkingLevelChange(level);
+                effort.onThinkingLevelChange(level);
                 show('root');
               }}
             />

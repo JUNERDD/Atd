@@ -1,0 +1,106 @@
+/*
+ * A turn's artifact cards (artifact-cards.tsx). Each card is transcript content, so it shares the
+ * tool card's opaque surface, hairline and 14px corner (tool-card.css), never glass, and the cards
+ * stand apart by space alone, without shadows. The insets and the 32px icon tile match the app
+ * card's (app-card.tsx), so an app's card and the others read as one list.
+ */
+.artifact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.artifact-card {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--ata-border-detail);
+  border-radius: var(--radius-xl);
+  background: var(--ata-surface-detail);
+  color: var(--foreground);
+  text-align: start;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 100ms ease-out;
+}
+/* Hover is for a pointer that can rest; a press highlights at once on any input. */
+@media (hover: hover) and (pointer: fine) {
+  .artifact-card:hover:not(:disabled) {
+    background: var(--muted);
+  }
+}
+.artifact-card:active:not(:disabled) {
+  background: color-mix(in oklab, var(--muted) 100%, var(--foreground) 6%);
+  transition-duration: 0ms;
+}
+/* The ring token's 3px focus ring, drawn like an Item's: the border takes the ring color. */
+.artifact-card:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+.artifact-card:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+/* The app icon tile's geometry (app-icon.tsx `AppIcon`), holding the kind's mark. */
+.artifact-card-icon {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--input) 40%, transparent);
+  color: var(--muted-foreground);
+}
+.artifact-card-icon > svg {
+  width: 18px;
+  height: 18px;
+}
+/*
+ * Cards that arrive as their turn settles in view rise a few pixels into place, without overshoot,
+ * each a beat after the one above so the group reads as one arrival; the stagger stops at the
+ * sixth card.
+ */
+.artifact-cards[data-appear] > li {
+  animation: artifact-card-enter 240ms cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+.artifact-cards[data-appear] > li:nth-child(2) {
+  animation-delay: 30ms;
+}
+.artifact-cards[data-appear] > li:nth-child(3) {
+  animation-delay: 60ms;
+}
+.artifact-cards[data-appear] > li:nth-child(4) {
+  animation-delay: 90ms;
+}
+.artifact-cards[data-appear] > li:nth-child(5) {
+  animation-delay: 120ms;
+}
+.artifact-cards[data-appear] > li:nth-child(n + 6) {
+  animation-delay: 150ms;
+}
+@keyframes artifact-card-enter {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+/* Reduced motion keeps the arrival as one short fade: no movement, no stagger. */
+@keyframes artifact-card-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* `:nth-child(n)` matches every card at the specificity of the staggered rules above. */
+  .artifact-cards[data-appear] > li:nth-child(n) {
+    animation: artifact-card-fade-in 150ms ease-out backwards;
+  }
+}

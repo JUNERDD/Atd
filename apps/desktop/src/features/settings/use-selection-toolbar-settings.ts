@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_SHORTCUTS, selectionToolbarDoubleTap, shortcutHolder } from '@atd/agent-contracts';
 import {
   DEFAULT_SELECTION_TOOLBAR,
   MAX_EXCLUDED_APPS,
@@ -11,6 +12,7 @@ import {
   type SettingsSnapshot,
 } from '../../client/settings-contract';
 import { queryClient } from '../../lib/query-client';
+import { useAgent } from '../agent/use-agent';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useActivationKeysCapture } from './use-activation-keys-capture';
 import { showSettingsSnapshot } from './use-settings';
@@ -76,10 +78,39 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
   );
   const unavailable = !bridge || !snapshot;
   const pending = saving.isPending;
+  const commands = useAgent().snapshot?.commands ?? [];
+
+  /**
+   * Why `next` cannot be saved: its `toggle` gesture is a double-tap that a global shortcut or an
+   * enabled command already uses. Null when it is free.
+   */
+  function gestureConflict(next: SelectionToolbarSettings): string | null {
+    const tap = selectionToolbarDoubleTap(next);
+    if (!tap) return null;
+    const platform = window.desktop?.platform ?? 'web';
+    const holder = shortcutHolder(
+      tap,
+      snapshot?.shortcuts ?? DEFAULT_SHORTCUTS,
+      commands,
+      platform,
+    );
+    if (!holder) return null;
+    return holder.kind === 'app'
+      ? t('selectionToolbar.activation.errors.heldByAction', {
+          action: t(`shortcuts.actions.${holder.action}.label`),
+        })
+      : t('selectionToolbar.activation.errors.heldByCommand', { name: holder.name });
+  }
 
   // The handlers report failures in place and reset after the try statement (React Compiler).
   async function save(owner: ErrorOwner, next: SelectionToolbarSettings) {
     if (unavailable || pending) return;
+    // Only a change of the gesture can make a conflict; another change keeps a standing one.
+    const conflict = owner === 'activation' ? gestureConflict(next) : null;
+    if (conflict) {
+      setErrors({ activation: conflict });
+      return;
+    }
     setErrors({});
     try {
       await saving.mutateAsync(next);

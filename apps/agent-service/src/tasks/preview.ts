@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  commandThinkingLevel,
   DEFAULT_RUN_TOOLS,
   parse,
   PreviewTaskRequestSchema,
@@ -69,11 +70,11 @@ export async function resolvePreview(
   const tools =
     body.policy?.tools ?? (command ? snapshotToolsFor(command.tools) : [...DEFAULT_RUN_TOOLS]);
   const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : true);
+  // The policy's pick, else the command's own level, else the connection's default.
   const thinkingLevel = resolveRunThinkingLevel(
     connections,
     model,
-    body.policy?.thinkingLevel ??
-      (command?.model.mode === 'fixed' ? command.model.thinkingLevel : undefined),
+    commandThinkingLevel(body.policy?.thinkingLevel, command?.thinkingLevel),
   );
   const contextWindow = (await loadRunContextWindow(connections, selection))(model);
   const snapshot = parse(RunSnapshotSchema, {

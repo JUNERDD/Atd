@@ -18,7 +18,7 @@
   max-width: min(304px, 90%);
   padding: 10px 14px;
   border-radius: 20px;
-  background: var(--pk-muted);
+  background: var(--pk-lift);
   color: var(--pk-fg);
   font-size: 14px;
   line-height: 24px;

@@ -1,5 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import type { AutomationDraft, AutomationMissedRuns, AutomationPolicy } from '@atd/agent-contracts';
+import {
+  commandThinkingLevel,
+  type AutomationDraft,
+  type AutomationMissedRuns,
+  type AutomationPolicy,
+} from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
 import { Label } from '@atd/ui/components/label';
 import {
   Select,
@@ -43,6 +49,7 @@ export function PolicyFields({
   commands: readonly CommandDefinition[];
 }) {
   const { t } = useTranslation('automations');
+  const { t: tProviders } = useTranslation('providers');
   const { policy, action, trigger } = draft;
   const set = (next: AutomationPolicy) => onChange({ ...draft, policy: next });
   const command =
@@ -53,6 +60,13 @@ export function PolicyFields({
   );
   const fallback =
     usable.find(({ connectionId }) => connectionId === settings?.defaultConnectionId) ?? usable[0];
+  // The level a run really uses: the automation's own, else the command's (a command action), else
+  // the pinned model's connection default (`commandThinkingLevel` is the service's own precedence).
+  const pinned = connections.find(
+    ({ connectionId }) => connectionId === policy.model?.connectionId,
+  );
+  const inherited = commandThinkingLevel(undefined, command?.thinkingLevel);
+  const effort = policy.thinkingLevel ?? inherited ?? pinned?.defaultThinkingLevel ?? 'off';
   const durations = [...new Set([...DURATIONS, policy.maxDurationMinutes])].sort((a, b) => a - b);
   const missable = trigger.kind === 'schedule' || trigger.kind === 'folder' ? trigger : null;
   return (
@@ -98,10 +112,40 @@ export function PolicyFields({
                 <ModelConfigPopover
                   connections={connections}
                   model={policy.model}
-                  thinkingLevel={policy.thinkingLevel ?? 'off'}
+                  thinkingLevel={effort}
                   onModelChange={(model) => set({ ...policy, model })}
                   onThinkingLevelChange={(thinkingLevel) => set({ ...policy, thinkingLevel })}
                 />
+              )}
+              {policy.model && policy.thinkingLevel && (
+                <div className="flex items-center justify-between gap-2">
+                  <p id="automation-effort-note" className="settings-field-note">
+                    {t('policy.effortOwn')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="shrink-0"
+                    aria-describedby="automation-effort-note"
+                    onClick={() => {
+                      const next = { ...policy };
+                      delete next.thinkingLevel;
+                      set(next);
+                    }}
+                  >
+                    {t('policy.effortReset')}
+                  </Button>
+                </div>
+              )}
+              {policy.model && !policy.thinkingLevel && (
+                <p className="settings-field-note">
+                  {inherited
+                    ? t('policy.effortFromCommand', {
+                        level: tProviders(`thinkingLevels.levels.${inherited}`),
+                      })
+                    : t('policy.effortFromConnection')}
+                </p>
               )}
             </div>
           </div>

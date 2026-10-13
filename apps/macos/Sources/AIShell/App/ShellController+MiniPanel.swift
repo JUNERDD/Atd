@@ -14,7 +14,7 @@ extension ShellController {
       newTask: { [weak self] in self?.startNewTask() },
       ask: { [weak self] in self?.summon(.ask) },
       screenshot: { [weak self] in self?.summon(.screenshot) },
-      command: { [weak self] id in self?.summon(.command(id: id)) },
+      command: { [weak self] id in self?.summon(.command(CommandLaunch(id: id))) },
       openSettings: { [weak self] in self?.openSettings(commandId: nil, section: "general") },
       openItems: { [weak self] urls in self?.openItems(urls) },
       importImage: { [weak self] data in self?.importDroppedImage(data) },

@@ -5,12 +5,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tool
 
 /**
  * A page-wide setting in a settings page's floating footer (the Memory section's learning, the
- * Automations pause): a glass pill that labels its switch, so a click anywhere on it toggles; what
- * the setting does is its tooltip and the switch's description.
+ * Automations pause, the Commands typing effect): a glass pill that labels its switch, so a click
+ * anywhere on it toggles; what the setting does is its tooltip and the switch's description.
  */
 export function SettingsFooterSwitch({
   label,
   description,
+  anchor,
   checked,
   pending,
   disabled,
@@ -18,6 +19,8 @@ export function SettingsFooterSwitch({
 }: {
   label: string;
   description: string;
+  /** The `data-settings-anchor` that settings search reveals. */
+  anchor?: string;
   checked: boolean;
   pending: boolean;
   disabled: boolean;
@@ -34,7 +37,7 @@ export function SettingsFooterSwitch({
             variant="glass"
             className="cursor-pointer has-disabled:cursor-not-allowed has-disabled:opacity-50"
           >
-            <label htmlFor={switchId}>
+            <label htmlFor={switchId} data-settings-anchor={anchor}>
               {label}
               <Switch
                 id={switchId}

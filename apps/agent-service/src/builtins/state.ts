@@ -9,6 +9,11 @@ export interface InstallRecord {
   version: number;
   fingerprint: string;
   installedAt: string;
+  /**
+   * Set when a reconcile replaced a copy the user had changed: where that copy was backed up. The
+   * user is told until they dismiss the notice (`clearBackupNotice`) or restore the skill.
+   */
+  backupPath?: string;
 }
 
 const InstallStateSchema = Type.Object({
@@ -19,6 +24,7 @@ const InstallStateSchema = Type.Object({
       version: Type.Integer({ minimum: 0 }),
       fingerprint: Type.String({ pattern: '^[0-9a-f]{64}$' }),
       installedAt: Type.String(),
+      backupPath: Type.Optional(Type.String({ minLength: 1, maxLength: 4096 })),
     }),
   ),
 });
@@ -34,14 +40,37 @@ export async function readInstallState(file: string): Promise<Record<string, Ins
   return (await readState(file)).resources;
 }
 
-/** Records that `entry`'s shipped version with `fingerprint` now sits at the location. */
+/**
+ * Records that `entry`'s shipped version with `fingerprint` now sits at the location, with
+ * `backupPath` when it replaced a copy the user had changed.
+ */
 export async function recordInstall(
   file: string,
   entry: BuiltinEntry,
   fingerprint: string,
+  backupPath?: string,
 ): Promise<InstallRecord> {
   const state = await readState(file);
-  const record = { version: entry.version, fingerprint, installedAt: new Date().toISOString() };
+  const record: InstallRecord = {
+    version: entry.version,
+    fingerprint,
+    installedAt: new Date().toISOString(),
+    ...(backupPath ? { backupPath } : {}),
+  };
+  state.resources[entry.id] = record;
+  await atomicWrite(file, state);
+  return record;
+}
+
+/** Drops the backup notice of `entry`'s record; answers the record as it now stands. */
+export async function clearBackupNotice(
+  file: string,
+  entry: BuiltinEntry,
+): Promise<InstallRecord | undefined> {
+  const state = await readState(file);
+  const current = state.resources[entry.id];
+  if (!current?.backupPath) return current;
+  const { backupPath: _dismissed, ...record } = current;
   state.resources[entry.id] = record;
   await atomicWrite(file, state);
   return record;

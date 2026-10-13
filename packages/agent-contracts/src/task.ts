@@ -253,6 +253,17 @@ export const RunSnapshotSchema = Type.Object(
     fromCommand: Type.Optional(Type.Literal(true)),
     /** Set when an automation started the run, which makes it unattended (`RunTriggerSchema`). */
     trigger: Type.Optional(RunTriggerSchema),
+    /**
+     * Service-owned inference purpose, frozen for app and automation runs. Consent itself is
+     * checked live for every request. Absent on older runs; user follow-ups freeze false.
+     */
+    background: Type.Optional(Type.Boolean()),
+    /**
+     * The run executes on the lightweight path: a session with no tools, skills, MCP servers,
+     * subagents or memory wiring and a short system prompt. Only the service sets it, for a saved
+     * command's first run in a new task that needs none of those; follow-ups never carry it.
+     */
+    lite: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

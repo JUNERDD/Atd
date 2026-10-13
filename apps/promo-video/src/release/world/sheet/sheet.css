@@ -1,0 +1,52 @@
+/* The release world sheet's own layout; none of it is part of the kit. */
+.r08-sheet__label {
+  position: absolute;
+  left: 96px;
+  bottom: 64px;
+  font-size: var(--r08-size-small);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  color: var(--r08-fg-3);
+}
+
+.r08-sheet__type {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  text-align: center;
+}
+
+.r08-sheet__type[data-row='en'] {
+  top: 360px;
+}
+
+.r08-sheet__type[data-row='zh'] {
+  top: 700px;
+}
+
+.r08-sheet__title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 300px;
+}
+
+.r08-sheet__titleline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 580px;
+  text-align: center;
+}
+
+.r08-sheet__zh {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 760px;
+}
+
+.r08-sheet__note {
+  padding: 28px 32px;
+  color: var(--r08-fg);
+}

@@ -1,5 +1,7 @@
 import { getSettings, patchSettings } from '@atd/agent-client';
 import {
+  DEFAULT_COMMAND_TYPING,
+  DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_SHORTCUTS,
   parseShortcutBindings,
   type PatchSettingsRequest,
@@ -24,16 +26,19 @@ import {
 } from '../client/settings-shell';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
+import { settingsItemOf, storeSettingsItem, takeSettingsItem } from './settings-item-link';
 import type { WindowMessages } from './window-messages';
 
 /**
- * The preferences the shell owns, whether it holds the panel and screenshot shortcuts (null until
- * the panel's first registration answer reaches this window), whether macOS trusts the app for
- * Accessibility and lets it capture the screen (each null until the shell's `accessibility.trust`
- * or `screenRecording.trust` arrives), and whether the mini panel shows and how it opens (null
- * until the shell's first `miniPanel.state`).
+ * The preferences the shell owns (the panel's placement null until `app.state` answers), whether
+ * it holds the panel and screenshot shortcuts (null until the panel's first registration answer
+ * reaches this window), whether macOS trusts the app for Accessibility and lets it capture the
+ * screen (each null until the shell's `accessibility.trust` or `screenRecording.trust` arrives),
+ * and whether the mini panel shows and how it opens (null until the shell's first
+ * `miniPanel.state`).
  */
-export type ShellState = CallResult<'app.state'> & {
+export type ShellState = Omit<CallResult<'app.state'>, 'panelPlacement'> & {
+  panelPlacement: CallResult<'app.state'>['panelPlacement'] | null;
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
   accessibilityTrusted: boolean | null;
@@ -68,6 +73,7 @@ export function nativeSettings(
     openAtLogin: null,
     // Assumed until the shell answers, so no placement warning flashes at startup.
     widgetsAvailable: true,
+    panelPlacement: null,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
     accessibilityTrusted: null,
@@ -91,6 +97,8 @@ export function nativeSettings(
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
       selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
+      commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
+      commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -150,6 +158,12 @@ export function nativeSettings(
       messages.post({ type: 'openSection', section });
       await native.call('settings.open', { commandId: null, section });
     },
+    openItem: async (item) => {
+      // An open settings window takes the message; a new one reads the stored item.
+      storeSettingsItem(item);
+      messages.post({ type: 'openItem', item });
+      await native.call('settings.open', { commandId: null, section: item.section });
+    },
     startCommandSession: async (commandId) => messages.post({ type: 'commandSession', commandId }),
     // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
     startAutomationSession: async (automation) =>
@@ -170,10 +184,11 @@ export function nativeSettings(
       contexts: (reference) => providers.contexts(reference),
       setContext: (reference, tier, revision) => providers.setContext(reference, tier, revision),
       disconnect: (id, revision) => providers.disconnect(id, revision),
+      remove: (id, revision) => providers.remove(id, revision),
       refresh: (id) => providers.refresh(id),
       refreshCatalogs: async () => providers.refreshShownCatalogs(),
       verify: (reference) => providers.verify(reference),
-      login: (id) => providers.login.start(id),
+      login: (id, request) => providers.login.start(id, request),
       answer: (id, promptId, value) => providers.login.answer(id, promptId, value),
       cancel: (id) => providers.login.cancel(id),
       openLink: (id) => providers.login.openLink(id),
@@ -196,6 +211,8 @@ export function nativeSettings(
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    saveCommandTyping: (value) => write({ commandTyping: value }),
+    saveCommandTypingAnimation: (value) => write({ commandTypingAnimation: value }),
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,
@@ -211,6 +228,16 @@ export function nativeSettings(
       messages.listen((message) => {
         if (message.type === 'openSection') listener(message.section);
       }),
+    onOpenItem: (listener) => {
+      const pending = takeSettingsItem();
+      if (pending) listener(pending);
+      return messages.listen((message) => {
+        if (message.type !== 'openItem') return;
+        takeSettingsItem();
+        const item = settingsItemOf(message.item);
+        if (item) listener(item);
+      });
+    },
   };
   return {
     bridge,

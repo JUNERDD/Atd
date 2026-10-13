@@ -1,0 +1,78 @@
+/* The finale's card: each line's anchor at its center (frame px, matching layout.ts), all fading
+   together with --fade; the lockup and the tagline ride the block, --block-y px below rest. */
+.r08-finale__flash {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o);
+  pointer-events: none;
+  background: radial-gradient(
+    60% 70% at 50% 46%,
+    color-mix(in srgb, var(--r08-fg) 60%, transparent),
+    var(--r08-coral-wash) 40%,
+    transparent 75%
+  );
+  mix-blend-mode: screen;
+}
+
+.r08-finale__card {
+  position: absolute;
+  inset: 0;
+  opacity: var(--fade, 1);
+}
+
+.r08-finale__block {
+  position: absolute;
+  inset: 0;
+  translate: 0 var(--block-y, 0);
+}
+
+.r08-finale__lockup {
+  position: absolute;
+  left: 960px;
+  top: 400px;
+}
+
+.r08-finale__line {
+  position: absolute;
+  left: 960px;
+  top: 610px;
+}
+
+.r08-finale__keys {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(740px - 26px);
+  display: flex;
+  justify-content: center;
+}
+
+.r08-finale__url {
+  position: absolute;
+  left: 960px;
+  top: 905px;
+}
+
+.r08-finale__specs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 946px;
+  text-align: center;
+  font-family: var(--r08-font);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--r08-fg-3);
+  opacity: var(--o, 1);
+  translate: 0 var(--rise, 0);
+}
+
+/* The resolve: the ink itself goes to black with the card, held black from FINALE_BEATS.black. */
+.r08-finale__black {
+  position: absolute;
+  inset: 0;
+  background: var(--r08-ink-edge);
+  opacity: var(--o, 0);
+  pointer-events: none;
+}

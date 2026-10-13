@@ -1,5 +1,6 @@
 import { Value } from 'typebox/value';
 import {
+  ProductArtifactSchema,
   ToolBlockDetailsSchema,
   type AgentTask as ServiceTask,
   type CapabilityRequest as ServiceCapability,
@@ -10,6 +11,7 @@ import {
   type TaskSnapshot as ServiceSnapshot,
   type TaskSummary as ServiceSummary,
   type MessageUsage,
+  type ProductArtifact,
   type ToolBlockDetails,
 } from '@atd/agent-contracts';
 import type { ToolId } from './command-schema';
@@ -163,11 +165,20 @@ export function mapRequest(request: ServiceRequest): PermissionRequest {
 
 /**
  * Splits service tool details into the desktop shape: the edit diff keeps its dedicated `diff`
- * field, every other variant rides in `data`. Service events reach main as unchecked JSON, so
- * details that fail the contract are dropped here and the row falls back to its output text.
+ * field, every other variant rides in `data`, and the call's product artifact rides beside them.
+ * Service events reach main as unchecked JSON, so details or an artifact that fail the contract
+ * are dropped here and the row falls back to its output text.
  */
-function mapToolDetails(details: ToolBlockDetails | undefined): ToolDetails {
-  const none: ToolDetails = { diff: '', truncated: false, fullOutputPath: '' };
+function mapToolDetails(
+  details: ToolBlockDetails | undefined,
+  artifact: ProductArtifact | undefined,
+): ToolDetails {
+  const none: ToolDetails = {
+    diff: '',
+    truncated: false,
+    fullOutputPath: '',
+    ...(artifact && Value.Check(ProductArtifactSchema, artifact) ? { artifact } : {}),
+  };
   if (details === undefined || !Value.Check(ToolBlockDetailsSchema, details)) return none;
   if (details.type === 'diff') return { ...none, diff: details.diff, truncated: details.truncated };
   return { ...none, data: details };
@@ -230,7 +241,7 @@ export function mapBlock(block: ServiceBlock): Block {
         status: block.status,
         output: block.output,
         partial: block.partial,
-        details: mapToolDetails(block.details),
+        details: mapToolDetails(block.details, block.artifact),
         permission: block.permission
           ? { scope: block.permission.scope, outcome: block.permission.outcome }
           : null,

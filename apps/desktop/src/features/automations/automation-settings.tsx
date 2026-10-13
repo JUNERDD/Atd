@@ -39,7 +39,10 @@ export function AutomationSettings({
   activeTarget,
 }: {
   settings: SettingsSnapshot | null;
-  /** The latest "Automate…" link from a command's row; each new nonce opens a prefilled editor. */
+  /**
+   * The latest link: "Automate…" on a command's row, whose each new nonce opens a prefilled
+   * editor, or a saved automation's page.
+   */
   activeTarget?: (SettingsAutomationTarget & { nonce: number }) | null;
 }) {
   const { t } = useTranslation('automations');
@@ -52,24 +55,26 @@ export function AutomationSettings({
   });
   const openDraft = (draft: AutomationDraft) =>
     history.open({ page: 'draft', key: crypto.randomUUID(), draft });
-  // An "Automate…" link opens its editor as a page of the history, once per request.
-  const [linked, setLinked] = useState<number | null>(null);
-  if (activeTarget && activeTarget.nonce !== linked) {
-    setLinked(activeTarget.nonce);
-    const command = commands.find(({ id }) => id === activeTarget.commandId);
+  /** A new automation's editor that runs one command, as "Automate…" on its row opens it. */
+  const openCommandDraft = (commandId: string) => {
+    const command = commands.find(({ id }) => id === commandId);
     openDraft(
       command
         ? draftFromCommand(command)
         : {
             ...newDraft(),
-            action: {
-              kind: 'command',
-              commandId: activeTarget.commandId,
-              arguments: {},
-              input: '',
-            },
+            action: { kind: 'command', commandId, arguments: {}, input: '' },
           },
     );
+  };
+  // A link opens its page of the history once per request: an "Automate…" link a prefilled
+  // editor, a saved automation's link that automation's page.
+  const [linked, setLinked] = useState<number | null>(null);
+  if (activeTarget && activeTarget.nonce !== linked) {
+    setLinked(activeTarget.nonce);
+    if ('automationId' in activeTarget)
+      history.open({ page: 'automation', id: activeTarget.automationId });
+    else openCommandDraft(activeTarget.commandId);
   }
   const { route } = history;
   const id = savedId(route);

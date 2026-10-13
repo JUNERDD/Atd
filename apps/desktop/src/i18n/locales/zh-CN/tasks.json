@@ -123,7 +123,7 @@
       },
       "bash": "运行终端命令",
       "command": "保存或更新命令",
-      "mcp": "使用 MCP 工具",
+      "mcp": "使用 MCP 工具或保存 MCP 服务器",
       "web": "访问网络",
       "app": "构建或运行此任务的应用",
       "automation": "保存、删除或运行自动化"
@@ -431,6 +431,21 @@
     "allowedTitle": "已允许 {{name}} 运行",
     "allowedDescription": "从下一条消息起即可使用它的工具。"
   },
+  "artifacts": {
+    "label": "本轮保存的内容",
+    "detail": "{{kind}} · {{action}}",
+    "created": "已创建",
+    "updated": "已更新",
+    "openLabel": "打开“{{name}}”，{{detail}}",
+    "kind": {
+      "command": "命令",
+      "automation": "自动化",
+      "skill": "技能",
+      "subagent": "子代理",
+      "mcp": "MCP 服务器",
+      "memory": "记忆"
+    }
+  },
   "selection": {
     "toolbar": "所选内容操作",
     "quote": "引用到回复"
@@ -458,6 +473,34 @@
     "editNote": "发送后将替换此消息及其后的全部内容。",
     "cancel": "取消",
     "send": "发送"
+  },
+  "commandOutput": {
+    "copied": "回答已复制到剪贴板。",
+    "replaceIn": "在 {{app}} 中替换",
+    "insertIn": "插入到 {{app}}",
+    "refused": {
+      "notTrusted": "辅助功能权限未开启，回答已改为复制到剪贴板。",
+      "targetGone": "已无法访问 {{app}} 中的输入框，回答已改为复制到剪贴板。",
+      "targetChanged": "{{app}} 中的输入框已变化，回答已改为复制到剪贴板。",
+      "noSelection": "{{app}} 中没有选中文本，回答已改为复制到剪贴板。",
+      "secureInput": "{{app}} 正处于安全输入状态，回答已改为复制到剪贴板。",
+      "failed": "无法写入 {{app}}，回答已改为复制到剪贴板。",
+      "interrupted": "写入 {{app}} 中途停止，完整回答已复制到剪贴板。"
+    },
+    "unwritten": {
+      "notTrusted": "辅助功能权限未开启，回答未写入 {{app}}。",
+      "targetGone": "已无法访问 {{app}} 中的输入框，回答未写入。",
+      "targetChanged": "{{app}} 中的输入框已变化，回答未写入。",
+      "noSelection": "{{app}} 中没有选中文本，回答未写入。",
+      "secureInput": "{{app}} 正处于安全输入状态，回答未写入。",
+      "failed": "无法写入 {{app}}。"
+    },
+    "progress": {
+      "failed": "{{command}} 未能完成。",
+      "stopped": "{{command}} 已停止。",
+      "startFailed": "{{command}} 无法开始运行。",
+      "empty": "{{command}} 没有可写入的回答。"
+    }
   },
   "toolRow": {
     "added_one": "新增 {{count}} 行",

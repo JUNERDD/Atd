@@ -1,0 +1,51 @@
+/* The 0.8 release film's world, "Ink & Caret": deep graphite ink, a fine dot grid, and one accent,
+   the coral caret. A brief cool glint marks completion; nothing else in the world layer has color
+   (the product's surfaces keep their own dark Neutral theme and Liquid Glass).
+
+   Every token is scoped under `.r08`, the root class of the film, its scenes and its sheet, so the
+   launch film's tokens and look are untouched. The DotField canvas reads the dot colors from here. */
+.r08 {
+  /* Ink: the canvas, a lifted center, and the vignette's edge. */
+  --r08-ink: #0a0b0e;
+  --r08-ink-lift: #15171c;
+  --r08-ink-edge: #040506;
+  --r08-vignette: rgb(2 3 4 / 0.78);
+
+  /* The dot grid: resting dots, lit dots (a pulse's ring), and the coral a keystroke lights. */
+  --r08-dot: rgb(255 255 255 / 0.15);
+  --r08-dot-hot: rgb(255 255 255 / 0.95);
+  --r08-dot-coral: rgb(255 122 82 / 0.95);
+
+  /* The caret: the protagonist. Its wash is the selection color; its glow, the bloom around it. */
+  --r08-coral: #ff6a3d;
+  --r08-coral-deep: #e2471c;
+  --r08-coral-wash: rgb(255 106 61 / 0.3);
+  --r08-coral-glow: rgb(255 106 61 / 0.55);
+
+  /* Completion only: a cool white glint. */
+  --r08-glint: #d9fbff;
+  --r08-glint-glow: rgb(150 235 255 / 0.6);
+
+  /* Type on ink. */
+  --r08-fg: #f5f5f7;
+  --r08-fg-2: rgb(245 245 247 / 0.66);
+  --r08-fg-3: rgb(245 245 247 / 0.4);
+
+  /* The Stage's wallpaper glows: coral low-left, cool high-right, soft enough to be felt. */
+  --r08-glow-warm: rgb(255 106 61 / 0.26);
+  --r08-glow-cool: rgb(110 190 255 / 0.18);
+
+  /* Display type: Inter at 800–900, tight; Noto Sans SC 900 in Chinese. */
+  --r08-font: 'Inter Variable', 'Noto Sans SC Variable', sans-serif;
+  --r08-track: -0.045em;
+  --r08-track-zh: -0.01em;
+  --r08-size-hero: 220px;
+  --r08-size-statement: 124px;
+  --r08-size-line: 72px;
+  --r08-size-label: 50px;
+  --r08-size-small: 30px;
+
+  font-family: var(--r08-font);
+  color: var(--r08-fg);
+  background-color: var(--r08-ink);
+}

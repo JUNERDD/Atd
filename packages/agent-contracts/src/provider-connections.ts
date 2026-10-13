@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ChatGPTConsentSchema } from './chatgpt.js';
 import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
 /**
@@ -29,7 +30,9 @@ export const ProviderCredentialSchema = Type.Union([
       refresh: Type.String({ maxLength: 8192 }),
       expires: Type.Number(),
     },
-    { additionalProperties: false },
+    // OAuth credentials carry provider-owned registration and identity data.
+    // Preserve it with the tokens so both the next read and refresh can use the full credential.
+    { additionalProperties: true },
   ),
 ]);
 export type ProviderCredential = Static<typeof ProviderCredentialSchema>;
@@ -51,6 +54,15 @@ export const ServiceConnectionSchema = Type.Object(
     revision: Type.Integer({ minimum: 1 }),
     connected: Type.Boolean(),
     hasCredential: Type.Boolean(),
+    authNotice: Type.Optional(Type.String({ maxLength: 2000 })),
+    accountLabel: Type.Optional(Type.String({ maxLength: 320 })),
+    credentialCleanupPending: Type.Optional(Type.Boolean()),
+    oauthProtocol: Type.Optional(Type.Literal('siwc')),
+    /** Identity sign-in can succeed without permission to use the ChatGPT plan. */
+    chatgptPlanEnabled: Type.Optional(Type.Boolean()),
+    chatgptUsagePaused: Type.Optional(Type.Boolean()),
+    /** Missing on older connections: require the notice before further use. */
+    chatgptConsent: Type.Optional(ChatGPTConsentSchema),
     configurationId: Type.String({ minLength: 1, maxLength: 256 }),
     verifiedModel: Type.String({ maxLength: 256 }),
     migratedAt: Type.Union([Type.String(), Type.Null()]),

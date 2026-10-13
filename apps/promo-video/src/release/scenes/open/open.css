@@ -1,0 +1,36 @@
+/* The open: the frame lifting out of black, the typed line at the center, the title over it after
+   the drop and the title line beneath. Positions are frame px. */
+.r08-open__black {
+  position: absolute;
+  inset: 0;
+  background: var(--r08-ink-edge);
+  opacity: var(--o);
+  pointer-events: none;
+}
+
+.r08-open__line {
+  position: absolute;
+  left: 960px;
+  top: 540px;
+  opacity: var(--o, 1);
+  translate: 0 var(--lift, 0);
+  scale: var(--shrink, 1);
+  filter: blur(var(--blur, 0));
+}
+
+/* The title: a full-width block whose line box (1.02 em) is centered on y = 470. */
+.r08-open__title {
+  --r08-size-hero: 288px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(470px - 0.51 * var(--r08-size-hero));
+  scale: var(--drift, 1);
+  transform-origin: 50% 50%;
+}
+
+.r08-open__title-line {
+  position: absolute;
+  left: 960px;
+  top: 690px;
+}

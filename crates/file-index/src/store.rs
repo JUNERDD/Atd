@@ -4,6 +4,7 @@
 //! owns the in-memory `NameList` behind `containing`, kept in step with every write.
 
 use std::fmt;
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -46,7 +47,7 @@ pub(crate) trait NameStore: Send + Sync + fmt::Debug {
     fn checkpoint(&self) -> Result<(), StoreError>;
 }
 
-/// minidex 0.37.0: FST segments + mmap + write-ahead log, with background flush and compaction.
+/// minidex 0.39.0: FST segments + mmap + write-ahead log, with background flush and compaction.
 ///
 /// Word-prefix matching only: the query `port` finds `port-notes.md` and `reportPort.md` (camel
 /// case splits words) but not `report.md`. Paths are stored as displayed locations with the root
@@ -177,23 +178,22 @@ impl NameStore for MinidexStore {
 }
 
 /// Every live file in the index: all stored paths start with `/`, so the empty prefix matches
-/// them all, prefix tombstones applied. `None` means minidex's scan budget was exceeded, which an
-/// unbounded limit cannot reach; it is reported rather than treated as an empty index.
+/// them all, prefix tombstones applied. The scan streams entries into the list instead of
+/// collecting them first, and with no early stop it always visits every entry.
 fn list_all(index: &Index) -> Result<NameList, StoreError> {
-    let entries = index
-        .with_prefix(None, "", usize::MAX)
-        .map_err(fail)?
-        .ok_or_else(|| StoreError("the index listing exceeded minidex's scan budget".into()))?;
     let mut names = NameList::default();
-    for entry in entries {
-        if entry.kind == Kind::File {
-            names.insert(StoredFile {
-                root: entry.volume,
-                rel: entry.path.to_string_lossy().into_owned(),
-                modified_secs: entry.last_modified / MICROS,
-            });
-        }
-    }
+    index
+        .for_each_with_prefix(None, "", |entry| {
+            if entry.kind == Kind::File {
+                names.insert(StoredFile {
+                    root: entry.volume,
+                    rel: entry.path.to_string_lossy().into_owned(),
+                    modified_secs: entry.last_modified / MICROS,
+                });
+            }
+            ControlFlow::Continue(())
+        })
+        .map_err(fail)?;
     Ok(names)
 }
 

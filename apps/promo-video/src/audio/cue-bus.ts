@@ -2,7 +2,6 @@
  * Where the effects are mixed: one bus pair (dry and reverb send) and the placement helpers every
  * chapter's cues share, so each cue sits at a level that reads through the music under it.
  */
-import { DURATION, SECTIONS, type SectionId } from '../timeline.ts';
 import { addMono, addMoving, prng, stereo, type Stereo } from './dsp.ts';
 
 export interface EffectBuses {
@@ -10,28 +9,11 @@ export interface EffectBuses {
   send: Stereo;
 }
 
-/**
- * How much more level a cue needs to read through each section's music: the grooves want about
- * +6 dB over the quiet open, the filtered night and the build a little less.
- */
-const UNDER_THE_MUSIC: [SectionId, number][] = [
-  ['open', 1],
-  ['anywhere', 2],
-  ['anything', 2],
-  ['anytime', 1.5],
-  ['yours', 1.6],
-  ['finale', 2],
-];
-
-/** A cue that leads into a cut by less than this belongs to the section it leads into. */
-const LEAD_IN = 0.25;
-
-function musicAt(seconds: number): number {
-  const time = Math.min(DURATION - 1e-6, seconds + LEAD_IN);
-  const found = UNDER_THE_MUSIC.find(
-    ([id]) => time >= SECTIONS[id].start && time < SECTIONS[id].end,
-  );
-  return found?.[1] ?? 1;
+/** A film's effects bus: its length, and how much level a cue needs over the music at a moment. */
+export interface CueMix {
+  seconds: number;
+  /** A multiplier on a cue's gain at `at` seconds, so it reads through the music under it. */
+  levelAt: (at: number) => number;
 }
 
 export interface Cues {
@@ -60,10 +42,10 @@ export interface Cues {
   ): void;
 }
 
-export function createCues(seed: number): Cues {
+export function createCues(seed: number, { seconds, levelAt }: CueMix): Cues {
   const random = prng(seed);
-  const buses: EffectBuses = { dry: stereo(DURATION), send: stereo(DURATION) };
-  const level = (at: number, gain: number) => gain * musicAt(at);
+  const buses: EffectBuses = { dry: stereo(seconds), send: stereo(seconds) };
+  const level = (at: number, gain: number) => gain * levelAt(at);
   const place: Cues['place'] = (voice, at, gain, position = 0, wet = 0.25) => {
     addMono(buses.dry, voice, at, level(at, gain), position);
     if (wet > 0) addMono(buses.send, voice, at, level(at, gain) * wet, position);

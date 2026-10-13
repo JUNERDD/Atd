@@ -16,10 +16,30 @@ export interface Chord {
   ninth: number;
 }
 
-const D: Chord = { root: 38, pad: [50, 57, 61, 64, 66], arp: [62, 66, 69, 73, 76], ninth: 76 };
-const BM: Chord = { root: 35, pad: [47, 54, 57, 61, 62], arp: [59, 62, 66, 69, 73], ninth: 73 };
-const G: Chord = { root: 31, pad: [43, 50, 54, 57, 61], arp: [55, 62, 66, 69, 74], ninth: 81 };
-const A: Chord = { root: 33, pad: [45, 52, 54, 59, 61], arp: [57, 61, 64, 66, 71], ninth: 71 };
+export const D: Chord = {
+  root: 38,
+  pad: [50, 57, 61, 64, 66],
+  arp: [62, 66, 69, 73, 76],
+  ninth: 76,
+};
+export const BM: Chord = {
+  root: 35,
+  pad: [47, 54, 57, 61, 62],
+  arp: [59, 62, 66, 69, 73],
+  ninth: 73,
+};
+export const G: Chord = {
+  root: 31,
+  pad: [43, 50, 54, 57, 61],
+  arp: [55, 62, 66, 69, 74],
+  ninth: 81,
+};
+export const A: Chord = {
+  root: 33,
+  pad: [45, 52, 54, 59, 61],
+  arp: [57, 61, 64, 66, 71],
+  ninth: 71,
+};
 
 /**
  * The arrangement's parts: the intro under the keys and the mark, the drop into "Anywhere", the
@@ -39,7 +59,7 @@ export type Part =
 
 export type Drums = 'none' | 'light' | 'drive' | 'half' | 'return' | 'build' | 'full' | 'last';
 
-interface Feel {
+export interface Feel {
   /** Pad level and its low-pass cutoff from the part's first bar to its last. */
   pad: number;
   padCutoff: [number, number];

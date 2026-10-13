@@ -1,0 +1,62 @@
+/* A line typed in a centered paragraph: a zero-size anchor (placed by the parent at the line's
+   center) and the row, whose left edge sits --ct-shift px from it and glides as the line grows.
+   The set (size, weight, tracking) comes from the scene, which measures with the same values. */
+.r08-ct {
+  position: relative;
+  width: 0;
+  height: 0;
+  font-family: var(--r08-font);
+  font-size: var(--ct-size);
+  font-weight: var(--ct-weight);
+  letter-spacing: var(--ct-track);
+  line-height: 1.2;
+  color: var(--r08-fg);
+}
+
+.r08-ct[data-tone='muted'] {
+  color: var(--r08-fg-2);
+}
+
+.r08-ct__row {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  white-space: pre;
+  translate: var(--ct-shift) -50%;
+}
+
+.r08-ct__lead {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: var(--lead-w);
+}
+
+.r08-ct__text {
+  position: relative;
+}
+
+/* The selection: the coral wash behind the selected characters, as an editor draws it. */
+.r08-ct__run[data-kind='selected'] {
+  background-color: var(--r08-coral-wash);
+  box-shadow: inset 0 0 0 1px var(--r08-coral-wash);
+  border-radius: 0.06em;
+}
+
+/* The caret's anchor takes no room (a point on the baseline), so showing or hiding it never moves
+   the text. */
+.r08-ct__caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+
+.r08-ct__caret > .r08-caret {
+  position: absolute;
+  left: 0.03em;
+  bottom: -0.25em;
+}

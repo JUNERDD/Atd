@@ -21,6 +21,14 @@ function settingsSnapshotQuery() {
 }
 
 /**
+ * The settings snapshot outside React: the cached one, kept current by the broadcasts, or a first
+ * read when no page of this window has read it yet.
+ */
+export function readSettingsSnapshot(): Promise<SettingsSnapshot> {
+  return queryClient.fetchQuery(settingsSnapshotQuery());
+}
+
+/**
  * Shows a settings write's answer at once: the snapshot it returns is what main persisted, so the
  * next edit builds on it before the broadcast arrives.
  */

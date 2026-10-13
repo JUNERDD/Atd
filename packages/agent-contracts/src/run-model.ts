@@ -1,3 +1,5 @@
+import type { CommandThinkingLevel } from './command-run.js';
+import type { ThinkingLevel } from './models.js';
 import type { ModelSelection } from './task.js';
 
 /** A command's model policy, as the service and the renderer both store it. */
@@ -34,4 +36,17 @@ export function runModelSelection(sources: RunModelSources): ModelSelection | un
   if (last && sources.hasConnection(last.connectionId))
     return { connectionId: last.connectionId, modelId: last.modelId };
   return undefined;
+}
+
+/**
+ * The reasoning level a command run asks for: the level picked for the run, else the command's own
+ * unless it is `inherit`. Undefined leaves the connection's default level. The service previews
+ * and freezes command runs through this; the run clamps the level to what its model supports.
+ */
+export function commandThinkingLevel(
+  requested: ThinkingLevel | undefined,
+  command: CommandThinkingLevel | undefined,
+): ThinkingLevel | undefined {
+  if (requested) return requested;
+  return command === 'inherit' ? undefined : command;
 }

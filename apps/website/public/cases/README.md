@@ -1,25 +1,34 @@
 # Interface scenes
 
-The “Interfaces” section (`#cases`) is an eight-scene scroll sequence. Its labels, captions and image
+The “Interfaces” section (`#cases`) is a nine-scene scroll sequence. Its labels, captions and image
 paths live in [`src/content/cases.ts`](../../src/content/cases.ts). These are design previews exported
 from the canonical Figma file, not recordings of a live browser agent.
 
 ## Active assets
 
-All eight PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
+All nine PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
 scene. Frames are in “W · Website · Interface scenes · shared desktop” (`2462:142863`).
 
-| File                       | Export frame  | Application design source                                    |
-| -------------------------- | ------------- | ------------------------------------------------------------ |
-| `ui/selection-toolbar.png` | `2462:142864` | Selection and toolbar `1798:97448`                           |
-| `ui/mini-panel.png`        | `2462:142972` | Expanded Mini Panel `2294:134033` and pointer `2294:134080`  |
-| `ui/screenshot.png`        | `2462:143105` | Annotated capture `1699:74894`                               |
-| `ui/main-panel.png`        | `2462:143430` | New-task panel `1:400`                                       |
-| `ui/chat.png`              | `2462:143565` | Conversation `1637:159329`                                   |
-| `ui/settings.png`          | `2462:143808` | Settings window `1123:41395`                                 |
-| `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                 |
-| `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499` |
+| File                       | Export frame  | Application design source                                      |
+| -------------------------- | ------------- | -------------------------------------------------------------- |
+| `ui/selection-toolbar.png` | `2462:142864` | Selection and toolbar `1798:97448`, options menu `2711:186043` |
+| `ui/write-back.png`        | `2823:164824` | Command island `Phase=Done` in `2714:186710`                   |
+| `ui/mini-panel.png`        | `2462:142972` | Expanded Mini Panel `2294:134033` and pointer `2294:134080`    |
+| `ui/screenshot.png`        | `2462:143105` | Annotated capture `1699:74894`                                 |
+| `ui/main-panel.png`        | `2462:143430` | New-task panel `1:400`                                         |
+| `ui/chat.png`              | `2462:143565` | Conversation `1637:159329`                                     |
+| `ui/settings.png`          | `2462:143808` | Settings window `1123:41395`                                   |
+| `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                   |
+| `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499`   |
 
+The selection scene's toolbar is the `Content=With options` variant: Fix grammar is a split button
+whose chevron has opened its answer destinations (`App / Toolbar options menu`, cloned from the
+review frame, 4 pt below the capsule), with Replace the selected text as the saved choice. The
+write-back scene reuses the same source page with a context line and a rough draft line that is
+selected; the answer (`Written answer`, a frame in the page color over the draft) has replaced it,
+and the island at the bottom center, its bottom edge at y = 804 like the island review frames,
+says Written. The composer in the main panel and conversation shows Auto approval, the default for
+new installations.
 The common desktop comes from `2294:133952`, with its wallpaper, menu bar and Dock. The exported
 scenes reuse connected application components. The screenshot scene preserves the capture selection,
 annotations, controls and dimming while its duplicate desktop layers are hidden to reveal the shared
@@ -43,7 +52,8 @@ scenes. [`scripts/case-layers.json`](../../scripts/case-layers.json) lists, per 
 bottom to top, their source nodes and their sheets. Each sheet row is a clone of the scene twice:
 composited through that layer (later layers at zero opacity, so auto layout never reflows), and
 the layer alone on a transparent canvas (ancestors keep their geometry and clipping but not their
-paint; strokes keep their weight). The sheets export as PNG at 2x.
+paint; strokes keep their weight). The sheets export as PNG at 2x. A sheet of up to four rows sits
+on a 1640 × 1100 grid (composite at x 0, alone at x 1640), which is what `matte-layers.py` reads.
 
 Most surfaces are glass and blur the wallpaper behind them, which an export on a transparent
 canvas loses. [`scripts/matte-layers.py`](../../scripts/matte-layers.py) recovers each layer from
@@ -64,16 +74,20 @@ the remaining maximum is lossy WebP on the Dock icons).
    as above, and update `scripts/case-layers.json` when layers or sheets change. Export every sheet
    listed there at 2x into one directory, each file named after its node (`2553-145107.png`), then
    run `python3 apps/website/scripts/matte-layers.py <directory>` from the repository root (numpy
-   and Pillow with WebP). A new or renamed layer also needs its entrance in
+   and Pillow with WebP). The sheets must keep their transparency; an export path that flattens
+   them onto the section's gray (the Figma MCP export does) needs a second export of every layer
+   sheet on a temporary white fill, and
+   [`scripts/unflatten-sheets.py`](../../scripts/unflatten-sheets.py) recovers the transparent
+   sheets from the pair. A new or renamed layer also needs its entrance in
    `src/sections/cases/scenes.css`.
 4. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
-5. Verify all eight scenes and their entrances while scrolling through the pinned stage, both
-   directions, the bars' fill and their jumps, keyboard access, reduced motion and the phone,
+5. Verify all nine scenes and their entrances while scrolling through the pinned stage, both
+   directions, each scene stopped partway through its step, the bars' fill and their jumps, keyboard access, reduced motion and the phone,
    landscape-phone and desktop layouts in both languages. Run the website lint, type check and
    production build.
 
-The scroll position, not a timer, decides the scene: see “Interface showcase” in the
-[website README](../../README.md). A scene whose layers fail to load shows a localized message
+The scroll position, not a timer, decides the scene and how far its entrance has played: see
+“Interface showcase” in the [website README](../../README.md). A scene whose layers fail to load shows a localized message
 with a link to its flat export.
 
 ## Archived recordings and Summon assets

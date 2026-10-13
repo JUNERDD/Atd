@@ -6,7 +6,7 @@
   scale: calc(0.9 + var(--in, 1) * 0.1);
 }
 
-/* An attached file: a 52 pt card on the bubble's fill, no border, the 36 pt kind tile concentric
+/* An attached file: a 52 pt card on the bubble's translucent fill, no border, the 36 pt kind tile concentric
    with its 18 pt corner. */
 .pk-file {
   display: flex;
@@ -15,7 +15,7 @@
   max-width: 304px;
   padding: 8px 14px 8px 8px;
   border-radius: 18px;
-  background: var(--pk-muted);
+  background: var(--pk-lift);
 }
 
 .pk-file__tile {

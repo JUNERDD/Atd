@@ -35,19 +35,28 @@ extension MiniPanelCurve {
 
 extension MiniPanelShapeMotion {
   /// The body's shape moving as one value, each axis on its own spring.
-  var animation: Animation { Animation(MiniPanelAxisAnimation(motion: self)) }
+  var animation: Animation { animation(thickness: .horizontal) }
+
+  /// The shape moving as one value, its thickness running along `axis` (the command island's
+  /// is its height).
+  func animation(thickness axis: MiniPanelShapeAxis) -> Animation {
+    Animation(MiniPanelAxisAnimation(motion: self, axis: axis))
+  }
 }
 
-/// Runs a body shape's change (``MiniPanelGlassRect``) with its thickness (x, width and corner)
-/// and its length (y, height) each on their own spring after their own delay
-/// (``MiniPanelShapeMotion``). One animation over one vector, so the glass, its clip and the
-/// content following it are interpolated together. A change made while one runs adds to it, as
+/// Runs a body shape's change (``MiniPanelGlassRect``) with its thickness (x, width and corner,
+/// for the mini panel's `horizontal` ``axis``) and its length (y, height) each on their own
+/// spring after their own delay (``MiniPanelShapeMotion``); a `vertical` axis swaps them, so the
+/// command island's height and corner take the thickness spring and its width the length's.
+/// One animation over one vector, so the glass, its clip and the content following it are
+/// interpolated together. A change made while one runs adds to it, as
 /// SwiftUI combines animations that do not merge, which for springs is the same as retargeting
 /// them with their velocity.
 ///
-/// The clip and the content get the shape itself and move per axis. `glassEffect(in:)` erases
-/// the shape it is given, so the glass's change arrives as opaque data, which moves as a whole on
-/// the length's spring. Drawing the glass from a per-axis shape every frame instead (an animatable
+/// The content gets the shape itself and moves per axis. `glassEffect(in:)` erases the shape it
+/// is given, so the glass's change arrives as opaque data, which moves as a whole on the length's
+/// spring; the clip takes the shape erased alike (``View/clippedGlass(in:)``), so the
+/// surface fill it bounds moves with the glass's rim rather than sliding off it per axis. Drawing the glass from a per-axis shape every frame instead (an animatable
 /// modifier) costs about 1 ms more of the main thread per frame, measured: SwiftUI interpolates
 /// the erased shape without updating the view graph.
 ///
@@ -60,6 +69,7 @@ nonisolated struct MiniPanelAxisAnimation: CustomAnimation {
   static let restTolerance = 0.25
 
   let motion: MiniPanelShapeMotion
+  var axis = MiniPanelShapeAxis.horizontal
 
   func animate<V: VectorArithmetic>(
     value: V, time: TimeInterval, context: inout AnimationContext<V>
@@ -80,13 +90,14 @@ nonisolated struct MiniPanelAxisAnimation: CustomAnimation {
       }
       return value.scaled(by: along)
     }
-    let change = Self.change(of: shape)
+    let change = axis.extent(of: shape.components)
     guard !Self.rests(motion, across: change.across, along: change.along, at: time) else {
       return nil
     }
+    let share = axis.progress(across: across, along: along)
     let moved = MiniPanelGlassRect(
-      x: shape.x * across, y: shape.y * along, width: shape.width * across,
-      height: shape.height * along, corner: shape.corner * across)
+      x: shape.x * share.x, y: shape.y * share.y, width: shape.width * share.width,
+      height: shape.height * share.height, corner: shape.corner * share.corner)
     return moved as? V
   }
 
@@ -120,14 +131,6 @@ nonisolated struct MiniPanelAxisAnimation: CustomAnimation {
     let left = 1 - spring.value(target: 1.0, time: time - delay)
     let speed = spring.velocity(target: 1.0, time: time - delay) / (2 * .pi / spring.duration)
     return (left * left + speed * speed).squareRoot() * change <= restTolerance
-  }
-
-  /// How far a shape's change moves it across the edge (x, width, corner) and along it (y, height).
-  private static func change(of shape: MiniPanelGlassRect) -> (across: Double, along: Double) {
-    (
-      max(abs(shape.x), abs(shape.x + shape.width), abs(shape.corner)),
-      max(abs(shape.y), abs(shape.y + shape.height))
-    )
   }
 
   /// How far along a unit change `spring` is `time` seconds in, once `delay` has passed.

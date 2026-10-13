@@ -31,9 +31,6 @@
 .aligned-fields > .settings-field > :nth-child(2) {
   align-self: start;
 }
-.input-shortcut-field {
-  max-width: 180px;
-}
 .run-settings {
   display: grid;
   gap: 16px;
@@ -166,6 +163,22 @@
   flex-direction: column;
   min-height: 0;
 }
+/* The overview keeps its heading fixed above the scrolling list, under the floating footer. */
+.command-overview {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+/* The list or its empty state, inset so row focus rings stay inside the scroll area. */
+.command-overview-body {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  padding: 3px 3px 16px;
+}
 /* The user's commands, then one titled group per plugin that contributes commands. */
 .command-groups {
   display: flex;
@@ -197,6 +210,32 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+}
+/* A user's row moves on its own compositor layer, so a drag or a make-way slide never repaints
+ * the rest of the page. */
+.command-management-row[data-hold] {
+  will-change: transform;
+}
+/* A press that may become a hold starts the lift: after a short click's length the shadow rises
+ * over the rest of the hold, so the row is visibly up by the time it follows the pointer. The
+ * transition belongs to this state only, so a click that ends sooner drops it at once. */
+.command-management-row[data-hold='arming'] {
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  transition: box-shadow 230ms ease-out 120ms;
+}
+/* The held row keeps its resting look and only lifts: the window surface's own colour, made opaque
+ * so the rows and fields it passes over never show through, and a soft shadow. It stays above its
+ * siblings until it is back in its slot. */
+.command-management-row[data-hold='lifted'] {
+  z-index: 1;
+  background: var(--ata-glass-fill-opaque);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+/* No hover wash while held: the pointer is always over the row then, and the wash read as a
+ * highlight rather than a lift. */
+.command-management-row[data-hold='lifted'] > .open-row-button {
+  background: transparent;
+  cursor: grabbing;
 }
 .command-row-controls {
   display: flex;
@@ -310,7 +349,19 @@
 .parameter-item > div {
   overflow-wrap: anywhere;
 }
-/* The recorder's 28px pill centers on the 32px track of the Select beside it. */
-.input-shortcut-field .shortcut-recorder {
-  min-height: 32px;
+/* The typing popover (typing-footer.tsx): a compact glass panel of a header and two switch rows.
+   Its 8px inset keeps each row's fill concentric with the popover's corner (radius-3xl − 8px is
+   radius-xl), and the header's inset lines its text up with the rows' text. */
+.command-typing-popover[data-slot='popover-content'] {
+  gap: 4px;
+  padding: 8px;
+}
+.command-typing-popover [data-slot='popover-header'] {
+  padding: 8px 14px 4px;
+}
+.command-typing-popover [data-slot='item-group'] {
+  gap: 2px;
+}
+.command-typing-popover [data-slot='item'] {
+  border-radius: var(--radius-xl);
 }

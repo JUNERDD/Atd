@@ -7,6 +7,7 @@ import {
   PermissionRequestSchema,
 } from './confirms.js';
 import { AgentTaskSchema } from './task.js';
+import { ProductArtifactSchema } from './product-artifact.js';
 import { ToolBlockDetailsSchema } from './tool-details.js';
 
 /**
@@ -139,6 +140,8 @@ export const ServiceBlockSchema = Type.Union([
       ]),
       /** C1 additive: whitelisted per-tool result facts (tool-details.ts). */
       details: Type.Optional(ToolBlockDetailsSchema),
+      /** The product item a completed call created or changed, beside its details. */
+      artifact: Type.Optional(ProductArtifactSchema),
       ...messageFields,
     },
     { additionalProperties: false },

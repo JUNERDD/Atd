@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { withInferencePurpose } from '../../providers/chatgpt-usage.js';
+import { inferenceError } from '../../providers/inference-result.js';
 import type { ModelSelection, ThinkingLevel } from '@atd/agent-contracts';
 import { clampThinkingLevel, type Api, type Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
@@ -61,7 +63,7 @@ export function connectionModels(paths: ServicePaths): OpenModel {
 /**
  * The consolidation's one completion: its own session id (providers that route by session read
  * it), a bounded reply, thinking only when the automation asks for it, and a timeout on top of
- * `signal`. Rejects when the call fails or is aborted.
+ * `signal`. Rejects when the call fails, is aborted or returns a truncated response.
  */
 export async function completeConsolidation(
   source: ConsolidationModel,
@@ -70,20 +72,22 @@ export async function completeConsolidation(
   signal: AbortSignal,
 ): Promise<LearnerReply> {
   const level = thinking === undefined ? 'off' : clampThinkingLevel(source.model, thinking);
-  const result = await source.models.completeSimple(
-    source.model,
-    {
-      systemPrompt: CONSOLIDATION_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
-    },
-    {
-      maxTokens: Math.min(CONSOLIDATION_MAX_TOKENS, source.model.maxTokens),
-      sessionId: randomUUID(),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(CONSOLIDATION_TIMEOUT_MS)]),
-      ...(level === 'off' ? {} : { reasoning: level }),
-    },
+  const result = await withInferencePurpose(true, () =>
+    source.models.completeSimple(
+      source.model,
+      {
+        systemPrompt: CONSOLIDATION_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+      },
+      {
+        maxTokens: Math.min(CONSOLIDATION_MAX_TOKENS, source.model.maxTokens),
+        sessionId: randomUUID(),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(CONSOLIDATION_TIMEOUT_MS)]),
+        ...(level === 'off' ? {} : { reasoning: level }),
+      },
+    ),
   );
-  if (result.stopReason === 'error' || result.stopReason === 'aborted')
-    throw new Error(result.errorMessage ?? `The consolidation call ended: ${result.stopReason}.`);
+  const error = inferenceError(result);
+  if (error) throw new Error(error);
   return replyChannel(result.content);
 }

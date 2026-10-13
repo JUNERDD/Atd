@@ -31,8 +31,16 @@ function canonical(value: unknown): string {
   );
 }
 
-function withoutState(command: ServiceCommandFull): Omit<ServiceCommandFull, 'enabled'> {
-  const { enabled: _enabled, migratedAt: _migratedAt, ...rest } = command;
+/** The definition without the switch and what the service computes or records beside it. */
+function withoutState(
+  command: ServiceCommandFull,
+): Omit<ServiceCommandFull, 'enabled' | 'migratedAt' | 'lastArguments'> {
+  const {
+    enabled: _enabled,
+    migratedAt: _migratedAt,
+    lastArguments: _lastArguments,
+    ...rest
+  } = command;
   return rest;
 }
 

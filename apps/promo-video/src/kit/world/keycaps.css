@@ -169,3 +169,14 @@
 .keycaps[data-variant='hint'] .keycap[data-legend='Space'] .keycap__legend {
   font-size: calc(var(--u) * 0.4);
 }
+
+/* A word legend (Esc, Return): set small, as Space's is. */
+.keycap[data-word] .keycap__legend {
+  font-size: calc(var(--u) * 0.2);
+  font-weight: 460;
+  letter-spacing: 0.01em;
+}
+
+.keycaps[data-variant='hint'] .keycap[data-word] .keycap__legend {
+  font-size: calc(var(--u) * 0.4);
+}

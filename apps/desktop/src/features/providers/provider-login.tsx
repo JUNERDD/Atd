@@ -4,50 +4,38 @@ import { Button } from '@atd/ui/components/button';
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@atd/ui/components/collapsible';
+import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@atd/ui/components/select';
 import type { LoginState } from '../../client/providers/schema';
 import { showErrorToast } from '../../components/toast-store';
+import { ChatGPTLoginComplete } from './chatgpt-settings';
 
 export function ProviderSignIn({
-  connectionId,
+  state,
   disabled,
 }: {
-  connectionId: string;
+  state: LoginState | null;
   disabled: boolean;
 }) {
   const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
-  const [state, setState] = useState<LoginState | null>(null);
-  const [answer, setAnswer] = useState('');
+  const [response, setResponse] = useState({ promptId: '', value: '' });
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const promptId = state?.prompt?.id ?? '';
+  const answer = response.promptId === promptId ? response.value : '';
+  const setAnswer = (value: string) => setResponse({ promptId, value });
   const prompt = useRef<HTMLDivElement>(null);
   const feedback = useRef<HTMLOutputElement>(null);
-  const current = useRef(state);
-  const active = useRef(true);
-  useEffect(() => {
-    active.current = true;
-    if (!bridge) return;
-    const unsubscribe = bridge.onLogin((next) => {
-      if (
-        next.connectionId === connectionId &&
-        (!current.current || current.current.id === next.id || current.current.status !== 'waiting')
-      ) {
-        const promptChanged = current.current?.prompt?.id !== next.prompt?.id;
-        current.current = next;
-        setState(next);
-        if (promptChanged) setAnswer('');
-      }
-    });
-    return () => {
-      active.current = false;
-      unsubscribe();
-      if (current.current?.status === 'waiting') void bridge.cancel(current.current.id);
-    };
-  }, [bridge, connectionId]);
   async function action(operation: () => Promise<unknown>) {
     try {
       await operation();
@@ -57,87 +45,118 @@ export function ProviderSignIn({
   }
   const waiting = state?.status === 'waiting';
   useEffect(() => {
-    if (waiting) prompt.current?.querySelector<HTMLElement>('input, [role="combobox"]')?.focus();
-  }, [state?.prompt?.id, waiting]);
+    if (waiting && (state?.prompt?.type !== 'manual_code' || fallbackOpen))
+      prompt.current?.querySelector<HTMLElement>('input, [role="combobox"]')?.focus();
+  }, [state?.prompt?.id, state?.prompt?.type, waiting, fallbackOpen]);
   useEffect(() => {
     if (state?.status === 'error') feedback.current?.scrollIntoView({ block: 'nearest' });
   }, [state?.status]);
   return (
     <div className="provider-sign-in settings-field">
-      {state && (
-        <output
-          ref={feedback}
-          role={state.status === 'error' ? 'alert' : 'status'}
-          className={state.status === 'error' ? 'text-destructive' : undefined}
-        >
-          {state.message}
-        </output>
+      {state?.status === 'complete' && state.chatgptPlanEnabled !== undefined ? (
+        <ChatGPTLoginComplete planEnabled={state.chatgptPlanEnabled} />
+      ) : (
+        state && (
+          <output
+            ref={feedback}
+            role={state.status === 'error' ? 'alert' : 'status'}
+            className={state.status === 'error' ? 'text-destructive' : undefined}
+          >
+            {state.diagnostic ? t(`login.errors.${state.diagnostic.kind}`) : state.message}
+          </output>
+        )
+      )}
+      {state?.status === 'error' && state.diagnostic && (
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button size="xs" variant="ghost">
+              {t('login.errorDetails')}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="text-xs text-muted-foreground">
+            <p>{t(`login.stages.${state.diagnostic.stage}`)}</p>
+            {state.diagnostic.reason && <p>{t(`login.reasons.${state.diagnostic.reason}`)}</p>}
+            <code className="wrap-anywhere select-all">
+              {[
+                state.diagnostic.code,
+                state.diagnostic.field,
+                state.diagnostic.status && `HTTP ${state.diagnostic.status}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </code>
+            {state.diagnostic.requestId && (
+              <p className="wrap-anywhere select-all">
+                {t('login.requestId', { id: state.diagnostic.requestId })}
+              </p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       )}
       {waiting && state.code && (
         <code className="text-lg tracking-widest select-all">{state.code}</code>
       )}
       {waiting && state.url && (
-        <Button variant="outline" onClick={() => void action(() => bridge!.openLink(state.id))}>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          onClick={() => void action(() => bridge!.openLink(state.id))}
+        >
           {t('login.openBrowser')}
         </Button>
       )}
       {waiting && state.prompt && (
-        <div ref={prompt} className="settings-field">
-          <Label htmlFor="provider-auth-answer">{state.prompt.message}</Label>
-          {state.prompt.type === 'select' ? (
-            <Select value={answer} onValueChange={setAnswer}>
-              <SelectTrigger id="provider-auth-answer">
-                <SelectValue placeholder={t('login.chooseOption')} />
-              </SelectTrigger>
-              <SelectContent position="popper" align="start" collisionPadding={8}>
-                {state.prompt.options.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id="provider-auth-answer"
-              type={state.prompt.type === 'secret' ? 'password' : 'text'}
-              value={answer}
-              autoComplete="off"
-              onChange={(event) => setAnswer(event.target.value)}
-            />
+        <Collapsible
+          open={state.prompt.type !== 'manual_code' || fallbackOpen}
+          onOpenChange={setFallbackOpen}
+        >
+          {state.prompt.type === 'manual_code' && (
+            <CollapsibleTrigger asChild>
+              <Button size="xs" variant="ghost">
+                {t('login.manualFallback')}
+              </Button>
+            </CollapsibleTrigger>
           )}
-          <Button
-            disabled={state.prompt.type === 'select' && !answer}
-            onClick={() => void action(() => bridge!.answer(state.id, state.prompt!.id, answer))}
-          >
-            {t('login.continue')}
-          </Button>
-        </div>
-      )}
-      <div className="flex gap-2">
-        {waiting ? (
-          <Button variant="outline" onClick={() => void action(() => bridge!.cancel(state.id))}>
-            {t('login.cancel')}
-          </Button>
-        ) : (
-          <Button
-            disabled={disabled || !bridge}
-            onClick={() =>
-              void action(async () => {
-                const next = await bridge!.login(connectionId);
-                if (!active.current) {
-                  await bridge!.cancel(next.id);
-                  return;
+          <CollapsibleContent>
+            <div ref={prompt} className="settings-field">
+              <Label htmlFor="provider-auth-answer">{state.prompt.message}</Label>
+              {state.prompt.type === 'select' ? (
+                <Select value={answer} onValueChange={setAnswer} disabled={disabled}>
+                  <SelectTrigger id="provider-auth-answer">
+                    <SelectValue placeholder={t('login.chooseOption')} />
+                  </SelectTrigger>
+                  <SelectContent position="popper" align="start" collisionPadding={8}>
+                    <SelectGroup>
+                      {state.prompt.options.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="provider-auth-answer"
+                  type={state.prompt.type === 'secret' ? 'password' : 'text'}
+                  value={answer}
+                  disabled={disabled}
+                  autoComplete="off"
+                  onChange={(event) => setAnswer(event.target.value)}
+                />
+              )}
+              <Button
+                disabled={disabled || !answer.trim()}
+                onClick={() =>
+                  void action(() => bridge!.answer(state.id, state.prompt!.id, answer))
                 }
-                if (current.current?.id !== next.id) current.current = next;
-                setState(current.current);
-              })
-            }
-          >
-            {state?.status === 'error' ? t('login.tryAgain') : t('login.signIn')}
-          </Button>
-        )}
-      </div>
+              >
+                {t('login.continue')}
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

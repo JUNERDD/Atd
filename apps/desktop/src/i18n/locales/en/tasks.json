@@ -123,7 +123,7 @@
       },
       "bash": "Run a terminal command",
       "command": "Save or update a command",
-      "mcp": "Use an MCP tool",
+      "mcp": "Use an MCP tool or save an MCP server",
       "web": "Access the web",
       "app": "Build or run this task's app",
       "automation": "Save, delete or run an automation"
@@ -431,6 +431,21 @@
     "allowedTitle": "{{name}} is allowed to run",
     "allowedDescription": "Its tools are available from your next message."
   },
+  "artifacts": {
+    "label": "Saved in this turn",
+    "detail": "{{kind}} · {{action}}",
+    "created": "Created",
+    "updated": "Updated",
+    "openLabel": "Open {{name}}, {{detail}}",
+    "kind": {
+      "command": "Command",
+      "automation": "Automation",
+      "skill": "Skill",
+      "subagent": "Subagent",
+      "mcp": "MCP server",
+      "memory": "Memory"
+    }
+  },
   "selection": {
     "toolbar": "Selection actions",
     "quote": "Quote in reply"
@@ -458,6 +473,34 @@
     "editNote": "Sending replaces this message and everything after it.",
     "cancel": "Cancel",
     "send": "Send"
+  },
+  "commandOutput": {
+    "copied": "Answer copied to the clipboard.",
+    "replaceIn": "Replace in {{app}}",
+    "insertIn": "Insert in {{app}}",
+    "refused": {
+      "notTrusted": "Accessibility access is off, so the answer was copied instead.",
+      "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
+      "targetChanged": "The field in {{app}} changed, so the answer was copied instead.",
+      "noSelection": "Nothing was selected in {{app}}, so the answer was copied instead.",
+      "secureInput": "Secure input is on in {{app}}, so the answer was copied instead.",
+      "failed": "Couldn't write into {{app}}, so the answer was copied instead.",
+      "interrupted": "Writing into {{app}} stopped partway, so the full answer was copied."
+    },
+    "unwritten": {
+      "notTrusted": "Accessibility is off, so the answer wasn't written into {{app}}.",
+      "targetGone": "The field in {{app}} is no longer available, so the answer wasn't written.",
+      "targetChanged": "The field in {{app}} changed, so the answer wasn't written.",
+      "noSelection": "Nothing was selected in {{app}}, so the answer wasn't written.",
+      "secureInput": "{{app}} has secure input on, so the answer wasn't written.",
+      "failed": "The answer couldn't be written into {{app}}."
+    },
+    "progress": {
+      "failed": "{{command}} didn't finish.",
+      "stopped": "{{command}} was stopped.",
+      "startFailed": "{{command}} couldn't start.",
+      "empty": "{{command}} had no answer to write."
+    }
   },
   "toolRow": {
     "added_one": "{{count}} line added",

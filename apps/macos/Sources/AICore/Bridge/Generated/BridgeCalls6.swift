@@ -4,6 +4,82 @@
 
 import Foundation
 
+/// Result of the `files.pickFolder` call.
+public struct FilesPickFolderResult: Codable, Equatable, Sendable {
+  public let folders: [Folder]
+  public let failures: [Failure]
+
+  public init(folders: [Folder], failures: [Failure]) {
+    self.folders = folders
+    self.failures = failures
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    folders = try container.array(.folders, of: Folder.self, maxItems: 10)
+    failures = try container.array(.failures, of: Failure.self, maxItems: 10)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case folders
+    case failures
+  }
+
+  public struct Folder: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let path: String
+
+    public init(id: String, name: String, path: String) {
+      self.id = id
+      self.name = name
+      self.path = path
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      name = try container.string(.name, minLength: 1, maxLength: 255)
+      path = try container.string(.path, minLength: 1, maxLength: 4_096)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case path
+    }
+  }
+
+  public struct Failure: Codable, Equatable, Sendable {
+    public let name: String
+    public let reason: Reason
+
+    public init(name: String, reason: Reason) {
+      self.name = name
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      name = try container.string(.name, maxLength: 255)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case name
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case unreadable
+      case unsupported
+      case tooLarge
+      case notDirectory
+      case forbidden
+    }
+  }
+}
+
 /// Params of the `files.save` call.
 public struct FilesSaveParams: Codable, Equatable, Sendable {
   public let name: String
@@ -121,107 +197,42 @@ public struct FilesSaveResult: Codable, Equatable, Sendable {
   }
 }
 
-/// Params of the `approval.request` call.
-public struct ApprovalRequestParams: Codable, Equatable, Sendable {
-  public let serverId: String
+/// Params of the `text.write` call.
+public struct TextWriteParams: Codable, Equatable, Sendable {
+  public let target: String
+  public let mode: Mode
+  public let text: String
+  public let typing: Bool
+  public let animation: Bool
 
-  public init(serverId: String) {
-    self.serverId = serverId
+  public init(target: String, mode: Mode, text: String, typing: Bool, animation: Bool) {
+    self.target = target
+    self.mode = mode
+    self.text = text
+    self.typing = typing
+    self.animation = animation
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    try container.literal(.kind, "mcpServer")
-    serverId = try container.string(
-      .serverId, minLength: 1, maxLength: 193,
-      pattern:
-        "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
-    )
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode("mcpServer", forKey: .kind)
-    try container.encode(serverId, forKey: .serverId)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
+    mode = try container.value(.mode, Mode.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+    typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case kind
-    case serverId
-  }
-}
-
-/// Result of the `approval.request` call.
-public enum ApprovalRequestResult: Codable, Equatable, Sendable {
-  case approved(Approved)
-  case notApproved(NotApproved)
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(Bool.self, forKey: .approved) {
-    case true: self = try .approved(Approved(from: decoder))
-    case false: self = try .notApproved(NotApproved(from: decoder))
-    }
+    case target
+    case mode
+    case text
+    case typing
+    case animation
   }
 
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .approved(let value): try value.encode(to: encoder)
-    case .notApproved(let value): try value.encode(to: encoder)
-    }
-  }
-
-  private enum Discriminator: String, CodingKey {
-    case approved
-  }
-
-  public struct Approved: Codable, Equatable, Sendable {
-    public init() {}
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, true)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(true, forKey: .approved)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-    }
-  }
-
-  public struct NotApproved: Codable, Equatable, Sendable {
-    public let reason: Reason
-
-    public init(reason: Reason) {
-      self.reason = reason
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, false)
-      reason = try container.value(.reason, Reason.self)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(false, forKey: .approved)
-      try container.encode(reason, forKey: .reason)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-      case reason
-    }
-
-    public enum Reason: String, Codable, Equatable, Sendable {
-      case cancelled
-      case changed
-      case unavailable
-      case busy
-    }
+  public enum Mode: String, Codable, Equatable, Sendable {
+    case selection
+    case afterSelection
+    case cursor
   }
 }

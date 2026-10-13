@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { withInferencePurpose } from '../../providers/chatgpt-usage.js';
+import { inferenceError } from '../../providers/inference-result.js';
 import { errorMessage } from '@atd/agent-contracts';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -98,27 +100,29 @@ export async function runLearnerJob(
 /**
  * The review's one completion on the run's model: its own session id (providers that route by
  * session read it, as for the auto reviewer), a bounded reply and a timeout on top of `signal`.
- * Rejects when the call fails or is aborted.
+ * Rejects when the call fails, is aborted or returns a truncated response.
  */
 export async function completeLearner(
   source: LearnerSource,
   prompt: string,
   signal: AbortSignal,
 ): Promise<LearnerReply> {
-  const result = await source.models.completeSimple(
-    source.model,
-    {
-      systemPrompt: LEARNER_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
-    },
-    {
-      maxTokens: Math.min(LEARNER_MAX_TOKENS, source.model.maxTokens),
-      sessionId: randomUUID(),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(REVIEW_TIMEOUT_MS)]),
-    },
+  const result = await withInferencePurpose(true, () =>
+    source.models.completeSimple(
+      source.model,
+      {
+        systemPrompt: LEARNER_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+      },
+      {
+        maxTokens: Math.min(LEARNER_MAX_TOKENS, source.model.maxTokens),
+        sessionId: randomUUID(),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(REVIEW_TIMEOUT_MS)]),
+      },
+    ),
   );
-  if (result.stopReason === 'error' || result.stopReason === 'aborted')
-    throw new Error(result.errorMessage ?? `The memory review call ended: ${result.stopReason}.`);
+  const error = inferenceError(result);
+  if (error) throw new Error(error);
   return replyChannel(result.content);
 }
 

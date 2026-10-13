@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type { MemoryUnit } from '@atd/agent-contracts';
 import {
   EMPTY_RUN_MEMORY,
+  freezeLiteRunMemory,
   freezeRunMemory,
   MAX_INDEX_CHARS,
   runMemoryChars,
@@ -135,6 +136,31 @@ test('a core body over 600 characters shows its description, and the core says s
   assert.doesNotMatch(frozen.coreText, /y{10}/);
   const plain = await freezeRunMemory(storeOf([short]), true, ROOM);
   assert.equal(plain.coreText.split('\n')[0], 'These memories apply to every task.');
+});
+
+test('a lite run shows a long core body in full while it fits, and omits what does not', async () => {
+  const short = unit('a-short-note', { activation: 'core', body: 'Short.' });
+  const long = unit('b-long-note', {
+    activation: 'core',
+    body: 'y'.repeat(MAX_CORE_BODY_CHARS + 1),
+  });
+  const over = unit('c-over-budget', { activation: 'core', body: 'z'.repeat(MAX_CORE_CHARS) });
+  const last = unit('d-last-note', { activation: 'core', body: 'Last.' });
+  const indexed = unit('e-indexed', { body: 'Only in the index.' });
+  const frozen = await freezeLiteRunMemory(storeOf([short, long, over, last, indexed]), true, ROOM);
+  // Store order, as full runs show it; the unit past the budget is left out, not described.
+  assert.deepEqual(shownNames(frozen), ['a-short-note', 'b-long-note', 'd-last-note']);
+  assert.deepEqual([...frozen.names.keys()], shownNames(frozen));
+  assert.ok(frozen.coreText.includes(`\n${'y'.repeat(MAX_CORE_BODY_CHARS + 1)}\n</memory>`));
+  assert.ok(frozen.coreText.length <= MAX_CORE_CHARS);
+  assert.doesNotMatch(frozen.coreText, /<description>|memory_read|z{10}|Only in the index/);
+  assert.match(frozen.coreText.split('\n')[0] ?? '', /^These memories apply to every task\. /);
+  assert.equal(frozen.policyText, '');
+  assert.equal(frozen.indexText, '');
+  // The room the run's input leaves bounds the core as it does a full run's.
+  const tight = await freezeLiteRunMemory(storeOf([long, last]), true, 200);
+  assert.deepEqual(shownNames(tight), ['d-last-note']);
+  assert.deepEqual(await freezeLiteRunMemory(storeOf([short]), false, ROOM), EMPTY_RUN_MEMORY);
 });
 
 test('core units without room in the core are listed in the index instead', async () => {

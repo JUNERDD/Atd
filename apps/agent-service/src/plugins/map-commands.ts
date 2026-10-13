@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  defaultCommandOutput,
   defaultCommandPlacement,
   parse,
   ServiceCommandFullSchema,
@@ -170,10 +171,12 @@ export function mapCommand(
       description: (component.description || component.argumentHint || '').slice(0, 500),
       ...rendered,
       placement: defaultCommandPlacement(rendered.input.source),
+      output: defaultCommandOutput(),
       enabled,
       shortcut: '',
       templateId: null,
       model: { mode: 'inherit' },
+      thinkingLevel: 'inherit',
       tools: mapCommandTools(component.allowedTools),
       memory: 'inherit',
       migratedAt: null,

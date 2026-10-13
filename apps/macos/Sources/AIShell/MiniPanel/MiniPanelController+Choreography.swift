@@ -114,7 +114,7 @@ extension MiniPanelController {
     model.bodyFactors = MiniPanelBodyFactors()
     for content in MiniPanelContent.allCases { model.setPresence(content, MiniPanelPresence()) }
     model.flyoutOpen = false
-    model.card = MiniPanelCardShape(frame: closedFlyoutFrame ?? .zero)
+    model.card = MiniPanelCardShape(frame: closedFlyoutFrame ?? .zero, opacity: 0)
     model.label = MiniPanelLabelShape()
   }
 
@@ -133,10 +133,13 @@ extension MiniPanelController {
 
   // MARK: The commands card
 
-  /// The card grows out of the Commands button, its glass merging with the capsule's as it
-  /// leaves it; its rows arrive just after. The button's label, when out, becomes the card: the
-  /// card takes its bubble's place in the same frame and grows from there as the label's text
-  /// fades out over it, so no label is left drawing back beside it; any other label goes at once.
+  /// As a popover does, the card grows out of its anchor beside the capsule, level with the
+  /// Commands button (``closedFlyoutFrame``), its glass first and its fill just after
+  /// (``MiniPanelChoreography/flyoutFillLag``), never out of the capsule, whose fill its own would
+  /// darken where the two overlap; its rows arrive just after. The button's label, when out,
+  /// becomes the card: the card takes its bubble's place in the same frame and grows from there as
+  /// the label's text fades out over it, so no label is left beside it; any other label goes at
+  /// once.
   func openFlyout() {
     guard model.phase == .expanded, !model.flyoutOpen, let card = layout?.flyout else { return }
     let from = stateName
@@ -155,62 +158,96 @@ extension MiniPanelController {
         model.card = shape
       }
     } else {
-      model.card = shape
+      model.card = MiniPanelCardShape(frame: shape.frame, opacity: 0, animation: shape.animation)
+      fillCard(after: MiniPanelChoreography.flyoutFillLag)
     }
     reveal(.rows, MiniPanelChoreography.rows)
     logState(from: from, trigger: "commands")
   }
 
-  /// The rows leave first, then the card closes into the Commands button's middle, or into `rect`
-  /// (the body's new shape) when the capsule changes too, and then waits in that middle once it
-  /// has landed. Closed by a click on Commands (`throughLabel`), it closes the way it opened out
-  /// of the button's label: it shrinks into the label's bubble and, once it has all but become
-  /// it, draws on into the button's middle as a label draws back, in one motion, so neither a
-  /// bubble nor a card is left standing. `trigger` logs the change; nil when a state change logs
-  /// it.
-  func closeFlyout(trigger: String?, into rect: CGRect? = nil, throughLabel: Bool = false) {
+  /// The rows leave first, then the card closes into `rect` (the body's new shape) when the
+  /// capsule changes too, and goes once it has landed. Otherwise it leaves into its anchor, as the
+  /// hover label does (``leaveCard(after:)``), never into the capsule, where its fill would darken
+  /// the capsule's. Either way it then waits at its anchor. `trigger` logs the change; nil when a
+  /// state change logs it.
+  func closeFlyout(trigger: String?, into rect: CGRect? = nil) {
     guard model.flyoutOpen else { return }
     let from = stateName
     model.flyoutOpen = false
     conceal(.rows, MiniPanelChoreography.rows)
     flyoutToken += 1
-    let close = MiniPanelChoreography.flyoutClose.reduced(model.reduceMotion)
     let delay = MiniPanelChoreography.flyoutCloseDelay
-    let bubble = throughLabel && rect == nil ? labelBubble(of: .commands) : nil
-    model.card = MiniPanelCardShape(
-      frame: rect ?? bubble ?? closedFlyoutFrame ?? model.card.frame,
-      animation: close.animation.delay(delay))
+    if let rect {
+      let close = MiniPanelChoreography.flyoutClose.reduced(model.reduceMotion)
+      model.card = MiniPanelCardShape(frame: rect, animation: close.animation.delay(delay))
+      sendCardHome(after: delay + MiniPanelMotion.settling(close))
+    } else {
+      leaveCard(after: delay)
+    }
     if let trigger { logState(from: from, trigger: trigger) }
-    if bubble != nil {
-      // The close still running adds to the retract, so the card turns for the button's middle
-      // with its velocity instead of stopping at the bubble.
-      sendCardHome(
-        after: delay + MiniPanelChoreography.flyoutCloseThroughLabel,
-        animation: MiniPanelChoreography.labelRetract.animation)
-    } else if rect != nil {
-      // Merged into the body's new shape, it goes once it has landed.
-      sendCardHome(after: delay + MiniPanelMotion.settling(close), animation: nil)
+  }
+
+  /// After `lag`, unless the card has closed again, its fill comes in under the glass that has
+  /// started growing, on the fill's own spring, while the glass keeps on growing.
+  private func fillCard(after lag: Double) {
+    let token = flyoutToken
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(lag))
+      guard let self, token == flyoutToken, model.flyoutOpen else { return }
+      // Only the fill changes here, so the frame keeps on its opening animation.
+      var card = model.card
+      card.opacity = 1
+      card.animation = MiniPanelChoreography.labelLeave.animation
+      model.card = card
     }
   }
 
-  /// After `wait`, unless the card has opened again, moves it to where it waits closed, in the
-  /// Commands button's middle, on `animation` (nil: at once).
-  private func sendCardHome(after wait: Double, animation: Animation?) {
+  /// The card leaves into its anchor, `delay` after its rows start leaving, as the hover label
+  /// does (``MiniPanelLabelPath``): its fill fades under the glass on the label's leave, and once
+  /// that has mostly gone, its bare glass, which cannot fade, draws in to nothing at the anchor.
+  private func leaveCard(after delay: Double) {
+    let leave = MiniPanelChoreography.labelLeave
+    // Only the fill changes here, so a card still opening keeps on toward its frame meanwhile.
+    var card = model.card
+    card.opacity = 0
+    card.animation = leave.animation.delay(delay)
+    model.card = card
+    let token = flyoutToken
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(delay + MiniPanelChoreography.flyoutFillLag))
+      guard let self, token == flyoutToken, !model.flyoutOpen, let anchor = closedFlyoutFrame
+      else { return }
+      card.frame = anchor
+      card.animation = leave.animation
+      model.card = card
+      sendCardHome(after: MiniPanelMotion.settling(leave))
+    }
+  }
+
+  /// After `wait`, unless the card has opened again, puts it, shrunk to nothing and its fill out
+  /// of sight, where it waits closed, at its anchor.
+  private func sendCardHome(after wait: Double) {
     let token = flyoutToken
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(wait))
       guard let self, token == flyoutToken, !model.flyoutOpen, let closed = closedFlyoutFrame
       else { return }
-      model.card = MiniPanelCardShape(frame: closed, animation: animation)
+      model.card = MiniPanelCardShape(frame: closed, opacity: 0)
     }
   }
 
-  /// Where the closed card waits, shrunk to nothing: the Commands button's middle, which it grows
-  /// out of.
+  /// Where the closed card waits, shrunk to nothing: its anchor, which it grows out of and leaves
+  /// into, the middle of its side facing the capsule level with the Commands button (kept clear of
+  /// its rounded corners), so it never lies over the capsule.
   var closedFlyoutFrame: CGRect? {
-    guard let layout, layout.flyout != nil, let commands = layout.buttons.last else { return nil }
-    let button = local(commands)
-    return CGRect(x: button.midX, y: button.midY, width: 0, height: 0)
+    guard let layout, let flyout = layout.flyout, let commands = layout.buttons.last else {
+      return nil
+    }
+    let card = local(flyout)
+    let level = local(commands).midY
+    let inset = min(MiniPanelMetrics.cardRadius, card.height / 2)
+    let y = min(max(level, card.minY + inset), card.maxY - inset)
+    return CGRect(x: layout.edge == .right ? card.maxX : card.minX, y: y, width: 0, height: 0)
   }
 
   // MARK: Touch

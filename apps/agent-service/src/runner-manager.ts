@@ -11,29 +11,19 @@ import {
   type TaskSnapshot,
   type TaskSummary,
 } from '@atd/agent-contracts';
-import { ConnectionStore } from './credentials/connections.js';
 import { runFolders } from './folders/material.js';
 import type { FolderStore } from './folders/store.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { loadRunAttachments } from './run-attachments.js';
 import { compactRefused } from './compaction/manual.js';
-import { ConflictError, DrainingError } from './errors.js';
+import { DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { taskContextBreakdown, taskSnapshot, taskSummary } from './task-view.js';
-import { checkChipRanges } from './tasks/input-chips.js';
-import {
-  branchUserEntries,
-  checkBranchBefore,
-  freezeRunSnapshot,
-  loadSubmitContextWindow,
-} from './tasks/run-snapshot.js';
-import {
-  checkSideChatOf,
-  newTaskRecord,
-  type InternalSubmitOptions,
-} from './tasks/submit-options.js';
+import { RunAcceptance } from './tasks/accept-run.js';
+import { heldMessageInput } from './tasks/held-queue.js';
+import type { InternalSubmitOptions } from './tasks/submit-options.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -48,24 +38,25 @@ export interface ManagerDeps {
 }
 
 /**
- * Accepts runs idempotently and schedules them on per-task runners. The service owns the ledger;
- * runners own their Pi sessions, which `releases` closes once idle (session-release.ts). Tasks run
- * concurrently without a service-wide ceiling; within one task, runs share a Pi session and start
- * one at a time.
+ * Accepts runs idempotently (tasks/accept-run.ts) and schedules them on per-task runners. The
+ * service owns the ledger; runners own their Pi sessions, which `releases` closes once idle
+ * (session-release.ts). Tasks run concurrently without a service-wide ceiling; within one task,
+ * runs share a Pi session and start one at a time.
  */
 export class RunnerManager {
   private readonly runners = new Map<string, TaskRunner>();
   private readonly executions = new Map<string, Promise<void>>();
   private draining = false;
-  /**
-   * Tasks whose accepted run is still being written. The ledger publishes a change only after its
-   * write lands, so without this two submits to one task could both pass the active-run check,
-   * and a replacing run (`branchBefore`) could then cut the other off the branch.
-   */
-  private readonly accepting = new Set<string>();
+  private readonly acceptance: RunAcceptance;
   private readonly releases: SessionReleases;
 
   constructor(private readonly deps: ManagerDeps) {
+    this.acceptance = new RunAcceptance({
+      ctx: deps.ctx,
+      folders: deps.folders,
+      newTaskTier: deps.newTaskTier,
+      runner: (taskId) => this.runners.get(taskId),
+    });
     this.releases = new SessionReleases({
       ctx: deps.ctx,
       idleMs: deps.idleReleaseMs,
@@ -89,7 +80,7 @@ export class RunnerManager {
   runnerFor(taskId: string): TaskRunner {
     let runner = this.runners.get(taskId);
     if (!runner) {
-      runner = new TaskRunner(this.deps.ctx, taskId);
+      runner = new TaskRunner(this.deps.ctx, taskId, (runId) => this.startHeld(taskId, runId));
       this.runners.set(taskId, runner);
     }
     return runner;
@@ -104,84 +95,16 @@ export class RunnerManager {
     internal: InternalSubmitOptions = {},
   ): Promise<SubmitTaskResponse> {
     if (this.draining) throw new DrainingError();
-    checkChipRanges(request.input);
-    // Read before the checks below so acceptance stays free of awaits until the ledger write.
-    const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
-    const ledger = this.deps.ctx.ledger;
-    const last = ledger.data.tasks.find((item) => item.id === request.taskId)?.runs.at(-1);
-    const contextWindowOf = await loadSubmitContextWindow(connections, request, last);
-    const onBranch = await branchUserEntries(
-      this.deps.ctx,
-      this.runners.get(request.taskId ?? ''),
-      request,
-    );
-    const duplicate = ledger.operation(request.operationId);
-    if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
-    const taskId = request.taskId ?? randomUUID();
-    const previous = ledger.data.tasks.find((item) => item.id === taskId) ?? null;
-    if (previous && request.taskId === undefined) {
-      // A fresh uuid collided; retry once rather than merging into a stranger.
-      return this.submit({ ...request, taskId: randomUUID() }, internal);
-    }
-    if (previous?.runs.some((run) => isActiveStatus(run.status)) || this.accepting.has(taskId))
-      throw new ConflictError('Finish the active run before starting a new one.');
-    checkBranchBefore(request.branchBefore, onBranch);
-    const { sideChatOf } = request;
-    checkSideChatOf(sideChatOf, previous, ledger.data.tasks);
-    for (const file of request.input.files) {
-      if (!ledger.data.resources.some((resource) => resource.id === file.id))
-        throw new Error(`Attachment ${file.id} was not uploaded.`);
-    }
-    const folderIds = request.input.folders ?? [];
-    this.deps.folders.resolve(folderIds);
-    const snapshot = freezeRunSnapshot(
-      request,
-      connections,
-      contextWindowOf,
-      previous,
-      onBranch,
-      internal.trigger,
-    );
-    const runId = randomUUID();
-    const now = new Date().toISOString();
-    this.accepting.add(taskId);
-    // Granted before the run exists, so no dispatch can start it without its folders.
-    await this.deps.folders.grant(taskId, folderIds).catch((error: unknown) => {
-      this.accepting.delete(taskId);
-      throw error;
-    });
-    await ledger
-      .change((data) => {
-        let task = data.tasks.find((item) => item.id === taskId);
-        if (!task) {
-          const tier = this.deps.newTaskTier();
-          task = newTaskRecord({ id: taskId, now, snapshot, tier, sideChatOf, internal });
-          data.tasks.unshift(task);
-        }
-        task.runs.push({
-          id: runId,
-          operationId: request.operationId,
-          createdAt: now,
-          status: 'queued',
-          error: '',
-          snapshot,
-        });
-        task.updatedAt = now;
-        data.operations[request.operationId] = { taskId, runId };
-      })
-      .finally(() => this.accepting.delete(taskId));
-    this.deps.ctx.events.publish({
-      taskId,
-      runId,
-      executionId: `root:${runId}`,
-      type: 'run.status',
-      data: { status: 'queued', error: '' },
-    });
-    this.dispatch();
-    return { taskId, runId, duplicate: false };
+    const accepted = await this.acceptance.accept(request, internal);
+    if (!accepted.duplicate) this.dispatch();
+    return accepted;
   }
 
-  /** Stops a run; only a live run can hold undelivered queued messages to return. */
+  /**
+   * Stops a run and returns the queued messages it withdrew, undelivered: a started run's (the
+   * runner's `abort`), or, for a run that has not started, what a lite run kept for it
+   * (tasks/held-queue.ts); nothing else queues before a run starts.
+   */
   async cancel(taskId: string, runId: string): Promise<CancelRunResponse> {
     const ledger = this.deps.ctx.ledger;
     const run = ledger.run(taskId, runId);
@@ -203,7 +126,8 @@ export class RunnerManager {
         type: 'run.status',
         data: { status: 'cancelled', error: '' },
       });
-      return { task: ledger.task(taskId), unsent: nothingQueued };
+      const kept = this.runners.get(taskId)?.pending.held.withdraw() ?? [];
+      return { task: ledger.task(taskId), unsent: { steering: [], followUp: kept } };
     }
     if (!isActiveStatus(run.status)) return { task: ledger.task(taskId), unsent: nothingQueued };
     await ledger.change((data) => {
@@ -227,7 +151,7 @@ export class RunnerManager {
     const task = this.deps.ctx.ledger.task(taskId);
     if (!task.runs.some((run) => isActiveStatus(run.status)))
       throw new Error('The task has no active run.');
-    await this.runnerFor(taskId).queue(text, mode);
+    await this.runnerFor(taskId).pending.add(text, mode);
   }
 
   /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
@@ -287,8 +211,8 @@ export class RunnerManager {
     // A task's runs share one Pi session: only its oldest queued run starts, once no started run
     // is active (queued counts for acceptance, not dispatch) and no manual compaction holds the
     // session. A release still shutting the session down does not hold the run back: it freezes
-    // and binds meanwhile, and reopens the session only once the release settles (task-runner.ts
-    // `ensureSession`). Tasks never wait on others.
+    // and binds meanwhile, and reopens the session only once the release settles (run-prepare.ts
+    // `openRunSession`). Tasks never wait on others.
     for (const task of this.deps.ctx.ledger.data.tasks) {
       if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
       if (this.runners.get(task.id)?.isCompacting()) continue;
@@ -343,6 +267,31 @@ export class RunnerManager {
       await this.runnerFor(taskId).execute(run, attachments, folders);
     } catch (error) {
       this.deps.log.warn('Run execution failed.', { taskId, error: errorMessage(error) });
+    }
+  }
+
+  /**
+   * Accepts the first message the task holds (tasks/held-queue.ts) as its next run, a plain message
+   * of the user's own as the panel would submit it; that run's full session takes the rest. The
+   * runner calls this before `runId` reports completed (task-runner.ts `beforeCompleted`), so the
+   * run is accepted behind it and the task never looks idle in between: a message the user sends
+   * meanwhile queues behind the held ones instead of starting a run that would answer it first.
+   * The run starts once `runId`'s execution ends (`start`). A message whose run is not accepted
+   * stays kept for the task's next run.
+   */
+  private async startHeld(taskId: string, runId: string): Promise<void> {
+    const held = this.runners.get(taskId)?.pending.held;
+    const text = held?.next();
+    if (!held || text === undefined) return;
+    const request = { operationId: randomUUID(), taskId, input: heldMessageInput(text) };
+    try {
+      await this.acceptance.accept(request, {}, runId);
+    } catch (error) {
+      held.putBack(text);
+      this.deps.log.warn('A kept message could not start its run.', {
+        taskId,
+        error: errorMessage(error),
+      });
     }
   }
 }

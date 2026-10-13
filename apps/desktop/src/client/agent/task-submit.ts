@@ -109,6 +109,7 @@ async function runSavedCommand<S>(
           },
         }
       : {}),
+    ...(request.output ? { output: request.output } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
   });
   return settled(tasks, submitted.taskId, holder);

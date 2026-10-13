@@ -219,7 +219,7 @@ test('the desktop and configure_mcp tools refuse in an unattended run', async ()
     upsertMcp: async () => assert.fail('nothing is saved'),
   };
   registerDesktopTool(pi, host);
-  registerMcpCatalogTools(pi, host);
+  registerMcpCatalogTools(pi, host, async () => assert.fail('nothing is asked'));
 
   const desktop = await tool('desktop').execute('call-1', {
     capability: 'clipboard.write',

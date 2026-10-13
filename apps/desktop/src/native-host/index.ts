@@ -24,6 +24,7 @@ import { setReducedTransparency, setWindowActive, setWindowVisible } from '../wi
 import { publishDragRegions } from './drag-regions';
 import { nativeApps } from './native-apps';
 import { nativeAutomations, nativeTaskOpen } from './native-automations';
+import { nativeCommandOptions } from './native-command-options';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -32,7 +33,9 @@ import { nativeMiniPanel } from './native-mini-panel';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
+import { nativeShellPreferences } from './native-shell-preferences';
 import { nativeHeldRequest } from './native-held-request';
+import { nativeLightCommand, type PageHolder } from './native-light-command';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
@@ -118,8 +121,9 @@ export async function installNativeHost(
     shortcuts?.sync(true);
     toolbar?.sync();
     miniPanel?.sync();
+    commandOptions?.sync();
   });
-  const requests = new AgentRequests<'page'>(
+  const requests = new AgentRequests<PageHolder>(
     connection,
     commands,
     nativePlatform(native, (prepared, autoRun) => emit('launch', { prepared, autoRun })),
@@ -141,7 +145,7 @@ export async function installNativeHost(
       ? nativeShortcuts(native, commands, messages, {
           appShortcuts: () => (settings.loaded() ? latest.shortcuts : null),
           applied: shortcutsApplied,
-          launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
+          launch: (launch) => emit('launch', launch),
         })
       : null;
   if (surface !== 'panel') followShortcutState(messages, commands, shortcutsApplied);
@@ -157,15 +161,31 @@ export async function installNativeHost(
   // service's commands first arrive.
   const miniPanel =
     surface === 'panel' ? nativeMiniPanel(native, { commands: () => commands.list() }) : null;
+  // Likewise the options the shell offers, which follow the commands and their remembered values.
+  const commandOptions =
+    surface === 'panel'
+      ? nativeCommandOptions(native, {
+          commands: () => commands.list(),
+          remember: (id, picked) => commands.rememberPicks(id, picked),
+        })
+      : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
+  let pushedTyping: string | null = null;
   settings.bridge.onChange((next) => {
     latest = next;
     if (surface !== 'panel' || !settings.loaded()) return;
     onboarding?.onSettings(next);
     shortcuts?.sync();
     toolbar?.sync();
+    // The shell prepares a browser for the typing animation when a command is summoned, before
+    // any write tells it the settings.
+    const typing = { typing: next.commandTyping, animation: next.commandTypingAnimation };
+    if (JSON.stringify(typing) !== pushedTyping) {
+      pushedTyping = JSON.stringify(typing);
+      native.post('typing.set', typing);
+    }
     if (next.language === pushedLanguage) return;
     pushedLanguage = next.language;
     native.post('language.set', { language: next.language });
@@ -241,14 +261,18 @@ export async function installNativeHost(
     ...(update ? { update } : {}),
     apps,
     automations: nativeAutomations(connection, native, messages),
-    agent: createAgentBridge(async (request) => {
-      // Only the panel receives `launch` events, so the other windows hand their launches over.
-      if (surface !== 'panel' && request.action === 'launch') {
-        messages.post({ type: 'launchCommand', request });
-        return null;
-      }
-      return requests.handle(request, 'page');
-    }, listen),
+    agent: {
+      ...createAgentBridge(async (request) => {
+        // Only the panel receives `launch` events, so the other windows hand their launches over.
+        if (surface !== 'panel' && request.action === 'launch') {
+          messages.post({ type: 'launchCommand', request });
+          return null;
+        }
+        return requests.handle(request, 'page');
+      }, listen),
+      rememberArguments: (commandId, values) => commands.remember(commandId, values),
+      ...(surface === 'panel' ? { light: nativeLightCommand(native, requests) } : {}),
+    },
     service: createServiceBridge(
       async (request) => {
         if (request.action === 'status') return connection.status();
@@ -278,31 +302,7 @@ export async function installNativeHost(
       shortcut: latest.shortcuts.togglePanel,
       shortcutAvailable: settings.shell().shortcutAvailable,
     }),
-    setPinned: async (pinned) => {
-      const applied = await native.call('window.setPinned', { pinned });
-      settings.setShell(applied);
-      return applied.pinned;
-    },
-    setShowInDock: async (show) => {
-      const applied = await native.call('app.setShowInDock', { show });
-      settings.setShell({ showInDock: applied.show });
-      return applied.show;
-    },
-    setOpenAtLogin: async (open) => {
-      const applied = await native.call('app.setOpenAtLogin', { open });
-      settings.setShell({ openAtLogin: applied.open });
-      return applied.open;
-    },
-    setMiniPanelShown: async (shown) => {
-      const applied = await native.call('miniPanel.setShown', { shown });
-      settings.setShell({ miniPanelShown: applied.shown });
-      return applied.shown;
-    },
-    setMiniPanelOpenOn: async (openOn) => {
-      const applied = await native.call('miniPanel.setOpenOn', { openOn });
-      settings.setShell({ miniPanelOpenOn: applied.openOn });
-      return applied.openOn;
-    },
+    ...nativeShellPreferences(native, settings),
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
     screenshot: () => commands.screenshot(),

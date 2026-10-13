@@ -1,8 +1,10 @@
 import {
+  actsOnSelection,
   attachableExtension,
   instructionTokenProblem,
   isImageExtension,
   isImageMime,
+  readsSelection,
   type CommandInput,
   type CommandParameter,
   type ServiceCommandFull,
@@ -133,6 +135,22 @@ export function validateCommandShape(command: ServiceCommandFull): void {
     if (!variables.includes(reference.name))
       throw new TypeError(`Enable or define {{${reference.name}}} before saving.`);
   }
+}
+
+/**
+ * What every save checks (the store's create and update, and the Agent's `command` tool before it
+ * asks the user to approve): the shape, and that an answer written over or after the selection
+ * (`actsOnSelection`) belongs to a command that reads the selection (`readsSelection`). Runs and
+ * plugin commands check only the shape, so a command stored before saves checked the pair still
+ * runs.
+ */
+export function validateCommandSave(command: ServiceCommandFull): void {
+  validateCommandShape(command);
+  const { action } = command.output;
+  if (actsOnSelection(action) && !readsSelection(command.input))
+    throw new TypeError(
+      `Output ${action} writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output action (insertAtCursor, copy or panel).`,
+    );
 }
 
 export function defaultArguments(

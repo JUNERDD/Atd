@@ -3,6 +3,7 @@ import { Type, type Static } from 'typebox';
 import {
   AutomationDraftSchema,
   Identifier,
+  type CommandOutput,
   type CompactRefusal,
   type ContextBreakdown,
   type MemoryCreateRequest,
@@ -13,13 +14,14 @@ import {
   type MemoryUnit,
   type TaskContextState,
 } from '@atd/agent-contracts';
-import type { CommandDefinition } from './command-schema';
+import type { ArgumentValues, CommandDefinition } from './command-schema';
 import type { AgentTask, Artifact, FileRef, RunSnapshot, TaskInput } from './task-schema';
 import type { PermissionAnswer, PermissionRequest, PermissionTier } from './permission-schema';
 import type { AgentRequestSchema } from './request-schema';
 import type { Block, ChildTranscriptPatch, QueueState, TranscriptPatch } from './transcript-schema';
 import { parse } from './validation';
 import type { SaveContent } from '../../native-bridge/calls';
+import type { CallParams, CallResult, EventPayload } from '../../native-bridge/client';
 
 /**
  * Memory as Settings, Personal's Memory tab and the `@` panel show it: every unit in Settings order
@@ -106,15 +108,78 @@ export type AgentEvent =
 /** A request to the agent request handler; `AgentRequestSchema` (`request-schema.ts`) defines it. */
 export type AgentRequest = Static<typeof AgentRequestSchema>;
 export type SubmitRequest = Extract<AgentRequest, { action: 'submit' }>;
+/**
+ * The text field another app had focused when a command ran from there (its shortcut or the
+ * selection toolbar); a write-back output writes the run's answer into it (`AgentBridge.writeText`).
+ */
+export type WriteTarget = NonNullable<EventPayload<'shortcut.command'>['target']>;
+export type TextWriteRequest = CallParams<'text.write'>;
+/**
+ * The shell's answer to a write: done, or not with its reason: refused (nothing changed), or
+ * `interrupted` partway by the user.
+ */
+export type TextWriteResult = CallResult<'text.write'>;
+/** What the progress HUD shows (`commandProgress.show` in the native bridge). */
+export type CommandProgressState = CallParams<'commandProgress.show'>['state'];
+/**
+ * A press on the progress HUD (`commandProgress.action`): cancel or change the values while
+ * working, open a notice, or run, edit or close the options card.
+ */
+export type CommandProgressAction = EventPayload<'commandProgress.action'>;
+/** What the island's compose card hands over in place of a missing selection: text and files. */
+export type ComposedInput = NonNullable<CommandProgressAction['compose']>;
+/**
+ * A light command launch, only where the shell hosts the panel's page: a command that writes its
+ * answer back runs without the panel, and the shell's progress HUD (its glass status HUD) stands
+ * in for it. Each run is keyed by its write target's id (`key`).
+ */
+export interface LightCommandBridge {
+  /**
+   * Submits like `AgentBridge.submit`, except that the page's view keeps the task it shows: the
+   * new task is held for this run apart from it, so its transcript follows the stream until
+   * `release(key)`.
+   */
+  submit: (key: string, request: Omit<SubmitRequest, 'action'>) => Promise<TaskDetail>;
+  release: (key: string) => void;
+  /** Shows the HUD of write target `target`, replacing any other one. */
+  show: (target: string, state: CommandProgressState) => Promise<void>;
+  /** Takes the HUD of `target` away; another target's stays. */
+  hide: (target: string) => Promise<void>;
+  onAction: (listener: (action: CommandProgressAction) => void) => () => void;
+}
 export interface PreparedCommand {
   command: CommandDefinition;
   input: TaskInput;
+  /**
+   * Where this run's answer goes: the command's saved output, unless another was picked for this
+   * launch (the shell's options, the input step). It lasts for this run only and is never saved.
+   */
+  output: CommandOutput;
   notice: string;
+  /**
+   * The launch expected a capture, and the only one that failed is the selection the command
+   * consumes, which was empty (`notice` says so): a launch from the shell asks for the text instead.
+   */
+  selectionMissing?: true;
+  /**
+   * The text standing in for the selection was typed on the island's compose card: the app it ran
+   * from has no selection, so nothing offers to write over or after one.
+   */
+  composed?: true;
+  /** Present only for a launch from another app that recorded a focused field. */
+  target?: WriteTarget;
 }
 export interface CommandLaunch {
   prepared: PreparedCommand;
   /** Global shortcut presses run without a review step once the input can be used as-is. */
   autoRun: boolean;
+  /**
+   * The shell asked to offer the command's options first (its shortcut was held): a light launch
+   * shows them in the progress HUD's options card and runs from there; any other launch shows
+   * the command's input step. Never set together with `autoRun`. A launch whose selection is
+   * missing (`PreparedCommand.selectionMissing`) first asks for the text on the progress HUD.
+   */
+  choose?: true;
 }
 /** Hands the command editor off to a new panel session; a null id means "create a command". */
 export interface CommandSession {
@@ -180,6 +245,11 @@ export interface AgentBridge {
   detail: (taskId: string) => Promise<TaskDetail>;
   saveCommand: (command: CommandDefinition, expectedRevision: number) => Promise<CommandDefinition>;
   deleteCommand: (commandId: string, revision: number) => Promise<void>;
+  /**
+   * Saves the order of the user's own commands; `commandIds` names each of them once. Rejects when
+   * the list changed meanwhile, and the list then reloads with the service's order.
+   */
+  reorderCommands: (commandIds: string[]) => Promise<void>;
   launch: (commandId: string, prepared?: { input: TaskInput; revision: number }) => Promise<void>;
   /**
    * Prepares a command on text the page holds (a passage selected in a conversation's answers, or
@@ -254,6 +324,8 @@ export interface AgentBridge {
     operation: 'open' | 'reveal' | 'copy' | 'locate' | 'attach',
   ) => Promise<FileRef | null>;
   copy: (text: string) => Promise<void>;
+  /** Writes a command's answer into the app it ran from (`text.write` in the native bridge). */
+  writeText: (request: TextWriteRequest) => Promise<TextWriteResult>;
   openLink: (url: string) => Promise<void>;
   /**
    * Subscribes this window to one child's transcript and returns its current state; while held,
@@ -266,4 +338,11 @@ export interface AgentBridge {
   onCommandSession: (listener: (session: CommandSession) => void) => () => void;
   onAutomationSession: (listener: (automation: AutomationSessionTarget) => void) => () => void;
   onExtensionSession: (listener: (session: ExtensionSession) => void) => () => void;
+  /** Present only in the panel's page under the native shell. */
+  light?: LightCommandBridge;
+  /**
+   * Remembers `values` as where command `commandId`'s next run starts, without running it (the
+   * person changed them on its input step or options card). Present under the native shell.
+   */
+  rememberArguments?: (commandId: string, values: ArgumentValues) => Promise<void>;
 }

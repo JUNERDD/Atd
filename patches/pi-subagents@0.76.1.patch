@@ -1,0 +1,59 @@
+diff --git a/src/runs/shared/child-session.d.ts b/src/runs/shared/child-session.d.ts
+index 44372e7499e12ec94e825ea9a9eccc8a50dd7dc5..1ce9e442f93b5cfedc499379cb8b4bc1ecc41a0d 100644
+--- a/src/runs/shared/child-session.d.ts
++++ b/src/runs/shared/child-session.d.ts
+@@ -37,6 +37,16 @@ export interface ChildSessionLaunch {
+     projectTrusted?: boolean;
+     /** Process-local provider source owned by the invoking foreground parent. */
+     parentProviderRegistry?: ParentProviderRegistry;
++    /**
++     * Host seam (not upstream): builds a parent-bound child's model runtime. The
++     * host builds it the way it built the parent's (credentials, endpoint and
++     * model catalog store), so the child resolves the parent's model to the same
++     * definition instead of a fallback cloned from the provider's default model.
++     * Inherited providers still register on top. Used only with
++     * `parentProviderRegistry`; absent keeps upstream's runtime on the agent
++     * dir's auth and catalog files.
++     */
++    hostModelRuntime?: () => Promise<import("@earendil-works/pi-coding-agent").ModelRuntime>;
+     /** Logical names resolved only by the remote ambient package. */
+     remoteResources?: {
+         agent: string;
+@@ -100,6 +110,10 @@ export interface ChildSession {
+     /** Live provider/id of the selected model when Pi marks it virtual (`api === "pi-virtual"`); assistant messages then name the dispatched physical model. */
+     readonly virtualModelId?: string;
+     readonly contextWindow?: number;
++    /** Host seam (not upstream): the child's settings, for per-model overrides by the host. */
++    readonly settingsManager?: import("@earendil-works/pi-coding-agent").SettingsManager;
++    /** Host seam (not upstream): the child's current model. */
++    readonly model?: import("@earendil-works/pi-ai").Model<import("@earendil-works/pi-ai").Api>;
+     readonly machineEvidence?: {
+         machineId: string;
+         initial?: HerdrRemoteGitStatus;
+diff --git a/src/runs/shared/child-session.js b/src/runs/shared/child-session.js
+index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73defd01caa 100644
+--- a/src/runs/shared/child-session.js
++++ b/src/runs/shared/child-session.js
+@@ -323,8 +323,10 @@ export function createDefaultChildSessionFactory(options = {}) {
+             const pi = await loadPiCodingAgent();
+             const builtinMcpTools = launch.builtinMcpTools ?? [];
+             const builtinMcp = builtinMcpTools.length ? selectedBuiltinMcpExtension(pi, builtinMcpTools) : undefined;
++            // Host seam (not upstream): a parent-bound child may run on a model
++            // runtime the host builds like the parent's. Absent = upstream.
+             const modelRuntime = launch.parentProviderRegistry
+-                ? await pi.ModelRuntime.create()
++                ? await (launch.hostModelRuntime ? launch.hostModelRuntime() : pi.ModelRuntime.create())
+                 : await sharedRuntime(pi);
+             const agentDir = getAgentDir();
+             const commands = launch.runtime.runId && launch.runtime.agent && launch.runtime.childIndex !== undefined
+@@ -512,6 +514,10 @@ export function createDefaultChildSessionFactory(options = {}) {
+                 get modelId() { return session.model ? `${session.model.provider}/${session.model.id}` : undefined; },
+                 get virtualModelId() { return session.model?.api === "pi-virtual" ? `${session.model.provider}/${session.model.id}` : undefined; },
+                 get contextWindow() { return session.model?.contextWindow; },
++                // Host seam (not upstream): the child's settings and model, so a host can apply
++                // per-model settings overrides (compaction) to a launched child.
++                settingsManager,
++                get model() { return session.model; },
+             };
+             live.add(child);
+             return child;

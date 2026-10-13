@@ -192,6 +192,7 @@ export function App() {
                     key={prepared.command.id}
                     prepared={prepared}
                     onChange={(input) => setPrepared({ ...prepared, input })}
+                    onOutputChange={(output) => setPrepared({ ...prepared, output })}
                     policy={policy}
                     onRun={() => submit()}
                     onOpenSettings={() => void openCommandSettings(prepared.command.id)}

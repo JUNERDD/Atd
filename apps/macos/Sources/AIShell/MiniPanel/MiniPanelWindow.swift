@@ -38,7 +38,8 @@ enum MiniPanelScrollerPhase: Equatable {
 /// the drawn glass takes them (which is why it never sets `ignoresMouseEvents`, which would make
 /// every pixel take them). It floats one level above a pinned task panel, below menus and the
 /// selection toolbar, on every Space and beside full-screen apps, without joining the window
-/// cycle or the Windows menu, and draws no shadow of its own: the glass draws its own.
+/// cycle or the Windows menu, and draws no shadow of its own: the glass draws its own, with
+/// the active edge it keeps although the window is never key (``ActiveGlassPanel``).
 ///
 /// A left press on the drawn panel is held here rather than given to SwiftUI, as
 /// ``DesktopPinWindow`` holds one: once a press on the pill or the capsule travels more than
@@ -51,7 +52,7 @@ enum MiniPanelScrollerPhase: Equatable {
 /// ``onScroller``, and is never replayed. A right click or a control-click opens the context
 /// menu. Pins resize from their corners and report frames,
 /// so this keeps its own, smaller version of their press handling rather than sharing it.
-final class MiniPanelWindow: NSPanel {
+final class MiniPanelWindow: ActiveGlassPanel {
   static let level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
 
   /// What lies under a point in global coordinates (y up).

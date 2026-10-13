@@ -114,6 +114,7 @@ export const ServiceRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('skillsDelete'), name: PersonalItemNameSchema }),
   Type.Object({ action: Type.Literal('builtinRestore'), id: BuiltinIdSchema }),
+  Type.Object({ action: Type.Literal('builtinDismissBackup'), id: BuiltinIdSchema }),
   Type.Object({ action: Type.Literal('roles') }),
   Type.Object({
     action: Type.Literal('rolesPut'),
@@ -203,6 +204,8 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
     backupPath: string | null;
     builtin: BuiltinStatusWire;
   }>;
+  /** Dismisses the notice that an update replaced the user's copy of a built-in skill. */
+  dismissBuiltinBackup: (id: string) => Promise<{ id: string; builtin: BuiltinStatusWire }>;
   roles: () => Promise<{ roles: unknown[] }>;
   putRole: (input: {
     id: string;

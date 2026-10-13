@@ -27,8 +27,8 @@ interface CaseSceneProps {
 
 /**
  * One scene's layers at their places on the scene (case-layers.css). At rest they reproduce the
- * flat export; scenes.css plays each layer in when the slide is entered. The bottom layer carries
- * the scene's description, so assistive technology meets the stack as one image.
+ * flat export; scenes.css plays each layer in as the scene's step scrolls by. The bottom layer
+ * carries the scene's description, so assistive technology meets the stack as one image.
  */
 export function CaseScene({ id, layers, alt, onError }: CaseSceneProps) {
   return (

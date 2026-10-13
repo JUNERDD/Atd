@@ -1,15 +1,29 @@
 {
   "$comment": "Interface scene layers, bottom to top. Nodes are in the project Figma file; each sheet holds one row per layer: the scene composited through that layer, and the layer alone. See public/cases/README.md.",
-  "desktop": { "sheet": "2552:144526" },
+  "desktop": {
+    "sheet": "2552:144526"
+  },
   "scenes": {
     "selection-toolbar": {
       "frame": "2462:142864",
-      "sheets": ["2554:155475"],
+      "sheets": ["2824:164889", "2824:165961"],
       "layers": [
         ["page", ["2462:142946"]],
         ["highlight", ["2462:142947"]],
         ["text", ["2462:142948"]],
-        ["toolbar", ["2462:142949"]]
+        ["toolbar", ["2823:164969"]],
+        ["menu", ["2823:165046"]]
+      ]
+    },
+    "write-back": {
+      "frame": "2823:164824",
+      "sheets": ["2824:166105", "2824:166842"],
+      "layers": [
+        ["page", ["2823:164826"]],
+        ["highlight", ["2823:164827"]],
+        ["text", ["2823:164923", "2823:164924"]],
+        ["written", ["2823:164925"]],
+        ["island", ["2823:164927"]]
       ]
     },
     "mini-panel": {

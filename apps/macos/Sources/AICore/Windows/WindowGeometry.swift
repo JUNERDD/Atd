@@ -54,15 +54,22 @@ public enum PanelGeometry {
   public static func dockedFrame(in workArea: ScreenRect, size: WindowSize = defaultSize)
     -> ScreenRect
   {
+    let (fitted, margin) = fit(size, in: workArea)
+    return ScreenRect(
+      x: max(workArea.x, workArea.maxX - fitted.width - margin),
+      y: min(workArea.y + margin, workArea.maxY - fitted.height),
+      width: fitted.width,
+      height: fitted.height)
+  }
+
+  /// A placed panel's size, between the minimum and the work area less a margin on each side,
+  /// and that margin, which shrinks on a small display so the minimum still fits.
+  static func fit(_ size: WindowSize, in workArea: ScreenRect) -> (WindowSize, Double) {
     let margin = min(margin, (min(workArea.width, workArea.height) / 4).rounded(.down))
     let minimum = minimumSize(in: workArea)
     let width = max(minimum.width, min(size.width, workArea.width - margin * 2))
     let height = max(minimum.height, min(size.height, workArea.height - margin * 2))
-    return ScreenRect(
-      x: max(workArea.x, workArea.maxX - width - margin),
-      y: min(workArea.y + margin, workArea.maxY - height),
-      width: width,
-      height: height)
+    return (WindowSize(width: width, height: height), margin)
   }
 
   /// Shrinks a frame to the work area and moves it fully inside.
@@ -76,16 +83,17 @@ public enum PanelGeometry {
       height: height)
   }
 
-  /// Where the panel goes when its display's work area changes. A panel still where
-  /// ``dockedFrame(in:size:)`` docked it against `docked` re-docks in the new work area, so a
-  /// resized Dock or menu bar never leaves it off its corner margin; a panel the user moved
-  /// only stays inside the work area. The returned `docked` is the work area the panel is
-  /// docked against afterwards, or nil.
+  /// Where the panel goes when its display's work area changes. A panel still where `anchor`
+  /// placed it is placed the same way in the new work area, so a resized Dock or menu bar never
+  /// leaves it off its corner margin or its center; a panel the user moved, or one shown where
+  /// they left it, only stays inside the work area. The returned anchor is the one the panel
+  /// follows afterwards, or nil.
   public static func follow(
-    _ frame: ScreenRect, docked: ScreenRect?, workArea: ScreenRect
-  ) -> (frame: ScreenRect, docked: ScreenRect?) {
-    if let docked, frame == dockedFrame(in: docked, size: frame.size) {
-      return (dockedFrame(in: workArea, size: frame.size), workArea)
+    _ frame: ScreenRect, anchor: PanelAnchor?, workArea: ScreenRect
+  ) -> (frame: ScreenRect, anchor: PanelAnchor?) {
+    if let anchor, frame == anchor.frame(size: frame.size) {
+      let moved = PanelAnchor(point: anchor.point, workArea: workArea)
+      return (moved.frame(size: frame.size), moved)
     }
     return (constrain(frame, to: workArea), nil)
   }

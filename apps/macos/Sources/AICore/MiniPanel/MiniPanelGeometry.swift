@@ -63,12 +63,19 @@ public enum MiniPanelMetrics {
   public static let flyoutGap = 8.0
   public static let flyoutMinWidth = 180.0
   public static let flyoutMaxWidth = 280.0
+  // The card follows the shell's menus (the selection toolbar's, and the renderer's Rhea
+  // DropdownMenu: `rounded-2xl p-1`, items `rounded-xl min-h-7 px-2`): rows as round as they are
+  // tall, inset 4 pt, the card's corner concentric with theirs, 18 = 14 + 4.
   public static let rowHeight = 28.0
   public static let rowPadding = 8.0
-  public static let cardPadding = 6.0
-  /// Concentric with the rows' 8 pt highlight: 18 − 6 = 12 ≥ 8.
-  public static let cardRadius = 18.0
-  public static let rowRadius = 8.0
+  public static let cardPadding = 4.0
+  public static let rowRadius = rowHeight / 2
+  public static let cardRadius = rowRadius + cardPadding
+  /// The scrollbar's thumb, and its lane on the card's right while the list scrolls: the thumb
+  /// 1 pt clear of the rows and of the card's edge, the rows giving up the room as they do beside
+  /// the shared ScrollArea's bar (`gutter="auto"`).
+  public static let thumbWidth = 4.0
+  public static let scrollLane = thumbWidth + 2
   /// More commands than this scroll inside the card.
   public static let maxVisibleRows = 8
 
@@ -98,8 +105,8 @@ public enum MiniPanelMetrics {
   public static let nearMargin = 48.0
   /// Transparent room around the farthest shapes, so the glass's shadow is never cut off.
   public static let shadowRoom = 24.0
-  /// Room around the body's shapes for its springs' overshoot, so its glass never leaves the
-  /// lane it is drawn in.
+  /// Room around the body's shapes, and the commands card's, for their springs' overshoot, so
+  /// their glass never leaves the lane it is drawn in, where their base fill is.
   public static let overshootRoom = 12.0
 
   /// The pill's thickness on a display with `backingScale` device pixels per point:
@@ -121,9 +128,22 @@ public enum MiniPanelMetrics {
     cardPadding * 2 + Double(min(max(rows, 1), maxVisibleRows)) * rowHeight
   }
 
-  /// The card fits the longest name (`textWidth`, measured by the shell) within its bounds.
-  public static func flyoutWidth(textWidth: Double) -> Double {
-    min(max(textWidth + rowPadding * 2 + cardPadding * 2, flyoutMinWidth), flyoutMaxWidth)
+  /// The card's padding on its right: ``cardPadding``, or the scrollbar's lane while the list
+  /// of `rows` commands scrolls.
+  public static func rightPadding(rows: Int) -> Double {
+    rows > maxVisibleRows ? scrollLane : cardPadding
+  }
+
+  /// The card fits the longest of `rows` names (`textWidth`, measured by the shell) within its
+  /// bounds.
+  public static func flyoutWidth(textWidth: Double, rows: Int) -> Double {
+    let chrome = rowPadding * 2 + cardPadding + rightPadding(rows: rows)
+    return min(max(textWidth + chrome, flyoutMinWidth), flyoutMaxWidth)
+  }
+
+  /// The room a row's name has in a card `width` wide holding `rows` commands.
+  public static func nameRoom(flyoutWidth width: Double, rows: Int) -> Double {
+    width - rowPadding * 2 - cardPadding - rightPadding(rows: rows)
   }
 
   /// The transparent window every state is drawn in: wide enough for the card and a row's hover

@@ -1,5 +1,11 @@
 /* The task panel (apps/desktop/src/styles.css `.task-panel`, `.panel-header`; agent.css
-   `.conversation-messages`). The window is 500 × 680 pt; the glass owns its corner and edge. */
+   `.conversation-messages`). The window is 500 × 680 pt; the glass owns its corner and edge, and
+   its fill is the app's web surface over the native glass, with no sheen of its own. */
+.glass.pk-panel {
+  --glass-backdrop: blur(28px) saturate(1.2);
+  background: var(--pk-panel-surface);
+}
+
 .pk-panel {
   display: flex;
   flex-direction: column;

@@ -1,0 +1,428 @@
+/* The vignettes inside the mosaic's tiles, in the tile's content px (3 per world px). Product
+   surfaces keep their own kit styles; these rules only arrange them and draw the little worlds
+   around them (a night sky, a frozen page, a menu bar). */
+.r08-every-v__fit {
+  position: absolute;
+  left: calc(var(--ev-fx) * 1px);
+  top: calc(var(--ev-fy) * 1px);
+  width: calc(var(--ev-fw) * 1px);
+  height: calc(var(--ev-fh) * 1px);
+  scale: var(--ev-fs);
+  transform-origin: 0 0;
+}
+
+.r08-every-v__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.r08-every-v__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* A capsule that keeps its own width in a column. */
+.r08-every-v__pill {
+  align-self: flex-start;
+}
+
+/* The task panel's transcript column and its bottom dock. */
+.r08-every-v__transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 22px 0;
+}
+
+.r08-every-v__dock {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.r08-every-v__split {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 0 28px;
+}
+
+/* The app tile: the request and build card, the built window beside them. */
+.r08-every-v__apps {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+.r08-every-v__window {
+  width: 440px;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 18px 40px rgb(0 0 0 / 0.5);
+  opacity: var(--ev-open);
+  scale: calc(0.7 * (0.9 + 0.1 * var(--ev-open)));
+  transform-origin: 0 50%;
+}
+
+/* Night: a crescent moon and a few stars over the automation. */
+.r08-every-v__sky {
+  position: absolute;
+  inset: 0;
+}
+
+.r08-every-v__moon {
+  position: absolute;
+  left: 236px;
+  top: 250px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  box-shadow: inset -14px 8px 0 0 var(--ev-moon);
+  filter: drop-shadow(0 0 18px rgb(200 220 255 / 0.35));
+}
+
+.r08-every-v__star {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ev-star);
+}
+
+.r08-every-v__star[data-star='0'] {
+  left: 40px;
+  top: 210px;
+}
+.r08-every-v__star[data-star='1'] {
+  left: 120px;
+  top: 300px;
+}
+.r08-every-v__star[data-star='2'] {
+  left: 190px;
+  top: 236px;
+  width: 3px;
+  height: 3px;
+}
+.r08-every-v__star[data-star='3'] {
+  left: 320px;
+  top: 360px;
+}
+.r08-every-v__star[data-star='4'] {
+  left: 70px;
+  top: 404px;
+  width: 3px;
+  height: 3px;
+}
+.r08-every-v__star[data-star='5'] {
+  left: 210px;
+  top: 446px;
+}
+.r08-every-v__star[data-star='6'] {
+  left: 300px;
+  top: 196px;
+  width: 3px;
+  height: 3px;
+}
+
+.r08-every-v__notice {
+  position: absolute;
+  top: 20px;
+  left: 8px;
+}
+
+.r08-every-v__created {
+  position: absolute;
+  left: 20px;
+  bottom: 28px;
+}
+
+/* Memory → New skill. */
+.r08-every-v__memory {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 30px;
+}
+
+.r08-every-v__row-wide {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.r08-every-v__note {
+  font-size: 13px;
+  color: var(--pk-muted-fg);
+}
+
+.r08-every-v__suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--pk-border);
+  opacity: 0;
+  translate: 0 8px;
+}
+
+.r08-every-v__suggestion[data-in] {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.r08-every-v__suggestion-icon,
+.r08-every-v__item-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--pk-lift);
+}
+
+.r08-every-v__suggestion-icon .pk-icon,
+.r08-every-v__item-icon .pk-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.r08-every-v__suggestion-text,
+.r08-every-v__item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.r08-every-v__title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.r08-every-v__desc {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--pk-muted-fg);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Settings lists (Skills, MCP servers, Connected providers). */
+.r08-every-v__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 26px 22px;
+}
+
+.r08-every-v__heading {
+  padding: 0 4px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pk-muted-fg);
+}
+
+.r08-every-v__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px var(--pk-border);
+}
+
+.r08-every-v__item[data-fresh] {
+  background: var(--pk-wash);
+}
+
+.r08-every-v__mark {
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: var(--ev-mark) center / contain no-repeat;
+}
+
+.r08-every-v__chevron.pk-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--pk-muted-fg);
+}
+
+/* A provider's mark, large. */
+.r08-every-v__brand {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.r08-every-v__brand-mark {
+  width: 132px;
+  height: 132px;
+  background: var(--pk-fg);
+  mask: var(--ev-mark) center / contain no-repeat;
+}
+
+.r08-every-v__brand-name {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pk-muted-fg);
+}
+
+/* A frozen page under the capture overlay: a light page, so the dim and the spotlight read. */
+.r08-every-v__page {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #e8eaee, #d9dce2);
+}
+
+.r08-every-v__page i {
+  position: absolute;
+  border-radius: 8px;
+  background: rgb(20 24 32 / 0.14);
+}
+
+.r08-every-v__page i[data-part='bar'] {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 26px;
+  border-radius: 0;
+  background: rgb(20 24 32 / 0.08);
+}
+.r08-every-v__page i[data-part='title'] {
+  left: 40px;
+  top: 50px;
+  width: 300px;
+  height: 36px;
+  background: rgb(20 24 32 / 0.6);
+}
+.r08-every-v__page i[data-part='card-a'] {
+  left: 40px;
+  top: 104px;
+  width: 292px;
+  height: 120px;
+  background: linear-gradient(135deg, #ff9b73, #ff6a3d);
+}
+.r08-every-v__page i[data-part='card-b'] {
+  left: 352px;
+  top: 104px;
+  width: 292px;
+  height: 120px;
+  background: linear-gradient(135deg, #8fcaff, #4b9be8);
+}
+.r08-every-v__page i[data-part='line-a'] {
+  left: 40px;
+  top: 244px;
+  width: 560px;
+  height: 12px;
+}
+.r08-every-v__page i[data-part='line-b'] {
+  left: 40px;
+  top: 266px;
+  width: 420px;
+  height: 12px;
+}
+
+.r08-every-v__page[data-small] i[data-part='card-a'] {
+  left: 30px;
+  top: 36px;
+  width: 264px;
+  height: 120px;
+}
+.r08-every-v__page[data-small] i[data-part='card-b'] {
+  left: 30px;
+  top: 176px;
+  width: 264px;
+  height: 60px;
+}
+.r08-every-v__page[data-small] i[data-part='line-a'] {
+  left: 30px;
+  top: 256px;
+  width: 220px;
+}
+
+/* The annotation bars, bottom right of the captured page. */
+.r08-every-v__annotate {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  scale: 0.82;
+  transform-origin: 100% 100%;
+}
+
+/* The Mini Panel at the tile's right edge, and the file dragged toward it. */
+.r08-every-v__edge {
+  position: absolute;
+  right: 0;
+  top: 272px;
+}
+
+.r08-every-v__drag {
+  position: absolute;
+  left: calc(var(--ev-dx) * 1px);
+  top: calc(var(--ev-dy) * 1px);
+  filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.5));
+}
+
+/* A strip of the menu bar with Atd's item, large. */
+.r08-every-v__menubar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 102px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.08);
+  color: var(--pk-label);
+}
+
+.r08-every-v__status {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
+.r08-every-v__status .status-item {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}

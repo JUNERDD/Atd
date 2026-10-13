@@ -40,6 +40,7 @@ export function createAgentBridge(
       invoke({ action: 'saveCommand', command, expectedRevision }),
     deleteCommand: (commandId, revision) =>
       invoke({ action: 'deleteCommand', commandId, revision }),
+    reorderCommands: (commandIds) => invoke({ action: 'reorderCommands', commandIds }),
     launch: (commandId, prepared) =>
       invoke({ action: 'launch', commandId, prepared: prepared ?? null }),
     prepareWithText: (commandId, text) => invoke({ action: 'prepareWithText', commandId, text }),
@@ -78,6 +79,7 @@ export function createAgentBridge(
     dismissMemoryProposal: (id) => invoke({ action: 'dismissMemoryProposal', id }),
     artifact: (artifactId, operation) => invoke({ action: 'artifact', artifactId, operation }),
     copy: (text) => invoke({ action: 'copy', text }),
+    writeText: (request) => invoke({ action: 'writeText', ...request }),
     openLink: (url) => invoke({ action: 'openLink', url }),
     childTranscript: (taskId, childKey) => invoke({ action: 'childTranscript', taskId, childKey }),
     releaseChildTranscript: (taskId, childKey) =>

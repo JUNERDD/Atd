@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
   CommandInputSchema,
+  defaultCommandOutput,
   defaultCommandPlacement,
   parse,
   ServiceCommandFullSchema,
@@ -20,7 +21,7 @@ import { LedgerNotFound } from '../ledger.js';
 import { SettingsStore } from '../settings/store.js';
 import { withoutLegacySelection } from './legacy-selection.js';
 import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
-import { validateCommandShape } from './templates.js';
+import { validateCommandSave } from './templates.js';
 
 /** The command store file; its path and format are persisted data and stay fixed. */
 function commandsFile(dataDir: string): string {
@@ -44,6 +45,33 @@ function withAddedPlacement<T extends object>(command: T): T {
 }
 
 /**
+ * A command stored before outputs existed has none: it keeps the answer in the conversation, as it
+ * always did (`defaultCommandOutput`). Idempotent, and the same object when the command has an
+ * output.
+ */
+function withAddedOutput<T extends object>(command: T): T {
+  if ('output' in command) return command;
+  return { ...command, output: defaultCommandOutput() };
+}
+
+/**
+ * A command stored before commands had their own reasoning level has none: it takes the level its
+ * fixed model pinned, else `inherit` (the connection's default), and the level leaves the model,
+ * so a command keeps running at the level it did. Idempotent, and the same object when the
+ * command has a level and its model pins none; a model that is not an object is left to the full
+ * parse, which reports it when the command is read.
+ */
+function withOwnThinkingLevel<T extends object>(command: T): T {
+  const model = 'model' in command ? command.model : undefined;
+  const pins = typeof model === 'object' && model !== null && 'thinkingLevel' in model;
+  if ('thinkingLevel' in command && !pins) return command;
+  if (!pins) return { ...command, thinkingLevel: 'inherit' };
+  const { thinkingLevel: pinned, ...unpinned } = model;
+  const own = 'thinkingLevel' in command ? command.thinkingLevel : (pinned ?? 'inherit');
+  return { ...command, thinkingLevel: own, model: unpinned };
+}
+
+/**
  * Service-owned command store (T6b live surface over the T2 `commands.json`).
  * Create assigns identity; updates are full-replace with an expected-revision
  * guard (next-version edits, never a hot-swap: accepted runs already froze
@@ -52,9 +80,13 @@ function withAddedPlacement<T extends object>(command: T): T {
  * command holds (`shortcuts.ts`), for routes and the Agent's tool alike.
  * Legacy `skills`/`roleId` keys are folded into instructions on load and on
  * every write (`legacy-selection.ts`), and a command stored before placements
- * existed gets its default placement on load (`withAddedPlacement`). The load
+ * or outputs existed gets its default placement or output on load (`withAddedPlacement`,
+ * `withAddedOutput`), and one stored before commands had their own reasoning level gets the
+ * level its fixed model pinned (`withOwnThinkingLevel`). The load
  * keeps the revision: the folds are deterministic, so the file converges with
- * the next write of any command.
+ * the next write of any command. The stored order is the user's (`reorder`); a
+ * version 1 file, listed by name before the user could order it, loads in name
+ * order and is written back as version 2.
  */
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
@@ -96,15 +128,14 @@ export class CommandStore {
     try {
       if ((await stat(file)).size > 8 * 1024 * 1024) throw new Error('Commands file is too large.');
       const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
-      return new CommandStore(dataDir, file, {
-        ...data,
-        commands: data.commands.map((command) =>
-          withAddedPlacement(withoutLegacySelection(command)),
-        ),
-      });
+      const commands = data.commands.map((command) =>
+        withOwnThinkingLevel(withAddedOutput(withAddedPlacement(withoutLegacySelection(command)))),
+      );
+      if (data.version === 1) commands.sort((a, b) => a.name.localeCompare(b.name));
+      return new CommandStore(dataDir, file, { version: 2, commands });
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-        return new CommandStore(dataDir, file, { version: 1, commands: [] });
+        return new CommandStore(dataDir, file, { version: 2, commands: [] });
       throw new Error('Saved service commands could not be read. The file is preserved.');
     }
   }
@@ -126,19 +157,20 @@ export class CommandStore {
     return operation;
   }
 
+  /** The user's commands in the order they gave them; new commands come last. */
   list(): ServiceCommandFull[] {
-    return [...this.data.commands]
-      .map((command) => parse(ServiceCommandFullSchema, command))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return this.data.commands.map((command) => parse(ServiceCommandFullSchema, command));
   }
 
   /**
    * Normalizes a validated full command to the persisted store shape. Spread
    * properties are exempt from excess checks, so validated extension fields
-   * round-trip through the additionalProperties:true store file.
+   * round-trip through the additionalProperties:true store file. The computed `lastArguments`
+   * (last-arguments.ts) never lands in the file, whatever a client sent back.
    */
   static storable(full: ServiceCommandFull): ServiceCommand {
-    return { ...full, migratedAt: full.migratedAt ?? null };
+    const { lastArguments: _computed, ...command } = full;
+    return { ...command, migratedAt: full.migratedAt ?? null };
   }
 
   get(id: string): ServiceCommandFull {
@@ -149,8 +181,8 @@ export class CommandStore {
 
   /**
    * The command a create would store: defaults filled, identity assigned (a draft without `id`
-   * gets a fresh one), shape and templates validated. A draft without a placement gets the
-   * default of its input source. Throws TypeError on invalid drafts.
+   * gets a fresh one), shape, templates and output validated (`validateCommandSave`). A draft
+   * without a placement gets the default of its input source. Throws TypeError on invalid drafts.
    */
   static compose(draft: CommandCreate): ServiceCommandFull {
     const input: CommandInput = draft.input ?? {
@@ -171,20 +203,23 @@ export class CommandStore {
         templateId: null,
         input,
         placement: defaultCommandPlacement(input.source),
+        output: defaultCommandOutput(),
         parameters: [],
         model: { mode: 'inherit' },
+        thinkingLevel: 'inherit',
         tools: [],
         memory: 'inherit',
         ...withCanonicalShortcut(draft),
         migratedAt: null,
       }),
     );
-    validateCommandShape(full);
+    validateCommandSave(full);
     return full;
   }
 
   /**
-   * Throws a ConflictError when the app or another enabled command holds `command`'s shortcut;
+   * Throws a ConflictError when the app, the selection toolbar's double-tap or another enabled
+   * command holds `command`'s shortcut;
    * lets a caller refuse before asking the user to approve a save. Writes check it again.
    */
   async assertShortcutFree(
@@ -192,7 +227,8 @@ export class CommandStore {
     commands: ServiceCommand[] = this.data.commands,
   ): Promise<void> {
     const stored = commands.map((item) => parse(ServiceCommandFullSchema, item));
-    assertShortcutFree(command, stored, await SettingsStore.readShortcuts(this.dataDir));
+    const { shortcuts, selectionToolbar } = await SettingsStore.readShortcutHolders(this.dataDir);
+    assertShortcutFree(command, stored, shortcuts, selectionToolbar);
   }
 
   async create(draft: CommandCreate): Promise<ServiceCommandFull> {
@@ -213,7 +249,7 @@ export class CommandStore {
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
     command = withCanonicalShortcut(withoutLegacySelection(command));
-    validateCommandShape(command);
+    validateCommandSave(command);
     return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);
       const live = data.commands.find((item) => item.id === id);
@@ -229,6 +265,26 @@ export class CommandStore {
       data.commands[index] = CommandStore.storable(next);
       return next;
     });
+  }
+
+  /**
+   * Puts the commands in the order of `ids`, which must name every stored command exactly once;
+   * anything else means the caller's list is stale (ConflictError). Order is not part of a
+   * command's definition, so no revision changes.
+   */
+  async reorder(ids: readonly string[]): Promise<ServiceCommandFull[]> {
+    await this.change((data) => {
+      const byId = new Map(data.commands.map((command) => [command.id, command]));
+      const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+      const permutation =
+        ids.length === data.commands.length &&
+        ordered.length === ids.length &&
+        new Set(ids).size === ids.length;
+      if (!permutation)
+        throw new ConflictError('The command list changed. Reload before reordering.');
+      data.commands = ordered;
+    });
+    return this.list();
   }
 
   async remove(id: string, expectedRevision: number): Promise<void> {

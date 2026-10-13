@@ -4,6 +4,53 @@
 
 import Foundation
 
+/// Payload of the `edit.command` event.
+public struct EditCommandEvent: Codable, Equatable, Sendable {
+  public let command: Command
+
+  public init(command: Command) {
+    self.command = command
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    command = try container.value(.command, Command.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case command
+  }
+
+  public enum Command: String, Codable, Equatable, Sendable {
+    case undo
+    case redo
+  }
+}
+
+/// Payload of the `speech.state` event.
+public struct SpeechStateEvent: Codable, Equatable, Sendable {
+  public let speaking: Bool
+
+  public init(speaking: Bool) {
+    self.speaking = speaking
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    speaking = try container.boolean(.speaking)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case speaking
+  }
+}
+
+/// Payload of the `selection.ask` event.
+public typealias SelectionAskEvent = NativeEmpty
+
+/// Payload of the `task.new` event.
+public typealias TaskNewEvent = NativeEmpty
+
 /// Payload of the `miniPanel.state` event.
 public struct MiniPanelStateEvent: Codable, Equatable, Sendable {
   public let shown: Bool

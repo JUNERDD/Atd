@@ -1,6 +1,7 @@
 import {
   deleteAtdAgent,
   deleteSkill,
+  dismissBuiltinBackup,
   getSkill,
   listAtdAgents,
   listRoles,
@@ -62,6 +63,8 @@ export async function handleExtensionRequest(
       return deleteSkill(options, request.name);
     case 'builtinRestore':
       return restoreBuiltin(options, request.id);
+    case 'builtinDismissBackup':
+      return dismissBuiltinBackup(options, request.id);
     case 'roles':
       return listRoles(options);
     case 'rolesPut':

@@ -60,12 +60,15 @@
       "alwaysOnTop": "pin float window topmost keep on top sticky",
       "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
+      "panelPlacement": "position place location where appear open center centre middle corner bottom right remember last moved dragged display monitor screen multiple",
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
       "defaultModel": "default provider model choose selected",
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
+      "commandTyping": "typing typewriter type out animation paste at once write back insert replace reduce motion",
+      "commandTypingAnimation": "typing animation trace glow highlight new text insertion point cursor visual effect motion",
       "newAutomation": "create add automation schedule recurring task routine automate",
       "automationsPause": "pause stop disable all automations schedule hold resume",
       "memoryLearning": "learn automatically remember pause preferences corrections",
@@ -107,6 +110,13 @@
         "cancel": "Cancel",
         "confirm": "Disconnect",
         "missingProvider": "This provider is no longer registered."
+      },
+      "remove": {
+        "title": "Remove {{name}}?",
+        "description": "The connection, its saved credential, and its model list will be deleted. This cannot be undone. Tasks, commands, and automations that use it will need another model.",
+        "defaultNote": " It is the default provider, so choose another default afterwards.",
+        "cancel": "Cancel",
+        "confirm": "Remove"
       }
     }
   },
@@ -189,7 +199,9 @@
       },
       "keysLabel": "Activation keys",
       "errors": {
-        "keys": "Use ⌥ Option, ⌘ Command or ⇧ Shift, alone or together. Other keys would type while held, and ⌃ Control turns a click into a right-click."
+        "keys": "Use ⌥ Option, ⌘ Command or ⇧ Shift, alone or together. Other keys would type while held, and ⌃ Control turns a click into a right-click.",
+        "heldByAction": "“{{action}}” already uses this double‑tap. Choose other keys or another way to bring up the toolbar.",
+        "heldByCommand": "The command “{{name}}” already uses this double‑tap. Choose other keys or another way to bring up the toolbar."
       }
     },
     "hud": {
@@ -271,6 +283,16 @@
         "click": "Opens only when you click it. Pointing at it just makes it swell."
       }
     },
+    "panelPlacement": {
+      "title": "Panel position",
+      "description": "Where the panel appears when you open it, on the display you're using. Last position is remembered for each display.",
+      "label": "Where the panel appears",
+      "modes": {
+        "bottomRight": "Bottom-right corner",
+        "center": "Screen center",
+        "lastPosition": "Last position"
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "Start the app when you log in to your Mac.",
       "showInDock": "The menu bar icon stays either way.",
@@ -288,7 +310,8 @@
       "modifierRequired": "Include a modifier such as Command, Control, or Alt.",
       "shortcutSave": "The shortcut could not be saved.",
       "defaultsRestore": "Default shortcuts could not be restored.",
-      "windowPreferenceSave": "The window preference could not be saved."
+      "windowPreferenceSave": "The window preference could not be saved.",
+      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut."
     }
   },
   "extensions": {
@@ -413,6 +436,9 @@
     "restoreConfirm": "Restore",
     "restoreBackupPath": "Your previous copy of {{name}} was backed up to {{path}}",
     "restoreFailed": "Could not restore the built-in {{name}}.",
+    "builtinUpdatedTitle": "{{name}} was updated",
+    "builtinUpdated": "Your edits were backed up to {{path}}",
+    "builtinUpdatedDismiss": "Dismiss",
     "connect": "Connect",
     "authenticate": "Authenticate",
     "authCodeLabel": "Authorization code",

@@ -14,22 +14,42 @@ product's real interactions recreated in code:
 The film then shows the models Atd runs on and its privacy promise, and closes on the same
 shortcut.
 
+**The release film.** A 60-second film for Atd 0.8 (`AtdRelease` and `AtdReleaseZh`) lives in
+`src/release/`, in a world of its own, "Ink & Caret": graphite ink, a fine dot grid that ripples
+from events, and one accent, the coral caret. A line types itself, is selected and retyped in
+place before the title drops; an answer is written back where it was asked; a shortcut is tapped to
+run or held to choose, and the run picks where its answer goes; the ChatGPT plan, effort per
+command, light runs and the user's own order make it theirs; a mosaic of everything Atd already
+does spells out the version; the caret signs off. `src/release/timeline.ts` is its one clock (100
+BPM, a bar every 2.4 s, 25 bars), each scene's `beats.ts` places its moments on it, and
+`src/release/audio/` scores it with a sound of its own: C♯ minor lifting to E major for the
+finale, a pulse-lead hook, an FM electric piano, plucked strings and a tight kit, with the typing
+on screen as part of the rhythm (`music/`), and a sound for every on-screen event read from the
+scenes' beats (`cues.ts`, `sections/`). The typing differs by language, so each cut has its own
+track, `public/audio/release-en.wav` and `release-zh.wav`, with `release-en-music.wav`,
+`release-en-effects.wav` and the `zh` pair in the stems. Its world kit (`src/release/world/`: the
+dot field, the caret, typed lines, kinetic statements, the caret wipe and selection flood, and the
+Stage the product shots play on) has its own review sheet, `R08WorldSheet`.
+
 ## Commands
 
 Run from the repository root:
 
 | Command                                                   | Does                                                                                              |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `pnpm --filter @atd/promo-video studio`                   | Scores the soundtrack, then opens Remotion Studio                                                 |
+| `pnpm --filter @atd/promo-video studio`                   | Scores both films' soundtracks, then opens Remotion Studio                                        |
 | `pnpm --filter @atd/promo-video render`                   | Scores, bundles once and renders both cuts to `out/atd-promo-en.mp4` and `-zh.mp4`, with progress |
 | `pnpm --filter @atd/promo-video render:en`                | Renders the English cut only (`render:zh` for Chinese)                                            |
 | `pnpm --filter @atd/promo-video render:en --frames=0-299` | Renders only those frames (`N` or `A-B`, inclusive) to the same file, for a quick check           |
+| `pnpm --filter @atd/promo-video render:release`           | Renders the release film to `out/atd-release-0.8-en.mp4` and `-zh.mp4` (`:en`, `:zh` for one)     |
 | `pnpm --filter @atd/promo-video soundtrack`               | Scores `public/audio/soundtrack.wav` and its stems from code                                      |
+| `pnpm --filter @atd/promo-video soundtrack release`       | Scores the release film's `release-en.wav`, `release-zh.wav` and stems (`release-en` for one)     |
 | `pnpm --filter @atd/promo-video typecheck`, `lint`        | TypeScript, and Oxlint with the repository's rules                                                |
 
-`scripts/render.ts` labels each phase: scoring, bundling, then each cut. On a terminal, each phase
-redraws one line with a bar, the frames rendered and encoded, the render speed, the elapsed time
-and an ETA. In CI, a pipe or a log, it prints a plain line about every 5%, at most once every 2 s.
+`scripts/render.ts` labels each phase: scoring the soundtracks its cuts play, bundling, then each
+cut. On a terminal, each phase redraws one line with a bar, the frames rendered and encoded, the
+render speed, the elapsed time and an ETA. In CI, a pipe or a log, it prints a plain line about
+every 5%, at most once every 2 s.
 
 `out/` and `public/audio/` are generated and ignored by Git. The first render downloads the Chrome
 Headless Shell that Remotion pins. Each cut is H.264 (CRF 15, tagged limited-range BT.709) with

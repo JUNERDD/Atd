@@ -1,0 +1,238 @@
+/* The yours section: a two-line statement in the column on the left, the product shot floating on
+   the dot field to its right. Frame px outside the shot; Mac points inside it. */
+
+/* The statement column, centered on the frame's height. */
+.r08-yours-words {
+  --r08-size-statement: 118px;
+  position: absolute;
+  left: 128px;
+  top: 540px;
+  width: 800px;
+  translate: 0 -50%;
+}
+
+.r08-yours-words[data-lang='zh'] {
+  --r08-size-statement: 96px;
+}
+
+/* A line shrinks to its words, so the caret can follow the last of them. */
+.r08-yours-words__line {
+  display: flex;
+  align-items: baseline;
+  font-size: var(--r08-size-statement);
+  line-height: 1.02;
+}
+
+.r08-yours-words__line > .r08-statement {
+  flex: none;
+  width: auto;
+  white-space: nowrap;
+}
+
+.r08-yours-words__caret {
+  margin-left: 0.07em;
+  opacity: 0;
+}
+
+.r08-yours-words__caret[data-on] {
+  opacity: 1;
+}
+
+/* The shot: glows behind it, the surfaces through the camera, faded toward the statement and the
+   frame's top and bottom edges. */
+.r08-yours-shot {
+  position: absolute;
+  inset: 0;
+  opacity: var(--o, 1);
+}
+
+.r08-yours-shot__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.r08-yours-shot__glow[data-glow='warm'] {
+  left: 560px;
+  top: 640px;
+  width: 1100px;
+  height: 820px;
+  background: radial-gradient(closest-side, var(--r08-glow-warm), transparent);
+}
+
+.r08-yours-shot__glow[data-glow='cool'] {
+  left: 1240px;
+  top: -380px;
+  width: 1100px;
+  height: 860px;
+  background: radial-gradient(closest-side, var(--r08-glow-cool), transparent);
+}
+
+.r08-yours-shot__lens {
+  position: absolute;
+  inset: 0;
+  mask-image:
+    linear-gradient(90deg, transparent 600px, #000 900px),
+    linear-gradient(180deg, transparent 0, #000 110px, #000 970px, transparent 1080px);
+  mask-composite: intersect;
+}
+
+/* The Mac's display in points, scaled once into frame px; the camera frames it. */
+.r08-yours-shot__display {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--dw) * 1px);
+  height: calc(var(--dh) * 1px);
+  scale: var(--scale);
+  transform-origin: 0 0;
+  color: var(--pk-fg);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* A settings sub-page (`settings-fields`): the 24 pt title, then fields 16 pt apart. */
+.r08-yours-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.r08-yours-page__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+/* A field: its label, 8 pt, then its control. */
+.r08-yours-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The shared `Input` at its default size: 32 pt, `rounded-2xl`, `bg-input/50`, no resting border. */
+.r08-yours-input {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.075);
+}
+
+/* The editor's footer, its actions at the trailing edge, 20 pt above the window's bottom. */
+.r08-yours-footer {
+  position: absolute;
+  right: 40px;
+  bottom: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+/* An editor group (`settings-group`): a hairline, 24 pt, its heading, then fields 16 pt down. */
+.r08-yours-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--pk-border);
+}
+
+.r08-yours-group__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.r08-yours-group__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.r08-yours-group__description,
+.r08-yours-list__description {
+  margin: 0;
+  color: var(--pk-muted-fg);
+}
+
+/* The run settings' three fields on one row (`field-columns`). */
+.r08-yours-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.r08-yours-select {
+  position: relative;
+}
+
+/* The open menu's anchor: the trigger's own box, zooming from 95% as Radix opens it. */
+.r08-yours-select__menu {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 32px;
+  scale: var(--zoom, 1);
+  transform-origin: 50% 0;
+}
+
+/* The task panel, placed in points. */
+.r08-yours-panel {
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+}
+
+/* The Commands overview: the description, the search and New command, the hint, the rows. */
+.r08-yours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.r08-yours-list__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+}
+
+.r08-yours-list__toolbar > .rc-search {
+  flex: 1;
+}
+
+.r08-yours-list__hint {
+  margin: 0;
+  color: var(--pk-muted-fg);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.r08-yours-rows {
+  position: relative;
+  height: calc(5 * 79px);
+}
+
+.r08-yours-rows__slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--slot) * 79px);
+  translate: 0 calc(var(--dy, 0) * 1px);
+}
+
+.r08-yours-rows__slot[data-dragged] {
+  z-index: 2;
+}

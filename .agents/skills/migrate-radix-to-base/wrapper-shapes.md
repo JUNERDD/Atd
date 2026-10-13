@@ -33,7 +33,7 @@ non-button polymorphic components (breadcrumb link, marker).
 <TooltipPrimitive.Arrow
   className={cn(
     'cn-tooltip-arrow cn-tooltip-arrow-logical',
-    'data-[side=bottom]:top-1 data-[side=left]:right-[-13px] data-[side=left]:top-1/2! data-[side=left]:-translate-y-1/2 data-[side=right]:left-[-13px] data-[side=right]:top-1/2! data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-2.5',
+    'data-[side=bottom]:top-1 data-[side=left]:top-1/2! data-[side=left]:right-[-13px] data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:left-[-13px] data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-2.5',
     className,
   )}
 />
@@ -94,8 +94,8 @@ class existed; the open styling was previously data-[state=open]).
 - Drop the radix `position` prop entirely; expose `alignItemWithTrigger`
   (default true) picked from Positioner.Props, `sideOffset = 4`.
 - Item anatomy: `ItemText` FIRST with `cn-select-item-text shrink-0
-whitespace-nowrap`, then `ItemIndicator render={<span
-className="cn-select-item-indicator" />}`.
+  whitespace-nowrap`, then `ItemIndicator render={<span
+  className="cn-select-item-indicator" />}`.
 - Scroll arrows get `top-0 w-full` / `bottom-0 w-full`; List has no classes.
 
 ## Accordion animation placement

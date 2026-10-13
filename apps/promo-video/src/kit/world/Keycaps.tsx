@@ -1,12 +1,14 @@
 import { clamp01, mix } from '../../motion/ease.ts';
 import { springAt, springs } from '../../motion/spring.ts';
-import { keyTravel } from './keycap.ts';
+import { isWordLegend, keyTravel, keyWidth, type KeyLegend } from './keycap.ts';
 import './keycaps.css';
 
-export type KeyLegend = '⌘' | '⇧' | '⌥' | 'Space' | '2' | 'T';
+export type { KeyLegend } from './keycap.ts';
 
 export interface KeySpec {
   legend: KeyLegend;
+  /** The cap's width in key units; default from its legend (`keyWidth`). */
+  width?: number;
   /** When the key goes down, in seconds on the same clock as `t`; omit for a key at rest. */
   press?: number;
   /** When it comes back up (a chord releases its keys together); default: a short tap. */
@@ -33,15 +35,6 @@ interface KeycapsProps {
   /** The key in focus, as a fractional index. Default: the middle of the row. */
   focus?: number;
 }
-
-const WIDTH: Record<KeyLegend, number> = {
-  '⌘': 1,
-  '⇧': 1,
-  '⌥': 1,
-  Space: 2.7,
-  '2': 1,
-  T: 1,
-};
 
 /**
  * A row of keycaps pressed by time. Macro caps are sculpted (a top face with its dish and sheen
@@ -71,8 +64,9 @@ export function Keycaps({
               key={`${key.legend}-${index}`}
               className="keycap"
               data-legend={key.legend}
+              data-word={isWordLegend(key.legend) || undefined}
               style={{
-                '--w': WIDTH[key.legend],
+                '--w': key.width ?? keyWidth(key.legend),
                 '--travel': travel,
                 '--pressed': clamp01(travel),
                 '--glow': key.glow ?? 0,

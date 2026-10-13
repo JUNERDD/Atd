@@ -14,6 +14,27 @@ public struct HotKeyModifiers: OptionSet, Hashable, Sendable {
 public struct HotKeyCombination: Hashable, Sendable {
   public let keyCode: UInt32
   public let modifiers: HotKeyModifiers
+
+  public init(keyCode: UInt32, modifiers: HotKeyModifiers) {
+    self.keyCode = keyCode
+    self.modifiers = modifiers
+  }
+}
+
+/// A modifier a double-tap shortcut taps, by its accelerator name (`DoubleTap+Command`). Either
+/// side's key counts.
+public enum TapModifier: String, CaseIterable, Hashable, Sendable {
+  case command = "Command"
+  case option = "Alt"
+  case control = "Control"
+  case shift = "Shift"
+}
+
+/// What a global shortcut waits for: a Carbon chord, or a quick double-tap of one modifier on its
+/// own (``ModifierDoubleTap``).
+public enum HotKeyTrigger: Hashable, Sendable {
+  case chord(HotKeyCombination)
+  case doubleTap(TapModifier)
 }
 
 public enum AcceleratorError: Error, Equatable, Sendable {
@@ -30,17 +51,28 @@ public enum AcceleratorError: Error, Equatable, Sendable {
   case duplicateModifier(String)
   /// A global shortcut needs a modifier other than Shift.
   case missingModifier
+  /// `DoubleTap+` followed by anything but `Command`, `Alt`, `Control` or `Shift`.
+  case unknownDoubleTap(String)
 }
 
 /// Converts the Electron accelerator strings the app stores (`parseAccelerator` in
-/// `packages/agent-contracts/src/shortcuts.ts`, validated with `requireModifier` and
-/// `platform: 'darwin'`, as every global registration is) into Carbon hot keys. The vocabulary
-/// is exactly that grammar; anything else is a typed error, never a guess.
+/// `packages/agent-contracts/src/shortcuts.ts`, validated with `requireModifier`,
+/// `allowDoubleTap` and `platform: 'darwin'`, as every global registration is) into Carbon hot
+/// keys or modifier double-taps. The vocabulary is exactly that grammar; anything else is a typed
+/// error, never a guess.
 public enum Accelerator {
   public static let maxLength = 100
+  private static let doubleTapPrefix = "DoubleTap+"
 
-  public static func parse(_ accelerator: String) throws(AcceleratorError) -> HotKeyCombination {
+  public static func parse(_ accelerator: String) throws(AcceleratorError) -> HotKeyTrigger {
     guard accelerator.utf16.count <= maxLength else { throw .tooLong }
+    guard accelerator.hasPrefix(doubleTapPrefix) else { return .chord(try chord(accelerator)) }
+    let name = String(accelerator.dropFirst(doubleTapPrefix.count))
+    guard let modifier = TapModifier(rawValue: name) else { throw .unknownDoubleTap(name) }
+    return .doubleTap(modifier)
+  }
+
+  private static func chord(_ accelerator: String) throws(AcceleratorError) -> HotKeyCombination {
     var parts = accelerator.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
     let key = parts.removeLast()
     guard !key.isEmpty else { throw .missingKey }

@@ -1,0 +1,20 @@
+diff --git a/dist/auth/oauth/callback-server.js b/dist/auth/oauth/callback-server.js
+index ebab32e955b79fcbf14373fc43993afb063554b8..a3fea2e3c2748177fa43ad45110ed1d65ec5da9f 100644
+--- a/dist/auth/oauth/callback-server.js
++++ b/dist/auth/oauth/callback-server.js
+@@ -40,7 +40,14 @@ export async function startOAuthCallbackServer(options) {
+     };
+     const server = createServer((request, response) => {
+         void (async () => {
+-            const url = new URL(request.url ?? "/", "http://localhost");
++            let url;
++            try {
++                url = new URL(request.url ?? "/", "http://localhost");
++            }
++            catch {
++                sendPage(response, 400, oauthErrorHtml("Invalid callback URL."));
++                return;
++            }
+             if (request.method !== "GET" || url.pathname !== options.path) {
+                 sendPage(response, 404, oauthErrorHtml("Callback route not found."));
+                 return;

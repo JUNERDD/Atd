@@ -19,6 +19,7 @@
     "manageLabel": "Manage {{name}}",
     "refresh": "Refresh models",
     "disconnect": "Disconnect",
+    "remove": "Remove connection",
     "unavailableModel": "{{model}} is unavailable. Refresh models or choose another model."
   },
   "catalog": {
@@ -44,6 +45,7 @@
   "form": {
     "sectionLabel": "Provider connection",
     "connect": "Connect {{name}}",
+    "signIn": "Sign in to {{name}}",
     "back": "Back to providers",
     "conflict": "Saved settings changed. Your draft is preserved.",
     "reload": "Reload saved settings",
@@ -60,11 +62,13 @@
     "baseUrl": "Base URL",
     "authFallback": "API key or bearer token",
     "ambientNote": "Use the configured AWS credentials or Google Application Default Credentials on this device. Save this connection to opt in.",
-    "signInNote": "Save this connection to start account sign-in.",
+    "signInNote": "Sign in to continue in your browser. Your account credentials stay on this device.",
     "refresh": "Refresh models",
     "refreshing": "Refreshing…",
+    "saveBeforeRefresh": "Save changes before refreshing models.",
     "verify": "Verify model access",
     "verifying": "Verifying…",
+    "saveBeforeVerify": "Save changes before verifying model access.",
     "verifyNote": "Verification sends a small model request and may use credits. It does not run tools.",
     "saved": "Connection saved.",
     "catalogUpdated": "Model catalog updated.",
@@ -80,7 +84,32 @@
     "continue": "Continue",
     "cancel": "Cancel sign-in",
     "tryAgain": "Try again",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "signInAgain": "Sign in again",
+    "signingIn": "Signing in…",
+    "manualFallback": "Browser did not return?",
+    "errorDetails": "Error details",
+    "errors": {
+      "network": "Could not reach ChatGPT. Check your network and try again.",
+      "expired": "This authorization expired. Start a new sign-in.",
+      "rejected": "ChatGPT rejected the sign-in request. See the error details.",
+      "unavailable": "ChatGPT sign-in is temporarily unavailable. Try again later.",
+      "invalidResponse": "ChatGPT returned an unexpected response. See the error details.",
+      "verification": "Could not verify the ChatGPT sign-in. See the error details.",
+      "invalidGrant": "ChatGPT could not complete authorization. Keep this connection and sign in again."
+    },
+    "stages": {
+      "discovery": "Connecting to ChatGPT",
+      "exchange": "Completing ChatGPT sign-in"
+    },
+    "requestId": "Request ID: {{id}}",
+    "reasons": {
+      "pkceMismatch": "OpenAI reported a PKCE verification failure.",
+      "redirectMismatch": "OpenAI reported a callback address mismatch.",
+      "clientMismatch": "OpenAI reported a client registration mismatch.",
+      "codeUsed": "OpenAI reported that the authorization code was already used.",
+      "codeExpired": "OpenAI reported that the authorization code expired."
+    }
   },
   "models": {
     "choose": "Choose model",
@@ -126,6 +155,7 @@
     "model": "Model",
     "back": "Back",
     "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}",
+    "modelOnlyTriggerLabel": "Model configuration: {{model}}, {{contextSize}}",
     "scopedTriggerLabel": "{{label}}: {{model}}, {{contextSize}}, {{effort}}",
     "tiers": {
       "standard": "Standard",
@@ -133,5 +163,46 @@
     },
     "pricedAbove": "Billed at a higher rate above {{tokens}} tokens",
     "contextApplies": "Applies to this model's later tasks."
+  },
+  "chatgpt": {
+    "continue": "Continue with ChatGPT",
+    "usingPlan": "Using ChatGPT plan",
+    "manageUsage": "Manage usage",
+    "welcomeTitle": "You’re using your ChatGPT plan",
+    "welcomeDescription": "Atd will use your ChatGPT plan for this connection. Manage usage and access in ChatGPT settings.",
+    "gotIt": "Got it",
+    "usageLimit": "This ChatGPT plan or Atd’s app allowance has reached a limit. Requests are paused. Review your usage, then resume requests in connection settings, or choose another provider.",
+    "usageUnavailable": "ChatGPT usage information is temporarily unavailable. Your sign-in is preserved. Try again later.",
+    "privacyTitle": "Data & privacy",
+    "privacyIdentity": "Atd receives your account ID and email to identify this connection. Authorization tokens stay in your macOS keychain; account details and consent settings are stored locally. Atd does not send these credentials to an Atd server.",
+    "privacyContent": "For model requests, Atd sends OpenAI your prompt, conversation context, and any attachments or tool results included in the task. OpenAI processes this data under its privacy policy. Background memory reviews also send relevant conversation content when you allow background use.",
+    "privacyControl": "Local task history and memory follow your Atd settings. Disconnecting removes this connection’s local tokens and requests revocation; existing task history and memory remain until you delete them. You can also revoke access in ChatGPT settings. There is no Atd fee to connect or use this integration.",
+    "openaiPrivacy": "OpenAI privacy policy",
+    "privacyAccept": "I understand and agree to connect.",
+    "backgroundTitle": "Allow background use",
+    "backgroundDescription": "Allow scheduled tasks, automatic memory reviews and consolidation, and apps’ AI requests to use this connection’s ChatGPT allowance, including while you are away. Off by default. Save changes to apply or withdraw this permission; requests already sent may finish.",
+    "backgroundRequired": "Background use is off for this connection. Enable it in Settings → Providers, or choose a different connection for this background task.",
+    "privacyRequired": "Review and accept the ChatGPT privacy notice in Settings → Providers before using this connection.",
+    "planDisabled": "Signed in · plan usage not enabled",
+    "planDisabledDescription": "Your ChatGPT account is signed in, but plan usage is not enabled. Enable it for Atd, or add a separate API key connection.",
+    "enablePlan": "Enable ChatGPT plan usage",
+    "connectedTitle": "ChatGPT is connected",
+    "identityTitle": "Signed in to ChatGPT",
+    "connectedDescription": "Choose a default model to get started. Your background-use preference is saved separately in this connection’s settings.",
+    "paused": "ChatGPT requests paused",
+    "resume": "Resume requests",
+    "resumePending": "Save to resume",
+    "notEligible": "This ChatGPT account is not eligible to share its plan with Atd. Use an API key or another provider; signing in again won’t change eligibility.",
+    "userUnavailable": "ChatGPT cannot serve this account right now. Your sign-in is preserved. Try again later.",
+    "unsupportedCapability": "ChatGPT plan sharing does not support this request’s capability. Change the request or use an API key connection.",
+    "unsupportedRoute": "This endpoint is not supported for ChatGPT plan sharing. Use a supported request or an API key connection.",
+    "invalidUser": "ChatGPT could not validate this account. Sign in again from connection settings.",
+    "authorizationInvalid": "ChatGPT rejected this authorization context. Review access and sign in again from connection settings.",
+    "openSettings": "Open settings",
+    "errorDetails": "Error details",
+    "privacySummary": "Atd receives your account details and sends task content to OpenAI. Sign-in credentials stay on this Mac.",
+    "privacyDetails": "Privacy details",
+    "backgroundSummary": "Let automations, memory reviews, and apps use your plan while you’re away.",
+    "backgroundBeforeConsent": "Agree to connect first, then allow automations, memory reviews, and apps to use your plan while you’re away."
   }
 }

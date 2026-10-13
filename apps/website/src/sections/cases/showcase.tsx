@@ -13,19 +13,17 @@ import './cases.css';
  * pins while its track scrolls past, and each step of scrolling brings in the next scene with its
  * caption. Above the screen, the scenes' names light up in turn and each goes straight to its scene
  * (tabs.tsx). The heading pins with the stage when the viewport has room for it beside a full-size
- * screen (use-case-scroll.ts). The prerendered page shows the first scene complete; the scroll
- * drives it once the page hydrates.
+ * screen (use-case-scroll.ts). The prerendered page shows the first scene complete; once the page
+ * hydrates the scroll drives it, and plays each scene's choreography as far as its step has scrolled.
  */
 export function CasesShowcase({ id }: { id: string }) {
   const t = useCopy(casesCopy);
   const lang = useLang();
-  const { root, stage, heading, screen, active, entered, started, select } = useCaseScroll(
-    cases.length,
-  );
+  const { root, stage, heading, screen, active, select } = useCaseScroll(cases.length);
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
   return (
-    <div ref={root} className="cases__showcase" data-started={started ? '' : undefined}>
+    <div ref={root} className="cases__showcase">
       <div ref={stage} className="cases__stage">
         <div ref={heading} className="cases__heading">
           <SectionHeader id={id} title={t.title} lede={t.lede} />
@@ -44,7 +42,6 @@ export function CasesShowcase({ id }: { id: string }) {
                 key={item.id}
                 className="cases__slide"
                 data-active={active === index ? '' : undefined}
-                data-entered={entered && active === index ? '' : undefined}
                 aria-label={item.label[lang]}
                 aria-hidden={active !== index}
               >

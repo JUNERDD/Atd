@@ -2,10 +2,10 @@ import AICore
 import AppKit
 import SwiftUI
 
-/// The commands card's glass: closed, it has shrunk to nothing in the Commands button's middle; it
-/// grows out of there to the card's frame on its own animation, and its rows, laid out where the
-/// open card rests, ride inside it, centered in it and scaled with it (``MiniPanelFlyout``), so
-/// they open out of the button with the card. It is drawn in a fixed lane that holds the card
+/// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule;
+/// it grows out of there to the card's frame on its own animation, and its rows, laid out where
+/// the open card rests, ride inside it, centered in it and scaled with it (``MiniPanelFlyout``),
+/// so they open out of the anchor with the card. It is drawn in a fixed lane that holds the card
 /// and every body shape it closes into, so its frames lay nothing out again while it opens or
 /// closes (perf-v1).
 struct MiniPanelCard: View {
@@ -21,20 +21,20 @@ struct MiniPanelCard: View {
       .frame(width: rows.width, height: rows.height)
       .animation(nil) { $0.offset(x: rows.minX, y: rows.minY) }
       .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      .animation(card.animation) { $0.clipShape(outline).glassEffect(.regular, in: outline) }
+      .glassSurface(in: outline, animation: card.animation, opacity: card.opacity)
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(model.flyoutOpen)
       .accessibilityHidden(!model.flyoutOpen)
   }
 }
 
-/// The hover label (hover-label-v2): a small capsule of the same glass that grows out of the
-/// hovered control's middle, glides from control to control, and draws back into that middle
-/// (``MiniPanelLabelPath``). Its text rides inside it on the same animated values
-/// (``MiniPanelLabelFollowEffect``): it grows out of the control with the capsule, glides with it,
-/// swapping through a blur, and shows only through its own presence, so the label hides by
-/// fading its text and drawing its shape in, never by an effect over the glass. Visual only:
-/// VoiceOver reads the controls' own labels.
+/// The hover label (hover-label-v4): a small capsule of the same glass that grows out of an anchor
+/// on its side facing the capsule, level with the hovered control, glides from control to
+/// control, and leaves into that anchor: its glass leads its fill on the way in, and its fill and
+/// text fade before its glass draws in on the way out (``MiniPanelLabelPath``). Its text rides
+/// inside it on the same animated values (``MiniPanelLabelFollowEffect``): it grows with the
+/// label, glides with it, swapping through a blur, and shows only through its own presence.
+/// Visual only: VoiceOver reads the controls' own labels.
 ///
 /// It is drawn in a fixed lane beside the shape it belongs to, so its frames lay nothing out
 /// again (perf-v1): only its outline (a shape) and its text's transform move.
@@ -47,12 +47,9 @@ struct MiniPanelLabelView: View {
     // A glide swaps its text on its own animation; a hidden label swaps it at once.
     let swap = MiniPanelChoreography.labelGlide.reduced(model.reduceMotion).animation
     let rest = label.rest.offsetBy(dx: -lane.minX, dy: -lane.minY)
-    let point = CGPoint(x: label.point.x - lane.minX, y: label.point.y - lane.minY)
-    let outline = MiniPanelLabelOutline(
-      progress: label.progress, rest: rest, point: point, edge: model.edge)
+    let outline = MiniPanelLabelOutline(fade: label.fade, rest: rest, edge: model.edge)
     let follow = MiniPanelLabelFollowEffect(
-      progress: label.progress, rest: rest, point: point, edge: model.edge, layout: rest,
-      scales: !model.reduceMotion)
+      fade: label.fade, rest: rest, edge: model.edge, layout: rest, scales: !model.reduceMotion)
     // A text swapped by a plain write would drop the leaving one at once: one text interpolates
     // into the next instead, through a blur, on the glide's animation.
     Text(verbatim: label.text)
@@ -68,51 +65,46 @@ struct MiniPanelLabelView: View {
       .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
       .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
       .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      .animation(label.animation) { $0.clipShape(outline).glassEffect(.regular, in: outline) }
+      // Leaving, its fill and text fade where it rests, and its outline takes the bare glass
+      // away there, rather than shrinking into the capsule, whose fill its own would darken.
+      .glassSurface(in: outline, animation: label.animation, opacity: 1 - label.fade)
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(false)
       .accessibilityHidden(true)
   }
 }
 
-/// The label's outline at its animated progress, in its lane: SwiftUI interpolates the progress,
-/// the rest and the control's middle, and only this shape's path is drawn again on each frame.
+/// The label's outline at its animated fade, in its lane: SwiftUI interpolates the fade and the
+/// rest, and only this shape's path is drawn again on each frame.
 /// Its text's transform (``MiniPanelLabelFollowEffect``) takes the same values.
 struct MiniPanelLabelOutline: Shape {
   typealias AnimatableData = AnimatablePair<
-    AnimatablePair<Double, Double>,
-    AnimatablePair<AnimatablePair<Double, Double>, AnimatablePair<Double, Double>>
+    AnimatablePair<Double, Double>, AnimatablePair<Double, Double>
   >
 
-  var progress: Double
+  var fade: Double
   var rest: CGRect
-  var point: CGPoint
   let edge: MiniPanelEdge
 
   var animatableData: AnimatableData {
-    get { Self.data(progress: progress, rest: rest, point: point) }
-    set { (progress, rest, point) = Self.values(newValue, height: rest.height) }
+    get { Self.data(fade: fade, rest: rest) }
+    set { (fade, rest) = Self.values(newValue, height: rest.height) }
   }
 
-  /// The progress, the rest (its height is fixed) and the control's middle as one vector.
-  static func data(progress: Double, rest: CGRect, point: CGPoint) -> AnimatableData {
-    AnimatablePair(
-      AnimatablePair(progress, rest.minX),
-      AnimatablePair(AnimatablePair(rest.minY, rest.width), AnimatablePair(point.x, point.y)))
+  /// The fade and the rest (its height is fixed) as one vector.
+  static func data(fade: Double, rest: CGRect) -> AnimatableData {
+    AnimatablePair(AnimatablePair(fade, rest.minX), AnimatablePair(rest.minY, rest.width))
   }
 
-  /// The values ``data(progress:rest:point:)`` holds, with the rest `height` tall.
-  static func values(_ data: AnimatableData, height: Double) -> (Double, CGRect, CGPoint) {
+  /// The values ``data(fade:rest:)`` holds, with the rest `height` tall.
+  static func values(_ data: AnimatableData, height: Double) -> (Double, CGRect) {
     let rest = CGRect(
-      x: data.first.second, y: data.second.first.first, width: data.second.first.second,
-      height: height)
-    return (
-      data.first.first, rest, CGPoint(x: data.second.second.first, y: data.second.second.second)
-    )
+      x: data.first.second, y: data.second.first, width: data.second.second, height: height)
+    return (data.first.first, rest)
   }
 
   func path(in rect: CGRect) -> Path {
-    let shape = MiniPanelLabelPath.rect(progress: progress, rest: rest, point: point, edge: edge)
+    let shape = MiniPanelLabelPath.rect(fade: fade, rest: rest, edge: edge)
     guard shape.width > 0, shape.height > 0 else { return Path() }
     return Path(roundedRect: shape, cornerRadius: min(shape.width, shape.height) / 2)
   }

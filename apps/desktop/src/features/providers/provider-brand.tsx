@@ -14,7 +14,7 @@ const names: Record<string, string> = {
   google: 'google-gemini-symbol',
   'google-vertex': 'google-cloud',
   'amazon-bedrock': 'amazon-aws',
-  'azure-openai-responses': 'microsoft-azure',
+  azure: 'microsoft-azure',
   xai: 'x-ai',
   nvidia: 'nvidia-symbol',
   mistral: 'mistral-ai',

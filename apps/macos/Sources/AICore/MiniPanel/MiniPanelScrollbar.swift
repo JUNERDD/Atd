@@ -1,15 +1,15 @@
 import CoreGraphics
 
 /// A scrolling commands card's scrollbar, in the look of the shared ScrollArea whose bar floats
-/// in the content's padding: the thumb sits in the card's trailing padding, 1 pt clear of the
-/// rows and of the card's edge, and runs along the card's straight side only, between its
-/// rounded corners; its length is the share of the list that shows. It is dragged, or pressed on
-/// its track to jump there, as the ScrollArea's is. Everything is in the card's own coordinates
-/// at rest, y down from its top.
+/// beside the content: the thumb sits in the card's scrollbar lane
+/// (``MiniPanelMetrics/scrollLane``), 1 pt clear of the rows and of the card's edge, and runs
+/// along the card's straight side only, between its rounded corners; its length is the share of
+/// the list that shows. It is dragged, or pressed on its track to jump there, as the ScrollArea's
+/// is. Everything is in the card's own coordinates at rest, y down from its top.
 public struct MiniPanelScrollbar: Equatable, Sendable {
   /// The shortest the thumb gets, as the ScrollArea's.
   public static let minThumb = 18.0
-  /// How far the bar's lane reaches past the card's padding into the rows' own (8 pt), so the
+  /// How far the bar's lane reaches past the card's into the rows' own padding (8 pt), so the
   /// pointer finds a bar as wide as the ScrollArea's (10 pt) without reaching any row's name.
   public static let laneReach = 4.0
 
@@ -42,15 +42,15 @@ public struct MiniPanelScrollbar: Equatable, Sendable {
   public var thumb: CGRect {
     let progress = range > 0 ? min(max(offset / range, 0), 1) : 0
     return CGRect(
-      x: Double(card.width) - MiniPanelMetrics.cardPadding + 1,
+      x: Double(card.width) - 1 - MiniPanelMetrics.thumbWidth,
       y: trackTop + (trackLength - thumbLength) * progress,
-      width: MiniPanelMetrics.cardPadding - 2, height: thumbLength)
+      width: MiniPanelMetrics.thumbWidth, height: thumbLength)
   }
 
-  /// Where the pointer finds the bar: the trailing padding and the reach into the rows', along
+  /// Where the pointer finds the bar: the scrollbar lane and the reach into the rows', along
   /// the track.
   public var lane: CGRect {
-    let width = MiniPanelMetrics.cardPadding + Self.laneReach
+    let width = MiniPanelMetrics.scrollLane + Self.laneReach
     return CGRect(
       x: Double(card.width) - width, y: trackTop, width: width, height: trackLength)
   }

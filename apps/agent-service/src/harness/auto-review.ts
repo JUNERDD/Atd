@@ -3,6 +3,7 @@ import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionEntry } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type ConfirmReview, type GrantScope } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
+import { inferenceError } from '../providers/inference-result.js';
 
 /** One guarded call the task's tier did not allow outright, as the confirm would show it. */
 export interface ReviewRequest {
@@ -135,9 +136,10 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
             : AbortSignal.timeout(REVIEW_TIMEOUT_MS),
         },
       );
-      if (result.stopReason === 'error' || result.stopReason === 'aborted') {
+      const error = inferenceError(result);
+      if (error) {
         signal?.throwIfAborted();
-        return fail('The review request failed.', result.errorMessage);
+        return fail('The review request failed.', error);
       }
       text = result.content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('');
     } catch (error) {

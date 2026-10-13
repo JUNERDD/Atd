@@ -19,6 +19,7 @@
     "manageLabel": "管理 {{name}}",
     "refresh": "刷新模型",
     "disconnect": "断开连接",
+    "remove": "删除连接",
     "unavailableModel": "{{model}} 不可用。请刷新模型或选择其他模型。"
   },
   "catalog": {
@@ -44,6 +45,7 @@
   "form": {
     "sectionLabel": "提供商连接",
     "connect": "连接 {{name}}",
+    "signIn": "登录 {{name}}",
     "back": "返回提供商",
     "conflict": "已保存的设置发生变化，你的草稿已保留。",
     "reload": "重新加载已保存的设置",
@@ -60,11 +62,13 @@
     "baseUrl": "基础 URL",
     "authFallback": "API 密钥或 bearer 令牌",
     "ambientNote": "使用本设备上已配置的 AWS 凭据或 Google Application Default Credentials。保存此连接即表示你选择启用。",
-    "signInNote": "保存此连接以开始账号登录。",
+    "signInNote": "点击登录后，在浏览器中完成授权。账号凭据保存在本设备。",
     "refresh": "刷新模型",
     "refreshing": "正在刷新…",
+    "saveBeforeRefresh": "先保存更改，再刷新模型。",
     "verify": "校验模型访问",
     "verifying": "正在校验…",
+    "saveBeforeVerify": "先保存更改，再校验模型访问。",
     "verifyNote": "校验会发送一个小型模型请求，可能消耗额度，且不会运行工具。",
     "saved": "连接已保存。",
     "catalogUpdated": "模型目录已更新。",
@@ -80,7 +84,32 @@
     "continue": "继续",
     "cancel": "取消登录",
     "tryAgain": "重试",
-    "signIn": "登录"
+    "signIn": "登录",
+    "signInAgain": "重新登录",
+    "signingIn": "正在登录…",
+    "manualFallback": "浏览器未能返回？",
+    "errorDetails": "错误详情",
+    "errors": {
+      "network": "无法连接 ChatGPT，请检查网络后重试。",
+      "expired": "本次授权已失效，请重新登录。",
+      "rejected": "ChatGPT 拒绝了登录请求，请查看错误详情。",
+      "unavailable": "ChatGPT 登录暂时不可用，请稍后重试。",
+      "invalidResponse": "ChatGPT 返回的数据异常，请查看错误详情。",
+      "verification": "无法验证 ChatGPT 登录，请查看错误详情。",
+      "invalidGrant": "ChatGPT 未接受本次授权。请保留此连接并重新登录。"
+    },
+    "stages": {
+      "discovery": "连接 ChatGPT",
+      "exchange": "完成 ChatGPT 登录"
+    },
+    "requestId": "请求编号：{{id}}",
+    "reasons": {
+      "pkceMismatch": "OpenAI 返回的原因：PKCE 校验未通过。",
+      "redirectMismatch": "OpenAI 返回的原因：回调地址不匹配。",
+      "clientMismatch": "OpenAI 返回的原因：应用注册信息不匹配。",
+      "codeUsed": "OpenAI 返回的原因：授权码已被使用。",
+      "codeExpired": "OpenAI 返回的原因：授权码已过期。"
+    }
   },
   "models": {
     "choose": "选择模型",
@@ -126,6 +155,7 @@
     "model": "模型",
     "back": "返回",
     "triggerLabel": "模型配置：{{model}}、{{contextSize}}、{{effort}}",
+    "modelOnlyTriggerLabel": "模型配置：{{model}}、{{contextSize}}",
     "scopedTriggerLabel": "{{label}}：{{model}}、{{contextSize}}、{{effort}}",
     "tiers": {
       "standard": "标准",
@@ -133,5 +163,46 @@
     },
     "pricedAbove": "超过 {{tokens}} tokens 按更高价格计费",
     "contextApplies": "对此模型后续任务生效。"
+  },
+  "chatgpt": {
+    "continue": "继续使用 ChatGPT",
+    "usingPlan": "正在使用 ChatGPT 订阅",
+    "manageUsage": "管理用量",
+    "welcomeTitle": "你正在使用 ChatGPT 订阅",
+    "welcomeDescription": "此连接将使用你的 ChatGPT 订阅。你可以在 ChatGPT 设置中管理用量和访问权限。",
+    "gotIt": "知道了",
+    "usageLimit": "ChatGPT 订阅或分配给 Atd 的额度已达上限，请求已暂停。请查看用量后在连接设置中恢复请求，或选择其他服务商。",
+    "usageUnavailable": "暂时无法获取 ChatGPT 用量信息，登录状态已保留。请稍后重试。",
+    "privacyTitle": "数据与隐私",
+    "privacyIdentity": "Atd 会获取账号 ID 和邮箱，用于识别此连接。授权凭据保存在本机 macOS 钥匙串中，账号信息和授权设置保存在本地；Atd 不会将这些凭据发送到 Atd 服务器。",
+    "privacyContent": "调用模型时，Atd 会向 OpenAI 发送你的指令、对话上下文，以及任务中包含的附件或工具结果。OpenAI 按其隐私政策处理这些数据。允许后台调用后，自动记忆整理也会发送相关对话内容。",
+    "privacyControl": "本地任务历史和记忆遵循 Atd 中的设置。断开连接会删除此连接的本地凭据并请求撤销授权；已有任务历史和记忆需另行删除。你也可以在 ChatGPT 设置中撤销访问权限。连接和使用此接入无需向 Atd 付费。",
+    "openaiPrivacy": "OpenAI 隐私政策",
+    "privacyAccept": "我已了解并同意连接",
+    "backgroundTitle": "允许后台调用",
+    "backgroundDescription": "允许定时任务、自动记忆学习与整理，以及应用的 AI 请求使用此连接的 ChatGPT 额度，包括你离开时。默认关闭。保存更改后授权或撤回生效；已发送的请求可能继续完成。",
+    "backgroundRequired": "此连接尚未允许后台调用。请在「设置 → 服务商」中开启，或为此后台任务选择其他连接。",
+    "privacyRequired": "使用此连接前，请在「设置 → 服务商」中阅读并接受 ChatGPT 隐私告知。",
+    "planDisabled": "已登录 · 未启用订阅额度",
+    "planDisabledDescription": "ChatGPT 账号已登录，但尚未启用订阅额度。请向 Atd 开放额度，或另行添加 API 密钥连接。",
+    "enablePlan": "启用 ChatGPT 订阅额度",
+    "connectedTitle": "ChatGPT 已连接",
+    "identityTitle": "已登录 ChatGPT",
+    "connectedDescription": "选择默认模型即可开始使用。后台调用权限已单独保存在此连接的设置中。",
+    "paused": "已暂停 ChatGPT 请求",
+    "resume": "恢复请求",
+    "resumePending": "保存后恢复",
+    "notEligible": "此 ChatGPT 账号不符合向 Atd 共享订阅的条件。请使用 API 密钥或其他服务商；重新登录不会改变资格。",
+    "userUnavailable": "ChatGPT 暂时无法为此账号提供服务，登录状态已保留。请稍后重试。",
+    "unsupportedCapability": "ChatGPT 订阅共享暂不支持此请求的功能。请调整请求，或使用 API 密钥连接。",
+    "unsupportedRoute": "ChatGPT 订阅共享不支持此接口。请使用受支持的请求，或使用 API 密钥连接。",
+    "invalidUser": "ChatGPT 无法验证此账号。请在连接设置中重新登录。",
+    "authorizationInvalid": "ChatGPT 拒绝了此次授权上下文。请检查访问权限，并在连接设置中重新登录。",
+    "openSettings": "打开设置",
+    "errorDetails": "错误详情",
+    "privacySummary": "Atd 会获取账号信息，并将任务内容发送给 OpenAI。登录凭据仅保存在本机。",
+    "privacyDetails": "隐私详情",
+    "backgroundSummary": "允许自动化、记忆整理和应用在你离开时使用订阅额度。",
+    "backgroundBeforeConsent": "先同意连接，即可允许自动化、记忆整理和应用在你离开时使用订阅额度。"
   }
 }

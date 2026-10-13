@@ -9,15 +9,17 @@ import {
   type GrantScope,
   type MessageUsage,
   type PermissionOutcome,
+  type ProductArtifact,
   type ServiceBlock,
   type ServiceToolStatus,
   type SubagentAgentEntry,
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
+import { artifactEntryOf } from './catalog-artifacts.js';
 import { readGenerationRecord, readThinkingRecord, thinkingBlockId } from './generation.js';
 import type { Logger } from './logging.js';
 import type { StepList } from './transcript-details/codemode.js';
-import { projectBlockDetails } from './transcript-details/index.js';
+import { projectBlockArtifact, projectBlockDetails } from './transcript-details/index.js';
 import type { SubagentRow } from './transcript-details/subagent.js';
 import { agentEntryOf } from './transcript-details/subagent-define.js';
 import type { ServiceBranchItem } from './transcript.js';
@@ -99,6 +101,8 @@ export interface BlockLookups {
   generations: Map<number, number>;
   /** Measured reasoning time (`app-thinking` entries) by thinking block id. */
   thoughts: Map<string, number>;
+  /** Personal skills and subagents saved by write and edit (`app-artifact` entries) by call id. */
+  artifacts: Map<string, ProductArtifact>;
 }
 
 /** The permission outcomes a session branch recorded. */
@@ -132,6 +136,7 @@ export function collectBlockLookups(
   const agents = new Map<string, SubagentAgentEntry[]>();
   const generations = new Map<number, number>();
   const thoughts = new Map<string, number>();
+  const artifacts = new Map<string, ProductArtifact>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-question' && QuestionRecordValidator.Check(item.data))
@@ -147,6 +152,8 @@ export function collectBlockLookups(
         ]);
       const agent = agentEntryOf(item.customType, item.data);
       if (agent) agents.set(agent.toolCallId, [...(agents.get(agent.toolCallId) ?? []), agent]);
+      const saved = artifactEntryOf(item.customType, item.data);
+      if (saved) artifacts.set(saved.toolCallId, saved.artifact);
       continue;
     }
     if (item.type !== 'message' || item.message.role !== 'toolResult') continue;
@@ -163,6 +170,7 @@ export function collectBlockLookups(
     agents,
     generations,
     thoughts,
+    artifacts,
   };
 }
 
@@ -308,6 +316,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
         const status = resolveStatus(result, permission?.outcome === 'declined', live);
         const call = { id: part.id, name: part.name, args, status, result };
         const details = projectBlockDetails(call, input);
+        const artifact = projectBlockArtifact(call, lookups.artifacts, input.log);
         blocks.push({
           kind: 'tool',
           id: `tool:${part.id}`,
@@ -322,6 +331,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           partial: result ? '' : (partials.get(part.id) ?? ''),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,
           ...(details ? { details } : {}),
+          ...(artifact ? { artifact } : {}),
           ...shared,
         });
         return;

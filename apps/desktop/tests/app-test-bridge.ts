@@ -1,12 +1,13 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { FolderBridge } from '../src/client/contract';
-import type { SettingsSnapshot } from '../src/client/settings-contract';
+import type { SettingsItemLink, SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
   AgentEvent,
   AgentSnapshot,
   MemorySnapshot,
+  PreparedCommand,
   TaskDetail,
 } from '../src/client/agent/bridge';
 import { fixtureCommands } from './command-fixtures';
@@ -16,6 +17,12 @@ import type { QueueState } from '../src/client/agent/transcript-schema';
 import type { ModelThinkingLevel } from '../src/client/providers/schema';
 
 /** Memory with nothing saved, as a fresh data directory has it. */
+/** The first fixture command, prepared as a launch with nothing captured. */
+function preparedFixture(): PreparedCommand {
+  const command = fixtureCommands()[0]!;
+  return { command, input: emptyInput(), output: { ...command.output }, notice: '' };
+}
+
 const noMemory = (): MemorySnapshot => ({
   units: [],
   proposals: [],
@@ -58,6 +65,7 @@ export function installBridge(extras?: {
     pinned: true,
     showInDock: false,
     openAtLogin: null,
+    panelPlacement: 'bottomRight',
     shortcutAvailable: true,
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
@@ -69,11 +77,19 @@ export function installBridge(extras?: {
       activationKeys: ['option'],
       showHud: true,
     },
+    commandTyping: true,
+    commandTypingAnimation: true,
     accessibilityTrusted: true,
     screenRecordingTrusted: true,
     onboardingCompleted: true,
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
+  /** Applies a settings write, tells the windows listening, and answers the new snapshot. */
+  const writeSettings = (patch: Partial<SettingsSnapshot>) => {
+    settings = { ...settings, ...patch };
+    settingsListeners.forEach((listener) => listener(settings));
+    return settings;
+  };
   const listeners = new Set<(event: AgentEvent) => void>();
   const snapshot: AgentSnapshot = {
     revision: 1,
@@ -159,23 +175,16 @@ export function installBridge(extras?: {
       );
       return structuredClone(detail);
     }),
-    prepare: vi.fn(async () => ({
-      command: fixtureCommands()[0]!,
-      input: emptyInput(),
-      notice: '',
-    })),
+    prepare: vi.fn(async () => preparedFixture()),
     preview: vi.fn(async () => {
       throw new Error('Not used by this interaction');
     }),
     capture: vi.fn(async () => ({ text: '', capturedAt: '' })),
     saveCommand: vi.fn(async (command) => command),
     deleteCommand: vi.fn(async () => {}),
+    reorderCommands: vi.fn(async () => {}),
     launch: vi.fn(async () => {}),
-    prepareWithText: vi.fn(async () => ({
-      command: fixtureCommands()[0]!,
-      input: emptyInput(),
-      notice: '',
-    })),
+    prepareWithText: vi.fn(async () => preparedFixture()),
     stop: vi.fn(async () => ({ steering: [], followUp: [] })),
     answer: vi.fn(async () => {}),
     queueMessage: vi.fn(async () => {}),
@@ -196,6 +205,7 @@ export function installBridge(extras?: {
     saveFile: vi.fn(async () => true),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),
+    writeText: vi.fn(async () => ({ ok: true as const })),
     openLink: vi.fn(async () => {}),
     memory: vi.fn(async () => noMemory()),
     saveMemorySettings: vi.fn(async (settings) => ({ ...noMemory(), ...settings })),
@@ -229,16 +239,15 @@ export function installBridge(extras?: {
       };
     },
   };
-  const setPinned = vi.fn(async (pinned: boolean) => {
-    settings = { ...settings, pinned };
-    settingsListeners.forEach((listener) => listener(settings));
-    return pinned;
-  });
-  const setShowInDock = vi.fn(async (showInDock: boolean) => {
-    settings = { ...settings, showInDock };
-    settingsListeners.forEach((listener) => listener(settings));
-    return showInDock;
-  });
+  const shellSetter = <Key extends 'pinned' | 'showInDock' | 'panelPlacement'>(key: Key) =>
+    vi.fn(async (value: NonNullable<SettingsSnapshot[Key]>) => {
+      settings = { ...settings, [key]: value };
+      settingsListeners.forEach((listener) => listener(settings));
+      return value;
+    });
+  const setPinned = shellSetter('pinned');
+  const setShowInDock = shellSetter('showInDock');
+  const setPanelPlacement = shellSetter('panelPlacement');
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
@@ -260,6 +269,7 @@ export function installBridge(extras?: {
     })),
     setPinned,
     setShowInDock,
+    setPanelPlacement,
     setOpenAtLogin: vi.fn(async (_open: boolean) => false),
     show: vi.fn(async () => {}),
     hide,
@@ -271,6 +281,7 @@ export function installBridge(extras?: {
       open,
       openCommand,
       openSection: vi.fn(async (_section: string) => {}),
+      openItem: vi.fn(async (_item: SettingsItemLink) => {}),
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
       startAutomationSession: vi.fn(async (_automation: { id: string; name: string } | null) => {}),
       startExtensionSession: vi.fn(
@@ -287,6 +298,7 @@ export function installBridge(extras?: {
         contexts: vi.fn(async () => ({ options: [], defaultTier: null, selected: null })),
         setContext: vi.fn(async () => {}),
         disconnect: vi.fn(async () => {}),
+        remove: vi.fn(async () => undefined),
         refresh: vi.fn(async () => {}),
         refreshCatalogs: vi.fn(async () => {}),
         verify: vi.fn(async () => {}),
@@ -296,23 +308,15 @@ export function installBridge(extras?: {
         openLink: vi.fn(async () => {}),
         onLogin: () => () => {},
       },
-      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) => {
-        settings = { ...settings, language };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) =>
+        writeSettings({ language }),
+      ),
       saveShortcuts: vi.fn(async () => settings),
       restoreShortcuts: vi.fn(async () => settings),
-      setPermissionTier: vi.fn(async (tier) => {
-        settings = { ...settings, permissionTier: tier };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
-      saveShellAllowlist: vi.fn(async (entries: string[]) => {
-        settings = { ...settings, shellAllowlist: [...entries] };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      setPermissionTier: vi.fn(async (tier) => writeSettings({ permissionTier: tier })),
+      saveShellAllowlist: vi.fn(async (entries: string[]) =>
+        writeSettings({ shellAllowlist: [...entries] }),
+      ),
       addShellAllowlistEntry: vi.fn(async (entry: string) => {
         if (!settings.shellAllowlist.includes(entry))
           settings = { ...settings, shellAllowlist: [...settings.shellAllowlist, entry] };
@@ -325,17 +329,18 @@ export function installBridge(extras?: {
           settingsListeners.delete(listener);
         };
       },
-      saveSelectionToolbar: vi.fn(async (selectionToolbar) => {
-        settings = { ...settings, selectionToolbar };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
+      saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
+      saveCommandTyping: vi.fn(async (commandTyping) => writeSettings({ commandTyping })),
+      saveCommandTypingAnimation: vi.fn(async (commandTypingAnimation) =>
+        writeSettings({ commandTypingAnimation }),
+      ),
       requestAccessibility: vi.fn(async () => {}),
       requestScreenRecording: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
       onOpenSection: () => () => {},
+      onOpenItem: () => () => {},
     },
   };
-  return { api, setPinned, hide, open, openCommand, askSelection };
+  return { api, setPinned, setPanelPlacement, hide, open, openCommand, askSelection };
 }

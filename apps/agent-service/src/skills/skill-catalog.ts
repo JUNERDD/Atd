@@ -1,4 +1,5 @@
 import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
+import { isBuiltinSkill } from '../builtins/manifest.js';
 import { catalogDescription, escapeXml, plural, renderCatalog } from '../prompt-catalog.js';
 import { roleAllowedSkills, type RoleSnapshotRecord } from './roles.js';
 import type { SkillCatalog, SkillRevisionRecord } from './versions.js';
@@ -38,7 +39,9 @@ export const EMPTY_SKILL_CATALOG: RunSkillCatalog = {
  * Freezes the catalog for one run from the catalog its skill freeze resolved against: the latest
  * revision per name, minus harness-disabled names, minus skills the run's role does not allow
  * (roleAllowedSkills, the capability snapshot's own rule). Revisions are not pinned: a skill
- * removed during the run fails to load with an error instead.
+ * removed during the run fails to load with an error instead. The app's product skills come
+ * first, then the rest by name, so a catalog over budget, which trims from the end, keeps their
+ * descriptions however many other skills are installed.
  */
 export function freezeSkillCatalog(
   catalog: SkillCatalog,
@@ -52,7 +55,10 @@ export function freezeSkillCatalog(
   const allowed = new Set(roleAllowedSkills(role, revokedSkills, [...latest.keys()]));
   const records = [...latest.values()]
     .filter((record) => allowed.has(record.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        Number(isProductSkill(b)) - Number(isProductSkill(a)) || a.name.localeCompare(b.name),
+    );
   const toSkill = ({ name, description, entry, baseDir }: SkillRevisionRecord): CatalogSkill => ({
     name,
     description,
@@ -62,6 +68,11 @@ export function freezeSkillCatalog(
   const invocable = records.filter((record) => !record.disableModelInvocation).map(toSkill);
   const userOnly = records.filter((record) => record.disableModelInvocation).map(toSkill);
   return { invocable, userOnly, text: catalogText(invocable, userOnly) };
+}
+
+/** A product skill the service installs (builtins/manifest.ts), not a user skill of that name. */
+function isProductSkill(record: SkillRevisionRecord): boolean {
+  return record.sourceKind === 'atd' && isBuiltinSkill(record.name);
 }
 
 const INTRO =

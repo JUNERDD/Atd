@@ -5,7 +5,6 @@ import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import { cn } from '@atd/ui/lib/utils';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
-import { AppCard } from '../../apps/app-card';
 import { ActivityRow } from './activity-row';
 import { NestedConfirmation } from './codemode-call';
 import { mcpProxy } from './mcp-proxy';
@@ -53,7 +52,8 @@ export function ToolBlock({
   const Icon = proxy ? Plug : toolIcon(block.name);
   const label = toolStepKey(block.name, block.args);
   const title = label ? t(label) : (proxy?.tool ?? block.name);
-  // A published app reads by its name and version (`Daily notes · v3`); its card follows the row.
+  // A published app reads by its name and version (`Daily notes · v3`); its card follows at the
+  // turn's end with the turn's other saved items (artifact-cards.tsx).
   const app = appDetails(block);
   const target =
     (app ? `${app.name} · v${app.version}` : null) ??
@@ -129,16 +129,6 @@ export function ToolBlock({
         {mark}
       </>
     );
-  // The app card stays visible under its row, outside the expanding detail.
-  const card = app ? (
-    <div className="app-card-slot">
-      <AppCard
-        details={app}
-        state={running ? 'building' : block.status === 'failed' ? 'failed' : 'ready'}
-        error={block.output}
-      />
-    </div>
-  ) : null;
   // No detail to expand into: the same row frame without a trigger, so hover offers no
   // expanding chevron. The icon box keeps its geometry via `chevron={false}`.
   if (!hasToolDetail(block) && !outcome) {
@@ -152,7 +142,6 @@ export function ToolBlock({
             {heading}
           </div>
         </ActivityRow.Root>
-        {card}
       </div>
     );
   }
@@ -174,7 +163,6 @@ export function ToolBlock({
           </ActivityRow.Body>
         </ActivityRow.Content>
       </ActivityRow.Root>
-      {card}
     </div>
   );
 }

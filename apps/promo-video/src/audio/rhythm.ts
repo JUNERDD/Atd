@@ -7,7 +7,7 @@ import { at, BAR, BEAT, CHOREO } from '../timeline.ts';
 import { type BarPlan, breathes, FEEL } from './arrangement.ts';
 import { addMono } from './dsp.ts';
 import { bassNote, clap, hat, kick, rim } from './instruments.ts';
-import type { MusicBuses } from './score.ts';
+import type { MusicBuses } from './master.ts';
 
 /** The camera pulls out of the last "Anything" bar into the night: the groove stops here. */
 const PULL_OUT = at('anything', CHOREO.anything.tools.pullOut);

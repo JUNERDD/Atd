@@ -16,20 +16,10 @@ import {
   plan,
   RING_START,
 } from './arrangement.ts';
-import { addMono, filter, prng, SAMPLE_RATE, stereo, type Stereo } from './dsp.ts';
+import { addMono, filter, prng, stereo } from './dsp.ts';
 import { bell, padNote, pluck, riser } from './instruments.ts';
+import type { MusicBuses } from './master.ts';
 import { rhythm } from './rhythm.ts';
-
-export interface MusicBuses {
-  /** Pad, bass and plucks: ducked under the kick. */
-  ducked: Stereo;
-  /** Drums and bells, never ducked. */
-  dry: Stereo;
-  /** What feeds the reverb. */
-  send: Stereo;
-  /** Every kick, in seconds, for the sidechain. */
-  kicks: number[];
-}
 
 /** Arpeggio degrees: rolling sixteenths for the grooves, slower eighths for the quiet parts. */
 const SIXTEENTHS = [0, 1, 2, 4, 3, 2, 1, 2, 0, 2, 3, 4, 3, 1, 2, 3];
@@ -184,20 +174,4 @@ export function renderScore(): MusicBuses {
     addMono(buses.send, voice, start, 0.07);
   }
   return buses;
-}
-
-/** The sidechain: a quick dip at each kick that recovers within a beat. */
-export function duck(buses: MusicBuses, depth = 0.55): void {
-  const kicks = [...buses.kicks].sort((a, b) => a - b).map((at) => Math.round(at * SAMPLE_RATE));
-  let next = 0;
-  let last = -Infinity;
-  const { left, right } = buses.ducked;
-  for (let i = 0; i < left.length; i++) {
-    while (next < kicks.length && (kicks[next] ?? Infinity) <= i) last = kicks[next++] ?? last;
-    const since = (i - last) / SAMPLE_RATE;
-    const gain =
-      since < 0 ? 1 : 1 - depth * Math.exp(-since / 0.09) * Math.min(1, since / 0.004 + 0.4);
-    left[i] = (left[i] ?? 0) * gain;
-    right[i] = (right[i] ?? 0) * gain;
-  }
 }

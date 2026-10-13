@@ -5,8 +5,14 @@
 :root {
   --pk-fg: #fafafa;
   --pk-muted-fg: #a1a1a1;
-  /* `--muted` and `--secondary` (oklch 0.269): the sent bubble, attachment cards, keycaps. */
-  --pk-muted: #262626;
+  /* A muted fill on the panel or the settings window (the sent bubble, attachment cards, inline
+     code, keycaps). The app paints `--muted` (oklch 0.269, #262626) over a window fill of
+     rgb(24 24 24 / 0.8); this white lift lands on the same grey there but stays translucent, so
+     the light behind the window still reaches it. */
+  --pk-lift: rgb(255 255 255 / 0.06);
+  /* `--muted` as the kit draws it: the lift by default; glass surfaces rebind it to `--pk-wash`,
+     as `surface-glass` rebinds `--muted` and `--accent`. */
+  --pk-muted: var(--pk-lift);
   --pk-border: rgb(255 255 255 / 0.1);
   --pk-input: rgb(255 255 255 / 0.15);
   --pk-primary: #e5e5e5;
@@ -18,9 +24,19 @@
   /* Glass control washes (`--ata-glass-control-wash` and its strong form). */
   --pk-wash: rgb(250 250 250 / 0.1);
   --pk-wash-strong: rgb(250 250 250 / 0.16);
-  /* A glass control's own fill and edge (`--ata-glass-control-fill`, `--ata-glass-edge`). */
-  --pk-control-fill: rgb(38 38 38 / 0.72);
+  /* A glass control's edge (`--ata-glass-edge`). */
   --pk-control-edge: rgb(250 250 250 / 0.1);
+  /* WebKit's system glass, which the shell renders for `surface-glass` (the composer field, the
+     progress capsule, popovers, select menus): no fill and no drop shadow of its own, only the
+     material and an inset edge. Chromium has no such material, so a clear, faintly lighter blur
+     stands in for it. */
+  --pk-sysglass-fill: rgb(255 255 255 / 0.05);
+  --pk-sysglass-backdrop: blur(16px) saturate(1.5) brightness(1.1);
+  --pk-sysglass-edge: inset 0 0 0 1px var(--pk-control-edge), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  /* The task panel's and the settings window's web fill over their NSGlassEffectView. */
+  --pk-panel-surface: rgb(24 24 24 / 0.8);
+  /* The same surface made opaque (`--ata-glass-fill-opaque`), for what must hide what it passes. */
+  --pk-glass-opaque: rgb(24 24 24);
   /* Composer chips (`--ata-syntax-variable`). */
   --pk-chip: #60a5fa;
   --pk-progress: #22c55e;

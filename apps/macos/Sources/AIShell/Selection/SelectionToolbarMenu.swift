@@ -1,34 +1,33 @@
 import AICore
 import AppKit
 
-/// The selection toolbar's More menu: the commands that did not fit the capsule, a row each, on
-/// a Liquid Glass panel of its own (``SelectionToolbarMenuLayout``, placed by
-/// ``SelectionToolbarMenuPlacement``). It replaces the system menu More used to pop up, which,
-/// opened from an app that is not active, highlighted an item only once the window server got
-/// round to delivering its tracking events. Its rows are the toolbar's own labelled buttons,
-/// stretched to the longest row with the name leading, and the toolbar's
-/// ``SelectionToolbarHover`` washes them on every display frame like the capsule's buttons.
+/// One panel of the selection toolbar's menus: the More menu, a command's options menu, or a
+/// submenu beside either (``ToolbarOptionsCascade`` decides what each shows and where). It
+/// replaces the system menu More used to pop up, which, opened from an app that is not active,
+/// highlighted an item only once the window server got round to delivering its tracking events.
+/// Its rows (``ToolbarOptionsRow``) keep the toolbar's labelled button metrics, stretched to the
+/// longest row, and the toolbar's ``SelectionToolbarHover`` washes them on every display frame
+/// like the capsule's buttons.
 ///
 /// Its window never takes the keyboard or activates Atd, sits above the toolbar at the same
 /// level and joins every Space like it (``SelectionToolbarPanel/makeWindow()``), and reaches
 /// ``SelectionToolbarPanel/inset`` past the glass on every side, so the glass's shadow is never
-/// cut off; that margin is transparent. Command names are user data and stay untranslated; a long
-/// one is cut with an ellipsis like on the capsule and shows in full as the row's tooltip. A list
-/// taller than the room scrolls; a scroll over it scrolls the list, one over another app still
-/// hides the toolbar.
+/// cut off; that margin is transparent. A list taller than the room scrolls; a scroll over it
+/// scrolls the list, one over another app still hides the toolbar.
 ///
-/// VoiceOver reads it as a menu named like the More button, with a menu item per command.
+/// VoiceOver reads it as a menu with the given name, with a menu item per row.
 final class SelectionToolbarMenu: NSObject {
-  /// A row was clicked, with its command's id; the owner hides the toolbar and the menu.
-  var onChoose: ((String) -> Void)?
+  /// A press landed in the transparent margin, off the glass, at this point on screen: the
+  /// margin can lie over the toolbar or another panel of the cascade.
+  var onPressOutside: ((NSPoint) -> Void)?
 
   private let window = SelectionToolbarPanel.makeWindow()
   private let hover: SelectionToolbarHover
-  /// The commands behind the rows, in order: a row's tag is its command's index.
-  private var commands: [SelectionToolbarSettings.Command] = []
-  private var rows: [AnnotationToolbarButton] = []
+  private var rows: [any ToolbarHoverable] = []
+  /// The glass on screen while the panel shows.
+  private(set) var surface: NSRect?
 
-  /// `hover` is the toolbar's: one owner for the wash and the cursor across both windows.
+  /// `hover` is the toolbar's: one owner for the wash and the cursor across every window.
   init(hover: SelectionToolbarHover) {
     self.hover = hover
     super.init()
@@ -36,53 +35,33 @@ final class SelectionToolbarMenu: NSObject {
 
   var isOpen: Bool { window.isVisible }
 
-  /// Shows a row per command beside `anchor` (screen points): the More button's column through
-  /// the toolbar's capsule, which ``SelectionToolbarMenuPlacement`` measures the gap from.
-  func open(_ commands: [SelectionToolbarSettings.Command], from anchor: NSRect) {
+  /// Shows `items` (rows and separators, each `rowWidth` wide) top down on a glass panel at
+  /// `placed` (screen points, the glass's frame), which scrolls when it is shorter than
+  /// `content`, the whole list's size; `label` names the menu for VoiceOver.
+  func open(_ items: [NSView], content: WindowSize, at placed: ScreenRect, label: String) {
     close()
-    let names = commands.map(\.name)
-    let rowWidth = names.map { AnnotationToolbarButton.Label.width(text: $0, hasImage: false) }
-      .max()
-    guard let rowWidth else { return }
-    let content = SelectionToolbarMenuLayout.size(rowWidth: rowWidth, rowCount: names.count)
-    let displays = NSScreen.screens.map {
-      SelectionToolbarPlacement.Display(
-        frame: ScreenRect($0.frame), workArea: ScreenRect($0.visibleFrame))
-    }
-    guard
-      let placed = SelectionToolbarMenuPlacement.frame(
-        size: content, anchor: ScreenRect(anchor), displays: displays)
-    else { return }
-    self.commands = commands
-    rows = names.enumerated().map { index, name in
-      let row = AnnotationToolbarButton(
-        label: name, image: nil, width: rowWidth, action: #selector(rowClicked))
-      row.tag = index
-      row.toolTip = name
-      row.setAccessibilityRole(.menuItem)
-      row.target = self
-      return row
-    }
+    rows = items.compactMap { $0 as? any ToolbarHoverable }
     let inset = SelectionToolbarPanel.inset
     let frame = NSRect(placed).insetBy(dx: -inset, dy: -inset)
     let container = MenuContainer(frame: NSRect(origin: .zero, size: frame.size))
     container.wantsLayer = true
-    container.onPressOutside = { [weak self] in self?.close() }
-    let glass = makeGlass(rows: rows, scrolls: placed.height < content.height)
+    container.onPressOutside = { [weak self] point in self?.onPressOutside?(point) }
+    let glass = makeGlass(items: items, scrolls: placed.height < content.height, label: label)
     glass.frame = container.bounds.insetBy(dx: inset, dy: inset)
     container.surface = glass
     container.addSubview(glass)
     window.contentView = container
     window.setFrame(frame, display: true)
     window.orderFrontRegardless()
+    surface = NSRect(placed)
     hover.add(rows)
   }
 
-  /// Takes the menu off the screen and its rows out of hover; nothing to do when it is closed.
+  /// Takes the panel off the screen and its rows out of hover; nothing to do when it is closed.
   func close() {
     if !rows.isEmpty { hover.remove(rows) }
     rows = []
-    commands = []
+    surface = nil
     guard window.contentView != nil else { return }
     window.orderOut(nil)
     window.contentView = nil
@@ -90,10 +69,11 @@ final class SelectionToolbarMenu: NSObject {
 
   /// The glass panel around the rows' list, which scrolls when the panel is shorter than the
   /// list. The list is clipped to the glass's own corners (the glass does not clip its content),
-  /// so a row scrolled half out of sight never shows past them.
-  private func makeGlass(rows: [AnnotationToolbarButton], scrolls: Bool) -> NSGlassEffectView {
+  /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's fixed
+  /// dark surface (``GlassSurface``), the fill drawn in the same rounded clip.
+  private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSGlassEffectView {
     let layout = SelectionToolbarMenuLayout.self
-    let list = MenuList(views: rows)
+    let list = MenuList(views: items)
     list.orientation = .vertical
     list.alignment = .leading
     list.spacing = layout.rowGap
@@ -112,25 +92,23 @@ final class SelectionToolbarMenu: NSObject {
     scroll.scrollerInsets = NSEdgeInsets(
       top: layout.cornerRadius, left: 0, bottom: layout.cornerRadius, right: 0)
     scroll.documentView = list
-    // A scroll view clips to its bounds; rounding its layer like the glass rounds that clip.
-    scroll.wantsLayer = true
-    scroll.clipsToBounds = true
-    scroll.layer?.cornerRadius = layout.cornerRadius
-    scroll.layer?.cornerCurve = .continuous
+    scroll.autoresizingMask = [.width, .height]
     // The rows are the menu's items, not a scroll area's.
     scroll.setAccessibilityElement(false)
+    // The surface is a plain view around the scroll view, not the scroll view itself: a scroll
+    // view clears its own layer's background whenever it draws, which dropped the fill and left
+    // the menus lighter than the capsule. It clips to its bounds, rounded by the surface like
+    // the glass.
+    let surface = NSView()
+    surface.clipsToBounds = true
+    surface.addSubview(scroll)
     let glass = NSGlassEffectView()
-    glass.cornerRadius = layout.cornerRadius
-    glass.contentView = scroll
+    GlassSurface.attach(glass, content: surface)
+    GlassSurface.shape(glass, content: surface, cornerRadius: layout.cornerRadius)
     glass.setAccessibilityElement(true)
     glass.setAccessibilityRole(.menu)
-    glass.setAccessibilityLabel(ShellStrings.shared.text(.selectionToolbarMore))
+    glass.setAccessibilityLabel(label)
     return glass
-  }
-
-  @objc private func rowClicked(_ sender: NSButton) {
-    guard commands.indices.contains(sender.tag) else { return }
-    onChoose?(commands[sender.tag].id)
   }
 }
 
@@ -141,10 +119,10 @@ private final class MenuList: NSStackView {
 }
 
 /// The menu window's content. The glass's shadow in the transparent margin can keep a press
-/// there from passing to the window below, where the toolbar's More button sits under the
-/// margin, so a press off the glass closes the menu, as a press outside a menu does.
+/// there from passing to the window below, where the toolbar's buttons or another panel's rows
+/// sit under the margin, so a press off the glass goes to the owner with where it landed.
 private final class MenuContainer: NSView {
-  var onPressOutside: (() -> Void)?
+  var onPressOutside: ((NSPoint) -> Void)?
   weak var surface: NSView?
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -152,6 +130,6 @@ private final class MenuContainer: NSView {
   override func mouseDown(with event: NSEvent) {
     guard let surface, !surface.frame.contains(convert(event.locationInWindow, from: nil))
     else { return }
-    onPressOutside?()
+    onPressOutside?(NSEvent.mouseLocation)
   }
 }

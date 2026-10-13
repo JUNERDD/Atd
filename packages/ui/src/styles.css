@@ -414,21 +414,26 @@
 
 /*
  * Running-text shimmer (`Shimmer`): a foreground-colored band sweeping across muted text. The
- * band is a 250%-wide gradient layer clipped to the glyphs, and the keyframes move its position
- * from 100% to 0%, so the sweep runs on CSS alone: it does not wait for the renderer's main thread
- * to be free of script work (a transcript streaming in) and does not restart when React re-renders
- * the element. The element sets `--ai-shimmer-spread` (band half-width, scaled to the text length)
- * and `--ai-shimmer-duration`.
+ * band is a gradient layer as wide as the band itself (twice `--ai-shimmer-spread`, its
+ * half-width, scaled to the text length), clipped to the glyphs, and the keyframes move it from
+ * one band-width before the text's leading edge to just past its trailing edge, so the band
+ * clears the text at both ends of every sweep and the next one starts from nothing. The sweep
+ * runs on CSS alone: it does not wait for the renderer's main thread to be free of script work (a
+ * transcript streaming in) and does not restart when React re-renders the element. The element
+ * sets `--ai-shimmer-spread` and `--ai-shimmer-duration`. A percentage `background-position`
+ * places the layer within (element width - layer width), so `100% + layer width` puts its left
+ * edge on the element's right edge. The macOS shell's running text ports this exactly
+ * (`apps/macos/Sources/AICore/Selection/ShimmerSweep.swift`).
  */
 @keyframes ai-shimmer-sweep {
   from {
     background-position:
-      100% center,
+      calc(-2 * var(--ai-shimmer-spread)) center,
       0 0;
   }
   to {
     background-position:
-      0% center,
+      calc(100% + 2 * var(--ai-shimmer-spread)) center,
       0 0;
   }
 }
@@ -436,19 +441,14 @@
 @layer components {
   .ai-shimmer {
     background-image:
-      linear-gradient(
-        90deg,
-        #0000 calc(50% - var(--ai-shimmer-spread)),
-        var(--foreground),
-        #0000 calc(50% + var(--ai-shimmer-spread))
-      ),
+      linear-gradient(90deg, #0000, var(--foreground), #0000),
       linear-gradient(var(--muted-foreground), var(--muted-foreground));
     background-size:
-      250% 100%,
+      calc(2 * var(--ai-shimmer-spread)) 100%,
       auto;
     background-repeat: no-repeat;
     background-position:
-      100% center,
+      calc(-2 * var(--ai-shimmer-spread)) center,
       0 0;
     -webkit-background-clip: text;
     background-clip: text;

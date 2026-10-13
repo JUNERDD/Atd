@@ -171,4 +171,153 @@ struct SelectionToolbarTests {
       SelectionToolbarLayout.visibleCommandCount(
         askWidth: 80, commandWidths: Array(repeating: 60, count: 10)) == 4)
   }
+
+  @Test("A menu's height counts its hairlines with its rows")
+  func menuSize() {
+    let size = SelectionToolbarMenuLayout.size(rowWidth: 100, rowCount: 3, separatorCount: 1)
+    // 3 × 28 rows + 9 hairline + 3 × 2 gaps + 2 × 4 padding.
+    #expect(size == WindowSize(width: 108, height: 107))
+  }
+
+  // MARK: Submenus
+
+  static let submenu = WindowSize(width: 150, height: 100)
+  static let parent = ScreenRect(x: 400, y: 300, width: 200, height: 160)
+  static func row(in parent: ScreenRect) -> ScreenRect {
+    ScreenRect(x: parent.x + 4, y: parent.maxY - 4 - 28, width: parent.width - 8, height: 28)
+  }
+
+  static func side(
+    _ parent: ScreenRect, size: WindowSize = submenu,
+    displays: [SelectionToolbarPlacement.Display] = [main, left]
+  ) -> ScreenRect? {
+    SelectionToolbarSubmenuPlacement.frame(
+      size: size, row: row(in: parent), parent: parent, displays: displays)
+  }
+
+  @Test("A submenu opens 4 pt right of its menu, its first row level with the row that opened it")
+  func submenuRight() {
+    // The row's top is 456; the list starts 4 pt below the panel's top.
+    #expect(Self.side(Self.parent) == ScreenRect(x: 604, y: 360, width: 150, height: 100))
+  }
+
+  @Test("A submenu with no room on the right opens on the left")
+  func submenuFlipsLeft() {
+    let parent = ScreenRect(x: 1200, y: 300, width: 200, height: 160)
+    #expect(Self.side(parent)?.x == 1046)
+  }
+
+  @Test("A submenu with room on neither side takes the wider one, kept inside the work area")
+  func submenuClamped() {
+    let wide = WindowSize(width: 700, height: 100)
+    // 392 pt free on the left, 332 on the right: left, pushed to the margin.
+    let leftHeavy = Self.side(ScreenRect(x: 400, y: 300, width: 700, height: 160), size: wide)
+    #expect(leftHeavy?.x == 8)
+    // 292 pt on the left, 432 on the right: right, pushed back over the menu.
+    let rightHeavy = Self.side(ScreenRect(x: 300, y: 300, width: 700, height: 160), size: wide)
+    #expect(rightHeavy?.x == 732)
+  }
+
+  @Test("A submenu stays inside the work area vertically, shortened when taller than it")
+  func submenuVertical() {
+    let low = Self.side(ScreenRect(x: 400, y: 10, width: 200, height: 60))
+    #expect(low?.y == 8)
+    let tall = Self.side(Self.parent, size: WindowSize(width: 150, height: 2000))
+    #expect(tall?.y == 8)
+    #expect(tall?.height == 859)
+  }
+
+  @Test("A submenu on a display with negative coordinates stays on it")
+  func submenuNegative() {
+    let parent = ScreenRect(x: -400, y: -200, width: 200, height: 160)
+    #expect(Self.side(parent) == ScreenRect(x: -196, y: -140, width: 150, height: 100))
+    let edge = ScreenRect(x: -400, y: -200, width: 350, height: 160)
+    #expect(Self.side(edge)?.x == -554)
+    #expect(Self.side(Self.parent, displays: []) == nil)
+  }
+
+  // MARK: Options
+
+  static let output = CommandOutputOption(value: .replaceSelection, saved: .panel, selection: false)
+  static let names = CommandOutputChoice.Names(
+    label: "Answer",
+    actions: [
+      .panel: "Panel", .replaceSelection: "Replace", .insertAfterSelection: "After",
+      .insertAtCursor: "Cursor", .copy: "Copy",
+    ], saved: "%@ (default)")
+  static let entry = CommandOptionsCatalog.Entry(
+    id: "c1", name: "Translate",
+    options: [
+      .choice(
+        .init(
+          key: "lang", label: "Language", value: "en",
+          options: [.init(value: "en", label: "English"), .init(value: "fr", label: "French")])),
+      .toggle(.init(key: "formal", label: "Formal", value: false)),
+      .input(.init(key: "note", label: "Note")),
+    ], output: output)
+
+  @Test("Picks and flips change the sheet; every launch carries all choice and toggle values")
+  func sheet() {
+    var sheet = ToolbarOptionsSheet(Self.entry, names: Self.names)
+    #expect(sheet.singleChoice == nil)
+    #expect(sheet.summary == "English")
+    sheet.pick("fr", for: "lang")
+    sheet.pick("xx", for: "lang")
+    sheet.flip("formal")
+    sheet.flip("note")
+    sheet.pick("copy", for: CommandOutputChoice.key)
+    #expect(sheet.summary == "French · Formal")
+    // A choice without a value adds nothing to the line.
+    var unset = ToolbarOptionsSheet(
+      .init(
+        id: "c3", name: "Tone",
+        options: [
+          .choice(
+            .init(key: "tone", label: "Tone", value: "", options: [.init(value: "a", label: "A")])),
+          .toggle(.init(key: "formal", label: "Formal", value: true)),
+        ], output: Self.output), names: Self.names)
+    #expect(unset.summary == "Formal")
+    unset.pick("a", for: "tone")
+    #expect(unset.summary == "A · Formal")
+    let launch = sheet.launch(.edit)
+    #expect(launch.id == "c1" && launch.intent == .edit)
+    #expect(
+      launch.arguments
+        == CommandArguments(output: .copy, choices: ["lang": "fr"], toggles: ["formal": true]))
+    // Where the answer goes is one more row, so only a command without parameters lists values.
+    let single = ToolbarOptionsSheet(
+      .init(id: "c2", name: "Tone", options: [Self.entry.options[0]], output: Self.output),
+      names: Self.names)
+    #expect(single.singleChoice == nil)
+    let bare = ToolbarOptionsSheet(
+      .init(id: "c4", name: "Fix", options: [], output: Self.output), names: Self.names)
+    #expect(bare.singleChoice?.key == CommandOutputChoice.key)
+    // Without the selection, the actions on it are left out; the saved one is the default.
+    #expect(
+      bare.singleChoice?.options.map(\.label) == ["Panel (default)", "Cursor", "Copy"])
+  }
+
+  @Test(
+    "A submenu opens after 90 ms of rest and survives the way into it; another row takes 180 ms")
+  func submenuIntent() {
+    var intent = ToolbarOptionsSubmenuIntent()
+    #expect(intent.update(.row(0, opens: true), at: 0) == nil)
+    #expect(intent.update(.row(0, opens: true), at: 0.05) == nil)
+    #expect(intent.update(.row(0, opens: true), at: 0.09) == .open(0))
+    // Crossing row 1 on the way into the submenu keeps it.
+    #expect(intent.update(.row(1, opens: true), at: 0.2) == nil)
+    #expect(intent.update(.inSubmenu, at: 0.3) == nil)
+    #expect(intent.update(.away, at: 1) == nil)
+    #expect(intent.openRow == 0)
+    // Resting on another row swaps the submenu, on a row without one closes it.
+    #expect(intent.update(.row(1, opens: true), at: 2) == nil)
+    #expect(intent.update(.row(1, opens: true), at: 2.2) == .open(1))
+    #expect(intent.update(.row(2, opens: false), at: 3) == nil)
+    #expect(intent.update(.row(2, opens: false), at: 3.2) == .close)
+    #expect(intent.openRow == nil)
+    intent.opened(2)
+    intent.closed()
+    #expect(intent.update(.row(2, opens: false), at: 4) == nil)
+    #expect(intent.update(.row(2, opens: false), at: 5) == nil)
+  }
 }

@@ -6,9 +6,7 @@
     "typecheckWarning_other": "{{count}} 个类型错误。此版本仍可运行，可以让 Atd 修复。",
     "widgets_other": "{{count}} 个小组件",
     "open": "打开",
-    "history": "版本历史",
-    "building": "正在类型检查并构建版本 {{version}}…",
-    "failed": "构建失败，当前版本仍可运行。"
+    "history": "版本历史"
   },
   "panel": {
     "label": "我的应用",

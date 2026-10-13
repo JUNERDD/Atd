@@ -101,11 +101,15 @@ public enum SelectionToolbarLayout {
   public static let gripWidth = 16.0
 
   /// How many commands, in order, get a button of their own after the grip and Ask; the others
-  /// go in More. Widths are the buttons' as measured.
-  public static func visibleCommandCount(askWidth: Double, commandWidths: [Double]) -> Int {
+  /// go in More. Widths are the buttons' as measured; `endingWidths`, where given, are each
+  /// command's when it ends the row with no More after it (a split button's chevron widens there).
+  public static func visibleCommandCount(
+    askWidth: Double, commandWidths: [Double], endingWidths: [Double]? = nil
+  ) -> Int {
     func width(_ count: Int, more: Bool) -> Double {
-      let items =
-        [gripWidth, askWidth] + commandWidths.prefix(count) + (more ? [moreWidth] : [])
+      var commands = Array(commandWidths.prefix(count))
+      if !more, count > 0, let ending = endingWidths?[count - 1] { commands[count - 1] = ending }
+      let items = [gripWidth, askWidth] + commands + (more ? [moreWidth] : [])
       return padding * 2 + items.reduce(0, +) + gap * Double(items.count - 1)
     }
     if width(commandWidths.count, more: false) <= maxWidth { return commandWidths.count }

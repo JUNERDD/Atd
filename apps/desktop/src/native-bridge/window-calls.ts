@@ -25,6 +25,17 @@ const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
  */
 export const MiniPanelOpenOnSchema = Type.Union([Type.Literal('hover'), Type.Literal('click')]);
 
+/**
+ * Where a summon shows the task panel, always on the display under the cursor: docked in the
+ * bottom-right corner of its work area (the default), centered in it, or where the user last moved
+ * the panel on that display (centered until they have).
+ */
+export const PanelPlacementSchema = Type.Union([
+  Type.Literal('bottomRight'),
+  Type.Literal('center'),
+  Type.Literal('lastPosition'),
+]);
+
 /** The most apps the desktop holds pins of; the shell refuses a pin beyond it. */
 export const MAX_DESKTOP_PINS = 24;
 
@@ -72,6 +83,14 @@ export const NativeWindowCalls = {
     result: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
   },
   /**
+   * Sets where summons show the panel (`PanelPlacementSchema`) and resolves to the applied value;
+   * the shell keeps it. A visible panel stays where it is until the next summon.
+   */
+  'window.setPlacement': {
+    params: Type.Object({ placement: PanelPlacementSchema }, { additionalProperties: false }),
+    result: Type.Object({ placement: PanelPlacementSchema }, { additionalProperties: false }),
+  },
+  /**
    * Window and app preferences the shell owns; `openAtLogin` is null where unsupported.
    * `widgetsAvailable` is false when the app runs outside `/Applications` and `~/Applications`,
    * where macOS does not index the widget extension's App Intents metadata, so its widgets cannot
@@ -85,6 +104,7 @@ export const NativeWindowCalls = {
         showInDock: Type.Boolean(),
         openAtLogin: Type.Union([Type.Boolean(), Type.Null()]),
         widgetsAvailable: Type.Boolean(),
+        panelPlacement: PanelPlacementSchema,
       },
       { additionalProperties: false },
     ),

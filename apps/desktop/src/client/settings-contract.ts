@@ -1,3 +1,4 @@
+import { Type, type Static } from 'typebox';
 import {
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
@@ -11,6 +12,31 @@ import type { Connection, ProviderBridge } from './providers/schema';
 import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
 
+/**
+ * One saved item another window shows in Settings, such as a turn's artifact card: a memory or
+ * an automation by its id, or a Personal skill, subagent or MCP server by its name (an MCP
+ * server's is its server id). Commands keep their own link (`openCommand`).
+ */
+export const SettingsItemLinkSchema = Type.Union([
+  Type.Object(
+    { section: Type.Literal('memory'), id: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { section: Type.Literal('automations'), id: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      section: Type.Literal('extensions'),
+      kind: Type.Union([Type.Literal('skill'), Type.Literal('agent'), Type.Literal('mcp')]),
+      name: Type.String({ minLength: 1, maxLength: 256 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type SettingsItemLink = Static<typeof SettingsItemLinkSchema>;
+
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
 export type ShortcutBindings = Record<ShortcutAction, string>;
 
@@ -23,7 +49,12 @@ export type {
   SelectionToolbarKey,
   SelectionToolbarSettings,
 };
-export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agent-contracts';
+export {
+  DEFAULT_COMMAND_TYPING,
+  DEFAULT_COMMAND_TYPING_ANIMATION,
+  SELECTION_TOOLBAR_ACTIVATIONS,
+  SELECTION_TOOLBAR_KEYS,
+} from '@atd/agent-contracts';
 
 /**
  * How the mini panel opens from its pill on the screen edge: as the pointer reaches it, or only on
@@ -31,6 +62,14 @@ export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agen
  */
 export const MINI_PANEL_OPEN_ON = ['hover', 'click'] as const;
 export type MiniPanelOpenOn = (typeof MINI_PANEL_OPEN_ON)[number];
+
+/**
+ * Where a summon shows the task panel, on the display under the cursor: docked in the bottom-right
+ * corner of its work area (the default), centered in it, or where the user last left it on that
+ * display, centered until they have. The shell keeps it.
+ */
+export const PANEL_PLACEMENTS = ['bottomRight', 'center', 'lastPosition'] as const;
+export type PanelPlacement = (typeof PANEL_PLACEMENTS)[number];
 
 /** The selection toolbar before the service's settings load, as the service defaults it. */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
@@ -83,6 +122,11 @@ export interface SettingsSnapshot {
    * included; null until the shell reports it. Optional for test hosts, which read as not reported.
    */
   miniPanelOpenOn?: MiniPanelOpenOn | null;
+  /**
+   * Where summons show the panel (`PANEL_PLACEMENTS`); null until the shell reports it. Optional
+   * for test hosts, which read as not reported.
+   */
+  panelPlacement?: PanelPlacement | null;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */
@@ -98,6 +142,18 @@ export interface SettingsSnapshot {
   shellAllowlist: string[];
   /** The toolbar the shell shows over text selected in other apps, and the apps it skips. */
   selectionToolbar: SelectionToolbarSettings;
+  /**
+   * Whether write-back command answers are typed into other apps rather than pasted at once; the
+   * service's default until it loads.
+   */
+  commandTyping: boolean;
+  /**
+   * Whether written-back answers leave a trace over the field as they land (a glow at the insertion
+   * point, a wash behind the new text), typed or pasted at once. The service keeps it unchosen
+   * (null) until the user picks it or first turns the typing effect on, which turns it on; until
+   * then, and until the service loads, it reads as the default.
+   */
+  commandTypingAnimation: boolean;
   /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
@@ -121,6 +177,8 @@ export interface SettingsBridge {
   openCommand: (commandId: string) => Promise<void>;
   /** Shows the settings window at `section` (a settings section id), open or not. */
   openSection: (section: string) => Promise<void>;
+  /** Shows the settings window at one saved item's page, open or not. */
+  openItem: (item: SettingsItemLink) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
   /**
@@ -154,6 +212,10 @@ export interface SettingsBridge {
   addShellAllowlistEntry: (entry: string) => Promise<SettingsSnapshot>;
   /** Replaces the selection toolbar settings as a whole. */
   saveSelectionToolbar: (value: SelectionToolbarSettings) => Promise<SettingsSnapshot>;
+  /** Sets how write-back command answers arrive in other apps. */
+  saveCommandTyping: (value: boolean) => Promise<SettingsSnapshot>;
+  /** Sets whether written-back answers leave a trace over the field they land in. */
+  saveCommandTypingAnimation: (value: boolean) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.
@@ -170,4 +232,9 @@ export interface SettingsBridge {
   onOpenCommand: (listener: (commandId: string) => void) => () => void;
   /** A section another window asked an open settings window to show (`openSection`). */
   onOpenSection: (listener: (section: string) => void) => () => void;
+  /**
+   * An item another window asked this settings window to show (`openItem`): at once, the one left
+   * for it while it was not open yet, then each one asked while it is open.
+   */
+  onOpenItem: (listener: (item: SettingsItemLink) => void) => () => void;
 }

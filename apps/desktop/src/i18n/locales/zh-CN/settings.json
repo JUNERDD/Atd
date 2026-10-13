@@ -60,12 +60,15 @@
       "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
       "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
+      "panelPlacement": "位置 显示位置 出现 打开 居中 中央 中间 右下角 角落 记住 上次 拖动 移动 显示器 屏幕 多屏 position center corner remember display",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
+      "commandTyping": "打字 打字机 逐字 动画 一次性 粘贴 写入 写回 插入 替换 减弱动态效果",
+      "commandTypingAnimation": "打字 动效 打字动效 动画 痕迹 光晕 高亮 新文字 插入点 光标 视觉效果",
       "newAutomation": "创建 添加 自动化 计划 定时任务 例行 自动执行",
       "automationsPause": "暂停 停止 停用 全部自动化 计划 恢复",
       "memoryLearning": "自动学习 记住 暂停 偏好 纠正",
@@ -107,6 +110,13 @@
         "cancel": "取消",
         "confirm": "断开连接",
         "missingProvider": "该提供商已不再注册。"
+      },
+      "remove": {
+        "title": "删除 {{name}}？",
+        "description": "此连接、已保存的凭据和模型列表都将被删除，且无法恢复。使用它的任务、命令和自动化需要改用其他模型。",
+        "defaultNote": "它是当前默认提供商，删除后请另选默认提供商。",
+        "cancel": "取消",
+        "confirm": "删除"
       }
     }
   },
@@ -189,7 +199,9 @@
       },
       "keysLabel": "呼出按键",
       "errors": {
-        "keys": "请使用 ⌥ Option、⌘ Command 或 ⇧ Shift，可单独或组合使用。其他按键按住时会输入字符，⌃ Control 会让点击变成右键。"
+        "keys": "请使用 ⌥ Option、⌘ Command 或 ⇧ Shift，可单独或组合使用。其他按键按住时会输入字符，⌃ Control 会让点击变成右键。",
+        "heldByAction": "“{{action}}”已使用这个双击。请换其他按键或呼出方式。",
+        "heldByCommand": "命令“{{name}}”已使用这个双击。请换其他按键或呼出方式。"
       }
     },
     "hud": {
@@ -271,6 +283,16 @@
         "click": "点击迷你面板才会展开，指针经过时它只会稍稍鼓起。"
       }
     },
+    "panelPlacement": {
+      "title": "面板位置",
+      "description": "打开面板时，它在当前所用显示器上的显示位置。“上次位置”会按显示器分别记住。",
+      "label": "面板的显示位置",
+      "modes": {
+        "bottomRight": "右下角",
+        "center": "屏幕中央",
+        "lastPosition": "上次位置"
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "登录 Mac 时自动启动应用。",
       "showInDock": "无论是否显示，菜单栏图标都会保留。",
@@ -288,7 +310,8 @@
       "modifierRequired": "请包含 Command、Control 或 Alt 等修饰键。",
       "shortcutSave": "无法保存快捷键。",
       "defaultsRestore": "无法恢复默认快捷键。",
-      "windowPreferenceSave": "无法保存窗口偏好。"
+      "windowPreferenceSave": "无法保存窗口偏好。",
+      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。"
     }
   },
   "extensions": {
@@ -413,6 +436,9 @@
     "restoreConfirm": "恢复",
     "restoreBackupPath": "{{name}} 之前的副本已备份到 {{path}}",
     "restoreFailed": "无法将 {{name}} 恢复为内置版本。",
+    "builtinUpdatedTitle": "{{name}} 已更新",
+    "builtinUpdated": "你的修改已备份到 {{path}}",
+    "builtinUpdatedDismiss": "关闭",
     "connect": "连接",
     "authenticate": "认证",
     "authCodeLabel": "授权码",

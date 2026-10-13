@@ -139,6 +139,17 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
+    /**
+     * Whether write-back command answers are typed into other apps rather than pasted at once
+     * (`DEFAULT_COMMAND_TYPING`).
+     */
+    commandTyping: Type.Boolean(),
+    /**
+     * Whether written-back answers leave a trace over the field as they land, typed or pasted at
+     * once; null while the user never chose, which reads as `DEFAULT_COMMAND_TYPING_ANIMATION` until
+     * the typing effect is first turned on and takes the animation with it.
+     */
+    commandTypingAnimation: Type.Union([Type.Boolean(), Type.Null()]),
     /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
     /** An interrupted guide resumes here; null starts with the intro. */
@@ -170,6 +181,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    commandTyping: Type.Optional(Type.Boolean()),
+    commandTypingAnimation: Type.Optional(Type.Boolean()),
     onboardingCompleted: Type.Optional(Type.Boolean()),
     onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */
