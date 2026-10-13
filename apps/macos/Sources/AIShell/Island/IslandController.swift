@@ -178,7 +178,8 @@ final class IslandController: NSObject, NSWindowDelegate {
   /// The window shows nothing until that start is drawn: it is ordered in at alpha 0 with a
   /// fresh view tree (``IslandModel/appearance``), so neither the previous island's last frame
   /// nor any animation still running from it can show, and laid out and drawn before the fade
-  /// and the spring begin a frame later.
+  /// and the spring begin a frame later. The fade belongs to the window's entrance, not to its
+  /// first content: a show within that frame replaces the content, and the window still fades in.
   private func appear(_ next: IslandContent, size measured: IslandMeasure) {
     let target = measured.size
     exiting = false
@@ -200,13 +201,16 @@ final class IslandController: NSObject, NSWindowDelegate {
     window.contentView?.layoutSubtreeIfNeeded()
     window.displayIfNeeded()
     report(true)
+    let entering = model.appearance
     after(MiniPanelMotion.frame) { [weak self] in
-      guard let self, activeLayer == id, !exiting else { return }
+      guard let self, model.appearance == entering, window.isVisible, !exiting else { return }
       if model.reduceMotion {
         fade(to: 1, duration: entrance.reducedMotionFade, timing: .easeInEaseOut)
       } else {
         fade(to: 1, duration: entrance.fadeDuration, timing: .easeOut)
       }
+      // A replace meanwhile reveals its own content on the shape it morphs to.
+      guard activeLayer == id else { return }
       reveal(id, IslandChoreography.entering)
       if !model.reduceMotion, let size {
         // A change in place meanwhile may have moved the rest; the spring goes to where it is.
