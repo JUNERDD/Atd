@@ -43,7 +43,16 @@ async function requestAsset(key, method, range) {
       failure = new Error(`HTTP ${response.status}`);
       await response.body?.cancel();
     } catch (error) {
-      if (!signal.aborted) throw new Error(`${label}: request failed`, { cause: error });
+      const code = error.cause?.code ?? error.code;
+      const timedOut =
+        signal.aborted ||
+        [
+          'ETIMEDOUT',
+          'UND_ERR_CONNECT_TIMEOUT',
+          'UND_ERR_HEADERS_TIMEOUT',
+          'UND_ERR_BODY_TIMEOUT',
+        ].includes(code);
+      if (!timedOut) throw new Error(`${label}: request failed`, { cause: error });
       failure = error;
     }
     if (attempt === attempts)
