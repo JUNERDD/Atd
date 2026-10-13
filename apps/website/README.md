@@ -84,23 +84,34 @@ reuse the website's monochrome tokens and remain connected to the shared Lucide 
 ## Interface showcase
 
 The interface showcase comes right after the hero; the nav calls it “Features”, and the features
-display after it “Control”. The showcase shows eight Figma scenes as one scroll sequence: the
-selection toolbar, Mini Panel, screenshot tool, main panel, conversation, settings,
-Apps and automations. All scenes share the canonical desktop and a 1440 × 900 canvas, so the
-showcase keeps one desktop still and changes only what is on it. Each scene is a stack of layers
-cut from Figma (`scripts/matte-layers.py`) that reproduces the flat export at rest, and each plays
-in the way the real surfaces arrive on a Mac (`src/sections/cases/scenes.css`): text is selected
-before its toolbar appears, the Mini Panel slides out from the edge, a capture is framed and
-annotated step by step, windows open and replies stream in. The layers are positioned by
-`case-layers.css`, so the prerendered page shows the first scene complete; reduced motion keeps
-them at rest and only cross-fades between scenes.
+display after it “Control”. The showcase shows nine Figma scenes as one scroll sequence: the
+selection toolbar with a command's options, write-back, Mini Panel, screenshot tool, main panel,
+conversation, settings, Apps and automations. All scenes share the canonical desktop and a
+1440 × 900 canvas, so the showcase keeps one desktop still and changes only what is on it. Each
+scene is a stack of layers cut from Figma (`scripts/matte-layers.py`) that reproduces the flat
+export at rest, and each plays in the way the real surfaces arrive on a Mac
+(`src/sections/cases/scenes.css`): text is selected before its toolbar appears and the command's
+options cascade from its chevron, an answer types itself over the selection before the command
+island confirms it, the Mini Panel slides out from the edge, a capture is framed and annotated step
+by step, windows open and replies stream in. The layers are positioned by `case-layers.css`, so
+the prerendered page shows the first scene complete; reduced motion keeps them at rest and only
+cross-fades between scenes.
+
+The scroll is the scenes' clock, not time. Under the showcase's `data-scrub` every layer's
+entrance is a paused CSS animation, and `scene-clock.ts` seeks it from how far the scene's step
+has scrolled, forwards or backwards: a scene's choreography fills the first 85 % of its step, at a
+pace set by its own length, and the rest holds the finished scene before the next cross-fades in.
+The first scene starts building while the screen rises into place, so the stage never pins on an
+empty desktop. The delays and durations in `scenes.css` therefore place each moment along the
+step rather than in seconds.
 
 The stage pins to the viewport (`position: sticky`) while its track scrolls past. The track is one
 stage tall plus one step of scrolling per scene, and `use-case-scroll.ts` turns how far it has
 scrolled into the scene. Above the screen the stage names every scene in one row over a single
 hairline, and the line is the scroll's progress: it is lit under the scenes already passed and fills
 under the current one 1:1 with the scroll. Each name is also a button that jumps straight to its
-scene; the jump is instant, so the pinned stage doesn't move and the scenes in between never flash.
+scene, landing in the rest at the end of its step so the scene shows complete; the jump is instant,
+so the pinned stage doesn't move and the scenes in between never flash or play.
 Where the names don't fit the row scrolls sideways and keeps the current one in its middle. Below
 the screen the scene's caption is a headline and one line; on a phone the headline shrinks with the
 width so it stays on one line. As the stage rises into place the screen grows to full size, tied to

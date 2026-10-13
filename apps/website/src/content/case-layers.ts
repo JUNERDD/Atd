@@ -39,8 +39,36 @@ export const caseLayers = {
     {
       id: 'toolbar',
       src: mediaUrl('/cases/layers/selection-toolbar/4-toolbar.webp'),
-      width: 796,
+      width: 878,
       height: 160,
+    },
+    {
+      id: 'menu',
+      src: mediaUrl('/cases/layers/selection-toolbar/5-menu.webp'),
+      width: 658,
+      height: 400,
+    },
+  ],
+  'write-back': [
+    { id: 'page', src: mediaUrl('/cases/layers/write-back/1-page.webp'), width: 1124, height: 444 },
+    {
+      id: 'highlight',
+      src: mediaUrl('/cases/layers/write-back/2-highlight.webp'),
+      width: 496,
+      height: 48,
+    },
+    { id: 'text', src: mediaUrl('/cases/layers/write-back/3-text.webp'), width: 492, height: 76 },
+    {
+      id: 'written',
+      src: mediaUrl('/cases/layers/write-back/4-written.webp'),
+      width: 694,
+      height: 48,
+    },
+    {
+      id: 'island',
+      src: mediaUrl('/cases/layers/write-back/5-island.webp'),
+      width: 296,
+      height: 172,
     },
   ],
   'mini-panel': [
@@ -48,7 +76,7 @@ export const caseLayers = {
       id: 'flyout',
       src: mediaUrl('/cases/layers/mini-panel/1-flyout.webp'),
       width: 660,
-      height: 462,
+      height: 454,
     },
     { id: 'rail', src: mediaUrl('/cases/layers/mini-panel/2-rail.webp'), width: 154, height: 488 },
     {
@@ -96,7 +124,7 @@ export const caseLayers = {
       width: 1064,
       height: 972,
     },
-    { id: 'bars', src: mediaUrl('/cases/layers/screenshot/8-bars.webp'), width: 1138, height: 260 },
+    { id: 'bars', src: mediaUrl('/cases/layers/screenshot/8-bars.webp'), width: 1142, height: 260 },
     { id: 'hint', src: mediaUrl('/cases/layers/screenshot/9-hint.webp'), width: 776, height: 52 },
   ],
   'main-panel': [
