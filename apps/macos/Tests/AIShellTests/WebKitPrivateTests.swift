@@ -11,7 +11,11 @@ private final class GlassProbe: NSObject, WKNavigationDelegate {
   func run(systemAppearance: Bool) async throws -> [String: Any] {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
-    if systemAppearance { #expect(WebKitPrivate.enableSystemAppearance(configuration.preferences)) }
+    if systemAppearance {
+      let enabled = WebKitPrivate.enableSystemAppearance(configuration.preferences)
+      // macOS 26's WebKit has the setting; an older WebKit may not, and the case judges the page.
+      if #available(macOS 26, *) { #expect(enabled) }
+    }
     let webView = WKWebView(
       frame: CGRect(x: 0, y: 0, width: 200, height: 200), configuration: configuration)
     #expect(WebKitPrivate.disableBackground(webView))
@@ -53,12 +57,21 @@ private final class GlassProbe: NSObject, WKNavigationDelegate {
 @MainActor
 @Suite("WebKit private settings")
 struct WebKitPrivateTests {
-  @Test("System appearance turns on WebKit's in-page glass material")
+  /// macOS 26's WebKit always has the glass. An older one (macOS 15) may lack the setting or the
+  /// material, so there the page must be one of the two consistent states: the glass on a
+  /// transparent background, or the fallback fill.
+  @Test("System appearance turns on WebKit's in-page glass material where WebKit has it")
   func systemAppearanceEnablesGlass() async throws {
     let result = try await GlassProbe().run(systemAppearance: true)
-    #expect(result["supported"] as? Bool == true)
-    #expect(result["effect"] as? String == "-apple-system-glass-material")
-    #expect(result["background"] as? String == "rgba(0, 0, 0, 0)")
+    let supported = result["supported"] as? Bool
+    if #available(macOS 26, *) { #expect(supported == true) }
+    if supported == true {
+      #expect(result["effect"] as? String == "-apple-system-glass-material")
+      #expect(result["background"] as? String == "rgba(0, 0, 0, 0)")
+    } else {
+      #expect(supported == false)
+      #expect(result["background"] as? String == "rgba(12, 12, 12, 0.8)")
+    }
   }
 
   @Test("Without it the page keeps the translucent fallback fill")

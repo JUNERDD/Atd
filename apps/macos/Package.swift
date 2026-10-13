@@ -15,7 +15,7 @@ let approachableConcurrency: [SwiftSetting] = [
 /// `AIShell` and supplies the bundle, Info.plist and signing.
 let package = Package(
   name: "AIMac",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [
     .library(name: "AICore", targets: ["AICore"]),
     .library(name: "AIShell", targets: ["AIShell"]),
