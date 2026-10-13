@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { loadEnv } from 'vite';
+import { waitForHttpRetry } from '../../../scripts/http-retry.mjs';
 import { normalizeAssetBase } from '../media-assets.ts';
 
 const { values } = parseArgs({
@@ -26,6 +26,7 @@ async function requestAsset(key, method, range) {
   for (let attempt = 1; ; attempt += 1) {
     const signal = AbortSignal.timeout(20000);
     let failure;
+    let retryAfter;
     try {
       const response = await fetch(base + key, {
         method,
@@ -41,6 +42,7 @@ async function requestAsset(key, method, range) {
         return { response, body };
       }
       failure = new Error(`HTTP ${response.status}`);
+      retryAfter = response.headers.get('retry-after');
       await response.body?.cancel();
     } catch (error) {
       const code = error.cause?.code ?? error.code;
@@ -55,10 +57,7 @@ async function requestAsset(key, method, range) {
       if (!timedOut) throw new Error(`${label}: request failed`, { cause: error });
       failure = error;
     }
-    if (attempt === attempts)
-      throw new Error(`${label}: failed after ${attempts} attempts`, { cause: failure });
-    console.warn(`${label}: ${failure.message}; retrying (${attempt + 1}/${attempts})`);
-    await delay(1000 * 2 ** (attempt - 1));
+    await waitForHttpRetry({ label, attempt, attempts, failure, retryAfter });
   }
 }
 

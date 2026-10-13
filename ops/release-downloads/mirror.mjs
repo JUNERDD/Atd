@@ -5,8 +5,8 @@ import { createReadStream } from 'node:fs';
 import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
+import { waitForHttpRetry } from '../../scripts/http-retry.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -128,6 +128,7 @@ async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, ve
     const signal = AbortSignal.timeout(timeout);
     let response;
     let failure;
+    let retryAfter;
     try {
       response = await fetch(url, {
         method,
@@ -137,6 +138,7 @@ async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, ve
       // Keep body reads inside the attempt; a full-download retry starts a fresh hash.
       if (![502, 503, 504].includes(response.status)) return await verify(response);
       failure = new Error(`HTTP ${response.status}`);
+      retryAfter = response.headers.get('retry-after');
     } catch (error) {
       const code = error.cause?.code ?? error.code;
       const timedOut =
@@ -156,10 +158,7 @@ async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, ve
       // Discard unread error responses without replacing the original failure with a cleanup error.
       await response?.body?.cancel().catch(() => {});
     }
-    if (attempt === attempts)
-      throw new Error(`${label}: failed after ${attempts} attempts`, { cause: failure });
-    console.warn(`${label}: ${failure.message}; retrying (${attempt + 1}/${attempts})`);
-    await delay(1000 * 2 ** (attempt - 1));
+    await waitForHttpRetry({ label, attempt, attempts, failure, retryAfter });
   }
 }
 
