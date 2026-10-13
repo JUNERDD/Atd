@@ -1,9 +1,9 @@
 # macOS 15 与 Intel 联合适配计划
 
-Status: Ready（需先满足[实施前置条件](#实施前置条件)）— 目标版本 0.9.0；macOS 15 与 Intel 同一轮交付，Intel 验收优先；`release/0.9.0` 已切出，实施未开始
+Status: In progress — 目标版本 0.9.0；I1–I6、M1–M4 的代码已在 `release/0.9.0` 完成并通过本地检查（见[实施进度](#实施进度)），等待 PR CI、需另行授权的 workflow 运行与预发布演练，以及 P2–P5 验收机器
 Created: 2026-10-11
 Revised: 2026-10-13（第八次修订：明确兼容代码的封装方式；第七次修订按 0.8.1 之后的代码校正事实与引用。两次都不改变范围与验收，见 [Review Outcome](#review-outcome)）
-Approval: 已授权调研、计划编写与计划修订；实施及各项对外动作按[授权模型](#授权模型)另行授权
+Approval: 用户已于 2026-10-13 授权实施（P6）；各项对外动作仍按[授权模型](#授权模型)另行授权
 
 ## Summary
 
@@ -74,7 +74,7 @@ Intel 交付门槛是 macOS 15 真机上的完整 Release 安装、核心功能�
 - [ ] **P5：预发布镜像资源已落实。** 由用户提供：
   - 一个与生产隔离、可公开读取（r2.dev 或自定义域名）的 R2 bucket。镜像校验会经 `--base-url` 用 HTTP 回读，并检查缓存头与 Range 响应。
   - 只能访问该 bucket 的演练凭据。
-- [ ] **P6：用户已授权实施。** 范围见[授权模型](#授权模型)。
+- [x] **P6：用户已授权实施。** 用户于 2026-10-13 指示执行本计划；范围见[授权模型](#授权模型)。
 
 | 前置条件 | 阻塞的工作                                                                                                                                       |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -311,7 +311,7 @@ runner 现状：
 - **判断能力，不判断版本号：** Swift 用 `#available`/`@available`，私有 API 用 `responds(to:)` 探测，Web 用 `@supports` 与 `CSS.supports`。不读取 `ProcessInfo.operatingSystemVersion` 来决定功能。Swift 只在 `#available` 的词法范围内放行新 API，包装成返回 `Bool` 的函数会失去编译器的可用性检查，这也是不建全局开关的原因。
 - **有设计取舍的能力归所属类型：** 15 与 26 的表现不同、需要设计决定的能力，分支放在拥有它的类型内部：材质归 `NativeMaterialView` 与 `GlassSurface`（M1/M2），截图归 `DisplayFreezer`（M2），WebKit 私有设置归 `WebKitPrivate`，Web 输入控件归共享 `Textarea`（M3）。调用方拿到的是与版本无关的接口。
 - **纯 API 补丁集中在 `Backport`：** 15 上只需"不做"或"直接返回内容"、不涉及设计的 SwiftUI 补丁，统一放在 `apps/macos/Sources/AIShell/Support/Backport.swift`（拟新增），以 `extension View { var backport: Backport<Self> }` 的命名空间调用，例如 `.backport.scrollEdgeEffectHidden()`。首批成员见 M2：`scrollEdgeEffectHidden`、`glassEffectTransition` 与 `GlassEffectContainer` 的包装。文件遵守 350 行上限；出现 AppKit 的纯补丁时同样放在这里。
-- **标注删除时机：** `Backport` 的每个成员都标注 `@available(macOS, deprecated: 26, message: "…")`，消息写明对应的原生 API。最低系统提到 26 时，编译器会在每个调用点给出弃用警告；所属类型内的 `#available(macOS 26, *)` 届时也会被报为多余检查。两者都是警告（项目未开启 warnings-as-errors），由提升最低系统的那次改动负责清理。分支在 M2 降低部署目标之前仍以 26 为目标，这段时间内这些警告属于预期，不加抑制。
+- **标注删除时机：** `Backport` 的每个成员都标注 `@available(macOS, deprecated: 26, message: "…")`，消息写明对应的原生 API。最低系统提到 26 时，编译器会在每个调用点给出弃用警告。所属类型内的 `#available(macOS 26, *)` 不会被报为多余检查（实施时以 Swift 6.2.4 在 26 部署目标下实测），提升最低系统的改动需按 `#available(macOS 26` 检索后手动清理。弃用警告（项目未开启 warnings-as-errors），由提升最低系统的那次改动负责清理。分支在 M2 降低部署目标之前仍以 26 为目标，这段时间内这些警告属于预期，不加抑制。
 - **两条路径都要验证：** 两个分支都由编译覆盖，`macos-26` 与 `macos-15` 上都运行 `swift test`（I4），Web 侧由 `lib` 约束与真实页面验收覆盖（M3）。
 
 ## Plan Todos
@@ -844,6 +844,48 @@ flowchart LR
 - **打包隔离：** `prepare-service-pack.mjs` 会临时修改部署工作区并恢复 lockfile，且使用固定 staging 路径。即使架构产物加了后缀，同一 checkout 的并发打包也不安全。CI 使用独立的原生 job，开发机按架构串行或用隔离的 checkout。
 - **运行时规则：** 应用启动遵循 runtime-debugging 技能与仓库规则，不连接或停止用户已有的会话；更新与数据保留测试遵守 I7 的隔离要求。
 
+## 实施进度
+
+2026-10-13 按用户"执行"指示开始实施。各工作项在隔离 worktree 中完成后合入 `release/0.9.0`；官网改动在独立分支 `website/0.9.0-arch-downloads`，以草稿 PR #61 打开，到 G1 才合并。
+
+| 项         | 代码与文档                                                                                                                                                | 尚缺的验收                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| I1         | `scripts/build.mjs`、`scripts/arch.mjs`；`package.json` 与 `project.yml` 的 feed 设置，去掉固定 arm64                                                     | x64 实际构建（PR 上的 Intel 打包演练）                                     |
+| I2         | file-index 放行 darwin x64，loader 重新生成无差异，`@atd/file-index#build` 关闭缓存，`ci.yml` 的 rust 与 package 过滤加入 `packages/file-index/**`        | 同上                                                                       |
+| I3         | `prepare-service-pack.mjs` 拆为 122 行加 `scripts/service-pack/`；`verify-app.mjs` 与 `scripts/verify-app/` 的 pack/app 两种模式；按架构裁剪与补签        | x64 的裁剪、补签与加载（Intel 打包演练、产物模式的 `macos-15-intel` 校验） |
+| I4         | `release.yml` 的模式、双架构构建、macOS 15 校验、收集 job 与 `scripts/release/feeds.mjs`；`ci.yml` 的 `swift-macos-15` 与 `intel-package`；DMG 按架构命名 | PR CI；产物模式（授权模型第 1 项）                                         |
+| I5         | 草稿/彩排/发布流程；`mirror.mjs` 按架构拆模块并加演练参数；镜像 README 的回滚步骤；`AppUpdater` 的 Rosetta 回流                                           | 彩排（第 1 项）；预发布 bucket 演练（第 2 项，需 P5）                      |
+| I6         | 官网分支与项目 Figma Website 页（下载区宽版、窄版）；root README、`apps/website/README.md`、AGENTS                                                        | 官网 PR 保持草稿到 G1                                                      |
+| M1         | `NativeMaterialView`、`MaterialEffectView`；各 AppKit 表面接入，模糊方式由所有者传入                                                                      | 基线截图（P3）；15 真机表现（I7 第 5 项）                                  |
+| M2         | `Support/Backport.swift`；`GlassSurface` 的 15 分支；`DisplayFreezer` 的 15 分支；部署目标降为 15.0，`WebKitPrivateTests` 按能力断言                      | 技术验证与 15 验证构建的运行（P3/P4）                                      |
+| M3         | `safari18` 目标、`lib` 约束、`tsconfig.web.json`、Textarea fallback（`autoSize`）、composer 滚动条                                                        | WebKit 18.0 真实页面验收（P4）                                             |
+| M4         | `create-app` 技能说明与 version 3（追加 v0.8.0 指纹 `e83225d0…`）；Widget 符号占位 `WidgetSymbol`                                                         | Sequoia 设计变体（依赖 15 验证构建）；R1 第 2 步复核                       |
+| I7、R1、G1 | —                                                                                                                                                         | 未开始，依赖上述验收与单独授权                                             |
+
+M1/M2 在 15 上的初选（由 15 验证构建判断、M4 设计变体确认）：
+
+| 表面                                   | material                 | 模糊方式      | 活跃状态                   | 阴影                       |
+| -------------------------------------- | ------------------------ | ------------- | -------------------------- | -------------------------- |
+| 有标题栏的窗口（面板、设置、用户应用） | `.underWindowBackground` | behind window | `followsWindowActiveState` | 窗口阴影                   |
+| Onboarding                             | `.underWindowBackground` | behind window | `.active`                  | 效果视图下方的独立阴影     |
+| PermissionGuide                        | `.popover`               | behind window | `.active`                  | `maskImage` 塑形的窗口阴影 |
+| 工具栏菜单                             | `.menu`                  | behind window | `.active`                  | 独立阴影                   |
+| HUD 与选区工具栏                       | `.hudWindow`             | behind window | `.active`                  | 独立阴影                   |
+| 标注栏                                 | `.hudWindow`             | within window | `.active`                  | 独立阴影                   |
+| SwiftUI 玻璃（MiniPanel、命令岛）      | `.hudWindow`             | behind window | `.active`                  | 无                         |
+
+独立阴影：模糊半径 12、偏移 4、不透明度 0.3，用 even-odd 遮罩裁掉形状内部。浮层底填充在 26 保持 80%，15 初值 50%，减少透明度时仍为不透明。
+
+实施中对计划的校正：
+
+- **开工清点：** 第一层仍为 9 个文件，按 Swift 6.2.4 的报错是 15 处（`DisplayFreezer` 只在 `captureScreenshot` 报一次）；没有新的 26 专用 API。`ScreenshotTaker.swift` 经 `DisplayFreezer` 截图，不需要改。
+- **`NativeMaterialView` 的形态：** 它是持有效果视图的所有者对象，以 `view` 暴露视图，26 上 `NSGlassEffectView` 仍在各表面原来的位置；15 专用视图放在 `Windows/MaterialEffectView.swift`。`GlassBackground.material()` 已移除，Onboarding 与 PermissionGuide 直接构造 `NativeMaterialView`。26 上 `Backport` 与 `clippedGlass` 的可用性分支会被包成 `AnyView`，类型稳定，26 回归截图时留意。
+- **新依赖与 lockfile：** 本仓库的 catalog 模式下，`pnpm add` 会把依赖写进 catalog 并重新解析无关包。`react-textarea-autosize` 以精确版本 8.5.9 直接声明在 `packages/ui`，lockfile 只增加该依赖及其运行依赖的条目，`pnpm install --frozen-lockfile` 通过。
+- **构建入口：** `--dry-run` 对非宿主架构只打印 `xcodebuild` 参数并退出 0，用于检查 x64 映射；不带 `--build-version` 时，含 `-` 的 `--marketing-version` 同样被拒绝，因为 `CURRENT_PROJECT_VERSION` 默认取 `$(MARKETING_VERSION)`。打包脚本要求运行它的 Node 是宿主原生架构。
+- **release.yml：** `release` 模式下只有 `build_version` 与 `marketing_version` 不同时才传 `--build-version`，因此 `main` 上带 `-` 的预发布仍以现有方式构建；`-` 的限制只作用于 `artifacts` 与 `rehearsal`。收集 job 依赖两个校验 job，上传的 artifact 一定已通过 macOS 15 校验。
+- **镜像清理：** 每种架构保留最近两次上传，另加当前 feed 引用的 DMG（原逻辑为当前版本加两个旧版）；回滚时被清理的旧 DMG 由镜像从 GitHub 重新上传。`--source-dir` 要求显式的非生产 `--bucket` 与 `--base-url`，非 HTTPS 只允许回环地址。
+- **兼容代码的封装：** 所属类型内的 `#available(macOS 26, *)` 不会因提升最低系统而被报警，已在[兼容代码的封装](#兼容代码的封装)中改正。
+
 ## Validation
 
 本轮只检查计划结构、引用与范围，不把规划中的检查记作已通过。调研与评审阶段的编译与类型检查证据已在 Summary 标注，其范围不等于 Release 验收。
@@ -916,5 +958,5 @@ R1 的发布验证还需确认：
   - "按这些问题修订计划"
   - "选 B，按这些问题修订计划"（0.8.0 先发布，本适配进 0.9.0）
   - I1–I7 与 M1–M4 同一轮交付，Intel + macOS 15 为优先验收组合。
-- Implementation: 尚未开始，当前没有实施选项被视为已获授权。实施授权的范围，以及产物模式、预发布演练、R1、G1 各自的授权要求，见[授权模型](#授权模型)。
+- Implementation: 2026-10-13 起实施，进度见[实施进度](#实施进度)。产物模式、预发布演练、R1、G1 仍各自需要单独授权，见[授权模型](#授权模型)。
 - Release: 本轮不发布，不变更线上下载或更新源。
