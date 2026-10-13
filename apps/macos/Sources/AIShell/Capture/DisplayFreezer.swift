@@ -1,5 +1,10 @@
 import AppKit
-import ScreenCaptureKit
+// Weakly linked because the SDK does not mark the classes behind macOS 26's screenshot API
+// (`SCScreenshotConfiguration`, `SCScreenshotOutput`) as 26-only: imported normally, they are
+// strong references, and dyld refuses to load the app on macOS 15 although ``freeze(_:)`` only
+// reaches them under `#available(macOS 26, *)`. Every type this file uses from the module before
+// 26 exists on macOS 15, where the framework itself is always present.
+@_weakLinked import ScreenCaptureKit
 
 /// Freezes displays with ScreenCaptureKit (decision D6): one screenshot per display with the
 /// app's own windows filtered out, so neither the panel, the settings window nor the overlays
