@@ -80,10 +80,12 @@ final class PermissionGuidePanel: NSObject {
     for row in [header, card] {
       row.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
     }
-    let glass = GlassBackground.material()
-    glass.cornerRadius = 18
-    glass.contentView = stack
-    window.contentView = glass
+    // The material is the window's content view itself, so on macOS 15 its rounded mask also
+    // shapes the window's shadow (``NativeMaterialView``).
+    let material = NativeMaterialView(.permissionGuide)
+    material.cornerRadius = 18
+    material.contentView = stack
+    window.contentView = material.view
     width = stack.widthAnchor.constraint(equalToConstant: Self.minimumWidth)
     width.isActive = true
     super.init()

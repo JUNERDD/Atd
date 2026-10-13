@@ -71,7 +71,7 @@ final class SelectionToolbarMenu: NSObject {
   /// list. The list is clipped to the glass's own corners (the glass does not clip its content),
   /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's fixed
   /// dark surface (``GlassSurface``), the fill drawn in the same rounded clip.
-  private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSGlassEffectView {
+  private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSView {
     let layout = SelectionToolbarMenuLayout.self
     let list = MenuList(views: items)
     list.orientation = .vertical
@@ -102,9 +102,10 @@ final class SelectionToolbarMenu: NSObject {
     let surface = NSView()
     surface.clipsToBounds = true
     surface.addSubview(scroll)
-    let glass = NSGlassEffectView()
-    GlassSurface.attach(glass, content: surface)
-    GlassSurface.shape(glass, content: surface, cornerRadius: layout.cornerRadius)
+    let material = NativeMaterialView(.menu)
+    GlassSurface.attach(material, content: surface)
+    GlassSurface.shape(material, content: surface, cornerRadius: layout.cornerRadius)
+    let glass = material.view
     glass.setAccessibilityElement(true)
     glass.setAccessibilityRole(.menu)
     glass.setAccessibilityLabel(label)

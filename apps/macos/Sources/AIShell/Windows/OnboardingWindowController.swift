@@ -4,7 +4,7 @@ import WebKit
 
 /// The welcome guide's window: a transparent, borderless stage covering the whole display under
 /// the cursor, menu bar and Dock included. The page draws the scrim, opening page and card; under
-/// them the shell lays the panel's and Settings' window material (``GlassBackground``), placed,
+/// them the shell lays the panel's and Settings' window material (``NativeMaterialView``), placed,
 /// rounded and shown as the page reports its surface (`onboarding.surface`: the opening page's
 /// whole box, then the card's), since a page cannot draw the desktop's glass itself. There is no
 /// title bar or window shadow. It stays above the menu bar while the intro plays; from
@@ -15,8 +15,9 @@ import WebKit
 /// it through the Welcome Guide menu item.
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
-  /// The guide's glass, behind the page; hidden (alpha 0) until the page reports a surface.
-  private var surface: NSGlassEffectView?
+  /// The guide's material, behind the page; hidden (alpha 0) until the page reports a surface.
+  /// Its ``NativeMaterialView/view`` carries the frame and the fade, with any shadow of its own.
+  private var surface: NativeMaterialView?
   /// Whether the glass is shown or fading in, so only the first rect after a hide fades.
   private var surfaceShown = false
   /// Whether the intro is over (``settle()``), so ``applyLevel(for:)`` owns the window's level.
@@ -69,9 +70,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     // Like the panel: it appears on the Space the user is on, and never becomes a full-screen
     // window of its own, which would move it to a Space of its own.
     window.collectionBehavior = [.moveToActiveSpace, .fullScreenNone]
-    let surface = GlassBackground.material()
-    surface.alphaValue = 0
-    window.contentView = Self.stage(surface: surface, page: host.container)
+    let surface = NativeMaterialView(.onboarding)
+    surface.view.alphaValue = 0
+    window.contentView = Self.stage(surface: surface.view, page: host.container)
     window.delegate = self
     self.window = window
     self.surface = surface
@@ -154,9 +155,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// own timeline). Other pages' posts, non-finite values and an empty rect (after clamping to the
   /// web view) are ignored.
   func setSurface(_ post: OnboardingSurfacePost, from sender: WebViewHost) {
-    guard sender === host, let surface, let stage = surface.superview else { return }
+    guard sender === host, let surface, let stage = surface.view.superview else { return }
     guard let rect = post.rect else {
-      if surfaceShown { fade(surface, to: 0, over: post.fade) }
+      if surfaceShown { fade(surface.view, to: 0, over: post.fade) }
       surfaceShown = false
       return
     }
@@ -165,9 +166,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       let inView = Self.viewRect(
         CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height), in: webView)
     else { return }
-    surface.frame = webView.convert(inView, to: stage)
+    surface.view.frame = webView.convert(inView, to: stage)
     surface.cornerRadius = post.radius * webView.pageZoom * webView.magnification
-    if !surfaceShown { fade(surface, to: 1, over: post.fade) }
+    if !surfaceShown { fade(surface.view, to: 1, over: post.fade) }
     surfaceShown = true
   }
 
