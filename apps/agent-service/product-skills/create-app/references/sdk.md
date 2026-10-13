@@ -1,6 +1,6 @@
 # SDK quick reference
 
-Everything Atd itself gives an app to import is here; npm packages the app declares in `atd-app.json` `dependencies` come on top, imported by their name or a subpath they export (`react-day-picker/style.css`). React, `@atd/ui` and the other provided packages always come from Atd, also inside declared packages. The types are the source of truth: `tsc` reports a wrong call as a diagnostic after each build.
+Everything Atd itself gives an app to import is here; npm packages the app declares in `atd-app.json` `dependencies` come on top, imported by their name or a subpath they export (`react-day-picker/style.css`). React, `@atd/ui` and the other provided packages always come from Atd, also inside declared packages. The types are the source of truth: `tsc` reports a wrong call as a diagnostic after each build. The checker is advisory and covers only ECMAScript built-ins (ES2024 plus the ES2025 Set methods); "What the page runs on" in `SKILL.md` says which diagnostics to fix and which to ignore.
 
 ## Page: `@atd/app-kit/client`
 
@@ -26,7 +26,7 @@ A failed call rejects with `AppApiError` (`message`, `code`, `status`). Codes: `
 
 The page is always loaded at `/`, so use hash routing, never path routing. A widget tap opens the window at `#/route`; read `location.hash` at startup and on `hashchange`.
 
-Page rules: no network, cookies or WebSocket; `localStorage` works for small UI preferences, but keep real data in the backend. Appearance: the page sits on Atd's dark glass window surface with a 52 px title row; components use semantic tokens, raw colors appear only in token definitions in `web/src/styles.css`, and the manifest's `accentColor` sets `--primary` (see `starter.md`, "The window surface", for the surface, the title row and how to take the surface over).
+Page rules: the page runs in WebKit 18.0 or newer, so feature-detect DOM and CSS APIs from later versions; no network, cookies or WebSocket; `localStorage` works for small UI preferences, but keep real data in the backend. Appearance: the page sits on Atd's dark glass window surface with a 52 px title row; components use semantic tokens, raw colors appear only in token definitions in `web/src/styles.css`, and the manifest's `accentColor` sets `--primary` (see `starter.md`, "The window surface", for the surface, the title row and how to take the surface over).
 
 ## Backend: `@atd/app-kit/server`
 
@@ -85,11 +85,11 @@ Builders (`w.*`, each returns a node; options in the second argument):
 | `vstack(children, opts)` / `hstack` / `zstack`      | `spacing`, `padding` (0-32), `background` (color token or `containerBackground`), `alignment`. At most 16 children.                                                                                                              |
 | `spacer(minLength?)`, `divider()`                   | Layout.                                                                                                                                                                                                                          |
 | `text(str, opts)`                                   | `style` largeTitle, title, title2, title3, headline, subheadline, body, callout, footnote; `weight` regular, medium, semibold, bold; `color`; `lineLimit` 1-10. Max 500 chars.                                                   |
-| `symbol(name, opts)`                                | SF Symbol name (`^[a-z0-9.]+$`, e.g. `checkmark.circle.fill`); `size` 8-96, `color`.                                                                                                                                             |
+| `symbol(name, opts)`                                | SF Symbol name (`^[a-z0-9.]+$`, e.g. `checkmark.circle.fill`) that the SF Symbols app lists as available from macOS 15.0 or earlier; a name the system cannot resolve shows a generic placeholder. `size` 8-96, `color`.         |
 | `image(src, opts)`                                  | PNG or JPEG of at most 256 KB. Put the file in `web/public/` (for example `web/public/images/chart.png`) and pass the path from the web root, `'images/chart.png'`. `contentMode`, `width`, `height`. Prefer symbols and charts. |
 | `gauge(value, opts)`, `progress(value, opts)`       | `gauge`: `min`, `max`, `label`, `style` circular or linear. `progress`: `value` 0-1.                                                                                                                                             |
 | `date(date, 'relative' \| 'time' \| 'timer', opts)` | The system keeps it current without re-rendering; `textStyle`, `color`.                                                                                                                                                          |
-| `list(rows)`                                        | At most 8 rows of `{ title, subtitle?, symbol?, trailing?, color? }`; as many whole rows as fit are shown.                                                                                                                       |
+| `list(rows)`                                        | At most 8 rows of `{ title, subtitle?, symbol?, trailing?, color? }` (`symbol` follows the same macOS 15.0 rule as `symbol()`); as many whole rows as fit are shown.                                                             |
 | `chart('line' \| 'bar', points, opts)`              | At most 50 points `{ x: string, y: number }`.                                                                                                                                                                                    |
 | `link(route, child)`                                | Tapping the child opens the app at `#route` (`/` followed by no whitespace, at most 512 chars).                                                                                                                                  |
 

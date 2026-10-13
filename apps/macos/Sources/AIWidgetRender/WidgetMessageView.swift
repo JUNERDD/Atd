@@ -16,7 +16,7 @@ public struct WidgetMessageView: View {
 
   public var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Image(systemName: symbol).font(.title2).foregroundStyle(.secondary)
+      Image(systemName: WidgetSymbol.resolved(symbol)).font(.title2).foregroundStyle(.secondary)
       Spacer(minLength: 0)
       if let title {
         Text(verbatim: title).font(.headline)

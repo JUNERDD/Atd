@@ -94,7 +94,7 @@ public struct WidgetTreeView: View {
         .lineLimit(text.lineLimit)
         .foreground(text.color, accent: accent)
     case .symbol(let symbol):
-      Image(systemName: symbol.name)
+      Image(systemName: WidgetSymbol.resolved(symbol.name))
         .font(.system(size: symbol.size ?? 17))
         .foreground(symbol.color, accent: accent)
     case .image(let image):
@@ -232,7 +232,8 @@ private struct WidgetListView: View {
       ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
         HStack(spacing: 8) {
           if let symbol = row.symbol {
-            Image(systemName: symbol).foregroundStyle(row.color?.color(accent: accent) ?? accent)
+            Image(systemName: WidgetSymbol.resolved(symbol)).foregroundStyle(
+              row.color?.color(accent: accent) ?? accent)
           }
           VStack(alignment: .leading, spacing: 1) {
             Text(verbatim: row.title).font(.subheadline).lineLimit(1)

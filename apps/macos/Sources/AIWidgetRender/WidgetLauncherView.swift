@@ -164,7 +164,7 @@ private struct WidgetLauncherIconView: View {
     case .symbol(let name):
       shape.fill(fill)
         .overlay {
-          Image(systemName: name)
+          Image(systemName: WidgetSymbol.resolved(name))
             .font(.system(size: side * 0.46, weight: .semibold))
             .foregroundStyle(glyph)
         }
