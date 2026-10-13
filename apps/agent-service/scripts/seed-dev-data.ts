@@ -4,7 +4,8 @@
  * home. The source is only read. The target is never the installed app's data dir, and the script
  * holds the target's owner lock while it writes, so it refuses while a service serves it.
  *
- * Every target file or folder it replaces moves to `<target>/seed-backups/<UTC stamp>/` first.
+ * Every target file or folder it replaces or sets aside moves to `<target>/seed-backups/<UTC stamp>/`
+ * first.
  * Provider connections merge by id with the source winning; connections only the target has stay.
  * Credentials go from the source's keyring namespace to the target's and never touch the disk.
  *
@@ -22,6 +23,7 @@ import {
   type ServiceConnectionsFile,
 } from '@atd/agent-contracts';
 import { BUILTIN_SKILLS } from '../src/builtins/manifest.js';
+import { starterMarkerFile } from '../src/commands/starters.js';
 import { acquireLock, atomicWrite, releaseLock } from '../src/config.js';
 import { connectionsFile } from '../src/credentials/connections.js';
 import { keyringAccount, KeyringBackend } from '../src/credentials/keyring.js';
@@ -44,10 +46,10 @@ interface Options {
   to: string;
 }
 
-/** One file or folder the seed puts in place, with where it comes from. */
+/** One file or folder the seed puts in place, with where it comes from; no source sets it aside. */
 interface Copy {
   label: string;
-  source: string;
+  source: string | null;
   target: string;
 }
 
@@ -102,6 +104,16 @@ async function plannedCopies(options: Options): Promise<Copy[]> {
     const source = path.join(options.from, name);
     if (await exists(source))
       copies.push({ label: name, source, target: path.join(options.to, name) });
+  }
+  // The starter seed's record names the starters it added to `commands.json`, so it goes with that
+  // file: a record kept from the target would stop its service seeding the starters the copied
+  // commands lack, since the seed runs once per record.
+  if (copies.some((copy) => copy.label === 'commands.json')) {
+    const source = starterMarkerFile(options.from);
+    const target = starterMarkerFile(options.to);
+    const label = path.basename(target);
+    if (await exists(source)) copies.push({ label, source, target });
+    else if (await exists(target)) copies.push({ label, source: null, target });
   }
   // The installed app's service never sees this shell's AI_ATD_HOME; the target's service does.
   const sourceHome = resolveAtdHome({ dataDir: options.from });
@@ -169,7 +181,8 @@ async function seed(options: Options): Promise<void> {
   const credentialed = source.connections.filter((item) => item.hasCredential);
 
   console.log(`From ${options.from}\nTo   ${options.to}`);
-  for (const copy of copies) console.log(`  copy        ${copy.label}`);
+  for (const copy of copies)
+    console.log(`  ${copy.source ? 'copy     ' : 'set aside'}   ${copy.label}`);
   for (const item of source.connections)
     console.log(
       `  connection  ${item.name} (${item.provider})${item.hasCredential ? ' + credential' : ''}`,
@@ -205,6 +218,7 @@ async function seed(options: Options): Promise<void> {
     );
     for (const copy of copies) {
       await backUp(copy.target, options.to, backupDir);
+      if (!copy.source) continue;
       await mkdir(path.dirname(copy.target), { recursive: true });
       await cp(copy.source, copy.target, { recursive: true, errorOnExist: true, force: false });
     }
