@@ -121,8 +121,13 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   ]),
   // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
   // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
-  skill('create-app', 2, [
+  // Version 3 states the WebKit 18.0 baseline: type checking is advisory and covers only ECMAScript
+  // built-ins (fix it in web/ and shared/, ignore the ES2025 class in server/, which runs on Node
+  // 24), DOM and CSS APIs need feature detection, the window material differs between macOS 15 and
+  // 26, and widget symbols must exist on macOS 15.0.
+  skill('create-app', 3, [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
+    'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
   ]),
 ];
 
