@@ -128,8 +128,11 @@ function readout(text, cx, cy) {
     .join('');
 }
 
-/** The background as SVG, in points; `version` is the app version the readout names. */
-export function backgroundSvg(version) {
+/**
+ * The background as SVG, in points. The readout names the app version and its architecture as
+ * the release names it (`arm64` or `x64`).
+ */
+export function backgroundSvg(version, arch) {
   const { width, height, iconSize, app } = layout;
   // The readout sits midway between the labels' line and the window's bottom edge.
   const readoutY = Math.round((app.y + iconSize / 2 + 20 + height) / 2);
@@ -140,7 +143,7 @@ export function backgroundSvg(version) {
     perforations(imageHeight),
     arrow(),
     `<text x="${width / 2}" y="${app.y + 50}" text-anchor="middle" font-family="Helvetica Neue, sans-serif" font-size="12" fill="#66666b">Drag to install</text>`,
-    readout(`Atd · ${version} · arm64`, width / 2, readoutY),
+    readout(`Atd · ${version} · ${arch}`, width / 2, readoutY),
     '</svg>',
   ].join('');
 }
@@ -149,9 +152,9 @@ export function backgroundSvg(version) {
  * Writes `background.png` and `background@2x.png` into `dir`, the pair dmgbuild combines into one
  * HiDPI TIFF. sips (ImageIO) rasterizes the SVG at each size, so the 2x image is drawn, not scaled.
  */
-export function writeBackground(dir, version) {
+export function writeBackground(dir, version, arch) {
   const svg = join(dir, 'background.svg');
-  writeFileSync(svg, backgroundSvg(version));
+  writeFileSync(svg, backgroundSvg(version, arch));
   for (const scale of [1, 2]) {
     const name = scale === 1 ? 'background.png' : `background@${scale}x.png`;
     const size = [String((layout.height + OVERSCROLL) * scale), String(layout.width * scale)];
