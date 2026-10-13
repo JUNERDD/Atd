@@ -228,7 +228,7 @@ final class InsertionTraceOverlay {
 }
 
 /// The release film's caret colours, from its world tokens
-/// (`apps/promo-video/src/release/world/release.css`, `--r08-coral…`): the caret, its deep end,
+/// (`atd-films/src/films/release-0.8/world/release.css`, `--r08-coral…`): the caret, its deep end,
 /// its glow and its wash, which the film also selects text with. Fixed colours, as in the film:
 /// the trace is Atd's mark over another app, not a colour of that app's.
 private enum Coral {
