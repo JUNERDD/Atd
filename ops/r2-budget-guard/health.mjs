@@ -9,7 +9,7 @@ const PAUSED_FAST_WINDOW = 30 * 60000;
 const HEALTH_MAX_AGE = 5 * 60000;
 const FAILURE_GRACE = 3 * 60000;
 
-/** @typedef {{checkedAt: number, classA: number, classB: number, storageBytes: number, storageCheckedAt: number, billingPeriod: {start: string, end: string}}} HealthySnapshot */
+/** @typedef {{checkedAt: number, classA: number, classB: number, projectedOperations?: {classA: number, classB: number}, storageBytes: number, storageCheckedAt: number, billingPeriod: {start: string, end: string}}} HealthySnapshot */
 /** @typedef {{checkedAt: number, nextCheckAt?: number, successes: number, periodKey?: string}} PausedCheck */
 /** @typedef {{requestedAt: string, reasons: string[], usage: object}} PendingPause */
 /** @typedef {import('./billing.mjs').BillingState & {lastHealthy?: HealthySnapshot, failureSince?: number, retryNotBefore?: number, lastFailure?: import('./api.mjs').RequestFailure, pausedSince?: number, pausedCheck?: PausedCheck, pendingPause?: PendingPause}} MonitorState */
@@ -58,7 +58,11 @@ export function graceDeadline(state, limits, now) {
   if (
     !['classA', 'classB', 'storageBytes'].every((key) => {
       const k = /** @type {'classA'|'classB'|'storageBytes'} */ (key);
-      return Number.isFinite(last[k]) && last[k] >= 0 && last[k] < limits[k] * 0.8;
+      const value =
+        k === 'storageBytes'
+          ? last[k]
+          : Math.max(last[k], last.projectedOperations?.[k] ?? last[k]);
+      return Number.isFinite(value) && value >= 0 && value < limits[k] * 0.8;
     })
   )
     return 0;
