@@ -195,6 +195,8 @@ export async function runGuard(env, options = {}) {
     const period = billing.period;
     if (billing.source === 'fallback')
       log({ event: 'billing_cache_fallback', billing, checkedAt: now.toISOString() });
+    if (billing.source === 'rollover')
+      log({ event: 'billing_rollover', billing, checkedAt: now.toISOString() });
     const response = await request('/graphql', 'POST', {
       query: `query GuardUsage($account: string!, $start: Time!, $end: Time!) {
         viewer { accounts(filter: {accountTag: $account}) {
@@ -203,7 +205,7 @@ export async function runGuard(env, options = {}) {
           }
         }}
       }`,
-      variables: { account: env.CF_ACCOUNT_ID, start: period.start, end: now.toISOString() },
+      variables: { account: env.CF_ACCOUNT_ID, start: billing.queryStart, end: now.toISOString() },
     });
     const accounts = array(object(object(response.data).viewer).accounts);
     if (accounts.length !== 1) throw new Error('Missing account analytics');
@@ -218,6 +220,7 @@ export async function runGuard(env, options = {}) {
       ...operations,
       billingPeriod: period,
       billing,
+      operationsWindow: { start: billing.queryStart, end: now.toISOString() },
       storageBytes: /** @type {number|null} */ (null),
     };
     if (reasons.length) return pause(reasons, usage);
@@ -308,7 +311,9 @@ export async function runGuard(env, options = {}) {
       return result;
     }
     const result = {
-      event: billing.source === 'fallback' ? 'billing_degraded' : 'within_limits',
+      event: ['fallback', 'rollover'].includes(billing.source)
+        ? 'billing_degraded'
+        : 'within_limits',
       mode: env.MODE,
       usage,
       checkedAt: now.toISOString(),

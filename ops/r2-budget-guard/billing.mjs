@@ -3,6 +3,8 @@ import { ApiRequestError, ResponseValidationError } from './api.mjs';
 
 export const BILLING_REFRESH_INTERVAL = 15 * 60000;
 export const BILLING_CACHE_MAX_AGE = 30 * 60000;
+export const BILLING_ROLLOVER_MAX_AGE = 2 * 60 * 60000;
+const DAY = 86400000;
 
 /** @typedef {{start: string, end: string}} BillingPeriod */
 /** @typedef {{accountPath: string, subscriptionId: string, period: BillingPeriod, verifiedAt: number}} BillingCache */
@@ -34,7 +36,7 @@ function selectSubscription(subscriptions) {
   return matches[0];
 }
 
-/** Only absent values are recoverable; malformed or contradictory dates fail closed.
+/** Missing or stale metadata can be reread; malformed or contradictory dates fail closed.
  * @param {Record<string, unknown>} subscription @param {Date} now
  * @param {BillingCache} [cache] @param {string} [retryPath] */
 function parsePeriod(subscription, now, cache, retryPath) {
@@ -54,7 +56,7 @@ function parsePeriod(subscription, now, cache, retryPath) {
       throw new ResponseValidationError('billing_invalid_date', {
         fields: { [key]: typeof value },
       });
-    if (key === 'current_period_start' ? time > +now : time <= +now)
+    if (key === 'current_period_start' && time > +now)
       throw new ResponseValidationError('billing_period_outside_current_time');
     if (cache && +now < Date.parse(cache.period.end)) {
       const expected = key === 'current_period_start' ? cache.period.start : cache.period.end;
@@ -70,7 +72,16 @@ function parsePeriod(subscription, now, cache, retryPath) {
     });
   const start = new Date(/** @type {string} */ (fields.current_period_start));
   const end = new Date(/** @type {string} */ (fields.current_period_end));
-  if (+now - +start > 31 * 86400000)
+  if (+end <= +start) throw new ResponseValidationError('billing_period_outside_current_time');
+  if (+end <= +now)
+    throw new ResponseValidationError('billing_period_stale', {
+      retryable: true,
+      retryPath,
+      fields: { current_period_start: start.toISOString(), current_period_end: end.toISOString() },
+    });
+  if (cache && +now >= Date.parse(cache.period.end) && +start < Date.parse(cache.period.end))
+    throw new ResponseValidationError('billing_period_conflict');
+  if (+now - +start > 31 * DAY)
     throw new ResponseValidationError('billing_period_exceeds_retention');
   return { start: start.toISOString(), end: end.toISOString() };
 }
@@ -96,6 +107,29 @@ function usableCache(cache, prefix, now) {
   );
 }
 
+/** Only the exact recently verified ending cycle can bridge a delayed renewal.
+ * The query includes old usage as well as all usage after the known boundary;
+ * neither a new billing period nor a reset allowance is invented.
+ * @param {BillingCache|undefined} cache @param {string} prefix @param {number} now
+ * @param {import('./api.mjs').RequestFailure} failure */
+function usableRollover(cache, prefix, now, failure) {
+  if (!cache || cache.accountPath !== prefix || !cache.subscriptionId) return false;
+  const start = Date.parse(cache.period.start);
+  const end = Date.parse(cache.period.end);
+  return (
+    failure.kind === 'billing_period_stale' &&
+    failure.fields?.current_period_start === cache.period.start &&
+    failure.fields?.current_period_end === cache.period.end &&
+    Number.isFinite(cache.verifiedAt) &&
+    start <= cache.verifiedAt &&
+    cache.verifiedAt < end &&
+    end - cache.verifiedAt <= BILLING_REFRESH_INTERVAL &&
+    end - start <= 31 * DAY &&
+    end <= now &&
+    now < end + BILLING_ROLLOVER_MAX_AGE
+  );
+}
+
 /**
  * Billing timestamps change independently of usage. Cache only fully verified
  * metadata; using a cache must never advance verifiedAt or its hard deadline.
@@ -106,17 +140,27 @@ function usableCache(cache, prefix, now) {
 export async function resolveBilling(request, prefix, now, state, options = {}) {
   const cache = state.billing;
   const usable = usableCache(cache, prefix, +now);
-  /** @param {BillingCache} value @param {'api'|'cache'|'fallback'} source */
+  /** @param {BillingCache} value @param {'api'|'cache'|'fallback'|'rollover'} source */
   const result = (value, source) => ({
     period: value.period,
+    // A 30-day lookback plus the two-hour bridge stays below the API's 31-day
+    // query limit, even after a 31-day cycle. All post-boundary usage is included.
+    queryStart:
+      source === 'rollover'
+        ? new Date(
+            Math.max(Date.parse(value.period.start), Date.parse(value.period.end) - 30 * DAY),
+          ).toISOString()
+        : value.period.start,
     source,
     subscriptionId: value.subscriptionId,
     verifiedAt: value.verifiedAt,
     cacheAgeMs: +now - value.verifiedAt,
     expiresAt: new Date(
-      Math.min(value.verifiedAt + BILLING_CACHE_MAX_AGE, Date.parse(value.period.end)),
+      source === 'rollover'
+        ? Date.parse(value.period.end) + BILLING_ROLLOVER_MAX_AGE
+        : Math.min(value.verifiedAt + BILLING_CACHE_MAX_AGE, Date.parse(value.period.end)),
     ).toISOString(),
-    ...(source === 'fallback' ? { failure: state.billingFailure } : {}),
+    ...(['fallback', 'rollover'].includes(source) ? { failure: state.billingFailure } : {}),
   });
   if (
     usable &&
@@ -173,6 +217,13 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
     if ((state.billingRetryNotBefore ?? 0) <= +now)
       state.billingRetryNotBefore = +now + error.details.retryAfterMs;
     if (usable && cache && options.allowFallback !== false) return result(cache, 'fallback');
+    if (
+      cache &&
+      options.allowFallback !== false &&
+      !options.forceRefresh &&
+      usableRollover(cache, prefix, +now, error.details)
+    )
+      return result(cache, 'rollover');
     // A metadata TTL must not gain another analytics grace period at expiry.
     throw new BillingUnavailableError(error.details, cache, +now);
   }
