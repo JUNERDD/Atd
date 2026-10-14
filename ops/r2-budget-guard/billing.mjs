@@ -2,13 +2,15 @@
 import { ApiRequestError, ResponseValidationError } from './api.mjs';
 
 export const BILLING_REFRESH_INTERVAL = 15 * 60000;
-export const BILLING_CACHE_MAX_AGE = 30 * 60000;
+export const BILLING_CACHE_MAX_AGE = 2 * 60 * 60000;
 export const BILLING_ROLLOVER_MAX_AGE = 2 * 60 * 60000;
+const BILLING_FAILURE_REFRESH_INTERVAL = 5 * 60000;
+const BILLING_ROLLOVER_VERIFICATION_MAX_AGE = 30 * 60000;
 const DAY = 86400000;
 
 /** @typedef {{start: string, end: string}} BillingPeriod */
 /** @typedef {{accountPath: string, subscriptionId: string, period: BillingPeriod, verifiedAt: number}} BillingCache */
-/** @typedef {{billing?: BillingCache, billingFailure?: import('./api.mjs').RequestFailure, billingRetryNotBefore?: number}} BillingState */
+/** @typedef {{billing?: BillingCache, billingFailure?: import('./api.mjs').RequestFailure, billingRetryNotBefore?: number, billingRefreshNotBefore?: number}} BillingState */
 
 export class BillingUnavailableError extends Error {
   /** @param {import('./api.mjs').RequestFailure} request @param {BillingCache|undefined} cache @param {number} now */
@@ -61,6 +63,18 @@ function parsePeriod(subscription, now, cache, retryPath) {
     if (cache && +now < Date.parse(cache.period.end)) {
       const expected = key === 'current_period_start' ? cache.period.start : cache.period.end;
       if (time !== Date.parse(expected))
+        throw new ResponseValidationError('billing_period_conflict');
+    }
+    if (cache && +now >= Date.parse(cache.period.end)) {
+      const boundary = Date.parse(cache.period.end);
+      // Partial renewal fields may equal the old cycle or belong to a later
+      // cycle. Contradictory earlier dates never qualify for a bridge.
+      if (
+        (key === 'current_period_start' &&
+          time !== Date.parse(cache.period.start) &&
+          time < boundary) ||
+        (key === 'current_period_end' && time < boundary)
+      )
         throw new ResponseValidationError('billing_period_conflict');
     }
   }
@@ -117,13 +131,14 @@ function usableRollover(cache, prefix, now, failure) {
   const start = Date.parse(cache.period.start);
   const end = Date.parse(cache.period.end);
   return (
-    failure.kind === 'billing_period_stale' &&
-    failure.fields?.current_period_start === cache.period.start &&
-    failure.fields?.current_period_end === cache.period.end &&
+    failure.retryable &&
+    (failure.kind !== 'billing_period_stale' ||
+      (failure.fields?.current_period_start === cache.period.start &&
+        failure.fields?.current_period_end === cache.period.end)) &&
     Number.isFinite(cache.verifiedAt) &&
     start <= cache.verifiedAt &&
     cache.verifiedAt < end &&
-    end - cache.verifiedAt <= BILLING_REFRESH_INTERVAL &&
+    end - cache.verifiedAt <= BILLING_ROLLOVER_VERIFICATION_MAX_AGE &&
     end - start <= 31 * DAY &&
     end <= now &&
     now < end + BILLING_ROLLOVER_MAX_AGE
@@ -167,18 +182,25 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
     cache &&
     !options.forceRefresh &&
     !state.billingFailure &&
-    +now - cache.verifiedAt < BILLING_REFRESH_INTERVAL &&
-    Date.parse(cache.period.end) - +now > BILLING_REFRESH_INTERVAL
+    +now - cache.verifiedAt < BILLING_REFRESH_INTERVAL
   )
     return result(cache, 'cache');
 
   /** @type {BillingCache|undefined} */
   let verified;
+  let attempted = false;
   let expectedId = cache?.accountPath === prefix ? cache.subscriptionId : undefined;
   const listPath = `${prefix}/subscriptions`;
   try {
     if (state.billingFailure && +now < (state.billingRetryNotBefore ?? 0))
       throw new ApiRequestError(state.billingFailure);
+    if (
+      state.billingFailure &&
+      !options.forceRefresh &&
+      +now < (state.billingRefreshNotBefore ?? 0)
+    )
+      throw new ApiRequestError(state.billingFailure);
+    attempted = true;
     await request(listPath, 'GET', undefined, {
       validate(payload, path) {
         if (path === listPath && !Array.isArray(payload.result))
@@ -201,7 +223,7 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
           subscription,
           now,
           cache?.accountPath === prefix ? cache : undefined,
-          `${listPath}/${encodeURIComponent(id)}`,
+          path === listPath ? `${listPath}/${encodeURIComponent(id)}` : undefined,
         );
         verified = { accountPath: prefix, subscriptionId: id, period, verifiedAt: +now };
       },
@@ -211,12 +233,16 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
       delete state.billing;
       delete state.billingFailure;
       delete state.billingRetryNotBefore;
+      delete state.billingRefreshNotBefore;
       throw error;
     }
-    state.billingFailure = error.details;
-    if ((state.billingRetryNotBefore ?? 0) <= +now)
+    if (attempted) {
+      state.billingFailure = error.details;
       state.billingRetryNotBefore = +now + error.details.retryAfterMs;
-    if (usable && cache && options.allowFallback !== false) return result(cache, 'fallback');
+      state.billingRefreshNotBefore = +now + BILLING_FAILURE_REFRESH_INTERVAL;
+    }
+    if (usable && cache && options.allowFallback !== false && !options.forceRefresh)
+      return result(cache, 'fallback');
     if (
       cache &&
       options.allowFallback !== false &&
@@ -231,5 +257,6 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
   state.billing = verified;
   delete state.billingFailure;
   delete state.billingRetryNotBefore;
+  delete state.billingRefreshNotBefore;
   return result(verified, 'api');
 }

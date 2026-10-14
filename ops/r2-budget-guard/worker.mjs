@@ -12,6 +12,7 @@ export { billingPeriod } from './billing.mjs';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
+const RUNWAY_WINDOW = 10 * 60000;
 const FREE_ACTIONS = new Set([
   'DeleteObject',
   'DeleteObjects',
@@ -197,15 +198,24 @@ export async function runGuard(env, options = {}) {
       log({ event: 'billing_cache_fallback', billing, checkedAt: now.toISOString() });
     if (billing.source === 'rollover')
       log({ event: 'billing_rollover', billing, checkedAt: now.toISOString() });
+    const recentStart = new Date(+now - RUNWAY_WINDOW).toISOString();
     const response = await request('/graphql', 'POST', {
-      query: `query GuardUsage($account: string!, $start: Time!, $end: Time!) {
+      query: `query GuardUsage($account: string!, $start: Time!, $recentStart: Time!, $end: Time!) {
         viewer { accounts(filter: {accountTag: $account}) {
           r2OperationsAdaptiveGroups(limit: 1000, filter: {datetime_geq: $start, datetime_leq: $end}) {
             dimensions { actionType } sum { requests }
           }
+          recent: r2OperationsAdaptiveGroups(limit: 1000, filter: {datetime_geq: $recentStart, datetime_leq: $end}) {
+            dimensions { actionType } sum { requests }
+          }
         }}
       }`,
-      variables: { account: env.CF_ACCOUNT_ID, start: billing.queryStart, end: now.toISOString() },
+      variables: {
+        account: env.CF_ACCOUNT_ID,
+        start: billing.queryStart,
+        recentStart,
+        end: now.toISOString(),
+      },
     });
     const accounts = array(object(object(response.data).viewer).accounts);
     if (accounts.length !== 1) throw new Error('Missing account analytics');
@@ -214,8 +224,8 @@ export async function runGuard(env, options = {}) {
     const operations = countOperations(rows);
     Object.assign(observed, operations);
     const reasons = [];
-    if (operations.classA >= limits.classA) reasons.push('class_a_95_percent');
-    if (operations.classB >= limits.classB) reasons.push('class_b_95_percent');
+    if (operations.classA >= limits.classA) reasons.push('class_a_limit');
+    if (operations.classB >= limits.classB) reasons.push('class_b_limit');
     const usage = {
       ...operations,
       billingPeriod: period,
@@ -224,6 +234,25 @@ export async function runGuard(env, options = {}) {
       storageBytes: /** @type {number|null} */ (null),
     };
     if (reasons.length) return pause(reasons, usage);
+    // Reserve another ten minutes at the recently observed rate. Both windows
+    // share one analytics request; a hard limit always wins over missing data.
+    const recentRows = array(object(accounts[0]).recent);
+    if (recentRows.length >= 1000) throw new Error('Truncated recent operation analytics');
+    const recentOperations = countOperations(recentRows);
+    const projectedOperations = {
+      classA: operations.classA + recentOperations.classA,
+      classB: operations.classB + recentOperations.classB,
+    };
+    Object.assign(observed, projectedOperations);
+    const guardedUsage = {
+      ...usage,
+      recentOperations,
+      recentWindow: { start: recentStart, end: now.toISOString() },
+      projectedOperations,
+    };
+    if (projectedOperations.classA >= limits.classA) reasons.push('class_a_runway');
+    if (projectedOperations.classB >= limits.classB) reasons.push('class_b_runway');
+    if (reasons.length) return pause(reasons, guardedUsage);
 
     if (paused || !!previousProbe || (options.checkStorage ?? now.getUTCMinutes() === 0)) {
       // A conservative current-size guard complements delayed daily storage analytics.
@@ -252,10 +281,20 @@ export async function runGuard(env, options = {}) {
             `${prefix}/r2/buckets/${encodeURIComponent(name)}/objects?${params}`,
           );
           const entries = array(objects.result);
-          for (const entry of entries) bytes += number(object(entry).size, 'object size');
+          for (const entry of entries) {
+            const item = object(entry);
+            bytes += number(item.size, 'object size');
+            const storageClass = string(item.storage_class, 'object storage class');
+            if (storageClass !== 'Standard')
+              return pause(['non_standard_storage'], {
+                ...guardedUsage,
+                storageBytes: bytes,
+                storageClass,
+              });
+          }
           observed.storageBytes = bytes;
           if (bytes >= limits.storageBytes)
-            return pause(['storage_95_percent'], { ...usage, storageBytes: bytes });
+            return pause(['storage_limit'], { ...guardedUsage, storageBytes: bytes });
           const info = objects.result_info ? object(objects.result_info) : {};
           cursor =
             info.is_truncated !== false && typeof info.cursor === 'string' ? info.cursor : '';
@@ -269,17 +308,19 @@ export async function runGuard(env, options = {}) {
           seen.add(cursor);
         } while (cursor);
       }
-      usage.storageBytes = bytes;
+      guardedUsage.storageBytes = bytes;
     }
     const previous = monitorState.lastHealthy;
-    const storageBytes = usage.storageBytes ?? previous?.storageBytes;
+    const storageBytes = guardedUsage.storageBytes ?? previous?.storageBytes;
     if (storageBytes !== undefined) {
       monitorState.lastHealthy = {
         ...operations,
+        projectedOperations,
         billingPeriod: period,
         checkedAt: +now,
         storageBytes,
-        storageCheckedAt: usage.storageBytes !== null ? +now : (previous?.storageCheckedAt ?? 0),
+        storageCheckedAt:
+          guardedUsage.storageBytes !== null ? +now : (previous?.storageCheckedAt ?? 0),
       };
     }
     delete monitorState.failureSince;
@@ -287,12 +328,12 @@ export async function runGuard(env, options = {}) {
     delete monitorState.lastFailure;
     if (paused) {
       if (
-        operations.classA >= limits.classA * 0.8 ||
-        operations.classB >= limits.classB * 0.8 ||
-        usage.storageBytes === null ||
-        usage.storageBytes >= limits.storageBytes * 0.8
+        projectedOperations.classA >= limits.classA * 0.8 ||
+        projectedOperations.classB >= limits.classB * 0.8 ||
+        guardedUsage.storageBytes === null ||
+        guardedUsage.storageBytes >= limits.storageBytes * 0.8
       )
-        return pause(['insufficient_recovery_headroom'], usage);
+        return pause(['insufficient_recovery_headroom'], guardedUsage);
       const periodKey = JSON.stringify([billing.subscriptionId, period.start, period.end]);
       const consecutive =
         previousProbe?.periodKey === periodKey &&
@@ -303,7 +344,7 @@ export async function runGuard(env, options = {}) {
       const result = {
         event: successes >= 3 ? 'recovery_ready' : 'paused_check_passed',
         mode: env.MODE,
-        usage,
+        usage: guardedUsage,
         recoveryChecks: successes,
         checkedAt: now.toISOString(),
       };
@@ -315,7 +356,7 @@ export async function runGuard(env, options = {}) {
         ? 'billing_degraded'
         : 'within_limits',
       mode: env.MODE,
-      usage,
+      usage: guardedUsage,
       checkedAt: now.toISOString(),
     };
     log(result);

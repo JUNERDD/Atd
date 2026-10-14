@@ -148,6 +148,7 @@ export function createRequest(token, options = {}) {
         // than keeping one invocation alive or retrying before Retry-After.
         if (
           !retryable ||
+          (error instanceof ResponseValidationError && !error.retryPath) ||
           attempt === MAX_ATTEMPTS ||
           retriesRemaining === 0 ||
           retryAfterMs > MAX_RETRY_WAIT
@@ -155,13 +156,15 @@ export function createRequest(token, options = {}) {
           log({ event: 'api_request_failed', ...details });
           throw new ApiRequestError(details);
         }
-        const delayMs = Math.max(
-          retryAfterMs,
-          1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250),
-        );
+        // A successful but incomplete list gets one immediate detail read.
+        // Repeating the same metadata response wastes the usage retry budget.
+        const delayMs =
+          error instanceof ResponseValidationError
+            ? 0
+            : Math.max(retryAfterMs, 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250));
         retriesRemaining--;
         log({ event: 'api_request_retry', ...details, delayMs });
-        await wait(delayMs);
+        if (delayMs > 0) await wait(delayMs);
         if (error instanceof ResponseValidationError && error.retryPath) path = error.retryPath;
       }
     }
