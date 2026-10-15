@@ -9,7 +9,7 @@ import { ConflictError } from '../errors.js';
 import { scanContent } from '../memory/scanner.js';
 import { atdSkillsDir } from '../service-fs.js';
 import { isItemName } from '@atd/plugin-kit';
-import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
+import { loaderDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 
 /**
@@ -35,7 +35,7 @@ export async function discoverAtdSkills(): Promise<{
   const builtins = await reconcileBuiltinSkills();
   const root = atdSkillsDir();
   const loaded = loadSkillsFromDir({ dir: root, source: 'atd' });
-  const diagnostics = [...builtins.diagnostics, ...mapPiDiagnostics(loaded.diagnostics)].slice(
+  const diagnostics = [...builtins.diagnostics, ...loaderDiagnostics(loaded)].slice(
     0,
     MAX_DIAGNOSTICS,
   );
