@@ -12,10 +12,15 @@ final class MaterialEffectView: NSVisualEffectView {
   /// A rounded outline, a hairline edge and a mask; off for a titled window, which the system
   /// rounds.
   var outlined = false {
-    didSet {
-      hairline.isHidden = !outlined
-      updateShape()
-    }
+    didSet { updateShape() }
+  }
+
+  /// A titled window's edge: the hairline alone, along the system's own corners
+  /// (``NSWindow/outlineCornerRadius``). The system rounds and shadows the window, but with its
+  /// background clear it draws only the dark line outside the window, which framed the dark panel
+  /// in black; macOS 26 shows the glass's rim there instead (``GlassRimClipView``).
+  var windowEdged = false {
+    didSet { updateShape() }
   }
 
   var cornerRadius: CGFloat = 0 {
@@ -60,11 +65,13 @@ final class MaterialEffectView: NSVisualEffectView {
 
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
-    invalidateWindowShadow()
+    updateShape()
   }
 
   private func updateShape() {
-    hairline.cornerRadius = cornerRadius
+    let windowRadius = windowEdged ? window?.outlineCornerRadius : nil
+    hairline.isHidden = !outlined && windowRadius == nil
+    hairline.cornerRadius = windowRadius ?? cornerRadius
     maskImage = outlined ? Self.mask(size: bounds.size, radius: cornerRadius) : nil
     invalidateWindowShadow()
   }
@@ -101,8 +108,9 @@ final class MaterialEffectView: NSVisualEffectView {
   }
 }
 
-/// The hairline edge of a borderless material on macOS 15, where the glass's rim is missing: one
-/// point of the separator color just inside the outline, over the material's content.
+/// The hairline edge of a borderless material or a titled window on macOS 15, where the glass's
+/// rim is missing: one point of the separator color just inside the outline, over the material's
+/// content.
 private final class MaterialHairlineView: NSView {
   var cornerRadius: CGFloat = 0 {
     didSet { needsDisplay = true }

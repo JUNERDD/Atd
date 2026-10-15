@@ -102,11 +102,16 @@ extension NSRect {
 }
 
 /// The window background every page window shares: the window material
-/// (``NativeMaterialView``, Liquid Glass on macOS 26) behind a transparent web view.
+/// (``NativeMaterialView``, Liquid Glass on macOS 26) behind a transparent web view, which stays
+/// off the glass's rim (``GlassRimClipView``).
 enum GlassBackground {
   static func make(content: NSView) -> NSView {
     let material = NativeMaterialView(.window)
-    material.contentView = content
+    if #available(macOS 26, *) {
+      material.contentView = GlassRimClipView(content: content)
+    } else {
+      material.contentView = content
+    }
     return material.view
   }
 }

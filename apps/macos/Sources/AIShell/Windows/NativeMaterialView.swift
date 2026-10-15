@@ -22,7 +22,8 @@ import AppKit
 /// other apps; the capture toolbars blend within their window instead, so they blur the frozen,
 /// dimmed screenshot under them as the glass does on macOS 26 and never the live desktop.
 ///
-/// Shape and shadow on macOS 15: the system rounds and shadows a titled window. A borderless
+/// Shape and shadow on macOS 15: the system rounds and shadows a titled window, and the material
+/// draws its hairline along the window's corners (``MaterialEffectView/windowEdged``). A borderless
 /// surface is rounded by a mask image of its outline (``MaterialEffectView``) and edged with a
 /// hairline. The permission guide keeps its window's shadow, which only a mask on the window's
 /// content view shapes, so its ``view`` is the effect view itself. The other borderless surfaces
@@ -61,6 +62,7 @@ final class NativeMaterialView {
       let material = MaterialEffectView()
       Self.configure(material, for: surface)
       material.outlined = surface.isBorderless
+      material.windowEdged = surface.isTitledWindow
       effect = material
       view = surface.drawsOwnShadow ? MaterialShadowHost(effect: material) : material
     }
@@ -133,6 +135,12 @@ extension NativeMaterialView.Surface {
     case .window, .swiftUIGlass: false
     case .onboarding, .permissionGuide, .menu, .capsule: true
     }
+  }
+
+  /// A titled page window, which the system rounds and shadows but whose edge the material draws.
+  fileprivate var isTitledWindow: Bool {
+    if case .window = self { return true }
+    return false
   }
 
   /// Shadowed by the material rather than by the window (the table above).
