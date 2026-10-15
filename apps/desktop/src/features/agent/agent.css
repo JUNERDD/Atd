@@ -232,6 +232,14 @@
 .transcript-turn-live {
   content-visibility: visible;
 }
+/*
+ * A turn holding a mermaid diagram is never skipped: WebKit before Safari 18.3 (macOS 15.0-15.2)
+ * does not paint SVG text created inside a skipped `content-visibility: auto` subtree, even once it
+ * scrolls into view (WebKit bug 281570), so a diagram drawn off screen would lose its labels.
+ */
+.transcript-turn:has(.markdown-mermaid) {
+  content-visibility: visible;
+}
 /* The transcript keeps the reader's place itself when height changes above it (`holdInView`), so
  * the engine's own scroll anchoring stays out: where WebKit has it (27 and later) it would move the
  * view a second time for the same change; where it does not, there is nothing to switch off. */
