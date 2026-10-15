@@ -78,32 +78,39 @@
   min-inline-size: 0;
 }
 
+/* The keys, then the notes under them: the first launch, and what the preview builds are. */
 .download__actions {
+  display: grid;
+  gap: 20px;
+}
+
+/* The stable key leads; the preview keys follow it on the row while it holds them. On a narrow
+   screen they stack, each as wide as the column. */
+.download__keys {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 16px 32px;
+  gap: 12px 16px;
 }
 
 .download__cta {
+  flex: 1 1 auto;
   padding-inline: 28px;
 }
 
-/* The first-launch line, then the preview line, sharing the space beside the key. */
+@media (width >= 700px) {
+  .download__cta {
+    flex-grow: 0;
+  }
+}
+
 .download__notes {
   display: grid;
-  flex: 1 1 18rem;
   gap: 8px;
 }
 
 .download__note {
-  max-inline-size: 30rem;
+  max-inline-size: 36rem;
   text-wrap: pretty;
-}
-
-/* A chip family's name stays on one line, so a wrapping preview line never splits a link. */
-.download__note .download__link {
-  white-space: nowrap;
 }
 
 @media (width >= 1000px) {

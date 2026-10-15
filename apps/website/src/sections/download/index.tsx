@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
 import { Section } from '../../ui/section';
@@ -7,10 +6,10 @@ import { LedWord } from './led-word';
 import './download.css';
 
 /**
- * The finale: the name on an LED board, the download key under it, and the requirements and the
+ * The finale: the name on an LED board, the download keys under it, and the requirements and the
  * license as readouts in the legend column. The board powers on and lights column by column; the
- * key rises, the readouts decode and the notes follow: the first launch, then a link to each chip's
- * preview build.
+ * keys rise (the stable download, then one preview key per chip), the readouts decode and the notes
+ * follow: the first launch, then what the preview builds are.
  */
 export function DownloadSection() {
   const t = useCopy(downloadCopy);
@@ -44,27 +43,23 @@ export function DownloadSection() {
             <LedWord />
           </div>
           <div className="download__actions">
-            <a
-              className="btn-filled btn-large download__cta"
-              href={site.downloadUrl}
-              data-reveal="rise"
-              data-reveal-delay="420"
-            >
-              {t.cta}
-            </a>
+            <div className="download__keys" data-reveal="rise" data-reveal-delay="420">
+              <a className="btn-filled btn-large download__cta" href={site.downloadUrl}>
+                {t.cta}
+              </a>
+              {site.preview.downloads.map((download) => (
+                <a
+                  className="btn-bordered btn-large download__cta"
+                  href={download.url}
+                  key={download.url}
+                >
+                  {t.previewKey(download.chip[lang])}
+                </a>
+              ))}
+            </div>
             <div className="download__notes" data-reveal="fade" data-reveal-delay="520">
               <p className="download__note legend">{t.firstLaunch}</p>
-              <p className="download__note legend">
-                {t.preview}
-                {site.preview.downloads.map((download, index) => (
-                  <Fragment key={download.url}>
-                    {index > 0 && ' · '}
-                    <a className="download__link" href={download.url}>
-                      {download.chip[lang]}
-                    </a>
-                  </Fragment>
-                ))}
-              </p>
+              <p className="download__note legend">{t.previewNote}</p>
             </div>
           </div>
         </div>
