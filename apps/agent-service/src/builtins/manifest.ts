@@ -66,6 +66,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
     '507a3dd5b0aaf1bad22e95b69a725d70f57c4be00dbd1c0517d1705a360a177b', // v0.3.0
     '2140d55c1734d3af7e809a67179880c6d4b202c5ec6911ceebb4219746940945', // v0.4.0
     '291d1d6f98f5267e6363b205e6e4cf27929929830374e1b1420135383b6dbb2f', // v0.7.0
+    'bf8c5d94445d00bc0ea07712ca6be924617c57fad151c7a76960a6865e242bcf', // v0.8.0
   ]),
   // Version 5 drops the subagent model, which runs never apply (children use the parent run's
   // model with reasoning off), asks through ask_user what the subagent may do (its tools) and, when
@@ -76,6 +77,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
     '8d375554aef2b10a951ae07c8fa1b08e8ca14a4099fbb160c61e74ccd43217f9', // v0.2.0
     '037b52d1b12f3eb384c20b4613592d4b166fd6cd6ab88ceb656cbfea5e472e5a', // v0.3.0
     'd9b472312c181712db6891c44c99eac33ba131b5f8fa9e65ed333321a510126a', // v0.7.0
+    '8b302d312310a13a717679bf6dec11e4a4a447123ed2b238e5cca9a35b4699a9', // v0.8.0
   ]),
   // Version 4 asks through ask_user only which server to add when the request names a capability
   // and how a remote server signs in, never for commands, URLs or secrets; relies on configure_mcp
