@@ -10,6 +10,11 @@ const REDUCED = '(prefers-reduced-motion: reduce)';
  * rises, so the stage never pins on an empty desktop.
  */
 const LEAD = 0.5;
+/**
+ * How many scenes past the current one are rendered once the screen is in view, so their images
+ * have loaded by the time the scroll reaches them.
+ */
+const AHEAD = 2;
 
 /**
  * Drives the showcase from the page's scroll position. The track is one stage tall plus one step of
@@ -30,6 +35,11 @@ const LEAD = 0.5;
  * (`--stage-head`) and pins that much higher, so the screen keeps its size, and the heading fades
  * while the stage is pinned (`data-pinned`). Whatever height is still unused is shared above and
  * below (`--stage-slack`).
+ *
+ * Only the scenes the visitor is close to are rendered (`reach`): the first one until the screen
+ * comes into view, then up to `AHEAD` scenes past the current one, and a rendered scene stays
+ * rendered. The showcase hides the rest with `display: none`, so their lazy images don't load with
+ * the page, though every image stays in the prerendered markup.
  */
 export function useCaseScroll(count: number) {
   const root = useRef<HTMLDivElement>(null);
@@ -37,13 +47,17 @@ export function useCaseScroll(count: number) {
   const heading = useRef<HTMLDivElement>(null);
   const screen = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const [reach, setReach] = useState(0);
+  /** Reads the scenes' animations again and reseeks them; set while the scroll drives the showcase. */
+  const rescrub = useRef<() => void>(undefined);
 
   useEffect(() => {
     const track = root.current;
     const pinned = stage.current;
     const head = heading.current;
-    const box = screen.current?.parentElement;
-    if (!track || !pinned || !head || !box) return;
+    const display = screen.current;
+    const box = display?.parentElement;
+    if (!track || !pinned || !head || !display || !box) return;
     const parts = Array.from(pinned.querySelectorAll<HTMLElement>(':scope > *'));
     const fills = Array.from(track.querySelectorAll<HTMLElement>(FILL));
     const clock = createSceneClock(Array.from(box.querySelectorAll<HTMLElement>('.cases__slide')));
@@ -52,6 +66,7 @@ export function useCaseScroll(count: number) {
     let sticky = 0;
     let lead = 0;
     let frame = 0;
+    let awake = false;
 
     const update = () => {
       frame = 0;
@@ -62,6 +77,7 @@ export function useCaseScroll(count: number) {
       const position = distance > 0 ? (passed / distance) * count : 0;
       const index = Math.min(count - 1, Math.floor(position));
       setActive(index);
+      if (awake) setReach((reached) => Math.max(reached, index + AHEAD));
       if (pinned.hasAttribute('data-pinned') !== passed > 0.5) {
         pinned.toggleAttribute('data-pinned', passed > 0.5);
       }
@@ -107,6 +123,7 @@ export function useCaseScroll(count: number) {
     };
     track.setAttribute('data-scrub', '');
     scrub();
+    rescrub.current = scrub;
     reduced.addEventListener('change', scrub);
 
     const resize = new ResizeObserver(measure);
@@ -126,16 +143,28 @@ export function useCaseScroll(count: number) {
       { rootMargin: '50% 0px' },
     );
     near.observe(track);
+    const wake = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      awake = true;
+      wake.disconnect();
+      schedule();
+    });
+    wake.observe(display);
 
     return () => {
       track.removeAttribute('data-scrub');
       reduced.removeEventListener('change', scrub);
       resize.disconnect();
       near.disconnect();
+      wake.disconnect();
+      rescrub.current = undefined;
       window.removeEventListener('scroll', schedule);
       cancelAnimationFrame(frame);
     };
   }, [count]);
+
+  // Scenes rendered for the first time bring their own animations, which the scroll must seek too.
+  useEffect(() => rescrub.current?.(), [reach]);
 
   /**
    * Scrolls straight to a scene's step, into the rest after its choreography, so the scene shows
@@ -154,5 +183,5 @@ export function useCaseScroll(count: number) {
     window.scrollTo({ top: Math.round(top + (distance * into) / count), behavior: 'instant' });
   }
 
-  return { root, stage, heading, screen, active, select };
+  return { root, stage, heading, screen, active, reach, select };
 }

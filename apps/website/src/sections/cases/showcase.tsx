@@ -15,11 +15,12 @@ import './cases.css';
  * (tabs.tsx). The heading pins with the stage when the viewport has room for it beside a full-size
  * screen (use-case-scroll.ts). The prerendered page shows the first scene complete; once the page
  * hydrates the scroll drives it, and plays each scene's choreography as far as its step has scrolled.
+ * Scenes beyond the scroll's reach stay in the markup but unrendered, so their images wait.
  */
 export function CasesShowcase({ id }: { id: string }) {
   const t = useCopy(casesCopy);
   const lang = useLang();
-  const { root, stage, heading, screen, active, select } = useCaseScroll(cases.length);
+  const { root, stage, heading, screen, active, reach, select } = useCaseScroll(cases.length);
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
   return (
@@ -42,6 +43,7 @@ export function CasesShowcase({ id }: { id: string }) {
                 key={item.id}
                 className="cases__slide"
                 data-active={active === index ? '' : undefined}
+                data-deferred={index > reach ? '' : undefined}
                 aria-label={item.label[lang]}
                 aria-hidden={active !== index}
               >
