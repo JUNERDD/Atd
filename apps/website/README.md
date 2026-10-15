@@ -245,7 +245,7 @@ download buckets' public endpoints when the shared account approaches its allowa
 Both download buttons use `https://downloads.atd.best/latest/Atd-arm64.dmg`. This permanent URL
 tracks the newest verified stable installer without rebuilding the website for each release, and
 saves as `Atd-<version>-arm64.dmg`.
-A quiet line under the key offers the preview builds for macOS 15 or later on Apple silicon or
+Two bordered keys beside it offer the preview builds for macOS 15 or later on Apple silicon or
 Intel, `https://downloads.atd.best/rc/Atd-arm64.dmg` and `https://downloads.atd.best/rc/Atd-x64.dmg`:
 the newest published release candidate. Until a stable release supports those systems, the
 stable key and its readouts keep describing the stable download.
