@@ -30,7 +30,8 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, then deletes `dist-ssr`.
+   `dist/zh/index.html`, then `sitemap.xml` (every page with its hreflang alternates) and
+   `robots.txt`, and deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
 interactive demos and the interface showcase's scroll sequence only enhance what is already there. Canonical and Open Graph URLs
@@ -43,7 +44,8 @@ src/
   app.tsx              Page composition (nav, sections in order, footer)
   entry-client.tsx     Hydration (or a fresh render on the dev server)
   entry-server.tsx     Prerender entry: markup, head and html attributes per language
-  head.ts              Title, description, canonical, hreflang and Open Graph tags
+  head.ts              Title, description, robots, canonical, hreflang, Open Graph and X card tags
+  structured-data.ts   The schema.org graph (site, author, page, app), built from content/site.ts
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap

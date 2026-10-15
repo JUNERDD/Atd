@@ -1,22 +1,30 @@
+import { site } from './content/site.ts';
 import { htmlLang, LANGS, langPath, type Lang, type Localized } from './i18n/routes.ts';
+import { structuredData, structuredDataScript } from './structured-data.ts';
 
 interface HeadCopy {
+  /** The search result and share card title: the name, then what it is in the words people search. */
   title: string;
+  /** The search snippet and share card text, within about 160 characters (80 for Chinese). */
   description: string;
+  /** What the share image shows, for readers who cannot see it. */
+  imageAlt: string;
   ogLocale: string;
 }
 
+const shortcut = site.shortcut.join(' ');
+
 const headCopy: Localized<HeadCopy> = {
   en: {
-    title: 'Atd — A quiet agent for your Mac',
-    description:
-      'Atd is a native macOS agent panel. Summon it from anywhere with ⌘ ⇧ Space, and it runs coding and everyday tasks on your own Mac.',
+    title: `${site.name} — A quiet AI agent for your Mac`,
+    description: `${site.name} is a free, open-source AI agent for macOS. Press ${shortcut} anywhere and hand it coding and everyday tasks, with cloud or local models.`,
+    imageAlt: `${site.name}, lit in white dots on a black LED panel`,
     ogLocale: 'en_US',
   },
   zh: {
-    title: 'Atd — 安静待命的 Mac 智能体',
-    description:
-      'Atd 是一款原生 macOS 智能体面板。在任何地方按下 ⌘ ⇧ Space 即可唤出，在你自己的 Mac 上完成编程与日常任务。',
+    title: `${site.name} — 安静待命的 Mac AI 智能体`,
+    description: `${site.name} 是一款免费开源的 macOS AI 智能体。在任何地方按下 ${shortcut} 唤出面板，用云端或本地模型，在自己的 Mac 上完成编程与日常任务。`,
+    imageAlt: `黑色 LED 面板上，以白色点阵点亮的 ${site.name}`,
     ogLocale: 'zh_CN',
   },
 };
@@ -30,32 +38,53 @@ function escapeAttr(value: string): string {
 }
 
 /**
- * The `<head>` tags of one language's page: title, description, canonical and alternate language
- * links, and the Open Graph card. `siteUrl` is the production origin, without a trailing slash.
+ * The `<head>` tags of one language's page: title, description, robots directives, canonical and
+ * alternate language links, the Open Graph and X cards, and the structured data. `siteUrl` is the
+ * production origin, without a trailing slash.
  */
 export function renderHead(lang: Lang, siteUrl: string): string {
   const copy = headCopy[lang];
   const url = `${siteUrl}${langPath[lang]}`;
+  const image = `${siteUrl}/og.jpg`;
+  const title = escapeAttr(copy.title);
+  const description = escapeAttr(copy.description);
+  const imageAlt = escapeAttr(copy.imageAlt);
   const alternates = LANGS.map(
     (other) =>
       `<link rel="alternate" hreflang="${htmlLang[other]}" href="${siteUrl}${langPath[other]}" />`,
   );
+  const otherLocales = LANGS.filter((other) => other !== lang).map(
+    (other) => `<meta property="og:locale:alternate" content="${headCopy[other].ogLocale}" />`,
+  );
   const tags = [
-    `<title>${escapeAttr(copy.title)}</title>`,
-    `<meta name="description" content="${escapeAttr(copy.description)}" />`,
+    `<title>${title}</title>`,
+    `<meta name="description" content="${description}" />`,
+    `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />`,
+    `<meta name="application-name" content="${site.name}" />`,
+    `<meta name="apple-mobile-web-app-title" content="${site.name}" />`,
     `<link rel="canonical" href="${url}" />`,
     ...alternates,
     `<link rel="alternate" hreflang="x-default" href="${siteUrl}${langPath.en}" />`,
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="Atd" />`,
-    `<meta property="og:title" content="${escapeAttr(copy.title)}" />`,
-    `<meta property="og:description" content="${escapeAttr(copy.description)}" />`,
+    `<meta property="og:site_name" content="${site.name}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
     `<meta property="og:url" content="${url}" />`,
     `<meta property="og:locale" content="${copy.ogLocale}" />`,
-    `<meta property="og:image" content="${siteUrl}/og.jpg" />`,
+    ...otherLocales,
+    `<meta property="og:image" content="${image}" />`,
+    `<meta property="og:image:type" content="image/jpeg" />`,
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:alt" content="${imageAlt}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    `<meta name="twitter:image" content="${image}" />`,
+    `<meta name="twitter:image:alt" content="${imageAlt}" />`,
+    structuredDataScript(
+      structuredData(lang, siteUrl, { title: copy.title, description: copy.description, image }),
+    ),
   ];
   return tags.join('\n    ');
 }
