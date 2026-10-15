@@ -114,7 +114,16 @@ jobs:
               exit 1
             fi
             output marketing_version "$version"
-            output build_version "$version"
+            # CFBundleVersion must not contain `-`, where Sparkle stops comparing, so a prerelease
+            # builds without it: 0.9.1-rc.1 as 0.9.1rc.1, the form artifacts and rehearsal runs take.
+            # Its identifiers must start with a letter for Sparkle to order it before the release
+            # (0.9.1rc.1 < 0.9.1), where 0.9.1-0.2 would build as 0.9.10.2, a later version.
+            build_version=${version//-/}
+            if ! [[ "$build_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([A-Za-z][0-9A-Za-z]*(\.[0-9A-Za-z]+)*)?$ ]]; then
+              echo "::error::Version '$version' has no build version that sorts before its release; start its prerelease part with a letter, such as -rc.1."
+              exit 1
+            fi
+            output build_version "$build_version"
             publish=true
             # A push releases only a version bump; other edits to package.json (dependencies,
             # scripts) do not. An unreadable previous manifest falls through to the tag check.
@@ -260,8 +269,8 @@ jobs:
       - name: Bundle the service and the renderer
         run: pnpm --filter @atd/macos bundle
       # build.mjs maps the architecture, sets the x64 feed URL and overrides the versions. The
-      # build version is passed only when it differs: project.yml derives it from the marketing
-      # version, which keeps a release's prerelease version (with `-`) building as before.
+      # build version is passed only when it differs from the marketing version, as a prerelease's
+      # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
       - name: Build the Release app
         run: |
           args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION")
