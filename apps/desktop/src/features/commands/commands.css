@@ -83,6 +83,10 @@
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
+  background: var(--ata-surface-card);
+}
+.parameter-item:hover {
+  background: var(--ata-surface-ghost-hover);
 }
 .parameter-field {
   overflow-wrap: anywhere;
@@ -235,12 +239,13 @@
   box-shadow: var(--command-lift-shadow);
   transition: box-shadow 230ms ease-out 120ms;
 }
-/* The held row keeps its resting look and only lifts: the window surface's own colour, made opaque
- * so the rows and fields it passes over never show through, and a soft shadow. It stays above its
- * siblings until it is back in its slot. */
+/* The held row keeps its resting look and only lifts: its card fill over the window surface's own
+ * colour, made opaque so the rows and fields it passes over never show through, and a soft
+ * shadow. It stays above its siblings until it is back in its slot. */
 .command-management-row[data-hold='lifted'] {
   z-index: 1;
-  background: var(--ata-glass-fill-opaque);
+  background: linear-gradient(var(--ata-surface-card), var(--ata-surface-card))
+    var(--ata-glass-fill-opaque);
   box-shadow: var(--command-lift-shadow);
 }
 /* No hover wash while held: the pointer is always over the row then, and the wash read as a

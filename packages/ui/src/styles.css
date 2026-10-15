@@ -34,6 +34,10 @@
   --ata-surface-settings-sidebar: rgb(0 0 0 / 3%);
   --ata-border-settings-sidebar: rgb(0 0 0 / 6%);
   --ata-material-selected: rgb(0 0 0 / 8%);
+  /* Figma card/surface: the fill of cards and alerts (`Card`, `Alert`), which stand on the
+     translucent panel. Light keeps the opaque card; dark takes a wash, where the opaque `--card`
+     read as a darker slab than the panel around it. */
+  --ata-surface-card: var(--card);
   /* The hover wash of ghost controls and rows on the window surface, where the opaque `--muted`
      fill would all but match the light panel. */
   --ata-surface-ghost-hover: rgb(0 0 0 / 5%);
@@ -102,6 +106,8 @@
   --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
   --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
   --ata-material-selected: rgb(255 255 255 / 12%);
+  /* Figma card/surface (dark): `bg-input/40`, the input's 15% white at 40%. */
+  --ata-surface-card: color-mix(in oklab, var(--input) 40%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;
   --ata-syntax-variable: #60a5fa;

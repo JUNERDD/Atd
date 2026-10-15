@@ -335,6 +335,7 @@ button.model-config-row-nav:disabled:hover {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
+  background: var(--ata-surface-card);
 }
 .provider-form [data-slot='select-trigger'] {
   width: 100%;

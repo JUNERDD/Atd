@@ -843,6 +843,7 @@
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
+  background: var(--ata-surface-card);
 }
 /*
  * A skill folder as a file browser on the skill's details page: the tree beside the open file,
@@ -860,6 +861,7 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
+  background: var(--ata-surface-card);
 }
 @container (max-width: 32rem) {
   .skill-browser {
@@ -1103,8 +1105,11 @@
 .settings-permission-option {
   cursor: pointer;
 }
+/* The chosen tier takes the shared selected wash: the Item's `muted` fill sat below the card fill
+ * of the other tiers, so the chosen one read as the dimmest. */
 .settings-permission-option[data-variant='muted'] {
   border-color: var(--border);
+  background: var(--ata-material-selected);
 }
 .settings-permission-option:has(input:disabled) {
   cursor: not-allowed;
@@ -1115,7 +1120,7 @@
   cursor: inherit;
 }
 /* Item only styles hover for links; an enabled option row fills like the other settings rows. */
-.settings-permission-option:hover:not(:has(input:disabled)) {
+.settings-permission-option:hover:not([data-variant='muted'], :has(input:disabled)) {
   background: var(--ata-surface-ghost-hover);
 }
 .settings-permission-option [data-slot='label'] {
@@ -1257,6 +1262,7 @@
 .settings-shell-allowlist-card {
   min-width: 0;
   overflow: hidden;
+  background: var(--ata-surface-card);
 }
 .settings-shell-allowlist-form {
   padding: 6px;
