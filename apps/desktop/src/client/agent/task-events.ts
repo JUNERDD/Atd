@@ -23,6 +23,7 @@ const TASK: EventChange = { kind: 'task' };
  * to the stream (`TaskClient` replays the events a load answered before). Only the state changes
  * here; the caller publishes it. Transcript and context events apply only while `task` has its
  * transcript. Events that carry no task state (`notice`, `child.transcript.patch`) are no-ops.
+ * Answer revisions are not task state: `TaskClient` keeps them (`store`, `trackRevisions`).
  */
 export function applyEventState(task: CachedTask, event: ServiceEvent): EventChange {
   const data = event.data as Record<string, unknown>;
@@ -110,16 +111,8 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
     tasks.host.emit({ type: 'notice', notice: { taskId: event.taskId, text, kind } });
     return;
   }
-  // A resolved request needs no revision, even when a load already dropped it from the task.
-  if (event.type === 'confirm.resolved')
-    tasks.revisions.delete(typeof data['requestId'] === 'string' ? data['requestId'] : '');
   // A load answered after this event already holds its state (`TaskLoads`).
   if (tasks.loads.covers(event)) return;
-  // Answering a request needs its revision, whether or not the task is cached.
-  if (event.type === 'confirm.requested') {
-    const raw = data['request'] as Parameters<typeof mapRequest>[0] & { revision: number };
-    tasks.revisions.set(raw.id, { revision: raw.revision, taskId: raw.taskId, runId: raw.runId });
-  }
   const cached = tasks.entries.get(event.taskId);
   if (!cached) return;
   const change = applyEventState(cached, event);

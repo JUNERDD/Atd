@@ -245,7 +245,8 @@ export class TaskClient<S> {
 
   /**
    * Caches `entry` as `summary`'s task, with the revisions answering needs of the requests it
-   * still lists: a request resolved after the summary was built is not pending any more.
+   * still lists: a request resolved after the summary was built is not pending any more, and one
+   * raised after it, which a load replays onto `entry`, has its revision from `trackRevisions`.
    */
   private store(summary: TaskSummary, entry: CachedTask): CachedTask {
     this.entries.set(summary.task.id, entry);
@@ -257,6 +258,21 @@ export class TaskClient<S> {
           runId: request.runId,
         });
     return entry;
+  }
+
+  /**
+   * Keeps the revisions answering needs in step with the stream, cached task or not: the requests
+   * a load replays onto its answer (a task's first load too) have their revisions only from here.
+   */
+  private trackRevisions(event: ServiceEvent) {
+    const data = event.data as Record<string, unknown>;
+    // A resolved request needs no revision, even when a load already dropped it from the task.
+    if (event.type === 'confirm.resolved')
+      this.revisions.delete(typeof data['requestId'] === 'string' ? data['requestId'] : '');
+    // A load answered after this request was raised listed it with its revision, if still pending.
+    if (event.type !== 'confirm.requested' || this.loads.covers(event)) return;
+    const raw = data['request'] as TaskSummary['requests'][number];
+    this.revisions.set(raw.id, { revision: raw.revision, taskId: raw.taskId, runId: raw.runId });
   }
 
   /** The transcript the cache follows for a task: a summary load keeps it. */
@@ -319,6 +335,7 @@ export class TaskClient<S> {
   private async onEvent(event: ServiceEvent) {
     this.loads.record(event);
     try {
+      this.trackRevisions(event);
       // A task this cache has not seen yet (created by another client after the summaries): its
       // summary already contains the event, and a view that loads it gets the transcript.
       if (!this.entries.has(event.taskId)) return await this.refreshSummary(event.taskId);
