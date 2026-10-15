@@ -89,10 +89,21 @@
   padding-inline: 28px;
 }
 
-.download__note {
+/* The first-launch line, then the preview line, sharing the space beside the key. */
+.download__notes {
+  display: grid;
   flex: 1 1 18rem;
+  gap: 8px;
+}
+
+.download__note {
   max-inline-size: 30rem;
   text-wrap: pretty;
+}
+
+/* A chip family's name stays on one line, so a wrapping preview line never splits a link. */
+.download__note .download__link {
+  white-space: nowrap;
 }
 
 @media (width >= 1000px) {

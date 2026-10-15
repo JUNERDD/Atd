@@ -1,5 +1,6 @@
+import { Fragment } from 'react';
 import { site } from '../../content/site';
-import { useCopy } from '../../i18n/lang';
+import { useCopy, useLang } from '../../i18n/lang';
 import { Section } from '../../ui/section';
 import { downloadCopy } from './copy';
 import { LedWord } from './led-word';
@@ -8,10 +9,12 @@ import './download.css';
 /**
  * The finale: the name on an LED board, the download key under it, and the requirements and the
  * license as readouts in the legend column. The board powers on and lights column by column; the
- * key rises, the readouts decode and the first-launch line follows.
+ * key rises, the readouts decode and the notes follow: the first launch, then a link to each chip's
+ * preview build.
  */
 export function DownloadSection() {
   const t = useCopy(downloadCopy);
+  const lang = useLang();
 
   return (
     <Section id="download" title={t.title} lede={t.lede}>
@@ -49,9 +52,20 @@ export function DownloadSection() {
             >
               {t.cta}
             </a>
-            <p className="download__note legend" data-reveal="fade" data-reveal-delay="520">
-              {t.firstLaunch}
-            </p>
+            <div className="download__notes" data-reveal="fade" data-reveal-delay="520">
+              <p className="download__note legend">{t.firstLaunch}</p>
+              <p className="download__note legend">
+                {t.preview}
+                {site.preview.downloads.map((download, index) => (
+                  <Fragment key={download.url}>
+                    {index > 0 && ' · '}
+                    <a className="download__link" href={download.url}>
+                      {download.chip[lang]}
+                    </a>
+                  </Fragment>
+                ))}
+              </p>
+            </div>
           </div>
         </div>
       </div>
