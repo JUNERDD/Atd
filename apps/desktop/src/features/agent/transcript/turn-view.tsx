@@ -80,7 +80,7 @@ export const TurnView = memo(function TurnView({
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
   return (
-    <section className={sectionClass}>
+    <section className={sectionClass} data-turn-id={turn.id}>
       {turn.user && <UserMessage user={turn.user} run={run} last={last} copyable={copyable} />}
       {(liveFooter || settled) && (
         <TurnHeader

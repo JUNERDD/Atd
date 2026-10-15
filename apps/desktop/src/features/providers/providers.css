@@ -234,15 +234,14 @@ button.model-config-row-nav:disabled:hover {
   white-space: nowrap;
   font-weight: 500;
 }
-/* A long list (many offered context windows) scrolls between the back header and the footnote
-   within the popover's bounded height; the padding keeps focus outlines inside the scroller. */
+/* A long list (many offered context windows) scrolls, in its ScrollArea, between the back header
+   and the footnote within the popover's bounded height; the padding keeps focus outlines inside
+   the scroller. */
 .model-config-effort-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-height: 0;
   padding: 4px;
-  overflow-y: auto;
 }
 .model-config-effort-option {
   display: flex;
@@ -320,9 +319,6 @@ button.model-config-row-nav:disabled:hover {
 }
 /* Item styles hover only for links; the card fills like the other settings rows. */
 .provider-directory-card:hover {
-  background: var(--muted);
-}
-.dark .provider-directory-card:hover {
   background: var(--ata-surface-ghost-hover);
 }
 /* The leading group of the footer; `.editor-footer > div` pushes the trailing one to the end. */

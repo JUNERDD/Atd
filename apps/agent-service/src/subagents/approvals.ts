@@ -3,6 +3,12 @@ import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import { createGate, type Gate } from '../harness/gate.js';
 import type { SessionFactoryDeps } from '../pi-session.js';
 import { effectiveTaskTier } from '../tasks/tier.js';
+import {
+  collectPermissionLookups,
+  type PermissionLookup,
+  type PermissionLookups,
+} from '../transcript-blocks.js';
+import { fromServiceBranch } from '../transcript.js';
 import { isUnattendedRun } from '../unattended.js';
 import type { RuntimeAgent } from './agents.js';
 
@@ -58,5 +64,25 @@ export function childApprovals(
         setStatus: (status) => deps.setStatus(child.runId, status),
       }),
     };
+  };
+}
+
+/**
+ * The parent branch's permission outcomes, which every child reprojection reads. Pi moves the
+ * leaf with each entry it appends and each branch switch, and entries never change once
+ * appended, so the outcomes are collected again only when the leaf moved.
+ */
+export function parentPermissionLookups(
+  sessions: SessionManager,
+): () => ReadonlyMap<string, PermissionLookup> {
+  let cached: { leafId: string | null; lookups: PermissionLookups } | undefined;
+  return () => {
+    const leafId = sessions.getLeafId();
+    if (cached?.leafId !== leafId)
+      cached = {
+        leafId,
+        lookups: collectPermissionLookups(fromServiceBranch(sessions.getBranch())),
+      };
+    return cached.lookups;
   };
 }

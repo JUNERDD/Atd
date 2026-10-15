@@ -16,7 +16,8 @@ export interface SubmitContext {
 /**
  * Starts a run, or queues a follow-up on the task's active run, and resolves with the task's
  * detail. `holder` is the view that submitted; it now shows the task, so its transcript stays
- * loaded (see `TaskClient.detail`). A saved command runs through the service's command launch.
+ * loaded (see `TaskClient.changedDetail`). A saved command runs through the service's command
+ * launch.
  */
 export async function submitTask<S>(
   tasks: TaskClient<S>,
@@ -44,7 +45,7 @@ export async function submitTask<S>(
     const text = request.input.text.trim();
     if (!text) throw new Error('Enter a follow-up.');
     await http.queue(previous.id, { text, mode: 'followUp' });
-    return tasks.detail(previous.id, holder);
+    return tasks.changedDetail(previous.id, holder);
   }
   const { text } = request.input;
   if (!text.trim() && !request.input.files.length)
@@ -117,7 +118,7 @@ async function runSavedCommand<S>(
 
 /** The submitted task's detail, after every client view hears of the change. */
 async function settled<S>(tasks: TaskClient<S>, taskId: string, holder?: S): Promise<TaskDetail> {
-  const detail = await tasks.detail(taskId, holder);
+  const detail = await tasks.changedDetail(taskId, holder);
   tasks.host.broadcast();
   return detail;
 }

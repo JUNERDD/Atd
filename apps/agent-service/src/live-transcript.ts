@@ -31,14 +31,25 @@ const APPENDED_AFTER_END = new Set<AgentMessage['role']>([
 ]);
 
 /**
- * Window in which streamed deltas (`message_update`, `tool_execution_update`) coalesce into one
- * reprojection, about one patch per display frame at 30 fps. Every other event flushes first.
+ * Window in which streamed deltas (`message_update`, `tool_execution_update`, and the start and
+ * end of the calls a codemode script makes, which may come in bursts of up to its step limit)
+ * coalesce into one reprojection, about one patch per display frame at 30 fps. Every other event
+ * flushes first.
  */
 export const STREAM_COALESCE_MS = 33;
+
+/**
+ * Serialized length (UTF-16 code units) above which a snapshot patch goes out as a `reload`
+ * marker instead of inline: every block of a long session with large tool outputs can exceed the
+ * shell's 64 MiB frame limit, and a frame that size stalls every connection it is sent to.
+ */
+export const INLINE_SNAPSHOT_MAX_LENGTH = 4 * 1024 * 1024;
 
 export interface TranscriptPatchData {
   revision: number;
   snapshot: boolean;
+  /** A snapshot too large to inline: `blocks` is empty, and clients load the transcript. */
+  reload?: true;
   blocks: ServiceBlock[];
   removed: string[];
 }
@@ -150,7 +161,12 @@ export class LiveTranscript {
         );
       if (event.type === 'tool_execution_end' && event.parentToolCallId)
         this.codemodeSteps.end(event.toolCallId, resultParts(event.result), event.isError);
-      if (event.type === 'message_update' || event.type === 'tool_execution_update')
+      if (
+        event.type === 'message_update' ||
+        event.type === 'tool_execution_update' ||
+        ((event.type === 'tool_execution_start' || event.type === 'tool_execution_end') &&
+          event.parentToolCallId)
+      )
         this.streamed.schedule();
       else this.reproject(false);
     });
@@ -207,6 +223,14 @@ export class LiveTranscript {
     this.blocks = next;
     if (!patch.blocks.length && !patch.removed.length && !snapshot) return;
     this.revision += 1;
+    if (snapshot && JSON.stringify(next).length > INLINE_SNAPSHOT_MAX_LENGTH)
+      return this.sink.publish(runId, {
+        revision: this.revision,
+        snapshot,
+        reload: true,
+        blocks: [],
+        removed: [],
+      });
     this.sink.publish(runId, {
       revision: this.revision,
       snapshot,

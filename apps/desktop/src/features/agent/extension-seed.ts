@@ -1,4 +1,4 @@
-import type { ExtensionSessionKind } from '../../client/agent/bridge';
+import type { ExtensionSessionKind } from '../../client/agent/session-handoff';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import { serialize, type ComposerDraft } from '../composer-editor/draft';
 

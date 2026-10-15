@@ -227,7 +227,7 @@ overrides:
 
 patchedDependencies:
   '@earendil-works/pi-ai@1.1.0': 14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96
-  pi-subagents@0.76.1: a2aed01fa4388ab295806fed07eb8ddf42853bc9cc5c0fd633b8fc5baf9892da
+  pi-subagents@0.76.1: 78821542d73d110112e37f32609d478233fdec675c3875a2936342b4f2424430
 
 importers:
 
@@ -304,7 +304,7 @@ importers:
         version: 6.8.8
       pi-subagents:
         specifier: 0.76.1
-        version: 0.76.1(patch_hash=a2aed01fa4388ab295806fed07eb8ddf42853bc9cc5c0fd633b8fc5baf9892da)(@earendil-works/pi-agent-core@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-ai@1.1.0(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-coding-agent@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-tui@1.1.0)(typebox@1.3.36)
+        version: 0.76.1(patch_hash=78821542d73d110112e37f32609d478233fdec675c3875a2936342b4f2424430)(@earendil-works/pi-agent-core@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-ai@1.1.0(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-coding-agent@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-tui@1.1.0)(typebox@1.3.36)
       pi-web-access:
         specifier: 0.37.0
         version: 0.37.0(@earendil-works/pi-ai@1.1.0(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-coding-agent@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-tui@1.1.0)(supports-color@10.2.2)(typebox@1.3.36)(zod@4.5.4)
@@ -372,6 +372,9 @@ importers:
       '@tanstack/react-query':
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
+      '@tanstack/react-virtual':
+        specifier: 3.14.13
+        version: 3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@testing-library/dom':
         specifier: 10.4.2
         version: 10.4.2
@@ -4249,6 +4252,15 @@ packages:
     resolution: {integrity: sha512-Zz70EgjahNI7aCz8BZxM3vUGU44ycxEAzMuCUjLeA7SVhhOkg3ZgPjPJPvHjs6Rmky/dtmnu1WzjGHNHmhCoZQ==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@tanstack/react-virtual@3.14.13':
+    resolution: {integrity: sha512-JbDTAwtzZ99aOeCrAfW5EsE5KSq5RWh6Af2dtFwyLIIk48Ja7vm6n4axu/43T3vfjFnEGJalxJ1wyYjSQD6bSg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/virtual-core@3.17.11':
+    resolution: {integrity: sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g==}
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -11781,6 +11793,14 @@ snapshots:
       '@tanstack/query-core': 5.104.1
       react: 19.3.0
 
+  '@tanstack/react-virtual@3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.11
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+
+  '@tanstack/virtual-core@3.17.11': {}
+
   '@testing-library/dom@10.4.2':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -15168,7 +15188,7 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  pi-subagents@0.76.1(patch_hash=a2aed01fa4388ab295806fed07eb8ddf42853bc9cc5c0fd633b8fc5baf9892da)(@earendil-works/pi-agent-core@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-ai@1.1.0(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-coding-agent@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-tui@1.1.0)(typebox@1.3.36):
+  pi-subagents@0.76.1(patch_hash=78821542d73d110112e37f32609d478233fdec675c3875a2936342b4f2424430)(@earendil-works/pi-agent-core@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-ai@1.1.0(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-coding-agent@1.1.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.0(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@earendil-works/pi-tui@1.1.0)(typebox@1.3.36):
     dependencies:
       '@js-temporal/polyfill': 0.5.1
       acorn: 8.18.0

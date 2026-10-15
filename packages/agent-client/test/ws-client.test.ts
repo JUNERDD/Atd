@@ -33,13 +33,17 @@ function fakeTransport() {
 
 function recordingHandlers() {
   const disconnects: string[] = [];
+  const closeCodes: (number | undefined)[] = [];
   const handlers: StreamHandlers = {
     onSnapshot: () => undefined,
     onSummaries: () => undefined,
     onEvent: () => undefined,
-    onDisconnect: (reason) => disconnects.push(reason),
+    onDisconnect: (reason, code) => {
+      disconnects.push(reason);
+      closeCodes.push(code);
+    },
   };
-  return { handlers, disconnects };
+  return { handlers, disconnects, closeCodes };
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -49,7 +53,7 @@ afterEach(() => mock.timers.reset());
 
 test('resumes the stream position through the injected transport after a relay restart close', () => {
   const { factory, connections } = fakeTransport();
-  const { handlers, disconnects } = recordingHandlers();
+  const { handlers, disconnects, closeCodes } = recordingHandlers();
   const client = new AgentStreamClient(
     { baseUrl: 'http://127.0.0.1:4000', token: 'unused', transport: factory },
     handlers,
@@ -68,6 +72,7 @@ test('resumes the stream position through the injected transport after a relay r
 
   connections[0]?.events.onClose(1012, 'service restart');
   assert.deepEqual(disconnects, ['Stream closed (1012 service restart).']);
+  assert.deepEqual(closeCodes, [1012]);
   mock.timers.tick(249);
   assert.equal(connections.length, 1);
   mock.timers.tick(1);

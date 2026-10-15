@@ -1,7 +1,9 @@
 import { Type, type Static } from 'typebox';
 import {
+  APP_APPEARANCES,
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
+  type AppAppearance,
   type AppLanguage,
   type ExcludedApp,
   type SelectionToolbarActivation,
@@ -9,7 +11,7 @@ import {
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
-import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/bridge';
+import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/session-handoff';
 import type { PermissionTier } from './agent/permission-schema';
 
 /**
@@ -42,8 +44,9 @@ export type ShortcutBindings = Record<ShortcutAction, string>;
 
 /** Languages the UI ships translations for; the list lives in the contracts all clients share. */
 export const LANGUAGE_CODES = APP_LANGUAGES;
-export { resolveLanguage } from '@atd/agent-contracts';
+export { APP_APPEARANCES, resolveLanguage } from '@atd/agent-contracts';
 export type {
+  AppAppearance,
   AppLanguage,
   ExcludedApp,
   SelectionToolbarActivation,
@@ -84,6 +87,10 @@ export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
 /** Apps the selection toolbar can be kept away from (`SelectionToolbarSettingsSchema`). */
 export const MAX_EXCLUDED_APPS = 100;
 
+export function isAppAppearance(value: unknown): value is AppAppearance {
+  return typeof value === 'string' && (APP_APPEARANCES as readonly string[]).includes(value);
+}
+
 export function isAppLanguage(value: unknown): value is AppLanguage {
   return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);
 }
@@ -92,6 +99,8 @@ export interface SettingsSnapshot {
   connections: Connection[];
   defaultConnectionId: string | null;
   language: AppLanguage;
+  /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
+  appearance: AppAppearance | null;
   shortcuts: ShortcutBindings;
   pinned: boolean;
   /** macOS window preference; the web client always reports false. */
@@ -192,6 +201,8 @@ export interface SettingsBridge {
   get: () => Promise<SettingsSnapshot>;
   providers: ProviderBridge;
   setLanguage: (language: AppLanguage) => Promise<SettingsSnapshot>;
+  /** Pins the light or dark scheme; null follows the system. */
+  setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;
   setPermissionTier: (tier: PermissionTier) => Promise<SettingsSnapshot>;

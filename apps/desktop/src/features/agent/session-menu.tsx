@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
-import type { TaskDetail } from '../../client/agent/bridge';
+import type { TaskContextState } from '@atd/agent-contracts';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { compactBlock } from './compaction/compact-availability';
 import { useCompactTask } from './compaction/use-compact-task';
@@ -23,15 +24,20 @@ import { useTaskFolders } from './use-task-folders';
  * each of which a click revokes for later runs (the running one keeps reading). The folder group
  * shows only while the task has folders, labeled in place like the other grouped menus.
  */
-export function SessionMenu({ detail }: { detail: TaskDetail }): ReactElement {
+export function SessionMenu({
+  task,
+  context,
+}: {
+  task: AgentTask;
+  context: TaskContextState | null;
+}): ReactElement {
   const { t } = useTranslation('panel');
   const [renameOpen, setRenameOpen] = useState(false);
   const copyId = useCopyTaskId();
   const { compact, pending } = useCompactTask();
-  const task = detail.task;
   const { folders, revoke, revoking } = useTaskFolders(task.id);
   // A blocked item stays listed with its reason, like the matching quick command.
-  const blocked = compactBlock(task, detail.context);
+  const blocked = compactBlock(task, context);
 
   return (
     <>

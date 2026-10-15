@@ -1,13 +1,6 @@
 import { useState } from 'react';
-import { Copy, Ellipsis, History, Pencil, SearchIcon, Trash2 } from 'lucide-react';
+import { History, SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@atd/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@atd/ui/components/dropdown-menu';
-import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
   Empty,
   EmptyDescription,
@@ -16,9 +9,7 @@ import {
   EmptyTitle,
 } from '@atd/ui/components/empty';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
-import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { matchFields, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,65 +21,18 @@ import {
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
 import type { AgentTask } from '../../client/agent/task-schema';
-import { isActive } from '../../client/agent/task-schema';
-import { IconButton } from '../../components/icon-button';
-import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { agentApi } from './use-agent';
 import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
+import { HistoryList, type HistoryActions } from './history-list';
+import { historyRows, type HistoryEntry } from './history-rows';
 import { HistoryViewMenu } from './history-view-menu';
-import { groupHistory, rowDate, sortHistory, stampOf } from './history-view';
+import { groupHistory, sortHistory } from './history-view';
 import { RenameTaskDialog } from './rename-task-dialog';
-import { TaskOriginBadge } from './task-origin-badge';
 import { useCopyTaskId } from './use-copy-task-id';
 import { useHistoryView } from './use-history-view';
+import { useTaskContentSearch } from './use-task-content-search';
 import { messageOf } from '../../lib/errors';
-
-/** Row actions, shown by the More dropdown and by the right-click menu (`item-menu.tsx`). */
-function TaskMenuItems({
-  task,
-  onRename,
-  onCopyId,
-  onDelete,
-}: {
-  task: AgentTask;
-  onRename: () => void;
-  onCopyId: () => void;
-  onDelete: () => void;
-}) {
-  const { t } = useTranslation('tasks');
-  return (
-    <>
-      <ItemMenuItem onSelect={onRename}>
-        <Pencil />
-        {t('history.rename')}
-      </ItemMenuItem>
-      <ItemMenuItem onSelect={onCopyId}>
-        <Copy />
-        {t('history.copyId')}
-      </ItemMenuItem>
-      <ItemMenuSeparator />
-      <ItemMenuItem
-        variant="destructive"
-        disabled={isActive(task.runs.at(-1)?.status)}
-        onSelect={onDelete}
-      >
-        <Trash2 />
-        {t('history.delete')}
-      </ItemMenuItem>
-    </>
-  );
-}
-
-type HistoryEntry = {
-  task: AgentTask;
-  /** Shown only when it says something: every finished task would otherwise read "Completed". */
-  statusLabel: string;
-  match: FieldsMatch<'title' | 'status'> | null;
-};
-
-/** Run states that need the user's attention read in the destructive color, beside their text. */
-const ERROR_STATUSES = new Set(['failed', 'interrupted']);
 
 export function TaskHistory({
   tasks,
@@ -107,6 +51,7 @@ export function TaskHistory({
   const [view, setView] = useHistoryView();
   const [error, setError] = useState('');
   const query = search.query.trim();
+  const content = useTaskContentSearch(query, tasks);
   // Sections are dated against when the history opened, so they hold still while it is browsed.
   const [now] = useState(() => new Date());
   function statusLabelOf(task: AgentTask) {
@@ -114,12 +59,21 @@ export function TaskHistory({
     if (status === 'completed') return '';
     return status ? t(`status.${status}`) : t('history.importedDraft');
   }
-  // The query filters and marks the visible title and status; the view orders and sections them.
+  // The query filters and marks the visible title and status, and lists a task whose conversation
+  // matches with that message, which shows only where it is why the task is listed (a title match
+  // would mostly repeat itself); the view orders and sections them, never by relevance.
   const visible = tasks.flatMap((task): HistoryEntry[] => {
     const statusLabel = statusLabelOf(task);
     const match = matchFields(query, { title: task.title, status: statusLabel || undefined });
-    return match || !query ? [{ task, statusLabel, match }] : [];
+    const hit = query ? (content.hits.get(task.id) ?? null) : null;
+    if (!match && !hit && query) return [];
+    return [{ task, statusLabel, match, content: match ? null : hit }];
   });
+  // "No results" waits for the conversation search, so it never flashes before a late match.
+  const settledEmpty = !visible.length && !content.pending;
+  let searchStatus = '';
+  if (content.pending) searchStatus = t('history.searchingConversations');
+  else if (content.failed) searchStatus = t('history.conversationSearchFailed');
   const sections = groupHistory(sortHistory(visible, view.sort, i18n.language), view, now);
   /** The section's heading; the ungrouped list has none. */
   function sectionTitle(section: (typeof sections)[number]): string | null {
@@ -143,6 +97,14 @@ export function TaskHistory({
         return null;
     }
   }
+  const rows = historyRows(
+    sections.map((section) => ({ title: sectionTitle(section), items: section.items })),
+  );
+  const actions: HistoryActions = {
+    rename: (task) => setRenaming({ task, open: true }),
+    copyId: (task) => void copyId(task),
+    delete: (task) => setDeleting({ task, open: true }),
+  };
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>
       <div className="flex items-center gap-2 pb-3">
@@ -154,97 +116,8 @@ export function TaskHistory({
         />
         <HistoryViewMenu view={view} onChange={setView} />
       </div>
-      <ScrollArea className="-mr-3 min-h-0 flex-1" gutter="stable" scrollShadow>
-        <div className="history-sections">
-          {sections.map((section) => {
-            const title = sectionTitle(section);
-            return (
-              <section
-                key={section.id}
-                className="history-section"
-                aria-labelledby={title === null ? undefined : `history-section-${section.id}`}
-              >
-                {title !== null && (
-                  <h3 id={`history-section-${section.id}`} className="history-section-title">
-                    {title}
-                  </h3>
-                )}
-                <ul className="task-list">
-                  {section.items.map(({ task, statusLabel, match }) => {
-                    const status = task.runs.at(-1)?.status;
-                    const progressing =
-                      status === 'queued' || status === 'running' || status === 'stopping';
-                    const stamp = stampOf(task, view.sort);
-                    const updated = new Date(stamp);
-                    const menuActions = {
-                      task,
-                      onRename: () => setRenaming({ task, open: true }),
-                      onCopyId: () => void copyId(task),
-                      onDelete: () => setDeleting({ task, open: true }),
-                    };
-                    return (
-                      <ItemContextMenu key={task.id} menu={<TaskMenuItems {...menuActions} />}>
-                        <li className="history-row">
-                          <Button
-                            variant="ghost"
-                            className="task-row min-w-0"
-                            onClick={() => onChoose(task.id)}
-                          >
-                            <span className="task-row-head">
-                              <span className="task-row-title" title={task.title}>
-                                <HighlightedText text={task.title} ranges={match?.ranges.title} />
-                              </span>
-                              {task.origin && <TaskOriginBadge origin={task.origin} />}
-                            </span>
-                            <span className="task-row-meta">
-                              <time dateTime={stamp} title={updated.toLocaleString()}>
-                                {rowDate(updated, now, i18n.language, view.group === 'date')}
-                              </time>
-                              {statusLabel && (
-                                <span
-                                  className="task-row-status"
-                                  data-tone={
-                                    status && ERROR_STATUSES.has(status) ? 'error' : undefined
-                                  }
-                                >
-                                  {/* Shimmer animates plain text only, so a running status stays unmarked. */}
-                                  {progressing ? (
-                                    <Shimmer as="span">{statusLabel}</Shimmer>
-                                  ) : (
-                                    <HighlightedText
-                                      text={statusLabel}
-                                      ranges={match?.ranges.status}
-                                    />
-                                  )}
-                                </span>
-                              )}
-                            </span>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                label={t('history.more')}
-                                aria-label={t('history.moreActionsFor', { title: task.title })}
-                                className="history-row-more"
-                                tooltipDismissOnClick
-                              >
-                                <Ellipsis />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <TaskMenuItems {...menuActions} />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </li>
-                      </ItemContextMenu>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
-        {!visible.length && (
+      <HistoryList rows={rows} view={view} now={now} actions={actions} onChoose={onChoose}>
+        {settledEmpty && (
           <Empty className="px-4 py-10">
             <EmptyHeader>
               <EmptyMedia variant="icon">{tasks.length ? <SearchIcon /> : <History />}</EmptyMedia>
@@ -257,7 +130,9 @@ export function TaskHistory({
             </EmptyHeader>
           </Empty>
         )}
-      </ScrollArea>
+      </HistoryList>
+      {/* Always mounted, so assistive technology announces the search's progress and failure. */}
+      <output className="block text-xs text-muted-foreground">{searchStatus}</output>
       {error && (
         <p role="alert" className="text-xs text-destructive">
           {error}

@@ -7,83 +7,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn preset b27GcrRo: Rhea / Neutral / Inter / Lucide. */
+/* shadcn preset b27GcrRo: Rhea / Neutral / Inter / Lucide. `:root` carries the light theme and
+   `.dark` the dark one; the page sets `.dark` on the root element from `prefers-color-scheme`
+   (`apps/desktop/src/theme/color-scheme.ts`), which the shell drives from the appearance setting.
+   A nested `.dark` scope (the welcome guide's art) keeps the dark theme under any root. */
 :root {
-  color-scheme: dark;
-  /* One renderer-owned surface across platforms; native blur remains visible through the tint. */
-  --ata-surface-panel: rgb(24 24 24 / 80%);
+  color-scheme: light;
+  /* One renderer-owned surface across platforms; native blur remains visible through the tint.
+     The shell's window splash mirrors both themes' values (and the opaque ones below). */
+  --ata-surface-panel: rgb(248 248 248 / 80%);
   --ata-backdrop-blur: 20px;
   /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
      fill), `--ata-glass-blur` (default: the shared backdrop blur) and `--ata-glass-shadow` for its
      fallback material, and `--ata-glass-material` for WebKit's system material (default
      `-apple-system-glass-material`; a quieter surface may take `-apple-system-glass-material-subdued`).
      An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
-  --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --ata-glass-shadow-default:
-    0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
-    0 0 0 1px var(--ata-glass-edge);
-  --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
-  --ata-glass-fill-opaque: rgb(24 24 24);
+  --ata-glass-fill-inactive: rgb(252 252 252 / 96%);
+  --ata-glass-fill-opaque: rgb(248 248 248);
   /* Glass controls (`glass-control`, `glass-state`): the fallback fill and shadow of control-sized
-     glass, and the washes a control draws inside its bounds on hover, and when pressed or open. */
-  --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
-  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
-  --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
-  /* A scroll area's resting thumb: the border color on solid surfaces; on glass, where that 10%
-     line all but vanishes into the material, a stronger wash (set by `surface-glass` and
-     `glass-host`). Hover and press keep the shared muted-foreground steps above both. */
-  --ata-scroll-thumb: var(--border);
-  --ata-glass-scroll-thumb: color-mix(in srgb, var(--foreground) 28%, transparent);
+     glass. In light a control lifts as a white pill; in dark as the secondary fill. */
+  --ata-glass-control-fill: rgb(255 255 255 / 72%);
+  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%), 0 0 0 1px var(--ata-glass-edge);
   /* The settings drawer's fallback fill, where its subdued system glass is off. */
-  --ata-material-settings-content: rgb(24 24 24 / 10%);
-  --ata-surface-settings-content: var(--ata-material-settings-content);
-  /* The settings sidebar card: a faint lift over the window surface, with a quiet hairline. */
-  --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
-  --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
-  --ata-material-selected: rgb(255 255 255 / 12%);
-  /* Drawn text selection in the CodeMirror editors, matching the native one elsewhere on the page:
-     WebKit paints that from the system highlight at 80% opacity, which follows the accent colour
-     and the page's dark appearance. */
-  --ata-text-selection: color-mix(in srgb, Highlight 80%, transparent);
-  --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
-  --ata-text-secondary: #a1a1a1;
-  --ata-syntax-variable: #60a5fa;
-  /* Figma text/match (#80b7fb): search matches in lists, the composer's blue made a little paler. */
-  --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, white);
-  --ata-border-subtle: rgb(255 255 255 / 14%);
+  --ata-material-settings-content: rgb(248 248 248 / 30%);
+  /* The settings sidebar card: a faint tint over the window surface, with a quiet hairline. */
+  --ata-surface-settings-sidebar: rgb(0 0 0 / 3%);
+  --ata-border-settings-sidebar: rgb(0 0 0 / 6%);
+  --ata-material-selected: rgb(0 0 0 / 8%);
+  /* The hover wash of ghost controls and rows on the window surface, where the opaque `--muted`
+     fill would all but match the light panel. */
+  --ata-surface-ghost-hover: rgb(0 0 0 / 5%);
+  /* Secondary text and icons: at least 4.5:1 on the opaque panel in either theme. */
+  --ata-text-secondary: #6b6b6b;
+  --ata-syntax-variable: #2563eb;
+  /* Figma text/match: search matches in lists, the composer's blue pulled away from the surface
+     (darker in light, paler in dark). */
+  --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, black);
+  --ata-border-subtle: rgb(0 0 0 / 12%);
   /* Progress fill, such as the todo ring's completed arc. */
-  --ata-status-progress: #22c55e;
-  /* Added and removed lines as text (diff counts and diff lines): the progress green pulled toward
-     the foreground so small text stays readable on light and dark surfaces. Declared on the root
-     element, which also carries `.dark`, so each theme's foreground resolves here. */
-  --ata-diff-added: color-mix(in oklab, var(--ata-status-progress) 65%, var(--foreground));
-  --ata-diff-removed: var(--destructive);
-  /* The one surface every transcript detail reads on (tool cards, reasoning, compaction summaries,
-     approval and answer details): a faint wash of the muted fill under a hairline, so details sit
-     a step above the panel without a second, darker slab for code. */
-  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
-  --ata-border-detail: var(--border);
-  /* Warning status, such as context usage nearing its limit. */
-  --ata-status-warning: #f59e0b;
-  /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its
-     own colour), and the ring over a code block or diagram, whose own fill would hide a tint. */
-  --ata-quote-highlight: color-mix(in srgb, #facc15 35%, transparent);
-  --ata-quote-ring: color-mix(in srgb, #facc15 70%, transparent);
-  --ata-radius-panel: 22px;
+  --ata-status-progress: #16a34a;
+  /* Warning status, such as context usage nearing its limit; also used as text, so the light value
+     keeps 4.5:1 on the panel. */
+  --ata-status-warning: #b45309;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
-  --activity-connector: #3c3c3c;
-  /* Figma surface/raised and radius/control: the activity result card's own surface. */
-  --ata-surface-raised: #262626;
-  --ata-radius-control: 8px;
-  /* Figma code/surface: a code block's own surface (the `pierre-dark` theme's background), which
+  --activity-connector: #d4d4d4;
+  /* Figma surface/raised: the activity result card's own surface. */
+  --ata-surface-raised: #ffffff;
+  /* Figma code/surface: a code block's own surface (the active `pierre` theme's background), which
      the block's hover actions also stand on. */
-  --ata-code-surface: #0a0a0a;
+  --ata-code-surface: #ffffff;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
+  /* Popovers fall back to the panel surface, as in dark, so glass keeps one fill per theme. */
+  --popover: var(--ata-surface-panel);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
@@ -114,6 +92,27 @@
 }
 
 .dark {
+  color-scheme: dark;
+  --ata-surface-panel: rgb(24 24 24 / 80%);
+  --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
+  --ata-glass-fill-opaque: rgb(24 24 24);
+  --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
+  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
+  --ata-material-settings-content: rgb(24 24 24 / 10%);
+  --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
+  --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
+  --ata-material-selected: rgb(255 255 255 / 12%);
+  --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
+  --ata-text-secondary: #a1a1a1;
+  --ata-syntax-variable: #60a5fa;
+  /* Figma text/match (#80b7fb). */
+  --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, white);
+  --ata-border-subtle: rgb(255 255 255 / 14%);
+  --ata-status-progress: #22c55e;
+  --ata-status-warning: #f59e0b;
+  --activity-connector: #3c3c3c;
+  --ata-surface-raised: #262626;
+  --ata-code-surface: #0a0a0a;
   --background: #171a1f;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -147,15 +146,63 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Tokens derived from the theme tokens above. A custom property resolves its `var()`s where it is
+   declared and descendants inherit the result, so these are declared on every theme scope: each
+   resolves its own theme, including a `.dark` scope nested under a light root. */
+:root,
+.dark {
+  --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-shadow-default:
+    0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
+    0 0 0 1px var(--ata-glass-edge);
+  /* The washes a glass control draws inside its bounds on hover, and when pressed or open. */
+  --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
+  /* A scroll area's resting thumb: the border color on solid surfaces; on glass, where that 10%
+     line all but vanishes into the material, a stronger wash (set by `surface-glass` and
+     `glass-host`). Hover and press keep the shared muted-foreground steps above both. */
+  --ata-scroll-thumb: var(--border);
+  --ata-glass-scroll-thumb: color-mix(in srgb, var(--foreground) 28%, transparent);
+  --ata-surface-settings-content: var(--ata-material-settings-content);
+  /* Drawn text selection in the CodeMirror editors, matching the native one elsewhere on the page:
+     WebKit paints that from the system highlight at 80% opacity, which follows the accent colour
+     and the page's appearance. */
+  --ata-text-selection: color-mix(in srgb, Highlight 80%, transparent);
+  /* Added and removed lines as text (diff counts and diff lines): the progress green pulled toward
+     the foreground so small text stays readable on light and dark surfaces. */
+  --ata-diff-added: color-mix(in oklab, var(--ata-status-progress) 65%, var(--foreground));
+  --ata-diff-removed: var(--destructive);
+  /* The one surface every transcript detail reads on (tool cards, reasoning, compaction summaries,
+     approval and answer details): a faint wash of the muted fill under a hairline, so details sit
+     a step above the panel without a second, darker slab for code. */
+  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
+  --ata-border-detail: var(--border);
+  /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its
+     own colour), and the ring over a code block or diagram, whose own fill would hide a tint. */
+  --ata-quote-highlight: color-mix(in srgb, #facc15 35%, transparent);
+  --ata-quote-ring: color-mix(in srgb, #facc15 70%, transparent);
+  --ata-radius-panel: 22px;
+  /* Figma radius/control. */
+  --ata-radius-control: 8px;
+}
+
 /* Reduced transparency: the panel surface (and the popover fill that follows it) turns opaque. The
    shell reports the setting as `data-reduced-transparency` (`window-state.ts`), since WebKit has no
-   `prefers-reduced-transparency`; the media query covers engines that do. */
+   `prefers-reduced-transparency`; the media query covers engines that do. Each theme takes its own
+   opaque surface; the dark rules follow the light ones and outrank them. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
+    --ata-surface-panel: rgb(248 248 248);
+  }
+  .dark {
     --ata-surface-panel: rgb(24 24 24);
   }
 }
 :root[data-reduced-transparency='true'] {
+  --ata-surface-panel: rgb(248 248 248);
+}
+:root.dark[data-reduced-transparency='true'],
+:root[data-reduced-transparency='true'] .dark {
   --ata-surface-panel: rgb(24 24 24);
 }
 
@@ -362,6 +409,20 @@
     box-shadow:
       inset 0 0 0 1px var(--ring),
       inset 0 0 0 4px color-mix(in oklab, var(--ring) 30%, transparent);
+  }
+}
+
+/*
+ * A native scroller with no bar, for a strip that scrolls sideways within a control's own height
+ * (a tab list): WebKit's classic scroller, shown when a mouse is connected or "Show scroll bars" is
+ * Always, would cover the control. `scrollbar-width` reaches WebKit in 18.2; earlier versions hide
+ * the bar through the pseudo-element. Content that scrolls on its own uses `ScrollArea` instead.
+ */
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

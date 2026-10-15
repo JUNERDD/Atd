@@ -5,7 +5,6 @@ import {
   errorMessage,
   isTerminalStatus,
   rootExecutionId,
-  type ChildTranscriptResponse,
   type PermissionTier,
   type QueueState,
   type RunStatus,
@@ -41,7 +40,6 @@ import { lastAssistant } from './task-view.js';
 import {
   abortSubagentsForTask,
   disposeSubagentsForTask,
-  readChildTranscript,
   rebindSubagentsForRun,
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
@@ -176,20 +174,6 @@ export class TaskRunner {
       onEnd: () => {
         this.compacting = false;
       },
-    });
-  }
-
-  /** One child session's transcript (child-transcript-read.ts); null when the task has no such child. */
-  async childTranscript(childKey: string): Promise<ChildTranscriptResponse | null> {
-    const live = this.slot.live;
-    const parentSessionFile = live?.sessionFile || this.ctx.ledger.task(this.taskId).sessionFile;
-    if (!parentSessionFile) return null;
-    return readChildTranscript({
-      taskId: this.taskId,
-      childKey,
-      parentSessionFile,
-      ...(live ? { parentBranch: () => live.manager.getBranch() } : {}),
-      log: this.ctx.log,
     });
   }
 

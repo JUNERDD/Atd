@@ -1,4 +1,4 @@
-import type { HostPlugin, HostPluginItem, PluginItemKind } from '@atd/plugin-kit';
+import type { HostPlugin, HostPluginItem, PluginDiagnostic, PluginItemKind } from '@atd/plugin-kit';
 import { listAtdAgents } from '../atd-agents/catalog.js';
 import { readAgentHarness } from '../atd-agents/harness.js';
 import { isBuiltinSkill } from '../builtins/manifest.js';
@@ -10,6 +10,7 @@ import { readDisabledSkillNames } from '../skills/harness.js';
 import { skillProfilePaths } from '../skills/profile.js';
 import { discoverUserAgentSkills } from '../skills/user-agents.js';
 import type { Logger } from '../logging.js';
+import { hostSkillDiagnostics } from './host-skill-diagnostics.js';
 
 /** The plugins the service synthesizes from its own stores. Installed ids never contain `:`. */
 export const CORE_PLUGIN = 'builtin:core';
@@ -39,6 +40,8 @@ export interface HostCatalog {
   descriptions: ReadonlyMap<string, string>;
   /** Display titles of items whose name is not what users read: Personal commands (by id). */
   titles: ReadonlyMap<string, string>;
+  /** Loader problems remain visible even when an invalid skill contributes no catalog item. */
+  diagnostics: ReadonlyMap<string, PluginDiagnostic[]>;
 }
 
 /**
@@ -146,5 +149,10 @@ export async function loadHostPlugins(
     toggleable: true,
     items: shared.skills.map((skill) => skillItem(SHARED_PLUGIN, skill)),
   };
-  return { plugins: [core, user, sharedPlugin], descriptions, titles };
+  return {
+    plugins: [core, user, sharedPlugin],
+    descriptions,
+    titles,
+    diagnostics: hostSkillDiagnostics(atd.diagnostics, shared.diagnostics),
+  };
 }

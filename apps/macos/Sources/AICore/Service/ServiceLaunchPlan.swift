@@ -45,9 +45,10 @@ public struct ServiceLaunchPlan: Equatable, Sendable {
     return environment
   }
 
-  /// A file-system path without the trailing slash a directory URL carries.
+  /// Resolve a bundle URL's base before making a process argument, and drop a directory's
+  /// trailing slash. Older Foundation versions do not resolve the base in `path(percentEncoded:)`.
   public static func path(of url: URL) -> String {
-    let path = url.path(percentEncoded: false)
+    let path = url.absoluteURL.path(percentEncoded: false)
     return path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
   }
 

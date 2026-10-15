@@ -17,6 +17,7 @@ import {
   type TaskTranscript,
 } from './service-map';
 import { applyTaskEvent } from './task-events';
+import { TaskLoads } from './task-replay';
 import { applySummaries } from './task-summaries';
 
 /** The slice of a service connection the task cache uses; desktop and web both provide it. */
@@ -42,8 +43,8 @@ export interface CachedTask extends TaskSummaryState {
   transcript: TaskTranscript | null;
 }
 
-/** Loads of one task that answered older than its latest event, before one is kept anyway. */
-const LOAD_ATTEMPTS = 3;
+/** A cached task while its transcript is loaded. */
+type LoadedTask = CachedTask & { transcript: TaskTranscript };
 
 /**
  * Service task cache + detail/events, shared by the desktop main process and the web client. The
@@ -61,8 +62,8 @@ export class TaskClient<S> {
   /** Loads in flight, so a burst of events for one task loads it once. */
   private readonly reloading = new Map<string, Promise<void>>();
   private readonly summarizing = new Map<string, Promise<void>>();
-  /** The stream position of each task's latest event, which a cached load must not predate. */
-  private readonly seen = new Map<string, { epoch: number; seq: number }>();
+  /** Keeps loads in step with the stream events of their tasks. */
+  readonly loads = new TaskLoads();
 
   constructor(
     private readonly connection: TaskConnection,
@@ -90,7 +91,7 @@ export class TaskClient<S> {
 
   clear() {
     this.entries.clear();
-    this.seen.clear();
+    this.loads.clear();
     this.revisions.clear();
     this.holds.clear();
     this.children.clear();
@@ -113,11 +114,34 @@ export class TaskClient<S> {
       this.holds.set(holder, taskId);
       if (previous !== undefined && previous !== taskId) this.unload(previous);
     }
-    const snapshot = await this.fresh(
+    return this.loads.load(
       taskId,
       async () => (await this.http().snapshot(taskId)).snapshot,
+      (snapshot): LoadedTask => ({ ...mapSummary(snapshot), transcript: mapTranscript(snapshot) }),
+      (snapshot, state) => {
+        this.store(snapshot, { ...state, transcript: this.held(taskId) ? state.transcript : null });
+        return structuredClone(taskDetail(state, state.transcript));
+      },
     );
-    return structuredClone(this.cacheSnapshot(snapshot));
+  }
+
+  /**
+   * `detail` after this client changed the task through the service (a submitted or queued run).
+   * When `holder` already shows the task, its cached transcript follows the stream, so only the
+   * summary loads (with the new run) instead of the whole transcript again.
+   */
+  async changedDetail(taskId: string, holder?: S): Promise<TaskDetail> {
+    if (
+      holder === undefined ||
+      this.holds.get(holder) !== taskId ||
+      !this.entries.get(taskId)?.transcript
+    )
+      return this.detail(taskId, holder);
+    await this.loadSummary(taskId);
+    const entry = this.entries.get(taskId);
+    // The view moved to another task meanwhile, which unloaded this one's transcript.
+    if (!entry?.transcript) return this.detail(taskId);
+    return structuredClone(taskDetail(entry, entry.transcript));
   }
 
   /** A view went away (a closed or reloaded window); the task it showed may unload. */
@@ -130,33 +154,29 @@ export class TaskClient<S> {
   /** Forgets a deleted task: its entry, the holds on it and its subagent transcripts. */
   forget(taskId: string) {
     this.entries.delete(taskId);
-    this.seen.delete(taskId);
+    this.loads.forget(taskId);
     for (const [holder, held] of this.holds) if (held === taskId) this.holds.delete(holder);
     this.children.forgetTask(taskId);
   }
 
-  /** Caches a snapshot's summary, and its transcript while the task is held. */
+  /** Caches a stream snapshot's summary, and its transcript while the task is held. */
   cacheSnapshot(snapshot: TaskSnapshot): TaskDetail {
-    const entry = this.storeSummary(snapshot);
+    this.loads.forget(snapshot.task.id);
     const transcript = mapTranscript(snapshot);
-    entry.transcript = this.held(snapshot.task.id) ? transcript : null;
+    const entry = this.store(snapshot, {
+      ...mapSummary(snapshot),
+      transcript: this.held(snapshot.task.id) ? transcript : null,
+    });
     return taskDetail(entry, transcript);
   }
 
-  /** Caches a task's summary, keeping its loaded transcript. */
+  /** Caches a task's summary from the stream, keeping its loaded transcript. */
   storeSummary(summary: TaskSummary): CachedTask {
-    const entry: CachedTask = {
+    this.loads.forget(summary.task.id);
+    return this.store(summary, {
       ...mapSummary(summary),
-      transcript: this.entries.get(summary.task.id)?.transcript ?? null,
-    };
-    this.entries.set(summary.task.id, entry);
-    for (const request of summary.requests)
-      this.revisions.set(request.id, {
-        revision: request.revision,
-        taskId: request.taskId,
-        runId: request.runId,
-      });
-    return entry;
+      transcript: this.cachedTranscript(summary),
+    });
   }
 
   /**
@@ -185,14 +205,20 @@ export class TaskClient<S> {
 
   /** Loads a task's summary (not its transcript) and publishes it. */
   async loadSummary(taskId: string): Promise<void> {
-    const { summary } = await this.fresh(taskId, () => this.http().summary(taskId));
-    this.storeSummary(summary);
-    this.publishTask(taskId);
+    await this.loads.load(
+      taskId,
+      () => this.http().summary(taskId),
+      ({ summary }): CachedTask => ({ ...mapSummary(summary), transcript: null }),
+      ({ summary }, state) => {
+        this.store(summary, { ...state, transcript: this.cachedTranscript(summary) });
+        this.publishTask(taskId);
+      },
+    );
   }
 
   /**
    * `loadSummary` for stream events: a burst for one task loads once. An event that arrives
-   * meanwhile is covered, since a summary older than the task's latest event is loaded again.
+   * meanwhile is covered, since the load in flight replays it onto its answer.
    */
   refreshSummary(taskId: string): Promise<void> {
     return this.once(this.summarizing, taskId, () => this.loadSummary(taskId));
@@ -217,6 +243,27 @@ export class TaskClient<S> {
     if (frame.scope === 'task') await this.loadSummary(frame.taskId).catch(() => undefined);
   }
 
+  /**
+   * Caches `entry` as `summary`'s task, with the revisions answering needs of the requests it
+   * still lists: a request resolved after the summary was built is not pending any more.
+   */
+  private store(summary: TaskSummary, entry: CachedTask): CachedTask {
+    this.entries.set(summary.task.id, entry);
+    for (const request of summary.requests)
+      if (entry.requests.some((item) => item.id === request.id))
+        this.revisions.set(request.id, {
+          revision: request.revision,
+          taskId: request.taskId,
+          runId: request.runId,
+        });
+    return entry;
+  }
+
+  /** The transcript the cache follows for a task: a summary load keeps it. */
+  private cachedTranscript(summary: TaskSummary): TaskTranscript | null {
+    return this.entries.get(summary.task.id)?.transcript ?? null;
+  }
+
   private held(taskId: string): boolean {
     for (const held of this.holds.values()) if (held === taskId) return true;
     return false;
@@ -225,24 +272,6 @@ export class TaskClient<S> {
   private unload(taskId: string) {
     const entry = this.entries.get(taskId);
     if (entry && !this.held(taskId)) entry.transcript = null;
-  }
-
-  /**
-   * Loads until the answer is not older than the task's latest event. A load requested before
-   * one of the task's events arrived can answer after that event was applied; caching it would
-   * roll the event back (a finished run shown as still running, with no later event to correct
-   * it), so it is requested again, a bounded number of times.
-   */
-  private async fresh<T extends { epoch: number; seq: number }>(
-    taskId: string,
-    load: () => Promise<T>,
-  ): Promise<T> {
-    for (let attempt = 1; ; attempt += 1) {
-      const loaded = await load();
-      const seen = this.seen.get(taskId);
-      const stale = seen !== undefined && seen.epoch === loaded.epoch && seen.seq > loaded.seq;
-      if (!stale || attempt === LOAD_ATTEMPTS) return loaded;
-    }
   }
 
   private once(inFlight: Map<string, Promise<void>>, taskId: string, load: () => Promise<void>) {
@@ -288,7 +317,7 @@ export class TaskClient<S> {
   }
 
   private async onEvent(event: ServiceEvent) {
-    this.seen.set(event.taskId, { epoch: event.epoch, seq: event.seq });
+    this.loads.record(event);
     try {
       // A task this cache has not seen yet (created by another client after the summaries): its
       // summary already contains the event, and a view that loads it gets the transcript.

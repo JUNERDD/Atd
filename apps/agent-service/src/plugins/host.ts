@@ -118,6 +118,8 @@ export class PluginHost {
       state,
       secretsSet: await this.secretsSet(installed),
     });
+    for (const plugin of catalog.plugins)
+      plugin.diagnostics.push(...(host.diagnostics.get(plugin.id) ?? []));
     return { catalog, installed, state, host };
   }
 

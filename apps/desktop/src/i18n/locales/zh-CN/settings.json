@@ -18,7 +18,8 @@
     "automations": "自动化",
     "memory": "记忆",
     "apps": "应用",
-    "general": "通用"
+    "general": "通用",
+    "about": "关于"
   },
   "drawer": {
     "title": "设置导航",
@@ -60,6 +61,7 @@
       "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
       "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
+      "appearance": "主题 外观 配色 颜色 浅色 深色 亮色 暗色 夜间 日间 白天 黑夜 跟随系统 自动 light dark theme",
       "panelPlacement": "位置 显示位置 出现 打开 居中 中央 中间 右下角 角落 记住 上次 拖动 移动 显示器 屏幕 多屏 position center corner remember display",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
@@ -82,7 +84,9 @@
       "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 辅助功能 selection toolbar",
       "selectionToolbarActivation": "按住 按键 连按 两次 开关 切换 修饰键 呼出 触发 方式 工具栏 选择 hold option command shift",
       "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
-      "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps"
+      "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
+      "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
+      "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装"
     }
   },
   "providers": {
@@ -229,9 +233,21 @@
     }
   },
   "shortcuts": {
+    "appearance": {
+      "title": "主题",
+      "description": "跟随系统，或始终使用浅色或深色。",
+      "label": "主题",
+      "saveFailed": "无法保存主题。",
+      "modes": {
+        "system": "跟随系统",
+        "light": "浅色",
+        "dark": "深色"
+      }
+    },
     "groups": {
       "global": "全局",
       "inApp": "应用内",
+      "appearance": "外观",
       "window": "窗口"
     },
     "actions": {
@@ -347,7 +363,7 @@
     "fileBinary": "该文件不是文本，因此不显示内容。",
     "fileTooLarge": "该文件过大，无法显示。",
     "detailModel": "模型",
-    "sourceAtdAgents": "~/.atd/agents",
+    "sourceAtdAgents": "个人子代理",
     "agentToolsFromTask": "沿用任务的工具",
     "agentToolsWithinTask": "{{tools}}（不超出任务的工具）",
     "agentPermissionsAction": "权限…",
@@ -426,8 +442,8 @@
     "deleteTitle": "删除 {{name}}？",
     "deleted": "已删除 {{name}}。",
     "removed": "已移除 {{name}}。",
-    "deleteSkillDescription": "它在 ~/.atd/skills 中的文件将被删除，之后的运行无法再使用它。此操作无法撤销。",
-    "deleteAgentDescription": "它在 ~/.atd/agents 中的文件和已保存的权限设置将被删除，之后的运行无法再使用它。此操作无法撤销。",
+    "deleteSkillDescription": "这个个人技能的文件将被删除，之后的运行无法再使用它。此操作无法撤销。",
+    "deleteAgentDescription": "这个个人子代理的文件和已保存的权限设置将被删除，之后的运行无法再使用它。此操作无法撤销。",
     "builtinModified": "已修改",
     "builtinUpdateAvailable": "有新版本",
     "restoreAction": "恢复为内置版本",
@@ -490,7 +506,7 @@
       "builtinCurrent": "与应用自带的版本一致"
     },
     "agentPage": {
-      "addDescription": "定义一个任务可以委派工作的专家子代理，保存在 ~/.atd/agents 中。",
+      "addDescription": "定义一个个人子代理，供之后的任务委派工作。",
       "create": "创建子代理",
       "save": "保存更改",
       "namePlaceholder": "code-reviewer",
@@ -783,5 +799,22 @@
     "rolesNote": "限定单轮可用的子代理角色。修改对下一轮生效。",
     "mcpTitle": "MCP 服务",
     "emptyRoles": "未配置任何角色。"
+  },
+  "about": {
+    "description": "当前运行的版本、更新，以及官网和源代码链接。",
+    "version": "版本 {{version}}（{{build}}）",
+    "versionOnly": "版本 {{version}}",
+    "versionUnavailable": "无法获取版本",
+    "developmentVersion": "{{version}} · 开发版",
+    "updatesTitle": "检查更新",
+    "checkForUpdates": "检查更新…",
+    "updatesNote": "更新会在后台下载，并在退出 Atd 时安装。",
+    "updatesUnavailable": "开发版不会自动更新。请从官网安装正式版以获取更新。",
+    "links": {
+      "title": "链接",
+      "website": "官网",
+      "repository": "源代码",
+      "issues": "报告问题"
+    }
   }
 }

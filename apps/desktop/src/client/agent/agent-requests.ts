@@ -1,4 +1,5 @@
 import {
+  searchTasks,
   taskContextBreakdown,
   type AgentClientOptions,
   type AgentHttpClient,
@@ -273,6 +274,8 @@ export class AgentRequests<S> {
         return compactLiveTask(this.options(), request.taskId, request.instructions);
       case 'contextBreakdown':
         return (await taskContextBreakdown(this.options(), request.taskId)).breakdown;
+      case 'searchTasks':
+        return searchTasks(this.options(), request.search);
       case 'forkTask': {
         const { taskId, entryId, title } = request;
         const fork = await forkLiveTask(this.options(), taskId, {

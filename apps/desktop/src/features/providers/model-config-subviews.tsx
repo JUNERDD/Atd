@@ -2,6 +2,7 @@ import type { KeyboardEvent, ReactNode, Ref } from 'react';
 import { Check, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { ModelThinkingLevel } from '../../client/providers/schema';
 
 /** The drill-in header every subview shares: a back button and the subview's title. */
@@ -92,9 +93,11 @@ export function ConfigOptionList({
   children: ReactNode;
 }) {
   return (
-    <div ref={listRef} className="model-config-effort-list">
-      {children}
-    </div>
+    <ScrollArea>
+      <div ref={listRef} className="model-config-effort-list">
+        {children}
+      </div>
+    </ScrollArea>
   );
 }
 

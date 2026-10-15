@@ -2114,13 +2114,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attach text files"
+            "value" : "Attach files"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "附加文本文件"
+            "value" : "附加文件"
           }
         }
       }

@@ -2,7 +2,7 @@
  * Calls of the native bridge (`contract.ts`): the JS → Swift requests Swift answers, with the
  * schemas their params and results use; the file calls and their records live in `file-calls.ts`,
  * the window and app presence calls in `window-calls.ts`, the command options in
- * `command-options.ts`.
+ * `command-options.ts`, the app's identity and updates in `update-calls.ts`.
  * Like the rest of the contract, the export script loads this file with Node's type stripping, so
  * it imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
  * erasable TypeScript syntax.
@@ -11,6 +11,7 @@ import { Type, type TSchema } from 'typebox';
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeTextCalls } from './text-calls.ts';
+import { NativeUpdateCalls } from './update-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
 import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
@@ -242,6 +243,7 @@ export const NativeCalls = {
   ...NativeFileCalls,
   ...NativeTextCalls,
   ...NativeCommandOptionsCalls,
+  ...NativeUpdateCalls,
   /**
    * Confirms a launch approval in a native dialog the page cannot forge. Only the server id
    * crosses: Swift reads what would run from the service (`GET /v1/admin/approvals/mcp/:serverId`),

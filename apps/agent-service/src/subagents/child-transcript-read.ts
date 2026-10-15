@@ -1,10 +1,6 @@
-import { readFile, realpath } from 'node:fs/promises';
+import { realpath } from 'node:fs/promises';
 import path from 'node:path';
-import {
-  parseSessionEntries,
-  SessionManager,
-  type SessionEntry,
-} from '@earendil-works/pi-coding-agent';
+import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import {
   parseChildExecutionId,
   subagentChildKey,
@@ -13,6 +9,7 @@ import {
 } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { inside } from '../service-fs.js';
+import { isMissing, readSessionBranch } from '../session-branch-read.js';
 import { collectBlockLookups } from '../transcript-blocks.js';
 import { fromServiceBranch, projectServiceBlocks } from '../transcript.js';
 import { liveChildTranscript } from './child-transcript.js';
@@ -84,26 +81,6 @@ function findChild(
 }
 
 /**
- * A session's current branch, read without writing: SessionManager.open appends a newline to an
- * unterminated last line, writes a header into an empty file and rewrites older-version files,
- * while the session may still be running. Null when the file does not exist yet (Pi writes it
- * lazily), and empty when it holds no entries.
- */
-async function readSessionBranch(file: string): Promise<SessionEntry[] | null> {
-  let content: string;
-  try {
-    content = await readFile(file, 'utf8');
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  const entries = parseSessionEntries(content);
-  if (!entries.length) return [];
-  if (entries[0]?.type !== 'session') throw new Error('The file is not a Pi session.');
-  return SessionManager.inMemory(undefined, undefined, entries).getBranch();
-}
-
-/**
  * The folder pi-subagents keeps a session's child sessions in (extension/index.js
  * `getSubagentSessionRoot`): beside the session file, named after it.
  */
@@ -151,8 +128,4 @@ async function containedChildFile(
     if (isMissing(error)) return null;
     throw error;
   }
-}
-
-function isMissing(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }

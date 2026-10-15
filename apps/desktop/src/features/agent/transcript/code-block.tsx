@@ -1,5 +1,6 @@
 import { File } from '@pierre/diffs/react';
 import { cn } from '@atd/ui/lib/utils';
+import { useColorScheme } from '../../../theme/color-scheme';
 import { CopyButton } from './copy-button';
 import { CodeDownloadButton } from './download-button';
 import { codeSource } from './selection-toolbar/code-sources';
@@ -58,8 +59,8 @@ type CodeFileProps = {
 
 /**
  * The code of every project code block: `@pierre/diffs` renders the text with Shiki highlighting
- * and line numbers in its own shadow root, in the app's theme (`class="dark"` on the root
- * element), under `CODE_CSS` (or `FLUSH_CODE_CSS`). A file's final newline ends its last line
+ * and line numbers in its own shadow root, in the app's color scheme (`useColorScheme`, so a
+ * switch repaints it), under `CODE_CSS` (or `FLUSH_CODE_CSS`). A file's final newline ends its last line
  * rather than opening an empty one. `CodeBlock` frames it; `StreamingCodeBlock` draws a fence
  * with it once the fence closes.
  */
@@ -71,7 +72,7 @@ export function CodeFile({
   disableWorkerPool = false,
   cacheKey,
 }: CodeFileProps & { className?: string }) {
-  const themeType = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const themeType = useColorScheme();
   return (
     <File
       className={cn(flush && FLUSH_CODE_CLASS, className)}

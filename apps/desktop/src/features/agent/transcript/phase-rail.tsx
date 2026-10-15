@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@atd/ui/lib/utils';
 import { ActivityRow } from './activity-row';
@@ -9,6 +9,12 @@ import type { RequestIndex } from './turns';
 
 /** A rail step that can grow in and collapse out; keeps the `ActivityRow.Step` anatomy. */
 const MotionStep = motion.create(ActivityRow.Step);
+
+/**
+ * A step's content, memoized: the adapter keeps an unchanged step's view object while another
+ * step of its group changes, so only the changed step renders again.
+ */
+const RailStep = memo(PhaseStep);
 
 /** The header wrapper with presence: it grows in above a live lone step once a second arrives. */
 function AnimatedHeader({ show, children }: { show: boolean; children: ReactNode }) {
@@ -64,7 +70,7 @@ function StaticSteps({ steps, lone, marker, requests }: StepsProps) {
   return steps.map((step) => (
     <ActivityRow.Step key={step.id} className={stepClass(lone, marker)}>
       {lone && marker}
-      <PhaseStep view={step} requests={requests} />
+      <RailStep view={step} requests={requests} />
     </ActivityRow.Step>
   ));
 }
@@ -97,7 +103,7 @@ function AnimatedSteps({
           exit="leave"
         >
           {lone && marker}
-          <PhaseStep view={step} requests={requests} />
+          <RailStep view={step} requests={requests} />
         </MotionStep>
       ))}
     </AnimatePresence>

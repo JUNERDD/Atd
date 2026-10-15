@@ -4,7 +4,7 @@ import OSLog
 import WebKit
 
 /// What the shell keeps per user app outside the service: its compiled content rule list, its
-/// website data store, and its window frame. Clearing an app's data removes the store; deleting
+/// website data store, and its window frame. Clearing an app's data empties the store; deleting
 /// the app removes all three.
 ///
 /// The service forgets an app's `dataStoreId` when the app is deleted, so the shell remembers
@@ -65,12 +65,11 @@ final class UserAppStorage {
 
   // MARK: Clearing and deletion
 
-  /// `userApp.clearData`: removes the app's website data store. With `forget` (the app was
-  /// deleted) the rule list, the frame and the remembered store id go too; otherwise the id
-  /// stays, and the app's next window starts with an empty store under the same id. The caller
-  /// has closed the app's window and released its web view first: WebKit refuses to remove a
-  /// store a web view still holds. False when the store is still not removed after the retries;
-  /// the next launch tries again.
+  /// `userApp.clearData`: empties the app's website data. With `forget` (the app was deleted)
+  /// the store, rule list, frame and remembered id go too; otherwise its next window uses the
+  /// same empty store. The caller has closed the app's window first. Removing the whole store
+  /// can still fail while WebKit retains a cached process; that removal is retried next launch
+  /// only for deleted apps, so a clear cannot later delete newly written data.
   func clearData(appId: String, forget: Bool) async -> Bool {
     var stores = defaults.dictionary(forKey: Self.dataStoresKey) as? [String: String] ?? [:]
     let store = stores[appId].flatMap(UUID.init(uuidString:))
@@ -86,7 +85,18 @@ final class UserAppStorage {
     }
     // An app never opened in this shell has no store.
     guard let store else { return true }
-    return await removeDataStore(store)
+    await clearWebsiteData(store)
+    return forget ? await removeDataStore(store) : true
+  }
+
+  /// Clear through the public API before deleting a profile. Besides erasing its contents,
+  /// this evicts WebKit's back/forward and web-process caches for the session. A closed view
+  /// alone can leave the profile "in use (by network process)" on macOS 15. Keep the temporary
+  /// store reference in this scope so it is released before `remove(forIdentifier:)` runs.
+  private func clearWebsiteData(_ id: UUID) async {
+    let store = WKWebsiteDataStore(forIdentifier: id)
+    await store.removeData(
+      ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
   }
 
   /// Retries the removals a previous launch could not finish. Called once the panel's web view
@@ -102,8 +112,8 @@ final class UserAppStorage {
 
   /// `remove(forIdentifier:)` fails with "Data store is in use" until WebKit has let go of the
   /// closed web view's processes, so it is retried with backoff. A store still not removed is
-  /// left for the next launch (``retryPendingRemovals()``) rather than cleared through a web
-  /// view: opening one on it would only recreate it.
+  /// left for the next launch (``retryPendingRemovals()``). Its contents have already been
+  /// cleared without creating another web view.
   @discardableResult
   private func removeDataStore(_ store: UUID) async -> Bool {
     let delays: [Duration] = [

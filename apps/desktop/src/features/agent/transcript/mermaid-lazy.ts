@@ -1,4 +1,5 @@
 import type { DiagramPlugin, MermaidConfig } from '@streamdown/mermaid';
+import type { ColorScheme } from '../../../theme/color-scheme';
 
 /**
  * Lazy mermaid plugin (plan T5). `@streamdown/mermaid` statically imports the mermaid engine, so a
@@ -15,6 +16,17 @@ const MERMAID_CONFIG: MermaidConfig = {
   fontFamily: 'monospace',
   suppressErrorRendering: true,
 };
+
+/**
+ * The mermaid theme drawn for a color scheme: `neutral` is made for light backgrounds, `dark` for
+ * dark ones. Streamdown hands this config to the plugin on every render (`MermaidOptions.config`)
+ * and the plugin re-initialises mermaid with it, so a scheme change redraws open diagrams. The
+ * plugin itself stays scheme-free (its own config is the light one), which is also what exports
+ * draw with: a saved diagram is read outside the app, on white.
+ */
+export function mermaidConfig(scheme: ColorScheme): MermaidConfig {
+  return { theme: scheme === 'dark' ? 'dark' : 'neutral' };
+}
 
 let cached: DiagramPlugin | null = null;
 let pending: Promise<DiagramPlugin | null> | null = null;

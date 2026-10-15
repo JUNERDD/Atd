@@ -325,7 +325,9 @@ export async function verifyModel(
     // rejects requests without `x-opencode-session`) read this id the way they read a task's.
     { maxTokens: 16, signal: AbortSignal.timeout(30000), sessionId: randomUUID() },
   );
-  if (inferenceError(result))
+  // Hitting this deliberately small output cap still proves model access, including when a
+  // reasoning model spends the whole allowance thinking before it can emit the reply.
+  if (result.stopReason !== 'length' && inferenceError(result))
     throw new UpstreamError(
       'Model verification failed. Check the connection, model access and available quota.',
     );

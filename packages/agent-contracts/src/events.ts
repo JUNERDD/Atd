@@ -59,11 +59,16 @@ export const RunStatusDataSchema = Type.Object(
 );
 export type RunStatusData = Static<typeof RunStatusDataSchema>;
 
-/** Transcript patch; blocks follow the desktop block shape (see snapshot.ts). */
+/**
+ * Transcript patch; blocks follow the desktop block shape (see snapshot.ts). A `snapshot` patch
+ * replaces the whole transcript; one with `reload` was too large to send inline, so its `blocks`
+ * is empty and the client loads the transcript (the task snapshot endpoint) instead.
+ */
 export const TranscriptPatchDataSchema = Type.Object(
   {
     revision: Type.Integer({ minimum: 0 }),
     snapshot: Type.Boolean(),
+    reload: Type.Optional(Type.Literal(true)),
     blocks: Type.Array(Type.Unknown()),
     removed: Type.Array(Type.String({ maxLength: 256 })),
   },

@@ -263,8 +263,17 @@ function waitingKindFor(view: ViewBlock[]): TurnWaitingKind {
 
 type ActivityItem = Extract<AdaptedItem, { type: 'activity' }>;
 
+const viewCache: ProjectionCache<ViewBlock> = new WeakMap();
 const activityCache: ProjectionCache<ActivityItem> = new WeakMap();
 const turnCache: ProjectionCache<AdaptedTurn> = new WeakMap();
+
+// A block's view, the same object while the block and its request are: a group rebuilt for one
+// changed step hands back its other steps' views, so their memoized rail steps skip the patch.
+function viewFor(block: Block, requests: RequestIndex): ViewBlock {
+  return reuseProjection(viewCache, block, [requestFor(block, requests)], () =>
+    adaptBlock(block, requests),
+  );
+}
 
 function adaptActivity(
   item: Extract<Turn['items'][number], { type: 'activity' }>,
@@ -273,7 +282,7 @@ function adaptActivity(
   // Each step with the request raised on it, if any: all an adapted step reads.
   const inputs = item.blocks.flatMap((block) => [block, requestFor(block, requests)]);
   return reuseProjection(activityCache, item.blocks[0], inputs, () => {
-    const activity = item.blocks.map((block) => adaptBlock(block, requests));
+    const activity = item.blocks.map((block) => viewFor(block, requests));
     const anchor = item.blocks.at(-1);
     return {
       type: 'activity',
@@ -304,7 +313,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
   ];
   return reuseProjection(turnCache, head, inputs, () => {
     const view = items.flatMap((item) =>
-      item.type === 'block' ? [adaptBlock(item.block, requests)] : item.view,
+      item.type === 'block' ? [viewFor(item.block, requests)] : item.view,
     );
     const userTimestamp = turn.user?.timestamp;
     const startedAt = userTimestamp ?? view[0]?.timestamp ?? null;

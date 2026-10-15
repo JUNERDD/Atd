@@ -96,6 +96,23 @@ export interface UpdateBridge {
   onState(listener: (version: string | null) => void): () => void;
 }
 
+/** The running app as the settings window's About page shows it. */
+export interface AppAbout {
+  /** The marketing version, such as `0.9.0`. */
+  version: string;
+  /** The build number updates compare. */
+  build: string;
+  /** Whether `checkForUpdates` does anything: false in development builds, which never update. */
+  updates: boolean;
+}
+
+/** The running app's identity and a user-requested update check, in every window. */
+export interface AboutBridge {
+  info(): Promise<AppAbout>;
+  /** Checks for updates with the shell's own progress and result windows. */
+  checkForUpdates(): void;
+}
+
 /**
  * What the page reaches beyond itself. The macOS shell hosting the renderer in a WKWebView
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
@@ -166,6 +183,8 @@ export interface DesktopBridge {
   readonly speech?: SpeechBridge;
   /** Panel-only app updates; absent in the settings window and in tests. */
   readonly update?: UpdateBridge;
+  /** The About page's app details; absent in tests that need none. */
+  readonly about?: AboutBridge;
   /**
    * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the
    * focused CodeMirror editor's history or runs the native command. Optional for test compat.

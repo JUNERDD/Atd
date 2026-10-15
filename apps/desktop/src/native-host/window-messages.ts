@@ -1,8 +1,8 @@
+import type { AgentRequest } from '../client/agent/bridge';
 import type {
-  AgentRequest,
   AutomationSessionTarget,
   ExtensionSessionKind,
-} from '../client/agent/bridge';
+} from '../client/agent/session-handoff';
 import type { SettingsItemLink } from '../client/settings-contract';
 
 /**

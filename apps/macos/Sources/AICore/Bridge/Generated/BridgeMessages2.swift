@@ -83,6 +83,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .commandProgressHide(container.value(.params, CommandProgressHideParams.self))
       case "commandOptions.set":
         call = try .commandOptionsSet(container.value(.params, CommandOptionsSetParams.self))
+      case "app.about": call = try .appAbout(container.value(.params, AppAboutParams.self))
       case "approval.request":
         call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
       case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
@@ -104,6 +105,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       switch method {
       case "bridge.ready": post = try .bridgeReady(container.value(.params, BridgeReadyPost.self))
       case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
+      case "appearance.set":
+        post = try .appearanceSet(container.value(.params, AppearanceSetPost.self))
       case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))
       case "window.dragRegions":
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
@@ -113,6 +116,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         post = try .onboardingSelection(container.value(.params, OnboardingSelectionPost.self))
       case "socket.open": post = try .socketOpen(container.value(.params, SocketOpenPost.self))
       case "socket.send": post = try .socketSend(container.value(.params, SocketSendPost.self))
+      case "update.check": post = try .updateCheck(container.value(.params, UpdateCheckPost.self))
       case "update.install":
         post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))

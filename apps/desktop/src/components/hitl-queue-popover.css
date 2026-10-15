@@ -50,21 +50,12 @@
   text-align: center;
 }
 
-.hitl-queue-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* Regions keep their natural height and the body scrolls once they outgrow the popover cap.
-   Compressing the approval instead cannot stop at the detail's floor: a flex minimum ignores a
-   descendant's floor, so the form collapsed and its buttons slid under the detail. The detail
-   caps itself so the approval and a few queued rows still fit without the outer scroll. */
-.hitl-queue-body > * {
-  flex-shrink: 0;
-}
-
+/* Regions keep their natural height and the body (a ScrollArea, so its bar matches the detail's
+   inside it) scrolls once they outgrow the popover cap. Compressing the approval instead cannot
+   stop at the detail's floor: a flex minimum ignores a descendant's floor, so the form collapsed
+   and its buttons slid under the detail. The regions stack in the viewport's block content, so
+   none of them shrinks; the detail caps itself so the approval and a few queued rows still fit
+   without the outer scroll. */
 .approval-detail {
   display: flex;
   flex-direction: column;

@@ -35,10 +35,10 @@ export async function discoverAtdSkills(): Promise<{
   const builtins = await reconcileBuiltinSkills();
   const root = atdSkillsDir();
   const loaded = loadSkillsFromDir({ dir: root, source: 'atd' });
-  const diagnostics = [
-    ...builtins.diagnostics,
-    ...mapPiDiagnostics(loaded.diagnostics).filter((item) => item.code === 'same_name'),
-  ].slice(0, MAX_DIAGNOSTICS);
+  const diagnostics = [...builtins.diagnostics, ...mapPiDiagnostics(loaded.diagnostics)].slice(
+    0,
+    MAX_DIAGNOSTICS,
+  );
   const records = await Promise.all(loaded.skills.map((skill) => toRecord(skill, diagnostics)));
   const skills = records
     .flatMap((record) => (record ? [record] : []))

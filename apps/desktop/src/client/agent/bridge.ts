@@ -1,25 +1,25 @@
 import type { RunPolicy } from './run-policy';
-import { Type, type Static } from 'typebox';
-import {
-  AutomationDraftSchema,
-  Identifier,
-  type CommandOutput,
-  type CompactRefusal,
-  type ContextBreakdown,
-  type MemoryCreateRequest,
-  type MemoryProblem,
-  type MemoryProposal,
-  type MemorySaveRequest,
-  type MemorySettingsRequest,
-  type MemoryUnit,
-  type TaskContextState,
+import type { Static } from 'typebox';
+import type {
+  CommandOutput,
+  CompactRefusal,
+  ContextBreakdown,
+  MemoryCreateRequest,
+  MemoryProblem,
+  MemoryProposal,
+  MemorySaveRequest,
+  MemorySettingsRequest,
+  MemoryUnit,
+  TaskContextState,
+  TaskSearchQuery,
+  TaskSearchResponse,
 } from '@atd/agent-contracts';
 import type { ArgumentValues, CommandDefinition } from './command-schema';
 import type { AgentTask, Artifact, FileRef, RunSnapshot, TaskInput } from './task-schema';
 import type { PermissionAnswer, PermissionRequest, PermissionTier } from './permission-schema';
 import type { AgentRequestSchema } from './request-schema';
+import type { AutomationSessionTarget, CommandSession, ExtensionSession } from './session-handoff';
 import type { Block, ChildTranscriptPatch, QueueState, TranscriptPatch } from './transcript-schema';
-import { parse } from './validation';
 import type { SaveContent } from '../../native-bridge/calls';
 import type { CallParams, CallResult, EventPayload } from '../../native-bridge/client';
 
@@ -181,64 +181,6 @@ export interface CommandLaunch {
    */
   choose?: true;
 }
-/** Hands the command editor off to a new panel session; a null id means "create a command". */
-export interface CommandSession {
-  commandId: string | null;
-  name: string;
-}
-
-/**
- * Hands the automation editor off to a new panel session: the saved automation an edit session
- * updates, which the seeded prompt names by name and id, or null to create one. It is validated
- * where it crosses between windows.
- */
-export const AutomationSessionTargetSchema = Type.Union([
-  Type.Object(
-    { id: Identifier, name: AutomationDraftSchema.properties.name },
-    { additionalProperties: false },
-  ),
-  Type.Null(),
-]);
-export type AutomationSessionTarget = Static<typeof AutomationSessionTargetSchema>;
-
-/**
- * Hands create- or edit-with-AI off to a new panel session seeded with an app skill: Extensions
- * creates or edits a skill, subagent, or MCP server; Memory saves or updates a memory.
- */
-export const ExtensionSessionKindSchema = Type.Union([
-  Type.Literal('skill'),
-  Type.Literal('subagent'),
-  Type.Literal('mcp'),
-  Type.Literal('memory'),
-]);
-export type ExtensionSessionKind = Static<typeof ExtensionSessionKindSchema>;
-/**
- * The existing item an edit session updates: a skill or subagent name, or an MCP serverId. It is
- * quoted into the seeded prompt, so it must be one trimmed line. Null starts a create session.
- */
-export const ExtensionSessionTargetSchema = Type.Union([
-  Type.String({ minLength: 1, maxLength: 128, pattern: '^\\S(?:.*\\S)?$' }),
-  Type.Null(),
-]);
-export interface ExtensionSession {
-  kind: ExtensionSessionKind;
-  target: string | null;
-}
-
-/**
- * Validates an extension session request at a process or tab boundary. Memory has no edit target
- * (its skill saves or updates memories from the conversation), so a memory target is rejected
- * rather than silently dropped.
- */
-export function parseExtensionSession(kind: unknown, target: unknown): ExtensionSession {
-  const session = {
-    kind: parse(ExtensionSessionKindSchema, kind),
-    target: parse(ExtensionSessionTargetSchema, target),
-  };
-  if (session.kind === 'memory' && session.target !== null)
-    throw new TypeError('Memory sessions do not take an edit target');
-  return session;
-}
 
 export interface AgentBridge {
   get: () => Promise<AgentSnapshot>;
@@ -290,6 +232,11 @@ export interface AgentBridge {
   compactTask: (taskId: string, instructions?: string) => Promise<CompactRefusal | null>;
   /** What fills the task's context, by category; the service computes it on each request. */
   contextBreakdown: (taskId: string) => Promise<ContextBreakdown>;
+  /**
+   * Finds tasks by what was said in their conversations, at most one hit per task, the most
+   * recently updated first. Titles and statuses are not searched here; the history matches those.
+   */
+  searchTasks: (query: TaskSearchQuery) => Promise<TaskSearchResponse>;
   /** Copies the task up to the turn `entryId` starts into a new task; resolves with its id. */
   forkTask: (taskId: string, entryId: string, title?: string) => Promise<{ taskId: string }>;
   chooseFiles: () => Promise<FileRef[]>;

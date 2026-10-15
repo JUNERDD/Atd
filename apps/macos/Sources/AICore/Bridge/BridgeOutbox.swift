@@ -63,6 +63,9 @@ public struct BridgeOutbox: Sendable {
   public var isInFlight: Bool { inFlight != nil }
   /// Messages and frames waiting, states excluded.
   public var pendingCount: Int { entries.count }
+  /// The ``SocketFrame/byteCost`` of the frames waiting, the batch in flight excluded: what a page
+  /// that stopped taking messages leaves queued in the shell (``FrameBacklog``).
+  public private(set) var pendingFrameBytes = 0
 
   /// Records a state event; unchanged values are not sent again.
   public mutating func setState(_ event: NativeEvent) -> Action {
@@ -81,7 +84,9 @@ public struct BridgeOutbox: Sendable {
 
   /// `bytes` approximates the frame's size on the bridge, for splitting batches.
   public mutating func post(frame: SocketFrame, bytes: Int) -> Action {
-    entries.append(.frame(frame, bytes: max(0, bytes)))
+    let bytes = max(0, bytes)
+    entries.append(.frame(frame, bytes: bytes))
+    pendingFrameBytes += bytes
     return schedule()
   }
 
@@ -99,6 +104,7 @@ public struct BridgeOutbox: Sendable {
       if case .message(_, .app) = entry { return false }
       return true
     }
+    pendingFrameBytes = 0
   }
 
   /// The next message to deliver, or nil when none is due, no page is ready, or a call is in
@@ -129,6 +135,7 @@ public struct BridgeOutbox: Sendable {
     }
     inFlight = .entries(Array(entries.prefix(taken)))
     entries.removeFirst(taken)
+    pendingFrameBytes -= size
     return .event(.socketFrames(SocketFramesEvent(frames: frames)))
   }
 

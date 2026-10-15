@@ -14,7 +14,6 @@ import {
 import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
-import { CommandStore } from './commands/store.js';
 import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
@@ -25,9 +24,8 @@ import { announceInvalidation, registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
-import { onMcpChanged } from './mcp/changes.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
-import { MemoryAuthority } from './memory/index.js';
+import { registerStoreInvalidation } from './store-invalidation.js';
 import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
@@ -158,23 +156,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     log: deps.log,
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
-  // Runs change memory without a route write (tool calls, learners); announce those too.
-  const stopMemoryWatch = MemoryAuthority.onChanged(deps.config.paths.agentDir, () =>
-    hub.invalidate({ type: 'invalidate', scope: 'memory' }),
-  );
-  // The Agent's `command` tool writes the store without a route; the store announces every write.
-  const stopCommandWatch = CommandStore.onChanged(deps.config.paths.root, () =>
-    hub.invalidate({ type: 'invalidate', scope: 'commands' }),
-  );
-  // Likewise `configure_mcp` saves an MCP server, and a run connects one, without a route.
-  const stopMcpWatch = onMcpChanged(deps.config.paths.root, () =>
-    hub.invalidate({ type: 'invalidate', scope: 'extensions' }),
-  );
-  app.addHook('onClose', async () => {
-    stopMemoryWatch();
-    stopCommandWatch();
-    stopMcpWatch();
-  });
+  registerStoreInvalidation(app, deps.config.paths, (frame) => hub.invalidate(frame));
 
   app.get('/v1/status', RENDERER_ROUTE, async () => ({
     service: {
@@ -234,7 +216,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       const { taskId, childKey } = request.params;
       deps.ledger.task(taskId);
       if (!childKey || childKey.length > 512) throw new TypeError('Invalid child key.');
-      const transcript = await deps.manager.runnerFor(taskId).childTranscript(childKey);
+      const transcript = await deps.manager.childTranscript(taskId, childKey);
       if (!transcript) throw new LedgerNotFound('Child', childKey);
       return transcript;
     },

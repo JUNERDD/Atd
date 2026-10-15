@@ -1,6 +1,7 @@
 import { History, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { TaskDetail } from '../../client/agent/bridge';
+import type { TaskContextState } from '@atd/agent-contracts';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { PanelTitle } from './panel-title';
 import { SessionMenu } from './session-menu';
@@ -16,7 +17,8 @@ export function PanelHeader({
   view,
   taskId,
   title,
-  detail,
+  task,
+  context,
   onNewTask,
   onToggleView,
   onOpenSettings,
@@ -25,7 +27,9 @@ export function PanelHeader({
   taskId: string | null;
   title: string;
   /** The conversation on screen, once loaded; null in the other views. */
-  detail: TaskDetail | null;
+  task: AgentTask | null;
+  /** That conversation's context state; null with no conversation. */
+  context: TaskContextState | null;
   onNewTask: () => void;
   onToggleView: (view: 'history') => void;
   onOpenSettings: () => void;
@@ -42,10 +46,10 @@ export function PanelHeader({
       >
         <span aria-hidden="true" className="panel-brand pointer-events-none shrink-0 bg-current" />
       </IconButton>
-      <PanelTitle key={view === 'task' ? taskId : view} title={title} task={detail?.task ?? null} />
+      <PanelTitle key={view === 'task' ? taskId : view} title={title} task={task} />
       <nav className="header-controls" aria-label={t('header.controlsLabel')}>
         <UpdateButton />
-        {detail && <SessionMenu detail={detail} />}
+        {task && <SessionMenu task={task} context={context} />}
         <IconButton
           label={t('header.tasks')}
           variant="glass-ghost"

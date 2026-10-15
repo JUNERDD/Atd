@@ -4,6 +4,44 @@ import type { MathPlugin } from 'streamdown';
 import 'katex/dist/katex.min.css';
 // A native copy of rendered math puts each formula's TeX on the clipboard, not its glyphs.
 import 'katex/contrib/copy-tex';
+import { DISPLAY_MATH_TAG } from './math-lazy';
+
+/** The slice of a hast node the display wrap reads and rewrites. */
+type HastNode = {
+  type: string;
+  tagName?: string;
+  properties?: { className?: unknown };
+  children?: HastNode[];
+};
+
+const isDisplay = (node: HastNode) =>
+  node.type === 'element' &&
+  Array.isArray(node.properties?.className) &&
+  node.properties.className.includes('katex-display');
+
+/** Wraps each display formula under `node` in `DISPLAY_MATH_TAG`. */
+function wrapDisplays(node: HastNode) {
+  if (!node.children) return;
+  node.children = node.children.map((child) => {
+    if (isDisplay(child)) {
+      return { type: 'element', tagName: DISPLAY_MATH_TAG, properties: {}, children: [child] };
+    }
+    wrapDisplays(child);
+    return child;
+  });
+}
+
+/**
+ * KaTeX, then a wrap around each display formula: a long equation scrolls sideways in the shared
+ * ScrollArea the wrap renders as, so its bar matches the transcript's instead of WebKit's own.
+ */
+function rehypeKatexDisplays(options: Parameters<typeof rehypeKatex>[0]) {
+  const render = rehypeKatex(options);
+  return (...args: Parameters<typeof render>) => {
+    render(...args);
+    wrapDisplays(args[0]);
+  };
+}
 
 /**
  * Math in messages, the chunk `math-lazy.ts` loads on demand. Streamdown's `@streamdown/math`
@@ -19,7 +57,7 @@ export const mathPlugin: MathPlugin = {
   type: 'math',
   remarkPlugin: remarkMath,
   rehypePlugin: [
-    rehypeKatex,
+    rehypeKatexDisplays,
     {
       // A formula KaTeX cannot parse shows as its source in the muted text color, the token
       // itself rather than Tailwind's root alias, so a surface that retints it is followed.

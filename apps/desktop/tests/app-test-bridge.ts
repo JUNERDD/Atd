@@ -61,6 +61,7 @@ export function installBridge(extras?: {
     ],
     defaultConnectionId: 'test',
     language: 'en',
+    appearance: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
     showInDock: false,
@@ -200,6 +201,7 @@ export function installBridge(extras?: {
       autocompactBuffer: 0,
       categories: [],
     })),
+    searchTasks: vi.fn(async () => ({ hits: [], truncated: false })),
     forkTask: vi.fn(async () => ({ taskId: 'test-fork' })),
     chooseFiles: vi.fn(async () => []),
     saveFile: vi.fn(async () => true),
@@ -292,6 +294,9 @@ export function installBridge(extras?: {
       providers: providerBridgeFixture(() => settings.connections[0]!),
       setLanguage: vi.fn(async (language: SettingsSnapshot['language']) =>
         writeSettings({ language }),
+      ),
+      setAppearance: vi.fn(async (appearance: SettingsSnapshot['appearance']) =>
+        writeSettings({ appearance }),
       ),
       saveShortcuts: vi.fn(async () => settings),
       restoreShortcuts: vi.fn(async () => settings),

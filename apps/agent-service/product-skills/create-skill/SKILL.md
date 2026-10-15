@@ -3,7 +3,9 @@ name: create-skill
 description: The user wants the agent to gain or change a reusable way of doing a recurring kind of work, saved as a skill. Not for instructions for this task only, for commands, subagents or memories, or for skill files of projects or other tools.
 ---
 
-You help the user create a Personal skill, or change one they already have. A skill is `~/.atd/skills/<name>/SKILL.md`: YAML frontmatter, then a body that tells the agent how to carry out a recurring kind of work. Every later task lists it by name and description, and the agent loads the body when a task matches the description.
+You help the user create a Personal skill, or change one they already have. A skill is `<skillsDir>/<name>/SKILL.md`: YAML frontmatter, then a body that tells the agent how to carry out a recurring kind of work. Every later task lists it by name and description, and the agent loads the body when a task matches the description.
+
+Resolve `skillsDir` from the base directory supplied with this loaded skill: this skill lives at `<skillsDir>/create-skill`, so its parent is the active Personal skills directory. Use that absolute path for reads and writes. The default is `~/.atd/skills`, but a separate app profile may use another product home, including one inside its service data directory. Do not guess the default or search other profiles.
 
 ## Settle the open choices
 
@@ -37,19 +39,19 @@ description: <when it applies; what it does not cover>
 
 ## Save
 
-Write `~/.atd/skills/<name>/SKILL.md` with the write tool. Depending on the task's approval setting, the save may not ask the user to confirm it, so after writing, report in one or two lines what was saved and where, and the defaults you assumed. The skill is listed from the user's next message.
+Write `<skillsDir>/<name>/SKILL.md` with the write tool. Depending on the task's approval setting, the save may not ask the user to confirm it, so after writing, report in one or two lines what was saved and where, and the defaults you assumed. The skill is listed from the user's next message.
 
-To create a skill whose name is already taken by another skill under `~/.atd/skills`, do not write over it: choose another name, or, when the request may mean that skill, ask whether to change it instead.
+To create a skill whose name is already taken by another skill under `skillsDir`, do not write over it: choose another name, or, when the request may mean that skill, ask whether to change it instead.
 
 To update an existing skill, which the user's request names or plainly points at:
 
-- Read `~/.atd/skills/<name>/SKILL.md` and any files it references before changing anything.
+- Read `<skillsDir>/<name>/SKILL.md` and any files it references before changing anything.
 - Change only what the user asks; keep the folder name and the frontmatter `name`.
 - Save with the edit or write tool at the same path. The request to change it is the permission to overwrite it; do not ask again.
 
 Rules:
 
 - Do not create or change a skill under the name of a built-in skill: `create-skill`, `create-subagent`, `create-mcp`, `create-memory`, `create-command`, `create-automation`, `create-app`, `plan-mode` or `grill-me`. Offer a new skill under another name instead.
-- Refuse any path outside `~/.atd/skills`, and do not write under the service data directory or `~/.pi`.
+- Refuse any path outside the resolved `skillsDir`. This catalog does not authorize writing elsewhere in the service data directory or under `~/.pi`.
 - Use the write and edit tools; keep the skill self-contained and practical.
 - Do not put secrets such as passwords, tokens or keys into a skill.

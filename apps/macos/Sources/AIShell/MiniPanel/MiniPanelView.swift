@@ -4,11 +4,10 @@ import SwiftUI
 
 /// The mini panel as drawn (spec v1 Material, surface-v2, motion-v3, perf-v1): every piece in one
 /// `GlassEffectContainer` on the same regular Liquid Glass, so the pieces read as one material
-/// and merge as they emerge from one another. Like the main panel, each piece is dark whatever
-/// the system appearance or the window behind it: its glass carries the panel's base fill and
-/// its content keeps the dark scheme (``View/glassSurface(in:animation:opacity:)``), so a piece looks
-/// the same from its first frame rather than turning light over a bright window as the glass
-/// adapts. The container covers only where glass can be (``MiniPanelLayout/glassRegion``), never
+/// and merge as they emerge from one another. Like the main panel, each piece takes the app's
+/// scheme whatever the window behind it: its glass carries the panel's base fill and its content
+/// keeps the app's scheme (``View/glassSurface(in:animation:opacity:)``), so a piece looks the
+/// same from its first frame rather than turning with the backdrop as the glass adapts. The container covers only where glass can be (``MiniPanelLayout/glassRegion``), never
 /// the whole transparent canvas.
 ///
 /// Nothing here is written while it moves: every value carries its own animation and the views
@@ -64,7 +63,7 @@ struct MiniPanelView: View {
     .backport.glassEffectContainer(spacing: Self.glassSpacing)
     .offset(x: region.minX, y: region.minY)
     .frame(width: model.canvas.width, height: model.canvas.height, alignment: .topLeading)
-    // The glass draws its first frame in this scheme, whatever the system appearance.
+    // The glass draws its first frame in the app's scheme, and follows it when it changes.
     .environment(\.colorScheme, GlassSurface.colorScheme)
   }
 }
@@ -146,10 +145,10 @@ private struct MiniPanelBodyContent: View {
   }
 }
 
-/// The resting pill's tone (pill-v2): over a dark window the base fill of glass this thin all
-/// but matches what lies behind it, and the pill disappears, so the pill and its swell are filled
-/// with a neutral tone, the dark scheme's label color, that the body's outline clips, following
-/// every frame of its glass. It leaves as the pill opens, as the capsule's controls would, and
+/// The resting pill's tone (pill-v2): over a window of its own scheme the base fill of glass this
+/// thin all but matches what lies behind it, and the pill disappears, so the pill and its swell
+/// are filled with a neutral tone, the scheme's label color, that the body's outline clips,
+/// following every frame of its glass. It leaves as the pill opens, as the capsule's controls would, and
 /// returns once the body has all but drawn back into the pill, so every other shape shows its
 /// glass and base fill alone.
 private struct MiniPanelPillFill: View {

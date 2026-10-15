@@ -3,11 +3,14 @@ import {
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
+  type ChildTranscriptResponse,
   type ContextBreakdown,
   type PermissionTier,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskRun,
+  type TaskSearchQuery,
+  type TaskSearchResponse,
   type TaskSnapshot,
   type TaskSummary,
 } from '@atd/agent-contracts';
@@ -20,9 +23,15 @@ import { compactRefused } from './compaction/manual.js';
 import { DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
-import { taskContextBreakdown, taskSnapshot, taskSummary } from './task-view.js';
+import {
+  taskChildTranscript,
+  taskContextBreakdown,
+  taskSnapshot,
+  taskSummary,
+} from './task-view.js';
 import { RunAcceptance } from './tasks/accept-run.js';
 import { heldMessageInput } from './tasks/held-queue.js';
+import { TaskSearch } from './tasks/search.js';
 import type { InternalSubmitOptions } from './tasks/submit-options.js';
 
 export interface ManagerDeps {
@@ -49,6 +58,7 @@ export class RunnerManager {
   private draining = false;
   private readonly acceptance: RunAcceptance;
   private readonly releases: SessionReleases;
+  private readonly searcher: TaskSearch;
 
   constructor(private readonly deps: ManagerDeps) {
     this.acceptance = new RunAcceptance({
@@ -63,6 +73,11 @@ export class RunnerManager {
       draining: () => this.draining,
       runner: (taskId) => this.runners.get(taskId),
       executing: (runId) => this.executions.has(runId),
+    });
+    this.searcher = new TaskSearch({
+      ledger: deps.ctx.ledger,
+      log: deps.log,
+      live: (taskId) => this.runners.get(taskId)?.liveState() ?? null,
     });
   }
 
@@ -166,9 +181,19 @@ export class RunnerManager {
     return taskSnapshot(this.deps.ctx, this.runners.get(taskId), taskId);
   }
 
+  /** One child session's transcript (task-view.ts `taskChildTranscript`); null for none. */
+  childTranscript(taskId: string, childKey: string): Promise<ChildTranscriptResponse | null> {
+    return taskChildTranscript(this.deps.ctx, this.runners.get(taskId), taskId, childKey);
+  }
+
   /** The task's context usage by category, from its live or stored session. */
   contextBreakdown(taskId: string): Promise<ContextBreakdown> {
     return taskContextBreakdown(this.deps.ctx, this.runners.get(taskId), taskId);
+  }
+
+  /** Tasks whose conversation holds every query term (tasks/search.ts), live sessions included. */
+  search(query: TaskSearchQuery): Promise<TaskSearchResponse> {
+    return this.searcher.search(query);
   }
 
   summary(taskId: string): TaskSummary {

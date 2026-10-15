@@ -30,6 +30,34 @@ public struct LanguageSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `appearance.set` post.
+public struct AppearanceSetPost: Codable, Equatable, Sendable {
+  public let appearance: Appearance?
+
+  public init(appearance: Appearance?) {
+    self.appearance = appearance
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appearance = try container.nullable(.appearance) { try container.value($0, Appearance.self) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appearance, forKey: .appearance)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appearance
+  }
+
+  public enum Appearance: String, Codable, Equatable, Sendable {
+    case light
+    case dark
+  }
+}
+
 /// Params of the `typing.set` post.
 public struct TypingSetPost: Codable, Equatable, Sendable {
   public let typing: Bool
@@ -215,31 +243,5 @@ public struct OnboardingSelectionPost: Codable, Equatable, Sendable {
       case width
       case height
     }
-  }
-}
-
-/// Params of the `socket.open` post.
-public struct SocketOpenPost: Codable, Equatable, Sendable {
-  public let socketId: String
-
-  public init(socketId: String) {
-    self.socketId = socketId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    socketId = try container.string(.socketId, minLength: 1, maxLength: 64)
-    try container.literal(.path, "/v1/stream")
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(socketId, forKey: .socketId)
-    try container.encode("/v1/stream", forKey: .path)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case socketId
-    case path
   }
 }

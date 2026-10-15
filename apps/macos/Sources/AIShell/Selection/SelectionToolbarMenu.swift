@@ -69,8 +69,8 @@ final class SelectionToolbarMenu: NSObject {
 
   /// The glass panel around the rows' list, which scrolls when the panel is shorter than the
   /// list. The list is clipped to the glass's own corners (the glass does not clip its content),
-  /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's fixed
-  /// dark surface (``GlassSurface``), the fill drawn in the same rounded clip.
+  /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's glass
+  /// surface (``GlassSurface``), the fill drawn in the same rounded clip.
   private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSView {
     let layout = SelectionToolbarMenuLayout.self
     let list = MenuList(views: items)

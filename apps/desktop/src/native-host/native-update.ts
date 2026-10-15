@@ -1,4 +1,4 @@
-import type { UpdateBridge } from '../client/contract';
+import type { AboutBridge, UpdateBridge } from '../client/contract';
 import type { NativeBridge } from '../native-bridge/client';
 
 /**
@@ -20,5 +20,13 @@ export function nativeUpdate(native: NativeBridge): UpdateBridge {
       listener(version);
       return () => listeners.delete(listener);
     },
+  };
+}
+
+/** The running app's version and the update check the About page offers, in every window. */
+export function nativeAbout(native: NativeBridge): AboutBridge {
+  return {
+    info: () => native.call('app.about', {}),
+    checkForUpdates: () => native.post('update.check', {}),
   };
 }

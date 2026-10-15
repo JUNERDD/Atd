@@ -12,6 +12,7 @@ import { adaptTranscript, type AdaptedTurn } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
 import { PendingTurn } from './pending-turn';
+import { PromptRail } from './prompt-rail';
 import { ScrollJump } from './scroll-jump';
 import { pendingPromptRun } from './run-prompt';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
@@ -19,10 +20,10 @@ import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
 import { TurnView } from './turn-view';
+import { useEarlierTurns } from './use-earlier-turns';
 import type { CommandOpener } from './use-offered-commands';
+import { usePromptNav } from './use-prompt-nav';
 import { useTranscriptScroll } from './use-transcript-scroll';
-
-const VISIBLE_TURNS = 20;
 
 function TurnList({
   turns,
@@ -32,6 +33,9 @@ function TurnList({
   requests,
   live,
   status,
+  firstVisible,
+  sentinel,
+  loadEarlier,
   onAttach,
 }: {
   turns: AdaptedTurn[];
@@ -41,21 +45,20 @@ function TurnList({
   requests: RequestIndex;
   live: boolean;
   status: ReactNode;
+  /** The window `useEarlierTurns` keeps: the first turn shown, and its load-earlier control. */
+  firstVisible: number;
+  sentinel: (element: HTMLElement | null) => void;
+  loadEarlier: () => void;
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
-  const [visibleCount, setVisibleCount] = useState(VISIBLE_TURNS);
-  const firstVisible = Math.max(0, turns.length - visibleCount);
   const visibleTurns = turns.slice(firstVisible);
   return (
     <>
+      {/* Scrolling near it loads the batch; the button stays for keyboard and assistive use. */}
       {firstVisible > 0 && (
-        <div className="load-earlier">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setVisibleCount((count) => count + VISIBLE_TURNS)}
-          >
+        <div ref={sentinel} className="load-earlier">
+          <Button variant="outline" size="sm" onClick={loadEarlier}>
             {firstVisible === 1
               ? t('transcript.loadEarlier.action')
               : t('transcript.loadEarlier.actionWithCount', { count: firstVisible })}
@@ -88,7 +91,8 @@ function TurnList({
  * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
  * starting a memory session) go through the panel's `onOpenTask` and `onRemember`; text selected in
  * an answer can be quoted into the reply through `onQuote`. The commands offered on an answer, or
- * on text selected in one, open through `onCommand`.
+ * on text selected in one, open through `onCommand`. With two or more user messages, a rail in the
+ * leading gutter lists all of them, mounted or not, and moves the view to any one (`PromptRail`).
  */
 export function Transcript({
   detail,
@@ -132,7 +136,23 @@ export function Transcript({
   const nextAnchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
   const [anchors, setAnchors] = useState(nextAnchors);
   if (anchors !== nextAnchors && !sameIds(anchors, nextAnchors)) setAnchors(nextAnchors);
-  const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail.revision);
+  const { viewportRef, showJump, pin, reveal, onScroll } = useTranscriptScroll(detail.revision);
+  const { firstVisible, sentinel, loadEarlier, include } = useEarlierTurns(
+    turns.length,
+    viewportRef,
+    task.id,
+  );
+  const nav = usePromptNav({
+    turns,
+    runs: task.runs,
+    fallback: t('conversation.yourMessage'),
+    viewportRef,
+    firstVisible,
+    include,
+    reveal,
+    pin,
+    atBottom: !showJump,
+  });
   const [messages, setMessages] = useState<HTMLDivElement | null>(null);
   // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
   const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
@@ -166,7 +186,7 @@ export function Transcript({
       <ScrollArea
         viewportRef={viewportRef}
         className="min-h-0 flex-1"
-        viewportClassName="overlay-footer-fade"
+        viewportClassName="overlay-footer-fade transcript-viewport"
         gutter="none"
         scrollShadow
         viewportProps={{ onScroll }}
@@ -202,6 +222,9 @@ export function Transcript({
                 requests={requestIndex}
                 live={live && !pending}
                 status={pending ? null : <StatusBar run={run} />}
+                firstVisible={firstVisible}
+                sentinel={sentinel}
+                loadEarlier={loadEarlier}
                 onAttach={onAttach}
               />
             </TaskTurnsContext>
@@ -233,6 +256,16 @@ export function Transcript({
           <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
+      {nav.prompts.length > 1 && (
+        <PromptRail
+          prompts={nav.prompts}
+          active={nav.active}
+          covered={covered}
+          viewportRef={viewportRef}
+          onShow={nav.show}
+          onStep={nav.step}
+        />
+      )}
       <ScrollJump show={showJump} onJump={pin} />
       <SelectionToolbar
         root={messages}

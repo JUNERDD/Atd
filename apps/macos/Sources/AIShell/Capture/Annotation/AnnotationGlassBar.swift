@@ -4,8 +4,8 @@ import AppKit
 /// capsule (``NativeMaterialView``), in groups split by hairlines. The capsule's radius
 /// is the buttons' radius plus the even ``padding``, so the outline and the circular buttons nest
 /// concentrically. A divider shows only between visible groups, and the capsule shrinks to fit.
-/// The glass is the shell's fixed dark surface (``GlassSurface``): it never adapts to what lies
-/// behind it, and its row stands on the panel's base fill, rounded like the capsule. Where the
+/// The glass is the shell's glass surface (``GlassSurface``), in the app's scheme: it never adapts
+/// to what lies behind it, and its row stands on the panel's base fill, rounded like the capsule. Where the
 /// material is macOS 15's, the owner says what it blurs (`blending`): the capture overlay's
 /// toolbars blur the frozen screen under them within their window, every other capsule the
 /// desktop behind its window.

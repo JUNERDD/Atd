@@ -8,6 +8,12 @@ import { installEditCommands } from './lib/edit-commands';
 import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
 import { loadMarkdown } from './features/agent/transcript/markdown-loader';
+import { installColorScheme } from './theme/color-scheme';
+
+// The theme follows `prefers-color-scheme` (the shell applies the appearance setting app-wide);
+// set it before anything renders, the host-required notice included.
+const disposeColorScheme = installColorScheme();
+import.meta.hot?.dispose(disposeColorScheme);
 
 /** Which window this page is: the shell loads the settings and welcome guide windows by hash. */
 const windowKind = (() => {

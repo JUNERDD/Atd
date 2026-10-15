@@ -7,6 +7,7 @@ import {
   useState,
   type ComponentProps,
   type JSX,
+  type ReactNode,
 } from 'react';
 import {
   Streamdown,
@@ -33,13 +34,16 @@ import {
   ZoomOutIcon,
 } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { useColorScheme, type ColorScheme } from '../../../theme/color-scheme';
 import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';
 import { DiagramDownloadMenu } from './download-button';
 import { ExternalLink } from './external-link';
 import { rehypeIncompleteLinks } from './incomplete-links';
+import { mermaidConfig } from './mermaid-lazy';
 import { codeSource } from './selection-toolbar/code-sources';
 import { StreamingCodeBlock } from './streaming-code-block';
+import { DISPLAY_MATH_TAG } from './math-lazy';
 import { useMarkdownPlugins } from './use-markdown-plugins';
 
 type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & ExtraProps;
@@ -183,6 +187,15 @@ function MarkdownTable({ children, className }: MarkdownProps<'table'>) {
   );
 }
 
+/** A display formula (`math-plugin.ts` wraps it): a long equation scrolls sideways in its block. */
+function MarkdownDisplayMath({ children }: { children?: ReactNode }) {
+  return (
+    <ScrollArea orientation="horizontal" className="max-w-full">
+      {children}
+    </ScrollArea>
+  );
+}
+
 /**
  * Explicit mermaid degrade path: the chart source stays readable as text instead of failing
  * silently when the engine or the diagram errors. It draws inside `MermaidDiagram`, whose copy
@@ -234,8 +247,10 @@ const ICONS: NonNullable<StreamdownProps['icons']> = {
 const LINK_SAFETY: NonNullable<StreamdownProps['linkSafety']> = { enabled: false };
 /** The host opens only web links, so a bare email stays text instead of a link that errors. */
 const DISABLED_AUTOLINKS = ['mailto'];
-const MERMAID_OPTIONS: NonNullable<StreamdownProps['mermaid']> = {
-  errorComponent: MermaidFallback,
+/** One options object per scheme, so Streamdown redraws a diagram only when the scheme changes. */
+const MERMAID_OPTIONS: Record<ColorScheme, NonNullable<StreamdownProps['mermaid']>> = {
+  light: { errorComponent: MermaidFallback, config: mermaidConfig('light') },
+  dark: { errorComponent: MermaidFallback, config: mermaidConfig('dark') },
 };
 
 const COMPONENTS = {
@@ -243,6 +258,7 @@ const COMPONENTS = {
   a: MarkdownLink,
   pre: MarkdownPre,
   table: MarkdownTable,
+  [DISPLAY_MATH_TAG]: MarkdownDisplayMath,
 };
 
 /**
@@ -261,6 +277,7 @@ export function StreamdownMarkdown({
 }) {
   const { t } = useTranslation('tasks');
   const { mermaid, pluginProps } = useMarkdownPlugins(text);
+  const scheme = useColorScheme();
   const translations = useMemo<NonNullable<StreamdownProps['translations']>>(
     () => ({
       viewFullscreen: t('transcript.diagram.fullscreen'),
@@ -297,7 +314,7 @@ export function StreamdownMarkdown({
         disableAutolinkProtocols={DISABLED_AUTOLINKS}
         tableMaxHeight={Infinity}
         {...pluginProps}
-        mermaid={MERMAID_OPTIONS}
+        mermaid={MERMAID_OPTIONS[scheme]}
         rehypePlugins={streaming ? STREAMING_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS}
         translations={translations}
         components={COMPONENTS}

@@ -26,9 +26,7 @@ export async function discoverUserAgentSkills(): Promise<{
 }> {
   const root = userAgentsSkillsDir();
   const loaded = loadSkillsFromDir({ dir: root, source: 'agents' });
-  const diagnostics = mapPiDiagnostics(loaded.diagnostics)
-    .filter((item) => item.code === 'same_name')
-    .slice(0, MAX_DIAGNOSTICS);
+  const diagnostics = mapPiDiagnostics(loaded.diagnostics).slice(0, MAX_DIAGNOSTICS);
   const records = await Promise.all(loaded.skills.map((skill) => toRecord(skill, diagnostics)));
   const skills = records
     .flatMap((record) => (record ? [record] : []))

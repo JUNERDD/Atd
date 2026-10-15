@@ -4,6 +4,7 @@ import type { AssistantMessage } from '@earendil-works/pi-ai';
 import {
   errorMessage,
   type AgentTask,
+  type ChildTranscriptResponse,
   type ContextBreakdown,
   type ServiceBlock,
   type ServiceModel,
@@ -17,6 +18,8 @@ import { coldContextState } from './compaction/context-state.js';
 import { ConnectionStore } from './credentials/connections.js';
 import type { LiveState } from './live-state.js';
 import { presentConnection } from './providers/connection-view.js';
+import { readSessionManager } from './session-branch-read.js';
+import { readChildTranscript } from './subagents/index.js';
 import type { RunnerContext, TaskRunner } from './task-runner.js';
 import { fromServiceBranch, projectServiceBlocks } from './transcript.js';
 
@@ -89,7 +92,7 @@ export async function coldTaskView(ctx: RunnerContext, taskId: string): Promise<
   const [first] = task.runs;
   if (!task.sessionFile || !first) return { revision: 0, blocks: [], context: emptyContextState() };
   try {
-    const manager = openSessionFile(ctx, taskId, task.sessionFile);
+    const manager = await loadSessionFile(ctx, taskId, task.sessionFile);
     const branch = fromServiceBranch(manager.getBranch());
     return {
       revision: 0,
@@ -100,6 +103,29 @@ export async function coldTaskView(ctx: RunnerContext, taskId: string): Promise<
     ctx.log.warn('Cold transcript projection failed.', { taskId, error: errorMessage(error) });
     return { revision: 0, blocks: [], context: emptyContextState() };
   }
+}
+
+/**
+ * One child session's transcript (subagents/child-transcript-read.ts), read through the task's
+ * live session when it has one, else from its session file; null when the task has no such child.
+ * Like a snapshot, it never creates a runner.
+ */
+export async function taskChildTranscript(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  taskId: string,
+  childKey: string,
+): Promise<ChildTranscriptResponse | null> {
+  const live = runner?.liveState();
+  const parentSessionFile = live?.sessionFile || ctx.ledger.task(taskId).sessionFile;
+  if (!parentSessionFile) return null;
+  return readChildTranscript({
+    taskId,
+    childKey,
+    parentSessionFile,
+    ...(live ? { parentBranch: () => live.manager.getBranch() } : {}),
+    log: ctx.log,
+  });
 }
 
 /**
@@ -129,16 +155,21 @@ export async function taskContextBreakdown(
       tokens: null,
       contextWindow: window,
     });
-  const manager = openSessionFile(ctx, taskId, task.sessionFile);
+  const manager = await loadSessionFile(ctx, taskId, task.sessionFile);
   const { tokens, contextWindow } = coldContextState(manager, window);
   return contextBreakdown({ projection: manager.buildSessionProjection(), tokens, contextWindow });
 }
 
-function openSessionFile(ctx: RunnerContext, taskId: string, sessionFile: string): SessionManager {
-  return SessionManager.open(
-    sessionFile,
-    path.join(ctx.paths.sessionsDir, taskId),
-    ctx.paths.agentDir,
+/** A task's session file, written to only when it needs a migration (session-branch-read.ts). */
+async function loadSessionFile(
+  ctx: RunnerContext,
+  taskId: string,
+  sessionFile: string,
+): Promise<SessionManager> {
+  const read = await readSessionManager(sessionFile, ctx.paths.agentDir);
+  return (
+    read ??
+    SessionManager.open(sessionFile, path.join(ctx.paths.sessionsDir, taskId), ctx.paths.agentDir)
   );
 }
 

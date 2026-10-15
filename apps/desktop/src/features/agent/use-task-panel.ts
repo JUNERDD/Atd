@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import type { PermissionRequest } from '../../client/agent/permission-schema';
 import { emptyInput, isActive } from '../../client/agent/task-schema';
 import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
-import { DEFAULT_SHORTCUTS, runModelSelection, type RunReference } from '@atd/agent-contracts';
+import { DEFAULT_SHORTCUTS, runModelSelection } from '@atd/agent-contracts';
 import {
   draftChips,
   draftReferences,
@@ -20,6 +20,7 @@ import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
 import { useCommandLaunch } from './use-command-launch';
 import { trackCommandRun } from './command-results';
+import { sendSettling, withChips, type PanelSubmit } from './panel-submit';
 import { usePanelHotkeys } from './use-panel-hotkeys';
 import { useSideChat } from './side-chat/use-side-chat';
 import { showErrorToast } from '../../components/toast-store';
@@ -31,17 +32,8 @@ export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
 const NO_REQUESTS: PermissionRequest[] = [];
 
-/**
- * Stages what the draft's chips select: the skills are the draft's skill chips, and the references
- * are exactly its conversation, MCP server and subagent chips, each item once.
- */
-function withChips(policy: RunPolicy, skills: string[], references: RunReference[]): RunPolicy {
-  return {
-    ...policy,
-    ...(skills.length ? { skills: skills.map((name) => ({ name })) } : {}),
-    ...(references.length ? { references } : {}),
-  };
-}
+/** What the side chat starts through until the first commit, before which nothing can start. */
+const UNMOUNTED: PanelSubmit = () => Promise.reject(new Error('The task panel has not mounted.'));
 
 export function useTaskPanel() {
   const { t } = useTranslation('panel');
@@ -64,6 +56,12 @@ export function useTaskPanel() {
   useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
+  /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
+  const newTask = () => {
+    setView('new');
+    setTaskId(null);
+    setPrepared(null);
+  };
   const seeded = useSeededSessions((seed) => {
     newTask();
     setDraftRevision((value) => value + 1);
@@ -77,11 +75,14 @@ export function useTaskPanel() {
   const current = useTaskDetail(taskId, holdEpoch);
   const scope = view === 'task' ? taskId : null;
   const child = useChildView(scope, current.detail?.requests ?? NO_REQUESTS);
+  // `submit` reads the side chat it serves, so the side chat starts its runs through the `submit`
+  // of the latest commit; it starts none before one.
+  const latestSubmit = useRef<PanelSubmit>(UNMOUNTED);
   const side = useSideChat({
     scope,
     status: agent.snapshot?.tasks.find((task) => task.id === scope)?.runs.at(-1)?.status,
     dismissChild: child.dismiss,
-    start: (conversationId, launched) => submit(launched, conversationId),
+    start: (conversationId, launched) => latestSubmit.current(launched, conversationId),
     rehold: () => setHoldEpoch((epoch) => epoch + 1),
   });
   // The composer serves one conversation: the side chat's task while it shows one, else the page's.
@@ -95,61 +96,22 @@ export function useTaskPanel() {
   const draft = drafts[draftKey] ?? EMPTY_DRAFT;
   const policyKey = inputStep ? `command-${inputStep.command.id}` : draftKey;
   const shortcuts = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
-  usePanelHotkeys(shortcuts, {
-    openSettings: () => void openSettings(),
-    newConversation: newTask,
-    // One level per press: the side chat's subagent view, the side chat, the conversation's
-    // subagent view, a new chat, then the panel hides.
-    escape: () => {
-      if (side.child.childKey) side.child.close();
-      else if (side.view) side.close();
-      else if (child.childKey) child.close();
-      else if (view !== 'new') setView('new');
-      else void hide();
-    },
-  });
-  const { dismiss: dismissSide } = side;
-  /** Shows a task, as choosing it from the history does, with no side chat over it. */
-  const openTask = useCallback(
-    (id: string) => {
-      dismissSide();
-      setTaskId(id);
-      setView('task');
-    },
-    [dismissSide],
-  );
-  useCommandLaunch({
-    submit: (launched) => submit(launched),
-    showInput: (value) => {
-      setPrepared(value);
-      setView('input');
-    },
-    openTask,
-  });
-  // Settings and an automation's notification show a task the same way, and an automation's
-  // result counts as read once its task shows.
-  useTaskOpenRequests(openTask);
-  useMarkAutomationRunRead(
-    view === 'task' ? agent.snapshot?.tasks.find((task) => task.id === taskId) : undefined,
-  );
-
-  /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
-  function newTask() {
-    setView('new');
-    setTaskId(null);
-    setPrepared(null);
-  }
-  function changeDraft(value: ComposerDraft) {
-    setDrafts((previous) => ({ ...previous, [draftKey]: value }));
-  }
-  async function chooseCommand(id: string) {
-    try {
-      setPrepared(await agentApi().prepare(id));
-      setView('input');
-    } catch (error) {
-      showErrorToast(error);
-    }
-  }
+  const defaultPolicy: RunPolicy = {
+    tools: inputStep
+      ? inputStep.command.tools
+      : boundRun
+        ? boundRun.snapshot.tools
+        : ['read', 'write', 'edit', 'bash', 'command'],
+    memory: inputStep
+      ? inputStep.command.memory !== 'off'
+      : boundRun
+        ? boundRun.snapshot.memory
+        : true,
+    confirmExpansion: false,
+  };
+  // The model and effort belong to the conversation's memory; the policy only stages the rest.
+  const choice = usableChoice(choices[policyKey], snapshot?.connections);
+  const policy: RunPolicy = { ...(policies[policyKey] ?? defaultPolicy), ...choice };
   /**
    * Sends the bound conversation's draft, or a command: the one a launch carried (`launched`), whose
    * run uses the command's own policy and leaves drafts, staged policies and remembered model and
@@ -195,42 +157,96 @@ export function useTaskPanel() {
       output: commandInput?.output,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
+    const invocationId = submission.current.id;
+    return sendSettling(
+      () =>
+        agentApi().submit({
+          invocationId,
+          policy: runPolicy,
+          taskId: targetTaskId,
+          commandId: commandInput?.command.id ?? null,
+          commandRevision: commandInput?.command.revision ?? null,
+          savedRun: null,
+          input,
+          ...(commandInput ? { output: commandInput.output } : {}),
+          ...(sideChatOf ? { sideChatOf } : {}),
+        }),
+      (detail) => {
+        submission.current = null;
+        if (commandInput) trackCommandRun(commandInput, detail);
+        if (!launched)
+          setPolicies((previous) => {
+            const next = { ...previous };
+            delete next[policyKey];
+            return next;
+          });
+        // The conversation this message started keeps the model it was sent with.
+        if (choice && !launched && !targetTaskId)
+          setChoices((previous) => ({ ...previous, [detail.task.id]: choice }));
+        if (!sideChatOf && !sideFollowUp) {
+          setTaskId(detail.task.id);
+          setView('task');
+          setPrepared(null);
+        }
+        // Only a sent draft clears; a command's run leaves the draft as it was.
+        if (!commandInput)
+          setDrafts((previous) =>
+            previous[draftKey] === draft ? { ...previous, [draftKey]: EMPTY_DRAFT } : previous,
+          );
+      },
+      () => setPending(false),
+    );
+  }
+  useLayoutEffect(() => {
+    latestSubmit.current = submit;
+  });
+  usePanelHotkeys(shortcuts, {
+    openSettings: () => void openSettings(),
+    newConversation: newTask,
+    // One level per press: the side chat's subagent view, the side chat, the conversation's
+    // subagent view, a new chat, then the panel hides.
+    escape: () => {
+      if (side.child.childKey) side.child.close();
+      else if (side.view) side.close();
+      else if (child.childKey) child.close();
+      else if (view !== 'new') setView('new');
+      else void hide();
+    },
+  });
+  const { dismiss: dismissSide } = side;
+  /** Shows a task, as choosing it from the history does, with no side chat over it. */
+  const openTask = useCallback(
+    (id: string) => {
+      dismissSide();
+      setTaskId(id);
+      setView('task');
+    },
+    [dismissSide],
+  );
+  useCommandLaunch({
+    submit: (launched) => submit(launched),
+    showInput: (value) => {
+      setPrepared(value);
+      setView('input');
+    },
+    openTask,
+  });
+  // Settings and an automation's notification show a task the same way, and an automation's
+  // result counts as read once its task shows.
+  useTaskOpenRequests(openTask);
+  useMarkAutomationRunRead(
+    view === 'task' ? agent.snapshot?.tasks.find((task) => task.id === taskId) : undefined,
+  );
+
+  function changeDraft(value: ComposerDraft) {
+    setDrafts((previous) => ({ ...previous, [draftKey]: value }));
+  }
+  async function chooseCommand(id: string) {
     try {
-      const detail = await agentApi().submit({
-        invocationId: submission.current.id,
-        policy: runPolicy,
-        taskId: targetTaskId,
-        commandId: commandInput?.command.id ?? null,
-        commandRevision: commandInput?.command.revision ?? null,
-        savedRun: null,
-        input,
-        ...(commandInput ? { output: commandInput.output } : {}),
-        ...(sideChatOf ? { sideChatOf } : {}),
-      });
-      submission.current = null;
-      if (commandInput) trackCommandRun(commandInput, detail);
-      if (!launched)
-        setPolicies((previous) => {
-          const next = { ...previous };
-          delete next[policyKey];
-          return next;
-        });
-      // The conversation this message started keeps the model it was sent with.
-      if (choice && !launched && !targetTaskId)
-        setChoices((previous) => ({ ...previous, [detail.task.id]: choice }));
-      if (!sideChatOf && !sideFollowUp) {
-        setTaskId(detail.task.id);
-        setView('task');
-        setPrepared(null);
-      }
-      // Only a sent draft clears; a command's run leaves the draft as it was.
-      if (!commandInput)
-        setDrafts((previous) =>
-          previous[draftKey] === draft ? { ...previous, [draftKey]: EMPTY_DRAFT } : previous,
-        );
-      return detail;
-    } finally {
-      setPending(false);
+      setPrepared(await agentApi().prepare(id));
+      setView('input');
+    } catch (error) {
+      showErrorToast(error);
     }
   }
   const title =
@@ -243,22 +259,6 @@ export function useTaskPanel() {
           : view === 'task'
             ? (current.detail?.task.title ?? t('titles.task'))
             : t('titles.newTask');
-  const defaultPolicy: RunPolicy = {
-    tools: inputStep
-      ? inputStep.command.tools
-      : boundRun
-        ? boundRun.snapshot.tools
-        : ['read', 'write', 'edit', 'bash', 'command'],
-    memory: inputStep
-      ? inputStep.command.memory !== 'off'
-      : boundRun
-        ? boundRun.snapshot.memory
-        : true,
-    confirmExpansion: false,
-  };
-  // The model and effort belong to the conversation's memory; the policy only stages the rest.
-  const choice = usableChoice(choices[policyKey], snapshot?.connections);
-  const policy: RunPolicy = { ...(policies[policyKey] ?? defaultPolicy), ...choice };
   function changePolicy({ model, thinkingLevel, ...staged }: RunPolicy) {
     setPolicies((previous) => ({ ...previous, [policyKey]: staged }));
     setChoices((previous) => ({

@@ -57,3 +57,63 @@ index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73d
              };
              live.add(child);
              return child;
+diff --git a/src/extension/index.js b/src/extension/index.js
+--- a/src/extension/index.js
++++ b/src/extension/index.js
+@@ -314,7 +314,9 @@
+         parentWake,
+     });
+     const waitSubscriptionManager = createWaitSubscriptionManager(wakingPi, state);
+-    const mainWatchdog = registerMainWatchdog(pi);
++    const disabledFeatures = resolveDisabledFeatureSurface(config);
++    // A disabled watchdog must not register hooks or probe Git at session start.
++    const mainWatchdog = disabledFeatures.features.has("watchdog") ? undefined : registerMainWatchdog(pi);
+     const resultDeliveryOwnership = createResultDeliveryOwnership(state);
+     const completionNotifier = registerSubagentNotify(wakingPi, state, { batchConfig: config.completionBatch, ownership: resultDeliveryOwnership });
+     // Ended async runs whose result has not reached the notifier yet.
+@@ -654,7 +656,6 @@
+             return (await getExecutor()).executeDelegated(requestId, params, signal, onUpdate, ctx);
+         },
+     });
+-    const disabledFeatures = resolveDisabledFeatureSurface(config);
+     const rpcBridge = registerSubagentRpcBridge({
+         events: pi.events,
+         getContext: () => state.lastUiContext,
+@@ -950,7 +951,7 @@
+             stopResultWatcher();
+             resultDeliveryOwnership.clear();
+             completionNotifier.dispose();
+-            mainWatchdog.dispose();
++            mainWatchdog?.dispose();
+             scheduledRunManager.stop();
+             supervisorChannel.dispose();
+             waitSubscriptionManager.dispose();
+diff --git a/src/runs/shared/mutation-evidence.js b/src/runs/shared/mutation-evidence.js
+--- a/src/runs/shared/mutation-evidence.js
++++ b/src/runs/shared/mutation-evidence.js
+@@ -59,8 +59,25 @@
+         return false;
+     return left.digest === right.digest;
+ }
++// Avoid invoking macOS's Git shim for ordinary non-repository tasks: it can
++// request developer tools even though mutation evidence is optional.
++function hasGitWorkTree(cwd) {
++    if (process.env.GIT_DIR || process.env.GIT_WORK_TREE)
++        return true;
++    let current = fs.realpathSync(cwd);
++    for (;;) {
++        if (fs.existsSync(path.join(current, ".git")))
++            return true;
++        const parent = path.dirname(current);
++        if (parent === current)
++            return false;
++        current = parent;
++    }
++}
+ export function snapshotTrackedMutations(cwd) {
+     try {
++        if (!hasGitWorkTree(cwd))
++            throw new Error("Not a Git working tree.");
+         const changed = listChangedTrackedFiles(cwd);
+         const fingerprints = {};
+         for (const file of changed.paths)

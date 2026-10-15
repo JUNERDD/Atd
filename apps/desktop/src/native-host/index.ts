@@ -1,12 +1,12 @@
 import { downloadResource } from '@atd/agent-client';
-import type { McpApprovalRequestResult } from '@atd/agent-contracts';
+import type { AppAppearance, McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import {
   AutomationSessionTargetSchema,
   parseExtensionSession,
   type AutomationSessionTarget,
   type ExtensionSession,
-} from '../client/agent/bridge';
+} from '../client/agent/session-handoff';
 import {
   createAgentBridge,
   type AgentChannel,
@@ -41,7 +41,7 @@ import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
 import { nativeToolbar } from './native-toolbar';
-import { nativeUpdate } from './native-update';
+import { nativeAbout, nativeUpdate } from './native-update';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -172,6 +172,7 @@ export async function installNativeHost(
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
+  let pushedAppearance: AppAppearance | null | undefined;
   let pushedTyping: string | null = null;
   settings.bridge.onChange((next) => {
     latest = next;
@@ -185,6 +186,10 @@ export async function installNativeHost(
     if (JSON.stringify(typing) !== pushedTyping) {
       pushedTyping = JSON.stringify(typing);
       native.post('typing.set', typing);
+    }
+    if (next.appearance !== pushedAppearance) {
+      pushedAppearance = next.appearance;
+      native.post('appearance.set', { appearance: next.appearance });
     }
     if (next.language === pushedLanguage) return;
     pushedLanguage = next.language;
@@ -259,6 +264,7 @@ export async function installNativeHost(
       ? { files: nativeFiles(connection), folders: nativeFolders(connection, native) }
       : {}),
     ...(update ? { update } : {}),
+    about: nativeAbout(native),
     apps,
     automations: nativeAutomations(connection, native, messages),
     agent: {

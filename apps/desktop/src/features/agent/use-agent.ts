@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { AgentSnapshot, TaskDetail, TaskState } from '../../client/agent/bridge';
 import { applyTranscriptPatch } from '../../client/agent/transcript-schema';
@@ -6,6 +6,7 @@ import { showErrorToast } from '../../components/toast-store';
 import i18n from '../../i18n';
 import { bridgeKeys, newerAgentSnapshot, wireAgentBridge } from '../../lib/bridge-cache';
 import { queryClient } from '../../lib/query-client';
+import { shareBlocks } from './share-blocks';
 
 export function agentApi() {
   if (!window.desktop?.agent) throw new Error(i18n.t('panel:errors.openDesktopApp'));
@@ -57,6 +58,8 @@ function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {
  */
 export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskDetail | null } {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
+  // The latest detail across loads: a reload of the same task keeps its unchanged blocks.
+  const held = useRef<TaskDetail | null>(null);
   useEffect(() => {
     if (!taskId || !window.desktop?.agent) return;
     const bridge = window.desktop.agent;
@@ -76,6 +79,7 @@ export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskD
     // at most once per animation frame, sparing a render per token.
     const publish = (next: TaskDetail, streamed = false) => {
       current = next;
+      held.current = next;
       waitingForSeed = false;
       if (!streamed) {
         cancelAnimationFrame(frame);
@@ -91,7 +95,12 @@ export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskD
           if (!active || request !== seq) return;
           const state = queuedState;
           queuedState = null;
-          publish(state && state.task.id === taskId ? mergeState(value, state) : value);
+          const previous = current ?? held.current;
+          const loaded =
+            previous?.task.id === value.task.id
+              ? { ...value, blocks: shareBlocks(previous.blocks, value.blocks) }
+              : value;
+          publish(state && state.task.id === taskId ? mergeState(loaded, state) : loaded);
         },
         (error) => {
           if (active && request === seq) showErrorToast(error);
@@ -121,7 +130,11 @@ export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskD
         seed();
         return;
       }
-      publish({ ...current, revision: patched.revision, blocks: patched.blocks }, true);
+      // A snapshot patch replaces the whole transcript; its unchanged blocks stay as they were.
+      const blocks = event.patch.snapshot
+        ? shareBlocks(current.blocks, patched.blocks)
+        : patched.blocks;
+      publish({ ...current, revision: patched.revision, blocks }, true);
     });
     seed();
     return () => {

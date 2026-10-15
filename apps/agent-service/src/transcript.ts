@@ -134,6 +134,20 @@ export function contentText(content: unknown): string {
   return parts.join('');
 }
 
+// Joined text of ended messages' content, which live views reproject on every flush; Pi never
+// edits an ended message's content array. Tools may reuse a partial result's, so those join anew.
+const settledTexts = new WeakMap<object, string>();
+
+function settledText(content: unknown): string {
+  if (!Array.isArray(content)) return contentText(content);
+  let text = settledTexts.get(content);
+  if (text === undefined) {
+    text = contentText(content);
+    settledTexts.set(content, text);
+  }
+  return text;
+}
+
 export function toolPartialText(partialResult: unknown): string {
   if (!partialResult || typeof partialResult !== 'object' || !('content' in partialResult))
     return '';
@@ -153,7 +167,7 @@ export function recordedCallIds(branch: readonly ServiceBranchItem[]): string[] 
 }
 
 function outputOf(result: ToolResultMessage): string {
-  return contentText(result.content);
+  return settledText(result.content);
 }
 
 /** The run an `app-invocation` marker's data names; undefined for a malformed marker. */
@@ -274,7 +288,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
           runId,
           timestamp: item.message.timestamp,
           endedAt: item.message.timestamp,
-          text: contentText(item.message.content),
+          text: settledText(item.message.content),
           ...(awaitingPrompt ? { prompt: true } : {}),
           ...(item.entryId ? { entryId: item.entryId } : {}),
         });

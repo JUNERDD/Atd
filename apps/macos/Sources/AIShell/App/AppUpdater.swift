@@ -1,3 +1,4 @@
+import AICore
 import AppKit
 import OSLog
 import Sparkle
@@ -39,10 +40,19 @@ final class AppUpdater: NSObject {
   var isAvailable: Bool { controller != nil }
 
   /// A check the user asked for, with Sparkle's own progress and result windows. A waiting
-  /// update shows as ready to install.
+  /// update shows as ready to install. Does nothing in a build that never updates.
   func checkForUpdates() {
+    guard let controller else { return }
     NSApp.activate()
-    controller?.checkForUpdates(nil)
+    controller.checkForUpdates(nil)
+  }
+
+  /// The running build as the settings window's About page shows it.
+  func about() -> AppAboutResult {
+    let info = Bundle.main.infoDictionary ?? [:]
+    return AppAboutResult(
+      version: info["CFBundleShortVersionString"] as? String ?? "",
+      build: info["CFBundleVersion"] as? String ?? "", updates: isAvailable)
   }
 
   func installNow() {

@@ -65,6 +65,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     window.isOpaque = false
     window.backgroundColor = .clear
     window.hasShadow = false
+    // The guide's artwork is designed on a black stage, so its material and page stay dark in
+    // every theme (the page takes its `.dark` class from `prefers-color-scheme`).
+    window.appearance = NSAppearance(named: .darkAqua)
     window.isReleasedWhenClosed = false
     window.level = Self.introLevel
     // Like the panel: it appears on the Space the user is on, and never becomes a full-screen

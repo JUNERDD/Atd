@@ -22,8 +22,8 @@ interface TaskHandlers {
 /**
  * The WebView host's link to the service: one HTTP client and one stream, both through the shell's
  * relay. The shell owns the service process and the credential, so the page only reports what the
- * stream sees: `connecting` until the first stream frame (the shell may still be starting the
- * service), then `connected`, and `reconnecting` after a later drop. The stream registers no
+ * stream sees: `connecting` while the shell starts the service, `disconnected` if it fails,
+ * then `connected` on the first frame and `reconnecting` after a later drop. The stream registers no
  * capabilities: the shell serves file, clipboard and selection requests on its own connection.
  */
 export class NativeConnection implements AgentConnection {
@@ -56,8 +56,11 @@ export class NativeConnection implements AgentConnection {
       onInvalidate: (frame) => {
         for (const listener of this.invalidateListeners) listener(frame);
       },
-      // Until the service first answered, a drop is part of starting up, not a lost connection.
-      onDisconnect: (reason) => this.setState(this.reached ? 'reconnecting' : 'connecting', reason),
+      // The relay reserves 1013 for a start still in progress; other failures must leave loading.
+      onDisconnect: (reason, code) => {
+        const state = this.reached ? 'reconnecting' : code === 1013 ? 'connecting' : 'disconnected';
+        this.setState(state, reason);
+      },
     });
   }
 
@@ -78,7 +81,7 @@ export class NativeConnection implements AgentConnection {
   }
 
   unavailable(): string {
-    return this.state === 'reconnecting' ? this.detail : '';
+    return this.state === 'disconnected' || this.state === 'reconnecting' ? this.detail : '';
   }
 
   /** The shell holds the service identity and data directory; the page reports neither. */

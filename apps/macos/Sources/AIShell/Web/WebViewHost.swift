@@ -36,6 +36,7 @@ final class WebViewHost: NSObject {
   private let services: ShellServices
   private let bridge: ShellBridge
   private var outbox = BridgeOutbox()
+  private var backlog = FrameBacklog()
   private var crashes: [ContinuousClock.Instant] = []
   private var reduceTransparency: ReduceTransparencyObserver?
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
@@ -108,6 +109,11 @@ final class WebViewHost: NSObject {
 
   private func post(frame: SocketFrame) {
     act(outbox.post(frame: frame, bytes: frame.byteCost))
+    guard backlog.exceeded(pendingBytes: outbox.pendingFrameBytes, at: .now) else { return }
+    // The page stopped taking frames; its stream client resumes once it runs again.
+    Self.log.error(
+      "The \(self.role.rawValue) page fell behind its streams; closing them.")
+    pipe?.closeAll(code: WebSocketCloseCode.policyViolation, reason: "The page fell behind.")
   }
 
   private func act(_ action: BridgeOutbox.Action) {

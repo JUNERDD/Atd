@@ -36,12 +36,6 @@
 .open-row:has([aria-expanded='true']) > .open-row-button,
 .open-row[data-state='open'] > .open-row-button,
 .open-row-button:focus-visible {
-  background: var(--muted);
-}
-.dark .open-row:hover > .open-row-button,
-.dark .open-row:has([aria-expanded='true']) > .open-row-button,
-.dark .open-row[data-state='open'] > .open-row-button,
-.dark .open-row-button:focus-visible {
   background: var(--ata-surface-ghost-hover);
 }
 .open-row-button:focus-visible {

@@ -222,6 +222,8 @@
   min-width: 0;
   content-visibility: auto;
   contain-intrinsic-block-size: auto 240px;
+  /* A turn the prompt rail shows lands below the top edge's fade (`revealTop`). */
+  scroll-margin-top: var(--scroll-shadow-size, 0px);
 }
 /*
  * The live turn is still growing. Size containment would flash the 240px intrinsic fallback when
@@ -229,6 +231,92 @@
  */
 .transcript-turn-live {
   content-visibility: visible;
+}
+/* The transcript keeps the reader's place itself when height changes above it (`holdInView`), so
+ * the engine's own scroll anchoring stays out: where WebKit has it (27 and later) it would move the
+ * view a second time for the same change; where it does not, there is nothing to switch off. */
+.transcript-viewport {
+  overflow-anchor: none;
+}
+/* The prompt rail (`prompt-rail.tsx`): a tick per user message in the conversation's leading
+ * gutter, centred in the height the composer leaves. Every tick keeps one length and the current
+ * one only darkens, so the rail never reaches toward the messages; a stretch cut from a longer
+ * conversation fades out at the end that continues. */
+.prompt-rail-region {
+  position: absolute;
+  top: 0;
+  bottom: var(--overlay-footer-height, 0px);
+  left: 0;
+  z-index: 1;
+  display: flex;
+  width: 16px;
+  align-items: center;
+  pointer-events: none;
+}
+.prompt-rail {
+  display: flex;
+  max-height: calc(100% - 32px);
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 5px 8px 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.prompt-rail:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -1px;
+}
+.prompt-rail[data-more-above] {
+  mask-image: linear-gradient(to bottom, transparent, #000 24px);
+}
+.prompt-rail[data-more-below] {
+  mask-image: linear-gradient(to top, transparent, #000 24px);
+}
+.prompt-rail[data-more-above][data-more-below] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent
+  );
+}
+.prompt-rail-tick {
+  flex: none;
+  width: 7px;
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  transition: background-color 150ms ease-out;
+}
+.prompt-rail:hover .prompt-rail-tick,
+.prompt-rail[aria-expanded='true'] .prompt-rail-tick {
+  background: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
+}
+.prompt-rail .prompt-rail-tick[data-current] {
+  background: var(--foreground);
+}
+/* The list's numbers are tabular, so the messages line up past 9. */
+.prompt-list-index {
+  min-width: 1.25rem;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.prompt-list-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 8px 4px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 .legacy-note {
   display: flex;
@@ -288,14 +376,13 @@
 .markdown > * + * {
   margin-top: 12px;
 }
-.markdown ul,
-.markdown ol {
-  padding-left: 22px;
-}
 .markdown ul {
+  padding-inline-start: 22px;
   list-style: disc;
 }
 .markdown ol {
+  /* Leave room for multi-digit markers inside the transcript's clipped scroll area. */
+  padding-inline-start: 3em;
   list-style: decimal;
 }
 .markdown-code {
@@ -326,11 +413,13 @@
   display: block;
 }
 /*
- * The code surface comes from `--ata-code-surface`: pierre paints its dark theme's background on
- * the host, and a declaration on the host wins over that (see `tool-code.css`), so the code and
- * the actions' scrim below share one color. Flush code takes its owner's surface instead.
+ * The code surface comes from `--ata-code-surface`: pierre paints the active theme's background
+ * on the host from `--diffs-light-bg` / `--diffs-dark-bg`, and a declaration on the host wins over
+ * that (see `tool-code.css`), so in either scheme the code and the actions' scrim below share one
+ * color. Flush code takes its owner's surface instead.
  */
 .code-block diffs-container:not(.code-block-flush) {
+  --diffs-light-bg: var(--ata-code-surface);
   --diffs-dark-bg: var(--ata-code-surface);
 }
 /*
@@ -372,14 +461,14 @@
   opacity: 1;
 }
 /*
- * In a message a long block scrolls inside itself instead of stretching the turn, both ways: the
- * code never scrolls sideways itself (`CODE_CSS` in `code-block.tsx`), so the bar sits at the
- * bottom of this capped box, not under the last line. A fence keeps this box from its first
- * streamed line on (`StreamingCodeBlock`), so its close changes neither its height nor its scroll.
+ * In a message a long block scrolls inside itself instead of stretching the turn, both ways, in
+ * the shared ScrollArea: the code never scrolls sideways itself (`CODE_CSS` in `code-block.tsx`),
+ * so the bar sits at the bottom of this capped box, not under the last line. A fence keeps this
+ * box from its first streamed line on (`StreamingCodeBlock`), so its close changes neither its
+ * height nor its scroll.
  */
-.markdown-code-block .code-block-file {
+.markdown-code-block .code-block-scroll {
   max-height: 320px;
-  overflow: auto;
 }
 /* A fenced block's code carries the inline-code chip classes; the block already frames it. */
 .markdown pre > code {
@@ -441,20 +530,16 @@
   overflow-wrap: anywhere;
 }
 /*
- * Display math (KaTeX): a long equation scrolls sideways inside its own block instead of widening
- * the turn. KaTeX's stylesheet loads after this one and spaces the block with 1em margins; in a
- * message it keeps the turn's block rhythm instead (`.markdown > * + *`, and 8px in thinking). The
- * padding keeps ink that KaTeX's metrics leave out, such as CJK in a `\text` label under a brace,
- * inside the scroller's clip, and leaves an equation a little more air than a paragraph.
+ * Display math (KaTeX): a long equation scrolls sideways inside its own block, the ScrollArea the
+ * math plugin wraps it in (`MarkdownDisplayMath`), instead of widening the turn. KaTeX's stylesheet
+ * loads after this one and spaces the block with 1em margins; in a message the wrap keeps the
+ * turn's block rhythm instead (`.markdown > * + *`, and 8px in thinking). The padding keeps ink
+ * that KaTeX's metrics leave out, such as CJK in a `\text` label under a brace, inside the
+ * scroller's clip, and leaves an equation a little more air than a paragraph.
  */
 .markdown .katex-display {
   margin: 0;
   padding-block: 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.markdown > * + .katex-display {
-  margin-top: 12px;
 }
 .message-actions {
   display: flex;
@@ -1037,12 +1122,6 @@
 .history-row:has(:focus-visible),
 .history-row[data-state='open'],
 .history-row:has([aria-expanded='true']) {
-  background: var(--muted);
-}
-.dark .history-row:hover,
-.dark .history-row:has(:focus-visible),
-.dark .history-row[data-state='open'],
-.dark .history-row:has([aria-expanded='true']) {
   background: var(--ata-surface-ghost-hover);
 }
 .history-row:has(.task-row:focus-visible) {

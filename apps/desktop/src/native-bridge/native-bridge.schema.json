@@ -51,6 +51,7 @@
       "commandProgress.show",
       "commandProgress.hide",
       "commandOptions.set",
+      "app.about",
       "approval.request",
       "toolbar.set",
       "accessibility.request",
@@ -60,12 +61,14 @@
     "posts": [
       "bridge.ready",
       "language.set",
+      "appearance.set",
       "typing.set",
       "window.dragRegions",
       "onboarding.surface",
       "onboarding.selection",
       "socket.open",
       "socket.send",
+      "update.check",
       "update.install",
       "socket.close",
       "userApp.pinDrag"
@@ -1941,6 +1944,30 @@
             },
             "method": {
               "type": "string",
+              "const": "app.about"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "approval.request"
             },
             "params": {
@@ -2205,6 +2232,47 @@
             },
             "method": {
               "type": "string",
+              "const": "appearance.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appearance"],
+              "properties": {
+                "appearance": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "light"
+                        },
+                        {
+                          "type": "string",
+                          "const": "dark"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
               "const": "typing.set"
             },
             "params": {
@@ -2440,6 +2508,26 @@
                   "type": "string"
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "update.check"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -5803,6 +5891,29 @@
       "properties": {},
       "additionalProperties": false
     },
+    "AppAboutParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AppAboutResult": {
+      "type": "object",
+      "required": ["version", "build", "updates"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "build": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "updates": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "ApprovalRequestParams": {
       "type": "object",
       "required": ["kind", "serverId"],
@@ -6035,6 +6146,32 @@
       },
       "additionalProperties": false
     },
+    "AppearanceSetPost": {
+      "type": "object",
+      "required": ["appearance"],
+      "properties": {
+        "appearance": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "light"
+                },
+                {
+                  "type": "string",
+                  "const": "dark"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "TypingSetPost": {
       "type": "object",
       "required": ["typing", "animation"],
@@ -6193,6 +6330,11 @@
           "type": "string"
         }
       },
+      "additionalProperties": false
+    },
+    "UpdateCheckPost": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "UpdateInstallPost": {

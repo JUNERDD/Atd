@@ -1,4 +1,5 @@
 import type { DiagramPlugin } from 'streamdown';
+import { mermaidConfig } from './mermaid-lazy';
 
 /** WebKit's largest canvas area in pixels; a larger canvas draws nothing. */
 const MAX_CANVAS_PIXELS = 16_777_216;
@@ -13,14 +14,18 @@ export interface DiagramSvg {
 }
 
 /**
- * Draws `source` again with the transcript's mermaid plugin (the same engine and configuration as
- * the diagram on screen) as a standalone SVG document. Mermaid sizes its SVG to its container
+ * Draws `source` again with the transcript's mermaid plugin (the same engine as the diagram on
+ * screen) as a standalone SVG document, always in the light theme: the file is opened outside the
+ * app, where the PNG's white (`diagramPng`) and other viewers' backgrounds are light. Passing the
+ * config also resets mermaid, which the on-screen diagram may have left in the dark theme. Mermaid sizes its SVG to its container
  * (`width="100%"`, `max-width`); the copy states its drawn size instead, so other apps and the PNG
  * canvas open it at that size. Rejects with mermaid's message when the source does not draw.
  */
 export async function diagramSvg(plugin: DiagramPlugin, source: string): Promise<DiagramSvg> {
   renders += 1;
-  const { svg } = await plugin.getMermaid().render(`diagram-export-${renders}`, source);
+  const { svg } = await plugin
+    .getMermaid(mermaidConfig('light'))
+    .render(`diagram-export-${renders}`, source);
   // Parsed as HTML, like the page does, so HTML labels need not be well-formed XML; serializing
   // the element then writes it as XML with its namespaces.
   const root = new DOMParser().parseFromString(svg, 'text/html').querySelector('svg');
