@@ -102,6 +102,12 @@
     visibility 0s linear var(--dur-slow);
 }
 
+/* A scene the scroll hasn't come close to yet (use-case-scroll.ts): not rendered, so its lazy images
+   wait. */
+.cases__slide[data-deferred] {
+  display: none;
+}
+
 .cases__slide[data-active] {
   opacity: 1;
   visibility: visible;

@@ -98,6 +98,9 @@ island confirms it, the Mini Panel slides out from the edge, a capture is framed
 by step, windows open and replies stream in. The layers are positioned by `case-layers.css`, so
 the prerendered page shows the first scene complete; reduced motion keeps them at rest and only
 cross-fades between scenes.
+Every scene's images stay in the prerendered markup, but only the first scene is rendered until the
+screen scrolls into view, then up to two scenes past the current one (`use-case-scroll.ts`), so the
+page doesn't download every scene's layers on arrival.
 
 The scroll is the scenes' clock, not time. Under the showcase's `data-scrub` every layer's
 entrance is a paused CSS animation, and `scene-clock.ts` seeks it from how far the scene's step
