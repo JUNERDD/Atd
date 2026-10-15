@@ -2,13 +2,20 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import type { TaskRun } from '../../../client/agent/task-schema';
 import type { AdaptedTurn } from './adapter';
 import { promptEntries, samePrompts, type PromptEntry } from './prompt-nav';
-import { revealTop } from './scroll-anchor';
 
 /** A turn is being read while it reaches into the top third of the view. */
 const READING_BAND = '0px 0px -67% 0px';
 
 function turnElement(viewport: HTMLElement | null, turnId: string): HTMLElement | null {
   return viewport?.querySelector<HTMLElement>(`[data-turn-id="${CSS.escape(turnId)}"]`) ?? null;
+}
+
+/** The mounted turns by id, gathered in one pass over the viewport. */
+function mountedTurns(viewport: HTMLElement): Map<string, HTMLElement> {
+  const turns = new Map<string, HTMLElement>();
+  for (const element of viewport.querySelectorAll<HTMLElement>('[data-turn-id]'))
+    if (element.dataset.turnId) turns.set(element.dataset.turnId, element);
+  return turns;
 }
 
 /**
@@ -59,8 +66,12 @@ function useReadingTurn(
  * and `step`: the rail does not render again. At the bottom the last message is the current one
  * however short its turn.
  * `show` reveals a message's turn, first extending the window to it (`include`) when it is not
- * mounted yet; `step` moves to the previous or next message, where back from inside a turn's
- * answer goes to that turn's own message first and on from the last message goes to the bottom.
+ * mounted yet. `step` moves to the nearest message in its direction whose showing would move the
+ * view at all, measured from where the view is headed (`revealDirection`): back from inside a
+ * turn's answer reaches that turn's own message first, back past the first mounted turn reaches the
+ * messages above it, and on past the last message goes to the bottom. It measures rather than
+ * starting from `active`, which can name a message below the view's top: short turns share the top
+ * third, and at the bottom the last message is current whatever else the screen shows.
  */
 export function usePromptNav({
   turns,
@@ -70,6 +81,7 @@ export function usePromptNav({
   firstVisible,
   include,
   reveal,
+  revealDirection,
   pin,
   atBottom,
 }: {
@@ -81,6 +93,8 @@ export function usePromptNav({
   firstVisible: number;
   include: (index: number) => void;
   reveal: (element: HTMLElement) => void;
+  /** Which way showing a mounted turn would move the view: up (-1), down (1), or not at all (0). */
+  revealDirection: (element: HTMLElement) => -1 | 0 | 1;
   pin: () => void;
   atBottom: boolean;
 }) {
@@ -115,13 +129,17 @@ export function usePromptNav({
   }, [firstVisible, reveal, viewportRef]);
 
   const step = (direction: -1 | 1) => {
-    if (active === null) return;
-    const index = prompts.findIndex((entry) => entry.turnId === active);
     const viewport = viewportRef.current;
-    const current = turnElement(viewport, active);
-    const inside =
-      direction < 0 && viewport && current && viewport.scrollTop > revealTop(viewport, current) + 1;
-    const target = prompts[inside ? index : index + direction];
+    if (!viewport) return;
+    const mounted = mountedTurns(viewport);
+    // Turns lie in prompt order, so the last message that moves the view up is the nearest above,
+    // and the first that moves it down the nearest below.
+    const moves = (entry: PromptEntry) => {
+      const element = mounted.get(entry.turnId);
+      // A message the window has not mounted lies above it: only going back reaches it.
+      return element ? revealDirection(element) === direction : direction < 0;
+    };
+    const target = direction < 0 ? prompts.findLast(moves) : prompts.find(moves);
     if (target) show(target.turnId);
     else if (direction > 0) pin();
   };

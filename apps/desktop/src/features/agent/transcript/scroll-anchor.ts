@@ -17,6 +17,23 @@ type Hold = { stop: () => void; release: () => void };
 /** One hold per viewport: two would both compensate the same change. */
 const holds = new WeakMap<HTMLElement, Hold>();
 
+/**
+ * Each viewport's listener for the scrolls its holds make: the transcript's glide, which moves along
+ * with them instead of taking them for the reader.
+ */
+const scrollListeners = new WeakMap<HTMLElement, (moved: number) => void>();
+
+/**
+ * Tells `listener` how far each compensation of a hold on `viewport` scrolled it, until the returned
+ * function runs. A viewport has one listener; a newer one replaces it.
+ */
+export function onHoldScroll(viewport: HTMLElement, listener: (moved: number) => void): () => void {
+  scrollListeners.set(viewport, listener);
+  return () => {
+    if (scrollListeners.get(viewport) === listener) scrollListeners.delete(viewport);
+  };
+}
+
 export function contentTop(viewport: HTMLElement, element: Element): number {
   return (
     element.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop
@@ -37,11 +54,18 @@ export function anchorAt(viewport: HTMLElement, element: Element): Anchor {
   return { element, top: contentTop(viewport, element) };
 }
 
-/** Scrolls by whatever grew or shrank above the anchor's element, so the element stays in place. */
+/**
+ * Scrolls by whatever grew or shrank above the anchor's element, so the element stays in place, and
+ * reports how far the view actually moved (the range clamps it, and offsets round).
+ */
 function compensate(viewport: HTMLElement, held: Anchor) {
   if (!held.element.isConnected) return;
   const top = contentTop(viewport, held.element);
-  if (top !== held.top) viewport.scrollTop += top - held.top;
+  if (top !== held.top) {
+    const from = viewport.scrollTop;
+    viewport.scrollTop += top - held.top;
+    scrollListeners.get(viewport)?.(viewport.scrollTop - from);
+  }
   held.top = top;
 }
 
@@ -49,7 +73,8 @@ function compensate(viewport: HTMLElement, held: Anchor) {
  * Holds the anchor's element in place while content above it changes height (turns mounted above
  * it, lazy markdown, code highlighting and diagrams settling, estimated turn heights resolving),
  * starting by putting it back at `anchor.top`. Growth below it is never compensated, so a view
- * pinned to the bottom keeps following it.
+ * pinned to the bottom keeps following it. Each scroll it makes goes to the viewport's listener
+ * (`onHoldScroll`), so a glide under way moves along with the content.
  *
  * The reader taking over with the wheel, a touch, a key or a click releases the hold, and so does
  * a newer hold on the same viewport; `onRelease` runs then. The returned function only stops it:

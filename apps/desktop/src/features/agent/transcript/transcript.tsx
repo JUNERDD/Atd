@@ -136,7 +136,9 @@ export function Transcript({
   const nextAnchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
   const [anchors, setAnchors] = useState(nextAnchors);
   if (anchors !== nextAnchors && !sameIds(anchors, nextAnchors)) setAnchors(nextAnchors);
-  const { viewportRef, showJump, pin, reveal, onScroll } = useTranscriptScroll(detail.revision);
+  const { viewportRef, showJump, pin, reveal, revealDirection, onScroll } = useTranscriptScroll(
+    detail.revision,
+  );
   const { firstVisible, sentinel, loadEarlier, include } = useEarlierTurns(
     turns.length,
     viewportRef,
@@ -150,6 +152,7 @@ export function Transcript({
     firstVisible,
     include,
     reveal,
+    revealDirection,
     pin,
     atBottom: !showJump,
   });
