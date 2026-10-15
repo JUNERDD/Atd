@@ -12,7 +12,14 @@ import {
   readGitHubRelease,
   readSourceDir,
 } from './artifacts.mjs';
-import { feedKey, latestKey, metadataKey, openBucket, versionedKey } from './bucket.mjs';
+import {
+  feedKey,
+  latestKey,
+  metadataKey,
+  openBucket,
+  publishesFeeds,
+  versionedKey,
+} from './bucket.mjs';
 import {
   freshUrl,
   holdsArtifact,
@@ -26,15 +33,19 @@ import {
 import { EMPTY_FEED, mirrorFeed } from './feeds.mjs';
 
 const options = readOptions();
-const { baseUrl, prefix, sourceDir } = options;
-const release = sourceDir ? await readSourceDir(sourceDir) : readGitHubRelease(options.tag);
+const { baseUrl, channel, prefix, sourceDir } = options;
+const release = sourceDir
+  ? await readSourceDir(sourceDir)
+  : readGitHubRelease(options.tag, channel);
+const feeds = publishesFeeds(channel);
 const nonce = `${release.version}-${randomUUID()}`;
 const href = (key) => publicUrl(baseUrl, key).href;
 
 /**
- * What latest.json records once both architectures advanced. The top-level fields keep their
- * original arm64 meaning for existing readers; `architectures` indexes every served build and
- * leaves out one the release does not have.
+ * What the channel's manifest (latest.json, rc.json) records once both architectures advanced.
+ * The top-level fields keep their original arm64 meaning for existing readers; `architectures`
+ * indexes every served build and leaves out one the release does not have. Only a channel that
+ * publishes feeds names one.
  */
 function describe() {
   const architectures = Object.fromEntries(
@@ -45,8 +56,8 @@ function describe() {
         sha256: artifact.sha256,
         bytes: artifact.size,
         url: href(versionedKey(prefix, release, artifact)),
-        latest: href(latestKey(prefix, artifact.arch)),
-        feed: href(feedKey(prefix, artifact.feedName)),
+        latest: href(latestKey(prefix, channel, artifact.arch)),
+        ...(feeds && { feed: href(feedKey(prefix, artifact.feedName)) }),
       },
     ]),
   );
@@ -54,7 +65,10 @@ function describe() {
   return { version, sha256, bytes, url, architectures };
 }
 
-/** Each artifact's versioned key and mirror feed. Every feed is checked before any write. */
+/**
+ * Each artifact's versioned key and mirror feed. Every feed is checked before any write, also on
+ * a channel that does not publish feeds: they must still describe exactly these DMGs.
+ */
 async function prepare() {
   const entries = [];
   for (const artifact of release.artifacts) {
@@ -104,12 +118,12 @@ async function run(directory) {
   }
   if (stopsAt('after-immutable-upload')) return false;
   // A rehearsal source is not a GitHub release, so there is nothing newer to defer to.
-  if (!sourceDir) assertStillLatest(release);
+  if (!sourceDir) assertStillLatest(release, channel);
 
   for (const [index, { arch, feedName }] of ARCHES.entries()) {
     if (index > 0 && stopsAt('between-arches')) return false;
     const entry = entries.find(({ artifact }) => artifact.arch === arch);
-    const latest = latestKey(prefix, arch);
+    const latest = latestKey(prefix, channel, arch);
     if (entry) {
       bucket.promote(entry.artifact, entry.key, latest, release.version);
       await verifyDelivery({
@@ -125,6 +139,7 @@ async function run(directory) {
       await verifyAbsent(freshUrl(baseUrl, latest, nonce));
     }
     if (index === 0 && stopsAt('before-feed-advance')) return false;
+    if (!feeds) continue;
     const feed = feedKey(prefix, feedName);
     const body = entry ? entry.feed : EMPTY_FEED;
     await bucket.putText(feed, body, 'application/xml');
@@ -136,7 +151,7 @@ async function run(directory) {
   }
 
   const metadata = `${JSON.stringify(describe(), null, 2)}\n`;
-  const manifestKey = metadataKey(prefix);
+  const manifestKey = metadataKey(prefix, channel);
   await bucket.putText(manifestKey, metadata, 'application/json');
   await verifyText({
     url: freshUrl(baseUrl, manifestKey, nonce),
@@ -145,7 +160,7 @@ async function run(directory) {
   });
   bucket.prune({
     referenced: new Set(entries.map(({ key }) => key)),
-    allowRc: Boolean(sourceDir),
+    versions: channel === 'rc' ? 'rc' : sourceDir ? 'any' : 'stable',
   });
   return true;
 }
@@ -154,6 +169,7 @@ console.log(
   JSON.stringify({
     ...describe(),
     absent: release.absent,
+    channel,
     source: sourceDir ? 'source-dir' : 'github',
     bucket: options.bucket,
     prefix,
@@ -171,7 +187,7 @@ try {
   if (await run(directory)) {
     const served = release.artifacts.map(({ arch }) => arch).join(', ');
     console.log(
-      `Published ${release.version} (${served}); the stable downloads and feeds expire within 60 seconds.`,
+      `Published ${release.version} (${served}) to the ${channel} channel; its downloads${feeds ? ' and feeds' : ''} expire within 60 seconds.`,
     );
   }
 } finally {

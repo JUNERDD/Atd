@@ -14,14 +14,18 @@ name: Release
 # `SUPublicEDKey` in project.yml). Both name the GitHub asset. `appcast.xml` stays the arm64 feed
 # because installs of 0.4.0–0.7.9 read the latest release's `appcast.xml` from GitHub; 0.7.10 and
 # later read the mirror's feeds, which the mirror job republishes on R2 pointing at its verified
-# copies. A prerelease is never the latest release and is never mirrored, so it is not offered.
+# copies. A prerelease is never the latest release and never enters those feeds, so installed
+# copies are not offered it. After every publish the mirror also moves the website's preview
+# channel (`/rc/` on the mirror) to the newest published release, release candidate or stable.
 #
 # A push that leaves the version as it was builds nothing, even when that version has no release
 # yet. A manual run on main in the default `release` mode releases the current version unless its
 # tag exists: use it for a first release without a bump, or to retry a release whose build failed.
-# A manual run on any branch can instead use `artifacts` (build, verify and sign both dmgs and
-# feeds into one workflow artifact; nothing is tagged, released or mirrored) or `rehearsal` (the
-# same, then a draft release under a throwaway tag that is checked and always deleted).
+# On a `release/` branch the same run publishes only a prerelease version (such as 0.9.0-rc.1),
+# tagged at that branch's commit; stable versions publish only from main. A manual run on any
+# branch can instead use `artifacts` (build, verify and sign both dmgs and feeds into one workflow
+# artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
+# under a throwaway tag that is checked and always deleted).
 on:
   push:
     branches: [main]
@@ -29,7 +33,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: release publishes from main; artifacts and rehearsal never publish
+        description: release publishes from main (prereleases also from release/*); artifacts and rehearsal never publish
         type: choice
         options: [release, artifacts, rehearsal]
         default: release
@@ -46,7 +50,8 @@ permissions:
   contents: read
 
 # Only a release-mode run on main (including a push) joins the publishing group, so a run on
-# another branch can never displace a queued release; artifact and rehearsal runs queue per branch.
+# another branch can never displace a queued release; prerelease, artifact and rehearsal runs on
+# another branch queue per branch. The mirror serializes every channel's uploads itself.
 concurrency:
   group: release-${{ github.ref == 'refs/heads/main' && (inputs.mode || 'release') == 'release' && 'publish' || github.ref }}
   cancel-in-progress: false
@@ -104,10 +109,17 @@ jobs:
               ;;
           esac
           if [ "$MODE" = release ]; then
-            # A release run from another branch must not tag and publish unreviewed code.
+            # A stable release publishes only reviewed code from main. A release branch may publish
+            # a prerelease, which never becomes the latest release or enters the update feeds.
             if [ "$GITHUB_REF" != refs/heads/main ]; then
-              echo "::error::The release mode publishes only from main; use artifacts or rehearsal on $GITHUB_REF_NAME."
-              exit 1
+              if [[ "$GITHUB_REF" != refs/heads/release/* ]]; then
+                echo "::error::The release mode publishes only from main or a release/ branch; use artifacts or rehearsal on $GITHUB_REF_NAME."
+                exit 1
+              fi
+              if [[ "$version" != *-* ]]; then
+                echo "::error::$GITHUB_REF_NAME can publish only a prerelease such as $version-rc.1; stable $version publishes from main."
+                exit 1
+              fi
             fi
             if [ -n "$INPUT_MARKETING_VERSION$INPUT_BUILD_VERSION" ]; then
               echo "::error::A release takes its version from apps/macos/package.json; version inputs are for artifacts and rehearsal."
@@ -579,6 +591,9 @@ jobs:
         id: draft
         run: |
           notes="Atd-$VERSION-arm64.dmg is the Apple silicon (arm64) build and Atd-$VERSION-x64.dmg the Intel (x64) build; both run on macOS 15 or later. The app is not signed with an Apple Developer ID and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies update themselves: on Apple silicon from 0.4.0 or later, on Intel from 0.9.0 or later."
+          if [[ "$VERSION" == *-* ]]; then
+            notes="$notes This is a prerelease: installed stable copies are not offered it, and it updates itself to the next stable release, not to later prereleases."
+          fi
           # The body precedes the generated notes, like `gh release create --notes --generate-notes`.
           gh api -X POST "repos/$GH_REPO/releases" \
             -F draft=true \
@@ -689,6 +704,25 @@ jobs:
     uses: ./.github/workflows/mirror-release.yml
     with:
       tag: v${{ needs.version.outputs.marketing_version }}
+      channel: stable
+    secrets:
+      R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
+      R2_DOWNLOAD_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
+      R2_DOWNLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}
+
+  # The website's preview downloads follow the newest published release, a release candidate or
+  # the stable release once it catches up, so they move after every publish: after the stable
+  # mirror for a stable release (skipped for a prerelease), which its versioned DMGs then reuse.
+  mirror-preview:
+    name: Mirror the preview downloads
+    needs: [version, release, mirror]
+    if: >-
+      always() && needs.version.outputs.publish == 'true' && needs.release.result == 'success' &&
+      (needs.mirror.result == 'success' || needs.mirror.result == 'skipped')
+    uses: ./.github/workflows/mirror-release.yml
+    with:
+      tag: latest
+      channel: rc
     secrets:
       R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
       R2_DOWNLOAD_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}

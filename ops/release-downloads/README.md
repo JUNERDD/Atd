@@ -25,10 +25,33 @@ An x64 build running under Rosetta on Apple silicon reads the arm64 feed instead
 routes it through `AtdArm64FeedURL`), so a mistaken Intel install returns to the native build on
 its next update.
 
+## Channels
+
+The mirror serves two channels from the same bucket, domain, and cache rule:
+
+| Channel  | Serves                                                            | Permanent downloads                 | Manifest      | Update feeds |
+| -------- | ----------------------------------------------------------------- | ----------------------------------- | ------------- | ------------ |
+| `stable` | GitHub's latest stable release                                    | `/latest/Atd-arm64.dmg`, `-x64.dmg` | `latest.json` | yes          |
+| `rc`     | The newest of that release and every published `-rc.n` prerelease | `/rc/Atd-arm64.dmg`, `-x64.dmg`     | `rc.json`     | no           |
+
+The website's preview downloads link to the `rc` channel. Because the stable release sorts after
+every candidate for it, the channel follows the stable release once it catches up, so its links
+never go dead between release cycles. It publishes no feeds: installed copies, release candidates
+included, read the stable feeds, so a candidate updates itself to the next stable release, not to
+a later candidate. Other prereleases (a beta, or a stable release withdrawn as a prerelease) are
+never served.
+
+Both channels share the versioned keys under `releases/`, so a channel serving the stable release
+reuses the DMGs the stable channel already verified. Each channel cleans up only its own versions:
+stable `releases/v<x.y.z>/…` keys or candidate `releases/v<x.y.z>-rc.<n>/…` keys.
+
 ## Publication
 
-`.github/workflows/release.yml` calls `mirror-release.yml` after publishing a stable release.
-The reusable workflow serializes mirror uploads. `mirror.mjs` rejects older releases, downloads
+`.github/workflows/release.yml` calls `mirror-release.yml` for the stable channel after publishing
+a stable release from `main`, then for the `rc` channel after every publish, including a
+release candidate published from a `release/` branch. The reusable workflow serializes mirror
+uploads across channels, and moves the stable channel only from `main`. The stages below describe
+the stable channel; the `rc` channel runs the same ones without the feeds, writing `rc.json`. `mirror.mjs` rejects older releases, downloads
 the official versioned assets of every architecture the release has, and compares each DMG's
 SHA-256 with GitHub's asset digest. Each feed must name exactly one update, its own
 architecture's versioned DMG, with that DMG's size and the release's version. A release with
@@ -86,11 +109,13 @@ rerun **Mirror release downloads** on `main` with `tag: latest` to bootstrap the
 from a failed upload. An explicit tag must still equal GitHub's latest stable release.
 
 ```sh
-# Inspect the current release without credentials or writes.
+# Inspect each channel's current release without credentials or writes.
 node ops/release-downloads/mirror.mjs --tag latest --dry-run
+node ops/release-downloads/mirror.mjs --channel rc --dry-run
 
 # Publish using the repository's encrypted credentials.
 gh workflow run mirror-release.yml --repo JUNERDD/Atd --ref main -f tag=latest
+gh workflow run mirror-release.yml --repo JUNERDD/Atd --ref main -f tag=latest -f channel=rc
 ```
 
 After the mirror finishes, it keeps the two most recently uploaded versioned DMGs of each
@@ -107,6 +132,7 @@ arm64 artifact.
 
 | Flag                   | Effect                                                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--channel <name>`     | `stable` (the default) or `rc` (README: Channels). `rc` takes no `--tag`: it serves the newest published release.                                                         |
 | `--source-dir <dir>`   | Reads DMGs, feeds, and `manifest.json` from a directory instead of GitHub, hashing every DMG against the manifest. Skips the latest-release recheck. Accepts RC versions. |
 | `--bucket <name>`      | The bucket to write. Required, and not the production bucket, with `--source-dir`.                                                                                        |
 | `--base-url <origin>`  | The bucket's public origin for read-back checks and feed URLs. Required, and not production's, with `--source-dir`. Plain HTTP is accepted only for a loopback host.      |
@@ -133,13 +159,18 @@ the release branch.
 1. `gh release edit v<bad version> --prerelease`.
 2. `gh release edit v<previous version> --latest`, then confirm
    `gh api repos/{owner}/{repo}/releases/latest` returns that version.
-3. Manually run **Mirror release downloads** on `main` with `tag: latest`. The mirror accepts an
+3. Manually run **Mirror release downloads** on `main` with `tag: latest`, then again with
+   `channel: rc`, so the preview downloads leave the withdrawn release too. The mirror accepts an
    older single-architecture release: the arm64 feed points back at it, and the x64 feed becomes
    empty while `/latest/Atd-x64.dmg` and the x64 entry of `latest.json` are removed. Objects
    already in R2 with the same SHA-256 count as done; older DMGs removed by cleanup are uploaded
    again from GitHub.
 4. GitHub's `appcast.xml` for older installs follows `releases/latest` back automatically.
 5. Withdraw website download links with a revert pull request.
+
+To withdraw a bad release candidate, turn it back into a draft
+(`gh release edit v<candidate> --draft`) and run the mirror with `channel: rc`; the channel moves
+to the newest remaining candidate or the stable release.
 
 Some effects cannot be undone. Sparkle never offers a lower version, so clients already on the
 withdrawn release stay on it without being stuck; appcast entries clients have already seen

@@ -15,6 +15,12 @@ export const STOP_POINTS = ['after-immutable-upload', 'before-feed-advance', 'be
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '[::1]', 'localhost']);
 
 /**
+ * The download channels (README: Channels). `stable` serves GitHub's latest stable release and
+ * owns the update feeds; `rc` serves the newest published release, a release candidate or stable.
+ */
+export const CHANNELS = ['stable', 'rc'];
+
+/**
  * Reads the command line. Without flags this is the production mirror of GitHub's latest stable
  * release. `--source-dir` rehearses against an `artifacts` workflow download instead, which may
  * carry RC versions, so it must also name a bucket and URL other than production's.
@@ -24,6 +30,7 @@ export function readOptions(args = process.argv.slice(2)) {
     args,
     options: {
       tag: { type: 'string', default: 'latest' },
+      channel: { type: 'string', default: 'stable' },
       'dry-run': { type: 'boolean', default: false },
       'source-dir': { type: 'string' },
       bucket: { type: 'string' },
@@ -37,6 +44,7 @@ export function readOptions(args = process.argv.slice(2)) {
   const baseUrl = values['base-url'] ?? PRODUCTION_BASE_URL;
   const { prefix } = values;
   const stopAfter = values['stop-after'];
+  const { channel } = values;
 
   assert(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucket), `Invalid bucket name: ${bucket}`);
   assertBaseUrl(baseUrl);
@@ -45,6 +53,9 @@ export function readOptions(args = process.argv.slice(2)) {
     prefix === '' || /^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)*\/$/.test(prefix),
     'The prefix must be empty or lowercase path segments ending in "/".',
   );
+  assert(CHANNELS.includes(channel), `--channel takes one of: ${CHANNELS.join(', ')}`);
+  // The rc channel's release is whichever published release is newest, never one named here.
+  assert(channel !== 'rc' || values.tag === 'latest', '--channel rc takes no --tag.');
   assert(
     stopAfter === undefined || STOP_POINTS.includes(stopAfter),
     `--stop-after takes one of: ${STOP_POINTS.join(', ')}`,
@@ -66,6 +77,7 @@ export function readOptions(args = process.argv.slice(2)) {
   }
   return {
     tag: values.tag,
+    channel,
     dryRun: values['dry-run'],
     sourceDir,
     bucket,

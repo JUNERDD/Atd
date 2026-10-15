@@ -12,9 +12,22 @@ export function versionedKey(prefix, release, artifact) {
   return `${prefix}releases/${release.tag}/${artifact.name}`;
 }
 
+/**
+ * Where each channel's permanent objects live. Only the stable channel publishes update feeds:
+ * installed builds read those, while the rc channel serves the website's preview downloads.
+ */
+const CHANNEL_KEYS = {
+  stable: { directory: 'latest', manifest: 'latest.json', feeds: true },
+  rc: { directory: 'rc', manifest: 'rc.json', feeds: false },
+};
+
+export function publishesFeeds(channel) {
+  return CHANNEL_KEYS[channel].feeds;
+}
+
 /** The permanent download the website links to. */
-export function latestKey(prefix, arch) {
-  return `${prefix}latest/Atd-${arch}.dmg`;
+export function latestKey(prefix, channel, arch) {
+  return `${prefix}${CHANNEL_KEYS[channel].directory}/Atd-${arch}.dmg`;
 }
 
 /** The feed installed Release builds read (`SUFeedURL`, chosen per architecture at build time). */
@@ -22,9 +35,16 @@ export function feedKey(prefix, feedName) {
   return `${prefix}${feedName}`;
 }
 
-export function metadataKey(prefix) {
-  return `${prefix}latest.json`;
+export function metadataKey(prefix, channel) {
+  return `${prefix}${CHANNEL_KEYS[channel].manifest}`;
 }
+
+/** The versions of the versioned keys a prune may remove; each channel cleans only its own. */
+const PRUNABLE_VERSIONS = {
+  stable: String.raw`\d+\.\d+\.\d+`,
+  rc: String.raw`\d+\.\d+\.\d+-rc\.\d+`,
+  any: String.raw`\d+\.\d+\.\d+(?:-rc\.\d+)?`,
+};
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -109,16 +129,17 @@ export function openBucket({ bucket, prefix, directory }) {
     /**
      * Removes older versioned DMGs below the prefix, grouped by architecture, keeping each
      * group's newest uploads and every key in `referenced` (what the current feeds name). Only
-     * this mirror's versioned keys match; GitHub keeps the full release archive. RC keys match
-     * only in a `--source-dir` rehearsal, and never outside its prefix.
-     * @param {{ referenced: Set<string>, allowRc: boolean }} options
+     * this mirror's versioned keys of the given versions match: stable ones for the stable
+     * channel, RC ones for the rc channel, and both in a stable `--source-dir` rehearsal, never
+     * outside its prefix. GitHub keeps the full release archive.
+     * @param {{ referenced: Set<string>, versions: keyof typeof PRUNABLE_VERSIONS }} options
      */
-    prune({ referenced, allowRc }) {
+    prune({ referenced, versions }) {
       const releases = `${prefix}releases/`;
       const listing = JSON.parse(
         aws(['s3api', 'list-objects-v2', '--bucket', bucket, '--prefix', releases]) || '{}',
       );
-      const version = allowRc ? String.raw`\d+\.\d+\.\d+(?:-rc\.\d+)?` : String.raw`\d+\.\d+\.\d+`;
+      const version = PRUNABLE_VERSIONS[versions];
       const pattern = new RegExp(
         `^${escapeRegExp(releases)}v(${version})/Atd-\\1-(arm64|x64)\\.dmg$`,
       );

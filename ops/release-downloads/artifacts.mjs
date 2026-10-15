@@ -50,14 +50,48 @@ function checkSize(size, name) {
  */
 
 function latestRelease() {
-  return JSON.parse(command('gh', ['api', `repos/${REPO}/releases/latest`]));
+  const release = JSON.parse(command('gh', ['api', `repos/${REPO}/releases/latest`]));
+  assert(!release.draft && !release.prerelease, 'Only stable public releases are mirrored.');
+  assert(STABLE_VERSION.test(release.tag_name.slice(1)), 'Expected a stable version tag.');
+  return release;
 }
 
-/** GitHub's latest stable release, before anything is downloaded. */
-export function readGitHubRelease(tag) {
-  const release = latestRelease();
-  assert(!release.draft && !release.prerelease, 'Only stable public releases are mirrored.');
-  assert(/^v\d+\.\d+\.\d+$/.test(release.tag_name), 'Expected a stable version tag.');
+/** Orders `x.y.z` and `x.y.z-rc.n` versions; a release sorts after every candidate for it. */
+function versionRank(version) {
+  const [, major, minor, patch, rc] = /^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$/.exec(version);
+  return [major, minor, patch, rc ?? Infinity].map(Number);
+}
+
+function compareVersions(a, b) {
+  const [left, right] = [versionRank(a), versionRank(b)];
+  const index = left.findIndex((part, i) => part !== right[i]);
+  return index === -1 ? 0 : left[index] - right[index];
+}
+
+/**
+ * The rc channel's release: the newest of GitHub's latest stable release and every published
+ * release candidate. A candidate must be a published prerelease with an `-rc.n` tag; other
+ * prereleases (a withdrawn stable release, a beta) are never served. Once the stable release
+ * catches up, it is the newest, so the channel follows it.
+ */
+function newestPreviewRelease() {
+  const listed = JSON.parse(command('gh', ['api', `repos/${REPO}/releases?per_page=100`]));
+  const candidates = listed.filter(
+    (release) => !release.draft && release.prerelease && RC_VERSION.test(release.tag_name.slice(1)),
+  );
+  return [latestRelease(), ...candidates].reduce((newest, release) =>
+    compareVersions(release.tag_name.slice(1), newest.tag_name.slice(1)) > 0 ? release : newest,
+  );
+}
+
+/** The GitHub release a channel serves now. */
+function channelRelease(channel) {
+  return channel === 'rc' ? newestPreviewRelease() : latestRelease();
+}
+
+/** The GitHub release the channel serves, before anything is downloaded. */
+export function readGitHubRelease(tag, channel) {
+  const release = channelRelease(channel);
   assert(
     tag === 'latest' || tag === release.tag_name,
     'Refusing to replace the latest download with an older release.',
@@ -91,7 +125,8 @@ export function readGitHubRelease(tag) {
   }
   return {
     version,
-    buildVersion: version,
+    // The release workflow builds a prerelease without its `-` (0.9.0-rc.1 as 0.9.0rc.1).
+    buildVersion: version.replaceAll('-', ''),
     tag: release.tag_name,
     releaseId: release.id,
     artifacts,
@@ -128,10 +163,10 @@ export async function downloadGitHubRelease(release, directory) {
   }
 }
 
-/** Fails the run when GitHub's latest release changed while this one was being mirrored. */
-export function assertStillLatest(release) {
+/** Fails the run when the channel's release changed while this one was being mirrored. */
+export function assertStillLatest(release, channel) {
   assert.equal(
-    latestRelease().id,
+    channelRelease(channel).id,
     release.releaseId,
     'A newer GitHub release appeared; rerun the mirror.',
   );
