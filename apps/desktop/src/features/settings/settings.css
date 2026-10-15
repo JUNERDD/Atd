@@ -135,6 +135,11 @@
 .settings-window[data-layout='top'] .settings-navigation .settings-nav-button[data-footer] {
   margin-top: 0;
 }
+/* Results have no footer to pin, so a search's list keeps its own height and the empty state below
+ * it stays right under the search field. */
+.settings-navigation[data-searching] {
+  flex: none;
+}
 /* Every state fills the whole row: the Button's transparent border would otherwise inset its
  * hover fill 1px (`bg-clip-padding`) inside the selected and best-match fills. */
 .settings-navigation .settings-nav-button {
@@ -189,8 +194,11 @@
   background-color: var(--ata-surface-ghost-hover);
   color: var(--foreground);
 }
-/* The search's empty state, sized for the navigation card rather than a page. */
+/* The search's empty state, sized for the navigation card rather than a page: it keeps its own
+ * height instead of `Empty`'s fill, which in the card's full-height column would centre it in the
+ * space below the list. */
 .settings-nav-empty[data-slot='empty'] {
+  flex: none;
   gap: 12px;
   padding: 16px 8px;
 }
