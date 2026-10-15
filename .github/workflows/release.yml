@@ -203,6 +203,9 @@ jobs:
           - { arch: arm64, machine: arm64, runner: macos-26 }
           - { arch: x64, machine: x86_64, runner: macos-26-intel }
     runs-on: ${{ matrix.runner }}
+    # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
+    # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
+    timeout-minutes: 45
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
@@ -324,8 +327,12 @@ jobs:
       # and the Applications link, written straight into the image's .DS_Store without driving
       # Finder. build.py corrects its background bookmark before compression; dmgbuild is pinned
       # by hash in its own virtual environment. package.mjs names the dmg after the app's version
-      # and its main executable's architecture.
+      # and its main executable's architecture. Packaging takes under 2 minutes, but hdiutil can
+      # hang silently on the image it attaches or detaches (once for 27 minutes on macos-26-intel;
+      # a rerun passed). dmgbuild retries a detach only when it fails and waits on hdiutil with no
+      # timeout, so the step fails fast here instead.
       - name: Package the dmg
+        timeout-minutes: 10
         run: |
           venv="$RUNNER_TEMP/dmgbuild"
           python3 -m venv "$venv"
