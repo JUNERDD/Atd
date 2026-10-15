@@ -8,6 +8,9 @@ import { CaseDesktop, CaseScene } from './scene';
 import { useCaseScroll } from './use-case-scroll';
 import './cases.css';
 
+/** Each scene's id, which is also its link's hash. */
+const sceneIds = cases.map((item) => item.id);
+
 /**
  * Every scene as one scroll sequence on the one desktop, under the section's heading. The stage
  * pins while its track scrolls past, and each step of scrolling brings in the next scene with its
@@ -15,12 +18,13 @@ import './cases.css';
  * (tabs.tsx). The heading pins with the stage when the viewport has room for it beside a full-size
  * screen (use-case-scroll.ts). The prerendered page shows the first scene complete; once the page
  * hydrates the scroll drives it, and plays each scene's choreography as far as its step has scrolled.
- * Scenes beyond the scroll's reach stay in the markup but unrendered, so their images wait.
+ * Scenes beyond the scroll's reach stay in the markup but unrendered, so their images wait. Each
+ * scene's figure carries its id, the hash of its own link (`#automations`).
  */
 export function CasesShowcase({ id }: { id: string }) {
   const t = useCopy(casesCopy);
   const lang = useLang();
-  const { root, stage, heading, screen, active, reach, select } = useCaseScroll(cases.length);
+  const { root, stage, heading, screen, active, reach, choose } = useCaseScroll(sceneIds);
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
   return (
@@ -33,7 +37,7 @@ export function CasesShowcase({ id }: { id: string }) {
           label={t.index}
           tabs={cases.map((item) => ({ id: item.id, name: item.label[lang] }))}
           active={active}
-          onSelect={select}
+          onSelect={choose}
         />
         <div className="cases__frame">
           <div ref={screen} className="cases__screen display" id="case-screen">
@@ -41,6 +45,7 @@ export function CasesShowcase({ id }: { id: string }) {
             {cases.map((item, index) => (
               <figure
                 key={item.id}
+                id={item.id}
                 className="cases__slide"
                 data-active={active === index ? '' : undefined}
                 data-deferred={index > reach ? '' : undefined}

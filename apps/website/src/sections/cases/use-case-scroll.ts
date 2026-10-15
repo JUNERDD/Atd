@@ -16,6 +16,29 @@ const LEAD = 0.5;
  */
 const AHEAD = 2;
 
+/** The id a URL hash names, or '' (also for a hash that isn't valid percent-encoding). */
+function fragmentOf(hash: string) {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Scrolls straight to scene `index` of `count`, into the rest after its choreography, so the scene
+ * shows complete: the stage then sits at its sticky offset with the track that far above it. While
+ * the stage is pinned the page doesn't visibly move, so the jump only changes the scene; a smooth
+ * scroll would flash and play every scene in between.
+ */
+function showScene(track: HTMLElement, pinned: HTMLElement, index: number, count: number) {
+  const distance = track.offsetHeight - pinned.offsetHeight;
+  const sticky = Number.parseFloat(getComputedStyle(pinned).top) || 0;
+  const top = track.getBoundingClientRect().top + window.scrollY - sticky;
+  const into = index + (PLAY + 1) / 2;
+  window.scrollTo({ top: Math.round(top + (distance * into) / count), behavior: 'instant' });
+}
+
 /**
  * Drives the showcase from the page's scroll position. The track is one stage tall plus one step of
  * scrolling per scene (cases.css), and the sticky stage stays pinned while those steps pass: how
@@ -40,8 +63,14 @@ const AHEAD = 2;
  * comes into view, then up to `AHEAD` scenes past the current one, and a rendered scene stays
  * rendered. The showcase hides the rest with `display: none`, so their lazy images don't load with
  * the page, though every image stays in the prerendered markup.
+ *
+ * Each scene has its own link, its id as the URL's hash: a page opened on it, or a link followed to
+ * it, goes straight to that scene (`showScene`), and choosing a scene by name puts its link in the
+ * address bar without adding a history entry. `ids` should keep its identity across renders (a
+ * module constant): a new array sets the showcase up again.
  */
-export function useCaseScroll(count: number) {
+export function useCaseScroll(ids: readonly string[]) {
+  const count = ids.length;
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLDivElement>(null);
@@ -67,6 +96,7 @@ export function useCaseScroll(count: number) {
     let lead = 0;
     let frame = 0;
     let awake = false;
+    let landed = false;
 
     const update = () => {
       frame = 0;
@@ -96,6 +126,24 @@ export function useCaseScroll(count: number) {
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(update);
     };
+    const follow = () => {
+      const index = ids.indexOf(fragmentOf(location.hash));
+      if (index >= 0) showScene(track, pinned, index, count);
+    };
+    // Lands the page on its hash once the stage has its first measure: a scene's link goes to that
+    // scene, and any other target is aimed at again, because the browser started its (smooth)
+    // scroll to it before the measure changed the track's height and moved what follows it. A
+    // reload or a step through history keeps the position the browser restores instead.
+    const land = () => {
+      const [navigation] = performance.getEntriesByType('navigation');
+      if (navigation instanceof PerformanceNavigationTiming && navigation.type !== 'navigate')
+        return;
+      const fragment = fragmentOf(location.hash);
+      const index = ids.indexOf(fragment);
+      const target = fragment ? document.getElementById(fragment) : null;
+      if (index >= 0) showScene(track, pinned, index, count);
+      else if (target && !track.contains(target)) target.scrollIntoView({ block: 'start' });
+    };
     // The lowest edge of the stage's parts, from the stage's top.
     const bottom = () => Math.max(0, ...parts.map((part) => part.offsetTop + part.offsetHeight));
     const measure = () => {
@@ -113,6 +161,8 @@ export function useCaseScroll(count: number) {
       distance = track.offsetHeight - pinned.offsetHeight;
       sticky = Number.parseFloat(style.top) || 0;
       lead = Math.max(0, window.innerHeight - sticky - box.offsetTop) * LEAD;
+      if (!landed) land();
+      landed = true;
       schedule();
     };
     // scenes.css pauses the scenes' animations under `data-scrub`; they are read back once they
@@ -125,6 +175,7 @@ export function useCaseScroll(count: number) {
     scrub();
     rescrub.current = scrub;
     reduced.addEventListener('change', scrub);
+    window.addEventListener('hashchange', follow);
 
     const resize = new ResizeObserver(measure);
     resize.observe(track);
@@ -154,6 +205,7 @@ export function useCaseScroll(count: number) {
     return () => {
       track.removeAttribute('data-scrub');
       reduced.removeEventListener('change', scrub);
+      window.removeEventListener('hashchange', follow);
       resize.disconnect();
       near.disconnect();
       wake.disconnect();
@@ -161,27 +213,20 @@ export function useCaseScroll(count: number) {
       window.removeEventListener('scroll', schedule);
       cancelAnimationFrame(frame);
     };
-  }, [count]);
+  }, [ids, count]);
 
   // Scenes rendered for the first time bring their own animations, which the scroll must seek too.
   useEffect(() => rescrub.current?.(), [reach]);
 
-  /**
-   * Scrolls straight to a scene's step, into the rest after its choreography, so the scene shows
-   * complete: the stage then sits at its sticky offset with the track that far above it. While the
-   * stage is pinned the page doesn't visibly move, so the jump only changes the scene; a smooth
-   * scroll would flash and play every scene in between.
-   */
-  function select(index: number) {
+  /** Goes to a scene the visitor chose by name and shows its link in the address bar. */
+  function choose(index: number) {
+    const id = ids[index];
     const track = root.current;
     const pinned = stage.current;
-    if (!track || !pinned) return;
-    const distance = track.offsetHeight - pinned.offsetHeight;
-    const sticky = Number.parseFloat(getComputedStyle(pinned).top) || 0;
-    const top = track.getBoundingClientRect().top + window.scrollY - sticky;
-    const into = index + (PLAY + 1) / 2;
-    window.scrollTo({ top: Math.round(top + (distance * into) / count), behavior: 'instant' });
+    if (id === undefined || !track || !pinned) return;
+    history.replaceState(history.state, '', `#${id}`);
+    showScene(track, pinned, index, count);
   }
 
-  return { root, stage, heading, screen, active, reach, select };
+  return { root, stage, heading, screen, active, reach, choose };
 }
