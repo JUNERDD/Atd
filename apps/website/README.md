@@ -117,6 +117,10 @@ hairline, and the line is the scroll's progress: it is lit under the scenes alre
 under the current one 1:1 with the scroll. Each name is also a button that jumps straight to its
 scene, landing in the rest at the end of its step so the scene shows complete; the jump is instant,
 so the pinned stage doesn't move and the scenes in between never flash or play.
+Each scene also has its own link, its id as the hash (`/#automations`, `/zh#settings`): a page
+opened on it goes straight to that scene, and choosing a scene by name puts its link in the address
+bar. Once the stage has measured itself, the page aims again at whatever its hash names, since the
+measure can move the sections after the showcase while the browser is already scrolling to them.
 Where the names don't fit the row scrolls sideways and keeps the current one in its middle. Below
 the screen the scene's caption is a headline and one line; on a phone the headline shrinks with the
 width so it stays on one line. As the stage rises into place the screen grows to full size, tied to
