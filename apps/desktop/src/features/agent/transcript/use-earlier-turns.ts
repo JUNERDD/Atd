@@ -15,7 +15,8 @@ const PRELOAD_PX = 600;
  *
  * Turns revealed above the view would push it down, so a load holds the view on the turn that led
  * the list (`holdInView`): the commit puts that turn back where the reader left it, and the hold
- * keeps it there while the new turns settle until the reader takes over.
+ * keeps it there while the new turns settle until the reader takes over. A hold that already keeps
+ * that turn or a later one in place (a message the rail revealed) carries on in its stead.
  */
 export function useEarlierTurns(
   total: number,

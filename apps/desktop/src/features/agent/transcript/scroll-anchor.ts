@@ -12,10 +12,22 @@ const SCROLL_INTENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as cons
  */
 export type Anchor = { element: Element; top: number };
 
-type Hold = { stop: () => void; release: () => void };
+type Hold = { anchor: Anchor; stop: () => void; release: () => void };
 
 /** One hold per viewport: two would both compensate the same change. */
 const holds = new WeakMap<HTMLElement, Hold>();
+
+/**
+ * Whether a hold on `held` keeps `element` in place as well: it compensates every change above its
+ * own element, so it does when `held` is `element` or comes after it.
+ */
+function keeps(held: Element, element: Element): boolean {
+  if (!held.isConnected) return false;
+  return (
+    held === element ||
+    (element.compareDocumentPosition(held) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  );
+}
 
 /**
  * Each viewport's listener for the scrolls its holds make: the transcript's glide, which moves along
@@ -77,15 +89,24 @@ function compensate(viewport: HTMLElement, held: Anchor) {
  * (`onHoldScroll`), so a glide under way moves along with the content.
  *
  * The reader taking over with the wheel, a touch, a key or a click releases the hold, and so does
- * a newer hold on the same viewport; `onRelease` runs then. The returned function only stops it:
- * an owner that holds the same anchor again after its next commit keeps it.
+ * a newer hold on the same viewport; `onRelease` runs then. A newer hold whose element the active
+ * one keeps in place already replaces nothing: the active hold compensates at once and stays, so a
+ * message revealed below the turn a load anchors keeps its place, and the newer hold ends there
+ * (`onRelease` runs). The returned function only stops the hold: an owner that holds the same
+ * anchor again after its next commit keeps it.
  */
 export function holdInView(
   viewport: HTMLElement,
   anchor: Anchor,
   onRelease?: () => void,
 ): () => void {
-  holds.get(viewport)?.release();
+  const active = holds.get(viewport);
+  if (active && keeps(active.anchor.element, anchor.element)) {
+    compensate(viewport, active.anchor);
+    onRelease?.();
+    return () => {};
+  }
+  active?.release();
   compensate(viewport, anchor);
   const observer =
     typeof ResizeObserver === 'undefined'
@@ -94,6 +115,7 @@ export function holdInView(
   // The ScrollArea viewport wraps its children in one content element, which owns the height.
   if (viewport.firstElementChild) observer?.observe(viewport.firstElementChild);
   const hold: Hold = {
+    anchor,
     stop() {
       if (holds.get(viewport) === hold) holds.delete(viewport);
       observer?.disconnect();
