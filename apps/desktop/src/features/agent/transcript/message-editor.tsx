@@ -35,17 +35,36 @@ export function MessageEditor({
   const [pending, setPending] = useState(false);
   const field = useRef<HTMLTextAreaElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
+  /** Watches the field while the editor opens, until `settle` stops it. */
+  const opening = useRef<ResizeObserver | null>(null);
   const sendable = canSend(text) && !pending;
 
   // Opening the editor moves focus into it, with the caret after the text, and scrolls a long
-  // text's end, where the caret is, into view.
+  // text's end, where the caret is, into view. The end moves after that first scroll: the scroll
+  // area adds its bar lane once it sees the text overflow, so the text wraps narrower and grows (a
+  // frame later on engines without CSS `field-sizing`, where script sizes the field). Each change
+  // of the field's size scrolls the end back into view, until the user acts in the field.
   useEffect(() => {
     const node = field.current;
-    node?.focus();
-    node?.setSelectionRange(node.value.length, node.value.length);
     const box = viewport.current;
-    if (box) box.scrollTop = box.scrollHeight;
+    if (!node || !box) return;
+    node.focus();
+    node.setSelectionRange(node.value.length, node.value.length);
+    const revealEnd = () => {
+      box.scrollTop = box.scrollHeight;
+    };
+    revealEnd();
+    const observer = new ResizeObserver(revealEnd);
+    observer.observe(node);
+    opening.current = observer;
+    return () => observer.disconnect();
   }, []);
+
+  /** The user's first scroll, press, key or edit in the field's scroll area ends the reveal. */
+  function settle() {
+    opening.current?.disconnect();
+    opening.current = null;
+  }
 
   async function send() {
     if (!sendable) return;
@@ -79,13 +98,19 @@ export function MessageEditor({
         className="panel-text-scroll"
         viewportClassName="max-h-[inherit]"
         viewportRef={viewport}
+        onPointerDownCapture={settle}
+        onWheelCapture={settle}
+        onKeyDownCapture={settle}
       >
         <Textarea
           aria-label={t('turnActions.editLabel')}
           ref={field}
           value={text}
           className="overflow-hidden"
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            settle();
+            setText(event.target.value);
+          }}
           onKeyDown={onKeyDown}
         />
       </ScrollArea>
