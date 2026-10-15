@@ -11,10 +11,12 @@ import {
 } from 'react';
 import {
   Streamdown,
+  StreamdownContext,
   defaultRehypePlugins,
   type DiagramPlugin,
   type ExtraProps,
   type MermaidErrorComponentProps,
+  type MermaidOptions,
   type StreamdownProps,
   useIsCodeFenceIncomplete,
 } from 'streamdown';
@@ -110,12 +112,41 @@ function fenceLabel(node: HastNode): string {
 const MermaidPlugin = createContext<DiagramPlugin | null>(null);
 
 /**
+ * Explicit mermaid degrade path: the chart source stays readable as text instead of failing
+ * silently when the engine or the diagram errors. It draws inside `MermaidDiagram`, whose copy
+ * action already copies this source.
+ */
+function MermaidFallback({ chart }: MermaidErrorComponentProps) {
+  return (
+    <ScrollArea
+      orientation="both"
+      className="markdown-code mermaid-fallback"
+      viewportClassName="max-h-[inherit]"
+      scrollShadow
+    >
+      <pre>{chart}</pre>
+    </ScrollArea>
+  );
+}
+
+/** One options object per scheme, so a diagram redraws only when the scheme changes. */
+const MERMAID_OPTIONS: Record<ColorScheme, MermaidOptions> = {
+  light: { errorComponent: MermaidFallback, config: mermaidConfig('light') },
+  dark: { errorComponent: MermaidFallback, config: mermaidConfig('dark') },
+};
+
+/**
  * A mermaid fence drawn by Streamdown's diagram block, which keeps its own fullscreen and pan-zoom
  * controls. Copy and download are the transcript's, beside Streamdown's action pill in the header
  * row (`top-2.5 right-12` centres copy on that pill's 32px height, clear of its 36px width at
  * `right-2`; download sits one button further left). The frame records the fence's source, which
  * a selection copies in place of the SVG. Streamdown's own download is a blob link the web view
  * cannot save, so it stays off (`CONTROLS`); the transcript's saves through the native bridge.
+ *
+ * The block and the fullscreen view it opens read their mermaid options from the nearest
+ * `StreamdownContext`, which this component provides with the current scheme's. Streamdown's root
+ * memo ignores a changed `mermaid` prop, so options set there keep the scheme a settled message
+ * mounted in; here a scheme change redraws the diagram in place, leaving the message as it is.
  */
 function MermaidDiagram({
   source,
@@ -126,13 +157,21 @@ function MermaidDiagram({
   code: JSX.Element;
   plugin: DiagramPlugin;
 }) {
+  const scheme = useColorScheme();
+  const streamdown = useContext(StreamdownContext);
+  const context = useMemo(
+    () => ({ ...streamdown, mermaid: MERMAID_OPTIONS[scheme] }),
+    [streamdown, scheme],
+  );
   return (
     <div
       {...codeSource({ contents: source, language: 'mermaid' })}
       className="markdown-mermaid group"
     >
       {/* Streamdown's own `pre` marks its code child as a block; without the mark it is inline. */}
-      {cloneElement(code, { 'data-block': 'true' })}
+      <StreamdownContext value={context}>
+        {cloneElement(code, { 'data-block': 'true' })}
+      </StreamdownContext>
       <DiagramDownloadMenu source={source} plugin={plugin} className="top-2.5 right-20" />
       <CopyButton text={source} className="top-2.5 right-12" />
     </div>
@@ -197,24 +236,6 @@ function MarkdownDisplayMath({ children }: { children?: ReactNode }) {
 }
 
 /**
- * Explicit mermaid degrade path: the chart source stays readable as text instead of failing
- * silently when the engine or the diagram errors. It draws inside `MermaidDiagram`, whose copy
- * action already copies this source.
- */
-function MermaidFallback({ chart }: MermaidErrorComponentProps) {
-  return (
-    <ScrollArea
-      orientation="both"
-      className="markdown-code mermaid-fallback"
-      viewportClassName="max-h-[inherit]"
-      scrollShadow
-    >
-      <pre>{chart}</pre>
-    </ScrollArea>
-  );
-}
-
-/**
  * Per-character reveal: the default word split cuts on whitespace, so an unspaced CJK paragraph
  * is one token and its streamed growth would appear without animating.
  */
@@ -247,11 +268,6 @@ const ICONS: NonNullable<StreamdownProps['icons']> = {
 const LINK_SAFETY: NonNullable<StreamdownProps['linkSafety']> = { enabled: false };
 /** The host opens only web links, so a bare email stays text instead of a link that errors. */
 const DISABLED_AUTOLINKS = ['mailto'];
-/** One options object per scheme, so Streamdown redraws a diagram only when the scheme changes. */
-const MERMAID_OPTIONS: Record<ColorScheme, NonNullable<StreamdownProps['mermaid']>> = {
-  light: { errorComponent: MermaidFallback, config: mermaidConfig('light') },
-  dark: { errorComponent: MermaidFallback, config: mermaidConfig('dark') },
-};
 
 const COMPONENTS = {
   img: MarkdownImage,
@@ -277,7 +293,6 @@ export function StreamdownMarkdown({
 }) {
   const { t } = useTranslation('tasks');
   const { mermaid, pluginProps } = useMarkdownPlugins(text);
-  const scheme = useColorScheme();
   const translations = useMemo<NonNullable<StreamdownProps['translations']>>(
     () => ({
       viewFullscreen: t('transcript.diagram.fullscreen'),
@@ -314,7 +329,6 @@ export function StreamdownMarkdown({
         disableAutolinkProtocols={DISABLED_AUTOLINKS}
         tableMaxHeight={Infinity}
         {...pluginProps}
-        mermaid={MERMAID_OPTIONS[scheme]}
         rehypePlugins={streaming ? STREAMING_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS}
         translations={translations}
         components={COMPONENTS}

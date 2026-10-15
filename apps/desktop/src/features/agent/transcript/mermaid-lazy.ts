@@ -19,10 +19,11 @@ const MERMAID_CONFIG: MermaidConfig = {
 
 /**
  * The mermaid theme drawn for a color scheme: `neutral` is made for light backgrounds, `dark` for
- * dark ones. Streamdown hands this config to the plugin on every render (`MermaidOptions.config`)
- * and the plugin re-initialises mermaid with it, so a scheme change redraws open diagrams. The
- * plugin itself stays scheme-free (its own config is the light one), which is also what exports
- * draw with: a saved diagram is read outside the app, on white.
+ * dark ones. `MermaidDiagram` (`markdown.tsx`) gives Streamdown's diagram the current scheme's
+ * config (`MermaidOptions.config`), which Streamdown hands to the plugin on every draw; the plugin
+ * re-initialises mermaid with it, so a scheme change redraws open diagrams. The plugin itself stays
+ * scheme-free (its own config is the light one), and exports pass the light config: a saved
+ * diagram is read outside the app, on white.
  */
 export function mermaidConfig(scheme: ColorScheme): MermaidConfig {
   return { theme: scheme === 'dark' ? 'dark' : 'neutral' };
