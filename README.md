@@ -105,6 +105,6 @@ Read the [contributor guidelines](AGENTS.md) before making changes, and submit a
 
 ## License
 
-Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0) and the memory engine's files from [pi-hermes-memory](docs/third-party/pi-hermes-memory-LICENSE) (MIT).
+Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0) and the memory engine's files from [pi-hermes-memory](licenses/pi-hermes-memory-LICENSE) (MIT).
 
 The license covers the code, not the Atd name and logo, nor the logos of other companies and services in `packages/ui/src/assets/brands`, which remain their owners' trademarks.

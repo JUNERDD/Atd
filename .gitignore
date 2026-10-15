@@ -4,6 +4,7 @@ dist-native/
 .turbo/
 coverage/
 .artifacts/
+/docs/
 /tmp/
 *.tsbuildinfo
 .DS_Store
