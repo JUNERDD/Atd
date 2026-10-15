@@ -343,6 +343,7 @@ jobs:
             runner: macos-15-intel
             feed: https://downloads.atd.best/appcast-x64.xml
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
@@ -397,6 +398,41 @@ jobs:
             --feed-url "$FEED_URL" \
             --arm64-feed-url https://downloads.atd.best/appcast.xml \
             --public-ed-key "$key"
+      # Reuse the verified x64 Release bundle. Only the test driver is compiled here; the app
+      # and its embedded service are neither rebuilt nor re-signed. A failure gates collect.
+      - name: Compile the Intel Release smoke driver
+        if: matrix.arch == 'x64'
+        env:
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          mkdir -p "$ATD_SMOKE_EVIDENCE"
+          xcrun swiftc -swift-version 6 -parse-as-library -target x86_64-apple-macos15.0 \
+            apps/macos/Tests/ReleaseSmoke/AppDriver.swift \
+            -o "$RUNNER_TEMP/atd-smoke-driver" 2>&1 | tee "$ATD_SMOKE_EVIDENCE/driver-build.log"
+      - name: Test Intel Release startup and core functions
+        if: matrix.arch == 'x64'
+        timeout-minutes: 8
+        env:
+          ATD_SMOKE_DRIVER: ${{ runner.temp }}/atd-smoke-driver
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          "$APP/Contents/Resources/node/bin/node" --test --test-reporter=tap \
+            apps/macos/Tests/ReleaseSmoke/harness.test.mjs \
+            apps/macos/Tests/ReleaseSmoke/release-smoke.test.mjs \
+            2>&1 | tee "$ATD_SMOKE_EVIDENCE/tests.tap"
+      - name: Confirm smoke tests preserved the bundle signature
+        if: always() && matrix.arch == 'x64' && env.APP != ''
+        run: codesign --verify --deep --strict "$APP"
+      - name: Upload Intel macOS 15 smoke evidence
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: intel-macos15-smoke-evidence
+          path: ${{ runner.temp }}/intel-macos15-smoke/
+          if-no-files-found: warn
+          retention-days: 7
 
   # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
   # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
