@@ -66,11 +66,17 @@ for (const route of entry.routes) {
   console.log(`prerendered ${route.lang} → dist/${route.dir === './' ? '' : route.dir}index.html`);
 }
 
-// Crawlers get every language page, each listing the others as alternates.
-const alternates = entry.routes
+// Crawlers get every language page, each listing the others as alternates and English as the
+// default for any other language, as the pages' own hreflang links do.
+const fallback = entry.routes.find((route) => route.lang === 'en');
+if (!fallback) throw new Error('The English page, the x-default alternate, is missing.');
+const alternates = [
+  ...entry.routes.map((route) => [route.hreflang, route.path]),
+  ['x-default', fallback.path],
+]
   .map(
-    (route) =>
-      `    <xhtml:link rel="alternate" hreflang="${route.hreflang}" href="${origin}${route.path}" />`,
+    ([hreflang, path]) =>
+      `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${origin}${path}" />`,
   )
   .join('\n');
 const sitemap = [

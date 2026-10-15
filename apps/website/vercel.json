@@ -18,6 +18,10 @@
       ]
     },
     {
+      "source": "/asset-manifest.json",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },

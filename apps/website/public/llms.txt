@@ -4,6 +4,7 @@
 
 - [Website (English)](/): a scroll through the app's interfaces, its features and the download
 - [Website (简体中文)](/zh): the same page in Simplified Chinese
+- [Download for Mac](https://downloads.atd.best/latest/Atd-arm64.dmg): the newest stable installer, for Apple silicon on macOS 26 or later; free and open source under the MIT license
 - [Source on GitHub](https://github.com/JUNERDD/Atd): the native shell, the React UI and the agent service
 - Preview builds for [Apple silicon](https://downloads.atd.best/rc/Atd-arm64.dmg) and [Intel](https://downloads.atd.best/rc/Atd-x64.dmg) (macOS 15 or later): the newest release candidate
 - [Releases](https://github.com/JUNERDD/Atd/releases): release notes and the arm64 dmg for each version

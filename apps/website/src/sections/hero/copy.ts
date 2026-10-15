@@ -16,11 +16,11 @@ const words = [site.name, 'Any|thing', 'Any|time', 'Any|where'];
 
 export const heroCopy = {
   en: {
-    title: 'Atd: anything, anytime, anywhere, to do.',
+    title: 'Atd: anything, anytime, anywhere, to do. A quiet AI agent for your Mac.',
     words,
   },
   zh: {
-    title: 'Atd：任何事、任何时间、任何地点，都能交给它。',
+    title: 'Atd：任何事、任何时间、任何地点，都能交给它。安静待命的 Mac AI 智能体。',
     words,
   },
 } satisfies Localized<HeroCopy>;
