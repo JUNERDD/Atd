@@ -7,4 +7,5 @@
 - [Source on GitHub](https://github.com/JUNERDD/Atd): the native shell, the React UI and the agent service
 - [Download for Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg): the newest stable installer for Macs with Apple silicon (macOS 15 or later); saves as `Atd-<version>-arm64.dmg`
 - [Download for Intel](https://downloads.atd.best/latest/Atd-x64.dmg): the newest stable installer for Intel Macs (macOS 15 or later); saves as `Atd-<version>-x64.dmg`
+- Preview builds for [Apple silicon](https://downloads.atd.best/rc/Atd-arm64.dmg) and [Intel](https://downloads.atd.best/rc/Atd-x64.dmg): the newest release candidate, or the stable release while none is newer; it updates itself to the next stable release
 - [Releases](https://github.com/JUNERDD/Atd/releases): release notes and the arm64 and x64 dmg for each version

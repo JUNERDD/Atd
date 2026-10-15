@@ -14,6 +14,8 @@ interface DownloadCopy {
   specs: { label: string; value: string; href?: string }[];
   /** What to expect the first time it opens, in one line. */
   firstLaunch: string;
+  /** Leads the preview line, before each chip family's name linking to its preview download. */
+  preview: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export const downloadCopy = {
     ],
     firstLaunch:
       'Atd isn’t notarized, so the first time, choose Open Anyway in System Settings › Privacy & Security. It updates itself after that.',
+    preview: 'Preview: ',
   },
   zh: {
     title: '随时待命。',
@@ -64,5 +67,6 @@ export const downloadCopy = {
     ],
     firstLaunch:
       'Atd 未经公证，首次打开时请在“系统设置 › 隐私与安全性”中点按“仍要打开”。此后它会自行更新。',
+    preview: '预览版：',
   },
 } satisfies Localized<DownloadCopy>;

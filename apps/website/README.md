@@ -251,8 +251,11 @@ verified stable installer without rebuilding the website for each release, and s
 `Atd-<version>-<arch>.dmg`.
 The release workflow mirrors GitHub's original bytes to the separate `atd-releases` R2 bucket;
 the latest URL's cache expires within 60 seconds. The root README also keeps a GitHub alternative.
-See the [release mirror instructions](../../ops/release-downloads/README.md) for credentials,
-verification, and manual retries. Installed apps update from the same bucket's `appcast.xml` (Apple silicon) or
+A quiet line under the keys offers the preview builds, `https://downloads.atd.best/rc/Atd-arm64.dmg`
+and `https://downloads.atd.best/rc/Atd-x64.dmg`: the newest published release candidate, or the
+stable release while no candidate is newer, so those links never go dead either.
+See the [release mirror instructions](../../ops/release-downloads/README.md) for channels,
+credentials, verification, and manual retries. Installed apps update from the same bucket's `appcast.xml` (Apple silicon) or
 `appcast-x64.xml` (Intel).
 
 ### Media rollback

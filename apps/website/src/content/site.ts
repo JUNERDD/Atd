@@ -7,6 +7,11 @@ export interface Download {
   chip: Localized<string>;
   /** Saves as `Atd-<version>-<arch>.dmg`. */
   url: string;
+  /**
+   * The newest published release, a release candidate or the stable release once it catches up;
+   * saves the same way.
+   */
+  previewUrl: string;
   /** The oldest macOS major version the build runs on. */
   minMacOS: string;
 }
@@ -25,12 +30,14 @@ export const site = {
       arch: 'arm64',
       chip: { en: 'Apple silicon', zh: 'Apple 芯片' },
       url: 'https://downloads.atd.best/latest/Atd-arm64.dmg',
+      previewUrl: 'https://downloads.atd.best/rc/Atd-arm64.dmg',
       minMacOS: '15',
     },
     {
       arch: 'x64',
       chip: { en: 'Intel', zh: 'Intel 处理器' },
       url: 'https://downloads.atd.best/latest/Atd-x64.dmg',
+      previewUrl: 'https://downloads.atd.best/rc/Atd-x64.dmg',
       minMacOS: '15',
     },
   ] as const satisfies readonly Download[],
