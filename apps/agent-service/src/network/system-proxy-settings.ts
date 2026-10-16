@@ -34,36 +34,37 @@ export function readSystemProxySettings(raw: string): SystemProxySettings {
   return settings;
 }
 
-/** Preserve macOS exceptions (including FlClash's IP-prefix wildcards) for both HTTP stacks. */
-export function systemProxyResolver(settings: SystemProxySettings) {
+/** Proxy URI for a request, or undefined to connect directly. */
+export type SystemProxyResolver = (protocol: string, hostname: string) => string | undefined;
+
+/**
+ * Preserve macOS exceptions (including FlClash's IP-prefix wildcards) for both HTTP stacks.
+ * Like CFNetwork, an entry that cannot be applied is skipped rather than abandoning the proxy;
+ * `skipped` counts them for the startup log.
+ */
+export function systemProxyResolver(settings: SystemProxySettings): {
+  resolve: SystemProxyResolver;
+  skipped: number;
+} {
   const subnets = new BlockList();
   subnets.addSubnet('127.0.0.0', 8);
   subnets.addAddress('::1', 'ipv6');
   const patterns: RegExp[] = [];
+  let skipped = 0;
   for (const entry of settings.exceptions) {
     const rule = entry.trim().toLowerCase().replace(/\.$/, '');
     if (!rule) continue;
     if (rule.includes('/')) {
-      const [network = '', prefix, extra] = rule.split('/');
-      // macOS accepts abbreviated IPv4 networks such as 169.254/16 and 10/8.
-      const address = /^\d+(?:\.\d+){0,2}$/.test(network)
-        ? network + '.0'.repeat(4 - network.split('.').length)
-        : network;
-      const family = isIP(address ?? '');
-      const bits = Number(prefix);
-      if (
-        !address ||
-        !family ||
-        !/^\d+$/.test(prefix ?? '') ||
-        extra !== undefined ||
-        bits > (family === 4 ? 32 : 128)
-      )
-        throw new Error('Invalid system proxy bypass subnet.');
-      subnets.addSubnet(address, bits, family === 4 ? 'ipv4' : 'ipv6');
-    } else {
+      const subnet = bypassSubnet(rule);
+      if (subnet) subnets.addSubnet(subnet.address, subnet.bits, subnet.family);
+      else skipped += 1;
+    } else if (
+      rule === '*' ||
+      rule.split('.').some((label) => label.includes('*') && label !== '*')
+    ) {
       // macOS accepts whole-label wildcards, not shell globs such as "172.2*" or "*example.com".
-      if (rule === '*' || rule.split('.').some((label) => label.includes('*') && label !== '*'))
-        continue;
+      skipped += 1;
+    } else {
       const expression = (rule.startsWith('.') ? `*${rule}` : rule)
         .split('*')
         .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
@@ -71,7 +72,7 @@ export function systemProxyResolver(settings: SystemProxySettings) {
       patterns.push(new RegExp(`^${expression}$`, 'i'));
     }
   }
-  return (protocol: string, hostname: string): string | undefined => {
+  const resolve: SystemProxyResolver = (protocol, hostname) => {
     const host = hostname
       .replace(/^\[|\]$/g, '')
       .replace(/\.$/, '')
@@ -89,6 +90,18 @@ export function systemProxyResolver(settings: SystemProxySettings) {
     if (protocol === 'https:') return settings.https;
     return undefined;
   };
+  return { resolve, skipped };
 }
 
-export type SystemProxyResolver = ReturnType<typeof systemProxyResolver>;
+/** A CIDR bypass entry; macOS also accepts abbreviated IPv4 networks such as 169.254/16 and 10/8. */
+function bypassSubnet(rule: string) {
+  const [network = '', prefix = '', extra] = rule.split('/');
+  const address = /^\d+(?:\.\d+){0,2}$/.test(network)
+    ? network + '.0'.repeat(4 - network.split('.').length)
+    : network;
+  const family = isIP(address);
+  const bits = Number(prefix);
+  if (!family || !/^\d+$/.test(prefix) || extra !== undefined || bits > (family === 4 ? 32 : 128))
+    return undefined;
+  return { address, bits, family: family === 4 ? ('ipv4' as const) : ('ipv6' as const) };
+}
