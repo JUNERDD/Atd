@@ -5,6 +5,8 @@ dist-native/
 coverage/
 .artifacts/
 /docs/
+/reports/
+/research_notes/
 /tmp/
 *.tsbuildinfo
 .DS_Store
