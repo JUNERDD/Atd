@@ -26,15 +26,15 @@ export function ShortcutList({
   onChange,
   onOpen,
   problem,
-  errors,
+  registrationError,
 }: {
   command: CommandDefinition;
   onChange: (shortcuts: CommandShortcut[]) => void;
   onOpen: (id: string | null) => void;
   /** The editor's problem with a shortcut, in the app's language, or ''. */
   problem: (id: string) => string;
-  /** The shell's registration errors, keyed by shortcut id. */
-  errors: Readonly<Record<string, string>>;
+  /** The shell's registration error for a shortcut's current keys, or ''. */
+  registrationError: (shortcut: CommandShortcut) => string;
 }) {
   const { t } = useTranslation('commands');
   const names = useShortcutNames();
@@ -90,7 +90,7 @@ export function ShortcutList({
                   description={description(shortcut)}
                   accelerator={shortcut.accelerator}
                   recordLabel={t('shortcut.row.recordFor', { name })}
-                  error={problem(shortcut.id) || errors[shortcut.id] || ''}
+                  error={problem(shortcut.id) || registrationError(shortcut)}
                   errorId={shortcutErrorId(shortcut.id)}
                   onRecorded={(accelerator) => replace(shortcut.id, { accelerator })}
                   remove={{

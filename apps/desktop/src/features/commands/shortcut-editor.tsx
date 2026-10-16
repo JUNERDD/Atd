@@ -12,7 +12,6 @@ import type { CommandDefinition } from '../../client/agent/command-schema';
 import { shortcutProblem } from '../../client/agent/shortcut-validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
-import { useAgent } from '../agent/use-agent';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
@@ -21,7 +20,7 @@ import { CommandShortcutRow } from './shortcut-input';
 import { plainShortcut } from './shortcut-drafts';
 import { useShortcutNames } from './shortcut-names';
 import { ShortcutOverrideFields } from './shortcut-override-fields';
-import { useShortcutContext } from './use-command-problems';
+import { useRegistrationError, useShortcutContext } from './use-command-problems';
 
 const KEYS_ERROR_ID = 'shortcut-keys-error';
 
@@ -54,7 +53,7 @@ export function ShortcutEditor({
   const { t: tSettings } = useTranslation('settings');
   const names = useShortcutNames();
   const context = useShortcutContext(settings);
-  const registration = useAgent().snapshot?.shortcutErrors ?? {};
+  const registrationError = useRegistrationError(command);
   const [start] = useState(() => initial ?? plainShortcut(''));
   const [draft, setDraft] = useState(start);
   useSettingsUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(start));
@@ -80,10 +79,7 @@ export function ShortcutEditor({
       }),
     );
   }
-  // A failed registration belongs to the keys it was registered with.
-  const registered = initial && draft.accelerator === initial.accelerator;
-  const keysError =
-    (error?.keys ? error.text : '') || (registered ? (registration[draft.id] ?? '') : '');
+  const keysError = (error?.keys ? error.text : '') || registrationError(draft);
   return (
     <section className="command-editor">
       <SettingsHeading

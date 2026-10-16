@@ -11,7 +11,7 @@ import { parse } from '../../client/agent/validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
-import { agentApi, useAgent } from '../agent/use-agent';
+import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
 import { InputResultSettings } from './input-result-settings';
@@ -24,7 +24,7 @@ import { LAUNCH_GROUP_ID, LaunchSettings } from './launch-settings';
 import { withExistingPins } from './shortcut-drafts';
 import { RunSettings } from './run-settings';
 import { useCommandAiSession } from './use-command-ai-session';
-import { errorId, useCommandProblems } from './use-command-problems';
+import { errorId, useCommandProblems, useRegistrationError } from './use-command-problems';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
@@ -71,7 +71,7 @@ export function CommandEditor({
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
   const problems = useCommandProblems(draft, settings);
-  const shortcutErrors = useAgent().snapshot?.shortcutErrors ?? {};
+  const registrationError = useRegistrationError(draft);
   const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -259,7 +259,7 @@ export function CommandEditor({
               },
               onOpen: (id) => subpages.open({ page: 'shortcut', id }),
               problem: problems.shortcutText,
-              errors: shortcutErrors,
+              registrationError,
             }}
           />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
+import { commandShortcut, DEFAULT_SHORTCUTS, type CommandShortcut } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import {
   commandProblems,
@@ -26,6 +26,23 @@ export function useShortcutContext(settings: SettingsSnapshot | null): ShortcutC
     commands,
     platform: window.desktop?.platform ?? 'web',
     selectionToolbar: settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR,
+  };
+}
+
+/**
+ * The shell's registration error for one of `command`'s shortcuts, in the editor, or ''. A failed
+ * registration belongs to the keys the shell registered, the saved shortcut's: it shows only while
+ * the draft's shortcut still has them, never under keys recorded since.
+ */
+export function useRegistrationError(
+  command: CommandDefinition,
+): (shortcut: CommandShortcut) => string {
+  const snapshot = useAgent().snapshot;
+  const saved = snapshot?.commands.find((item) => item.id === command.id);
+  return (shortcut) => {
+    const registered = saved && commandShortcut(saved, shortcut.id);
+    if (!registered || registered.accelerator !== shortcut.accelerator) return '';
+    return snapshot?.shortcutErrors[shortcut.id] ?? '';
   };
 }
 
