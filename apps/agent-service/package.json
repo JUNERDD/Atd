@@ -36,14 +36,18 @@
     "@fastify/websocket": "11.3.3",
     "@juicesharp/rpiv-todo": "2.12.0",
     "@napi-rs/keyring": "2.1.0",
+    "agent-base": "catalog:",
     "croner": "catalog:",
     "eventsource-parser": "4.1.1",
     "fastify": "5.12.5",
+    "http-proxy-agent": "catalog:",
+    "https-proxy-agent": "catalog:",
     "jiti": "2.7.0",
     "openid-client": "catalog:",
     "pi-subagents": "0.76.1",
     "pi-web-access": "0.37.0",
-    "typebox": "catalog:"
+    "typebox": "catalog:",
+    "undici": "catalog:"
   },
   "devDependencies": {
     "@atd/typescript-config": "workspace:*",

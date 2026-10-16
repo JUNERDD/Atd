@@ -28,6 +28,10 @@ catalog:
   croner: 10.0.1
   radix-ui: 1.7.0
   openid-client: 6.8.8
+  agent-base: 9.0.0
+  http-proxy-agent: 9.1.0
+  https-proxy-agent: 9.1.0
+  undici: 8.10.2
 
 allowBuilds:
   '@google/genai': false
