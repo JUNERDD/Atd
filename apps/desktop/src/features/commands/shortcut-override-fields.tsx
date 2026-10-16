@@ -71,12 +71,16 @@ function PinnedField({
             { value: 'true', label: t('shortcut.name.on') },
             { value: 'false', label: t('shortcut.name.off') },
           ];
+    // User-supplied enum values can also be "follow"; keep them separate from the UI sentinel.
     control = (
       <Select
-        value={value === undefined ? FOLLOW : String(value)}
+        value={value === undefined ? FOLLOW : `value:${String(value)}`}
         onValueChange={(next) => {
           if (next === FOLLOW) onChange(undefined);
-          else onChange(parameter.type === 'boolean' ? next === 'true' : next);
+          else {
+            const selected = next.slice('value:'.length);
+            onChange(parameter.type === 'boolean' ? selected === 'true' : selected);
+          }
         }}
       >
         <SelectTrigger id={id} className="w-full" aria-invalid={Boolean(error) || undefined}>
@@ -85,7 +89,7 @@ function PinnedField({
         <SelectContent>
           <FollowItem label={follow} />
           {options.map((option, index) => (
-            <SelectItem key={`${index}:${option.value}`} value={option.value}>
+            <SelectItem key={`${index}:${option.value}`} value={`value:${option.value}`}>
               {option.label}
             </SelectItem>
           ))}
