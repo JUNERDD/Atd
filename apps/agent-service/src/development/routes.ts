@@ -28,6 +28,9 @@ export function registerDevelopmentRoutes(
   app.addHook('onResponse', async (request) => {
     writes.delete(request);
   });
+  app.addHook('onRequestAbort', async (request) => {
+    writes.delete(request);
+  });
   app.post('/v1/development/sync', RENDERER_ROUTE, async (request) => {
     parse(REQUEST, request.body);
     if (syncing || writes.size !== 1)
