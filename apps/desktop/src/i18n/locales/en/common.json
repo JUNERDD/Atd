@@ -1,6 +1,7 @@
 {
   "close": "Close",
   "hostRequired": "This page runs only inside the Atd app for macOS.",
+  "panelLoading": "Opening the task panel…",
   "toast": {
     "dismiss": "Dismiss",
     "dismissLabel": "Dismiss notification"

@@ -120,11 +120,11 @@
   "detail": {
     "label": "应用详情",
     "back": "返回应用",
-    "loading": "正在加载…",
     "meta": "版本 {{version}} · 创建于 {{date}}",
     "builtIn": "在任务“{{task}}”中构建",
     "versions": {
       "title": "版本",
+      "loading": "正在加载版本…",
       "footer": "你提出的每项修改都会成为一个版本，无论其间构建了多少次。回退会让较早的版本成为当前版本，较新的版本仍会保留在列表中。",
       "showAll": "显示全部 {{total}} 个",
       "showFewer": "收起",
@@ -152,6 +152,7 @@
     },
     "permissions": {
       "title": "权限",
+      "loading": "正在加载权限…",
       "footer": "应用首次使用每项能力时，Atd 会询问你。存储和日志无需授权。",
       "none": "此应用不使用 AI 模型、Agent 任务、记忆、MCP 工具或网络访问。",
       "status": "{{status}} · {{description}}",

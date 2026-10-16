@@ -17,6 +17,7 @@ import { CommandInput } from './features/agent/command-input';
 import { openCommandSettings } from './features/commands/open-command-settings';
 import { Transcript } from './features/agent/transcript/transcript';
 import { ChildTranscriptView } from './features/agent/transcript/child-transcript-view';
+import { ConversationPlaceholder } from './features/agent/transcript/transcript-placeholder';
 import { CodeHighlightPool } from './features/agent/transcript/code-highlight-pool';
 import {
   SubagentContext,
@@ -261,18 +262,9 @@ export function App() {
                       )}
                     </div>
                   ) : (
-                    <ScrollArea
-                      className="panel-content"
-                      viewportClassName="overlay-footer-fade"
-                      gutter="none"
-                      scrollShadow
-                    >
-                      <section className="panel-content-body">
-                        <p className="text-sm text-muted-foreground">
-                          {t('header.loadingConversation')}
-                        </p>
-                      </section>
-                    </ScrollArea>
+                    <div className="task-stage">
+                      <ConversationPlaceholder label={t('header.loadingConversation')} />
+                    </div>
                   ))}
                 {/* The composer serves the side chat's task while one shows, with its subagents. */}
                 {(view === 'new' || view === 'task') && (

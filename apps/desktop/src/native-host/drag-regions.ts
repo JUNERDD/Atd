@@ -11,7 +11,7 @@ const DRAG_AREAS = [
   '.panel-header',
   '.service-starting',
   '.settings-titlebar',
-  '#root > .settings-loading',
+  '#root > .window-loading',
 ].join(',');
 
 /**

@@ -10,15 +10,20 @@ import { ChildTranscriptView } from '../transcript/child-transcript-view';
 import { LayerHeader } from '../transcript/layer-header';
 import { SubagentContext } from '../transcript/subagent-context';
 import { Transcript } from '../transcript/transcript';
+import { ConversationPlaceholder } from '../transcript/transcript-placeholder';
 import { useAgent } from '../use-agent';
 import { focusPanelInput } from '../use-panel-window';
 import type { SideChat, SideChatView } from './use-side-chat';
 
-/** A start or load shorter than this shows nothing rather than flashing its line. */
+/** A start shorter than this shows nothing rather than flashing its line. */
 const LINE_DELAY_MS = 400;
 
-/** A quiet line where the side chat's conversation will sit, once its start or load takes a while. */
-function PendingLine({ text }: { text: string }) {
+/**
+ * A quiet line where the side chat's conversation will sit, once its run takes a while to start.
+ * The run is the user's own action, not content on its way, so it is named rather than drawn as
+ * placeholder turns: until it starts there is no conversation to stand in for.
+ */
+function StartingLine({ text }: { text: string }) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), LINE_DELAY_MS);
@@ -36,10 +41,11 @@ function PendingLine({ text }: { text: string }) {
 /**
  * A side chat laid over the conversation, which stays mounted and covered under it: the way back
  * and where it sits ("conversation › command"), then the command's input step, a quiet line while
- * its run starts, or the side chat's own conversation, whose follow-ups, approvals and Stop belong
- * to the panel's composer meanwhile. The side chat's subagent views open over it in turn, so only
- * the top layer is interactive. Text and files it hands on land in that composer's draft; a
- * command chosen in it opens a sibling side chat of the same conversation.
+ * its run starts, placeholder turns while its conversation loads, or the side chat's own
+ * conversation, whose follow-ups, approvals and Stop belong to the panel's composer meanwhile. The
+ * side chat's subagent views open over it in turn, so only the top layer is interactive. Text and
+ * files it hands on land in that composer's draft; a command chosen in it opens a sibling side chat
+ * of the same conversation.
  */
 export function SideChatLayer({
   side,
@@ -123,11 +129,10 @@ export function SideChatLayer({
             connections={connections}
             model={model}
           />
-        ) : view.phase === 'starting' || !detail ? (
-          <PendingLine
-            key={view.phase}
-            text={view.phase === 'starting' ? t('sideChat.starting') : t('sideChat.loading')}
-          />
+        ) : view.phase === 'starting' ? (
+          <StartingLine text={t('sideChat.starting')} />
+        ) : !detail ? (
+          <ConversationPlaceholder label={t('sideChat.loading')} />
         ) : (
           <Transcript
             detail={detail}

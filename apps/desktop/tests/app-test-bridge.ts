@@ -60,6 +60,7 @@ export function installBridge(extras?: {
       },
     ],
     defaultConnectionId: 'test',
+    providersLoaded: true,
     language: 'en',
     appearance: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },

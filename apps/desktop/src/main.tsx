@@ -4,6 +4,7 @@ import '@fontsource-variable/inter';
 import '@atd/ui/styles.css';
 import './styles.css';
 import i18n, { initialLanguageReady } from './i18n';
+import { LoadingPlaceholder } from './components/loading-placeholder';
 import { installEditCommands } from './lib/edit-commands';
 import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
@@ -43,10 +44,19 @@ async function renderWindow(native: NativeBridge) {
   // text renders.
   const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady]);
   // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
-  // over the whole display, so it waits on nothing visible.
+  // over the whole display, so it waits on nothing visible. The others paint their content surface
+  // and name the window being opened; their own trees place any shapes.
   const fallback =
     windowKind === 'onboarding' ? null : (
-      <output className="settings-loading">{i18n.t('window.loading')}</output>
+      <div className="window-loading">
+        <LoadingPlaceholder
+          label={
+            windowKind === 'settings'
+              ? i18n.t('window.loading')
+              : i18n.t('panelLoading', { ns: 'common' })
+          }
+        />
+      </div>
     );
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
@@ -79,6 +89,6 @@ async function loadWindowRoot() {
 async function renderHostRequired() {
   await initialLanguageReady;
   ReactDOM.createRoot(root).render(
-    <output className="settings-loading">{i18n.t('hostRequired', { ns: 'common' })}</output>,
+    <output className="host-required">{i18n.t('hostRequired', { ns: 'common' })}</output>,
   );
 }

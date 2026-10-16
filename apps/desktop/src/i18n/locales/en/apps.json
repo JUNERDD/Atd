@@ -122,11 +122,11 @@
   "detail": {
     "label": "App details",
     "back": "Back to apps",
-    "loading": "Loading…",
     "meta": "Version {{version}} · Created {{date}}",
     "builtIn": "Built in the task “{{task}}”",
     "versions": {
       "title": "Versions",
+      "loading": "Loading versions…",
       "footer": "Each change you ask for becomes one version, however many builds it takes. Reverting makes an older one current; newer versions stay listed.",
       "showAll": "Show all {{total}}",
       "showFewer": "Show fewer",
@@ -155,6 +155,7 @@
     },
     "permissions": {
       "title": "Permissions",
+      "loading": "Loading permissions…",
       "footer": "Atd asks the first time the app uses each capability. Storage and logs need no permission.",
       "none": "This app uses no AI models, agent tasks, memory, MCP tools or web access.",
       "status": "{{status}} · {{description}}",

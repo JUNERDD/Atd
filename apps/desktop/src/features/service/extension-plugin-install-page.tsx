@@ -192,7 +192,7 @@ export function PluginInstallPage({
       {preview ? (
         <PluginInstallPreviewView preview={preview} />
       ) : fetching ? (
-        <ExtensionDetailStatus text={t('extensions.plugins.install.fetching')} error={false} />
+        <ExtensionDetailStatus text={t('extensions.plugins.install.fetching')} />
       ) : (
         <Empty>
           <EmptyHeader>

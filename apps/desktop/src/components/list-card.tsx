@@ -7,8 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@atd/ui/components/card';
+import { Skeleton } from '@atd/ui/components/skeleton';
 import { cn } from '@atd/ui/lib/utils';
 import { ItemContextMenu } from './item-menu';
+import { TextPlaceholder } from './loading-placeholder';
 import './list-card.css';
 import './open-row.css';
 
@@ -125,5 +127,55 @@ export function ListCard({
         </Card>
       </ItemContextMenu>
     </li>
+  );
+}
+
+/**
+ * Cards standing in for an overview's cards while it loads (inside `LoadingPlaceholder`): the
+ * same grid, card size and slots as `ListCard`, with the 36px media, the name, the two-line
+ * description and the meta line as placeholders. `media` follows the cards' own media: an app's
+ * rounded tile, or the ring plugins and memories set their icons in. `className` takes the grid
+ * class of the list it replaces, such as its own `--list-card-min`.
+ */
+export function ListCardGridPlaceholder({
+  count = 4,
+  media = 'tile',
+  className,
+}: {
+  count?: number;
+  media?: 'tile' | 'ring';
+  className?: string | undefined;
+}) {
+  return (
+    <ul className={cn('list-card-grid', className)}>
+      {Array.from({ length: count }, (_, index) => (
+        <li key={index} className="list-card-cell">
+          <Card size="sm" className="list-card">
+            <CardHeader>
+              <div className="flex min-w-0 items-center gap-3">
+                <Skeleton
+                  className={cn(
+                    'size-9 shrink-0',
+                    media === 'ring' ? 'rounded-full' : 'rounded-xl',
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <TextPlaceholder width={index % 2 ? 'third' : 'twoFifths'} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <TextPlaceholder width="full" />
+              <TextPlaceholder width={index % 2 ? 'half' : 'twoThirds'} />
+            </CardContent>
+            <CardFooter className="list-card-footer">
+              <div className="min-w-0 flex-1">
+                <TextPlaceholder size="xs" width="third" />
+              </div>
+            </CardFooter>
+          </Card>
+        </li>
+      ))}
+    </ul>
   );
 }

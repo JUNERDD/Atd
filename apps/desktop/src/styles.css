@@ -12,29 +12,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* A wait that ends quickly shows no notice; a longer one fades its text in after 400ms. The text
-   fades rather than the element, so the window splash paints its surface from the start. */
-.settings-loading {
+/* The notice a page opened outside the macOS shell shows instead of the app (main.tsx): centered
+   on the panel surface, filling the window. */
+.host-required {
   display: flex;
-  flex: 1;
-  min-height: 160px;
+  min-height: 100%;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   text-align: center;
   color: var(--ata-text-secondary);
   font-size: 14px;
   line-height: 20px;
-  animation: settings-loading-in 200ms ease-out 400ms both;
-}
-@keyframes settings-loading-in {
-  from {
-    color: transparent;
-  }
+  background: var(--ata-surface-panel);
 }
 
-/* The window-level splash (the Suspense fallback before a window's tree renders) fills #root and
-   paints the settings surface, matching the settings shell it replaces. */
-#root > .settings-loading {
+/* A window's Suspense fallback before its tree renders (main.tsx): it fills #root and paints the
+   content surface from the first frame, while the loading region inside fades in on its own. The
+   shell drags the window by it, as by the title bar it stands in for (drag-regions.ts). */
+.window-loading {
   min-height: 100%;
   background: var(--ata-surface-panel);
 }
@@ -388,8 +384,11 @@ body {
   }
 }
 
+/* Reduce Motion stops movement everywhere except the shared `Spinner`, which keeps turning because
+   a frozen indicator reads as a hang, and the loading regions, whose only animation is a short
+   delayed fade: without the delay, a load that ends at once would flash them. */
 @media (prefers-reduced-motion: reduce) {
-  *,
+  *:not([data-slot='spinner'], .loading-placeholder, .service-starting-content),
   *::before,
   *::after {
     transition: none !important;

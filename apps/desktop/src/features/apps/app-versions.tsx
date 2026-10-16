@@ -12,7 +12,7 @@ import {
   ItemTitle,
 } from '@atd/ui/components/item';
 import { Spinner } from '@atd/ui/components/spinner';
-import { AppDetailSection, AppDetailStatusRow } from './app-detail-group';
+import { AppDetailRowsPlaceholder, AppDetailSection, AppDetailStatusRow } from './app-detail-group';
 import type { AppIntent } from './use-app-intent';
 
 /** Versions listed before Show all: the newest few, which a revert usually goes back to. */
@@ -148,8 +148,10 @@ export function AppVersionsSection({
             onRevert={() => onRevert(version.n)}
           />
         ))
-      ) : (
+      ) : error !== null ? (
         <AppDetailStatusRow error={error} onRetry={onRetry} />
+      ) : (
+        <AppDetailRowsPlaceholder label={t('detail.versions.loading')} />
       )}
     </AppDetailSection>
   );

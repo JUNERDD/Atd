@@ -6,8 +6,7 @@ import { messageOf } from '../../lib/errors';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
 import {
   ExtensionDetailFields,
-  ExtensionDetailSection,
-  ExtensionDetailStatus,
+  ExtensionLoadError,
   type DetailField,
 } from './extension-detail-fields';
 import { asSkillDetail, type ExtensionSkillDetail } from './extension-detail-rows';
@@ -15,27 +14,13 @@ import { ExtensionPage } from './extension-page';
 import { ExtensionRemoveButton } from './extension-remove-dialog';
 import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { SkillBuiltinStatus } from './extension-skill-builtin';
+import { SkillDetailPlaceholder, SkillFilesFallback } from './extension-skill-placeholder';
 
 // The file browser brings a tree, a diff renderer, and Markdown; the page starts loading them as
 // it opens, alongside the skill's details, so the files usually render without a loading frame.
 const { Component: SkillFiles, preload: preloadSkillFiles } = lazyWithPreload(() =>
   import('./extension-skill-files').then((module) => module.SkillFiles),
 );
-
-/** Holds the browser's fixed frame while its code loads, so the page does not jump. */
-function SkillFilesFallback() {
-  const { t } = useTranslation('settings');
-  return (
-    <ExtensionDetailSection label={t('extensions.detailFiles')} className="skill-files">
-      <div className="skill-browser">
-        <div className="skill-browser-tree" />
-        <div className="skill-browser-preview">
-          <output className="skill-browser-message">{t('extensions.detailLoading')}</output>
-        </div>
-      </div>
-    </ExtensionDetailSection>
-  );
-}
 
 type Loaded = { key: string; detail: ExtensionSkillDetail | null } | { key: string; error: string };
 
@@ -117,17 +102,18 @@ export function SkillDetailPage({
   const { loaded, retry } = useSkillDetail(row ? row.name : null, row?.revision ?? '');
   const detail = loaded && 'detail' in loaded ? loaded.detail : null;
   // Rows arrive with the catalog; an empty catalog is still loading, a filled one lost the skill.
-  const status = !row
+  const loading = row ? !loaded : !rows.length;
+  const failure = !row
     ? rows.length
-      ? { text: t('extensions.detailMissing'), error: true }
-      : { text: t('extensions.detailLoading'), error: false }
+      ? { message: t('extensions.detailMissing') }
+      : null
     : !loaded
-      ? { text: t('extensions.detailLoading'), error: false }
+      ? null
       : 'error' in loaded
-        ? { text: loaded.error, error: true, retry }
+        ? { message: loaded.error, retry }
         : detail
           ? null
-          : { text: t('extensions.detailMissing'), error: true };
+          : { message: t('extensions.detailMissing') };
   const sourceKey = row?.system
     ? 'extensions.sourceSystem'
     : skillSourceLabelKey(row?.sourceKind ?? '');
@@ -212,12 +198,13 @@ export function SkillDetailPage({
         )
       }
     >
-      {status ? (
-        <ExtensionDetailStatus
-          text={status.text}
-          error={status.error}
-          onRetry={'retry' in status ? status.retry : undefined}
+      {failure ? (
+        <ExtensionLoadError
+          message={failure.message}
+          onRetry={'retry' in failure ? failure.retry : undefined}
         />
+      ) : loading ? (
+        <SkillDetailPlaceholder />
       ) : null}
       <ExtensionDetailFields fields={fields} />
       {row && detail ? (

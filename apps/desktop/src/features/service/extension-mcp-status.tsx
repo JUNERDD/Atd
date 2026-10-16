@@ -1,10 +1,11 @@
 import { CircleAlert, KeyRound, PlugZap, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import {
   ExtensionDetailFields,
+  ExtensionDetailFieldsPlaceholder,
   ExtensionDetailSection,
-  ExtensionDetailStatus,
   type DetailField,
 } from './extension-detail-fields';
 import type { ExtensionMcpRow } from './extension-rows';
@@ -53,7 +54,9 @@ export function McpStatusSection({
   if (!row)
     return (
       <ExtensionDetailSection label={label}>
-        <ExtensionDetailStatus text={t('extensions.detailLoading')} error={false} />
+        <LoadingPlaceholder label={t('extensions.detailLoading')}>
+          <ExtensionDetailFieldsPlaceholder count={3} />
+        </LoadingPlaceholder>
       </ExtensionDetailSection>
     );
   const approval = approvalLabel(row.approval);

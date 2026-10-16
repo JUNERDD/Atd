@@ -1,10 +1,11 @@
 import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { FieldsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import {
   ExtensionDetailFields,
   ExtensionDetailSection,
-  ExtensionDetailStatus,
+  ExtensionLoadError,
   type DetailField,
 } from './extension-detail-fields';
 import { McpAccessFacts } from './extension-mcp-access';
@@ -157,11 +158,11 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       </ExtensionPage>
     );
   if (!config) {
-    const loadStatus = !loaded
-      ? { text: t('extensions.detailLoading'), error: false }
+    const failure = !loaded
+      ? null
       : 'error' in loaded
-        ? { text: loaded.error, error: true }
-        : { text: t('extensions.detailMissing'), error: true };
+        ? { message: loaded.error, retry }
+        : { message: t('extensions.detailMissing') };
     return (
       <ExtensionPage
         label={t('extensions.mcpPage.label')}
@@ -169,11 +170,20 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         badge={badge}
         backLabel={props.backLabel}
       >
-        <ExtensionDetailStatus
-          text={loadStatus.text}
-          error={loadStatus.error}
-          onRetry={loaded && 'error' in loaded ? retry : undefined}
-        />
+        {failure ? (
+          <ExtensionLoadError
+            message={failure.message}
+            onRetry={'retry' in failure ? failure.retry : undefined}
+          />
+        ) : (
+          <>
+            {/* The status the editor opens with, then its connection form while that loads. */}
+            {status}
+            <LoadingPlaceholder label={t('extensions.detailLoading')}>
+              <FieldsPlaceholder />
+            </LoadingPlaceholder>
+          </>
+        )}
       </ExtensionPage>
     );
   }

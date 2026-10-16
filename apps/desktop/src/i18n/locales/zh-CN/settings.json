@@ -93,6 +93,7 @@
     "overview": {
       "title": "模型",
       "description": "选择默认提供商，并为每个连接设置默认模型。",
+      "loading": "正在加载提供商…",
       "searchLabel": "搜索提供商",
       "searchPlaceholder": "搜索提供商…",
       "addProvider": "添加提供商",
@@ -362,6 +363,7 @@
     "filesTruncated": "此文件夹过大，未能全部列出。",
     "fileBinary": "该文件不是文本，因此不显示内容。",
     "fileTooLarge": "该文件过大，无法显示。",
+    "fileLoading": "正在加载文件…",
     "detailModel": "模型",
     "sourceAtdAgents": "个人子代理",
     "agentToolsFromTask": "沿用任务的工具",

@@ -171,12 +171,6 @@
   min-width: 0;
   text-align: left;
 }
-.command-settings:has(.settings-loading) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
 /* The overview keeps its heading fixed above the scrolling list, under the floating footer. */
 .command-overview {
   display: flex;

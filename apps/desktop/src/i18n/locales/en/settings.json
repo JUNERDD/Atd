@@ -93,6 +93,7 @@
     "overview": {
       "title": "Models",
       "description": "Choose a default provider and set a default model for each connection.",
+      "loading": "Loading providers…",
       "searchLabel": "Search providers",
       "searchPlaceholder": "Search providers…",
       "addProvider": "Add provider",
@@ -362,6 +363,7 @@
     "filesTruncated": "This folder is too large to list in full.",
     "fileBinary": "This file is not text, so it is not shown.",
     "fileTooLarge": "This file is too large to show.",
+    "fileLoading": "Loading file…",
     "detailModel": "Model",
     "sourceAtdAgents": "Personal subagents",
     "agentToolsFromTask": "The task's tools",

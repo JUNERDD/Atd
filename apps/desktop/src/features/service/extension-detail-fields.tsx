@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { Skeleton } from '@atd/ui/components/skeleton';
+import { cn } from '@atd/ui/lib/utils';
+import { TextPlaceholder } from '../../components/loading-placeholder';
 import { LazyMarkdown } from '../agent/transcript/lazy-markdown';
 
 export interface DetailField {
@@ -25,6 +28,35 @@ export function ExtensionDetailFields({ fields }: { fields: DetailField[] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * A short label line at a fixed length, for a label column sized by its longest label or a
+ * group's title: percentage lengths would collapse a column that sizes to its content.
+ */
+export function LabelPlaceholder({ width = 'short' }: { width?: 'short' | 'long' }) {
+  return (
+    <span className="flex h-5 items-center">
+      <Skeleton className={cn('h-3 rounded-full', width === 'short' ? 'w-14' : 'w-20')} />
+    </span>
+  );
+}
+
+/**
+ * `ExtensionDetailFields` while its facts load (inside `LoadingPlaceholder`): the same panel and
+ * label/value grid, with label and value lines of varying length.
+ */
+export function ExtensionDetailFieldsPlaceholder({ count = 4 }: { count?: number }) {
+  return (
+    <div className="extension-detail-fields">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index}>
+          <LabelPlaceholder width={index % 2 ? 'short' : 'long'} />
+          <TextPlaceholder width={index % 2 ? 'twoFifths' : 'threeFifths'} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -88,18 +120,10 @@ export function ExtensionLoadError({
 }
 
 /**
- * Replaces a details page's body while it loads or after it failed to load; a failure offers
- * `onRetry` when the read can be repeated.
+ * A note in place of what a details page would list, such as a plugin that contributes nothing.
+ * Loading shows placeholders shaped like the page (`LoadingPlaceholder`), and a failed read
+ * `ExtensionLoadError`.
  */
-export function ExtensionDetailStatus({
-  text,
-  error,
-  onRetry,
-}: {
-  text: string;
-  error: boolean;
-  onRetry?: (() => void) | undefined;
-}) {
-  if (error) return <ExtensionLoadError message={text} onRetry={onRetry} />;
+export function ExtensionDetailStatus({ text }: { text: string }) {
   return <output className="extension-detail-status">{text}</output>;
 }

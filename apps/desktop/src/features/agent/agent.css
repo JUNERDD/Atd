@@ -172,7 +172,7 @@
   min-height: 0;
   flex-direction: column;
 }
-/* A side chat's starting or loading line sits where its conversation will, clear of the composer. */
+/* A side chat's starting line sits where its conversation will, clear of the composer. */
 .conversation-messages.side-chat-pending {
   padding-bottom: calc(var(--overlay-footer-height, 0px) + 16px);
 }

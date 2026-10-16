@@ -432,6 +432,26 @@
   }
 }
 
+/*
+ * Loading placeholders (`Skeleton`) rest still, so a quick load swaps static shapes for content;
+ * a wait past one second starts a slow breath between full and 60% opacity, in the spirit of the
+ * system Pulse symbol effect rather than a sweeping highlight. Under Reduce Motion the shapes stay
+ * still: the loading region still names the task, so the pulse is never the only signal.
+ */
+@keyframes ata-placeholder-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@utility animate-placeholder {
+  animation: ata-placeholder-pulse 2s ease-in-out 1s infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 @layer components {
   /*
    * Soft content fade at the scrolled edges, after HeroUI's ScrollShadow fade variant: the

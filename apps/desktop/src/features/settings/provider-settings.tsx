@@ -22,6 +22,7 @@ import {
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { queryClient } from '../../lib/query-client';
 import { bridgeKeys } from '../../lib/bridge-cache';
@@ -72,6 +73,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
       ? 'ready'
       : 'loading';
   const connections = snapshot?.connections ?? [];
+  // The connections load apart from the settings: until they arrive, placeholder rows stand in for
+  // them, rather than the empty state's invitation to connect a first provider.
+  const connectionsLoading = connected && !snapshot?.providersLoaded;
   // Forward cannot reopen a connection that was disconnected meanwhile.
   const history = useSettingsPageHistory<ProviderRoute>(
     OVERVIEW,
@@ -218,6 +222,11 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           </Button>
         </div>
       )}
+      {connectionsLoading ? (
+        <LoadingPlaceholder label={t('providers.overview.loading')}>
+          <ItemsPlaceholder count={2} variant="outline" trailing="none" />
+        </LoadingPlaceholder>
+      ) : null}
       <ProviderConnections
         rows={visible}
         defaultConnectionId={snapshot?.defaultConnectionId ?? null}
@@ -227,7 +236,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         onConfirm={setConfirming}
         perform={perform}
       />
-      {!visible.length && (
+      {!visible.length && !connectionsLoading && (
         <Empty className="px-4 py-8">
           <EmptyHeader>
             <EmptyMedia variant="icon">{connections.length ? <SearchX /> : <Plug />}</EmptyMedia>

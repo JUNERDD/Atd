@@ -27,12 +27,14 @@ import type { CommandDefinition } from '../../client/agent/command-schema';
 import { copyCommand, newCommand, personalCopy } from '../../client/agent/command-templates';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { agentApi, useAgent } from '../agent/use-agent';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandList } from './command-list';
 import { editorOf, editorSubpages, LIST, type CommandRoute } from './command-routes';
 import { CommandTypingFooter } from './typing-footer';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
+import { SettingsEditorPlaceholder } from '../settings/settings-page-placeholder';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
@@ -159,7 +161,7 @@ export function CommandSettings({
   if (editor && !agent.snapshot)
     return (
       <section className="command-settings">
-        <output className="settings-loading">{t('list.loading')}</output>
+        <SettingsEditorPlaceholder label={t('list.loading')} />
       </section>
     );
   // A deep link to an unknown id, or a command deleted meanwhile, falls back to the list.
@@ -224,7 +226,10 @@ export function CommandSettings({
                 </Empty>
               </div>
             ) : (
-              <output className="settings-loading">{t('list.loading')}</output>
+              // Rows at the list's `Item` size; the trailing switch stands in for the controls.
+              <LoadingPlaceholder label={t('list.loading')}>
+                <ItemsPlaceholder size="sm" variant="outline" />
+              </LoadingPlaceholder>
             ))}
         </div>
       </ScrollArea>

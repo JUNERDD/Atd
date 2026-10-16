@@ -95,6 +95,7 @@ export function nativeSettings(
     return {
       connections: live?.connections ?? [],
       defaultConnectionId: live?.defaultConnectionId ?? null,
+      providersLoaded: live !== null,
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },

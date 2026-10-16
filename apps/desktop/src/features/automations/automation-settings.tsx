@@ -2,14 +2,19 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AutomationDraft, AutomationItem } from '@atd/agent-contracts';
 import type { SettingsSnapshot } from '../../client/settings-contract';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showToast } from '../../components/toast-store';
 import { useAgent } from '../agent/use-agent';
 import type { SettingsAutomationTarget } from '../settings/settings-navigation';
+import {
+  SettingsEditorPlaceholder,
+  SettingsHeadingPlaceholder,
+} from '../settings/settings-page-placeholder';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { copyDraft, draftFromCommand, draftOf, newDraft } from './automation-draft';
 import { AutomationEditor } from './automation-editor';
 import { AutomationOverview } from './automation-overview';
-import { AutomationRuns } from './automation-runs';
+import { AutomationRuns, RunRowsPlaceholder } from './automation-runs';
 import { startRun, useAutomations } from './use-automations';
 import './automations.css';
 
@@ -136,10 +141,20 @@ export function AutomationSettings({
         onRun={() => run(shown)}
       />
     );
+  // A deep link opened before the automations are read: its page's shape until they arrive.
   if (id !== null)
     return (
       <section className="automation-settings">
-        <output className="settings-loading">{t('list.loading')}</output>
+        {route.page === 'runs' ? (
+          <LoadingPlaceholder label={t('list.loading')} className="gap-4">
+            <SettingsHeadingPlaceholder subpage />
+            <div className="automation-runs-body">
+              <RunRowsPlaceholder />
+            </div>
+          </LoadingPlaceholder>
+        ) : (
+          <SettingsEditorPlaceholder label={t('list.loading')} />
+        )}
       </section>
     );
   return (

@@ -5,10 +5,13 @@ import type { PluginDetail, PluginSummary } from '@atd/agent-contracts';
 import { Alert, AlertAction, AlertDescription } from '@atd/ui/components/alert';
 import { Button } from '@atd/ui/components/button';
 import { Switch } from '@atd/ui/components/switch';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showToast } from '../../components/toast-store';
 import {
   ExtensionDetailFields,
+  ExtensionDetailFieldsPlaceholder,
   ExtensionDetailStatus,
+  ExtensionLoadError,
   type DetailField,
 } from './extension-detail-fields';
 import { ExtensionPage } from './extension-page';
@@ -133,11 +136,15 @@ export function ExtensionPluginPage({
     const failed = loaded && 'error' in loaded ? loaded.error : null;
     return (
       <ExtensionPage label={name} title={name} backLabel={backLabel}>
-        <ExtensionDetailStatus
-          text={failed ?? t('extensions.detailLoading')}
-          error={failed !== null}
-          onRetry={retry}
-        />
+        {failed !== null ? (
+          <ExtensionLoadError message={failed} onRetry={retry} />
+        ) : (
+          // The plugin's facts over the rows of what it contributes.
+          <LoadingPlaceholder label={t('extensions.detailLoading')} className="gap-5">
+            <ExtensionDetailFieldsPlaceholder />
+            <ItemsPlaceholder size="sm" />
+          </LoadingPlaceholder>
+        )}
       </ExtensionPage>
     );
   }
@@ -233,9 +240,7 @@ export function ExtensionPluginPage({
         onPatch={patchItem}
         memory={Boolean(memory)}
       />
-      {!hasItems ? (
-        <ExtensionDetailStatus text={t('extensions.plugins.page.noItems')} error={false} />
-      ) : null}
+      {!hasItems ? <ExtensionDetailStatus text={t('extensions.plugins.page.noItems')} /> : null}
       <PluginDiagnostics
         label={t('extensions.plugins.page.diagnostics')}
         diagnostics={
