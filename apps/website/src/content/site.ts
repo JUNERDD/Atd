@@ -21,7 +21,7 @@ export const site = {
   name: 'Atd',
   author: 'JUNERDD',
   /** The version described by this site; the stable download follows verified releases. */
-  version: '0.8.1',
+  version: '0.9.0',
   repoUrl: 'https://github.com/JUNERDD/Atd',
   releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
   /** One installer per architecture, offered side by side; the visitor picks their Mac's chip. */
