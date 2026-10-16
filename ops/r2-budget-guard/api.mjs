@@ -4,7 +4,8 @@ const API = 'https://api.cloudflare.com/client/v4';
 const MAX_ATTEMPTS = 3;
 const MAX_RETRY_WAIT = 5000;
 
-/** @typedef {{method: string, path: string, status: number|null, ray: string|null, attempt: number, elapsedMs: number, kind: string, retryable: boolean, retryAfterMs: number, fields?: Record<string, string>}} RequestFailure */
+/** @typedef {{responseFormat: 'json'|'html'|'other', errorCodes: number[], challenge: boolean, bodyUnreadable?: boolean}} ErrorDiagnostics */
+/** @typedef {{method: string, path: string, status: number|null, ray: string|null, attempt: number, elapsedMs: number, kind: string, retryable: boolean, retryAfterMs: number, fields?: Record<string, string>, response?: ErrorDiagnostics}} RequestFailure */
 
 /** A validated response may need another read, sharing the transport retry budget. */
 export class ResponseValidationError extends Error {
@@ -29,8 +30,8 @@ export class ApiRequestError extends Error {
   }
 }
 
-/** @param {Response} response */
-async function readPayload(response) {
+/** @param {Response} response @param {number} [limit] */
+async function readPayload(response, limit = 2 * 1024 * 1024) {
   const reader = response.body?.getReader();
   if (!reader) throw new Error('Empty API response');
   const chunks = [];
@@ -40,7 +41,7 @@ async function readPayload(response) {
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > 2 * 1024 * 1024) throw new Error('API response exceeds guard limit');
+      if (bytes > limit) throw new Error('API response exceeds guard limit');
       chunks.push(chunk.value);
     }
   } finally {
@@ -56,6 +57,35 @@ async function readPayload(response) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload))
     throw new Error('Invalid API response');
   return /** @type {Record<string, unknown>} */ (payload);
+}
+
+/** Keep only bounded, allowlisted metadata; error text can contain credentials.
+ * Reading diagnostics must never turn a denied request into a transient error.
+ * @param {Response} response @returns {Promise<ErrorDiagnostics>} */
+async function errorDiagnostics(response) {
+  const type = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  const json = type === 'application/json' || type?.endsWith('+json');
+  /** @type {ErrorDiagnostics} */
+  const diagnostics = {
+    responseFormat: json ? 'json' : type === 'text/html' ? 'html' : 'other',
+    errorCodes: [],
+    challenge: response.headers.get('cf-mitigated') === 'challenge',
+  };
+  if (json) {
+    try {
+      const payload = await readPayload(response, 16 * 1024);
+      if (Array.isArray(payload.errors)) {
+        diagnostics.errorCodes = payload.errors
+          .slice(0, 20)
+          .flatMap((error) =>
+            typeof error?.code === 'number' && Number.isSafeInteger(error.code) ? [error.code] : [],
+          );
+      }
+    } catch {
+      diagnostics.bodyUnreadable = true;
+    }
+  }
+  return diagnostics;
 }
 
 /**
@@ -80,6 +110,9 @@ export function createRequest(token, options = {}) {
       let retryAfterMs = 0;
       let retryable = false;
       let kind = 'invalid_response';
+      let confirmAuthorization = false;
+      /** @type {ErrorDiagnostics|undefined} */
+      let diagnostics;
       try {
         response = await fetcher(API + path, {
           method,
@@ -89,7 +122,8 @@ export function createRequest(token, options = {}) {
           signal: AbortSignal.timeout(15000),
         });
         if (!response.ok) {
-          kind = 'http_error';
+          confirmAuthorization = response.status === 401 || response.status === 403;
+          kind = confirmAuthorization ? 'authorization_error' : 'http_error';
           retryable = response.status === 429 || response.status >= 500;
           const retryAfter = response.headers.get('retry-after');
           if (retryAfter) {
@@ -98,6 +132,7 @@ export function createRequest(token, options = {}) {
               : Date.parse(retryAfter) - Date.now();
             if (Number.isFinite(delay)) retryAfterMs = Math.max(0, delay);
           }
+          diagnostics = await errorDiagnostics(response);
           throw new Error('Unsuccessful API response');
         }
         const payload = await readPayload(response);
@@ -140,6 +175,7 @@ export function createRequest(token, options = {}) {
           kind,
           retryable,
           retryAfterMs,
+          ...(diagnostics ? { response: diagnostics } : {}),
           ...(error instanceof ResponseValidationError && error.fields
             ? { fields: error.fields }
             : {}),
@@ -147,7 +183,7 @@ export function createRequest(token, options = {}) {
         // Long server cooldowns are handled by the next persistent alarm, rather
         // than keeping one invocation alive or retrying before Retry-After.
         if (
-          !retryable ||
+          (!retryable && !confirmAuthorization) ||
           (error instanceof ResponseValidationError && !error.retryPath) ||
           attempt === MAX_ATTEMPTS ||
           retriesRemaining === 0 ||
@@ -162,8 +198,16 @@ export function createRequest(token, options = {}) {
           error instanceof ResponseValidationError
             ? 0
             : Math.max(retryAfterMs, 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250));
+        // A single authorization denial can be an upstream failure. Confirm it
+        // within the existing shared budget; repeated denials remain permanent
+        // and never qualify for monitoring grace or billing-cache fallback.
         retriesRemaining--;
-        log({ event: 'api_request_retry', ...details, delayMs });
+        log({
+          event: 'api_request_retry',
+          ...details,
+          delayMs,
+          ...(confirmAuthorization ? { retryReason: 'confirm_authorization' } : {}),
+        });
         if (delayMs > 0) await wait(delayMs);
         if (error instanceof ResponseValidationError && error.retryPath) path = error.retryPath;
       }
