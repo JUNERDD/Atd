@@ -9,6 +9,7 @@ import {
   type ShortcutHolder,
 } from '@atd/agent-contracts';
 import type { CommandDefinition, Parameter } from '../../client/agent/command-schema';
+import { pinnedValue } from './shortcut-drafts';
 
 /** The longest generated name, the same cap as a name the person types. */
 const MAX_NAME = 120;
@@ -57,7 +58,7 @@ function generatedName(
   if (!hasOverrides(shortcut)) return t('shortcut.name.usesCommand');
   const parts: string[] = [];
   for (const parameter of command.parameters) {
-    const value = shortcut.arguments[parameter.key];
+    const value = pinnedValue(shortcut, parameter.key);
     if (value === undefined) continue;
     if (parameter.type === 'enum') parts.push(argumentText(parameter, value, t));
     else if (parameter.type === 'boolean' && value === true) parts.push(parameter.label);

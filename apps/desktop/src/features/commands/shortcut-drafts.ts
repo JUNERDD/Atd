@@ -22,6 +22,18 @@ export function plainShortcut(accelerator: string): CommandShortcut {
   return { id: crypto.randomUUID(), accelerator, name: '', arguments: {} };
 }
 
+/**
+ * The value `shortcut` pins for parameter `key`, or undefined. Own properties only: a parameter
+ * may be named like an `Object.prototype` member (`constructor`), which a plain read would take
+ * for a pinned function.
+ */
+export function pinnedValue(
+  shortcut: CommandShortcut,
+  key: string,
+): CommandShortcut['arguments'][string] | undefined {
+  return Object.hasOwn(shortcut.arguments, key) ? shortcut.arguments[key] : undefined;
+}
+
 /** The shortcuts after a parameter's key changed from `previous` to `next`. */
 export function withRenamedPin(
   shortcuts: readonly CommandShortcut[],
@@ -29,7 +41,7 @@ export function withRenamedPin(
   next: string,
 ): CommandShortcut[] {
   return shortcuts.map((shortcut) => {
-    if (previous === next || !(previous in shortcut.arguments)) return shortcut;
+    if (previous === next || !Object.hasOwn(shortcut.arguments, previous)) return shortcut;
     const { [previous]: value, ...rest } = shortcut.arguments;
     return { ...shortcut, arguments: value === undefined ? rest : { ...rest, [next]: value } };
   });

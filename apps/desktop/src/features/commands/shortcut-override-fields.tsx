@@ -18,6 +18,7 @@ import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { FOLLOW, FollowItem } from './follow-item';
 import { OutputField } from './output-field';
 import { ModelField, ThinkingLevelField } from './run-fields';
+import { pinnedValue } from './shortcut-drafts';
 import { argumentText, modelText, thinkingText } from './shortcut-names';
 
 type Value = string | number | boolean;
@@ -169,7 +170,7 @@ export function ShortcutOverrideFields({
         <PinnedField
           key={parameter.key}
           parameter={parameter}
-          value={shortcut.arguments[parameter.key]}
+          value={pinnedValue(shortcut, parameter.key)}
           current={commandValue(command, parameter)}
           onChange={(value) => pin(parameter.key, value)}
         />
