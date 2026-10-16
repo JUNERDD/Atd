@@ -102,11 +102,6 @@
   }
 }
 
-/* The footer's leading group, Create or Edit with AI and Run now; `.editor-footer > div` pushes
-   the trailing Cancel and Save to the end, onto a line of their own when both do not fit. */
-.automation-editor .editor-footer > .automation-editor-tools {
-  margin-left: 0;
-}
 .automation-tab-panel,
 .automation-field-stack {
   display: flex;

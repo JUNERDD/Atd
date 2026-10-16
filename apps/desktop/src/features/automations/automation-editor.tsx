@@ -246,7 +246,7 @@ export function AutomationEditor({
         </div>
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
-        <div className="automation-editor-tools">
+        <div>
           <Button
             type="button"
             variant="glass"

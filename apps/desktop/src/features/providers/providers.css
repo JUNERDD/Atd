@@ -321,10 +321,6 @@ button.model-config-row-nav:disabled:hover {
 .provider-directory-card:hover {
   background: var(--ata-surface-ghost-hover);
 }
-/* The leading group of the footer; `.editor-footer > div` pushes the trailing one to the end. */
-.provider-form .editor-footer > .provider-form-tools {
-  margin-left: 0;
-}
 .provider-form .settings-section-heading h2 {
   display: block;
   overflow: hidden;
