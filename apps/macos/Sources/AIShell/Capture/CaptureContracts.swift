@@ -83,7 +83,8 @@ nonisolated protocol ElementTargeting: Sendable {
   func begin(windows: [CaptureWindow]) async -> ElementDetection
   /// The areas containing `point` (Quartz), smallest first and ending with the window; empty
   /// when no window is there (the session then offers the display). Each rect lies within its
-  /// window and the displays it is on (a window spanning displays comes whole). A call may be
+  /// window and the displays it shows on (a window spanning displays comes whole only when
+  /// displays share Spaces; otherwise it is cut to the display under the point). A call may be
   /// superseded by a later one: callers keep the latest answer.
   func targets(at point: CGPoint) async -> [CGRect]
   /// The element among `targets(at: point)` whose frame is `frame` (Quartz), described; nil for

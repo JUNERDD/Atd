@@ -49,12 +49,21 @@ public enum ElementChain {
     windows.first { isUsable($0.frame) && $0.frame.contains(point) }
   }
 
-  /// The area `window` offers at `point`: the window cut to the displays it is on (the bounds
-  /// of its parts on each), so a window spanning displays is offered whole, as a capture can
-  /// span them, while a part off every screen is dropped. Nil when nothing usable remains.
-  public static func windowArea(at point: CGPoint, window: Window, displays: [CGRect]) -> CGRect? {
+  /// The area `window` offers at `point`, cut to the displays it shows on.
+  ///
+  /// `separateSpaces` is the system's "Displays have separate Spaces" setting (on by default).
+  /// With it, macOS draws a window on one display only and leaves its overhang on the others
+  /// undrawn, so the window is cut to the display under the point. Without it, the window is cut
+  /// to every display it is on (the bounds of its parts), so a window spanning displays is
+  /// offered whole, as a capture can span them, while a part off every screen is dropped. A
+  /// display that only touches the window's edge holds no part of it. Nil when nothing usable
+  /// remains.
+  public static func windowArea(
+    at point: CGPoint, window: Window, displays: [CGRect], separateSpaces: Bool
+  ) -> CGRect? {
     guard isUsable(window.frame) else { return nil }
-    let parts = displays.map { $0.intersection(window.frame) }.filter { !$0.isNull }
+    let shown = separateSpaces ? displays.filter { $0.contains(point) }.prefix(1) : displays[...]
+    let parts = shown.map { $0.intersection(window.frame) }.filter { $0.width > 0 && $0.height > 0 }
     let area = parts.isEmpty ? window.frame : parts.reduce(CGRect.null) { $0.union($1) }
     return isUsable(area) && area.contains(point) ? area : nil
   }
@@ -66,11 +75,15 @@ public enum ElementChain {
   /// and including its window; nil when Accessibility is unavailable or failed, which leaves
   /// the window alone. The chain only counts when it reaches a window or sheet whose frame
   /// matches `window`: otherwise the hit belongs to some other surface (a stale or foreign
-  /// tree) and would highlight areas that are not under the pointer.
+  /// tree) and would highlight areas that are not under the pointer. `displays` and
+  /// `separateSpaces` decide the window area (``windowArea(at:window:displays:separateSpaces:)``).
   public static func targets(
-    at point: CGPoint, window: Window, displays: [CGRect], chain: [Node]?
+    at point: CGPoint, window: Window, displays: [CGRect], separateSpaces: Bool, chain: [Node]?
   ) -> [CGRect] {
-    guard let area = windowArea(at: point, window: window, displays: displays) else { return [] }
+    guard
+      let area = windowArea(
+        at: point, window: window, displays: displays, separateSpaces: separateSpaces)
+    else { return [] }
     guard let chain, let boundary = verifiedBoundary(of: chain, in: window) else { return [area] }
 
     let inside =
@@ -101,14 +114,17 @@ public enum ElementChain {
   }
 
   /// The positions in `chain` of the elements that offered `frame` as a candidate at `point`
-  /// (``targets(at:window:displays:chain:)`` with the same arguments), deepest first. Stacked
-  /// elements can share one candidate, so there may be several; the caller picks the one that
-  /// describes best. Empty when `frame` is the window area (a window is not an element) or no
-  /// element offered it.
+  /// (``targets(at:window:displays:separateSpaces:chain:)`` with the same arguments), deepest
+  /// first. Stacked elements can share one candidate, so there may be several; the caller picks
+  /// the one that describes best. Empty when `frame` is the window area (a window is not an
+  /// element) or no element offered it.
   public static func elementIndices(
-    offering frame: CGRect, at point: CGPoint, window: Window, displays: [CGRect], chain: [Node]
+    offering frame: CGRect, at point: CGPoint, window: Window, displays: [CGRect],
+    separateSpaces: Bool, chain: [Node]
   ) -> [Int] {
-    guard let area = windowArea(at: point, window: window, displays: displays),
+    guard
+      let area = windowArea(
+        at: point, window: window, displays: displays, separateSpaces: separateSpaces),
       !nearlyEqual(frame, area, duplicateTolerance),
       let boundary = verifiedBoundary(of: chain, in: window)
     else { return [] }
