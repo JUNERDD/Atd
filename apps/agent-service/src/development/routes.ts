@@ -19,17 +19,14 @@ export function registerDevelopmentRoutes(
 ): void {
   let syncing = false;
   const writes = new Set<FastifyRequest>();
-  app.addHook('onRequest', async (request) => {
+  app.addHook('onRequest', async (request, reply) => {
     if (request.method === 'GET' || request.method === 'HEAD') return;
     if (syncing)
       throw new ConflictError('Development data is syncing. Try again when it finishes.');
     writes.add(request);
-  });
-  app.addHook('onResponse', async (request) => {
-    writes.delete(request);
-  });
-  app.addHook('onRequestAbort', async (request) => {
-    writes.delete(request);
+    // The response's `close` fires once it is sent and also when the client goes away first;
+    // `onResponse` and `onRequestAbort` miss a client that leaves after its body was read.
+    reply.raw.once('close', () => writes.delete(request));
   });
   app.post('/v1/development/sync', RENDERER_ROUTE, async (request) => {
     parse(REQUEST, request.body);
