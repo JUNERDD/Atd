@@ -4,17 +4,21 @@ import { useCopy, useLang } from '../../i18n/lang';
 import { Section } from '../../ui/section';
 import { downloadCopy } from './copy';
 import { LedWord } from './led-word';
+import { usePreviewArchs } from './use-preview-archs';
 import './download.css';
 
 /**
  * The finale: the name on an LED board, a download key per chip family under it, and the
  * requirements and the license as readouts in the legend column. The visitor picks their Mac's chip;
- * nothing guesses it; a last note links each chip's preview build. The board powers on and lights
- * column by column; the keys rise, the readouts decode and the notes follow.
+ * nothing guesses it; a last note links each chip's preview build while it is newer than the stable
+ * one. The board powers on and lights column by column; the keys rise, the readouts decode and the
+ * notes follow.
  */
 export function DownloadSection() {
   const t = useCopy(downloadCopy);
   const lang = useLang();
+  const previewArchs = usePreviewArchs();
+  const previews = site.downloads.filter((download) => previewArchs.has(download.arch));
 
   return (
     <Section id="download" title={t.title} lede={t.lede}>
@@ -61,17 +65,19 @@ export function DownloadSection() {
             <div className="download__notes" data-reveal="fade" data-reveal-delay="580">
               <p className="download__note legend">{t.which}</p>
               <p className="download__note legend">{t.firstLaunch}</p>
-              <p className="download__note legend">
-                {t.preview}
-                {site.downloads.map((download, index) => (
-                  <Fragment key={download.arch}>
-                    {index > 0 && ' · '}
-                    <a className="download__link" href={download.previewUrl}>
-                      {download.chip[lang]}
-                    </a>
-                  </Fragment>
-                ))}
-              </p>
+              {previews.length > 0 && (
+                <p className="download__note legend">
+                  {t.preview}
+                  {previews.map((download, index) => (
+                    <Fragment key={download.arch}>
+                      {index > 0 && ' · '}
+                      <a className="download__link" href={download.previewUrl}>
+                        {download.chip[lang]}
+                      </a>
+                    </Fragment>
+                  ))}
+                </p>
+              )}
             </div>
           </div>
         </div>

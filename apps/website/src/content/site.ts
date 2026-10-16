@@ -9,7 +9,7 @@ export interface Download {
   url: string;
   /**
    * The newest published release, a release candidate or the stable release once it catches up;
-   * saves the same way.
+   * saves the same way. Offered only while it is newer than `site.version`.
    */
   previewUrl: string;
   /** The oldest macOS major version the build runs on. */
@@ -41,6 +41,12 @@ export const site = {
       minMacOS: '15',
     },
   ] as const satisfies readonly Download[],
+  /**
+   * The rc channel's manifest, which lists the preview version of each architecture. Served from the
+   * site's own origin (a rewrite in `vercel.json`, a proxy in `vite.config.ts`) because the download
+   * host sends no CORS headers.
+   */
+  previewManifestUrl: '/downloads/rc.json',
   issuesUrl: 'https://github.com/JUNERDD/Atd/issues',
   /** The open-source license the repository is released under, and its text. */
   license: 'MIT',

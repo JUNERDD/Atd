@@ -6,6 +6,9 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/downloads/rc.json", "destination": "https://downloads.atd.best/rc.json" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

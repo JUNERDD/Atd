@@ -261,8 +261,11 @@ verified stable installer without rebuilding the website for each release, and s
 The release workflow mirrors GitHub's original bytes to the separate `atd-releases` R2 bucket;
 the latest URL's cache expires within 60 seconds. The root README also keeps a GitHub alternative.
 A quiet line under the keys offers the preview builds, `https://downloads.atd.best/rc/Atd-arm64.dmg`
-and `https://downloads.atd.best/rc/Atd-x64.dmg`: the newest published release candidate, or the
-stable release while no candidate is newer, so those links never go dead either.
+and `https://downloads.atd.best/rc/Atd-x64.dmg`, only for an architecture whose candidate is newer
+than `site.version`. Once the page runs it reads the channel's `rc.json` through the same-origin
+`/downloads/rc.json` (a rewrite in `vercel.json`, a proxy on the dev and preview servers, since the
+download host sends no CORS headers); the prerendered page, a failed read, and a channel that has
+fallen back to the stable release or an older candidate all leave the line out.
 See the [release mirror instructions](../../ops/release-downloads/README.md) for channels,
 credentials, verification, and manual retries. Installed apps update from the same bucket's `appcast.xml` (Apple silicon) or
 `appcast-x64.xml` (Intel).
