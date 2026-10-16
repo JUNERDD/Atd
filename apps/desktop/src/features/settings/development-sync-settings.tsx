@@ -19,10 +19,12 @@ export function DevelopmentSyncSettings() {
   const { t } = useTranslation('settings');
   const sync = useDevelopmentSync();
   const status = sync.error && 'status' in sync.error ? sync.error.status : null;
+  // A service started without `--development` never mounts the route: the relay denies a route
+  // missing from its manifest with 403 before the service could answer 404.
   const failure =
     status === 409
       ? t('developmentSync.busy')
-      : status === 404
+      : status === 403 || status === 404
         ? t('developmentSync.unavailable')
         : t('developmentSync.failed');
   return (
