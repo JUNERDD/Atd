@@ -30,7 +30,8 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, then deletes `dist-ssr`.
+   `dist/zh/index.html`, then `sitemap.xml` (every page with its hreflang alternates) and
+   `robots.txt`, and deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
 interactive demos and the interface showcase's scroll sequence only enhance what is already there. Canonical and Open Graph URLs
@@ -43,7 +44,8 @@ src/
   app.tsx              Page composition (nav, sections in order, footer)
   entry-client.tsx     Hydration (or a fresh render on the dev server)
   entry-server.tsx     Prerender entry: markup, head and html attributes per language
-  head.ts              Title, description, canonical, hreflang and Open Graph tags
+  head.ts              Title, description, robots, canonical, hreflang, Open Graph and X card tags
+  structured-data.ts   The schema.org graph (site, author, page, app), built from content/site.ts
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
@@ -96,6 +98,9 @@ island confirms it, the Mini Panel slides out from the edge, a capture is framed
 by step, windows open and replies stream in. The layers are positioned by `case-layers.css`, so
 the prerendered page shows the first scene complete; reduced motion keeps them at rest and only
 cross-fades between scenes.
+Every scene's images stay in the prerendered markup, but only the first scene is rendered until the
+screen scrolls into view, then up to two scenes past the current one (`use-case-scroll.ts`), so the
+page doesn't download every scene's layers on arrival.
 
 The scroll is the scenes' clock, not time. Under the showcase's `data-scrub` every layer's
 entrance is a paused CSS animation, and `scene-clock.ts` seeks it from how far the scene's step
@@ -112,6 +117,10 @@ hairline, and the line is the scroll's progress: it is lit under the scenes alre
 under the current one 1:1 with the scroll. Each name is also a button that jumps straight to its
 scene, landing in the rest at the end of its step so the scene shows complete; the jump is instant,
 so the pinned stage doesn't move and the scenes in between never flash or play.
+Each scene also has its own link, its id as the hash (`/#automations`, `/zh#settings`): a page
+opened on it goes straight to that scene, and choosing a scene by name puts its link in the address
+bar. Once the stage has measured itself, the page aims again at whatever its hash names, since the
+measure can move the sections after the showcase while the browser is already scrolling to them.
 Where the names don't fit the row scrolls sideways and keeps the current one in its middle. Below
 the screen the scene's caption is a headline and one line; on a phone the headline shrinks with the
 width so it stays on one line. As the stage rises into place the screen grows to full size, tied to
