@@ -161,11 +161,51 @@ function sameValues(a: Readonly<Record<string, unknown>>, b: Readonly<Record<str
   );
 }
 
+/** `record`'s own value for `key`, never one its prototype has. */
+function own<T>(record: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+/**
+ * The record a run with `values` leaves for a command with `parameters`: the values its
+ * parameters declare and accept, with the defaults they were picked over, except that each key in
+ * `keep` holds what `stored` remembered for it, or nothing when it remembered nothing.
+ */
+function nextRecord(
+  parameters: readonly CommandParameter[],
+  values: CommandArgumentValues,
+  stored: ArgumentsRecord | undefined,
+  keep: readonly string[],
+): Pick<ArgumentsRecord, 'values' | 'defaults'> {
+  const picked = accepted(
+    parameters.filter((parameter) => !keep.includes(parameter.key)),
+    values,
+  );
+  const entries = parameters.flatMap((parameter) => {
+    const { key } = parameter;
+    const pinned = keep.includes(key);
+    const value = pinned ? stored && own(stored.values, key) : own(picked, key);
+    const recordedOver = pinned ? stored && own(stored.defaults, key) : defaultOf(parameter);
+    return value === undefined || recordedOver === undefined
+      ? []
+      : [{ key, value, default: recordedOver }];
+  });
+  return {
+    values: Object.fromEntries(entries.map((entry) => [entry.key, entry.value])),
+    defaults: Object.fromEntries(entries.map((entry) => [entry.key, entry.default])),
+  };
+}
+
 /**
  * Remembers the argument values a run of `command` from the app used, keeping only those its
  * parameters declare and accept (none left drops its record) with the defaults they were picked
  * over, and tells clients the command list changed so they prefill the next run. A command
  * without parameters records nothing.
+ *
+ * `keep` names the keys a run from a command shortcut pinned (`pinnedKeys`): their values came
+ * from the shortcut, not the person, so the record keeps what it remembered for them (nothing
+ * when it remembered nothing), and the command's other entry points never start from a pinned
+ * value.
  *
  * A run with the values and defaults already remembered, the usual rerun, writes nothing and
  * announces nothing, so it never makes every window refetch the command list. Its `usedAt` stays
@@ -175,17 +215,13 @@ export async function recordLastArguments(
   dataDir: string,
   command: Pick<ServiceCommandFull, 'id' | 'parameters'>,
   values: CommandArgumentValues,
+  { keep = [] }: { keep?: readonly string[] } = {},
 ): Promise<void> {
   if (!command.parameters.length) return;
-  const kept = accepted(command.parameters, values);
-  const defaults = Object.fromEntries(
-    command.parameters.flatMap((parameter) =>
-      Object.hasOwn(kept, parameter.key) ? [[parameter.key, defaultOf(parameter)]] : [],
-    ),
-  );
   let changed = false;
   await change(dataDir, (records) => {
     const stored = Object.hasOwn(records, command.id) ? records[command.id] : undefined;
+    const { values: kept, defaults } = nextRecord(command.parameters, values, stored, keep);
     const empty = !Object.keys(kept).length;
     changed = empty
       ? stored !== undefined

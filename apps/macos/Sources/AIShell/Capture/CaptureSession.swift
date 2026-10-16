@@ -5,6 +5,11 @@ import AppKit
 /// detected area under the pointer, a free or detected selection, and the annotation editor on
 /// the committed selection. It ends once, with an ``Outcome``; the overlays are gone by then.
 ///
+/// The displays form one desktop (``FrozenDesktop``) whose points every overlay view uses, so
+/// the detected area, the selection and the annotations are each one rect in desktop points
+/// that may span displays; each overlay draws the part on its display, and the export stitches
+/// the displays' pixels.
+///
 /// Everything runs on the main actor. Element detection is the injected ``ElementTargeting``,
 /// whose answers arrive asynchronously; at most one request is in flight and the latest
 /// pointer position is asked next, so a slow app never queues work behind every mouse move.
@@ -25,25 +30,27 @@ final class CaptureSession {
   }
 
   /// A detected element the selection was committed from: where the click was and the
-  /// element's area, both Quartz, and the selection it became (view points). It describes the
-  /// capture only while the selection is still exactly that.
+  /// element's area, both Quartz, and the selection it became (desktop points). It describes
+  /// the capture only while the selection is still exactly that.
   struct Pick {
     let point: CGPoint
     let frame: CGRect
     let selection: CGRect
   }
 
+  /// Rects and points are desktop points.
   enum Phase {
     /// The detected area under the pointer is offered.
     case idle
-    /// The button is down in idle; a click commits the detected area, a drag starts a free one.
+    /// The button is down in idle on an overlay; a click commits its detected area, a drag
+    /// starts a free one.
     case pressing(CaptureOverlayView, start: CGPoint)
-    case creating(CaptureOverlayView, SelectionDrag)
+    case creating(SelectionDrag)
     /// A committed selection with the annotation editor on it; it moves and resizes at any
-    /// time, and the annotations stay where they are on the screen.
-    case selected(CaptureOverlayView, CGRect)
+    /// time, across displays too, and the annotations stay where they are on the screen.
+    case selected(CGRect)
     /// The committed selection is being moved or resized with the mouse.
-    case adjusting(CaptureOverlayView, SelectionDrag)
+    case adjusting(SelectionDrag)
   }
 
   let targeting: any ElementTargeting
@@ -56,7 +63,14 @@ final class CaptureSession {
   var onlyWindows = false
   /// The element the current selection was committed from, if it was.
   var pick: Pick?
+  /// Set by ``arrange(quartzBounds:)`` before any display is added.
+  private(set) var desktop = FrozenDesktop(quartzBounds: .zero)
+  /// The selection geometry over the displays added so far.
+  private(set) var model = SelectionModel(bounds: .zero, displays: [])
   private(set) var overlays: [CaptureOverlayView] = []
+  /// Set by ``activate()`` once every display is frozen. Until then the overlays are inert: the
+  /// pointer is ignored, so nothing is selected over displays that have no overlay yet.
+  private(set) var isActive = false
   var phase = Phase.idle
   /// A tool is chosen: presses inside the selection, away from its handles and edge band, are
   /// the editor's. The selection itself stays adjustable either way (D14).
@@ -67,12 +81,12 @@ final class CaptureSession {
   private var began = false
   /// The latest pointer position and the overlay it is on.
   var pointer: (overlay: CaptureOverlayView, point: CGPoint)?
-  /// Candidate areas under the pointer on `chainOverlay`, smallest first, ending with the
-  /// display; `chainIndex` is the one offered.
-  private var chain: [CGRect] = []
-  private weak var chainOverlay: CaptureOverlayView?
-  private var chainIndex = 0
-  private var hoverInFlight = false
+  /// Candidate areas under the pointer on `chainOverlay`, smallest first, ending with its
+  /// display; `chainIndex` is the one offered (`CaptureSession+Hover.swift`).
+  var chain: [CGRect] = []
+  weak var chainOverlay: CaptureOverlayView?
+  var chainIndex = 0
+  var hoverInFlight = false
   private var beginTask: Task<Void, Never>?
   private var outcome: Outcome?
   private var continuation: CheckedContinuation<Outcome, Never>?
@@ -115,10 +129,19 @@ final class CaptureSession {
     }
   }
 
+  /// Sets the desktop to `quartzBounds`, the union of every display about to be frozen, so
+  /// desktop points stay put while displays are added one by one.
+  func arrange(quartzBounds: CGRect) {
+    guard overlays.isEmpty else { return }
+    desktop = FrozenDesktop(quartzBounds: quartzBounds)
+  }
+
   /// Puts a frozen display's overlay on its screen, inert until ``activate()``.
   func add(_ display: FrozenDisplay, on screen: NSScreen) {
     guard !isFinished else { return }
-    let view = CaptureOverlayView(display: display)
+    desktop.add(display)
+    model = desktop.geometry.selectionModel
+    let view = CaptureOverlayView(display: display, frame: desktop.frame(of: display))
     view.delegate = self
     let panel = CaptureOverlayPanel(screen: screen, content: view)
     panel.orderFrontRegardless()
@@ -131,6 +154,7 @@ final class CaptureSession {
   /// detected area follows the pointer.
   func activate() {
     guard !isFinished else { return }
+    isActive = true
     let mouse = NSEvent.mouseLocation
     let overlay =
       overlays.first { NSMouseInRect(mouse, $0.window?.frame ?? .zero, false) } ?? overlays.first
@@ -138,6 +162,7 @@ final class CaptureSession {
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(overlay)
     pointer = (overlay, overlay.convert(window.mouseLocationOutsideOfEventStream, from: nil))
+    refreshHints()
     renderIdle()
     requestHover()
   }
@@ -155,7 +180,7 @@ final class CaptureSession {
     await beginTask?.value
     guard began else { return outcome }
     if case .confirmed(var confirmation) = outcome, let pick,
-      pick.selection == confirmation.selection
+      pick.selection == confirmation.desktopSelection
     {
       confirmation.element = await targeting.describe(at: pick.point, frame: pick.frame)
       outcome = .confirmed(confirmation)
@@ -172,21 +197,28 @@ final class CaptureSession {
   /// Ends the session like ``confirm()``, with the result meant for the clipboard.
   func copy() { end(as: Outcome.copied) }
 
-  /// The editor's document is read before ``finish(_:)`` hides it.
+  /// The editor's document is read before ``finish(_:)`` hides it. The confirmation names the
+  /// display holding most of the selection, with the selection in its view points. A selection
+  /// moved wholly into a gap between displays holds no pixels and confirms nothing.
   private func end(as outcome: (CaptureConfirmation) -> Outcome) {
-    guard case .selected(let owner, let rect) = phase else { return }
+    guard case .selected(let rect) = phase,
+      !desktop.geometry.displays(overlapping: rect).isEmpty
+    else { return }
     guard
-      let rendered = CaptureExport.render(selection: rect, display: owner.display, editor: editor)
+      let rendered = CaptureExport.render(selection: rect, desktop: desktop, editor: editor),
+      let primary = desktop.geometry.primary(for: rect)
     else { return finish(.failed) }
+    let origin = desktop.geometry.desktopPoint(primary.quartzFrame.origin)
     finish(
       outcome(
         CaptureConfirmation(
-          image: rendered.image, raw: rendered.raw, pixelScale: owner.display.pixelScale,
-          document: editor?.document ?? AnnotationDocument(), displayID: owner.display.displayID,
-          displayFrame: owner.display.quartzFrame, selection: rect)))
+          image: rendered.image, raw: rendered.raw, pixelScale: rendered.scale,
+          document: editor?.document ?? AnnotationDocument(), displayID: primary.id,
+          displayFrame: primary.quartzFrame,
+          selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)))
   }
 
-  /// Edit mode: makes `rect` (view points) the selection on the display `displayID` and puts
+  /// Edit mode: makes `rect` (view points of the display `displayID`) the selection and puts
   /// `document` (selection-local) back on it, still editable.
   func preselect(
     _ rect: CGRect, onDisplay displayID: CGDirectDisplayID, restoring document: AnnotationDocument
@@ -198,7 +230,7 @@ final class CaptureSession {
       window.makeFirstResponder(owner)
       pointer = (owner, owner.convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
-    commit(owner, rect)
+    commit(rect.offsetBy(dx: owner.bounds.minX, dy: owner.bounds.minY))
     if !document.isEmpty { editor?.restore(document) }
   }
 
@@ -210,104 +242,12 @@ final class CaptureSession {
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers.removeAll()
     for overlay in overlays { overlay.window?.close() }
-    // The views hold the frozen images, tens of megabytes per Retina display.
+    // The views and the desktop hold the frozen images, tens of megabytes per Retina display.
     overlays.removeAll()
+    desktop = FrozenDesktop(quartzBounds: .zero)
     pointer = nil
     continuation?.resume(returning: outcome)
     continuation = nil
-  }
-
-  // MARK: Detected areas
-
-  /// Asks for the areas under the latest pointer position unless a request is in flight; the
-  /// answer then asks again if the pointer moved meanwhile.
-  func requestHover() {
-    guard detection != nil, !hoverInFlight, let pointer, case .idle = phase else { return }
-    hoverInFlight = true
-    let quartz = CaptureCoordinates.quartzPoint(
-      pointer.point, display: pointer.overlay.display.quartzFrame)
-    let targeting = targeting
-    Task {
-      let areas = await targeting.targets(at: quartz)
-      hoverInFlight = false
-      guard !isFinished else { return }
-      apply(areas, for: pointer)
-      if let latest = self.pointer,
-        latest.overlay !== pointer.overlay || latest.point != pointer.point
-      {
-        requestHover()
-      }
-    }
-  }
-
-  private func apply(_ areas: [CGRect], for asked: (overlay: CaptureOverlayView, point: CGPoint)) {
-    guard case .idle = phase, let current = pointer, current.overlay === asked.overlay else {
-      return
-    }
-    let display = asked.overlay.display.quartzFrame
-    // The window ends the targeting's answer; windows only keeps just that.
-    let offered = onlyWindows ? Array(areas.suffix(1)) : areas
-    var candidates: [CGRect] = []
-    for area in offered.compactMap({ CaptureCoordinates.viewRect($0, display: display) }) + [
-      asked.overlay.bounds
-    ] where candidates.last.map({ !Self.nearlyEqual($0, area) }) ?? true {
-      candidates.append(area)
-    }
-    // A stale answer still counts while its smallest area holds the pointer: a slow app then
-    // lags behind the pointer instead of never being offered.
-    guard current.point == asked.point || candidates[0].contains(current.point) else { return }
-    if candidates != chain || chainOverlay !== asked.overlay {
-      chain = candidates
-      chainOverlay = asked.overlay
-      chainIndex = 0
-    }
-    renderIdle()
-  }
-
-  /// The area a click on `overlay` commits: the offered candidate, or the whole display.
-  func offeredArea(on overlay: CaptureOverlayView) -> CGRect {
-    guard chainOverlay === overlay, !chain.isEmpty else { return overlay.bounds }
-    return chain[min(chainIndex, chain.count - 1)]
-  }
-
-  /// The detected area a click at `point` on `overlay` commits as `selection`, as a ``Pick``;
-  /// nil for the display, which ends every chain and is no element.
-  func pickedElement(at point: CGPoint, on overlay: CaptureOverlayView, selection: CGRect) -> Pick?
-  {
-    guard chainOverlay === overlay, chainIndex < chain.count - 1 else { return nil }
-    let display = overlay.display.quartzFrame
-    return Pick(
-      point: CaptureCoordinates.quartzPoint(point, display: display),
-      frame: CaptureCoordinates.quartzRect(chain[chainIndex], display: display),
-      selection: selection)
-  }
-
-  /// Forgets the offered candidates, so the next answer is applied afresh (`W`).
-  func resetChain() {
-    chain = []
-    chainOverlay = nil
-    chainIndex = 0
-  }
-
-  /// Scroll and Tab: a larger (positive) or smaller candidate under the pointer.
-  func walkChain(_ step: Int) {
-    guard case .idle = phase, !chain.isEmpty else { return }
-    chainIndex = min(max(chainIndex + step, 0), chain.count - 1)
-    renderIdle()
-  }
-
-  /// Idle: the pointer's display shows its offered area and the loupe, the others stay dim.
-  func renderIdle() {
-    for overlay in overlays {
-      let here = overlay === pointer?.overlay
-      overlay.show(area: here ? offeredArea(on: overlay) : nil, handles: false)
-      overlay.showLoupe(at: here ? pointer?.point : nil)
-    }
-  }
-
-  private static func nearlyEqual(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
-    abs(lhs.minX - rhs.minX) < 1 && abs(lhs.minY - rhs.minY) < 1 && abs(lhs.maxX - rhs.maxX) < 1
-      && abs(lhs.maxY - rhs.maxY) < 1
   }
 }
 
@@ -317,15 +257,19 @@ struct CaptureConfirmation {
   let image: CGImage
   /// The same pixels without annotations.
   let raw: CGImage
-  /// Pixels per point of the display the selection was on.
+  /// Pixels per point of the image: the display's, or the finest of those a selection spans.
   let pixelScale: CGFloat
   /// The annotations, selection-local.
   let document: AnnotationDocument
+  /// The display holding most of the selection.
   let displayID: CGDirectDisplayID
-  /// The display's Quartz frame.
+  /// That display's Quartz frame.
   let displayFrame: CGRect
-  /// The selection in the display's view points.
+  /// The selection in that display's view points; it reaches past the display when it spans
+  /// several.
   let selection: CGRect
+  /// The selection in the session's desktop points.
+  let desktopSelection: CGRect
   /// The element the selection was picked from, described; set by ``CaptureSession/run()``.
   var element: ElementDescription?
 }

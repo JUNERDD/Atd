@@ -55,6 +55,10 @@
 .editor-footer > div {
   display: flex;
   gap: 8px;
+}
+/* Only the trailing group is pushed to the end (onto a line of its own when the groups do not
+   fit); a leading group stays at the start edge. */
+.editor-footer > div:last-child {
   margin-left: auto;
 }
 .option-row {
@@ -166,12 +170,6 @@
   width: 100%;
   min-width: 0;
   text-align: left;
-}
-.command-settings:has(.settings-loading) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
 }
 /* The overview keeps its heading fixed above the scrolling list, under the floating footer. */
 .command-overview {
@@ -381,4 +379,14 @@
 }
 .command-typing-popover [data-slot='item'] {
   border-radius: var(--radius-xl);
+}
+/* "+N" after the row's keys: more shortcuts with keys, listed in its tooltip. It takes its own
+ * pointer above the row's open button, like the recorder. */
+.command-row-shortcut {
+  gap: 4px;
+  align-items: center;
+}
+.command-row-more-shortcuts {
+  flex: none;
+  pointer-events: auto;
 }

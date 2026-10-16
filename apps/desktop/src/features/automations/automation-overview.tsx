@@ -24,6 +24,7 @@ import {
 } from '@atd/ui/components/empty';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { ExtensionLoadError } from '../service/extension-detail-fields';
@@ -109,7 +110,10 @@ export function AutomationOverview({
             error ? (
               <ExtensionLoadError message={error} onRetry={retry} />
             ) : (
-              <output className="settings-loading">{t('list.loading')}</output>
+              // Rows at the list's `Item` size; the trailing switch stands in for the controls.
+              <LoadingPlaceholder label={t('list.loading')}>
+                <ItemsPlaceholder size="sm" variant="outline" />
+              </LoadingPlaceholder>
             )
           ) : automations.length ? (
             <AutomationList

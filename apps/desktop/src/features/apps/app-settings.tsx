@@ -6,7 +6,9 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
-import { ExtensionDetailStatus } from '../service/extension-detail-fields';
+import { ListCardGridPlaceholder } from '../../components/list-card';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
+import { ExtensionLoadError } from '../service/extension-detail-fields';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -108,12 +110,13 @@ export function AppSettings() {
                     searchInput.current?.focus();
                   }}
                 />
+              ) : error !== null ? (
+                <ExtensionLoadError message={error} onRetry={retry} />
               ) : (
-                <ExtensionDetailStatus
-                  text={error ?? t('panel.loading')}
-                  error={error !== null}
-                  onRetry={retry}
-                />
+                // The cards `AppSettingsList` lays out, in its grid.
+                <LoadingPlaceholder label={t('panel.loading')}>
+                  <ListCardGridPlaceholder />
+                </LoadingPlaceholder>
               )}
             </div>
           </ScrollArea>

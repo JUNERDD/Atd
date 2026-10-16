@@ -1,0 +1,36 @@
+/* The transcript's loading turns (transcript-placeholder.tsx) keep the geometry of the turns they
+ * stand in for (agent.css): 12px between a turn's parts, the user's bubble at the trailing edge in
+ * its 20px-round muted shape, and its hover actions' row kept as space under it. */
+.transcript-placeholder-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.transcript-placeholder-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+/* The bubble's 8px gap, then the 28px action row pulled up 4px (`.user-message-actions`). */
+.transcript-placeholder-prompt[data-actions] {
+  padding-bottom: 32px;
+}
+/* One line of a message is 44px tall (10px padding around a 24px line), two are 68px. */
+.transcript-placeholder-bubble {
+  width: min(176px, 55%);
+  height: 44px;
+  border-radius: 20px;
+}
+.transcript-placeholder-bubble[data-size='long'] {
+  width: min(304px, 90%);
+  height: 68px;
+}
+/* The turn actions: 28px icon buttons 4px apart, each icon centered in its button. */
+.transcript-placeholder-actions {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 16px;
+  padding-inline: 6px;
+}

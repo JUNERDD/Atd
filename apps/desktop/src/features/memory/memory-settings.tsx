@@ -12,6 +12,7 @@ import { useCompositionQuery } from '@atd/ui/lib/ime';
 import { showToast } from '../../components/toast-store';
 import { USER_PLUGIN_ID } from '../service/plugin-rows';
 import { useOpenSettingsExtension, useSettingsSectionExit } from '../settings/settings-navigation';
+import { SettingsEditorPlaceholder } from '../settings/settings-page-placeholder';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { MemoryDeleteDialog } from './memory-delete-dialog';
 import { MemoryOverview } from './memory-overview';
@@ -142,7 +143,7 @@ export function MemorySettings({
   if (route.page === 'unit' && !unit)
     return (
       <section className="memory-settings">
-        {feedback ?? <output className="settings-loading">{t('memory.list.loading')}</output>}
+        {feedback ?? <SettingsEditorPlaceholder label={t('memory.list.loading')} />}
       </section>
     );
   if (route.page !== 'list')

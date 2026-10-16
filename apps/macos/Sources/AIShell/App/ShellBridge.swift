@@ -49,6 +49,10 @@ final class ShellBridge {
     case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
     case .userAppPinDrag(let post): shell?.startPinDrag(post.appId, from: host)
+    // Only the panel's page decides which task the person is looking at.
+    case .taskShown(let post):
+      guard host === shell?.panelHost else { return }
+      shell?.notifications?.taskShown(post.taskId)
     }
   }
 
@@ -217,6 +221,13 @@ final class ShellBridge {
     case .userAppUnpin(let params):
       shell.pins.unpin(appId: params.appId)
       return try Self.encode(NativeEmpty())
+    case .notificationsState:
+      return try Self.encode(await Self.notifications(of: shell).state())
+    case .notificationsSet(let params):
+      return try Self.encode(await Self.notifications(of: shell).apply(params))
+    case .notificationsOpenSystemSettings:
+      try Self.notifications(of: shell).openSystemSettings()
+      return try Self.encode(NativeEmpty())
     }
   }
 
@@ -226,6 +237,16 @@ final class ShellBridge {
     } catch {
       throw BridgeError("The reply could not be encoded.")
     }
+  }
+
+  /// Notifications exist only in an app bundle.
+  private static func notifications(of shell: ShellController) throws(BridgeError)
+    -> ShellNotifications
+  {
+    guard let notifications = shell.notifications else {
+      throw BridgeError("Notifications are unavailable outside the app.")
+    }
+    return notifications
   }
 
   static func message(_ error: any Error, _ fallback: String) -> String {

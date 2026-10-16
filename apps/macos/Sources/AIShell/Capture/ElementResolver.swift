@@ -1,4 +1,5 @@
 import AICore
+import AppKit
 import ApplicationServices
 import CoreGraphics
 import Dispatch
@@ -18,6 +19,9 @@ actor ElementResolver: ElementTargeting {
   private struct Session {
     let windows: [ElementChain.Window]
     let displays: [CGRect]
+    /// `NSScreen.screensHaveSeparateSpaces` when the session began: whether a window shows on
+    /// one display only or across all it overlaps.
+    let separateSpaces: Bool
     let trusted: Bool
   }
 
@@ -43,7 +47,8 @@ actor ElementResolver: ElementTargeting {
       windows: windows.map {
         ElementChain.Window(id: $0.windowID, pid: $0.pid, frame: $0.quartzFrame)
       },
-      displays: Self.activeDisplayBounds(), trusted: trusted)
+      displays: Self.activeDisplayBounds(),
+      separateSpaces: NSScreen.screensHaveSeparateSpaces, trusted: trusted)
     self.session = session
     guard trusted else { return .windowsOnly }
 
@@ -78,7 +83,7 @@ actor ElementResolver: ElementTargeting {
     let elements = AccessibilityProbe.elements(from: target, budget: &walk)
     let indices = ElementChain.elementIndices(
       offering: frame, at: point, window: window, displays: session.displays,
-      chain: elements.map(\.node))
+      separateSpaces: session.separateSpaces, chain: elements.map(\.node))
     let described = indices.prefix(4).compactMap {
       AccessibilityProbe.description(of: elements[$0].element)
     }
@@ -113,7 +118,8 @@ actor ElementResolver: ElementTargeting {
     }
     let chain = session.trusted ? accessibilityChain(of: window, at: point) : nil
     lastAnswer = ElementChain.targets(
-      at: point, window: window, displays: session.displays, chain: chain)
+      at: point, window: window, displays: session.displays,
+      separateSpaces: session.separateSpaces, chain: chain)
     return lastAnswer
   }
 

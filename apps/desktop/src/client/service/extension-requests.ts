@@ -22,6 +22,7 @@ import {
   setAtdAgentPermissions,
   setSkillEnabled,
   type AgentClientOptions,
+  syncDevelopmentData,
 } from '@atd/agent-client';
 import type { ServiceRequest } from './ipc';
 import { handleMcpApprovalRequest, type RequestMcpApproval } from './mcp-approval-requests';
@@ -51,6 +52,8 @@ export async function handleExtensionRequest(
 ): Promise<unknown> {
   if (!options) throw new Error('The service is not connected.');
   switch (request.action) {
+    case 'syncDevelopment':
+      return syncDevelopmentData(options);
     case 'skills':
       return listSkills(options);
     case 'skillsGet':

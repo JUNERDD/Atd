@@ -19,6 +19,7 @@ import {
   ShortcutCommandIntentSchema,
 } from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
+import { NativeNotificationPosts } from './notification-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
@@ -108,6 +109,7 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   ...NativeUpdatePosts,
+  ...NativeNotificationPosts,
   'socket.close': Type.Object(
     {
       socketId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -164,6 +166,9 @@ export const NativeEvents = {
   ),
   /**
    * A command shortcut or selection toolbar command fired; Swift already captured the selection.
+   * `id`: the registration id of a command shortcut (`CommandShortcut.id`), which the page maps to
+   * its command and launches with that shortcut's settings, or a command id (the selection
+   * toolbar and the mini panel), which launches the command with its own.
    * `target`: the text field focused in the app the command ran from (absent when none was found,
    * Accessibility is off, or the panel had the focus), which `text.write` can write the answer into.
    * `arguments`: values picked in the shell's options, over the remembered ones; `intent`: what to

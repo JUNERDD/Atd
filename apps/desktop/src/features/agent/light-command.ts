@@ -142,6 +142,7 @@ export async function startLightRun(launch: LightLaunch, light: LightCommandBrid
       savedRun: null,
       input: launch.input,
       output: launch.output,
+      ...(launch.shortcutId === undefined ? {} : { shortcutId: launch.shortcutId }),
     });
   } catch (error) {
     release(run);

@@ -54,7 +54,8 @@ public final class ShellController {
   let userApps: UserAppWindows
   /// The WidgetKit extension's files and the service's list of live widgets.
   let widgets: WidgetSyncController
-  let automationNotices: AutomationNoticeFeed?
+  /// Automation and task notifications; nil outside an app bundle.
+  let notifications: ShellNotifications?
   let systemActivity: SystemActivityReporter
   /// The menu bar item and what it shows, kept current by ``refreshStatus()``.
   var statusItem: StatusItemController?
@@ -130,7 +131,7 @@ public final class ShellController {
       services: services, storage: UserAppStorage(defaults: defaults), confirmations: confirmations)
     widgets = WidgetSyncController(
       services: services, files: .forMainBundle())
-    automationNotices = Self.makeAutomationNotices(services: services)
+    notifications = Self.makeNotifications(services: services, defaults: defaults, panel: panel)
     systemActivity = Self.makeSystemActivity(services: services)
     // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
     // beneath the overlays, `hideWindows` on an unattended quit that skips it.
@@ -159,6 +160,7 @@ public final class ShellController {
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
       // A command the page took to the panel ends its shortcut's press capsule.
       if visible { self?.commandProgress.panelShown() }
+      self?.notificationsPanelVisibility(visible)
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
     panelHost.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
@@ -201,14 +203,14 @@ public final class ShellController {
       if state == .connected {
         self?.attachments.serviceDidConnect()
         self?.widgets.serviceDidConnect()
-        self?.automationNotices?.pull()
+        self?.notifications?.pull()
       }
     }
     control.onStatus = { [weak self] _ in self?.refreshStatus() }
     refreshStatus()
     services.start()
     startWidgets()
-    startAutomationNotices()
+    startNotifications()
     startSystemActivity()
     control.start()
     updater.start()

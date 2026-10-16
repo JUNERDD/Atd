@@ -37,9 +37,14 @@ import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
+import { registerTaskNotices } from './task-notices/routes.js';
 import { taskStatusCounts } from './task-status.js';
+import { registerDevelopmentRoutes } from './development/routes.js';
+import type { SyncProfile } from './development/plan.js';
+import type { SystemProxy } from './network/system-proxy.js';
 
 export interface ServerDeps {
+  systemProxy: SystemProxy;
   config: ServiceConfig;
   ledger: Ledger;
   events: EventLog;
@@ -53,6 +58,8 @@ export interface ServerDeps {
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
+  /** Enables local configuration imports only for the development CLI. */
+  development?: SyncProfile | undefined;
 }
 
 /**
@@ -147,6 +154,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   const hub = new StreamHub({
+    systemProxy: deps.systemProxy,
     events: deps.events,
     capabilities: deps.capabilities,
     snapshot: (taskId) => deps.manager.snapshot(taskId),
@@ -157,6 +165,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
   registerStoreInvalidation(app, deps.config.paths, (frame) => hub.invalidate(frame));
+  if (deps.development) registerDevelopmentRoutes(app, deps, deps.development);
 
   app.get('/v1/status', RENDERER_ROUTE, async () => ({
     service: {
@@ -285,6 +294,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
+  registerTaskNotices(app, deps);
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,

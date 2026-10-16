@@ -13,6 +13,10 @@ import CoreImage.CIFilterBuiltins
 ///   shifts.
 /// - Blur: a Gaussian blur of the whole display, rendered only where the region is, so its edges
 ///   blur into the real neighbours instead of a clamped copy of the region.
+///
+/// A backdrop composed of several displays is transparent in the gaps between them. Both forms
+/// weigh pixels by their alpha, so over a display they come out opaque, made of that display's
+/// pixels alone: a block or blur reaching into a gap never lets the pixels under it show through.
 final class AnnotationMosaic {
   private struct BlurKey: Hashable {
     let x: Int, y: Int, width: Int, height: Int, radius: Int
@@ -29,11 +33,12 @@ final class AnnotationMosaic {
   /// The image to draw for a mosaic over `rect` (view points) in `style`, and the point rect it
   /// covers: `rect` grown to whole blocks or pixels and clipped to the display, so the caller
   /// clips the drawing to `rect`. `backdrop` is the frozen display's image with `scale` pixels
-  /// per point; nil when the region is off the image, and for a solid mosaic, which the
-  /// renderer fills without reading the screenshot.
-  func render(_ rect: CGRect, style: AnnotationStyle, backdrop image: CGImage, scale: CGFloat)
-    -> (CGImage, CGRect)?
-  {
+  /// per point, `opaque` unless it is composed of several displays with gaps between them; nil
+  /// when the region is off the image, and for a solid mosaic, which the renderer fills without
+  /// reading the screenshot.
+  func render(
+    _ rect: CGRect, style: AnnotationStyle, backdrop image: CGImage, scale: CGFloat, opaque: Bool
+  ) -> (CGImage, CGRect)? {
     reset(for: image)
     let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
     let pixels = CGRect(
@@ -73,7 +78,8 @@ final class AnnotationMosaic {
         x: Int(area.minX), y: Int(area.minY), width: Int(area.width), height: Int(area.height),
         radius: radius)
       if let cached = blurCache[key] { return (cached, Self.points(area, scale: scale)) }
-      guard let blurred = blur(area, radius: radius, of: image, in: space) else { return nil }
+      guard let blurred = blur(area, radius: radius, of: image, opaque: opaque, in: space)
+      else { return nil }
       if blurCache.count > 64 { blurCache.removeAll() }
       blurCache[key] = blurred
       return (blurred, Self.points(area, scale: scale))
@@ -91,21 +97,25 @@ final class AnnotationMosaic {
   }
 
   /// Core Image's origin is bottom-left, so the top-left pixel rect is flipped first. The blur
-  /// reads the whole display, clamped at its edges so they do not fade to transparent.
-  private func blur(_ area: CGRect, radius: Int, of image: CGImage, in space: CGColorSpace)
-    -> CGImage?
-  {
+  /// reads the whole display, clamped at its edges so they do not fade to transparent. A backdrop
+  /// that is not `opaque` is blurred premultiplied and then divided by the blurred alpha, so its
+  /// transparent gap pixels only lower the weight, and made opaque. An opaque one skips that
+  /// step, which would only shift its colours by float rounding.
+  private func blur(
+    _ area: CGRect, radius: Int, of image: CGImage, opaque: Bool, in space: CGColorSpace
+  ) -> CGImage? {
     let blurred: CIImage
     if let cached = blurs[radius] {
       blurred = cached
     } else {
+      let input = CIImage(cgImage: image)
       let filter = CIFilter.gaussianBlur()
-      filter.inputImage = CIImage(cgImage: image).clampedToExtent()
+      filter.inputImage = input.clampedToExtent()
       filter.radius = Float(radius)
       guard let output = filter.outputImage else { return nil }
-      blurred = output
+      blurred = opaque ? output : output.unpremultiplyingAlpha().settingAlphaOne(in: input.extent)
       if blurs.count >= 8 { blurs.removeAll() }
-      blurs[radius] = output
+      blurs[radius] = blurred
     }
     let flipped = CGRect(
       x: area.minX, y: CGFloat(image.height) - area.maxY, width: area.width, height: area.height)
@@ -127,7 +137,9 @@ final class AnnotationMosaic {
 
 /// The average colour of every `block` × `block` square of one backdrop, on a grid from its
 /// top-left pixel, worked out the first time a region needs it and then kept. The last column and
-/// row may be cut short by the display's edge; they average the pixels they have.
+/// row may be cut short by the display's edge; they average the pixels they have. The average is
+/// weighted by alpha and comes out opaque, so a block straddling a composed backdrop's gap is the
+/// colour of its display pixels only; a block wholly in a gap stays transparent.
 ///
 /// No noise is added: per-block noise (CleanShot X's randomization) makes flat areas read as a
 /// speckled checkerboard. Averages can still be matched against rendered text (Depix), so the
@@ -216,11 +228,15 @@ private final class BlockGrid {
             pixel += 4
           }
         }
-        let count = max(1, (bottom - top) * (right - left))
         let index = row * self.columns + column
-        for (channel, sum) in [sums.0, sums.1, sums.2, sums.3].enumerated() {
-          colors[index * 4 + channel] = UInt8((sum + count / 2) / count)
+        // Premultiplied sums over the alpha sum are the alpha-weighted straight colour, which is
+        // also its premultiplied form once opaque. For an opaque block this equals the plain
+        // rounded average.
+        let weight = sums.3
+        for (channel, sum) in [sums.0, sums.1, sums.2].enumerated() {
+          colors[index * 4 + channel] = weight == 0 ? 0 : UInt8((sum * 255 + weight / 2) / weight)
         }
+        colors[index * 4 + 3] = weight == 0 ? 0 : 255
         known[index] = true
       }
     }

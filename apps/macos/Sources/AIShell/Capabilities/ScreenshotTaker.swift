@@ -190,6 +190,7 @@ final class ScreenshotTaker {
     let snapshot = reopening == nil ? WindowSnapshot.take() : WindowSnapshot(entries: [])
     if reopening == nil { session.begin(windows: snapshot.windows) }
     let freezer = try await DisplayFreezer.prepare()
+    session.arrange(quartzBounds: freezer.quartzBounds)
     let capturedAt = Date.now
     var preselection: (displayID: CGDirectDisplayID, rect: CGRect)?
     for target in freezer.targets {

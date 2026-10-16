@@ -1,4 +1,4 @@
-import { Fragment, useId } from 'react';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   actsOnSelection,
@@ -12,18 +12,17 @@ import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@atd/ui/components/select';
 import type { CommandDefinition } from '../../client/agent/command-schema';
-import { OUTPUT_ACTION_GROUPS, OUTPUT_ACTIONS } from '../../client/agent/run-output';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { FieldError } from './field-error';
 import { InputOptions } from './input-options';
+import { OutputField } from './output-field';
+import { withServableOutputs } from './shortcut-drafts';
 import { errorId } from './use-command-problems';
 
 const SOURCES = ['manual', 'selection', 'clipboard', 'screenshot', 'none'] as const;
@@ -67,9 +66,6 @@ export function InputResultSettings({
   const { t } = useTranslation('commands');
   const ids = useId();
   const { action, review } = command.output;
-  const groups = OUTPUT_ACTION_GROUPS.map((group) =>
-    group.filter((candidate) => readsSelection(command.input) || !actsOnSelection(candidate)),
-  ).filter((group) => group.length > 0);
   const writeBack = writesBack(action);
   const notes = [
     command.input.source === 'selection' &&
@@ -79,7 +75,8 @@ export function InputResultSettings({
   ].filter((note) => typeof note === 'string');
   /**
    * Applies an input change. An output that acts on the selection needs a command that reads it,
-   * so it returns to the conversation when the input stops reading the selection.
+   * so it returns to the conversation when the input stops reading the selection, and a
+   * shortcut's such override returns to following the command.
    */
   function update(input: CommandDefinition['input'], placement = command.placement) {
     const strands = actsOnSelection(action) && !readsSelection(input);
@@ -88,6 +85,7 @@ export function InputResultSettings({
       input,
       placement,
       output: strands ? defaultCommandOutput() : command.output,
+      shortcuts: withServableOutputs(command.shortcuts, input),
     });
   }
   function source(value: string) {
@@ -134,38 +132,15 @@ export function InputResultSettings({
                 </SelectContent>
               </Select>
             </div>
-            <div className="settings-field">
-              <Label htmlFor="command-result">{t('output.title')}</Label>
-              <Select
-                value={action}
-                onValueChange={(value) => {
-                  const next = OUTPUT_ACTIONS.find((candidate) => candidate === value);
-                  if (next) onChange({ ...command, output: { ...command.output, action: next } });
-                }}
-              >
-                <SelectTrigger
-                  id="command-result"
-                  className="w-full"
-                  aria-describedby={notes.length ? `${ids}-notes` : undefined}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups.map((group, index) => (
-                    <Fragment key={group[0]}>
-                      {index > 0 && <SelectSeparator />}
-                      <SelectGroup>
-                        {group.map((candidate) => (
-                          <SelectItem key={candidate} value={candidate}>
-                            {t(`output.${candidate}.title`)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </Fragment>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <OutputField
+              id="command-result"
+              input={command.input}
+              value={action}
+              describedBy={notes.length ? `${ids}-notes` : undefined}
+              onChange={(next) => {
+                if (next) onChange({ ...command, output: { ...command.output, action: next } });
+              }}
+            />
           </div>
           {error && <FieldError id={errorId('input')}>{error}</FieldError>}
         </div>

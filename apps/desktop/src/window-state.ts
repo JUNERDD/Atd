@@ -5,8 +5,17 @@
  * `data-reduced-transparency="true"` carries the system's Reduce transparency setting, which WebKit
  * does not expose as a media feature. Unset reads as active, visible and transparent.
  */
+const activeListeners = new Set<(active: boolean) => void>();
+
 export function setWindowActive(active: boolean) {
   document.documentElement.dataset.windowActive = String(active);
+  for (const listener of activeListeners) listener(active);
+}
+
+/** Every time the shell reports the window becoming key or resigning it; returns the unsubscribe. */
+export function onWindowActive(listener: (active: boolean) => void): () => void {
+  activeListeners.add(listener);
+  return () => activeListeners.delete(listener);
 }
 
 export function setWindowVisible(visible: boolean) {

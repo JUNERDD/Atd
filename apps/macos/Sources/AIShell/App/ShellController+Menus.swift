@@ -52,6 +52,8 @@ extension ShellController {
     panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
     settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))
     onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
+    // Notification actions are worded when registered: at launch and on every change.
+    notifications?.registerCategories()
   }
 
   /// Undo and Redo go to the page of the key window, which runs them in its editor.

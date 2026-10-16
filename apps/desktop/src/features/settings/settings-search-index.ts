@@ -1,5 +1,6 @@
 import type { ParseKeys } from 'i18next';
 import { Languages, type LucideIcon } from 'lucide-react';
+import { notificationSearchEntries } from './notification-search-entries';
 import type { SettingsSectionId } from './settings-sections';
 
 /** The namespaces whose existing copy the index reuses; `settings` is the default one. */
@@ -55,6 +56,18 @@ export const SECTION_KEYWORDS = {
  * `data-settings-anchor`; entries of pages without markers open the section overview.
  */
 export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
+  ...(import.meta.env.DEV
+    ? [
+        {
+          id: 'development-sync',
+          section: 'general',
+          anchor: 'development-sync',
+          label: 'developmentSync.title',
+          description: 'developmentSync.description',
+          keywords: 'developmentSync.keywords',
+        } satisfies SettingsSearchEntry,
+      ]
+    : []),
   ...(
     [
       'togglePanel',
@@ -128,6 +141,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: 'shortcuts.miniPanelOpenOn.description',
     keywords: 'search.keywords.miniPanelOpenOn',
   },
+  ...notificationSearchEntries,
   {
     id: 'selection-toolbar',
     section: 'general',

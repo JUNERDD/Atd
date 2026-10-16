@@ -40,8 +40,8 @@ public struct CapabilityRequest: Codable, Equatable, Sendable {
 }
 
 /// The only service frames the shell's control stream acts on. Task events, `summaries`,
-/// `resumed`, `invalidate` of any scope but `widgets` and `automations`, and anything newer are
-/// dropped: the shell holds no task state.
+/// `resumed`, `invalidate` of any scope but `widgets`, `automations` and `taskNotices`, and
+/// anything newer are dropped: the shell holds no task state.
 public enum ControlFrame: Equatable, Sendable {
   /// Menu bar counts: root tasks running (queued, running, stopping) and needing attention.
   case status(running: Int, attention: Int)
@@ -59,6 +59,9 @@ public enum ControlFrame: Equatable, Sendable {
   /// `invalidate` with scope `automations`: an automation, its runs or the pending notices
   /// changed, so the shell pulls `GET /v1/automation-notices` for notifications to post.
   case automationsInvalidated
+  /// `invalidate` with scope `taskNotices`: the service queued a task notice, so the shell pulls
+  /// `GET /v1/task-notices` for notifications to post.
+  case taskNoticesInvalidated
 }
 
 public enum ControlFrameDecoding: Equatable, Sendable {
@@ -102,6 +105,7 @@ public enum ControlFrameDecoder {
       switch (try? decoder.decode(Invalidate.self, from: data))?.scope {
       case "widgets": frame = .widgetsInvalidated
       case "automations": frame = .automationsInvalidated
+      case "taskNotices": frame = .taskNoticesInvalidated
       // Other scopes concern the renderer's data, which the shell does not hold.
       default: return .ignored(type: envelope.type)
       }

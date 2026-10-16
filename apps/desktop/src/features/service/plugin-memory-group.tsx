@@ -3,6 +3,8 @@ import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MemoryUnit } from '@atd/agent-contracts';
 import type { MemorySnapshot } from '../../client/agent/bridge';
+import { ListCardGridPlaceholder } from '../../components/list-card';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { MemoryDeleteDialog } from '../memory/memory-delete-dialog';
 import { useMemoryWrites } from '../memory/memory-writes';
 import { MemoryList } from '../memory/memory-list';
@@ -25,6 +27,7 @@ export function PluginMemoryGroup({
   showTitle?: boolean;
 }) {
   const { t } = useTranslation('settings');
+  const { t: tMemory } = useTranslation('memory');
   const openUnit = useOpenSettingsMemory();
   const [deleting, setDeleting] = useState<MemoryUnit | null>(null);
   // Only the units being turned on or off or deleted wait; the other cards stay usable. The switch
@@ -52,7 +55,9 @@ export function PluginMemoryGroup({
           />
         )
       ) : (
-        <output className="settings-loading">{t('extensions.listLoading')}</output>
+        <LoadingPlaceholder label={tMemory('memory.list.loading')}>
+          <ListCardGridPlaceholder media="ring" />
+        </LoadingPlaceholder>
       )}
       <MemoryDeleteDialog
         unit={deleting}

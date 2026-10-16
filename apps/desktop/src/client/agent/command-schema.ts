@@ -2,7 +2,9 @@ import { Type, type Static } from 'typebox';
 import {
   CommandOutputSchema,
   CommandPlacementSchema,
+  CommandShortcutSchema,
   CommandThinkingLevelSchema,
+  MAX_COMMAND_SHORTCUTS,
 } from '@atd/agent-contracts';
 
 export const Identifier = Type.String({
@@ -103,7 +105,8 @@ export const CommandSchema = Type.Object(
     description: Type.String({ maxLength: 500 }),
     instructions: Type.String({ minLength: 1, maxLength: 20000 }),
     enabled: Type.Boolean(),
-    shortcut: Type.String({ maxLength: 100 }),
+    /** Global shortcuts with their overrides (`CommandShortcut` in `@atd/agent-contracts`). */
+    shortcuts: Type.Array(CommandShortcutSchema, { maxItems: MAX_COMMAND_SHORTCUTS }),
     templateId: Type.Union([Identifier, Type.Null()]),
     input: Type.Object(
       {

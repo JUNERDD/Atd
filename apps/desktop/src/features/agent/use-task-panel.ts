@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import type { PermissionRequest } from '../../client/agent/permission-schema';
+import { launchSettings } from '../../client/agent/command-prepare';
 import { emptyInput, isActive } from '../../client/agent/task-schema';
 import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
 import { DEFAULT_SHORTCUTS, runModelSelection } from '@atd/agent-contracts';
@@ -27,6 +28,7 @@ import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, usePanelWindow } from './use-panel-window';
 import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
+import { useTaskShown } from './use-task-shown';
 
 export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
@@ -87,6 +89,8 @@ export function useTaskPanel() {
   });
   // The composer serves one conversation: the side chat's task while it shows one, else the page's.
   const boundTaskId = side.taskId ?? scope;
+  // The shell notifies about every task but the one the person is looking at.
+  useTaskShown(boundTaskId);
   const bound = side.taskId ? side.detail : scope ? current.detail : null;
   const boundRun = bound?.task.runs.at(-1);
   // The command input step on screen: the side chat's, else the page's input view.
@@ -155,6 +159,7 @@ export function useTaskPanel() {
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
       output: commandInput?.output,
+      shortcutId: commandInput?.shortcutId,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
     const invocationId = submission.current.id;
@@ -169,6 +174,9 @@ export function useTaskPanel() {
           savedRun: null,
           input,
           ...(commandInput ? { output: commandInput.output } : {}),
+          ...(commandInput?.shortcutId === undefined
+            ? {}
+            : { shortcutId: commandInput.shortcutId }),
           ...(sideChatOf ? { sideChatOf } : {}),
         }),
       (detail) => {
@@ -271,11 +279,11 @@ export function useTaskPanel() {
   );
   // The run's model as the service selects it (`runModelSelection`), else the default: the
   // composer's picker shows it, and the composer and the command input check it for image input
-  // before images are sent.
+  // before images are sent. A command run starts from its launching shortcut's model, if any.
   const model =
     runModelSelection({
       requested: policy.model ?? null,
-      command: inputStep?.command.model ?? null,
+      command: inputStep ? launchSettings(inputStep).model : null,
       last: inputStep ? null : (boundRun?.snapshot.model ?? null),
       hasConnection: (connectionId) =>
         snapshot?.connections.some((item) => item.connectionId === connectionId) ?? false,

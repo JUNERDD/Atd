@@ -9,6 +9,7 @@ import {
   type CommandParameter,
   type ServiceCommandFull,
 } from '@atd/agent-contracts';
+import { validateShortcuts } from './shortcuts.js';
 
 /**
  * Command template + validation port (T6b). The desktop resolves command
@@ -139,10 +140,10 @@ export function validateCommandShape(command: ServiceCommandFull): void {
 
 /**
  * What every save checks (the store's create and update, and the Agent's `command` tool before it
- * asks the user to approve): the shape, and that an answer written over or after the selection
- * (`actsOnSelection`) belongs to a command that reads the selection (`readsSelection`). Runs and
- * plugin commands check only the shape, so a command stored before saves checked the pair still
- * runs.
+ * asks the user to approve): the shape, that an answer written over or after the selection
+ * (`actsOnSelection`) belongs to a command that reads the selection (`readsSelection`), and the
+ * command's own shortcut rules (`validateShortcuts`). Runs and plugin commands check only the
+ * shape, so a command stored before saves checked these still runs.
  */
 export function validateCommandSave(command: ServiceCommandFull): void {
   validateCommandShape(command);
@@ -151,6 +152,7 @@ export function validateCommandSave(command: ServiceCommandFull): void {
     throw new TypeError(
       `Output ${action} writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output action (insertAtCursor, copy or panel).`,
     );
+  validateShortcuts(command);
 }
 
 export function defaultArguments(

@@ -84,6 +84,13 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "commandOptions.set":
         call = try .commandOptionsSet(container.value(.params, CommandOptionsSetParams.self))
       case "app.about": call = try .appAbout(container.value(.params, AppAboutParams.self))
+      case "notifications.state":
+        call = try .notificationsState(container.value(.params, NotificationsStateParams.self))
+      case "notifications.set":
+        call = try .notificationsSet(container.value(.params, NotificationsSetParams.self))
+      case "notifications.openSystemSettings":
+        call = try .notificationsOpenSystemSettings(
+          container.value(.params, NotificationsOpenSystemSettingsParams.self))
       case "approval.request":
         call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
       case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
@@ -119,6 +126,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "update.check": post = try .updateCheck(container.value(.params, UpdateCheckPost.self))
       case "update.install":
         post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
+      case "task.shown": post = try .taskShown(container.value(.params, TaskShownPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
       case "userApp.pinDrag":
         post = try .userAppPinDrag(container.value(.params, UserAppPinDragPost.self))

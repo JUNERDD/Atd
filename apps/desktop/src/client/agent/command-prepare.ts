@@ -1,4 +1,11 @@
-import { actsOnSelection, MAX_ATTACHMENTS } from '@atd/agent-contracts';
+import {
+  actsOnSelection,
+  commandShortcut,
+  MAX_ATTACHMENTS,
+  shortcutRunSettings,
+  type CommandShortcut,
+  type ShortcutRunSettings,
+} from '@atd/agent-contracts';
 import type { CommandCatalog } from './agent-requests';
 import type { ComposedInput, PreparedCommand } from './bridge';
 import type { ArgumentValues, CommandDefinition } from './command-schema';
@@ -20,6 +27,28 @@ export class SelectionMissingError extends Error {}
  */
 export function runsAsIs(prepared: PreparedCommand): boolean {
   return !prepared.notice && readyToRun(prepared.command, prepared.input);
+}
+
+/**
+ * The shortcut that launched `prepared`, as its command copy holds it; undefined for every other
+ * launch (the toolbar, the launcher, a run button).
+ */
+export function launchShortcut(
+  prepared: Pick<PreparedCommand, 'command' | 'shortcutId'>,
+): CommandShortcut | undefined {
+  return prepared.shortcutId === undefined
+    ? undefined
+    : commandShortcut(prepared.command, prepared.shortcutId);
+}
+
+/**
+ * The output, model and reasoning level a run of `prepared` starts from before its own picks:
+ * the launching shortcut's overrides, else the command's (`shortcutRunSettings`).
+ */
+export function launchSettings(
+  prepared: Pick<PreparedCommand, 'command' | 'shortcutId'>,
+): ShortcutRunSettings {
+  return shortcutRunSettings(prepared.command, launchShortcut(prepared));
 }
 
 /**
@@ -51,20 +80,23 @@ export function withCapture(
  * (`selectionMissing`), so it can ask for the text instead.
  * A screenshot command takes one capture; a cancelled one prepares the input without an image and
  * no notice, and the input page offers to take it again. The arguments start from the parameter
- * defaults, then the command's remembered values, then `overrides` (`commandValues`); the answer
- * goes where the command's saved output says (`withOutputAction` picks another for the run).
+ * defaults, then the command's remembered values, then the values `shortcut` pins, then
+ * `overrides` (`commandValues`); the answer goes where `shortcut` sends it, else where the
+ * command's saved output says (`withOutputAction` picks another for the run). `shortcut` is the
+ * command's own shortcut that launched it, which the launch carries (`shortcutId`) to the run.
  */
 export async function prepareCommand(
   command: CommandDefinition,
   sources: Pick<CommandCatalog, 'capture' | 'screenshot'>,
   expectCapture: boolean,
   overrides?: ArgumentValues,
+  shortcut?: CommandShortcut,
 ): Promise<PreparedCommand> {
   if (!command.enabled) throw new Error('This command is disabled. Enable it in settings.');
   let input: TaskInput = {
     ...emptyInput(),
     source: command.input.source,
-    arguments: commandValues(command, overrides),
+    arguments: commandValues(command, overrides, shortcut?.arguments),
   };
   const referenced = new Set(
     templateReferences(command.instructions).map((reference) => reference.name),
@@ -92,8 +124,9 @@ export async function prepareCommand(
   return {
     command: structuredClone(command),
     input,
-    output: { ...command.output },
+    output: { ...shortcutRunSettings(command, shortcut).output },
     notice: first === undefined ? '' : errorMessage(first),
+    ...(shortcut ? { shortcutId: shortcut.id } : {}),
     ...(failures.length === 1 && first instanceof SelectionMissingError
       ? { selectionMissing: true as const }
       : {}),
@@ -107,8 +140,15 @@ export async function prepareCommand(
  */
 export function withoutSelectionNotice(prepared: PreparedCommand): PreparedCommand {
   if (!prepared.selectionMissing) return prepared;
-  const { command, input, output, target } = prepared;
-  return { command, input, output, notice: '', ...(target ? { target } : {}) };
+  const { command, input, output, target, shortcutId } = prepared;
+  return {
+    command,
+    input,
+    output,
+    notice: '',
+    ...(target ? { target } : {}),
+    ...(shortcutId === undefined ? {} : { shortcutId }),
+  };
 }
 
 /**

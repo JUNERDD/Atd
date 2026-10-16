@@ -1,0 +1,47 @@
+/* The placeholder takes the place of the content it stands in for: a block that fills the width
+ * and lays its shapes out as a column. It fades in over 200ms after 100ms, so a load that ends
+ * within a frame or two swaps straight to content. The fade carries no movement, so Reduce Motion
+ * keeps it (the global rule in `styles.css` exempts it); the shapes' pulse stops there. */
+.loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: loading-placeholder-in 200ms ease-out 100ms both;
+}
+.loading-placeholder-shapes {
+  display: contents;
+}
+@keyframes loading-placeholder-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A `TextPlaceholder` line's length; the lengths vary down a column so it reads as text. */
+.line-placeholder[data-width='quarter'] {
+  width: 25%;
+}
+.line-placeholder[data-width='third'] {
+  width: 33.333%;
+}
+.line-placeholder[data-width='twoFifths'] {
+  width: 40%;
+}
+.line-placeholder[data-width='half'] {
+  width: 50%;
+}
+.line-placeholder[data-width='threeFifths'] {
+  width: 60%;
+}
+.line-placeholder[data-width='twoThirds'] {
+  width: 66.667%;
+}
+.line-placeholder[data-width='threeQuarters'] {
+  width: 75%;
+}
+.line-placeholder[data-width='fourFifths'] {
+  width: 80%;
+}
+.line-placeholder[data-width='full'] {
+  width: 100%;
+}

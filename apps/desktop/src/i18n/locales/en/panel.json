@@ -189,6 +189,7 @@
       "noSelection": "No selected text — select text in another app, then use the command shortcut.",
       "selectionTooLong": "Selected text exceeds the input limit — select a smaller passage.",
       "commandDeleted": "This command was deleted. Use its saved version from task history.",
+      "shortcutDeleted": "This shortcut was removed from its command. Press another shortcut, or run the command from the panel.",
       "textTooLong": "This text exceeds the input limit — select a smaller passage.",
       "clipboardEmpty": "The clipboard does not contain text.",
       "clipboardTooLong": "Clipboard text exceeds the input limit.",

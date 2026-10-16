@@ -75,6 +75,9 @@ public enum NativeCall: Equatable, Sendable {
   case commandProgressHide(CommandProgressHideParams)
   case commandOptionsSet(CommandOptionsSetParams)
   case appAbout(AppAboutParams)
+  case notificationsState(NotificationsStateParams)
+  case notificationsSet(NotificationsSetParams)
+  case notificationsOpenSystemSettings(NotificationsOpenSystemSettingsParams)
   case approvalRequest(ApprovalRequestParams)
   case toolbarSet(ToolbarSetParams)
   case accessibilityRequest(AccessibilityRequestParams)
@@ -125,6 +128,9 @@ public enum NativeCall: Equatable, Sendable {
     case .commandProgressHide: "commandProgress.hide"
     case .commandOptionsSet: "commandOptions.set"
     case .appAbout: "app.about"
+    case .notificationsState: "notifications.state"
+    case .notificationsSet: "notifications.set"
+    case .notificationsOpenSystemSettings: "notifications.openSystemSettings"
     case .approvalRequest: "approval.request"
     case .toolbarSet: "toolbar.set"
     case .accessibilityRequest: "accessibility.request"
@@ -147,6 +153,7 @@ public enum NativePost: Equatable, Sendable {
   case socketSend(SocketSendPost)
   case updateCheck(UpdateCheckPost)
   case updateInstall(UpdateInstallPost)
+  case taskShown(TaskShownPost)
   case socketClose(SocketClosePost)
   case userAppPinDrag(UserAppPinDragPost)
 
@@ -164,6 +171,7 @@ public enum NativePost: Equatable, Sendable {
     case .socketSend: "socket.send"
     case .updateCheck: "update.check"
     case .updateInstall: "update.install"
+    case .taskShown: "task.shown"
     case .socketClose: "socket.close"
     case .userAppPinDrag: "userApp.pinDrag"
     }

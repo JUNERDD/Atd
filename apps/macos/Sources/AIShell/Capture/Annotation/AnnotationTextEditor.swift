@@ -35,6 +35,9 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   /// The style of the text being edited; nil when no edit is open.
   var style: AnnotationStyle? { session?.style }
 
+  /// Whether the open text is typed on `canvas` (it opens on one canvas of several).
+  func isHosted(in canvas: NSView) -> Bool { session?.view.superview === canvas }
+
   /// Opens the editor on `existing`, or for new text with its first line centred on `point`.
   func begin(
     at point: CGPoint, editing existing: Annotation?, style: AnnotationStyle, in canvas: NSView
@@ -64,6 +67,17 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     fit()
     view.selectAll(nil)
     canvas.window?.makeFirstResponder(view)
+  }
+
+  /// A key that reached another canvas while text is open: a press on the bars or the
+  /// selection's handles on another display made that overlay key. The text's window takes the
+  /// keyboard back and the key is typed, so letters, Return and arrows act on the text as they
+  /// would had the keyboard stayed with it.
+  func type(_ event: NSEvent) {
+    guard let view = session?.view, let window = view.window else { return }
+    window.makeKey()
+    window.makeFirstResponder(view)
+    view.keyDown(with: event)
   }
 
   /// Restyles the whole text being edited (colour, size or background from the style bar).

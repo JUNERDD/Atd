@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FileTree, useFileTree } from '@pierre/trees/react';
 import { useTranslation } from 'react-i18next';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { messageOf } from '../../lib/errors';
+import { SkillPreviewPlaceholder } from './extension-skill-placeholder';
 import { SkillFilePreview } from './extension-skill-preview';
 
 type Loaded =
@@ -78,17 +80,15 @@ export function SkillFiles({
   });
   const loaded = useSkillFile(name, selected);
   const content = loaded && 'content' in loaded ? loaded.content : null;
-  const message = !selected
+  const message = !loaded
     ? null
-    : !loaded
-      ? t('extensions.detailLoading')
-      : 'error' in loaded
-        ? loaded.error
-        : loaded.reason === 'binary'
-          ? t('extensions.fileBinary')
-          : loaded.reason === 'too_large'
-            ? t('extensions.fileTooLarge')
-            : null;
+    : 'error' in loaded
+      ? loaded.error
+      : loaded.reason === 'binary'
+        ? t('extensions.fileBinary')
+        : loaded.reason === 'too_large'
+          ? t('extensions.fileTooLarge')
+          : null;
   return (
     <section
       className="extension-detail-section skill-files"
@@ -105,6 +105,10 @@ export function SkillFiles({
           </div>
           {content !== null && selected ? (
             <SkillFilePreview key={selected} path={selected} content={content} />
+          ) : selected && !loaded ? (
+            <LoadingPlaceholder label={t('extensions.fileLoading')}>
+              <SkillPreviewPlaceholder />
+            </LoadingPlaceholder>
           ) : (
             <output
               className="skill-browser-message"

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import type { PreparedCommand } from '../../client/agent/bridge';
+import { launchSettings } from '../../client/agent/command-prepare';
 import {
   OUTPUT_ACTION_GROUPS,
   OUTPUT_ACTIONS,
@@ -20,8 +21,9 @@ import {
 
 /**
  * Where this run's answer goes, as the last field of the command's input step: the pop-up lists
- * the actions in the command settings' groups, names the command's saved one as the default, and
- * starts from what the launch carries (`PreparedCommand.output`). A pick lasts for this run only.
+ * the actions in the command settings' groups, names the saved one (the launching shortcut's, else
+ * the command's) as the default, and starts from what the launch carries (`PreparedCommand.output`).
+ * A pick lasts for this run only.
  * Actions the run cannot use stay in the menu, disabled: the selection actions for a command that
  * does not read the selection, the write-backs for a launch that did not come from another app.
  * When the current action is one of them, a note under the field says why the answer will stay in
@@ -37,7 +39,8 @@ export function RunOutputField({
   const { t } = useTranslation('commands');
   const id = useId();
   const { action } = prepared.output;
-  const saved = prepared.command.output.action;
+  // The launching shortcut's output, if it sets one, is the default this run started from.
+  const saved = launchSettings(prepared).output.action;
   const blocked = outputUnavailable(prepared, action);
   return (
     <div className="settings-field">

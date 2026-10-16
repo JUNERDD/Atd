@@ -42,6 +42,7 @@ import {
 import { SettingsContentHeader } from './settings-content-header';
 import { SettingsDrawer } from './settings-drawer';
 import { SettingsNavPanel } from './settings-nav-panel';
+import { SettingsPagePlaceholder } from './settings-page-placeholder';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 import {
   SettingsUnsavedChangesContext,
@@ -227,7 +228,7 @@ export function SettingsWindow() {
                             </div>
                           )}
                           {loading ? (
-                            <output className="settings-loading">{t('window.loading')}</output>
+                            <SettingsPagePlaceholder label={t('window.loading')} />
                           ) : (
                             <>
                               {page(

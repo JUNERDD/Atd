@@ -175,81 +175,117 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
   return shortcuts;
 }
 
-/** A saved command as the shortcut rules read it. */
-interface ShortcutCommand {
+/** A command as the shortcut rules read it. */
+export interface ShortcutCommand {
   id: string;
   name: string;
   enabled: boolean;
-  shortcut: string;
+  shortcuts: ReadonlyArray<{ id: string; accelerator: string; name: string }>;
+}
+
+/** A command's shortcut that holds some keys, with the command that owns it. */
+export interface HeldShortcut {
+  command: ShortcutCommand;
+  shortcut: ShortcutCommand['shortcuts'][number];
 }
 
 /**
- * The enabled command, other than the one with `exceptId`, whose shortcut presses the same keys
- * as `shortcut` on `platform`; undefined when none does.
+ * The shortcut of an enabled command, other than the shortcut with `exceptShortcutId`, that
+ * presses the same keys as `accelerator` on `platform`; undefined when none does. Shortcuts
+ * without keys hold nothing, and a disabled command's shortcuts are not registered, so they hold
+ * nothing either. Another shortcut of the same command counts like any other.
  */
 export function commandHoldingShortcut(
-  shortcut: string,
+  accelerator: string,
   commands: ReadonlyArray<ShortcutCommand>,
   platform: string,
-  exceptId?: string,
-): ShortcutCommand | undefined {
-  const pressed = effectiveAccelerator(shortcut, platform);
-  return commands.find(
-    (item) =>
-      item.id !== exceptId &&
-      item.enabled &&
-      item.shortcut &&
-      effectiveAccelerator(item.shortcut, platform) === pressed,
-  );
+  exceptShortcutId?: string,
+): HeldShortcut | undefined {
+  const pressed = effectiveAccelerator(accelerator, platform);
+  for (const command of commands) {
+    if (!command.enabled) continue;
+    const shortcut = command.shortcuts.find(
+      (item) =>
+        item.id !== exceptShortcutId &&
+        item.accelerator !== '' &&
+        effectiveAccelerator(item.accelerator, platform) === pressed,
+    );
+    if (shortcut) return { command, shortcut };
+  }
+  return undefined;
 }
 
 /**
- * What already holds a shortcut: an application action, an enabled command, or the gesture the
+ * What already holds a shortcut: an application action, an enabled command's shortcut (named by
+ * the command and the shortcut's own name, empty when the person gave none), or the gesture the
  * selection toolbar's `toggle` mode watches (`selectionToolbarDoubleTap`).
  */
 export type ShortcutHolder =
   | { kind: 'app'; action: keyof ShortcutBindingsWire }
-  | { kind: 'command'; id: string; name: string }
+  | {
+      kind: 'command';
+      id: string;
+      name: string;
+      shortcutId: string;
+      shortcutName: string;
+      accelerator: string;
+    }
   | { kind: 'selectionToolbar' };
 
 /**
- * The application action, else the enabled command other than `exceptCommandId`, that presses
- * the same keys as `shortcut` on `platform`; null when neither does. For the selection toolbar's
- * own gesture, and as the shared part of `commandShortcutHolder`.
+ * The application action, else the enabled command's shortcut other than `exceptShortcutId`, that
+ * presses the same keys as `accelerator` on `platform`; null when neither does. For the selection
+ * toolbar's own gesture, and as the shared part of `commandShortcutHolder`.
  */
 export function shortcutHolder(
-  shortcut: string,
+  accelerator: string,
   appShortcuts: ShortcutBindingsWire,
   commands: ReadonlyArray<ShortcutCommand>,
   platform: string,
-  exceptCommandId?: string,
+  exceptShortcutId?: string,
 ): Exclude<ShortcutHolder, { kind: 'selectionToolbar' }> | null {
-  const pressed = effectiveAccelerator(shortcut, platform);
+  const pressed = effectiveAccelerator(accelerator, platform);
   for (const [action, value] of Object.entries(appShortcuts) as Array<
     [keyof ShortcutBindingsWire, string]
   >)
     if (effectiveAccelerator(value, platform) === pressed) return { kind: 'app', action };
-  const other = commandHoldingShortcut(shortcut, commands, platform, exceptCommandId);
-  return other ? { kind: 'command', id: other.id, name: other.name } : null;
+  const held = commandHoldingShortcut(accelerator, commands, platform, exceptShortcutId);
+  return held
+    ? {
+        kind: 'command',
+        id: held.command.id,
+        name: held.command.name,
+        shortcutId: held.shortcut.id,
+        shortcutName: held.shortcut.name,
+        accelerator: held.shortcut.accelerator,
+      }
+    : null;
 }
 
 /**
- * The application action, the selection toolbar's double-tap or another enabled command that
- * already holds `command.shortcut` on `platform` (in that order), or null when it is free (or the
- * command has no shortcut). Only the OS can tell whether another application holds it; the
- * desktop learns that when it registers the shortcut.
+ * The application action, the selection toolbar's double-tap or another enabled command's
+ * shortcut (this command's other shortcuts included) that already holds `shortcut`'s keys on
+ * `platform`, in that order; null when they are free or the shortcut has no keys. `commands`
+ * should hold the command as it is about to be saved. Only the OS can tell whether another
+ * application holds the keys; the desktop learns that when it registers the shortcut.
  */
 export function commandShortcutHolder(
-  command: { id: string; shortcut: string },
+  shortcut: { id: string; accelerator: string },
   appShortcuts: ShortcutBindingsWire,
   commands: ReadonlyArray<ShortcutCommand>,
   platform: string,
   selectionToolbar: SelectionToolbarGesture,
 ): ShortcutHolder | null {
-  if (!command.shortcut) return null;
-  const holder = shortcutHolder(command.shortcut, appShortcuts, commands, platform, command.id);
+  if (!shortcut.accelerator) return null;
+  const holder = shortcutHolder(
+    shortcut.accelerator,
+    appShortcuts,
+    commands,
+    platform,
+    shortcut.id,
+  );
   if (holder?.kind === 'app') return holder;
-  if (command.shortcut === selectionToolbarDoubleTap(selectionToolbar))
+  if (shortcut.accelerator === selectionToolbarDoubleTap(selectionToolbar))
     return { kind: 'selectionToolbar' };
   return holder;
 }

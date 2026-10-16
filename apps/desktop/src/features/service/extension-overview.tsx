@@ -5,11 +5,13 @@ import type { PluginSummary } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { useCompositionQuery } from '@atd/ui/lib/ime';
+import { ListCardGridPlaceholder } from '../../components/list-card';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { ExtensionAddMenu, type PersonalCreateKind } from './extension-add-menu';
-import { ExtensionLoadError } from './extension-detail-fields';
+import { ExtensionLoadError, LabelPlaceholder } from './extension-detail-fields';
 import { ExtensionGroup } from './extension-group';
 import { BuiltinBackupNotices } from './extension-skill-builtin';
 import { McpApprovalNotice } from './mcp-approval-notice';
@@ -21,6 +23,22 @@ import type { ExtensionItemKind } from './use-extension-route';
 import { usePluginMatches } from './use-extension-matches';
 import type { PluginItemActions } from './use-plugin-item-actions';
 import { usePluginLabels } from './use-plugin-labels';
+
+/**
+ * The plugin list before its first read: one section as the list lays them out, its title over
+ * plugin cards, so the cards that arrive take the placeholders' places.
+ */
+function PluginSectionPlaceholder() {
+  const { t } = useTranslation('settings');
+  return (
+    <LoadingPlaceholder label={t('extensions.listLoading')}>
+      <div className="settings-extension-group">
+        <LabelPlaceholder />
+        <ListCardGridPlaceholder media="ring" />
+      </div>
+    </LoadingPlaceholder>
+  );
+}
 
 /**
  * The Extensions list: every plugin as a card under Built-in, then Personal & shared (Personal,
@@ -130,7 +148,8 @@ export function ExtensionOverview({
       title={t('extensions.title')}
       empty={t('extensions.noMatchesTitle', { query: search.query.trim() })}
       emptyDescription={t('extensions.noMatchesDescription')}
-      loading={plugins.loading}
+      // Search needs the plugins listed, so this answers loaded data; a later read keeps it.
+      loading={false}
       hasRows={false}
       showTitle={false}
       emptyIcon={<Search />}
@@ -150,18 +169,21 @@ export function ExtensionOverview({
     />
   );
 
-  // Without plugins to list, the list says why; `loading` covers the connecting service too.
+  // Without plugins to list, the list says why, or holds placeholder cards until the first read
+  // answers (which covers the connecting service too).
   const disconnected = extensions.serviceState === 'disconnected';
   const unlisted = plugins.error ? (
     <ExtensionLoadError
       message={t('extensions.plugins.loadFailed', { message: plugins.error })}
       onRetry={() => plugins.refresh()}
     />
+  ) : !disconnected && plugins.plugins === null ? (
+    <PluginSectionPlaceholder />
   ) : (
     <ExtensionGroup
       title={t('extensions.title')}
       showTitle={false}
-      loading={!disconnected && plugins.plugins === null}
+      loading={false}
       hasRows={false}
       empty={
         disconnected

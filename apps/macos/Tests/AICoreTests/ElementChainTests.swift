@@ -22,9 +22,10 @@ struct ElementChainTests {
 
   static func targets(
     _ chain: [ElementChain.Node]?, window: ElementChain.Window = window,
-    displays: [CGRect] = [display], at point: CGPoint = point
+    displays: [CGRect] = [display], at point: CGPoint = point, separateSpaces: Bool = true
   ) -> [CGRect] {
-    ElementChain.targets(at: point, window: window, displays: displays, chain: chain)
+    ElementChain.targets(
+      at: point, window: window, displays: displays, separateSpaces: separateSpaces, chain: chain)
   }
 
   @Test("Orders the chain smallest first and ends with the window")
@@ -210,8 +211,8 @@ struct ElementChainTests {
     #expect(ElementChain.topmostWindow(at: CGPoint(x: 350, y: 300), in: windows) == Self.window)
   }
 
-  @Test("Works on displays with negative origins")
-  func negativeOrigin() {
+  @Test("Works on displays with negative origins", arguments: [true, false])
+  func negativeOrigin(separateSpaces: Bool) {
     let left = CGRect(x: -1920, y: -100, width: 1920, height: 1080)
     let main = CGRect(x: 0, y: 0, width: 1440, height: 900)
     let spanning = ElementChain.Window(
@@ -221,16 +222,48 @@ struct ElementChainTests {
       [
         Self.node("AXGroup", -380, 20, 300, 200),
         ElementChain.Node(role: "AXWindow", frame: spanning.frame),
-      ], window: spanning, displays: [main, left], at: point)
-    #expect(
-      result == [
-        CGRect(x: -380, y: 20, width: 300, height: 200),
-        CGRect(x: -400, y: 0, width: 400, height: 500),
-      ])
-    // On the primary display the same window is clipped the other way.
+      ], window: spanning, displays: [main, left], at: point, separateSpaces: separateSpaces)
+    // With separate Spaces the window shows on one display only: it is cut to the one under
+    // the point, each way. With shared Spaces it is offered whole from either.
+    let onLeft = separateSpaces ? CGRect(x: -400, y: 0, width: 400, height: 500) : spanning.frame
+    let onMain = separateSpaces ? CGRect(x: 0, y: 0, width: 400, height: 500) : spanning.frame
+    #expect(result == [CGRect(x: -380, y: 20, width: 300, height: 200), onLeft])
     let right = Self.targets(
-      nil, window: spanning, displays: [main, left], at: CGPoint(x: 100, y: 100))
-    #expect(right == [CGRect(x: 0, y: 0, width: 400, height: 500)])
+      nil, window: spanning, displays: [main, left], at: CGPoint(x: 100, y: 100),
+      separateSpaces: separateSpaces)
+    #expect(right == [onMain])
+  }
+
+  @Test("An overhang onto a display with separate Spaces is not offered")
+  func overhang() {
+    // A built-in display beside a taller external one; the window is drawn on the built-in
+    // display and overhangs the external one by 188 pt.
+    let builtIn = CGRect(x: 0, y: 0, width: 1512, height: 982)
+    let external = CGRect(x: 1512, y: -458, width: 2560, height: 1440)
+    let window = ElementChain.Window(
+      id: 6, pid: 6, frame: CGRect(x: 1300, y: 100, width: 400, height: 300))
+    let point = CGPoint(x: 1400, y: 200)
+    #expect(
+      Self.targets(nil, window: window, displays: [builtIn, external], at: point)
+        == [CGRect(x: 1300, y: 100, width: 212, height: 300)])
+    #expect(
+      Self.targets(
+        nil, window: window, displays: [builtIn, external], at: point, separateSpaces: false)
+        == [window.frame])
+  }
+
+  @Test("A display that only touches the window holds no part of it", arguments: [true, false])
+  func edgeContact(separateSpaces: Bool) {
+    // The window's right edge meets a taller display's left edge, and its bottom runs past the
+    // main display into the gap beside the taller one.
+    let main = CGRect(x: 0, y: 0, width: 1440, height: 900)
+    let taller = CGRect(x: 1440, y: 100, width: 1920, height: 1080)
+    let window = ElementChain.Window(
+      id: 8, pid: 8, frame: CGRect(x: 1040, y: 400, width: 400, height: 600))
+    #expect(
+      Self.targets(
+        nil, window: window, displays: [main, taller], at: CGPoint(x: 1200, y: 500),
+        separateSpaces: separateSpaces) == [CGRect(x: 1040, y: 400, width: 400, height: 500)])
   }
 
   @Test("Finds the elements that offered a picked candidate, never the window")
@@ -245,7 +278,7 @@ struct ElementChainTests {
     func indices(_ frame: CGRect, chain: [ElementChain.Node] = chain) -> [Int] {
       ElementChain.elementIndices(
         offering: frame, at: Self.point, window: Self.window, displays: [Self.display],
-        chain: chain)
+        separateSpaces: true, chain: chain)
     }
     #expect(indices(CGRect(x: 280, y: 280, width: 60, height: 30)) == [0, 1, 2])
     #expect(indices(CGRect(x: 100, y: 260, width: 800, height: 60)) == [3])

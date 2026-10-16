@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTaskAgent } from '@atd/agent-contracts';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
@@ -13,14 +13,12 @@ import { ScrollJump } from './scroll-jump';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { useSubagents } from './subagent-context';
+import { TranscriptPlaceholder } from './transcript-placeholder';
 import { TurnView } from './turn-view';
 import { indexRequests } from './turns';
 import { useChildTranscript } from './use-child-transcript';
 import type { CommandOpener } from './use-offered-commands';
 import { useTranscriptScroll } from './use-transcript-scroll';
-
-/** A load shorter than this shows nothing rather than flashing the loading line. */
-const LOADING_DELAY_MS = 400;
 
 /** The drill-in view owns no files: task files anchor in the parent conversation only. */
 const NO_ANCHORS = new Set<string>();
@@ -68,12 +66,6 @@ export function ChildTranscriptView({
   const taskAgent = child && isTaskAgent(child.agent);
   const definition = taskAgent ? agents.get(child.agent) : undefined;
   const { detail, error } = useChildTranscript(taskId, childKey);
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    if (detail || error) return;
-    const timer = setTimeout(() => setSlow(true), LOADING_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [detail, error]);
   const requestIndex = useMemo(() => indexRequests(requests), [requests]);
   const blocks = detail?.blocks;
   const model = child?.model ?? '';
@@ -130,7 +122,7 @@ export function ChildTranscriptView({
               {error}
             </p>
           ) : !detail ? (
-            slow && <p className="m-0 text-sm text-muted-foreground">{t('subagent.loading')}</p>
+            <TranscriptPlaceholder label={t('subagent.loading')} actions={false} />
           ) : (
             turns.length === 0 && (
               <p className="m-0 text-sm text-muted-foreground">{t('subagent.empty')}</p>

@@ -50,26 +50,59 @@ public enum SelectionDrag: Equatable, Sendable {
   case resize(SelectionHandle, original: CGRect)
 }
 
-/// Selection geometry on one display, in that display's view points (origin top-left). A
-/// selection never leaves the display it started on, and its edges sit on device pixels.
+/// Selection geometry on the capture's desktop (``CaptureDesktop``), in desktop points (origin
+/// top-left). A selection stays inside the desktop and may span its displays; its edges sit on
+/// the device pixels of the finest display it covers.
 public struct SelectionModel: Equatable, Sendable {
+  /// One display's area of the desktop and its image pixels per point.
+  public struct Display: Equatable, Sendable {
+    public let frame: CGRect
+    public let scale: CGFloat
+
+    public init(frame: CGRect, scale: CGFloat) {
+      self.frame = frame
+      self.scale = scale > 0 ? scale : 1
+    }
+  }
+
   /// Movement below this distance (points) between button down and up is a click.
   public static let clickTolerance: CGFloat = 4
   /// How far from a handle's center a press still grabs it.
   public static let handleReach: CGFloat = 6
 
-  /// The display in view points: origin zero, the display's size.
+  /// The desktop in its own points: origin zero.
   public let bounds: CGRect
-  /// Image pixels per point on the display.
+  public let displays: [Display]
+  /// The largest image pixels per point of any display.
   public let scale: CGFloat
 
-  public init(size: CGSize, scale: CGFloat) {
-    bounds = CGRect(origin: .zero, size: size)
-    self.scale = scale > 0 ? scale : 1
+  public init(bounds: CGRect, displays: [Display]) {
+    self.bounds = bounds
+    self.displays = displays
+    scale = displays.map(\.scale).max() ?? 1
   }
 
-  /// The smallest side a selection keeps: one pixel.
-  var minimumSide: CGFloat { 1 / scale }
+  /// A desktop of one display of `size` points.
+  public init(size: CGSize, scale: CGFloat) {
+    let bounds = CGRect(origin: .zero, size: size)
+    self.init(bounds: bounds, displays: [Display(frame: bounds, scale: scale)])
+  }
+
+  /// The pixels per point `rect` snaps to: the finest display it covers, so a selection on one
+  /// display crops whole device pixels of it and one spanning displays keeps the finer one's.
+  /// An empty rect takes the display under its center; one on no display the finest overall.
+  func scale(of rect: CGRect) -> CGFloat {
+    let covered = displays.filter {
+      let shared = $0.frame.intersection(rect)
+      return !shared.isNull && shared.width > 0 && shared.height > 0
+    }
+    if let finest = covered.map(\.scale).max() { return finest }
+    let center = CGPoint(x: rect.midX, y: rect.midY)
+    return displays.first { $0.frame.contains(center) }?.scale ?? scale
+  }
+
+  /// The smallest side `rect` keeps: one pixel.
+  func minimumSide(of rect: CGRect) -> CGFloat { 1 / scale(of: rect) }
 
   public static func isClick(from start: CGPoint, to end: CGPoint) -> Bool {
     hypot(end.x - start.x, end.y - start.y) < clickTolerance
@@ -139,7 +172,7 @@ public struct SelectionModel: Equatable, Sendable {
   /// Where the loupe looks while `drag` has reached `pointer` and the selection is `rect`: the
   /// corner being dragged, or, for an edge, the edge's new position at the pointer's other
   /// coordinate (the midpoint would sit far from a pointer near the edge's end); the pointer
-  /// itself while moving. Kept inside the display.
+  /// itself while moving. Kept inside the desktop.
   public func loupePoint(for drag: SelectionDrag, rect: CGRect, pointer: CGPoint) -> CGPoint {
     let pointer = clamped(pointer)
     guard case .resize(let handle, _) = drag else { return pointer }
@@ -148,31 +181,33 @@ public struct SelectionModel: Equatable, Sendable {
       y: handle.vertical == 0 ? pointer.y : handle.point(on: rect).y)
   }
 
-  /// A detected area taken as the selection: cut to the display and snapped to pixels.
+  /// A detected area taken as the selection: cut to the desktop and snapped to pixels.
   public func settled(_ rect: CGRect) -> CGRect {
     let low = clamped(CGPoint(x: rect.minX, y: rect.minY))
     let high = clamped(CGPoint(x: rect.maxX, y: rect.maxY))
     return settled((low.x, high.x), (low.y, high.y))
   }
 
-  /// Arrow keys: moves by `dx`, `dy` points, stopping at the display's edges.
+  /// Arrow keys: moves by `dx`, `dy` points, stopping at the desktop's edges.
   public func nudged(_ rect: CGRect, dx: CGFloat, dy: CGFloat) -> CGRect {
     placed(rect.offsetBy(dx: dx, dy: dy))
   }
 
-  /// Option-arrow keys: moves the right and bottom edges, keeping one pixel and the display.
+  /// Option-arrow keys: moves the right and bottom edges, keeping one pixel and the desktop.
   public func resized(_ rect: CGRect, dWidth: CGFloat, dHeight: CGFloat) -> CGRect {
-    settled(
-      (rect.minX, min(max(rect.maxX + dWidth, rect.minX + minimumSide), bounds.maxX)),
-      (rect.minY, min(max(rect.maxY + dHeight, rect.minY + minimumSide), bounds.maxY)))
+    let side = minimumSide(of: rect)
+    return settled(
+      (rect.minX, min(max(rect.maxX + dWidth, rect.minX + side), bounds.maxX)),
+      (rect.minY, min(max(rect.maxY + dHeight, rect.minY + side), bounds.maxY)))
   }
 
   /// Option-Shift-arrow keys: moves the left and top edges by `dx`, `dy` (negative grows the
-  /// selection), keeping one pixel and the display; the right and bottom edges stay.
+  /// selection), keeping one pixel and the desktop; the right and bottom edges stay.
   public func resizedLeading(_ rect: CGRect, dx: CGFloat, dy: CGFloat) -> CGRect {
-    settled(
-      (max(min(rect.minX + dx, rect.maxX - minimumSide), bounds.minX), rect.maxX),
-      (max(min(rect.minY + dy, rect.maxY - minimumSide), bounds.minY), rect.maxY))
+    let side = minimumSide(of: rect)
+    return settled(
+      (max(min(rect.minX + dx, rect.maxX - side), bounds.minX), rect.maxX),
+      (max(min(rect.minY + dy, rect.maxY - side), bounds.minY), rect.maxY))
   }
 
   // MARK: Helpers
@@ -187,8 +222,9 @@ public struct SelectionModel: Equatable, Sendable {
 
   /// The opposite corner of the square from `origin` towards `point`: its side is the larger
   /// of the pointer's two offsets, cut to the room left in the drag's direction and counted in
-  /// whole pixels so both sides snap to the same size.
+  /// whole pixels of the display under `origin` so both sides snap to the same size.
   private func squared(from origin: CGPoint, to point: CGPoint) -> (origin: CGPoint, end: CGPoint) {
+    let scale = scale(of: CGRect(origin: origin, size: .zero))
     let start = CGPoint(
       x: CaptureCoordinates.snap(origin.x, scale: scale),
       y: CaptureCoordinates.snap(origin.y, scale: scale))
@@ -206,29 +242,36 @@ public struct SelectionModel: Equatable, Sendable {
     (min(fixed, moving), max(fixed, moving))
   }
 
-  /// Snaps both spans to pixels and grows a collapsed one to a pixel, inside the display.
+  /// Snaps both spans to the pixels of what they cover and grows a collapsed one to a pixel,
+  /// inside the desktop.
   private func settled(_ xs: (CGFloat, CGFloat), _ ys: (CGFloat, CGFloat)) -> CGRect {
-    let x = widened(snapped(xs), upTo: bounds.maxX)
-    let y = widened(snapped(ys), upTo: bounds.maxY)
+    let scale = scale(of: CGRect(x: xs.0, y: ys.0, width: xs.1 - xs.0, height: ys.1 - ys.0))
+    let x = widened(snapped(xs, scale: scale), upTo: bounds.maxX, scale: scale)
+    let y = widened(snapped(ys, scale: scale), upTo: bounds.maxY, scale: scale)
     return CGRect(x: x.0, y: y.0, width: x.1 - x.0, height: y.1 - y.0)
   }
 
-  /// Keeps the size of `rect` and moves it inside the display, on the pixel grid.
+  /// Keeps the size of `rect` and moves it inside the desktop, on the pixel grid of where it
+  /// lands.
   private func placed(_ rect: CGRect) -> CGRect {
     let x = min(max(rect.minX, bounds.minX), bounds.maxX - rect.width)
     let y = min(max(rect.minY, bounds.minY), bounds.maxY - rect.height)
+    let scale = scale(of: CGRect(origin: CGPoint(x: x, y: y), size: rect.size))
     let origin = CGPoint(
       x: CaptureCoordinates.snap(x, scale: scale), y: CaptureCoordinates.snap(y, scale: scale))
     return CGRect(origin: origin, size: rect.size)
   }
 
-  private func snapped(_ span: (CGFloat, CGFloat)) -> (CGFloat, CGFloat) {
+  private func snapped(_ span: (CGFloat, CGFloat), scale: CGFloat) -> (CGFloat, CGFloat) {
     (CaptureCoordinates.snap(span.0, scale: scale), CaptureCoordinates.snap(span.1, scale: scale))
   }
 
-  private func widened(_ span: (CGFloat, CGFloat), upTo high: CGFloat) -> (CGFloat, CGFloat) {
-    guard span.1 - span.0 < minimumSide else { return span }
-    let end = min(span.0 + minimumSide, high)
-    return (end - minimumSide, end)
+  private func widened(_ span: (CGFloat, CGFloat), upTo high: CGFloat, scale: CGFloat)
+    -> (CGFloat, CGFloat)
+  {
+    let side = 1 / scale
+    guard span.1 - span.0 < side else { return span }
+    let end = min(span.0 + side, high)
+    return (end - side, end)
   }
 }

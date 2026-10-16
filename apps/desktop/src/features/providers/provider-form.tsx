@@ -257,7 +257,7 @@ export function ProviderForm({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         {/* The saved connection's catalog actions lead; the edit's own Cancel and Save trail. */}
         {saved && (
-          <div className="provider-form-tools">
+          <div>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

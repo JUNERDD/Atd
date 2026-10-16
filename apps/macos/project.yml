@@ -14,7 +14,7 @@ settings:
     # also covers the AIMac package targets (their Release builds otherwise include both slices).
     SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: 0.9.0
+    MARKETING_VERSION: 0.9.1
     # Sparkle compares CFBundleVersion with an update's `sparkle:version`, so the build number
     # follows the release version instead of staying constant.
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
@@ -151,6 +151,10 @@ targets:
         # Start as an agent app so a hidden Dock icon never flashes at launch; the Show in Dock
         # setting changes the activation policy at runtime.
         LSUIElement: true
+        # Notifications start as alerts rather than banners, so a question's answers and Reply
+        # stay on screen until the person acts on them (ShellNotifier); the person can still pick
+        # banners in System Settings › Notifications.
+        NSUserNotificationAlertStyle: alert
         # Shown the first time an attached file sits in one of these folders.
         NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it.
         NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it.

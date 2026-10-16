@@ -433,6 +433,24 @@
         }
       }
     },
+    "capture.hint.allDisplays" : {
+      "comment" : "Capture overlay hint shown with more than one display; pressing ⌘A on a whole display selects every display",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘A again for every screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再按 ⌘A 选择所有屏幕"
+          }
+        }
+      }
+    },
     "capture.hint.idle" : {
       "comment" : "Hint at the bottom of the capture overlay before an area is selected",
       "extractionState" : "manual",
@@ -3457,6 +3475,96 @@
         }
       }
     },
+    "notification.action.deny" : {
+      "comment" : "Notification action that declines the action the agent asked to run",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decline"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拒绝"
+          }
+        }
+      }
+    },
+    "notification.action.reply" : {
+      "comment" : "Notification action that answers the agent's question with typed text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回复"
+          }
+        }
+      }
+    },
+    "notification.action.reply.placeholder" : {
+      "comment" : "Placeholder of the Reply field on a notification of the agent's question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的回答"
+          }
+        }
+      }
+    },
+    "notification.action.reply.send" : {
+      "comment" : "Button that sends the answer typed into a notification's Reply field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送"
+          }
+        }
+      }
+    },
+    "notification.hiddenPreview" : {
+      "comment" : "Notification body shown while the system hides notification previews",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New notification from Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自 Atd 的新通知"
+          }
+        }
+      }
+    },
     "permissionGuide.accessibility" : {
       "comment" : "The Accessibility permission's name in System Settings",
       "extractionState" : "manual",
@@ -4065,6 +4173,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服务不可用"
+          }
+        }
+      }
+    },
+    "task.notice.completed.body" : {
+      "comment" : "Body of a task notification when a run finished",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finished — open to see the result."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成，打开即可查看结果。"
+          }
+        }
+      }
+    },
+    "task.notice.failed.body" : {
+      "comment" : "Body of a task notification when a run failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong before it could finish."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务在完成前出了问题。"
+          }
+        }
+      }
+    },
+    "task.notice.fallbackTitle" : {
+      "comment" : "Title of a task notification when the task has no title yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd task"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 任务"
+          }
+        }
+      }
+    },
+    "task.notice.needsConfirmation.body" : {
+      "comment" : "Body of a task notification when the agent waits for approval of an action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for your approval"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待你的批准"
+          }
+        }
+      }
+    },
+    "task.notice.needsInput.body" : {
+      "comment" : "Body of a task notification when the agent asked a question nobody answered",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for your answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待你的回答"
           }
         }
       }

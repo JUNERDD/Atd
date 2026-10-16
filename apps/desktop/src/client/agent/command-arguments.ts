@@ -39,16 +39,19 @@ export function sanitizeArguments(
 
 /**
  * The argument values a run of `command` starts from: its parameter defaults, then the values its
- * last run from the app used (`lastArguments`), then `overrides` (picked for this launch), each
- * kept only where it fits the command's current parameters.
+ * last run from the app used (`lastArguments`), then the values the launching shortcut pins
+ * (`pinned`, `CommandShortcut.arguments`), then `overrides` (picked for this launch), each kept
+ * only where it fits the command's current parameters.
  */
 export function commandValues(
   command: CommandDefinition,
   overrides?: Readonly<Record<string, unknown>>,
+  pinned?: Readonly<Record<string, unknown>>,
 ): ArgumentValues {
   return {
     ...defaultArguments(command),
     ...sanitizeArguments(command, command.lastArguments),
+    ...sanitizeArguments(command, pinned),
     ...sanitizeArguments(command, overrides),
   };
 }

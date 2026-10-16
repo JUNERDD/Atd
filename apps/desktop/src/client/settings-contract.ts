@@ -98,6 +98,11 @@ export function isAppLanguage(value: unknown): value is AppLanguage {
 export interface SettingsSnapshot {
   connections: Connection[];
   defaultConnectionId: string | null;
+  /**
+   * Whether the provider connections were read. They load apart from the shared settings, and
+   * until they arrive `connections` is empty, which must not be taken for having none.
+   */
+  providersLoaded: boolean;
   language: AppLanguage;
   /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
   appearance: AppAppearance | null;

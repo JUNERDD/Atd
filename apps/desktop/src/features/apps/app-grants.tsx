@@ -11,7 +11,7 @@ import {
 } from '@atd/ui/components/item';
 import { Switch } from '@atd/ui/components/switch';
 import { IconButton } from '../../components/icon-button';
-import { AppDetailSection, AppDetailStatusRow } from './app-detail-group';
+import { AppDetailRowsPlaceholder, AppDetailSection, AppDetailStatusRow } from './app-detail-group';
 import { CAPABILITY_ICONS } from './capability-icons';
 import type { AppIntent } from './use-app-intent';
 
@@ -121,7 +121,16 @@ export function AppPermissionsSection({
       footer={none ? undefined : t('detail.permissions.footer')}
     >
       {!detail ? (
-        <AppDetailStatusRow error={error} onRetry={onRetry} />
+        error !== null ? (
+          <AppDetailStatusRow error={error} onRetry={onRetry} />
+        ) : (
+          <AppDetailRowsPlaceholder
+            label={t('detail.permissions.loading')}
+            count={2}
+            media
+            trailing="switch"
+          />
+        )
       ) : none ? (
         <Item asChild size="sm" className="settings-card-row">
           <li>

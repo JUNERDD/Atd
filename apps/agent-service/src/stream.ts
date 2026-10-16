@@ -19,8 +19,10 @@ import type { CapabilityRegistry } from './capabilities.js';
 import type { EventLog } from './event-log.js';
 import type { Logger } from './logging.js';
 import type { TaskStatusCounts } from './task-status.js';
+import type { SystemProxy } from './network/system-proxy.js';
 
 export interface StreamDeps {
+  systemProxy: SystemProxy;
   events: EventLog;
   capabilities: CapabilityRegistry;
   snapshot: (taskId: string) => Promise<TaskSnapshot>;
@@ -179,6 +181,14 @@ export class StreamHub {
       case 'capability.result':
         await this.capabilityResult(connection, (message as { result?: unknown }).result);
         break;
+      case 'system.proxy': {
+        if (!connection.clientId) throw new Error('System proxy updates need a registered shell.');
+        const applied = await this.deps.systemProxy.update(
+          'settings' in message ? message.settings : undefined,
+        );
+        this.send(connection.socket, { type: 'system.proxy.updated', applied });
+        break;
+      }
       case 'ping':
         if (connection.clientId) this.deps.capabilities.heartbeat(connection.clientId);
         this.send(connection.socket, { type: 'pong' });

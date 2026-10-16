@@ -69,15 +69,22 @@ public enum ScreenshotRules {
   public static func sizeLabel(selection: CGRect, scale: CGFloat, imageWidth: Int, imageHeight: Int)
     -> String
   {
-    let points = ScreenshotPixelSize(
-      width: Int(selection.width.rounded()), height: Int(selection.height.rounded()))
-    var label = "\(points.width) × \(points.height)"
-    guard
-      let crop = CaptureCoordinates.pixelRect(
-        selection, scale: scale, width: imageWidth, height: imageHeight)
-    else { return label }
-    let stored = exportSize(width: Int(crop.width), height: Int(crop.height))
-    if stored != points { label += " · \(stored.width) × \(stored.height) px" }
+    let crop = CaptureCoordinates.pixelRect(
+      selection, scale: scale, width: imageWidth, height: imageHeight)
+    return sizeLabel(
+      points: selection.size, pixelWidth: crop.map { Int($0.width) },
+      pixelHeight: crop.map { Int($0.height) })
+  }
+
+  /// The same label for a selection of `points` whose export takes `pixelWidth` ×
+  /// `pixelHeight` pixels before scaling (nil when it takes none).
+  public static func sizeLabel(points: CGSize, pixelWidth: Int?, pixelHeight: Int?) -> String {
+    let shown = ScreenshotPixelSize(
+      width: Int(points.width.rounded()), height: Int(points.height.rounded()))
+    var label = "\(shown.width) × \(shown.height)"
+    guard let pixelWidth, let pixelHeight else { return label }
+    let stored = exportSize(width: pixelWidth, height: pixelHeight)
+    if stored != shown { label += " · \(stored.width) × \(stored.height) px" }
     return label
   }
 

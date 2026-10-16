@@ -30,7 +30,8 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { IconButton } from '../../components/icon-button';
 import { ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
 import { rowDate } from '../agent/history-view';
-import { ListCardGrid } from '../../components/list-card';
+import { ListCardGrid, ListCardGridPlaceholder } from '../../components/list-card';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { AppConfirmDialog, RenameAppDialog } from './app-dialogs';
 import { AppListCard } from './app-list-card';
 import { useAppActions } from './use-app-actions';
@@ -143,6 +144,10 @@ export function AppsView({
                 );
               })}
             </ListCardGrid>
+          ) : !apps && !error ? (
+            <LoadingPlaceholder label={t('panel.loading')}>
+              <ListCardGridPlaceholder className="apps-view-grid" />
+            </LoadingPlaceholder>
           ) : (
             <Empty className="px-4 py-10">
               <EmptyHeader>
@@ -150,26 +155,22 @@ export function AppsView({
                   <AppWindow />
                 </EmptyMedia>
                 <EmptyTitle className="text-base">
-                  {error ? t('panel.loadError') : apps ? t('panel.empty') : t('panel.loading')}
+                  {error ? t('panel.loadError') : t('panel.empty')}
                 </EmptyTitle>
-                {(error || apps) && (
-                  <EmptyDescription>{error ?? t('panel.emptyDescription')}</EmptyDescription>
-                )}
+                <EmptyDescription>{error ?? t('panel.emptyDescription')}</EmptyDescription>
               </EmptyHeader>
-              {(error || apps) && (
-                <EmptyContent>
-                  {error ? (
-                    <Button variant="outline" onClick={retry}>
-                      {t('panel.retry')}
-                    </Button>
-                  ) : (
-                    <Button variant="outline" onClick={onCreate}>
-                      <Sparkles data-icon="inline-start" />
-                      {t('panel.create')}
-                    </Button>
-                  )}
-                </EmptyContent>
-              )}
+              <EmptyContent>
+                {error ? (
+                  <Button variant="outline" onClick={retry}>
+                    {t('panel.retry')}
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={onCreate}>
+                    <Sparkles data-icon="inline-start" />
+                    {t('panel.create')}
+                  </Button>
+                )}
+              </EmptyContent>
             </Empty>
           )}
         </div>

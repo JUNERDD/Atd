@@ -246,6 +246,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureHintAccessibility = "capture.hint.accessibility"
   case captureHintRecall = "capture.hint.recall"
   case captureHintWindowsOnly = "capture.hint.windowsOnly"
+  case captureHintAllDisplays = "capture.hint.allDisplays"
   case captureToolbar = "capture.toolbar"
   case captureToolbarMove = "capture.toolbar.move"
   case captureStyleBar = "capture.styleBar"
@@ -294,4 +295,18 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   /// `%@` the automation's name.
   case automationNoticePausedTitle = "automation.notice.paused.title"
   case automationNoticePausedBody = "automation.notice.paused.body"
+
+  /// Task notifications (``SystemNotification/init(_:text:previews:sound:)``): the title is the
+  /// task's title, the body a fixed line per kind unless message previews show runtime text.
+  case taskNoticeFallbackTitle = "task.notice.fallbackTitle"
+  case taskNoticeNeedsInputBody = "task.notice.needsInput.body"
+  case taskNoticeNeedsConfirmationBody = "task.notice.needsConfirmation.body"
+  case taskNoticeCompletedBody = "task.notice.completed.body"
+  case taskNoticeFailedBody = "task.notice.failed.body"
+  /// Notification actions and the body shown while the system hides previews.
+  case notificationReply = "notification.action.reply"
+  case notificationReplySend = "notification.action.reply.send"
+  case notificationReplyPlaceholder = "notification.action.reply.placeholder"
+  case notificationDeny = "notification.action.deny"
+  case notificationHiddenPreview = "notification.hiddenPreview"
 }

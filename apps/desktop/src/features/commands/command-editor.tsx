@@ -7,7 +7,6 @@ import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CommandSchema, type CommandDefinition } from '../../client/agent/command-schema';
-import { renameArgument } from '../../client/agent/command-validation';
 import { parse } from '../../client/agent/validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
@@ -18,26 +17,17 @@ import { messageOf } from '../../lib/errors';
 import { InputResultSettings } from './input-result-settings';
 import { InstructionEditor } from './instruction-editor';
 import { FieldError } from './field-error';
-import { ParameterEditor } from './parameter-editor';
+import { EditorSubpage } from './command-editor-subpages';
+import { useShownSubpage, type EditorSubpages } from './command-routes';
 import { ParameterList } from './parameter-list';
-import { LaunchSettings } from './launch-settings';
+import { LAUNCH_GROUP_ID, LaunchSettings } from './launch-settings';
+import { withExistingPins } from './shortcut-drafts';
 import { RunSettings } from './run-settings';
 import { useCommandAiSession } from './use-command-ai-session';
-import { errorId, useCommandProblems } from './use-command-problems';
+import { errorId, useCommandProblems, useRegistrationError } from './use-command-problems';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
-
-/** A parameter's page over the command editor, a page of the Commands section's history. */
-export interface ParameterPage {
-  /** The page shown: the parameter's key, or null for a new parameter; null shows the editor. */
-  shown: { key: string | null } | null;
-  open: (key: string | null) => void;
-  /** Leaves the page; after a save, `saved` is the key Forward then reopens. */
-  close: (saved?: string) => void;
-  /** Leaves a page whose parameter the draft no longer has, as after Back discarded the draft. */
-  discard: () => void;
-}
 
 /** A command as the unsaved-changes check compares it: allowed tools are a set, not a list. */
 function comparable(command: CommandDefinition): string {
@@ -49,7 +39,8 @@ export function CommandEditor({
   expectedRevision,
   settings,
   tasks,
-  parameterPage,
+  subpages,
+  section,
   onSaved,
   onCancel,
   onDuplicate,
@@ -59,7 +50,9 @@ export function CommandEditor({
   settings: SettingsSnapshot | null;
   /** Snapshot tasks: the conversations instructions can mention. */
   tasks: readonly AgentTask[];
-  parameterPage: ParameterPage;
+  subpages: EditorSubpages;
+  /** The group to scroll to as the editor opens, such as its shortcuts from the command list. */
+  section?: 'shortcuts' | undefined;
   onSaved: () => void;
   onCancel: () => void;
   /** Duplicate to Personal, offered in place of saving when `initial` belongs to a plugin. */
@@ -77,7 +70,8 @@ export function CommandEditor({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
-  const problems = useCommandProblems(draft);
+  const problems = useCommandProblems(draft, settings);
+  const registrationError = useRegistrationError(draft);
   const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -125,39 +119,22 @@ export function CommandEditor({
       showErrorToast(error);
     }
   }
-  const { shown, discard } = parameterPage;
-  const index =
-    shown && shown.key !== null
-      ? draft.parameters.findIndex((item) => item.key === shown.key)
-      : null;
-  const missing = index === -1;
+  const shown = useShownSubpage(draft, subpages);
   useEffect(() => {
-    if (missing) discard();
-  }, [missing, discard]);
-  if (shown && !missing)
+    if (section !== 'shortcuts') return;
+    requestAnimationFrame(() =>
+      document.getElementById(`${LAUNCH_GROUP_ID}-title`)?.scrollIntoView({ block: 'start' }),
+    );
+  }, [section]);
+  if (shown)
     return (
-      <ParameterEditor
-        initial={index === null ? null : draft.parameters[index]!}
-        commandName={draft.name}
-        keys={draft.parameters.filter((_, i) => i !== index).map((item) => item.key)}
-        onCancel={() => parameterPage.close()}
-        onSave={(value) => {
-          const parameters = [...draft.parameters];
-          const previousKey = index === null ? null : parameters[index]!.key;
-          if (index === null) parameters.push(value);
-          else parameters[index] = value;
-          const next = {
-            ...draft,
-            parameters,
-            instructions:
-              previousKey && previousKey !== value.key
-                ? renameArgument(draft.instructions, previousKey, value.key)
-                : draft.instructions,
-          };
-          setDraft(next);
-          problems.recheck('parameters', next);
-          parameterPage.close(value.key);
-        }}
+      <EditorSubpage
+        shown={shown}
+        draft={draft}
+        setDraft={setDraft}
+        problems={problems}
+        subpages={subpages}
+        settings={settings}
       />
     );
   return (
@@ -249,23 +226,42 @@ export function CommandEditor({
           <ParameterList
             parameters={draft.parameters}
             onChange={(parameters) => {
-              const next = { ...draft, parameters };
+              // A removed parameter takes its pinned values with it.
+              const shortcuts = withExistingPins(draft.shortcuts, parameters);
+              const next = { ...draft, parameters, shortcuts };
               setDraft(next);
               // Reordering or removing is what fixes a parameter problem, so check it again then.
               problems.recheck('parameters', next);
+              problems.recheckShortcuts(next);
             }}
-            onOpen={parameterPage.open}
+            onOpen={(key) => subpages.open({ page: 'parameter', key })}
             error={problems.text('parameters')}
           />
           <InputResultSettings
             command={draft}
-            onChange={setDraft}
+            onChange={(next) => {
+              setDraft(next);
+              problems.recheckShortcuts(next);
+            }}
             optionsOpen={inputOptionsOpen}
             onOptionsOpenChange={setInputOptionsOpen}
             error={problems.text('input')}
             onBlur={() => problems.recheck('input')}
           />
-          <LaunchSettings command={draft} onChange={setDraft} />
+          <LaunchSettings
+            command={draft}
+            onChange={setDraft}
+            shortcuts={{
+              onChange: (shortcuts) => {
+                const next = { ...draft, shortcuts };
+                setDraft(next);
+                problems.recheckShortcuts(next);
+              },
+              onOpen: (id) => subpages.open({ page: 'shortcut', id }),
+              problem: problems.shortcutText,
+              registrationError,
+            }}
+          />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
           {error && (
             <div ref={errorMessage} className="space-y-2">

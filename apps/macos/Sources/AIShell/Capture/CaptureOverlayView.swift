@@ -1,8 +1,9 @@
 import AICore
 import AppKit
 
-/// The content of one display's overlay, flipped so its points are the display's Quartz points
-/// minus the display's origin. From back to front: the frozen image, the dim and selection
+/// The content of one display's overlay, flipped, with its bounds at the display's area of the
+/// session's desktop: its points (and those of the chrome and the annotation host) are desktop
+/// points, so a selection spanning displays is one rect on every overlay. From back to front: the frozen image, the dim and selection
 /// chrome, the annotation host, the loupe and the hints. Only this view and what the annotation
 /// editor adds take events; the rest is drawn and ignores the mouse.
 ///
@@ -19,7 +20,6 @@ import AppKit
 ///   covers the key arriving unhandled instead.
 final class CaptureOverlayView: NSView {
   let display: FrozenDisplay
-  let model: SelectionModel
   weak var delegate: (any CaptureOverlayDelegate)?
   let annotationHost = AnnotationHostView()
   private let chrome: CaptureChromeView
@@ -31,21 +31,20 @@ final class CaptureOverlayView: NSView {
   /// The last mouse position while the button is down, so a Shift change re-applies the drag.
   private var dragPoint: CGPoint?
 
-  init(display: FrozenDisplay) {
+  /// `frame` is the display's area of the desktop (desktop points).
+  init(display: FrozenDisplay, frame: CGRect) {
     self.display = display
-    model = SelectionModel(size: display.quartzFrame.size, scale: display.pixelScale)
-    chrome = CaptureChromeView(display: display)
+    chrome = CaptureChromeView(frame: frame)
     loupe = LoupeView(image: display.image, scale: display.pixelScale)
-    super.init(frame: CGRect(origin: .zero, size: display.quartzFrame.size))
+    super.init(frame: CGRect(origin: .zero, size: frame.size))
+    setBoundsOrigin(frame.origin)
     wantsLayer = true
     let image = FrozenImageView(frame: bounds)
-    image.image = NSImage(cgImage: display.image, size: display.quartzFrame.size)
+    image.image = NSImage(cgImage: display.image, size: frame.size)
     image.imageScaling = .scaleAxesIndependently
-    for view in [image, chrome, annotationHost] as [NSView] {
-      view.frame = bounds
-      view.autoresizingMask = [.width, .height]
-      addSubview(view)
-    }
+    annotationHost.frame = bounds
+    annotationHost.setBoundsOrigin(bounds.origin)
+    for view in [image, chrome, annotationHost] as [NSView] { addSubview(view) }
     loupe.isHidden = true
     addSubview(loupe)
   }
@@ -59,17 +58,21 @@ final class CaptureOverlayView: NSView {
 
   // MARK: Drawing
 
-  /// The undimmed area with its outline and size; handles only on a committed selection.
-  func show(area: CGRect?, handles: Bool) { chrome.update(area: area, handles: handles) }
+  /// The undimmed area (desktop points, drawn where it lies on this display) with its outline,
+  /// its size label when `label` is given, and handles only on a committed selection.
+  func show(area: CGRect?, handles: Bool, label: String? = nil) {
+    chrome.update(area: area, handles: handles, label: label)
+  }
 
-  /// The loupe beside `point`, or hidden for nil.
+  /// The loupe beside `point` (desktop points, on this display), or hidden for nil.
   func showLoupe(at point: CGPoint?) {
     guard let point else {
       loupe.isHidden = true
       return
     }
+    let local = CGPoint(x: point.x - bounds.minX, y: point.y - bounds.minY)
     loupe.update(
-      at: point, quartz: CaptureCoordinates.quartzPoint(point, display: display.quartzFrame))
+      at: local, quartz: CaptureCoordinates.quartzPoint(local, display: display.quartzFrame))
     loupe.place(near: point, in: bounds)
     loupe.isHidden = false
   }
@@ -107,7 +110,7 @@ final class CaptureOverlayView: NSView {
       let y = top == nil ? edge - size.height : edge
       edge = top == nil ? y - 8 : y + size.height + 8
       return CGRect(
-        x: ((bounds.width - size.width) / 2).rounded(), y: y, width: size.width,
+        x: (bounds.midX - size.width / 2).rounded(), y: y, width: size.width,
         height: size.height)
     }
   }

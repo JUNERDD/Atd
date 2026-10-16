@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -20,7 +20,7 @@ import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { SettingsStore } from '../settings/store.js';
 import { withoutLegacySelection } from './legacy-selection.js';
-import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
+import { assertShortcutsFree, withCanonicalShortcuts } from './shortcuts.js';
 import { validateCommandSave } from './templates.js';
 
 /** The command store file; its path and format are persisted data and stay fixed. */
@@ -72,17 +72,47 @@ function withOwnThinkingLevel<T extends object>(command: T): T {
 }
 
 /**
+ * The id the shortcut a command stored before it could have several becomes: fixed by the command
+ * id, so every load of the unmigrated file registers the same shortcut id, and a hash rather than
+ * the command id itself, which the toolbar launches by and must never read as a shortcut.
+ */
+function migratedShortcutId(commandId: string): string {
+  return `shortcut-${createHash('sha256').update(commandId).digest('hex').slice(0, 32)}`;
+}
+
+/**
+ * A command stored before commands could have several shortcuts has one `shortcut` accelerator,
+ * empty for none: it becomes the list (`shortcuts`) with that one shortcut, which overrides
+ * nothing, and the old field goes. Idempotent, and the same object when the command has no old
+ * field; one that already has a list keeps it and only loses the old field.
+ */
+function withShortcutList(command: ServiceCommand): ServiceCommand {
+  if (!('shortcut' in command)) return command;
+  const { shortcut, ...rest } = command;
+  if ('shortcuts' in rest) return rest;
+  const shortcuts =
+    typeof shortcut === 'string' && shortcut
+      ? [{ id: migratedShortcutId(command.id), accelerator: shortcut, name: '', arguments: {} }]
+      : [];
+  // The stored shape lists only the fields every command has; the rest is the full parse's.
+  const migrated = { ...rest, shortcuts };
+  return migrated;
+}
+
+/**
  * Service-owned command store (T6b live surface over the T2 `commands.json`).
  * Create assigns identity; updates are full-replace with an expected-revision
  * guard (next-version edits, never a hot-swap: accepted runs already froze
  * their resolved instructions). Unknown extension fields round-trip.
- * Every write stores a canonical shortcut no app action or other enabled
- * command holds (`shortcuts.ts`), for routes and the Agent's tool alike.
+ * Every write stores canonical shortcuts no app action or enabled command's
+ * shortcut holds, with ids unique across the store (`shortcuts.ts`), for
+ * routes and the Agent's tool alike.
  * Legacy `skills`/`roleId` keys are folded into instructions on load and on
  * every write (`legacy-selection.ts`), and a command stored before placements
  * or outputs existed gets its default placement or output on load (`withAddedPlacement`,
  * `withAddedOutput`), and one stored before commands had their own reasoning level gets the
- * level its fixed model pinned (`withOwnThinkingLevel`). The load
+ * level its fixed model pinned (`withOwnThinkingLevel`), and its single
+ * shortcut becomes a list of one (`withShortcutList`). The load
  * keeps the revision: the folds are deterministic, so the file converges with
  * the next write of any command. The stored order is the user's (`reorder`); a
  * version 1 file, listed by name before the user could order it, loads in name
@@ -129,7 +159,11 @@ export class CommandStore {
       if ((await stat(file)).size > 8 * 1024 * 1024) throw new Error('Commands file is too large.');
       const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
       const commands = data.commands.map((command) =>
-        withOwnThinkingLevel(withAddedOutput(withAddedPlacement(withoutLegacySelection(command)))),
+        withShortcutList(
+          withOwnThinkingLevel(
+            withAddedOutput(withAddedPlacement(withoutLegacySelection(command))),
+          ),
+        ),
       );
       if (data.version === 1) commands.sort((a, b) => a.name.localeCompare(b.name));
       return new CommandStore(dataDir, file, { version: 2, commands });
@@ -199,7 +233,7 @@ export class CommandStore {
         revision: 1,
         description: '',
         enabled: true,
-        shortcut: '',
+        shortcuts: [],
         templateId: null,
         input,
         placement: defaultCommandPlacement(input.source),
@@ -209,7 +243,7 @@ export class CommandStore {
         thinkingLevel: 'inherit',
         tools: [],
         memory: 'inherit',
-        ...withCanonicalShortcut(draft),
+        ...withCanonicalShortcuts(draft),
         migratedAt: null,
       }),
     );
@@ -218,17 +252,17 @@ export class CommandStore {
   }
 
   /**
-   * Throws a ConflictError when the app, the selection toolbar's double-tap or another enabled
-   * command holds `command`'s shortcut;
-   * lets a caller refuse before asking the user to approve a save. Writes check it again.
+   * Throws a ConflictError when saving `command` would give it a shortcut id or keys something
+   * already holds (`assertShortcutsFree`); lets a caller refuse before asking the user to approve
+   * a save. Writes check it again.
    */
-  async assertShortcutFree(
+  async assertShortcutsFree(
     command: ServiceCommandFull,
     commands: ServiceCommand[] = this.data.commands,
   ): Promise<void> {
     const stored = commands.map((item) => parse(ServiceCommandFullSchema, item));
     const { shortcuts, selectionToolbar } = await SettingsStore.readShortcutHolders(this.dataDir);
-    assertShortcutFree(command, stored, shortcuts, selectionToolbar);
+    assertShortcutsFree(command, stored, shortcuts, selectionToolbar);
   }
 
   async create(draft: CommandCreate): Promise<ServiceCommandFull> {
@@ -236,7 +270,7 @@ export class CommandStore {
     return this.change(async (data) => {
       if (data.commands.some((command) => command.id === full.id))
         throw new ConflictError(`Command ${full.id} already exists.`);
-      await this.assertShortcutFree(full, data.commands);
+      await this.assertShortcutsFree(full, data.commands);
       data.commands.push(CommandStore.storable(full));
       return full;
     });
@@ -248,7 +282,7 @@ export class CommandStore {
     expectedRevision: number,
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
-    command = withCanonicalShortcut(withoutLegacySelection(command));
+    command = withCanonicalShortcuts(withoutLegacySelection(command));
     validateCommandSave(command);
     return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);
@@ -256,7 +290,7 @@ export class CommandStore {
       if (index < 0 || !live) throw new LedgerNotFound('Command', id);
       if (live.revision !== expectedRevision)
         throw new ConflictError('This command changed. Reload before saving.');
-      await this.assertShortcutFree(command, data.commands);
+      await this.assertShortcutsFree(command, data.commands);
       const next = parse(ServiceCommandFullSchema, {
         ...command,
         revision: live.revision + 1,

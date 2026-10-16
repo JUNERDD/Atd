@@ -6,11 +6,24 @@ import { Button } from '@atd/ui/components/button';
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
 import { ItemGroup } from '@atd/ui/components/item';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
+import { keyedShortcuts } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { CommandRow, type CommandMatch, type CommandRowActions } from './command-row';
 import { useCommandOrder } from './use-command-order';
 
 type Row = { command: CommandDefinition; match: CommandMatch };
+
+/**
+ * What the row says about its shortcuts: the command's launch failure, else the registration
+ * failure of the shortcut its column shows (the first with keys). The editor shows the others.
+ */
+function rowError(
+  command: CommandDefinition,
+  errors: Readonly<Record<string, string>>,
+): string | undefined {
+  const first = keyedShortcuts(command)[0];
+  return errors[command.id] ?? (first && errors[first.id]);
+}
 
 /**
  * The user's commands in their saved order, which a long press or Option-arrow keys change, then
@@ -31,6 +44,7 @@ export function CommandList({
   query: string;
   /** The commands being saved, whose rows' run and enable controls wait; other rows stay usable. */
   pendingIds: ReadonlySet<string>;
+  /** Launch failures keyed by command id and registration failures by shortcut id. */
   shortcutErrors: Readonly<Record<string, string>>;
   onClearSearch: () => void;
 } & CommandRowActions) {
@@ -58,7 +72,7 @@ export function CommandList({
       command={command}
       match={match}
       busy={pendingIds.has(command.id)}
-      shortcutError={shortcutErrors[command.id]}
+      shortcutError={rowError(command, shortcutErrors)}
       order={
         command.pluginId
           ? undefined

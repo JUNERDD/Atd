@@ -27,11 +27,14 @@ import type { CommandDefinition } from '../../client/agent/command-schema';
 import { copyCommand, newCommand, personalCopy } from '../../client/agent/command-templates';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { agentApi, useAgent } from '../agent/use-agent';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandList } from './command-list';
+import { editorOf, editorSubpages, LIST, type CommandRoute } from './command-routes';
 import { CommandTypingFooter } from './typing-footer';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
+import { SettingsEditorPlaceholder } from '../settings/settings-page-placeholder';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
@@ -45,27 +48,8 @@ const { Component: CommandEditor, preload: preloadCommandEditor } = lazyWithPrel
   import('./command-editor').then((module) => module.CommandEditor),
 );
 
-/**
- * An editor page of the Commands section: a saved command's (read-only for a plugin's), where
- * `nonce` tells repeated deep links apart, or a new or duplicated command's until it is saved.
- */
-type EditorRoute =
-  | { page: 'command'; id: string; nonce?: number }
-  | { page: 'draft'; command: CommandDefinition };
-/** A page of the Commands section: the list, an editor, or a parameter's page over its editor. */
-type CommandRoute =
-  | { page: 'list' }
-  | EditorRoute
-  | { page: 'parameter'; editor: EditorRoute; key: string | null };
-const LIST: CommandRoute = { page: 'list' };
-
-function editorOf(route: CommandRoute): EditorRoute | null {
-  if (route.page === 'list') return null;
-  return route.page === 'parameter' ? route.editor : route;
-}
-
-/** A change made on a list row, without the editor: its switch or its shortcut. */
-type RowChange = Partial<Pick<CommandDefinition, 'enabled' | 'shortcut'>>;
+/** A change made on a list row, without the editor: its switch or its shortcuts. */
+type RowChange = Partial<Pick<CommandDefinition, 'enabled' | 'shortcuts'>>;
 
 const ROW_SAVE_KEY = ['commands', 'row'] as const;
 const saveRowChange = mutationOptions({
@@ -158,21 +142,8 @@ export function CommandSettings({
           expectedRevision={opened.revision}
           settings={settings}
           tasks={agent.snapshot?.tasks ?? []}
-          parameterPage={{
-            shown: route.page === 'parameter' ? { key: route.key } : null,
-            open: (key) => history.open({ page: 'parameter', editor, key }),
-            close: (key) => {
-              // A saved parameter leaves without the unsaved-changes question; Cancel asks.
-              if (key === undefined) {
-                history.back();
-                return;
-              }
-              const saved: CommandRoute = { page: 'parameter', editor, key };
-              history.replace(saved);
-              history.leave(saved);
-            },
-            discard: history.discard,
-          }}
+          subpages={editorSubpages(history, editor)}
+          section={editor.page === 'command' ? editor.section : undefined}
           onCancel={history.back}
           onDuplicate={() => duplicate(opened.command)}
           onSaved={() => {
@@ -190,7 +161,7 @@ export function CommandSettings({
   if (editor && !agent.snapshot)
     return (
       <section className="command-settings">
-        <output className="settings-loading">{t('list.loading')}</output>
+        <SettingsEditorPlaceholder label={t('list.loading')} />
       </section>
     );
   // A deep link to an unknown id, or a command deleted meanwhile, falls back to the list.
@@ -228,7 +199,10 @@ export function CommandSettings({
             }}
             onOpen={(command) => history.open({ page: 'command', id: command.id })}
             onToggle={(command, enabled) => change(command, { enabled })}
-            onShortcut={(command, shortcut) => change(command, { shortcut })}
+            onShortcuts={(command, shortcuts) => change(command, { shortcuts })}
+            onEditShortcuts={(command) =>
+              history.open({ page: 'command', id: command.id, section: 'shortcuts' })
+            }
             onDuplicate={duplicate}
             onDelete={setDeleting}
           />
@@ -252,7 +226,10 @@ export function CommandSettings({
                 </Empty>
               </div>
             ) : (
-              <output className="settings-loading">{t('list.loading')}</output>
+              // Rows at the list's `Item` size; the trailing switch stands in for the controls.
+              <LoadingPlaceholder label={t('list.loading')}>
+                <ItemsPlaceholder size="sm" variant="outline" />
+              </LoadingPlaceholder>
             ))}
         </div>
       </ScrollArea>

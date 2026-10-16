@@ -89,6 +89,11 @@ export interface AgentSnapshot {
   connectionId: string;
   commands: CommandDefinition[];
   tasks: AgentTask[];
+  /**
+   * Localized global shortcut failures by the id the shell knows: a command shortcut that did
+   * not register under the shortcut's id (`CommandShortcut.id`), a launch that could not be
+   * prepared under the command's id.
+   */
   shortcutErrors: Record<string, string>;
   error: string;
 }
@@ -168,6 +173,12 @@ export interface PreparedCommand {
   composed?: true;
   /** Present only for a launch from another app that recorded a focused field. */
   target?: WriteTarget;
+  /**
+   * The command's shortcut that launched it, whose pinned values and overrides the launch starts
+   * from (`launchSettings`). The run and every remembering of its values carry it, so the service
+   * applies the same overrides and never remembers a pinned value. Absent for any other launch.
+   */
+  shortcutId?: string;
 }
 export interface CommandLaunch {
   prepared: PreparedCommand;
@@ -291,5 +302,10 @@ export interface AgentBridge {
    * Remembers `values` as where command `commandId`'s next run starts, without running it (the
    * person changed them on its input step or options card). Present under the native shell.
    */
-  rememberArguments?: (commandId: string, values: ArgumentValues) => Promise<void>;
+  rememberArguments?: (
+    commandId: string,
+    values: ArgumentValues,
+    /** The launching shortcut (`PreparedCommand.shortcutId`), whose pinned keys stay as they were. */
+    shortcutId?: string,
+  ) => Promise<void>;
 }

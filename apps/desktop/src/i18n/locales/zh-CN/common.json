@@ -1,6 +1,7 @@
 {
   "close": "关闭",
   "hostRequired": "此页面只能在 macOS 版 Atd 应用中运行。",
+  "panelLoading": "正在打开任务面板…",
   "toast": {
     "dismiss": "关闭",
     "dismissLabel": "关闭通知"

@@ -6,9 +6,11 @@ import {
   CommandOrderRequestSchema,
   CommandRunRequestSchema,
   CommandUpdateRequestSchema,
+  commandShortcut,
   errorMessage,
   Identifier,
   parse,
+  pinnedKeys,
   type CommandArgumentValues,
   type ServiceCommandFull,
   type SubmitTaskResponse,
@@ -50,8 +52,9 @@ const RevisionQuery = Type.Object(
  * `pluginId`, accept only an `enabled` change and cannot be deleted. `POST /v1/commands/:id/run`
  * launches one (launch.ts), answering like a task submit, and remembers its argument values for
  * the command's next run; `PUT /v1/commands/:id/arguments` remembers values without a run (an
- * options card or menu changed one). Every command these routes answer carries those values as
- * `lastArguments` (last-arguments.ts).
+ * options card or menu changed one). Both take the command shortcut the values came from, whose
+ * pinned keys keep what was remembered for them (`pinnedKeys`). Every command these routes answer
+ * carries those values as `lastArguments` (last-arguments.ts).
  */
 export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteContext): void {
   const store = () => CommandStore.load(ctx.dataDir);
@@ -120,7 +123,7 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
     // delays a run; it is a convenience, so a failed write keeps the earlier values and never
     // turns an accepted run into an error.
     if (!response.duplicate)
-      void rememberArguments(ctx.dataDir, commandId, body.input.arguments).catch(
+      void rememberArguments(ctx.dataDir, commandId, body.input.arguments, body.shortcutId).catch(
         (error: unknown) => {
           ctx.log.warn('Remembering command arguments failed.', {
             commandId,
@@ -138,7 +141,13 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
       const id = parse(Identifier, request.params.id);
       const body = parse(CommandArgumentsRequestSchema, request.body);
       const command = (await pluginCommand(ctx.dataDir, id))?.value ?? (await store()).get(id);
-      await recordLastArguments(ctx.dataDir, command, body.arguments);
+      const shortcut = body.shortcutId ? commandShortcut(command, body.shortcutId) : undefined;
+      // Without its shortcut the pinned keys are unknown, and recording anyway could remember one.
+      if (body.shortcutId && !shortcut)
+        throw new ConflictError('This shortcut no longer exists. Reload the command.');
+      await recordLastArguments(ctx.dataDir, command, body.arguments, {
+        keep: pinnedKeys(shortcut),
+      });
       return { command: await withLast(command) };
     },
   );
@@ -173,21 +182,31 @@ function launchFailure(error: CommandLaunchError, id: string): Error {
     case 'notFound':
       return new LedgerNotFound('Command', id);
     case 'disabled':
+    case 'shortcutGone':
       return new ConflictError(error.message);
     case 'invalidInput':
       return new TypeError(error.message);
   }
 }
 
-/** Remembers a run's argument values for the next run of command `id`, the user's or a plugin's. */
+/**
+ * Remembers a run's argument values for the next run of command `id`, the user's or a plugin's,
+ * keeping what was remembered for the keys the run's shortcut `shortcutId` pinned. A shortcut
+ * deleted since the run started records nothing: its pinned keys are no longer known, and a
+ * pinned value must never be remembered.
+ */
 async function rememberArguments(
   dataDir: string,
   id: string,
   values: CommandArgumentValues,
+  shortcutId: string | undefined,
 ): Promise<void> {
   const own = (await CommandStore.load(dataDir)).list().find((command) => command.id === id);
   const command = own ?? (await findPluginCommand(dataDir, id))?.value;
-  if (command) await recordLastArguments(dataDir, command, values);
+  if (!command) return;
+  const shortcut = shortcutId ? commandShortcut(command, shortcutId) : undefined;
+  if (shortcutId && !shortcut) return;
+  await recordLastArguments(dataDir, command, values, { keep: pinnedKeys(shortcut) });
 }
 
 /** The plugin command `id`, unless the user's store holds that id (user commands win). */

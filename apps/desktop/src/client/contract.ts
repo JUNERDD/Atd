@@ -9,6 +9,7 @@ import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
+import type { NotificationsBridge } from './notifications-contract';
 import type { MiniPanelOpenOn, PanelPlacement, SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
 
@@ -135,6 +136,8 @@ export interface DesktopBridge {
   readonly apps?: AppsBridge;
   /** Saved prompts and commands that start their own tasks; absent in tests that need none. */
   readonly automations?: AutomationsBridge;
+  /** The shell's task notifications and their settings; absent in tests that need none. */
+  readonly notifications?: NotificationsBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;

@@ -7,6 +7,8 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { MemorySnapshot } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
+import { ListCardGridPlaceholder } from '../../components/list-card';
+import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { MemoryAddMenu } from './memory-add-menu';
@@ -123,7 +125,10 @@ export function MemoryOverview({
               )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>
+            // The cards `MemoryList` lays out, in its grid.
+            <LoadingPlaceholder label={t('memory.list.loading')}>
+              <ListCardGridPlaceholder media="ring" />
+            </LoadingPlaceholder>
           )}
           {feedback}
         </div>

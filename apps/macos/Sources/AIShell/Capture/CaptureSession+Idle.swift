@@ -2,12 +2,13 @@ import AICore
 import AppKit
 
 /// What idle offers besides the detected area (decisions E5, F3): the hints, `R` for the last
-/// region on the pointer's display and `W` for windows only.
+/// region on the pointer's display and `W` for windows only. Points are desktop points.
 extension CaptureSession {
   /// Idle: how to pick an area; at index 1 the Accessibility hint while detection offers only
   /// windows (``isTrustRequest(_:on:)`` relies on that place); then whether `W` chose windows
-  /// only, and that `R` reuses this display's last region when there is one. Once a selection
-  /// exists: how to adjust and confirm it, on its display only, in the same place.
+  /// only, that `R` reuses this display's last region when there is one, and with several
+  /// displays that ⌘A again takes them all. Once a selection exists: how to adjust and confirm
+  /// it, on the display holding most of it, in the same place.
   func hintTexts(on overlay: CaptureOverlayView) -> [String] {
     let strings = ShellStrings.shared
     switch phase {
@@ -16,10 +17,11 @@ extension CaptureSession {
       if detection == .windowsOnly { texts.append(strings.text(.captureHintAccessibility)) }
       if onlyWindows { texts.append(strings.text(.captureHintWindowsOnly)) }
       if lastRegion(on: overlay) != nil { texts.append(strings.text(.captureHintRecall)) }
+      if overlays.count > 1 { texts.append(strings.text(.captureHintAllDisplays)) }
       return texts
-    case .selected(let owner, _), .adjusting(let owner, _):
-      return owner === overlay ? [strings.text(.captureHintSelected)] : []
-    case .pressing, .creating:
+    case .selected(let rect), .adjusting(.move(_, let rect)), .adjusting(.resize(_, let rect)):
+      return primaryOverlay(for: rect) === overlay ? [strings.text(.captureHintSelected)] : []
+    case .pressing, .creating, .adjusting(.create):
       return []
     }
   }
@@ -34,7 +36,9 @@ extension CaptureSession {
   /// label and the annotation bars (toolbar, gap, style bar), which can sit above or below it and
   /// wider than it. Re-placed when a selection drag ends (`move`); while one runs, the hint stays.
   private func hintClearance(on overlay: CaptureOverlayView) -> CGRect? {
-    guard case .selected(let owner, let rect) = phase, owner === overlay else { return nil }
+    guard case .selected(let rect) = phase, primaryOverlay(for: rect) === overlay else {
+      return nil
+    }
     let reach = AnnotationToolbarLayout.sizeLabelReach + 8 + 40 + 6 + 40
     return CGRect(
       x: overlay.bounds.minX, y: rect.minY - reach, width: overlay.bounds.width,
@@ -48,17 +52,19 @@ extension CaptureSession {
 
   // MARK: Recall and windows only
 
-  /// The region last confirmed on `overlay`'s display, while that display keeps its frame.
+  /// The region last confirmed mostly on `overlay`'s display (desktop points), while that
+  /// display keeps its frame. A region that spanned displays comes back across them.
   func lastRegion(on overlay: CaptureOverlayView) -> CGRect? {
     regions.region(
-      displayID: overlay.display.displayID, displayFrame: overlay.display.quartzFrame)
+      displayID: overlay.display.displayID, displayFrame: overlay.display.quartzFrame
+    )?.offsetBy(dx: overlay.bounds.minX, dy: overlay.bounds.minY)
   }
 
   /// `R` in idle: the pointer's display's last region becomes the selection.
   func recallRegion() {
     guard case .idle = phase, let owner = pointer?.overlay, let region = lastRegion(on: owner)
     else { return }
-    commit(owner, owner.model.settled(region))
+    commit(model.settled(region))
   }
 
   /// `W` in idle: candidates shrink to the window and the display, or grow back to elements.

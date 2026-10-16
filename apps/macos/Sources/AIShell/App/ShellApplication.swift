@@ -28,7 +28,7 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   /// Widget taps that launched the app: on a cold start the URL arrives before
   /// `applicationDidFinishLaunching` (T1b).
   private var linksBeforeLaunch: [URL] = []
-  /// Clicks on automation notifications, held until the controller can open their tasks.
+  /// Clicks and actions on notifications, held until the controller can act on them.
   private let notifications = NotificationResponder()
 
   init(makeServices: @escaping @MainActor () -> ShellServices) {
@@ -55,12 +55,12 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     // files, it shows them; opened by a widget or a notification, it shows what that asks for.
     controller.start(
       revealPanel: !launchedAtLogin && openedBeforeLaunch.isEmpty && linksBeforeLaunch.isEmpty
-        && !notifications.hasHeldClicks)
+        && !notifications.hasHeldResponses)
     controller.openItems(openedBeforeLaunch)
     openedBeforeLaunch = []
     for link in linksBeforeLaunch { controller.openWidgetLink(link) }
     linksBeforeLaunch = []
-    notifications.deliver { [weak controller] taskId in controller?.openNotifiedTask(taskId) }
+    notifications.deliver { [weak controller] in controller?.respondToNotification($0) }
   }
 
   /// Files or folders dropped on the Dock icon or opened with `open -a`, through the same import

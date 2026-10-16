@@ -3,10 +3,28 @@ import { Button } from '@atd/ui/components/button';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { useTranslation } from 'react-i18next';
 import type { CommandDefinition } from '../../client/agent/command-schema';
+import { keyedShortcuts } from '@atd/agent-contracts';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { CommandIcon } from '../commands/command-icon';
 
 const COLLAPSED_COUNT = 3;
+
+/**
+ * The keys of the command's first shortcut that has some, or nothing. The launcher runs the
+ * command with its own settings, which that shortcut may override; the keys only say how else
+ * to start it.
+ */
+function FirstShortcut({ command }: { command: CommandDefinition }) {
+  const first = keyedShortcuts(command)[0];
+  if (!first) return null;
+  return (
+    <KbdGroup className="justify-self-end">
+      {shortcutKeys(first.accelerator, window.desktop?.platform ?? 'web').map((key, index) => (
+        <Kbd key={`${index}-${key}`}>{key}</Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
 
 /**
  * The new task's quick commands: the first few enabled ones, then a wrapping row of outline
@@ -40,15 +58,7 @@ export function CommandLauncher({
             <span title={command.name}>{command.name}</span>
             <small title={command.description}>{command.description}</small>
           </span>
-          {command.shortcut && (
-            <KbdGroup className="justify-self-end">
-              {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map(
-                (key, index) => (
-                  <Kbd key={`${index}-${key}`}>{key}</Kbd>
-                ),
-              )}
-            </KbdGroup>
-          )}
+          <FirstShortcut command={command} />
         </Button>
       ))}
       {(available.length > COLLAPSED_COUNT || children) && (

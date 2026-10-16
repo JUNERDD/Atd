@@ -120,8 +120,10 @@ export const ShortcutCommandIntentSchema = Type.Union([
 
 export const NativeCommandOptionsCalls = {
   /**
-   * Replaces the commands whose options the shell offers: every enabled command, each with its
-   * parameters' options as they stand (remembered values applied) and where its answer goes. The
+   * Replaces the commands whose options the shell offers: every enabled command (at most 256),
+   * each with its parameters' options as they stand (remembered values applied) and where its
+   * answer goes, then one entry per registered command shortcut (at most 256) under its
+   * registration id, the shortcut's id, with the values it pins applied and its own output. The
    * panel pushes the whole set whenever it changes. A command shortcut or toolbar command in this
    * set gets the shell's options menu, card and hold gesture; any other runs as it is.
    */
@@ -138,7 +140,7 @@ export const NativeCommandOptionsCalls = {
             },
             { additionalProperties: false },
           ),
-          { maxItems: 256 },
+          { maxItems: 512 },
         ),
       },
       { additionalProperties: false },

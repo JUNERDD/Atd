@@ -41,7 +41,8 @@ final class ServiceProcess {
     let process = Process()
     process.executableURL = plan.node
     process.arguments = plan.arguments
-    process.environment = plan.environment(inheriting: ProcessInfo.processInfo.environment)
+    process.environment = ServiceSystemProxy.environment(
+      inheriting: plan.environment(inheriting: ProcessInfo.processInfo.environment))
     process.standardInput = FileHandle.nullDevice
     process.standardOutput = handle
     process.standardError = handle

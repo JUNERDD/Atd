@@ -3,13 +3,14 @@ import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SubagentPermissions } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
+import { FieldsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { EMPTY_AGENT_DRAFT, agentDraftOf, type AgentInput } from './extension-agent-draft';
 import { AgentForm } from './extension-agent-form';
 import { AgentPermissionsSection } from './extension-agent-permissions-section';
 import {
   ExtensionDetailFields,
-  ExtensionDetailStatus,
   ExtensionDetailText,
+  ExtensionLoadError,
 } from './extension-detail-fields';
 import { ExtensionPage } from './extension-page';
 import { ExtensionRemoveButton } from './extension-remove-dialog';
@@ -114,10 +115,14 @@ export function AgentPage({
   if (!row)
     return (
       <ExtensionPage label={name} title={name} backLabel={backLabel}>
-        <ExtensionDetailStatus
-          text={rows ? t('extensions.detailMissing') : t('extensions.detailLoading')}
-          error={rows !== null}
-        />
+        {rows ? (
+          <ExtensionLoadError message={t('extensions.detailMissing')} />
+        ) : (
+          // The editor's form, which a Personal subagent opens in.
+          <LoadingPlaceholder label={t('extensions.detailLoading')}>
+            <FieldsPlaceholder />
+          </LoadingPlaceholder>
+        )}
       </ExtensionPage>
     );
 

@@ -1,8 +1,13 @@
-/// Turns the service's automation notices into system notifications, each posted once (decision
-/// D5). On every `automations` invalidation, and once per (re)connection for notices made while
-/// the shell was away, it reads the pending notices (`GET /v1/automation-notices`), posts those it
-/// has not posted yet, then acknowledges every notice it read (`POST /v1/automation-notices/ack`).
-/// A notice is acknowledged whether or not it could be shown (notifications not allowed), so
+/// Automation notices (`/v1/automation-notices`), each posted once (decision D5).
+public typealias AutomationNoticeFeed = NoticeFeed<AutomationNotice>
+/// Task notices (`/v1/task-notices`), each posted once like automation notices.
+public typealias TaskNoticeFeed = NoticeFeed<TaskNotice>
+
+/// Turns one kind of the service's notices into system notifications, each posted once. On every
+/// invalidation of its scope (`automations`, `taskNotices`), and once per (re)connection for
+/// notices made while the shell was away, it reads the pending notices, posts those it has not
+/// posted yet, then acknowledges every notice it read. A notice is acknowledged whether or not it
+/// was shown (notifications not allowed, turned off, or the person is looking at the task), so
 /// none comes back on every pull; the service drops what nobody acknowledged after an hour.
 ///
 /// One pull runs at a time: requests during a pull run one more after it, so a burst of
@@ -10,14 +15,14 @@
 /// acknowledgement failed) is remembered while the service still lists it, so the next pull
 /// acknowledges it without posting it again.
 @MainActor
-public final class AutomationNoticeFeed {
+public final class NoticeFeed<Notice: Identifiable & Sendable> where Notice.ID == String {
   /// The two shell-only routes, bound to the service as it is for one pull.
   public struct Service: Sendable {
-    public let pending: @Sendable () async throws -> [AutomationNotice]
+    public let pending: @Sendable () async throws -> [Notice]
     public let acknowledge: @Sendable (_ ids: [String]) async throws -> Void
 
     public init(
-      pending: @escaping @Sendable () async throws -> [AutomationNotice],
+      pending: @escaping @Sendable () async throws -> [Notice],
       acknowledge: @escaping @Sendable (_ ids: [String]) async throws -> Void
     ) {
       self.pending = pending
@@ -34,7 +39,7 @@ public final class AutomationNoticeFeed {
   }
 
   private let connect: @MainActor () async -> Service?
-  private let post: @MainActor (AutomationNotice) async -> Void
+  private let post: @MainActor (Notice) async -> Void
   private let report: @MainActor (Failure) -> Void
   private var running: Task<Void, Never>?
   private var pullAgain = false
@@ -44,11 +49,11 @@ public final class AutomationNoticeFeed {
   /// - Parameters:
   ///   - connect: the service's routes, or nil while it is unavailable (the next connection
   ///     pulls again).
-  ///   - post: shows one notice; returns once it is shown or cannot be.
+  ///   - post: shows one notice, or decides not to; returns once it is shown or will not be.
   ///   - report: a pull that failed, for the log.
   public init(
     connect: @escaping @MainActor () async -> Service?,
-    post: @escaping @MainActor (AutomationNotice) async -> Void,
+    post: @escaping @MainActor (Notice) async -> Void,
     report: @escaping @MainActor (Failure) -> Void
   ) {
     self.connect = connect
@@ -77,7 +82,7 @@ public final class AutomationNoticeFeed {
 
   private func pullOnce() async {
     guard let service = await connect() else { return }
-    let notices: [AutomationNotice]
+    let notices: [Notice]
     do {
       notices = try await service.pending()
     } catch {

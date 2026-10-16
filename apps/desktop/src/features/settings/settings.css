@@ -418,7 +418,6 @@
       :is(
         .settings-editor,
         .command-editor,
-        .settings-loading,
         .settings-extension-settings,
         .memory-settings,
         .automation-overview,
@@ -453,13 +452,13 @@
 .settings-page[hidden] {
   display: none;
 }
-.settings-page:has(.settings-editor, .command-editor, .settings-loading) {
+.settings-page:has(.settings-editor, .command-editor) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
+.settings-page[hidden]:has(.settings-editor, .command-editor) {
   display: none;
 }
 /* Extensions, memory, the automations and commands overviews and apps keep their heading fixed above a

@@ -9,11 +9,13 @@ import {
   EmptyTitle,
 } from '@atd/ui/components/empty';
 import { ItemGroup } from '@atd/ui/components/item';
-import { ListCardGrid } from '../../components/list-card';
+import { ListCardGrid, ListCardGridPlaceholder } from '../../components/list-card';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 
 /**
  * Shared plugin, skill, subagent and MCP group shell with loading, empty, and row or card slots.
- * While the first load runs without rows, the group says so instead of going blank.
+ * While the first load runs without rows, the group shows placeholder rows or cards under its
+ * title instead of going blank.
  */
 export function ExtensionGroup({
   title,
@@ -49,7 +51,9 @@ export function ExtensionGroup({
     <section className="settings-extension-group" aria-label={title}>
       {showTitle ? <h3 className="settings-section-title">{title}</h3> : null}
       {loading && !hasRows ? (
-        <output className="settings-loading">{t('extensions.listLoading')}</output>
+        <LoadingPlaceholder label={t('extensions.listLoading')}>
+          {cards ? <ListCardGridPlaceholder media="ring" /> : <ItemsPlaceholder size="sm" />}
+        </LoadingPlaceholder>
       ) : hasRows ? (
         <>
           {status}

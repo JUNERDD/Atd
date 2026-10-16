@@ -16,6 +16,7 @@ import {
   EmptyTitle,
 } from '@atd/ui/components/empty';
 import { ItemGroup } from '@atd/ui/components/item';
+import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgent } from '../agent/use-agent';
 import { ExtensionLoadError } from '../service/extension-detail-fields';
@@ -106,7 +107,9 @@ export function AutomationRuns({
           error ? (
             <ExtensionLoadError message={error} onRetry={retry} />
           ) : (
-            <output className="settings-field-note">{t('runs.loading')}</output>
+            <LoadingPlaceholder label={t('runs.loading')}>
+              <RunRowsPlaceholder />
+            </LoadingPlaceholder>
           )
         ) : runs.length ? (
           <>
@@ -140,5 +143,17 @@ export function AutomationRuns({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Run rows while the history loads (inside a `LoadingPlaceholder`): the settings card and the
+ * small in-card rows `RunRow` uses, with no trailing control since most runs have none.
+ */
+export function RunRowsPlaceholder() {
+  return (
+    <Card size="sm" className="settings-card">
+      <ItemsPlaceholder size="sm" trailing="none" inCard />
+    </Card>
   );
 }

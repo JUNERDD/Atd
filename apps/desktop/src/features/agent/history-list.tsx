@@ -147,6 +147,11 @@ function TaskMenuItems({ task, actions }: { task: AgentTask; actions: HistoryAct
 /** Run states that need the user's attention read in the destructive color, beside their text. */
 const ERROR_STATUSES = new Set(['failed', 'interrupted']);
 
+/** A task waits for the person's answer or approval before its run can go on. */
+function needsAttention(status: string | undefined) {
+  return status === 'awaiting_input' || status === 'awaiting_confirmation';
+}
+
 function HistoryTaskRow({
   entry: { task, statusLabel, match, content },
   view,
@@ -169,6 +174,12 @@ function HistoryTaskRow({
   return (
     <ItemContextMenu menu={menu}>
       <div className="history-row">
+        {/* In the row's leading inset, so no title or meta line moves; the status text names it too. */}
+        {needsAttention(status) && (
+          <span className="history-row-attention" title={t('history.needsAttention')}>
+            <span className="sr-only">{t('history.needsAttention')}</span>
+          </span>
+        )}
         <Button variant="ghost" className="task-row min-w-0" onClick={() => onChoose(task.id)}>
           <span className="task-row-head">
             <span className="task-row-title" title={task.title}>

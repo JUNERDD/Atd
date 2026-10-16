@@ -2,27 +2,29 @@ import AICore
 import AppKit
 
 /// The dim over the frozen display with one undimmed area: the detected area under the pointer
-/// or the selection, outlined in the accent colour, with its "W × H" size in points and, on a
-/// committed selection, its eight handles. Redraws only the region an update touches, so
-/// a mouse move does not repaint a whole Retina display.
+/// or the selection, outlined in the accent colour, with its "W × H" size label and, on a
+/// committed selection, its eight handles. Its points are desktop points, like the overlay's; an
+/// area spanning displays is drawn by each display's chrome, clipped to it, and labelled on one.
+/// Redraws only the region an update touches, so a mouse move does not repaint a whole Retina
+/// display.
 final class CaptureChromeView: NSView {
   /// An area with its size label, placed once per update.
   private struct Placement {
     let area: CGRect
-    let label: String
+    let label: String?
     let labelFrame: CGRect
   }
 
-  private let display: FrozenDisplay
   private var placement: Placement?
   private var handles = false
   private static let dim = NSColor(white: 0, alpha: 0.4)
   private static let handleRadius: CGFloat = 4
   private static let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
 
-  init(display: FrozenDisplay) {
-    self.display = display
-    super.init(frame: CGRect(origin: .zero, size: display.quartzFrame.size))
+  /// `frame` is the display's area of the desktop, which also becomes this view's bounds.
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setBoundsOrigin(frame.origin)
   }
 
   @available(*, unavailable)
@@ -31,10 +33,12 @@ final class CaptureChromeView: NSView {
   override var isFlipped: Bool { true }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-  func update(area: CGRect?, handles: Bool) {
-    guard area != placement?.area || handles != self.handles else { return }
+  /// Shows `area` (nil: everything dim) with `label` above it (nil: none).
+  func update(area: CGRect?, handles: Bool, label: String?) {
+    guard area != placement?.area || handles != self.handles || label != placement?.label
+    else { return }
     let before = placement.map(extent(of:))
-    placement = area.map(place)
+    placement = area.map { place($0, label: label) }
     self.handles = handles
     if let before, let after = placement.map(extent(of:)) {
       setNeedsDisplay(before.union(after))
@@ -67,28 +71,30 @@ final class CaptureChromeView: NSView {
         dot.stroke()
       }
     }
-    CaptureBadge.draw(placement.label, font: Self.labelFont, in: placement.labelFrame)
+    if let label = placement.label {
+      CaptureBadge.draw(label, font: Self.labelFont, in: placement.labelFrame)
+    }
   }
 
   /// What a placement occupies on screen: its area, outline and handles, and its size label.
   private func extent(of placement: Placement) -> CGRect {
     let reach = Self.handleRadius + 2
-    return placement.area.insetBy(dx: -reach, dy: -reach).union(placement.labelFrame)
+    let area = placement.area.insetBy(dx: -reach, dy: -reach)
+    return placement.label == nil ? area : area.union(placement.labelFrame)
   }
 
-  /// The size label above the area's top-left corner, or just inside it when the display's top
-  /// edge is in the way; always within the display. The text is points, plus the exported
-  /// pixels when they differ (`ScreenshotRules.sizeLabel`).
-  private func place(_ area: CGRect) -> Placement {
-    let text = ScreenshotRules.sizeLabel(
-      selection: area, scale: display.pixelScale, imageWidth: display.image.width,
-      imageHeight: display.image.height)
-    let size = CaptureBadge.size(of: text, font: Self.labelFont)
-    let above = area.minY - size.height - 6
-    let y = above >= bounds.minY + 4 ? above : area.minY + 6
-    let x = min(max(area.minX, bounds.minX + 4), bounds.maxX - size.width - 4)
+  /// The size label above the area's top-left corner (the part of it on this display), or just
+  /// inside it when the display's top edge is in the way; always within the display.
+  private func place(_ area: CGRect, label: String?) -> Placement {
+    guard let label else { return Placement(area: area, label: nil, labelFrame: .zero) }
+    let visible = area.intersection(bounds).isNull ? area : area.intersection(bounds)
+    let size = CaptureBadge.size(of: label, font: Self.labelFont)
+    let above = visible.minY - size.height - 6
+    let y = above >= bounds.minY + 4 ? above : visible.minY + 6
+    let x = min(max(visible.minX, bounds.minX + 4), bounds.maxX - size.width - 4)
     return Placement(
-      area: area, label: text, labelFrame: CGRect(origin: CGPoint(x: x, y: y), size: size).integral)
+      area: area, label: label,
+      labelFrame: CGRect(origin: CGPoint(x: x, y: y), size: size).integral)
   }
 }
 
