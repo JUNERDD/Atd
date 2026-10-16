@@ -16,6 +16,15 @@ function devHead(): Plugin {
   };
 }
 
+/** Serves the rc manifest from the page's origin locally, as the `vercel.json` rewrite does live. */
+const previewManifest = {
+  '/downloads/rc.json': {
+    target: 'https://downloads.atd.best',
+    changeOrigin: true,
+    rewrite: () => '/rc.json',
+  },
+};
+
 /**
  * A static site: `vite build` makes the client bundle and the template, the SSR build and
  * `scripts/prerender.ts` then write one prerendered page per language into `dist`.
@@ -26,6 +35,6 @@ export default defineConfig(({ mode }) => ({
     devHead(),
     websiteMediaAssets(normalizeAssetBase(loadEnv(mode, process.cwd()).VITE_ASSET_BASE_URL)),
   ],
-  server: { host: '127.0.0.1', port: 5180, strictPort: true },
-  preview: { host: '127.0.0.1', port: 4180, strictPort: true },
+  server: { host: '127.0.0.1', port: 5180, strictPort: true, proxy: previewManifest },
+  preview: { host: '127.0.0.1', port: 4180, strictPort: true, proxy: previewManifest },
 }));
