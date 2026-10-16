@@ -1,6 +1,7 @@
 import AppKit
 
-/// The annotation editor's canvas and bars live here. Its own area never takes the mouse, and
+/// The annotation editor's canvas and bars live here. Its bounds equal its frame, the overlay's
+/// bounds, so its points are desktop points like the overlay's. Its own area never takes the mouse, and
 /// neither do the points `passThrough` answers true for (the session's: the selection's handles
 /// and edge band, and its interior until a tool claims it), so those presses reach the overlay
 /// view whatever the editor puts there — except the bars' controls, which sit inside the

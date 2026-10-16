@@ -35,6 +35,9 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   /// The style of the text being edited; nil when no edit is open.
   var style: AnnotationStyle? { session?.style }
 
+  /// Whether the open text is typed on `canvas` (it opens on one canvas of several).
+  func isHosted(in canvas: NSView) -> Bool { session?.view.superview === canvas }
+
   /// Opens the editor on `existing`, or for new text with its first line centred on `point`.
   func begin(
     at point: CGPoint, editing existing: Annotation?, style: AnnotationStyle, in canvas: NSView

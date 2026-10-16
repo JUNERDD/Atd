@@ -6,8 +6,9 @@ import CoreGraphics
 // the overlay windows and the selection; element detection and annotation plug in through the
 // protocols below. Every rect is in points unless a name says pixels. "Quartz" points are global
 // with the origin at the top-left of the primary display and y down (AX, CGWindowList and
-// ScreenCaptureKit use them); "view" points are an overlay view's flipped coordinates, which equal
-// Quartz points minus the display's Quartz origin.
+// ScreenCaptureKit use them); "desktop" points are the session's (``CaptureDesktop``): Quartz
+// points minus the top-left of every display's union, y down. Each overlay view's flipped
+// coordinates are desktop points, so a selection or an annotation keeps one rect across displays.
 
 /// One display frozen at the start of a session.
 nonisolated struct FrozenDisplay {
@@ -19,6 +20,20 @@ nonisolated struct FrozenDisplay {
 
   /// Image pixels per point on this display.
   var pixelScale: CGFloat { CGFloat(image.width) / quartzFrame.width }
+
+  /// The display as the desktop geometry sees it.
+  var geometry: CaptureDesktop.Display {
+    CaptureDesktop.Display(
+      id: displayID, quartzFrame: quartzFrame, pixelWidth: image.width, pixelHeight: image.height)
+  }
+}
+
+/// Frozen pixels under a selection, which mosaics sample: `scale` pixels per desktop point,
+/// with the image's top-left at the desktop point `origin`.
+nonisolated struct CaptureBackdrop {
+  let image: CGImage
+  let scale: CGFloat
+  let origin: CGPoint
 }
 
 /// A window on screen when the session started, front to back. Taken before any overlay
@@ -62,7 +77,8 @@ nonisolated protocol ElementTargeting: Sendable {
   func begin(windows: [CaptureWindow]) async -> ElementDetection
   /// The areas containing `point` (Quartz), smallest first and ending with the window; empty
   /// when no window is there (the session then offers the display). Each rect lies within its
-  /// window and display. A call may be superseded by a later one: callers keep the latest answer.
+  /// window and the displays it is on (a window spanning displays comes whole). A call may be
+  /// superseded by a later one: callers keep the latest answer.
   func targets(at point: CGPoint) async -> [CGRect]
   /// The element among `targets(at: point)` whose frame is `frame` (Quartz), described; nil for
   /// a window, the display, or when Accessibility cannot tell. Called once, when the selection is
@@ -72,9 +88,9 @@ nonisolated protocol ElementTargeting: Sendable {
   func end() async
 }
 
-/// The annotation step on a committed selection, hosted by the overlay view of the selection's
-/// display. The selection stays adjustable the whole time (its handles and edge band always
-/// belong to the session), so annotation geometry is in the host overlay view's points: an
+/// The annotation step on a committed selection, hosted by the overlay views of every display
+/// (a selection may span them). The selection stays adjustable the whole time (its handles and
+/// edge band always belong to the session), so annotation geometry is in desktop points: an
 /// annotation stays where it was drawn on the screen while the selection moves or resizes, and
 /// the selection only decides what is exported.
 protocol AnnotationEditing: AnyObject {
@@ -89,18 +105,22 @@ protocol AnnotationEditing: AnyObject {
   var onInteriorClaimChange: ((Bool) -> Void)? { get set }
   /// Whether anything is drawn; a right-click clears the selection back to idle only when not.
   var hasAnnotations: Bool { get }
-  /// Set by the session before ``show(in:selection:display:)``: the detected areas containing a
-  /// point (view points of the host, smallest first, each within the display), for tools that
-  /// snap a shape to an interface element. Answers may come late; callers keep the latest.
+  /// Set by the session before ``show(in:selection:backdrop:)``: the detected areas containing a
+  /// point (desktop points, smallest first, each within the desktop), for tools that snap a
+  /// shape to an interface element. Answers may come late; callers keep the latest.
   var elementTargets: ((CGPoint) async -> [CGRect])? { get set }
-  /// Adds the canvas (over `selection`, view points) and the bars beside it to `host`.
-  func show(in host: NSView, selection: CGRect, display: FrozenDisplay)
+  /// Adds a canvas over `selection` (desktop points) to every host (one per display, whose
+  /// points are desktop points), and the bars beside the selection on the host holding most of
+  /// it. Mosaics sample what `backdrop` gives for the selection, asked again as it changes.
+  func show(
+    in hosts: [AnnotationHostView], selection: CGRect,
+    backdrop: @escaping (CGRect) -> CaptureBackdrop?)
   /// The selection moved or was resized at any time; annotations stay put, the canvas and the
   /// bars follow the selection.
   func selectionDidChange(_ selection: CGRect)
   /// Removes the canvas and the bars; annotations are discarded.
   func hide()
-  /// A scroll-wheel event anywhere over the selection's overlay; true when the editor used it
+  /// A scroll-wheel event anywhere over an overlay; true when the editor used it
   /// (to resize what the style bar targets), false to leave it to the session.
   func scroll(_ event: NSEvent) -> Bool
   /// The annotations in selection-local points (origin at the selection's top-left), for
@@ -110,8 +130,8 @@ protocol AnnotationEditing: AnyObject {
   /// them), placed on the current selection; one state, not an undo step. Called after `show`.
   func restore(_ document: AnnotationDocument)
   /// Draws the annotations inside the selection into `context`, which already holds the
-  /// selection's pixels with the origin at the selection's top-left and one unit per pixel;
-  /// `scale` is pixels per point. Mosaics sample the frozen display image the editor was shown
-  /// with, so they read pixels beyond the selection's edge too.
-  func render(into context: CGContext, scale: CGFloat)
+  /// selection's pixels with the origin at its top-left, y down and one unit per pixel;
+  /// `transform` maps desktop points to those pixels. Mosaics sample the backdrop the editor was
+  /// shown with, so they read pixels beyond the selection's edge too.
+  func render(into context: CGContext, transform: CGAffineTransform)
 }

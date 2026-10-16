@@ -26,6 +26,11 @@ struct DisplayFreezer {
   /// Displays in capture order: the one under the cursor first.
   let targets: [Target]
 
+  /// The union of every target's Quartz bounds: the capture's desktop.
+  var quartzBounds: CGRect {
+    targets.map { CGDisplayBounds($0.display.displayID) }.reduce(CGRect.null) { $0.union($1) }
+  }
+
   /// Reads what can be captured. Throws ScreenCaptureKit's error, for example when the Screen
   /// Recording grant no longer matches this build.
   static func prepare() async throws -> DisplayFreezer {

@@ -1,10 +1,12 @@
 import AICore
 import AppKit
 
-/// The annotation surface over the committed selection, a flipped subview of the host overlay
+/// The annotation surface over the committed selection, a flipped subview of a host overlay
 /// view. Its frame is the selection and its bounds origin the selection's origin, so its points
-/// are the host's view points: annotations, the text editor and pointer locations keep their
-/// place on the screen while the selection moves or resizes over them (decision D14).
+/// are the host's, desktop points: annotations, the text editor and pointer locations keep their
+/// place on the screen while the selection moves or resizes over them (decision D14). Every
+/// display's overlay has one over the same selection (``AnnotationEditor``), so a selection
+/// spanning displays is annotated on all of them; each shows the part on its display.
 ///
 /// Focus and key contract with the host (the capture overlay view, this view's superview's
 /// superview and so up its responder chain):
@@ -38,14 +40,14 @@ final class AnnotationCanvasView: NSView {
   private let renderer: AnnotationRenderer
   private let picker: AnnotationElementPicker
 
-  /// The frozen display's image, which mosaic regions pixelate, at ``pixelScale`` pixels per
-  /// point. The whole display rather than the selection, so a mosaic keeps its blocks when the
-  /// selection moves.
-  var backdrop: CGImage? {
+  /// The frozen pixels mosaic regions pixelate: the whole display (or the displays a selection
+  /// spans) rather than the selection, so a mosaic keeps its blocks when the selection moves.
+  var backdrop: CaptureBackdrop? {
     didSet { needsDisplay = true }
   }
-  var pixelScale: CGFloat = 1
 
+  /// A press reached this canvas (before it is handled).
+  var onPress: (() -> Void)?
   /// ⌘C outside open text.
   var onCopy: (() -> Void)?
   var onConfirm: (() -> Void)?
@@ -105,9 +107,8 @@ final class AnnotationCanvasView: NSView {
 
   override func draw(_ dirtyRect: NSRect) {
     guard let context = NSGraphicsContext.current?.cgContext else { return }
-    renderer.draw(
-      store.shown, hiding: store.editingID, in: context, backdrop: backdrop, scale: pixelScale)
-    if let frame = textEditor.frame, let style = textEditor.style {
+    renderer.draw(store.shown, hiding: store.editingID, in: context, backdrop: backdrop)
+    if let frame = textEditor.frame, let style = textEditor.style, textEditor.isHosted(in: self) {
       // Open text: the plate goes behind the transparent text view, the outline around both.
       var area = frame
       if style.textBackground {
@@ -161,6 +162,7 @@ final class AnnotationCanvasView: NSView {
   }
 
   override func mouseDown(with event: NSEvent) {
+    onPress?()
     // A click away from open text only ends the edit.
     if textEditor.isEditing {
       textEditor.end()

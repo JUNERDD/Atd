@@ -2,12 +2,17 @@ import AICore
 import AppKit
 
 /// The annotation step of a capture session (``AnnotationEditing``): a canvas over the
-/// committed selection, a glass toolbar beside it and, while there is something to style, the
-/// style bar next to the toolbar; all are subviews of the host overlay view. Annotations are in
-/// the host's view points, so they stay on the screen while the selection moves or resizes;
-/// the canvas and the bars follow the selection, and the export takes what lies inside it.
-/// Focus and key routing between the canvas and the host are described on
-/// ``AnnotationCanvasView``.
+/// committed selection on every display's overlay, a glass toolbar beside it and, while there
+/// is something to style, the style bar next to the toolbar. Annotations are in desktop points,
+/// so they stay on the screen while the selection moves or resizes; the canvases and the bars
+/// follow the selection, and the export takes what lies inside it.
+///
+/// A selection may span displays. Each overlay then holds its own canvas over the same
+/// selection, all drawing the one document and feeding the one interaction, so a stroke drawn
+/// on one display continues on the next (a drag keeps reaching the canvas it began on). The
+/// bars sit on the display holding most of the selection and move with it; open text lives in
+/// the canvas it was started on. Focus and key routing between a canvas and its host are
+/// described on ``AnnotationCanvasView``.
 ///
 /// The model, hit-testing and geometry are AICore's (`Annotation*.swift`); this type wires the
 /// store, the pointer state machine, the text editor, the renderer, the element picker and the
@@ -24,32 +29,35 @@ final class AnnotationEditor: AnnotationEditing {
   private let picker = AnnotationElementPicker()
   private let defaults: UserDefaults
   private let interaction: AnnotationInteraction
-  private let textEditor: AnnotationTextEditor
-  private let canvas: AnnotationCanvasView
-  private let toolbar = AnnotationToolbar()
-  private let styleBar = AnnotationStyleBar()
+  let textEditor: AnnotationTextEditor
+  /// One per host, in the hosts' order; empty while hidden.
+  private(set) var canvases: [AnnotationCanvasView] = []
+  /// The canvas pressed last, which new text opens in.
+  private weak var pressedCanvas: AnnotationCanvasView?
+  let toolbar = AnnotationToolbar()
+  let styleBar = AnnotationStyleBar()
 
-  private var display: FrozenDisplay?
-  private var selection = CGRect.zero
-  /// Where the user dragged the toolbar to, in the host's points: it stays there for the rest
-  /// of the session, whatever the selection does. Nil while the bars follow the selection.
-  private var movedOrigin: CGPoint?
+  /// What mosaics sample for a selection (the session's), and its answer for the current one.
+  private var backdrops: ((CGRect) -> CaptureBackdrop?)?
+  private var backdrop: CaptureBackdrop?
+  private(set) var selection = CGRect.zero
+  /// Where the user dragged the toolbar to, in desktop points: it stays there while the bars
+  /// stay on the same display, whatever the selection does. Nil while the bars follow the
+  /// selection.
+  var movedOrigin: CGPoint?
   /// The run of wheel ticks in progress (``scroll(_:)``) and when its last tick came.
   private var wheelBurst = UUID()
   private var lastWheel: TimeInterval = 0
   /// The toolbar's origin when the drag in progress began.
-  private var dragOrigin = CGPoint.zero
+  var dragOrigin = CGPoint.zero
 
   /// `defaults` keeps the remembered styles.
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
     interaction = AnnotationInteraction(store: store)
     textEditor = AnnotationTextEditor(store: store)
-    canvas = AnnotationCanvasView(
-      store: store, interaction: interaction, textEditor: textEditor, renderer: renderer,
-      picker: picker)
     store.onChange = { [weak self] in self?.refresh() }
-    picker.onChange = { [weak self] in self?.canvas.needsDisplay = true }
+    picker.onChange = { [weak self] in self?.redraw() }
     interaction.elementBox = { [weak self] point in
       guard let self else { return nil }
       return picker.box(at: point, within: selection)
@@ -61,12 +69,6 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.onEditText = { [weak self] point, existing in self?.editText(at: point, existing) }
     interaction.onConfirm = { [weak self] in self?.confirm() }
     textEditor.onEnd = { [weak self] in self?.focusCanvas() }
-    canvas.onConfirm = { [weak self] in self?.confirm() }
-    canvas.onCopy = { [weak self] in self?.copy() }
-    canvas.onChooseTool = { [weak self] in self?.choose($0) }
-    canvas.onEscape = { [weak self] in self?.stepBack() ?? false }
-    canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
-    canvas.onClearAll = { [weak self] in self?.clearAll() ?? false }
     toolbar.onTool = { [weak self] in self?.choose($0) }
     styleBar.onChange = { [weak self] in self?.restyle($0, burst: $1) }
     toolbar.onUndo = { [weak self] in self?.store.undo() }
@@ -78,20 +80,38 @@ final class AnnotationEditor: AnnotationEditing {
     styleBar.onDrag = { [weak self] in self?.moveBars($0) }
   }
 
-  func show(in host: NSView, selection: CGRect, display: FrozenDisplay) {
+  func show(
+    in hosts: [AnnotationHostView], selection: CGRect,
+    backdrop: @escaping (CGRect) -> CaptureBackdrop?
+  ) {
     hide()
-    self.display = display
+    backdrops = backdrop
     interaction.styles = AnnotationStyleMemory.load(from: defaults)
-    canvas.pixelScale = display.pixelScale
-    canvas.backdrop = display.image
     toolbar.applyStrings()
     styleBar.applyStrings()
-    host.addSubview(canvas)
-    host.addSubview(toolbar)
-    host.addSubview(styleBar)
+    canvases = hosts.map { host in
+      let canvas = makeCanvas()
+      host.addSubview(canvas)
+      return canvas
+    }
     selectionDidChange(selection)
     refresh()
     focusCanvas()
+  }
+
+  /// A canvas wired to the shared document, interaction and actions.
+  private func makeCanvas() -> AnnotationCanvasView {
+    let canvas = AnnotationCanvasView(
+      store: store, interaction: interaction, textEditor: textEditor, renderer: renderer,
+      picker: picker)
+    canvas.onPress = { [weak self, weak canvas] in self?.pressedCanvas = canvas }
+    canvas.onConfirm = { [weak self] in self?.confirm() }
+    canvas.onCopy = { [weak self] in self?.copy() }
+    canvas.onChooseTool = { [weak self] in self?.choose($0) }
+    canvas.onEscape = { [weak self] in self?.stepBack() ?? false }
+    canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
+    canvas.onClearAll = { [weak self] in self?.clearAll() ?? false }
+    return canvas
   }
 
   var hasAnnotations: Bool { !store.document.isEmpty || textEditor.isEditing }
@@ -105,7 +125,7 @@ final class AnnotationEditor: AnnotationEditing {
     textEditor.cancel()
     interaction.cancelGesture()
     store.load(document.translated(by: CGVector(dx: selection.minX, dy: selection.minY)))
-    canvas.refreshPointer()
+    refreshPointer()
   }
 
   var elementTargets: ((CGPoint) async -> [CGRect])? {
@@ -114,7 +134,14 @@ final class AnnotationEditor: AnnotationEditing {
 
   func selectionDidChange(_ selection: CGRect) {
     self.selection = selection
-    canvas.place(over: selection)
+    // A selection moving onto another display, or across displays, samples other pixels.
+    let backdrop = backdrops?(selection)
+    let changed = backdrop?.image !== self.backdrop?.image
+    self.backdrop = backdrop
+    for canvas in canvases {
+      if changed { canvas.backdrop = backdrop }
+      canvas.place(over: selection)
+    }
     textEditor.selectionDidChange()
     placeToolbar()
   }
@@ -122,26 +149,31 @@ final class AnnotationEditor: AnnotationEditing {
   func hide() {
     interaction.cancelGesture()
     textEditor.cancel()
-    canvas.removeFromSuperview()
+    for canvas in canvases {
+      canvas.removeFromSuperview()
+      canvas.backdrop = nil
+    }
+    canvases = []
     toolbar.removeFromSuperview()
     styleBar.removeFromSuperview()
-    canvas.backdrop = nil
     interaction.tool = nil
     picker.reset()
     store.reset()
-    display = nil
+    backdrops = nil
+    backdrop = nil
     movedOrigin = nil
   }
 
-  /// Annotations are in view points: they are moved into the crop's pixels and clipped to the
-  /// selection. Mosaics sample the frozen display image rather than `backdrop`, so one reaching
-  /// past the selection pixelates exactly as on the canvas. Nothing is drawn once hidden.
-  func render(into context: CGContext, scale: CGFloat) {
-    guard let display else { return }
+  /// Annotations are in desktop points: `transform` moves them into the export's pixels and
+  /// they are clipped to the selection. Mosaics sample the canvases' backdrop rather than the
+  /// export, so one reaching past the selection pixelates exactly as on the canvas. Nothing is
+  /// drawn once hidden.
+  func render(into context: CGContext, transform: CGAffineTransform) {
+    guard !canvases.isEmpty else { return }
     context.saveGState()
-    context.concatenate(CaptureCoordinates.cropTransform(selection: selection, scale: scale))
+    context.concatenate(transform)
     context.clip(to: selection)
-    renderer.draw(store.document, in: context, backdrop: display.image, scale: display.pixelScale)
+    renderer.draw(store.document, in: context, backdrop: backdrop)
     context.restoreGState()
   }
 
@@ -156,7 +188,7 @@ final class AnnotationEditor: AnnotationEditing {
     let claimed = interaction.tool != nil
     interaction.tool = tool
     if claimed != (tool != nil) { onInteriorClaimChange?(tool != nil) }
-    canvas.refreshPointer()
+    refreshPointer()
     refresh()
     focusCanvas()
   }
@@ -176,7 +208,7 @@ final class AnnotationEditor: AnnotationEditing {
     } else {
       return false
     }
-    canvas.refreshPointer()
+    refreshPointer()
     return true
   }
 
@@ -236,22 +268,13 @@ final class AnnotationEditor: AnnotationEditing {
     let wasEditing = textEditor.isEditing
     textEditor.end()
     let cleared = interaction.clearAll()
-    canvas.refreshPointer()
+    refreshPointer()
     return wasEditing || cleared
   }
 
-  /// Either bar dragged: both move as one block, led by the toolbar.
-  private func moveBars(_ drag: AnnotationGlassBar.Drag) {
-    switch drag {
-    case .began: dragOrigin = toolbar.frame.origin
-    case .moved(let travel):
-      movedOrigin = CGPoint(x: dragOrigin.x + travel.dx, y: dragOrigin.y + travel.dy)
-    case .reset: movedOrigin = nil
-    }
-    placeToolbar()
-  }
-
+  /// Text opens in the canvas that was pressed, so it shows on the display being typed on.
   private func editText(at point: CGPoint, _ existing: Annotation?) {
+    guard let canvas = pressedCanvas ?? canvases.first else { return }
     textEditor.begin(at: point, editing: existing, style: interaction.styles.shared, in: canvas)
   }
 
@@ -267,13 +290,8 @@ final class AnnotationEditor: AnnotationEditing {
     onCopy?()
   }
 
-  private func focusCanvas() {
-    guard !textEditor.isEditing, canvas.superview != nil else { return }
-    canvas.window?.makeFirstResponder(canvas)
-  }
-
   private func refresh() {
-    canvas.needsDisplay = true
+    redraw()
     toolbar.update(
       tool: interaction.tool, canUndo: store.undoManager.canUndo,
       canRedo: store.undoManager.canRedo)
@@ -302,24 +320,5 @@ final class AnnotationEditor: AnnotationEditing {
     }
     let controls = target.controls.shown(for: target.style)
     return controls.isEmpty ? nil : (target.style, controls)
-  }
-
-  /// Both bars as one block (``AnnotationToolbarLayout``), beside the selection or where the
-  /// user dragged them, with room kept for the style bar's widest form so the toolbar stays put
-  /// while the style bar comes and goes or narrows.
-  private func placeToolbar() {
-    guard let host = toolbar.superview else { return }
-    let frames =
-      if let movedOrigin {
-        AnnotationToolbarLayout.frames(
-          toolbar: toolbar.fittingSize, styleBar: styleBar.fullSize, at: movedOrigin,
-          within: host.bounds)
-      } else {
-        AnnotationToolbarLayout.frames(
-          toolbar: toolbar.fittingSize, styleBar: styleBar.fullSize, beside: selection,
-          within: host.bounds)
-      }
-    toolbar.frame = frames.toolbar
-    styleBar.frame = CGRect(origin: frames.styleBar.origin, size: styleBar.fittingSize)
   }
 }

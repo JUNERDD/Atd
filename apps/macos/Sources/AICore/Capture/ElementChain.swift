@@ -49,15 +49,13 @@ public enum ElementChain {
     windows.first { isUsable($0.frame) && $0.frame.contains(point) }
   }
 
-  /// The area `window` offers at `point`: the window clipped to the display under the point, so
-  /// a window spanning two displays yields the part on the one the pointer is on. Nil when
-  /// nothing usable remains.
+  /// The area `window` offers at `point`: the window cut to the displays it is on (the bounds
+  /// of its parts on each), so a window spanning displays is offered whole, as a capture can
+  /// span them, while a part off every screen is dropped. Nil when nothing usable remains.
   public static func windowArea(at point: CGPoint, window: Window, displays: [CGRect]) -> CGRect? {
     guard isUsable(window.frame) else { return nil }
-    var area = window.frame
-    if let display = displays.first(where: { $0.contains(point) }) {
-      area = area.intersection(display)
-    }
+    let parts = displays.map { $0.intersection(window.frame) }.filter { !$0.isNull }
+    let area = parts.isEmpty ? window.frame : parts.reduce(CGRect.null) { $0.union($1) }
     return isUsable(area) && area.contains(point) ? area : nil
   }
 

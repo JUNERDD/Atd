@@ -32,15 +32,14 @@ final class AnnotationRenderer {
   }
 
   /// Draws `document` back to front, skipping `hidden` (the text being edited in place).
-  /// `backdrop` is the frozen display's image at `scale` pixels per point; mosaic regions
-  /// sample it.
+  /// Mosaic regions sample `backdrop`, the frozen pixels under the selection.
   ///
   /// Spotlights dim the screenshot first, under every annotation, so what is drawn over the
   /// dimmed area stays legible; a mosaic replaces screenshot pixels, so its blocks are dimmed
   /// again where they lie outside the spotlights and keep reading as part of the screenshot.
   func draw(
     _ document: AnnotationDocument, hiding hidden: UUID? = nil, in context: CGContext,
-    backdrop: CGImage?, scale: CGFloat
+    backdrop: CaptureBackdrop?
   ) {
     let spotlights = document.annotations.compactMap { annotation -> CGRect? in
       if case .spotlight(let rect) = annotation.shape { return rect }
@@ -53,11 +52,12 @@ final class AnnotationRenderer {
       context.saveGState()
       draw(annotation, number: document.stepNumber(of: annotation.id), in: context) { rect in
         guard
-          let (image, area) = backdrop.flatMap({
-            self.mosaic.render(rect, style: annotation.style, backdrop: $0, scale: scale)
-          })
+          let backdrop,
+          let (image, area) = self.mosaic.render(
+            rect.offsetBy(dx: -backdrop.origin.x, dy: -backdrop.origin.y), style: annotation.style,
+            backdrop: backdrop.image, scale: backdrop.scale)
         else { return nil }
-        return (image, area, spotlights)
+        return (image, area.offsetBy(dx: backdrop.origin.x, dy: backdrop.origin.y), spotlights)
       }
       context.restoreGState()
     }

@@ -3,7 +3,9 @@ import AppKit
 
 /// The session's input (decisions D8, D14): the pointer offers areas, a click commits one, a
 /// drag selects freely, and a committed selection resizes from its handles and edge band at any
-/// time, moves from inside until a tool claims the interior, and confirms.
+/// time, moves from inside until a tool claims the interior, and confirms. Points are desktop
+/// points. A drag keeps reaching the overlay it began on wherever the pointer goes, so a
+/// selection is drawn, moved or resized across displays from any of them.
 extension CaptureSession: CaptureOverlayDelegate {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint) {
     pointer = (overlay, point)
@@ -25,11 +27,10 @@ extension CaptureSession: CaptureOverlayDelegate {
       } else {
         phase = .pressing(overlay, start: point)
       }
-    case .selected(let owner, let rect):
-      guard owner === overlay else { return }
+    case .selected(let rect):
       // Outside the selection a press does nothing; a right-click starts over instead, so a
       // stray click cannot lose the selection.
-      let drag = overlay.model.drag(startingAt: point, selection: rect)
+      let drag = model.drag(startingAt: point, selection: rect)
       switch drag {
       case .create:
         return
@@ -43,7 +44,7 @@ extension CaptureSession: CaptureOverlayDelegate {
       case .resize:
         break
       }
-      phase = .adjusting(overlay, drag)
+      phase = .adjusting(drag)
     case .pressing, .creating, .adjusting:
       break
     }
@@ -51,22 +52,18 @@ extension CaptureSession: CaptureOverlayDelegate {
 
   func overlay(_ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, square: Bool) {
     switch phase {
-    case .pressing(let owner, let start):
+    case .pressing(_, let start):
       guard !SelectionModel.isClick(from: start, to: point) else { return }
-      let drag = SelectionDrag.create(origin: owner.model.clamped(start))
-      phase = .creating(owner, drag)
-      for other in overlays where other !== owner {
-        other.show(area: nil, handles: false)
-        other.showLoupe(at: nil)
-      }
-      showCreating(owner, drag, at: point, square: square)
-    case .creating(let owner, let drag):
-      showCreating(owner, drag, at: point, square: square)
-    case .adjusting(let owner, let drag):
-      let rect = owner.model.rect(for: drag, to: point)
-      showSelection(owner, rect)
+      let drag = SelectionDrag.create(origin: model.clamped(start))
+      phase = .creating(drag)
+      showCreating(drag, at: point, square: square)
+    case .creating(let drag):
+      showCreating(drag, at: point, square: square)
+    case .adjusting(let drag):
+      let rect = model.rect(for: drag, to: point)
+      show(rect, handles: true)
       // The loupe shows the pixel being adjusted until the button goes up (`move`).
-      owner.showLoupe(at: owner.model.loupePoint(for: drag, rect: rect, pointer: point))
+      showLoupe(at: model.loupePoint(for: drag, rect: rect, pointer: point))
       editor?.selectionDidChange(rect)
     case .idle, .selected:
       break
@@ -76,14 +73,14 @@ extension CaptureSession: CaptureOverlayDelegate {
   func overlay(_ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, square: Bool) {
     switch phase {
     case .pressing(let owner, let start):
-      let selection = owner.model.settled(offeredArea(on: owner))
+      let selection = model.settled(offeredArea(on: owner))
       let pick = pickedElement(at: start, on: owner, selection: selection)
-      commit(owner, selection)
+      commit(selection)
       self.pick = pick
-    case .creating(let owner, let drag):
-      commit(owner, owner.model.rect(for: drag, to: point, square: square))
-    case .adjusting(let owner, let drag):
-      move(owner, to: owner.model.rect(for: drag, to: point))
+    case .creating(let drag):
+      commit(model.rect(for: drag, to: point, square: square))
+    case .adjusting(let drag):
+      move(to: model.rect(for: drag, to: point))
     case .idle, .selected:
       break
     }
@@ -91,12 +88,14 @@ extension CaptureSession: CaptureOverlayDelegate {
 
   /// Clears the selection back to idle, unless that would lose annotations (or open text).
   func overlayRightClicked(_ overlay: CaptureOverlayView) {
-    guard case .selected(let owner, _) = phase, editor?.hasAnnotations != true else { return }
+    guard case .selected = phase, editor?.hasAnnotations != true else { return }
     editor?.hide()
     editor = nil
     interiorClaimed = false
-    owner.annotationHost.passThrough = nil
-    owner.annotationHost.scroll = nil
+    for overlay in overlays {
+      overlay.annotationHost.passThrough = nil
+      overlay.annotationHost.scroll = nil
+    }
     phase = .idle
     refreshHints()
     renderIdle()
@@ -116,14 +115,14 @@ extension CaptureSession: CaptureOverlayDelegate {
     // Arrows reach the session whenever the editor did not take them (it takes them only to
     // nudge a selected annotation).
     case .nudge(let dx, let dy):
-      guard case .selected(let owner, let rect) = phase else { return }
-      move(owner, to: owner.model.nudged(rect, dx: dx, dy: dy))
+      guard case .selected(let rect) = phase else { return }
+      move(to: model.nudged(rect, dx: dx, dy: dy))
     case .resize(let dWidth, let dHeight):
-      guard case .selected(let owner, let rect) = phase else { return }
-      move(owner, to: owner.model.resized(rect, dWidth: dWidth, dHeight: dHeight))
+      guard case .selected(let rect) = phase else { return }
+      move(to: model.resized(rect, dWidth: dWidth, dHeight: dHeight))
     case .resizeLeading(let dx, let dy):
-      guard case .selected(let owner, let rect) = phase else { return }
-      move(owner, to: owner.model.resizedLeading(rect, dx: dx, dy: dy))
+      guard case .selected(let rect) = phase else { return }
+      move(to: model.resizedLeading(rect, dx: dx, dy: dy))
     case .recall:
       recallRegion()
     case .toggleWindowsOnly:
@@ -135,15 +134,15 @@ extension CaptureSession: CaptureOverlayDelegate {
   /// where the editor's canvas sets its own.
   func overlay(_ overlay: CaptureOverlayView, cursorAt point: CGPoint) -> NSCursor? {
     switch phase {
-    case .selected(let owner, let rect) where owner === overlay:
-      if let handle = overlay.model.handle(at: point, of: rect) { return handle.cursor }
+    case .selected(let rect):
+      if let handle = model.handle(at: point, of: rect) { return handle.cursor }
       guard rect.contains(point) else { return .arrow }
       return interiorClaimed ? nil : .openHand
-    case .adjusting(_, .move):
+    case .adjusting(.move):
       return .closedHand
-    case .adjusting(_, .resize(let handle, _)):
+    case .adjusting(.resize(let handle, _)):
       return handle.cursor
-    case .selected, .adjusting:
+    case .adjusting:
       return .arrow
     case .idle, .pressing, .creating:
       return .crosshair
@@ -152,87 +151,73 @@ extension CaptureSession: CaptureOverlayDelegate {
 
   // MARK: Selection
 
-  /// Select All: the whole display becomes the selection. Idle, that is the display under the
-  /// pointer (the keyboard follows it); with a selection it is the selection's display, whose
-  /// annotations stay where they are (D14). A selection being dragged is left alone.
+  /// Select All grows the selection a step: idle, to the display under the pointer (the
+  /// keyboard follows it); with a selection, to the display holding most of it, and once it is
+  /// that display, to every display. Annotations stay where they are (D14). A selection being
+  /// dragged is left alone.
   private func selectDisplay(on overlay: CaptureOverlayView) {
     switch phase {
     case .idle:
-      let target = pointer?.overlay ?? overlay
-      commit(target, target.model.settled(target.bounds))
-    case .selected(let owner, _):
-      move(owner, to: owner.model.settled(owner.bounds))
+      commit(model.settled((pointer?.overlay ?? overlay).bounds))
+    case .selected(let rect):
+      let display = model.settled(primaryOverlay(for: rect)?.bounds ?? overlay.bounds)
+      move(to: rect == display ? model.settled(model.bounds) : display)
     case .pressing, .creating, .adjusting:
       break
     }
   }
 
-  /// Makes `rect` the selection on `owner` and hands it to a new annotation editor. A click on
-  /// a detected element sets ``CaptureSession/pick`` once this returns.
-  func commit(_ owner: CaptureOverlayView, _ rect: CGRect) {
-    phase = .selected(owner, rect)
+  /// Makes `rect` the selection and hands it to a new annotation editor, whose canvas covers
+  /// every display it reaches. A click on a detected element sets ``CaptureSession/pick`` once
+  /// this returns.
+  func commit(_ rect: CGRect) {
+    phase = .selected(rect)
     pick = nil
     interiorClaimed = false
-    for overlay in overlays {
-      overlay.showLoupe(at: nil)
-      if overlay !== owner { overlay.show(area: nil, handles: false) }
-    }
+    showLoupe(at: nil)
     refreshHints()
-    showSelection(owner, rect)
+    show(rect, handles: true)
     let editor = makeEditor()
     self.editor = editor
     editor.onConfirm = { [weak self] in self?.confirm() }
     editor.onCancel = { [weak self] in self?.cancel() }
     editor.onCopy = { [weak self] in self?.copy() }
-    editor.onInteriorClaimChange = { [weak self, weak owner] claimed in
-      self?.interiorClaimed = claimed
-      owner?.refreshCursor()
+    editor.onInteriorClaimChange = { [weak self] claimed in
+      guard let self else { return }
+      interiorClaimed = claimed
+      for overlay in overlays { overlay.refreshCursor() }
     }
-    editor.elementTargets = { [weak self, weak owner] point in
-      guard let self, let owner else { return [] }
-      return await elementTargets(at: point, on: owner)
+    editor.elementTargets = { [weak self] point in
+      await self?.elementTargets(at: point) ?? []
     }
-    owner.annotationHost.passThrough = { [weak self] in self?.ownsPress(at: $0) ?? false }
-    owner.annotationHost.scroll = { [weak editor] in editor?.scroll($0) ?? false }
-    editor.show(in: owner.annotationHost, selection: rect, display: owner.display)
-    owner.window?.makeKey()
+    for overlay in overlays {
+      overlay.annotationHost.passThrough = { [weak self] in self?.ownsPress(at: $0) ?? false }
+      overlay.annotationHost.scroll = { [weak editor] in editor?.scroll($0) ?? false }
+    }
+    editor.show(in: overlays.map(\.annotationHost), selection: rect) { [weak self] in
+      self?.desktop.backdrop(for: $0)
+    }
+    primaryOverlay(for: rect)?.window?.makeKey()
   }
 
-  /// Whether a press at `point` (the selection's overlay) is the session's rather than the
-  /// editor's (D14): the handles and the edge band always, the interior until a tool claims it.
+  /// Whether a press at `point` is the session's rather than the editor's (D14): the handles
+  /// and the edge band always, the interior until a tool claims it.
   private func ownsPress(at point: CGPoint) -> Bool {
-    guard case .selected(let owner, let rect) = phase else { return false }
-    if owner.model.handle(at: point, of: rect) != nil { return true }
+    guard case .selected(let rect) = phase else { return false }
+    if model.handle(at: point, of: rect) != nil { return true }
     return !interiorClaimed && rect.contains(point)
   }
 
-  /// The detected areas under a view point of `owner`, for the editor's one-click shapes: the
-  /// targeting's Quartz answer in view points, cut to the display, smallest first.
-  private func elementTargets(at point: CGPoint, on owner: CaptureOverlayView) async -> [CGRect] {
-    guard detection != nil, !isFinished else { return [] }
-    let display = owner.display.quartzFrame
-    let areas = await targeting.targets(
-      at: CaptureCoordinates.quartzPoint(point, display: display))
-    return CaptureCoordinates.viewTargets(areas, display: display)
-  }
-
-  private func move(_ owner: CaptureOverlayView, to rect: CGRect) {
-    phase = .selected(owner, rect)
-    owner.showLoupe(at: nil)
-    showSelection(owner, rect)
+  private func move(to rect: CGRect) {
+    phase = .selected(rect)
+    showLoupe(at: nil)
+    show(rect, handles: true)
     editor?.selectionDidChange(rect)
     refreshHints()
   }
 
-  /// The selection's chrome, handles included: it can always change.
-  private func showSelection(_ owner: CaptureOverlayView, _ rect: CGRect) {
-    owner.show(area: rect, handles: true)
-  }
-
-  private func showCreating(
-    _ owner: CaptureOverlayView, _ drag: SelectionDrag, at point: CGPoint, square: Bool
-  ) {
-    owner.show(area: owner.model.rect(for: drag, to: point, square: square), handles: false)
-    owner.showLoupe(at: owner.model.clamped(point))
+  private func showCreating(_ drag: SelectionDrag, at point: CGPoint, square: Bool) {
+    show(model.rect(for: drag, to: point, square: square), handles: false)
+    showLoupe(at: model.clamped(point))
   }
 }

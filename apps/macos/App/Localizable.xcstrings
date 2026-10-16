@@ -433,6 +433,24 @@
         }
       }
     },
+    "capture.hint.allDisplays" : {
+      "comment" : "Capture overlay hint shown with more than one display; pressing ⌘A on a whole display selects every display",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘A again for every screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再按 ⌘A 选择所有屏幕"
+          }
+        }
+      }
+    },
     "capture.hint.idle" : {
       "comment" : "Hint at the bottom of the capture overlay before an area is selected",
       "extractionState" : "manual",

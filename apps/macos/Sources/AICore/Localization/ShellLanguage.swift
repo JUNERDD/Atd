@@ -246,6 +246,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureHintAccessibility = "capture.hint.accessibility"
   case captureHintRecall = "capture.hint.recall"
   case captureHintWindowsOnly = "capture.hint.windowsOnly"
+  case captureHintAllDisplays = "capture.hint.allDisplays"
   case captureToolbar = "capture.toolbar"
   case captureToolbarMove = "capture.toolbar.move"
   case captureStyleBar = "capture.styleBar"

@@ -14,41 +14,36 @@ enum ImageExportFailure: Error, Equatable {
 }
 
 /// Turns a confirmed selection into the file that is imported (decision D10): the frozen
-/// display's pixels under the selection with the annotations drawn in, scaled to
+/// displays' pixels under the selection with the annotations drawn in, scaled to
 /// ``ScreenshotRules/maxLongEdge`` and encoded as PNG, falling back to JPEG when the PNG is over
 /// the service's image limit.
 enum CaptureExport {
   /// A confirmed selection's pixels: with the annotations, and without them (the base a later
-  /// edit reopens and what text recognition reads).
+  /// edit reopens and what text recognition reads), and their pixels per point.
   struct Rendered {
     let image: CGImage
     let raw: CGImage
+    let scale: CGFloat
   }
 
-  /// The selection's pixels (whole pixels nearest its edges) with and without `editor`'s
-  /// annotations, at the display's native scale. Both are copies: a crop of the frozen image
-  /// alone would keep the whole display's pixels alive while the raw image is archived.
-  /// Annotation drawing belongs to the editor on the main actor.
+  /// The selection's pixels (desktop points; whole pixels nearest its edges) with and without
+  /// `editor`'s annotations. Inside one display they are that display's own pixels at its
+  /// native scale; across displays they are stitched (``CaptureDesktop/stitch(_:)``). Both are
+  /// copies: a crop of a frozen image alone would keep the whole display's pixels alive while the
+  /// raw image is archived. Annotation drawing belongs to the editor on the main actor.
   static func render(
-    selection: CGRect, display: FrozenDisplay, editor: (any AnnotationEditing)?
+    selection: CGRect, desktop: FrozenDesktop, editor: (any AnnotationEditing)?
   ) -> Rendered? {
-    let image = display.image
-    guard
-      let pixels = CaptureCoordinates.pixelRect(
-        selection, scale: display.pixelScale, width: image.width, height: image.height),
-      let backdrop = image.cropping(to: pixels),
-      let context = bitmap(width: backdrop.width, height: backdrop.height, like: backdrop)
+    guard let stitch = desktop.geometry.stitch(selection), let context = desktop.draw(stitch),
+      let raw = context.makeImage()
     else { return nil }
-    let size = CGRect(x: 0, y: 0, width: backdrop.width, height: backdrop.height)
-    // The backdrop is drawn upright in the bitmap's y-up space; the editor then draws with the
-    // origin at the top-left, one unit per pixel, as `AnnotationEditing.render` promises.
-    context.draw(backdrop, in: size)
-    guard let raw = context.makeImage() else { return nil }
-    guard let editor else { return Rendered(image: raw, raw: raw) }
-    context.translateBy(x: 0, y: size.height)
+    guard let editor else { return Rendered(image: raw, raw: raw, scale: stitch.scale) }
+    // The editor draws with the origin at the top-left, one unit per pixel, as
+    // `AnnotationEditing.render` promises.
+    context.translateBy(x: 0, y: CGFloat(stitch.height))
     context.scaleBy(x: 1, y: -1)
-    editor.render(into: context, scale: display.pixelScale)
-    return context.makeImage().map { Rendered(image: $0, raw: raw) }
+    editor.render(into: context, transform: stitch.transform)
+    return context.makeImage().map { Rendered(image: $0, raw: raw, scale: stitch.scale) }
   }
 
   /// Writes `image` into `folder` under the screenshot's name and returns the file.

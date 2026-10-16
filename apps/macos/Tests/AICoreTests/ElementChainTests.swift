@@ -225,12 +225,12 @@ struct ElementChainTests {
     #expect(
       result == [
         CGRect(x: -380, y: 20, width: 300, height: 200),
-        CGRect(x: -400, y: 0, width: 400, height: 500),
+        CGRect(x: -400, y: 0, width: 800, height: 500),
       ])
-    // On the primary display the same window is clipped the other way.
+    // The window spans both displays and is offered whole from either.
     let right = Self.targets(
       nil, window: spanning, displays: [main, left], at: CGPoint(x: 100, y: 100))
-    #expect(right == [CGRect(x: 0, y: 0, width: 400, height: 500)])
+    #expect(right == [spanning.frame])
   }
 
   @Test("Finds the elements that offered a picked candidate, never the window")

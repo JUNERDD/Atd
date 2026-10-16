@@ -11,7 +11,7 @@ enum CaptureCommand: Equatable {
   case resize(dWidth: CGFloat, dHeight: CGFloat)
   /// Moves the leading (left, top) edges by `dx`, `dy`.
   case resizeLeading(dx: CGFloat, dy: CGFloat)
-  /// Select All: the whole display of the overlay that received it.
+  /// Select All: the whole display, then every display (``CaptureSession``).
   case selectDisplay
   /// `R`: the last region confirmed on the pointer's display.
   case recall
@@ -51,7 +51,7 @@ enum CaptureCommand: Equatable {
     }
   }
 
-  /// One point in an arrow key's direction (view space, y down).
+  /// One point in an arrow key's direction (y down).
   private static func arrow(_ keyCode: UInt16) -> (CGFloat, CGFloat)? {
     switch keyCode {
     case 123: (-1, 0)
@@ -63,7 +63,7 @@ enum CaptureCommand: Equatable {
   }
 }
 
-/// Receives an overlay's input; points are in the overlay's view space.
+/// Receives an overlay's input; points are desktop points (the overlay view's own).
 protocol CaptureOverlayDelegate: AnyObject {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint)
   func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int)
