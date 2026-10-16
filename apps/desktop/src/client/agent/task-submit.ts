@@ -80,7 +80,8 @@ export async function submitTask<S>(
  * template, stages the skills and references it names, records its chips, marks the run as
  * command material and titles a new task after the command. The command must still be the one the
  * panel showed. A command run stages only its template's tokens: the panel sends no composer
- * chips with it, so the policy contributes its model, thinking level, tools and memory flag.
+ * chips with it, so the policy contributes its model, thinking level, tools and memory flag. A
+ * launch from one of the command's shortcuts names it, so the service starts from its overrides.
  */
 async function runSavedCommand<S>(
   tasks: TaskClient<S>,
@@ -111,6 +112,7 @@ async function runSavedCommand<S>(
         }
       : {}),
     ...(request.output ? { output: request.output } : {}),
+    ...(request.shortcutId ? { shortcutId: request.shortcutId } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
   });
   return settled(tasks, submitted.taskId, holder);

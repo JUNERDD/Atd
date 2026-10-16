@@ -1922,7 +1922,7 @@
                     },
                     "additionalProperties": false
                   },
-                  "maxItems": 256
+                  "maxItems": 512
                 }
               },
               "additionalProperties": false
@@ -5881,7 +5881,7 @@
             },
             "additionalProperties": false
           },
-          "maxItems": 256
+          "maxItems": 512
         }
       },
       "additionalProperties": false

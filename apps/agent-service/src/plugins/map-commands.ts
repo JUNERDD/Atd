@@ -173,7 +173,7 @@ export function mapCommand(
       placement: defaultCommandPlacement(rendered.input.source),
       output: defaultCommandOutput(),
       enabled,
-      shortcut: '',
+      shortcuts: [],
       templateId: null,
       model: { mode: 'inherit' },
       thinkingLevel: 'inherit',

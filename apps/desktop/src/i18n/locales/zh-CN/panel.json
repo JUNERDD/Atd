@@ -189,6 +189,7 @@
       "noSelection": "未选中文本。请在其他应用中选择文本，再使用命令快捷键。",
       "selectionTooLong": "选中的文本超出输入长度限制，请缩小选择范围。",
       "commandDeleted": "此命令已删除，请使用任务历史中保存的版本。",
+      "shortcutDeleted": "这个快捷键已从命令中移除。请按其他快捷键，或在面板中运行此命令。",
       "textTooLong": "文本超出输入长度限制，请缩小选择范围。",
       "clipboardEmpty": "剪贴板中没有文本。",
       "clipboardTooLong": "剪贴板文本超出输入长度限制。",

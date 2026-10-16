@@ -1,6 +1,11 @@
 import { Type, type Static } from 'typebox';
 import { CommandOutputSchema } from './command-output.js';
 import { CommandModelSchema, CommandThinkingLevelSchema } from './command-run.js';
+import {
+  CommandArgumentValuesSchema,
+  CommandShortcutSchema,
+  MAX_COMMAND_SHORTCUTS,
+} from './command-shortcuts.js';
 import { Identifier } from './identifiers.js';
 import { SkillName } from './skills.js';
 
@@ -142,22 +147,20 @@ export function offeredAt(
 }
 
 /**
- * Argument values of one command run keyed by parameter key, the value type of a run input's
- * `arguments` (`TaskInput`).
- */
-export const CommandArgumentValuesSchema = Type.Record(
-  Type.String(),
-  Type.Union([Type.String({ maxLength: 10000 }), Type.Number(), Type.Boolean()]),
-);
-export type CommandArgumentValues = Static<typeof CommandArgumentValuesSchema>;
-
-/**
  * `PUT /v1/commands/:id/arguments`: the values the command's next run from the app starts from,
  * remembered as a run's would be (`lastArguments`) without running it. The app sends it when the
  * person changes a value in an options card or menu. Answers the command (`CommandGetResponse`).
  */
 export const CommandArgumentsRequestSchema = Type.Object(
-  { arguments: CommandArgumentValuesSchema },
+  {
+    arguments: CommandArgumentValuesSchema,
+    /**
+     * The shortcut whose options card or input page picked the values. The keys it pins keep the
+     * values already remembered for them (none when nothing was), so a pinned value is never
+     * remembered. 409 when the command has no such shortcut.
+     */
+    shortcutId: Type.Optional(Identifier),
+  },
   { additionalProperties: false },
 );
 export type CommandArgumentsRequest = Static<typeof CommandArgumentsRequestSchema>;
@@ -183,7 +186,8 @@ export const ServiceCommandFullSchema = Type.Object({
   description: Type.String({ maxLength: 500 }),
   instructions: Type.String({ minLength: 1, maxLength: 20000 }),
   enabled: Type.Boolean(),
-  shortcut: Type.String({ maxLength: 100 }),
+  /** Global shortcuts, each an entry point with its own overrides (`CommandShortcut`). */
+  shortcuts: Type.Array(CommandShortcutSchema, { maxItems: MAX_COMMAND_SHORTCUTS }),
   templateId: Type.Union([Identifier, Type.Null()]),
   input: CommandInputSchema,
   placement: CommandPlacementSchema,
@@ -218,7 +222,8 @@ export const CommandCreateSchema = Type.Object({
   description: Type.Optional(Type.String({ maxLength: 500 })),
   instructions: Type.String({ minLength: 1, maxLength: 20000 }),
   enabled: Type.Optional(Type.Boolean()),
-  shortcut: Type.Optional(Type.String({ maxLength: 100 })),
+  /** Omitted: none. */
+  shortcuts: Type.Optional(Type.Array(CommandShortcutSchema, { maxItems: MAX_COMMAND_SHORTCUTS })),
   templateId: Type.Optional(Type.Union([Identifier, Type.Null()])),
   input: Type.Optional(CommandInputSchema),
   /** Omitted: `defaultCommandPlacement` of the input source. */

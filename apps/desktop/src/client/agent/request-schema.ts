@@ -71,6 +71,8 @@ export const AgentRequestSchema = Type.Union([
     input: InputSchema,
     /** A command run only: where its answer goes, over the command's saved output, for this run. */
     output: Type.Optional(CommandOutputSchema),
+    /** A command run only: the command's shortcut that launched it (`CommandRunRequest.shortcutId`). */
+    shortcutId: Type.Optional(Identifier),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
     branchBefore: Type.Optional(SessionEntryId),
     /**

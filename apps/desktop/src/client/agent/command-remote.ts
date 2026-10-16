@@ -22,7 +22,7 @@ export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition
     description: command.description,
     instructions: command.instructions,
     enabled: command.enabled,
-    shortcut: command.shortcut,
+    shortcuts: structuredClone(command.shortcuts),
     templateId: command.templateId,
     input: { ...command.input },
     placement: { ...command.placement },
@@ -44,6 +44,7 @@ export function toServiceCommand({
 }: CommandDefinition): ServiceCommandFull {
   return {
     ...command,
+    shortcuts: structuredClone(command.shortcuts),
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
     tools: [...command.tools],
   };
@@ -56,7 +57,7 @@ export function toCommandCreate(command: CommandDefinition): CommandCreate {
     description: command.description,
     instructions: command.instructions,
     enabled: command.enabled,
-    shortcut: command.shortcut,
+    shortcuts: structuredClone(command.shortcuts),
     templateId: command.templateId,
     input: { ...command.input },
     placement: { ...command.placement },
@@ -83,13 +84,20 @@ export async function reorderRemote(
   return listed.commands.map(toDesktopCommand);
 }
 
-/** Remembers `values` as where command `id`'s next run starts, without running it. */
+/**
+ * Remembers `values` as where command `id`'s next run starts, without running it. With
+ * `shortcutId`, the keys that shortcut pins keep what was remembered for them.
+ */
 export async function rememberRemote(
   options: AgentClientOptions,
   id: string,
   values: ArgumentValues,
+  shortcutId?: string,
 ): Promise<CommandDefinition> {
-  const remembered = await rememberCommandArguments(options, id, { arguments: values });
+  const remembered = await rememberCommandArguments(options, id, {
+    arguments: values,
+    ...(shortcutId === undefined ? {} : { shortcutId }),
+  });
   return toDesktopCommand(remembered.command);
 }
 

@@ -14,7 +14,7 @@ public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    commands = try container.array(.commands, of: Command.self, maxItems: 256)
+    commands = try container.array(.commands, of: Command.self, maxItems: 512)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {

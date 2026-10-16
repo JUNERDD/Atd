@@ -115,8 +115,15 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // take the text a command works on through {{input}} alone, since a used variable is required
   // on every run. A parameter value is remembered once a run uses it or the user changes it in a
   // command's options or input step, and changing a parameter's default replaces it.
-  skill('create-command', 2, [
+  // Version 3 replaces the single shortcut with a list of up to eight shortcuts, each an entry
+  // point that may fix parameter values and override the answer's destination and the reasoning
+  // level while the rest follows the command; says when to add a shortcut to a command and when
+  // to create another one, that fixed values are never remembered, that a save's list replaces the
+  // stored one (an id updates a shortcut, an omitted field keeps the list, [] removes it) and that
+  // a shortcut's model is the user's to set in Settings.
+  skill('create-command', 3, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
+    '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
   ]),
   // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
   // asks through ask_user only when an automation runs, what each run produces and, for work that

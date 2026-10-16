@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Copy, KeyboardOff, MoreHorizontal, Pencil, Play, Trash2, Zap } from 'lucide-react';
+import { Copy, MoreHorizontal, Pencil, Play, Trash2, Zap } from 'lucide-react';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { Switch } from '@atd/ui/components/switch';
 import {
@@ -12,23 +12,23 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@atd/ui/components/item';
-import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
+import type { CommandShortcut } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
 import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
-import { ShortcutRecorder } from '../../components/shortcut-recorder';
-import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { needsPresence } from '../automations/automation-draft';
 import { useOpenSettingsAutomation } from '../settings/settings-navigation';
 import { CommandIcon } from './command-icon';
+import { CommandRowShortcut, ShortcutMenuItem } from './command-row-shortcut';
+import { withRowRecording } from './shortcut-drafts';
 import { useCommandShortcutCapture } from './use-command-shortcut-capture';
 import { useLongPressDrag } from './use-long-press-drag';
 import '../../components/open-row.css';
@@ -39,8 +39,10 @@ export interface CommandRowActions {
   /** Opens the editor; a plugin command opens it read-only. */
   onOpen: (command: CommandDefinition) => void;
   onToggle: (command: CommandDefinition, enabled: boolean) => void;
-  /** Saves a shortcut recorded on the row; an empty one removes it. */
-  onShortcut: (command: CommandDefinition, shortcut: string) => void;
+  /** Saves the command's shortcuts after a change on the row: keys recorded, or one removed. */
+  onShortcuts: (command: CommandDefinition, shortcuts: CommandShortcut[]) => void;
+  /** Opens the editor at the command's shortcuts, where each one's settings live. */
+  onEditShortcuts: (command: CommandDefinition) => void;
   /** A Personal copy: a plain copy of the user's command, or Duplicate to Personal for a plugin's. */
   onDuplicate: (command: CommandDefinition) => void;
   onDelete: (command: CommandDefinition) => void;
@@ -65,10 +67,10 @@ const SETTLE = { duration: 0.15, ease: 'easeOut' } as const;
  * One row anatomy for every command: identity, shortcut, then Run, the enable Switch and More in
  * fixed positions. A long press on the user's own command lifts it to drag within their order,
  * and Option-arrow keys on the focused row move it; a short click still opens the editor. The
- * user's own command records a new shortcut when its shortcut is clicked,
- * and More removes a set one, so no action appears beside the keys to shift the columns. A plugin
- * command keeps the same columns with its shortcut read-only; its More menu narrows to Duplicate
- * to Personal, since it cannot be edited or deleted.
+ * user's own command records its first shortcut when the keys are clicked (`CommandRowShortcut`),
+ * and More removes a plain one or opens the editor at several, so no action appears beside the
+ * keys to shift the columns. A plugin command keeps the same columns with its shortcut read-only;
+ * its More menu narrows to Duplicate to Personal, since it cannot be edited or deleted.
  */
 export function CommandRow({
   command,
@@ -78,7 +80,8 @@ export function CommandRow({
   order,
   onOpen,
   onToggle,
-  onShortcut,
+  onShortcuts,
+  onEditShortcuts,
   onDuplicate,
   onDelete,
 }: {
@@ -96,9 +99,9 @@ export function CommandRow({
   // is never offered as an automation.
   const automatable = !needsPresence(command);
   const plugin = Boolean(command.pluginId);
-  const recorder = useCommandShortcutCapture((shortcut) => onShortcut(command, shortcut));
-  const { capture, platform } = recorder;
-  const keys = command.shortcut ? shortcutKeys(command.shortcut, platform) : [];
+  const recorder = useCommandShortcutCapture((accelerator) =>
+    onShortcuts(command, withRowRecording(command, accelerator)),
+  );
   // A combination the row cannot use outranks the standing registration error.
   const error = recorder.error || shortcutError;
   const drag = useDragControls();
@@ -135,12 +138,12 @@ export function CommandRow({
           {tAutomations('command.automate')}
         </ItemMenuItem>
       )}
-      {command.shortcut ? (
-        <ItemMenuItem disabled={busy} onSelect={() => onShortcut(command, '')}>
-          <KeyboardOff />
-          {t('list.removeShortcut')}
-        </ItemMenuItem>
-      ) : null}
+      <ShortcutMenuItem
+        command={command}
+        busy={busy}
+        onRemove={() => onShortcuts(command, [])}
+        onEdit={() => onEditShortcuts(command)}
+      />
       <ItemMenuSeparator />
       <ItemMenuItem variant="destructive" onSelect={() => onDelete(command)}>
         <Trash2 />
@@ -191,38 +194,12 @@ export function CommandRow({
         </ItemContent>
       </div>
       <div className="command-row-controls">
-        <div className="command-row-shortcut">
-          {!plugin ? (
-            <ShortcutRecorder
-              keys={keys}
-              recording={capture.isRecording}
-              doubleTap={platform === 'darwin'}
-              emptyText={t('list.setShortcut')}
-              aria-label={
-                capture.isRecording
-                  ? t('list.shortcutCancelFor', { name: command.name })
-                  : t('list.shortcutFor', { name: command.name })
-              }
-              aria-disabled={busy || undefined}
-              aria-busy={busy || undefined}
-              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-              onBlur={capture.cancel}
-              onClick={() => {
-                if (busy) return;
-                if (capture.isRecording) capture.cancel();
-                else capture.start();
-              }}
-            />
-          ) : keys.length ? (
-            <KbdGroup>
-              {keys.map((key, index) => (
-                <Kbd key={`${index}-${key}`}>{key}</Kbd>
-              ))}
-            </KbdGroup>
-          ) : (
-            <span className="text-xs text-muted-foreground">{t('list.noShortcut')}</span>
-          )}
-        </div>
+        <CommandRowShortcut
+          command={command}
+          busy={busy}
+          recorder={recorder}
+          onEdit={() => onEditShortcuts(command)}
+        />
         <ItemActions className="shrink-0">
           {/* Off or saving, Run stays focusable so its tooltip can say why it does nothing. */}
           <IconButton

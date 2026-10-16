@@ -4,6 +4,7 @@ import {
   type CommandOutput,
   type CommandOutputAction,
   type CommandParameter,
+  type CommandShortcut,
   type CommandThinkingLevel,
   type ServiceCommandFull,
 } from '@atd/agent-contracts';
@@ -64,6 +65,39 @@ function levelText(level: CommandThinkingLevel): string {
   return level === 'inherit' ? 'connection default' : level;
 }
 
+/** One shortcut: its keys and name, then only what it overrides; the rest follows the command. */
+function shortcutLine(shortcut: CommandShortcut): string {
+  const pinned = Object.entries(shortcut.arguments).map(
+    ([key, value]) => `${key} = ${clip(JSON.stringify(value), PREVIEW_LIMIT)}`,
+  );
+  const overrides = [
+    ...(pinned.length ? [`fixes ${pinned.join(', ')}`] : []),
+    ...(shortcut.output ? [`answer ${outputSummary(shortcut.output)}`] : []),
+    ...(shortcut.thinkingLevel ? [`reasoning ${levelText(shortcut.thinkingLevel)}`] : []),
+    ...(shortcut.model ? ['its own model'] : []),
+  ];
+  return [
+    shortcut.accelerator || 'no keys yet',
+    ...(shortcut.name ? [`"${shortcut.name}"`] : []),
+    overrides.length ? overrides.join(' · ') : 'same settings as the command',
+  ].join(' · ');
+}
+
+function shortcutChanges(previous: CommandShortcut[], next: CommandShortcut[]): string[] {
+  const before = new Map(previous.map((shortcut) => [shortcut.id, shortcut]));
+  const after = new Map(next.map((shortcut) => [shortcut.id, shortcut]));
+  const lines: string[] = [];
+  for (const [id, shortcut] of before)
+    if (!after.has(id)) lines.push(`- removed ${shortcutLine(shortcut)}`);
+  for (const shortcut of next) {
+    const old = before.get(shortcut.id);
+    if (!old) lines.push(`- added ${shortcutLine(shortcut)}`);
+    else if (JSON.stringify(old) !== JSON.stringify(shortcut))
+      lines.push(`- changed ${shortcutLine(old)} → ${shortcutLine(shortcut)}`);
+  }
+  return lines;
+}
+
 function preview(value: string): string {
   return clip(value.replace(/\s+/g, ' ').trim(), PREVIEW_LIMIT);
 }
@@ -75,7 +109,10 @@ export function createDetail(command: ServiceCommandFull): string {
       `Description: ${command.description || 'none'}`,
       `Input: ${inputSummary(command.input)}`,
       `Answer: ${outputSummary(command.output)}`,
-      `Shortcut: ${command.shortcut || 'none'}`,
+      'Shortcuts:',
+      ...(command.shortcuts.length
+        ? command.shortcuts.map((shortcut) => `- ${shortcutLine(shortcut)}`)
+        : ['- none']),
       'Parameters:',
       ...(command.parameters.length
         ? command.parameters.map((parameter) => `- ${parameterLine(parameter)}`)
@@ -115,8 +152,8 @@ export function updateDetail(previous: ServiceCommandFull, next: ServiceCommandF
     lines.push(`Input: ${inputSummary(previous.input)} → ${inputSummary(next.input)}`);
   if (outputSummary(previous.output) !== outputSummary(next.output))
     lines.push(`Answer: ${outputSummary(previous.output)} → ${outputSummary(next.output)}`);
-  if (previous.shortcut !== next.shortcut)
-    lines.push(`Shortcut: ${previous.shortcut || 'none'} → ${next.shortcut || 'none'}`);
+  if (JSON.stringify(previous.shortcuts) !== JSON.stringify(next.shortcuts))
+    lines.push('Shortcuts:', ...shortcutChanges(previous.shortcuts, next.shortcuts));
   if (JSON.stringify(previous.parameters) !== JSON.stringify(next.parameters))
     lines.push('Parameters:', ...parameterChanges(previous.parameters, next.parameters));
   if (JSON.stringify(previous.tools) !== JSON.stringify(next.tools))

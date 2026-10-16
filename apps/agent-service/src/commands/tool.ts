@@ -10,10 +10,10 @@ import {
 } from '@atd/agent-contracts';
 import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
-import { withCanonicalShortcut } from './shortcuts.js';
 import { CommandStore } from './store.js';
 import { validateCommandSave } from './templates.js';
 import { createDetail, updateDetail } from './tool-detail.js';
+import { mergeShortcuts, ShortcutsField, shortcutResult } from './tool-shortcuts.js';
 
 /**
  * The `command` tool: the Agent lists, reads and saves the user's saved commands in the service
@@ -60,7 +60,8 @@ const OutputField = Type.Optional({
  * asks a command to do; an omitted output keeps the stored one (the default for a create), and a
  * save refuses an output the input cannot serve (`validateCommandSave`) instead of resetting it.
  * The model is the user's choice in Settings, but the reasoning level is a property of the task
- * the command does, so the Agent may set it.
+ * the command does, so the Agent may set it, for the command and for each of its shortcuts; a
+ * shortcut's model override is the user's too and survives an update by shortcut id.
  */
 const CommandFieldsSchema = Type.Object(
   {
@@ -73,13 +74,7 @@ const CommandFieldsSchema = Type.Object(
     tools: Fields.tools,
     memory: Fields.memory,
     thinkingLevel: ThinkingLevelField,
-    shortcut: Type.Optional(
-      Type.String({
-        maxLength: 100,
-        description:
-          'Global shortcut as an Electron accelerator, e.g. CommandOrControl+Alt+S (Alt is Option on macOS), or on macOS a double-tap of one modifier: DoubleTap+Command, DoubleTap+Alt, DoubleTap+Control or DoubleTap+Shift (needs Accessibility access). An empty string removes it; omit it to keep the current one.',
-      }),
-    ),
+    shortcuts: ShortcutsField,
   },
   { additionalProperties: false },
 );
@@ -134,18 +129,18 @@ export const CommandToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions carry variables and /skill:, @agent:, @mcp: and @task: tokens (see the instructions field); a command has no separate skill or subagent setting. A save may set where the answer goes (see the output field) and the command's global shortcut; a shortcut already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
+  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions carry variables and /skill:, @agent:, @mcp: and @task: tokens (see the instructions field); a command has no separate skill or subagent setting. A save may set where the answer goes (see the output field) and the command's global shortcuts (see the shortcuts field): up to eight, each an entry point that may fix some parameter values or change the answer's destination or the reasoning level, and the rest follows the command; a key combination already used by the app, the selection toolbar or another shortcut is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
 
-/** The save result the model reads; a shortcut adds where the user sees whether it registered. */
+/** The save result the model reads; shortcuts add where the user sees whether each registered. */
 function savedResult(saved: ServiceCommandFull): string {
-  const { id, revision, name, shortcut } = saved;
-  if (!shortcut) return JSON.stringify({ id, revision, name });
+  const { id, revision, name, shortcuts } = saved;
+  if (!shortcuts.length) return JSON.stringify({ id, revision, name });
   return JSON.stringify({
     id,
     revision,
     name,
-    shortcut,
-    note: 'The desktop app registers the shortcut. If another application already uses it, Settings > Commands marks it unavailable.',
+    shortcuts: shortcutResult(shortcuts),
+    note: 'The desktop app registers each shortcut that has keys. If another application already uses a combination, Settings > Commands marks that shortcut unavailable.',
   });
 }
 
@@ -177,21 +172,24 @@ async function save(store: CommandStore, call: SaveCall, approve: ApproveSave) {
   if (!call.commandId) {
     if (expected !== null)
       throw new Error('A new command has no revision yet. Omit expectedRevision.');
-    const next = CommandStore.compose(call.fields);
-    await store.assertShortcutFree(next);
+    const draft = { ...call.fields, shortcuts: mergeShortcuts([], call.fields.shortcuts) };
+    const next = CommandStore.compose(draft);
+    await store.assertShortcutsFree(next);
     await approve({ title: `Create the command "${next.name}"?`, detail: createDetail(next) });
-    return store.create({ ...call.fields, id: next.id });
+    return store.create({ ...draft, id: next.id });
   }
   const previous = store.get(call.commandId);
   if (expected !== previous.revision)
     throw new Error(
       'This command changed. Read the latest revision, then apply your change again.',
     );
-  const next = withCanonicalShortcut(
-    parse(ServiceCommandFullSchema, { ...previous, ...call.fields }),
-  );
+  const next = parse(ServiceCommandFullSchema, {
+    ...previous,
+    ...call.fields,
+    shortcuts: mergeShortcuts(previous.shortcuts, call.fields.shortcuts),
+  });
   validateCommandSave(next);
-  await store.assertShortcutFree(next);
+  await store.assertShortcutsFree(next);
   await approve({
     title: `Update the command "${next.name}"?`,
     detail: updateDetail(previous, next),

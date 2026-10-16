@@ -164,6 +164,9 @@ export const NativeEvents = {
   ),
   /**
    * A command shortcut or selection toolbar command fired; Swift already captured the selection.
+   * `id`: the registration id of a command shortcut (`CommandShortcut.id`), which the page maps to
+   * its command and launches with that shortcut's settings, or a command id (the selection
+   * toolbar and the mini panel), which launches the command with its own.
    * `target`: the text field focused in the app the command ran from (absent when none was found,
    * Accessibility is off, or the panel had the focus), which `text.write` can write the answer into.
    * `arguments`: values picked in the shell's options, over the remembered ones; `intent`: what to

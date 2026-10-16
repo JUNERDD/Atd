@@ -38,7 +38,10 @@
     "deleteDescription": "将删除该命令及其快捷键。已有任务会保留其保存的命令版本。",
     "status": {
       "saved": "命令已保存。"
-    }
+    },
+    "editShortcuts": "编辑快捷键…",
+    "moreShortcuts": "+{{count}}",
+    "moreShortcutsFor": "更多快捷键：{{list}}"
   },
   "editor": {
     "label": "命令编辑器",
@@ -135,7 +138,6 @@
     "sourceClipboard": "剪贴板",
     "sourceScreenshot": "截图",
     "sourceNone": "无文本输入",
-    "shortcut": "快捷键",
     "options": "输入选项",
     "requireText": "要求输入文本",
     "allowFiles": "允许附加文件",
@@ -219,8 +221,61 @@
     "record": "录制命令快捷键",
     "recordShortcut": "录制快捷键",
     "clear": "清除快捷键",
-    "description": "在任意 App 中按下即可运行此命令。",
-    "conflictHint": "如果按下后没有反应，可能是其他 App 占用了这个组合，请换一个。"
+    "conflictHint": "如果按下后没有反应，可能是其他 App 占用了这个组合，请换一个。",
+    "registration": {
+      "unavailable": "这个全局快捷键不可用，请换一个组合。",
+      "invalid": "这个快捷键无法在这台 Mac 上注册，请换一个组合。",
+      "doubleTapAccessibility": "双击快捷键需要辅助功能权限。请在“系统设置 › 隐私与安全性 › 辅助功能”中允许 Atd。",
+      "tooMany": "命令快捷键太多，无法全部注册。请移除不再使用的快捷键。"
+    },
+    "follow": "跟随命令（当前：{{value}}）",
+    "followPlain": "跟随命令",
+    "name": {
+      "usesCommand": "使用命令设置",
+      "value": "{{label}}：{{value}}",
+      "on": "开",
+      "off": "关",
+      "appDefaultModel": "应用默认模型"
+    },
+    "row": {
+      "noKeys": "未设置按键",
+      "sameAsCommand": "与工具栏和运行按钮相同",
+      "ownSettings": "使用自己的设置运行",
+      "recordFor": "为“{{name}}”录制按键",
+      "remove": "移除快捷键",
+      "removeFor": "移除快捷键“{{name}}”",
+      "edit": "快捷键设置",
+      "editFor": "“{{name}}”的快捷键设置"
+    },
+    "list": {
+      "add": "添加快捷键",
+      "limit": "每个命令最多可以有 {{max}} 个快捷键。",
+      "title": "快捷键",
+      "emptyTitle": "还没有快捷键",
+      "emptyDescription": "录制一组按键，即可在任意 App 中运行此命令。"
+    },
+    "page": {
+      "newTitle": "新建快捷键",
+      "editTitle": "编辑快捷键",
+      "subtitle": "{{name}} · 快捷键",
+      "back": "返回命令",
+      "keys": "按键",
+      "keysDescription": "在任意 App 中按下，即可按下方的设置运行此命令。",
+      "name": "名称",
+      "overridesTitle": "用这个快捷键运行时",
+      "overridesDescription": "保持“跟随命令”的设置会随命令一起变化。",
+      "footerNote": "如需不同的指令、输入或工具，请在命令列表中通过该命令的“更多”菜单创建副本。",
+      "done": "完成"
+    },
+    "problem": {
+      "invalidKeys": "这组按键不能用作快捷键，请录制其他组合。",
+      "heldByAction": "“{{action}}”已使用这组按键，请换一个组合。",
+      "heldBySelectionToolbar": "选区工具栏的双击已使用这组按键，请换一个组合。",
+      "heldByCommand": "命令“{{name}}”已使用这组按键，请换一个组合。",
+      "heldBySameCommand": "此命令的快捷键“{{name}}”已使用这组按键，请换一个组合。",
+      "pinnedValue": "{{label}}：此快捷键设置的值已失效，请编辑快捷键另选一个。",
+      "outputUnavailable": "此快捷键的结果作用于选中的文字，但命令已不再读取选中的文字。请编辑快捷键另选结果。"
+    }
   },
   "instruction": {
     "title": "指令",

@@ -382,3 +382,13 @@
 .command-typing-popover [data-slot='item'] {
   border-radius: var(--radius-xl);
 }
+/* "+N" after the row's keys: more shortcuts with keys, listed in its tooltip. It takes its own
+ * pointer above the row's open button, like the recorder. */
+.command-row-shortcut {
+  gap: 4px;
+  align-items: center;
+}
+.command-row-more-shortcuts {
+  flex: none;
+  pointer-events: auto;
+}

@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import {
+  commandShortcut,
   instructionCapabilities,
   instructionReferenceKey,
   MAX_INPUT_CHIPS,
   parse,
   parseInstructionTokens,
+  shortcutRunSettings,
   SubmitTaskRequestSchema,
   type CommandOutput,
   type InputChip,
@@ -41,10 +43,13 @@ import { CommandStore } from './store.js';
  * triggers convert into the same invocation instead of copying the client's launch sequence.
  */
 
-/** Why a saved command could not be launched: it is gone, turned off, or its input is invalid. */
+/**
+ * Why a saved command could not be launched: it is gone, turned off, the shortcut that launched it
+ * is gone, or its input is invalid.
+ */
 export class CommandLaunchError extends Error {
   constructor(
-    readonly code: 'notFound' | 'disabled' | 'invalidInput',
+    readonly code: 'notFound' | 'disabled' | 'shortcutGone' | 'invalidInput',
     message: string,
   ) {
     super(message);
@@ -83,6 +88,11 @@ export interface LaunchCommandRequest {
   /** Where the answer goes for this run only, over the command's saved output. */
   output?: CommandOutput;
   /**
+   * The command shortcut that launched the run; its overrides stand in for the command's output,
+   * model and reasoning level where the request leaves them out. Automations send none.
+   */
+  shortcutId?: string;
+  /**
    * Text around the rendered template, joined to it with blank lines: an automation's context
    * before it, its previous answer and trigger data after it. Plain text that never becomes a chip
    * or stages anything, and counts against the run's input budget. The panel's route sends none.
@@ -95,7 +105,10 @@ export interface LaunchCommandRequest {
  *
  * 1. A repeated `operationId` answers its original run before anything is staged again.
  * 2. The command is the user's own, else an installed plugin's (user commands win, as the command
- *    routes serve them); a missing one is `notFound`, a turned-off one `disabled`.
+ *    routes serve them); a missing one is `notFound`, a turned-off one `disabled`. A run from one
+ *    of its shortcuts sees the command with that shortcut's output, model and reasoning level in
+ *    place of the command's (`launchedAs`); a shortcut the command no longer has is
+ *    `shortcutGone`, so a run never starts with part of a deleted shortcut's settings.
  * 3. The preview (tasks/preview.ts) renders the template with the input and the command's
  *    argument defaults, and resolves the model, thinking level, tools and memory flag as the
  *    submit freezes them. Input the template cannot run with is `invalidInput`.
@@ -122,7 +135,10 @@ export async function launchCommand(
 ): Promise<SubmitTaskResponse> {
   const known = deps.ledger.operation(request.operationId);
   if (known) return { taskId: known.taskId, runId: known.runId, duplicate: true };
-  const command = await savedCommand(deps.paths.root, request.commandId);
+  const command = launchedAs(
+    await savedCommand(deps.paths.root, request.commandId),
+    request.shortcutId,
+  );
   const { snapshot } = await preview(deps, command, request);
   const rendered = snapshot.instructions || request.input.text;
   if (!rendered.trim() && !request.input.files.length)
@@ -188,6 +204,26 @@ async function savedCommand(dataDir: string, id: string): Promise<ServiceCommand
   if (!command.enabled)
     throw new CommandLaunchError('disabled', 'This command is disabled. Enable it first.');
   return command;
+}
+
+/**
+ * The command as a run from its shortcut `shortcutId` sees it: the shortcut's output, model and
+ * reasoning level where it overrides them (`shortcutRunSettings`), so the preview, the frozen
+ * settings and the output instruction all start from them, and the run's own picks still win.
+ * For this run only; it is never saved. Without a shortcut, the command itself.
+ */
+function launchedAs(
+  command: ServiceCommandFull,
+  shortcutId: string | undefined,
+): ServiceCommandFull {
+  if (shortcutId === undefined) return command;
+  const shortcut = commandShortcut(command, shortcutId);
+  if (!shortcut)
+    throw new CommandLaunchError(
+      'shortcutGone',
+      'The shortcut that started this run no longer exists. Try again from another shortcut or the command itself.',
+    );
+  return { ...command, ...shortcutRunSettings(command, shortcut) };
 }
 
 /** The preview of the run; its input problems (TypeError) are `invalidInput`. */

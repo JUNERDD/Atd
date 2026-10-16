@@ -53,12 +53,14 @@ export function withOutputAction(
 
 /**
  * Where the answer of a run of `command` goes as the shell offers it: `value` for this run, the
- * command's saved action as the default it marks, and whether the command reads the selection
+ * saved action as the default it marks (`saved`: the launching shortcut's effective output,
+ * `launchSettings`, else the command's own), and whether the command reads the selection
  * (without it the shell leaves out the actions on the selection).
  */
 export function outputOption(
   command: CommandDefinition,
-  value: CommandOutputAction = command.output.action,
+  saved: CommandOutputAction = command.output.action,
+  value: CommandOutputAction = saved,
 ): CommandOutputOption {
-  return { value, saved: command.output.action, selection: readsSelection(command.input) };
+  return { value, saved, selection: readsSelection(command.input) };
 }

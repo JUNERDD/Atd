@@ -13,6 +13,7 @@ import {
 } from '../../client/settings-contract';
 import { queryClient } from '../../lib/query-client';
 import { useAgent } from '../agent/use-agent';
+import { useShortcutNames } from '../commands/shortcut-names';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useActivationKeysCapture } from './use-activation-keys-capture';
 import { showSettingsSnapshot } from './use-settings';
@@ -79,10 +80,12 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
   const unavailable = !bridge || !snapshot;
   const pending = saving.isPending;
   const commands = useAgent().snapshot?.commands ?? [];
+  const names = useShortcutNames();
 
   /**
    * Why `next` cannot be saved: its `toggle` gesture is a double-tap that a global shortcut or an
-   * enabled command already uses. Null when it is free.
+   * enabled command's shortcut already uses, which the message names (the command, and the
+   * shortcut where the command has more than one). Null when it is free.
    */
   function gestureConflict(next: SelectionToolbarSettings): string | null {
     const tap = selectionToolbarDoubleTap(next);
@@ -99,7 +102,9 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
       ? t('selectionToolbar.activation.errors.heldByAction', {
           action: t(`shortcuts.actions.${holder.action}.label`),
         })
-      : t('selectionToolbar.activation.errors.heldByCommand', { name: holder.name });
+      : t('selectionToolbar.activation.errors.heldByCommand', {
+          name: names.holder(holder, commands),
+        });
   }
 
   // The handlers report failures in place and reset after the try statement (React Compiler).

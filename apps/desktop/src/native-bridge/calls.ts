@@ -23,13 +23,20 @@ export {
 } from './file-calls.ts';
 export type { SaveContent } from './file-calls.ts';
 
-/** Reserved registration ids: the panel toggle and the screenshot; others are command ids. */
+/**
+ * Reserved registration ids: the panel toggle and the screenshot. Every other registration is a
+ * command shortcut registered under its own id (agent-contracts `CommandShortcut.id`, never one
+ * of these or a command id); the page maps it back to its command when `shortcut.command` fires.
+ */
 export const PANEL_SHORTCUT_ID = 'togglePanel';
 export const SCREENSHOT_SHORTCUT_ID = 'captureScreenshot';
 
+/** The most registrations `shortcuts.set` takes: the two above plus the command shortcuts. */
+export const MAX_SHORTCUT_REGISTRATIONS = 256;
+
 export const ShortcutRegistrationSchema = Type.Object(
   {
-    /** `togglePanel`, `captureScreenshot`, or the id of the command the shortcut launches. */
+    /** `togglePanel`, `captureScreenshot`, or the id of a command shortcut (`CommandShortcut.id`). */
     id: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }),
     /** Electron accelerator grammar (`CommandOrControl+Shift+Space`), converted by Swift. */
     accelerator: Type.String({ minLength: 1, maxLength: 100 }),
@@ -132,13 +139,15 @@ export const NativeCalls = {
   'shortcuts.set': {
     params: Type.Object(
       {
-        registrations: Type.Array(ShortcutRegistrationSchema, { maxItems: 256 }),
+        registrations: Type.Array(ShortcutRegistrationSchema, {
+          maxItems: MAX_SHORTCUT_REGISTRATIONS,
+        }),
         selectionWanted: Type.Boolean(),
       },
       { additionalProperties: false },
     ),
     result: Type.Object(
-      { results: Type.Array(ShortcutResultSchema, { maxItems: 256 }) },
+      { results: Type.Array(ShortcutResultSchema, { maxItems: MAX_SHORTCUT_REGISTRATIONS }) },
       { additionalProperties: false },
     ),
   },

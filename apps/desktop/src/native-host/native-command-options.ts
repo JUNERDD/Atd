@@ -1,3 +1,4 @@
+import { shortcutRunSettings } from '@atd/agent-contracts';
 import {
   commandOptions,
   commandValues,
@@ -6,29 +7,42 @@ import {
 import type { CommandDefinition } from '../client/agent/command-schema';
 import { outputOption } from '../client/agent/run-output';
 import type { CallParams, NativeBridge } from '../native-bridge/client';
+import { shortcutRegistrations } from './native-shortcuts';
 
-/** Commands `commandOptions.set` takes. */
+/** Commands `commandOptions.set` takes; registered command shortcuts take as many again. */
 const MAX_OPTION_COMMANDS = 256;
 
 /**
  * The commands whose options the shell offers (its toolbar options menu, the shortcut hold and
  * the HUD's options card): every enabled command, in command-list order, each parameter's option
  * showing the value a run would start from (defaults, then remembered values), and where its
- * answer goes, starting from the command's saved output (a pick is never remembered).
+ * answer goes, starting from the command's saved output (a pick is never remembered). After them,
+ * one entry per command shortcut the shell registers, under the shortcut's id, so its hold gesture
+ * finds it: named after the command and the shortcut's own name, its options starting from the
+ * values the shortcut pins, and its answer from the shortcut's output, else the command's.
  */
 export function commandOptionsParams(
   commands: readonly CommandDefinition[],
 ): CallParams<'commandOptions.set'> {
+  const { registered } = shortcutRegistrations(commands);
   return {
-    commands: commands
-      .filter((command) => command.enabled)
-      .slice(0, MAX_OPTION_COMMANDS)
-      .map((command) => ({
-        id: command.id,
-        name: command.name,
-        options: commandOptions(command, commandValues(command)),
-        output: outputOption(command),
+    commands: [
+      ...commands
+        .filter((command) => command.enabled)
+        .slice(0, MAX_OPTION_COMMANDS)
+        .map((command) => ({
+          id: command.id,
+          name: command.name,
+          options: commandOptions(command, commandValues(command)),
+          output: outputOption(command),
+        })),
+      ...registered.map(({ command, shortcut }) => ({
+        id: shortcut.id,
+        name: shortcut.name ? `${command.name} · ${shortcut.name}` : command.name,
+        options: commandOptions(command, commandValues(command, undefined, shortcut.arguments)),
+        output: outputOption(command, shortcutRunSettings(command, shortcut).output.action),
       })),
+    ],
   };
 }
 

@@ -59,7 +59,7 @@ export function CommandInput({
   const footerRef = useOverlayFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
-  useRememberedArguments(command.id, input.arguments);
+  useRememberedArguments(command.id, input.arguments, prepared.shortcutId);
   const [validate, setValidate] = useState(false);
   // A screenshot command runs with an image only; the field below says so while Run is off.
   const needsScreenshot = missingScreenshot(input);

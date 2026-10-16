@@ -38,7 +38,10 @@
     "deleteDescription": "This removes the command and its shortcut. Existing tasks keep their saved command version.",
     "status": {
       "saved": "Command saved."
-    }
+    },
+    "editShortcuts": "Edit shortcuts…",
+    "moreShortcuts": "+{{count}}",
+    "moreShortcutsFor": "More shortcuts: {{list}}"
   },
   "editor": {
     "label": "Command editor",
@@ -135,7 +138,6 @@
     "sourceClipboard": "Clipboard",
     "sourceScreenshot": "Screenshot",
     "sourceNone": "No text input",
-    "shortcut": "Shortcut",
     "options": "Input options",
     "requireText": "Require text input",
     "allowFiles": "Allow attached files",
@@ -219,8 +221,61 @@
     "record": "Record command shortcut",
     "recordShortcut": "Record shortcut",
     "clear": "Clear shortcut",
-    "description": "Press it in any app to run this command.",
-    "conflictHint": "If it does nothing, another app may hold this combination. Choose a different one."
+    "conflictHint": "If it does nothing, another app may hold this combination. Choose a different one.",
+    "registration": {
+      "unavailable": "This global shortcut is unavailable. Choose another combination.",
+      "invalid": "This shortcut cannot be registered on this Mac. Choose another combination.",
+      "doubleTapAccessibility": "Double-tap shortcuts need Accessibility access. Allow Atd in System Settings › Privacy & Security › Accessibility.",
+      "tooMany": "Too many command shortcuts are set to register them all. Remove a shortcut you no longer use."
+    },
+    "follow": "Follow command (now: {{value}})",
+    "followPlain": "Follow command",
+    "name": {
+      "usesCommand": "Uses command settings",
+      "value": "{{label}}: {{value}}",
+      "on": "On",
+      "off": "Off",
+      "appDefaultModel": "App default model"
+    },
+    "row": {
+      "noKeys": "No keys set",
+      "sameAsCommand": "Same as the toolbar and Run button",
+      "ownSettings": "Runs with its own settings",
+      "recordFor": "Record keys for {{name}}",
+      "remove": "Remove shortcut",
+      "removeFor": "Remove the shortcut {{name}}",
+      "edit": "Shortcut settings",
+      "editFor": "Settings for the shortcut {{name}}"
+    },
+    "list": {
+      "add": "Add shortcut",
+      "limit": "A command can have up to {{max}} shortcuts.",
+      "title": "Shortcuts",
+      "emptyTitle": "No shortcut yet",
+      "emptyDescription": "Record keys to run this command from any app."
+    },
+    "page": {
+      "newTitle": "New shortcut",
+      "editTitle": "Edit shortcut",
+      "subtitle": "{{name}} · Shortcuts",
+      "back": "Back to command",
+      "keys": "Keys",
+      "keysDescription": "Press them in any app to run this command with the settings below.",
+      "name": "Name",
+      "overridesTitle": "When this shortcut runs",
+      "overridesDescription": "Anything left on Follow command changes when the command does.",
+      "footerNote": "To use different instructions, input or tools, duplicate the command from its More menu in the command list.",
+      "done": "Done"
+    },
+    "problem": {
+      "invalidKeys": "These keys can’t be used as a shortcut. Record another combination.",
+      "heldByAction": "“{{action}}” already uses these keys. Choose another combination.",
+      "heldBySelectionToolbar": "The selection toolbar’s double-tap already uses these keys. Choose another combination.",
+      "heldByCommand": "The command “{{name}}” already uses these keys. Choose another combination.",
+      "heldBySameCommand": "This command’s shortcut “{{name}}” already uses these keys. Choose another combination.",
+      "pinnedValue": "{{label}}: the value this shortcut sets isn’t valid anymore. Edit the shortcut to choose another.",
+      "outputUnavailable": "This shortcut’s result works on selected text, which the command no longer reads. Edit the shortcut to choose another result."
+    }
   },
   "instruction": {
     "title": "Instructions",

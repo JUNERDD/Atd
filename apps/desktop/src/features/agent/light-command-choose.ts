@@ -8,7 +8,7 @@ import {
   commandOptions,
   type CommandArguments,
 } from '../../client/agent/command-arguments';
-import { runsAsIs } from '../../client/agent/command-prepare';
+import { launchSettings, runsAsIs } from '../../client/agent/command-prepare';
 import { outputOption, withOutputAction } from '../../client/agent/run-output';
 import {
   actOnProgress,
@@ -45,7 +45,7 @@ export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): 
     options: commandOptions(launch.command, launch.input.arguments),
     // A composed launch's app has no selection, so the card offers no write over or after one.
     output: {
-      ...outputOption(launch.command, launch.output.action),
+      ...outputOption(launch.command, launchSettings(launch).output.action, launch.output.action),
       ...(launch.composed ? { selection: false } : {}),
     },
   };
@@ -115,13 +115,13 @@ function answerChoice(
 /**
  * The options card of `launch` changed a value: the values the launch would now run with are
  * remembered at once as where the command's next run starts, whether the card then runs, edits
- * or closes.
+ * or closes. A launch from a shortcut names it, so the keys it pins keep what was remembered.
  */
 function rememberPicks(launch: LightLaunch, picked: CommandArguments | undefined): void {
   if (!picked) return;
-  const { command, input } = withPicks(launch, picked);
+  const { command, input, shortcutId } = withPicks(launch, picked);
   window.desktop?.agent
-    ?.rememberArguments?.(command.id, input.arguments)
+    ?.rememberArguments?.(command.id, input.arguments, shortcutId)
     .catch((error: unknown) => {
       console.error('The picked command options were not remembered:', error);
     });

@@ -28,7 +28,9 @@ export function fixtureCommands(): CommandDefinition[] {
     'Keep the meaning. Find the right words.',
     'Translate the following material into {{argument.language}}. Preserve meaning and formatting. Return the translation.\n\n{{input}}',
   );
-  translate.shortcut = 'Control+Alt+T';
+  translate.shortcuts = [
+    { id: 'translate-shortcut', accelerator: 'Control+Alt+T', name: '', arguments: {} },
+  ];
   translate.parameters = [
     {
       key: 'language',
@@ -48,7 +50,9 @@ export function fixtureCommands(): CommandDefinition[] {
     'Turn notes into a clear next step.',
     'Extract action items from this material. Group by {{argument.group_by}}. Preserve named owners and dates; mark missing details as unspecified.\n\n{{input}}',
   );
-  extract.shortcut = 'Control+Alt+A';
+  extract.shortcuts = [
+    { id: 'extract-shortcut', accelerator: 'Control+Alt+A', name: '', arguments: {} },
+  ];
   extract.parameters = [
     {
       key: 'group_by',

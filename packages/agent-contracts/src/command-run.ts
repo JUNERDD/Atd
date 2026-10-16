@@ -75,6 +75,13 @@ export const CommandRunRequestSchema = Type.Object(
     output: Type.Optional(CommandOutputSchema),
     /** Starts the new task as a side chat of this conversation (`SubmitTaskRequest.sideChatOf`). */
     sideChatOf: Type.Optional(Identifier),
+    /**
+     * The command shortcut that launched the run. Its overrides stand in for the command's output,
+     * model and reasoning level where the request leaves them out (`shortcutRunSettings`), and the
+     * keys it pins keep their remembered values. 409 when the command has no such shortcut, so a
+     * run never starts with half of a deleted shortcut's settings. Absent for every other launch.
+     */
+    shortcutId: Type.Optional(Identifier),
   },
   { additionalProperties: false },
 );

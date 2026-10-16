@@ -1,4 +1,4 @@
-import { parseAccelerator } from '@atd/agent-contracts';
+import { commandShortcut, isBlankShortcut, parseAccelerator } from '@atd/agent-contracts';
 import i18n from '../i18n';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
@@ -43,7 +43,8 @@ function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
 
 /**
  * The command list as the WebView host keeps it: the service's commands, cached for the page.
- * `errors` holds each command's last shortcut registration or launch failure. The shell reads the
+ * `errors` holds the last failure of each command shortcut's registration (by shortcut id) and of
+ * each command's launch (by command id), as `AgentSnapshot.shortcutErrors`. The shell reads the
  * selection when a summon shows the panel; `capture` only takes what it stashed.
  */
 export class NativeCommands implements CommandCatalog {
@@ -70,10 +71,21 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice.
-   * `overrides`: argument values picked for this launch, over the remembered ones.
+   * `overrides`: argument values picked for this launch, over the remembered ones and those the
+   * launching shortcut `shortcutId` pins. Rejects when the command no longer has that shortcut, so
+   * a launch never runs with the command's settings in place of a deleted shortcut's.
    */
-  prepare(id: string, expectCapture = false, overrides?: ArgumentValues): Promise<PreparedCommand> {
-    return prepareCommand(this.find(id), this, expectCapture, overrides);
+  async prepare(
+    id: string,
+    expectCapture = false,
+    overrides?: ArgumentValues,
+    shortcutId?: string,
+  ): Promise<PreparedCommand> {
+    const command = this.find(id);
+    const shortcut = shortcutId === undefined ? undefined : commandShortcut(command, shortcutId);
+    if (shortcutId !== undefined && !shortcut)
+      throw new Error(i18n.t('input.errors.shortcutDeleted', { ns: 'panel' }));
+    return prepareCommand(command, this, expectCapture, overrides, shortcut);
   }
 
   /**
@@ -131,11 +143,20 @@ export class NativeCommands implements CommandCatalog {
     // service enforces), so only the user's own commands pass the desktop instruction checks.
     const old = this.commands.find((item) => item.id === command.id);
     if (!old?.pluginId) validateCommand(command);
-    // The shell registers command shortcuts globally, so one may be a modifier's double-tap.
-    if (command.shortcut)
-      command.shortcut = parseAccelerator(command.shortcut, true, 'darwin', {
-        allowDoubleTap: true,
-      });
+    // The shell registers command shortcuts globally, so one may be a modifier's double-tap. A
+    // shortcut with no keys, name or overrides has nothing to keep.
+    command.shortcuts = command.shortcuts
+      .filter((shortcut) => !isBlankShortcut(shortcut))
+      .map((shortcut) =>
+        shortcut.accelerator
+          ? {
+              ...shortcut,
+              accelerator: parseAccelerator(shortcut.accelerator, true, 'darwin', {
+                allowDoubleTap: true,
+              }),
+            }
+          : shortcut,
+      );
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);
     // A new command is the last of the user's, ahead of the plugins' as the service lists it.
     const own = this.commands.filter((item) => !item.pluginId);
@@ -168,13 +189,14 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * Remembers `values` as where command `id`'s next run starts, as a run with them would, without
-   * running it: those its parameters accept, a blank text counting as none. Writes go in the
-   * order of the changes, so the last one stays.
+   * running it: those its parameters accept, a blank text counting as none. Values picked on a
+   * launch from shortcut `shortcutId` name it, so the service keeps what was remembered for the
+   * keys it pins. Writes go in the order of the changes, so the last one stays.
    */
-  remember(id: string, values: ArgumentValues): Promise<void> {
+  remember(id: string, values: ArgumentValues, shortcutId?: string): Promise<void> {
     const write = this.remembering.then(async () => {
       const kept = sanitizeArguments(this.find(id), values);
-      const saved = await rememberRemote(this.connection.options(), id, kept);
+      const saved = await rememberRemote(this.connection.options(), id, kept, shortcutId);
       this.commands = this.commands.map((item) => (item.id === saved.id ? saved : item));
       this.changed();
     });
@@ -184,7 +206,8 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * Remembers the choices and toggles `picked` in the shell's options menu for command `id`, over
-   * the values its next run would start from; where the answer goes is never remembered.
+   * the values its next run would start from; where the answer goes is never remembered. The menu
+   * offers the command itself, never one of its shortcuts, so no shortcut's pinned values apply.
    */
   rememberPicks(id: string, picked: CommandArguments): Promise<void> {
     const command = this.find(id);

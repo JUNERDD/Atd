@@ -276,7 +276,8 @@ export async function installNativeHost(
         }
         return requests.handle(request, 'page');
       }, listen),
-      rememberArguments: (commandId, values) => commands.remember(commandId, values),
+      rememberArguments: (commandId, values, shortcutId) =>
+        commands.remember(commandId, values, shortcutId),
       ...(surface === 'panel' ? { light: nativeLightCommand(native, requests) } : {}),
     },
     service: createServiceBridge(
