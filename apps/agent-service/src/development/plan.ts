@@ -77,11 +77,16 @@ export async function planDevelopmentSync(
     const incoming = await CommandStore.load(source.dataDir);
     const current = await CommandStore.load(target.dataDir);
     // Advance revisions so an editor opened before the import cannot overwrite it with stale data.
+    // A command never saved on either side keeps revision 1: a starter at 1 is the one the service
+    // still refreshes for the language (`syncStarterCommands`), so a bump would freeze it.
     const revisions = new Map(
       current.data.commands.map((command) => [command.id, command.revision]),
     );
-    for (const command of incoming.data.commands)
-      command.revision = Math.max(command.revision, revisions.get(command.id) ?? 0) + 1;
+    for (const command of incoming.data.commands) {
+      const held = revisions.get(command.id) ?? 0;
+      if (command.revision === 1 && held <= 1) continue;
+      command.revision = Math.max(command.revision, held) + 1;
+    }
     result.commands = incoming.data.commands.length;
     copies.push({
       label: 'commands.json',
