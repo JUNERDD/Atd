@@ -39,15 +39,18 @@ final class FrozenDesktop {
     guard covered.count > 1 else {
       let id = covered.first?.id ?? geometry.primary(for: selection)?.id
       guard let display = id.flatMap(display(_:)) ?? displays.first else { return nil }
+      let frame = frame(of: display)
       return CaptureBackdrop(
-        image: display.image, scale: display.pixelScale, origin: frame(of: display).origin)
+        image: display.image, scale: display.pixelScale, origin: frame.origin, frames: [frame])
     }
-    let area = covered.map(geometry.frame(of:)).reduce(CGRect.null) { $0.union($1) }
+    let frames = covered.map(geometry.frame(of:))
+    let area = frames.reduce(CGRect.null) { $0.union($1) }
     if let composed, composed.area == area { return composed.backdrop }
     guard let stitch = geometry.stitch(area), let image = draw(stitch)?.makeImage() else {
       return nil
     }
-    let backdrop = CaptureBackdrop(image: image, scale: stitch.scale, origin: area.origin)
+    let backdrop = CaptureBackdrop(
+      image: image, scale: stitch.scale, origin: area.origin, frames: frames)
     composed = (area, backdrop)
     return backdrop
   }

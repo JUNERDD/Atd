@@ -34,6 +34,12 @@ nonisolated struct CaptureBackdrop {
   let image: CGImage
   let scale: CGFloat
   let origin: CGPoint
+  /// The displays the image holds, in desktop points; it is transparent between them, and
+  /// mosaics are drawn only within them so those gaps stay transparent in the export.
+  let frames: [CGRect]
+
+  /// One display's own image, opaque throughout; a composed one may have transparent gaps.
+  var isOpaque: Bool { frames.count == 1 }
 }
 
 /// A window on screen when the session started, front to back. Taken before any overlay

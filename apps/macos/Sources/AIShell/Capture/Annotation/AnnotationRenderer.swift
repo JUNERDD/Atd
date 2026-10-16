@@ -55,9 +55,10 @@ final class AnnotationRenderer {
           let backdrop,
           let (image, area) = self.mosaic.render(
             rect.offsetBy(dx: -backdrop.origin.x, dy: -backdrop.origin.y), style: annotation.style,
-            backdrop: backdrop.image, scale: backdrop.scale)
+            backdrop: backdrop.image, scale: backdrop.scale, opaque: backdrop.isOpaque)
         else { return nil }
-        return (image, area.offsetBy(dx: backdrop.origin.x, dy: backdrop.origin.y), spotlights)
+        let placed = area.offsetBy(dx: backdrop.origin.x, dy: backdrop.origin.y)
+        return (image, placed, backdrop.frames, spotlights)
       }
       context.restoreGState()
     }
@@ -100,11 +101,11 @@ final class AnnotationRenderer {
     context.restoreGState()
   }
 
-  /// `pixelate` answers a mosaic's blocks or blur, the area they cover and the spotlights to
-  /// keep bright over them.
+  /// `pixelate` answers a mosaic's blocks or blur, the area they cover, the displays they may
+  /// paint (``CaptureBackdrop/frames``) and the spotlights to keep bright over them.
   private func draw(
     _ annotation: Annotation, number: Int?, in context: CGContext,
-    pixelate: (CGRect) -> (CGImage, CGRect, [CGRect])?
+    pixelate: (CGRect) -> (CGImage, CGRect, [CGRect], [CGRect])?
   ) {
     let color = annotation.style.color.nsColor.cgColor
     context.setStrokeColor(color)
@@ -149,14 +150,16 @@ final class AnnotationRenderer {
       context.fill(rect)
     case .mosaic(let rect):
       // Without a backdrop (never in practice) the region still reads as redacted.
-      guard let (image, area, spotlights) = pixelate(rect)
+      guard let (image, area, frames, spotlights) = pixelate(rect)
       else {
         context.setFillColor(NSColor.gray.cgColor)
         context.fill(rect)
         return
       }
-      // The image covers whole blocks around the region; only the region shows.
+      // The image covers whole blocks around the region; only the region shows, and none of it
+      // in a gap between displays, which the export keeps transparent.
       context.clip(to: rect)
+      context.clip(to: frames)
       context.interpolationQuality = .none
       Self.drawImage(image, in: area, context: context)
       if !spotlights.isEmpty { Self.dim(area, except: spotlights, in: context) }
