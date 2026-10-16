@@ -110,7 +110,7 @@ final class CaptureOverlayView: NSView {
       let y = top == nil ? edge - size.height : edge
       edge = top == nil ? y - 8 : y + size.height + 8
       return CGRect(
-        x: ((bounds.width - size.width) / 2).rounded(), y: y, width: size.width,
+        x: (bounds.midX - size.width / 2).rounded(), y: y, width: size.width,
         height: size.height)
     }
   }
