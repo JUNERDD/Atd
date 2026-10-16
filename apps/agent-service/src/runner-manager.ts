@@ -20,7 +20,7 @@ import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { loadRunAttachments } from './run-attachments.js';
 import { compactRefused } from './compaction/manual.js';
-import { DrainingError } from './errors.js';
+import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import {
@@ -56,6 +56,7 @@ export class RunnerManager {
   private readonly runners = new Map<string, TaskRunner>();
   private readonly executions = new Map<string, Promise<void>>();
   private draining = false;
+  private dispatchPaused = false;
   private readonly acceptance: RunAcceptance;
   private readonly releases: SessionReleases;
   private readonly searcher: TaskSearch;
@@ -83,6 +84,23 @@ export class RunnerManager {
 
   isDraining(): boolean {
     return this.draining;
+  }
+
+  /** An idle import holds new dispatches; background submissions may queue until it finishes. */
+  pauseForDataImport(): () => void {
+    if (
+      this.draining ||
+      this.dispatchPaused ||
+      this.activeRunCount() ||
+      this.executions.size ||
+      [...this.runners.values()].some((runner) => runner.isCompacting())
+    )
+      throw new ConflictError('Finish active runs before syncing development data.');
+    this.dispatchPaused = true;
+    return () => {
+      this.dispatchPaused = false;
+      this.dispatch();
+    };
   }
 
   activeRunCount(): number {
@@ -232,7 +250,7 @@ export class RunnerManager {
   }
 
   dispatch(): void {
-    if (this.draining) return;
+    if (this.draining || this.dispatchPaused) return;
     // A task's runs share one Pi session: only its oldest queued run starts, once no started run
     // is active (queued counts for acceptance, not dispatch) and no manual compaction holds the
     // session. A release still shutting the session down does not hold the run back: it freezes

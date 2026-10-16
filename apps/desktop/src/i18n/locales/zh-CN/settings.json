@@ -816,5 +816,18 @@
       "repository": "源代码",
       "issues": "报告问题"
     }
+  },
+  "developmentSync": {
+    "group": "开发版",
+    "title": "从正式版同步",
+    "description": "设置、命令、个人技能和智能体。",
+    "action": "立即同步",
+    "syncing": "正在同步…",
+    "busy": "请等待正在运行的任务和修改完成，再重新同步。",
+    "unavailable": "请通过 pnpm dev 重启开发服务后再同步。",
+    "failed": "同步失败。请确认已打开过正式版、配置可读取，然后重试。",
+    "success": "已同步 {{commands}} 个命令、{{skills}} 个技能和 {{agents}} 个智能体。",
+    "backup": "备份位置：{{path}}",
+    "keywords": "开发版 dev 同步 导入 正式版 设置 命令 个人 技能 智能体 备份"
   }
 }

@@ -38,6 +38,8 @@ import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
 import { taskStatusCounts } from './task-status.js';
+import { registerDevelopmentRoutes } from './development/routes.js';
+import type { SyncProfile } from './development/plan.js';
 
 export interface ServerDeps {
   config: ServiceConfig;
@@ -53,6 +55,8 @@ export interface ServerDeps {
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
+  /** Enables local configuration imports only for the development CLI. */
+  development?: SyncProfile | undefined;
 }
 
 /**
@@ -157,6 +161,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
   registerStoreInvalidation(app, deps.config.paths, (frame) => hub.invalidate(frame));
+  if (deps.development) registerDevelopmentRoutes(app, deps, deps.development);
 
   app.get('/v1/status', RENDERER_ROUTE, async () => ({
     service: {

@@ -12,6 +12,7 @@ import { createLogger } from './logging.js';
 import { applyLoginShellPath } from './login-shell-path.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
 import { resolveAtdHome, resolveDataDir } from './storage.js';
+import { installedProfile } from './development/plan.js';
 
 const RENDERER_PORT = 5173;
 
@@ -22,6 +23,7 @@ interface Flags {
   tier?: 'manual' | 'auto' | 'always';
   loginShellPath?: boolean;
   yes?: boolean;
+  development?: boolean;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -31,6 +33,7 @@ function parseFlags(argv: string[]): Flags {
     // The value of a valued flag; a flag missing its value falls through to "Unknown argument".
     const value = argv[index + 1];
     if (arg === '--login-shell-path') flags.loginShellPath = true;
+    else if (arg === '--development') flags.development = true;
     else if (arg === '--yes') flags.yes = true;
     else if (!value) throw new Error(`Unknown argument: ${arg}`);
     else {
@@ -55,7 +58,7 @@ function usage(): string {
     '',
     'Usage: node dist/cli.js <command> [flags]',
     '',
-    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier auto] [--login-shell-path]',
+    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier auto] [--login-shell-path] [--development]',
     '  status [--dataDir <dir>]',
     '  stop [--dataDir <dir>]',
     '  approve mcp <serverId> [--dataDir <dir>] [--yes]',
@@ -118,7 +121,11 @@ async function serve(flags: Flags): Promise<void> {
         process.exit(1);
       });
   };
-  const handle = await createService(config, { tier: flags.tier, onShutdownRequest: shutdown });
+  const handle = await createService(config, {
+    tier: flags.tier,
+    development: flags.development ? installedProfile() : undefined,
+    onShutdownRequest: shutdown,
+  });
   const { url, port } = await handle.start();
   log.info('Agent service ready.', {
     serviceId: config.serviceId,

@@ -33,10 +33,12 @@ function settingsFile(root: string): string {
 }
 
 /** The stored settings file, or null while no client has written one. */
-async function readStored(file: string): Promise<Static<typeof SettingsFileSchema> | null> {
+export async function readStoredSettings(
+  root: string,
+): Promise<Static<typeof SettingsFileSchema> | null> {
   let raw: string;
   try {
-    raw = await readFile(file, 'utf8');
+    raw = await readFile(settingsFile(root), 'utf8');
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw error;
@@ -206,7 +208,7 @@ export class SettingsStore {
   /** `defaultTier` is the operator's `--tier`, the new-task tier until a client picks one. */
   static async load(root: string, defaultTier: PermissionTier): Promise<SettingsStore> {
     const file = settingsFile(root);
-    const stored = await readStored(file);
+    const stored = await readStoredSettings(root);
     if (!stored) {
       const settings: UserSettings = {
         language: null,
@@ -236,7 +238,7 @@ export class SettingsStore {
    * instance.
    */
   static async readShortcutHolders(root: string): Promise<ShortcutHolders> {
-    const settings = (await readStored(settingsFile(root)))?.settings;
+    const settings = (await readStoredSettings(root))?.settings;
     return settings
       ? shortcutHolders(settings)
       : { shortcuts: DEFAULT_SHORTCUTS, selectionToolbar: DEFAULT_SELECTION_TOOLBAR };
@@ -244,6 +246,12 @@ export class SettingsStore {
 
   current(): SettingsResponse {
     return structuredClone(this.state);
+  }
+
+  /** The dev import already committed this validated snapshot while route writes were excluded. */
+  acceptImported(snapshot: SettingsResponse): void {
+    this.state = structuredClone(snapshot);
+    setUserShellAllowlist(snapshot.settings.shellAllowlist);
   }
 
   /** Tier a task created now freezes. */

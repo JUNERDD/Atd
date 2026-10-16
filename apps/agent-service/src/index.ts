@@ -26,6 +26,7 @@ import { effectiveLanguage } from './settings/language.js';
 import { SettingsStore } from './settings/store.js';
 import { SystemActivity } from './system-activity.js';
 import type { RunnerContext } from './task-runner.js';
+import type { SyncProfile } from './development/plan.js';
 
 export type { ServiceConfig } from './config.js';
 export type { RecoveryReport } from './recovery.js';
@@ -63,6 +64,8 @@ export async function createService(
   options: {
     /** The CLI's `--tier` flag, passed through when given. */
     tier?: PermissionTier | undefined;
+    /** Explicit development CLI capability; packaged app launchers leave it off. */
+    development?: SyncProfile | undefined;
     /**
      * Answers `POST /v1/admin/shutdown` once the reply is out. Only the process
      * host may exit, so the CLI passes the stop-then-exit handler its signals
@@ -130,6 +133,7 @@ export async function createService(
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
     config,
+    development: options.development,
     ledger,
     events,
     confirms,

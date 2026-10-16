@@ -818,5 +818,18 @@
       "repository": "Source code",
       "issues": "Report an issue"
     }
+  },
+  "developmentSync": {
+    "group": "Development",
+    "title": "Sync from the installed app",
+    "description": "Settings, commands, Personal skills and agents.",
+    "action": "Sync now",
+    "syncing": "Syncing…",
+    "busy": "Finish active tasks and pending changes, then sync again.",
+    "unavailable": "Restart the development service with pnpm dev to enable syncing.",
+    "failed": "Could not sync. Check that the installed app has been opened and its configuration is readable, then try again.",
+    "success": "Sync complete. Commands: {{commands}} · Skills: {{skills}} · Agents: {{agents}}.",
+    "backup": "Backup: {{path}}",
+    "keywords": "development dev sync import installed production settings commands personal skills agents backup"
   }
 }

@@ -16,6 +16,7 @@ export function createServiceBridge(
     startLocal: (dataDir, port) =>
       invoke({ action: 'startLocal', dataDir, ...(port !== undefined ? { port } : {}) }),
     skills: () => invoke({ action: 'skills' }),
+    syncDevelopment: () => invoke({ action: 'syncDevelopment' }),
     skill: (name) => invoke({ action: 'skillsGet', name }),
     skillFile: (name, path) => invoke({ action: 'skillsFile', name, path }),
     setSkillEnabled: (name, enabled) => invoke({ action: 'skillsSetEnabled', name, enabled }),

@@ -7,6 +7,7 @@ import {
   SubagentNameSchema,
   SubagentPermissionsSchema,
   type SubagentPermissions,
+  type DevelopmentSyncResponse,
 } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { McpApprovalRequestSchema, type ServiceMcpApprovalBridge } from './mcp-approval-requests';
@@ -89,6 +90,7 @@ const McpUpsertFieldsSchema = Type.Object({
 export type McpUpsertInput = Static<typeof McpUpsertFieldsSchema>;
 
 export const ServiceRequestSchema = Type.Union([
+  Type.Object({ action: Type.Literal('syncDevelopment') }),
   Type.Object({ action: Type.Literal('status') }),
   Type.Object({
     action: Type.Literal('connect'),
@@ -182,6 +184,7 @@ export type ServiceEvent =
   | { type: 'notice'; text: string; kind: 'info' | 'warning' | 'error' };
 
 export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBridge {
+  syncDevelopment: () => Promise<DevelopmentSyncResponse>;
   status: () => Promise<ServiceStatusView>;
   connect: (dataDir: string) => Promise<ServiceStatusView>;
   disconnect: () => Promise<ServiceStatusView>;

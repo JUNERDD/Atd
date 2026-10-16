@@ -55,6 +55,18 @@ export const SECTION_KEYWORDS = {
  * `data-settings-anchor`; entries of pages without markers open the section overview.
  */
 export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
+  ...(import.meta.env.DEV
+    ? [
+        {
+          id: 'development-sync',
+          section: 'general',
+          anchor: 'development-sync',
+          label: 'developmentSync.title',
+          description: 'developmentSync.description',
+          keywords: 'developmentSync.keywords',
+        } satisfies SettingsSearchEntry,
+      ]
+    : []),
   ...(
     [
       'togglePanel',
