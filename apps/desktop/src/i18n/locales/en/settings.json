@@ -86,7 +86,11 @@
       "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
-      "checkForUpdates": "update updates upgrade new version latest sparkle download install"
+      "checkForUpdates": "update updates upgrade new version latest sparkle download install",
+      "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
+      "notificationsAttention": "notification notifications notify alert banner approval approve confirm confirmation question answer input waiting needs attention",
+      "notificationsSound": "notification notifications sound audio chime ding beep mute silent quiet",
+      "notificationsPreviews": "notification notifications preview previews content text private privacy hide message lock screen banner"
     }
   },
   "providers": {
@@ -231,6 +235,41 @@
       "pick": "The app picker couldn't open. Try again.",
       "limit": "Exclude at most {{max}} apps.",
       "accessibility": "System Settings couldn't open. Open Privacy & Security › Accessibility yourself."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "finished": {
+      "title": "When a task finishes",
+      "description": "Choose when a task that finished or failed sends a notification.",
+      "label": "When a task finishes",
+      "modes": {
+        "never": "Never",
+        "whenAway": "When I’m not looking",
+        "always": "Always"
+      }
+    },
+    "attention": {
+      "title": "When a task needs my approval or answer",
+      "description": "Notify me about a question or approval that is waiting, unless I’m looking at that task."
+    },
+    "sound": {
+      "title": "Play a sound",
+      "description": "Use the default notification sound. Automation notifications follow it too."
+    },
+    "previews": {
+      "title": "Show message previews",
+      "description": "Show the question, answer, or error in the notification, with buttons to answer a question or decline an action. When off, it shows only the task or automation name, and you answer in Atd. Automation notifications follow it too."
+    },
+    "denied": {
+      "title": "Notifications are turned off",
+      "description": "Allow notifications for Atd in System Settings to hear about your tasks and automations.",
+      "open": "Open System Settings"
+    },
+    "errors": {
+      "save": "The notification setting could not be saved.",
+      "load": "The notification settings could not be loaded.",
+      "openSystemSettings": "System Settings could not be opened."
     }
   },
   "shortcuts": {

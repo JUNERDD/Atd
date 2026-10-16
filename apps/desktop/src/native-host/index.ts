@@ -30,6 +30,7 @@ import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativeFolders } from './native-folders';
 import { nativeMiniPanel } from './native-mini-panel';
+import { nativeNotifications } from './native-notifications';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
@@ -267,6 +268,7 @@ export async function installNativeHost(
     about: nativeAbout(native),
     apps,
     automations: nativeAutomations(connection, native, messages),
+    notifications: nativeNotifications(native, surface),
     agent: {
       ...createAgentBridge(async (request) => {
         // Only the panel receives `launch` events, so the other windows hand their launches over.

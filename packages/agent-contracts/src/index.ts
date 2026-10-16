@@ -56,5 +56,6 @@ export * from './automation-actions.js';
 export * from './automation-triggers.js';
 export * from './automations.js';
 export * from './automation-notices.js';
+export * from './task-notices.js';
 export * from './system-activity.js';
 export * from './development.js';

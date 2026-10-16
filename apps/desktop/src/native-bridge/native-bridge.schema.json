@@ -52,6 +52,9 @@
       "commandProgress.hide",
       "commandOptions.set",
       "app.about",
+      "notifications.state",
+      "notifications.set",
+      "notifications.openSystemSettings",
       "approval.request",
       "toolbar.set",
       "accessibility.request",
@@ -70,6 +73,7 @@
       "socket.send",
       "update.check",
       "update.install",
+      "task.shown",
       "socket.close",
       "userApp.pinDrag"
     ],
@@ -1968,6 +1972,104 @@
             },
             "method": {
               "type": "string",
+              "const": "notifications.state"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "notifications.set"
+            },
+            "params": {
+              "type": "object",
+              "properties": {
+                "finished": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "never"
+                    },
+                    {
+                      "type": "string",
+                      "const": "whenAway"
+                    },
+                    {
+                      "type": "string",
+                      "const": "always"
+                    }
+                  ]
+                },
+                "attention": {
+                  "type": "boolean"
+                },
+                "sound": {
+                  "type": "boolean"
+                },
+                "previews": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "notifications.openSystemSettings"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "approval.request"
             },
             "params": {
@@ -2548,6 +2650,41 @@
             "params": {
               "type": "object",
               "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "task.shown"
+            },
+            "params": {
+              "type": "object",
+              "required": ["taskId"],
+              "properties": {
+                "taskId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[a-zA-Z0-9_-]+$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -5914,6 +6051,162 @@
       },
       "additionalProperties": false
     },
+    "NotificationsStateParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "NotificationsStateResult": {
+      "type": "object",
+      "required": ["preferences", "permission"],
+      "properties": {
+        "preferences": {
+          "type": "object",
+          "required": ["finished", "attention", "sound", "previews"],
+          "properties": {
+            "finished": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "never"
+                },
+                {
+                  "type": "string",
+                  "const": "whenAway"
+                },
+                {
+                  "type": "string",
+                  "const": "always"
+                }
+              ]
+            },
+            "attention": {
+              "type": "boolean"
+            },
+            "sound": {
+              "type": "boolean"
+            },
+            "previews": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "permission": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "notDetermined"
+            },
+            {
+              "type": "string",
+              "const": "denied"
+            },
+            {
+              "type": "string",
+              "const": "allowed"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationsSetParams": {
+      "type": "object",
+      "properties": {
+        "finished": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "never"
+            },
+            {
+              "type": "string",
+              "const": "whenAway"
+            },
+            {
+              "type": "string",
+              "const": "always"
+            }
+          ]
+        },
+        "attention": {
+          "type": "boolean"
+        },
+        "sound": {
+          "type": "boolean"
+        },
+        "previews": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationsSetResult": {
+      "type": "object",
+      "required": ["preferences", "permission"],
+      "properties": {
+        "preferences": {
+          "type": "object",
+          "required": ["finished", "attention", "sound", "previews"],
+          "properties": {
+            "finished": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "never"
+                },
+                {
+                  "type": "string",
+                  "const": "whenAway"
+                },
+                {
+                  "type": "string",
+                  "const": "always"
+                }
+              ]
+            },
+            "attention": {
+              "type": "boolean"
+            },
+            "sound": {
+              "type": "boolean"
+            },
+            "previews": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "permission": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "notDetermined"
+            },
+            {
+              "type": "string",
+              "const": "denied"
+            },
+            {
+              "type": "string",
+              "const": "allowed"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationsOpenSystemSettingsParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "NotificationsOpenSystemSettingsResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "ApprovalRequestParams": {
       "type": "object",
       "required": ["kind", "serverId"],
@@ -6340,6 +6633,26 @@
     "UpdateInstallPost": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "TaskShownPost": {
+      "type": "object",
+      "required": ["taskId"],
+      "properties": {
+        "taskId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "SocketClosePost": {

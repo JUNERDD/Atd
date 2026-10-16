@@ -272,7 +272,8 @@
       "yesterday": "Yesterday",
       "previous7Days": "Previous 7 Days",
       "previous30Days": "Previous 30 Days"
-    }
+    },
+    "needsAttention": "Needs your attention"
   },
   "transcript": {
     "footer": {

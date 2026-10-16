@@ -60,13 +60,15 @@ const SHELL_APP_PATHS = new Set([
 ]);
 
 /**
- * Automation notices (decision D5): the shell pulls and acknowledges them once for all windows,
- * so a page cannot swallow a notification before it is posted. Only the shell reports how long
- * the Mac has been idle, so a page cannot make idle triggers fire.
+ * Automation and task notices: the shell pulls and acknowledges them once for all windows, so a
+ * page cannot swallow a notification before it is posted. Only the shell reports how long the Mac
+ * has been idle, so a page cannot make idle triggers fire.
  */
 const SHELL_AUTOMATION_PATHS = new Set([
   '/v1/automation-notices',
   '/v1/automation-notices/ack',
+  '/v1/task-notices',
+  '/v1/task-notices/ack',
   '/v1/system-activity',
 ]);
 
@@ -123,6 +125,8 @@ test('the route manifest classifies every route the service serves', async () =>
     'GET /v1/automation-notices',
     'POST /v1/automation-notices/ack',
     'POST /v1/system-activity',
+    'GET /v1/task-notices',
+    'POST /v1/task-notices/ack',
     ...[...SHELL_MCP_PATHS].map((pathPattern) =>
       pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
     ),

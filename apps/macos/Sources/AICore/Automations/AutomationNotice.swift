@@ -3,7 +3,7 @@
 /// result, needs attention or failed, or the automation was turned off. The shell posts one
 /// notification per notice and acknowledges it (``AutomationNoticeFeed``). The automation's name
 /// and the summary are user and runtime data, shown as they are and never translated.
-public struct AutomationNotice: Decodable, Equatable, Sendable {
+public struct AutomationNotice: Decodable, Equatable, Identifiable, Sendable {
   public enum Kind: String, Decodable, Equatable, Sendable {
     /// A run has a result to read.
     case delivered

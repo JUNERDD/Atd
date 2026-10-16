@@ -7,6 +7,7 @@ import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { AppearanceRow } from './appearance-row';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
+import { NotificationSettings } from './notification-settings';
 import { PanelPlacementRow } from './panel-placement-row';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
@@ -192,6 +193,8 @@ export function GeneralSettings({
             </Card>
           </section>
         )}
+        {/* Task notifications are the shell's, so the group needs its bridge. */}
+        {window.desktop?.notifications && <NotificationSettings />}
         {/* The toolbar over other apps' selected text is the desktop app's, like its window. */}
         {desktopApp && <SelectionToolbarSettings snapshot={snapshot} />}
         {/* Restores the global shortcut as well as the in-app ones, so it follows every group. */}

@@ -28,6 +28,7 @@ import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, usePanelWindow } from './use-panel-window';
 import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
+import { useTaskShown } from './use-task-shown';
 
 export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
@@ -88,6 +89,8 @@ export function useTaskPanel() {
   });
   // The composer serves one conversation: the side chat's task while it shows one, else the page's.
   const boundTaskId = side.taskId ?? scope;
+  // The shell notifies about every task but the one the person is looking at.
+  useTaskShown(boundTaskId);
   const bound = side.taskId ? side.detail : scope ? current.detail : null;
   const boundRun = bound?.task.runs.at(-1);
   // The command input step on screen: the side chat's, else the page's input view.

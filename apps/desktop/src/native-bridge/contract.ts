@@ -19,6 +19,7 @@ import {
   ShortcutCommandIntentSchema,
 } from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
+import { NativeNotificationPosts } from './notification-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
@@ -108,6 +109,7 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   ...NativeUpdatePosts,
+  ...NativeNotificationPosts,
   'socket.close': Type.Object(
     {
       socketId: Type.String({ minLength: 1, maxLength: 64 }),

@@ -237,6 +237,8 @@ export const InvalidateScopeSchema = Type.Union([
    * (`/v1/automations`, `/v1/automation-notices`).
    */
   Type.Literal('automations'),
+  /** The pending task notices changed (`/v1/task-notices`); only the shell reads them. */
+  Type.Literal('taskNotices'),
 ]);
 export type InvalidateScope = Static<typeof InvalidateScopeSchema>;
 

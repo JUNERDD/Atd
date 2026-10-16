@@ -29,9 +29,10 @@ struct AutomationNoticeTests {
   }
 
   static func notification(_ notice: AutomationNotice, _ language: ShellLanguage = .english)
-    throws -> AutomationNotification
+    throws -> SystemNotification
   {
-    AutomationNotification(notice, text: try McpApprovalDialogTests.text(language))
+    SystemNotification(
+      notice, text: try McpApprovalDialogTests.text(language), previews: true, sound: true)
   }
 
   @Test("Decodes notices as the contract writes them, optional members absent or present")

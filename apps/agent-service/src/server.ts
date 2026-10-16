@@ -37,6 +37,7 @@ import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
+import { registerTaskNotices } from './task-notices/routes.js';
 import { taskStatusCounts } from './task-status.js';
 import { registerDevelopmentRoutes } from './development/routes.js';
 import type { SyncProfile } from './development/plan.js';
@@ -293,6 +294,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
+  registerTaskNotices(app, deps);
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,

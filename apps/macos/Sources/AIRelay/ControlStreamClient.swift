@@ -13,8 +13,8 @@ public protocol CapabilityHandling: AnyObject {
 /// The shell's own stream connection (decisions Q4-4', Q5-A1/A2): the only connection Swift
 /// reconnects itself. On every open it subscribes with no tasks and `status: true`, registers
 /// the five desktop capabilities, and pings inside the capability lease. It decodes only the
-/// control frames (``ControlFrame``), including the `widgets` and `automations` invalidations,
-/// and drops everything else.
+/// control frames (``ControlFrame``), including the `widgets`, `automations` and `taskNotices`
+/// invalidations, and drops everything else.
 public final class ControlStreamClient {
   public enum ConnectionState: Equatable, Sendable {
     /// Trying to connect, and never connected since ``start()``: keep the last known status.
@@ -42,6 +42,8 @@ public final class ControlStreamClient {
   public var onWidgetsInvalidated: (@MainActor () -> Void)?
   /// An automation, its runs or the pending notices changed (`invalidate` scope `automations`).
   public var onAutomationsInvalidated: (@MainActor () -> Void)?
+  /// The service queued a task notice (`invalidate` scope `taskNotices`).
+  public var onTaskNoticesInvalidated: (@MainActor () -> Void)?
   /// Why the service is unavailable while ``state`` is ``ConnectionState/disconnected``.
   public private(set) var unavailable: ServiceUnavailable?
 
@@ -178,6 +180,8 @@ public final class ControlStreamClient {
       onWidgetsInvalidated?()
     case .frame(.automationsInvalidated):
       onAutomationsInvalidated?()
+    case .frame(.taskNoticesInvalidated):
+      onTaskNoticesInvalidated?()
     case .frame(.pong), .ignored:
       break
     case .frame(.error(let message)):

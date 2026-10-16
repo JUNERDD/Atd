@@ -24,7 +24,7 @@ private final class FakeCenter: UserNotificationCenter {
     return answer == .authorized
   }
 
-  func add(_ notification: AutomationNotification) async throws {
+  func add(_ notification: SystemNotification) async throws {
     added.append(notification.identifier)
   }
 }
@@ -38,8 +38,10 @@ struct AutomationNotifierTests {
       taskId: "task_1", summary: nil, declined: nil, createdAt: "2026-10-06T08:00:00.000Z")
   }
 
-  private func notifier(_ center: FakeCenter) -> AutomationNotifier {
-    AutomationNotifier(center: center) { ShellText(language: .english) { $0.rawValue } }
+  private func notifier(_ center: FakeCenter) -> ShellNotifier {
+    ShellNotifier(
+      center: center, preferences: { .defaults },
+      text: { ShellText(language: .english) { $0.rawValue } })
   }
 
   @Test("Asks for permission on the first notice, not before, then posts")

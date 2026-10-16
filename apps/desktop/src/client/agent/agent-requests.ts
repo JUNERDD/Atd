@@ -162,10 +162,11 @@ export class AgentRequests<S> {
         await this.tasks.onInvalidate(frame);
         return;
       // The native host reloads these itself (extensions, settings, providers, apps and
-      // automations); no page shows widgets.
+      // automations); no page shows widgets, and only the shell reads task notices.
       case 'apps':
       case 'automations':
       case 'widgets':
+      case 'taskNotices':
       case 'extensions':
       case 'providers':
       case 'settings':

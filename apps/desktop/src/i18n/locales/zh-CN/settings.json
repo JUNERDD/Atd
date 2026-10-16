@@ -86,7 +86,11 @@
       "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
-      "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装"
+      "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
+      "notificationsFinished": "通知 提醒 横幅 完成 结束 失败 出错 系统 离开 没在看 notification notify finished failed",
+      "notificationsAttention": "通知 提醒 横幅 批准 审批 确认 问题 回答 输入 等待 需要 notification approval question",
+      "notificationsSound": "通知 提示音 声音 铃声 静音 notification sound",
+      "notificationsPreviews": "通知 预览 内容 文字 隐私 隐藏 消息 锁屏 横幅 notification preview privacy"
     }
   },
   "providers": {
@@ -231,6 +235,41 @@
       "pick": "无法打开 App 选择器，请重试。",
       "limit": "最多排除 {{max}} 个 App。",
       "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 辅助功能”。"
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "finished": {
+      "title": "任务完成时",
+      "description": "选择任务完成或失败时是否发送通知。",
+      "label": "任务完成时的通知方式",
+      "modes": {
+        "never": "从不",
+        "whenAway": "我没在看时",
+        "always": "始终"
+      }
+    },
+    "attention": {
+      "title": "任务需要我批准或回答时",
+      "description": "有问题或审批在等你时通知你，除非你正在查看该任务。"
+    },
+    "sound": {
+      "title": "播放提示音",
+      "description": "使用默认的通知提示音，自动化的通知同样适用。"
+    },
+    "previews": {
+      "title": "显示消息预览",
+      "description": "在通知中显示问题、回答或错误内容，并可直接回答问题或拒绝操作；关闭后只显示任务或自动化的名称，需在 Atd 中作答。自动化的通知同样适用。"
+    },
+    "denied": {
+      "title": "通知已关闭",
+      "description": "请在系统设置中允许 Atd 发送通知，才能收到任务和自动化的提醒。",
+      "open": "打开系统设置"
+    },
+    "errors": {
+      "save": "无法保存通知设置。",
+      "load": "无法读取通知设置。",
+      "openSystemSettings": "无法打开系统设置。"
     }
   },
   "shortcuts": {

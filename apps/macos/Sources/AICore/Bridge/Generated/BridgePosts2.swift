@@ -58,6 +58,31 @@ public typealias UpdateCheckPost = NativeEmpty
 /// Params of the `update.install` post.
 public typealias UpdateInstallPost = NativeEmpty
 
+/// Params of the `task.shown` post.
+public struct TaskShownPost: Codable, Equatable, Sendable {
+  public let taskId: String?
+
+  public init(taskId: String?) {
+    self.taskId = taskId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    taskId = try container.nullable(.taskId) {
+      try container.string($0, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(taskId, forKey: .taskId)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case taskId
+  }
+}
+
 /// Params of the `socket.close` post.
 public struct SocketClosePost: Codable, Equatable, Sendable {
   public let socketId: String
