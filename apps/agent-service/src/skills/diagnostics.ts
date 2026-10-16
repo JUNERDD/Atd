@@ -65,6 +65,22 @@ export function mapPiDiagnostics(diagnostics: ResourceDiagnostic[]): SkillDiagno
 }
 
 /**
+ * The Pi loader diagnostics a host skill catalog reports: every same-name collision, and the
+ * problems of files that did not load as a skill. Pi also warns about skills it still loads, such
+ * as names outside the Agent Skills rule; the catalog applies the service's own rules to those
+ * (`isItemName`) and reports what it cannot list, so Pi's warnings would flag skills it accepts.
+ */
+export function loaderDiagnostics(loaded: {
+  skills: readonly { filePath: string }[];
+  diagnostics: ResourceDiagnostic[];
+}): SkillDiagnostic[] {
+  const loadedFiles = new Set(loaded.skills.map((skill) => skill.filePath));
+  return mapPiDiagnostics(loaded.diagnostics).filter(
+    (item) => item.code === 'same_name' || item.path === undefined || !loadedFiles.has(item.path),
+  );
+}
+
+/**
  * Same-name collision across installed revisions: the winner keeps serving
  * the run, the loser is reported and never silently merged.
  */

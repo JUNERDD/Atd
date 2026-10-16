@@ -78,18 +78,23 @@
   min-inline-size: 0;
 }
 
-/* The keys, then the notes under them: the first launch, and what the preview builds are. */
+/* The keys, one per chip family and equal in weight, then the notes: which chip a Mac has, and the
+   first launch. The keys share a row while it holds both and stack, each as wide as the column,
+   when it doesn't. */
 .download__actions {
   display: grid;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* The stable key leads; the preview keys follow it on the row while it holds them. On a narrow
-   screen they stack, each as wide as the column. */
 .download__keys {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 16px;
+  gap: 16px;
+}
+
+.download__key {
+  display: flex;
+  flex: 1 1 auto;
 }
 
 .download__cta {
@@ -98,7 +103,7 @@
 }
 
 @media (width >= 700px) {
-  .download__cta {
+  .download__key {
     flex-grow: 0;
   }
 }
@@ -109,7 +114,7 @@
 }
 
 .download__note {
-  max-inline-size: 36rem;
+  max-inline-size: 30rem;
   text-wrap: pretty;
 }
 

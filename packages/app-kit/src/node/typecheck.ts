@@ -53,7 +53,9 @@ export interface TypecheckResult {
 const TSCONFIG = {
   compilerOptions: {
     target: 'ES2022',
-    lib: ['ES2025', 'DOM', 'DOM.Iterable'],
+    // One program covers the browser and the backend code, so the WebKit 18.0 baseline applies to
+    // all of it (ES2024 plus the Set methods); the Node 24 backend itself does run ES2025.
+    lib: ['ES2024', 'ES2025.Collection', 'DOM', 'DOM.Iterable'],
     module: 'ESNext',
     moduleResolution: 'Bundler',
     jsx: 'react-jsx',

@@ -16,6 +16,8 @@ export interface PageFacts {
  */
 export function structuredData(lang: Lang, siteUrl: string, page: PageFacts): object {
   const home = `${siteUrl}/`;
+  // The oldest system any installer supports; each chip family's own minimum is on the page.
+  const minMacOS = Math.min(...site.downloads.map((download) => Number(download.minMacOS)));
   const url = `${siteUrl}${langPath[lang]}`;
   const ids = {
     website: `${home}#website`,
@@ -59,10 +61,10 @@ export function structuredData(lang: Lang, siteUrl: string, page: PageFacts): ob
         url: home,
         image: page.image,
         applicationCategory: 'UtilitiesApplication',
-        operatingSystem: `macOS ${site.minMacOS} or later`,
-        processorRequirements: site.chip,
+        operatingSystem: `macOS ${minMacOS} or later`,
+        processorRequirements: site.downloads.map((download) => download.chip[lang]).join(', '),
         softwareVersion: site.version,
-        downloadUrl: site.downloadUrl,
+        downloadUrl: site.downloads.map((download) => download.url),
         releaseNotes: site.releasesUrl,
         license: site.licenseUrl,
         isAccessibleForFree: true,

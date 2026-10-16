@@ -6,6 +6,13 @@ import type { MathPlugin } from 'streamdown';
  * chunk resolves, or when it fails to load, a formula reads as its TeX source.
  */
 
+/**
+ * The element the math plugin wraps each display formula (KaTeX's `.katex-display`) in, which the
+ * markdown renders as a horizontal ScrollArea (`markdown.tsx`). It lives here, outside the lazy
+ * chunk, so the renderer names it without loading KaTeX.
+ */
+export const DISPLAY_MATH_TAG = 'display-math-scroll';
+
 let cached: MathPlugin | null = null;
 let pending: Promise<MathPlugin | null> | null = null;
 

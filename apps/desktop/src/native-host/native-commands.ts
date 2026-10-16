@@ -1,4 +1,5 @@
 import { parseAccelerator } from '@atd/agent-contracts';
+import i18n from '../i18n';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
 import { prepareCommand, SelectionMissingError } from '../client/agent/command-prepare';
@@ -24,23 +25,19 @@ import type { NativeConnection } from './native-connection';
 
 type SelectionFailure = Extract<CallResult<'capture'>, { ok: false }>['reason'];
 
-/** The desktop's capture messages, so both hosts explain a failed read the same way. */
-const SELECTION_ERRORS: Record<SelectionFailure, string> = {
-  notTrusted: 'Enable Accessibility: System Settings → Privacy & Security → Accessibility.',
-  noSelection: 'No selected text — select text in another app, then use the command shortcut.',
-  tooLong: 'Selected text exceeds the input limit — select a smaller passage.',
-};
-/** Text the page hands over in place of the selection is held to the same limit as a capture. */
-const PAGE_TEXT_TOO_LONG = 'This text exceeds the input limit — select a smaller passage.';
-/** macOS applies a new Screen Recording grant only to a relaunched app. */
-const SCREENSHOT_NOT_PERMITTED =
-  'Enable Screen Recording for AI: System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen AI.';
+/** Resolve capture notices when used, so they follow the current app language. */
+const SELECTION_ERRORS = {
+  notTrusted: 'input.errors.notTrusted',
+  noSelection: 'input.errors.noSelection',
+  tooLong: 'input.errors.selectionTooLong',
+} as const satisfies Record<SelectionFailure, string>;
 
 /** A capture or edit result as the page's screenshot; null when the user cancelled. */
 function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
   if (result.ok)
     return { file: result.file, context: result.context, capturedAt: result.capturedAt };
-  if (result.reason === 'notPermitted') throw new Error(SCREENSHOT_NOT_PERMITTED);
+  if (result.reason === 'notPermitted')
+    throw new Error(i18n.t('input.errors.screenRecording', { ns: 'panel' }));
   return null;
 }
 
@@ -67,8 +64,7 @@ export class NativeCommands implements CommandCatalog {
 
   find(id: string) {
     const command = this.commands.find((item) => item.id === id);
-    if (!command)
-      throw new Error('This command was deleted. Use its saved version from task history.');
+    if (!command) throw new Error(i18n.t('input.errors.commandDeleted', { ns: 'panel' }));
     return command;
   }
 
@@ -89,7 +85,8 @@ export class NativeCommands implements CommandCatalog {
     text: string,
     overrides?: ArgumentValues,
   ): Promise<PreparedCommand> {
-    if (text.length > MAX_CAPTURE_LENGTH) throw new Error(PAGE_TEXT_TOO_LONG);
+    if (text.length > MAX_CAPTURE_LENGTH)
+      throw new Error(i18n.t('input.errors.textTooLong', { ns: 'panel' }));
     const selection = { text, capturedAt: new Date().toISOString() };
     return prepareCommand(
       this.find(id),
@@ -107,14 +104,14 @@ export class NativeCommands implements CommandCatalog {
     if (source === 'selection') {
       const captured = await this.bridge.call('capture', { source });
       if (captured.ok ? !captured.text.trim() : captured.reason === 'noSelection')
-        throw new SelectionMissingError(SELECTION_ERRORS.noSelection);
-      if (!captured.ok) throw new Error(SELECTION_ERRORS[captured.reason]);
+        throw new SelectionMissingError(i18n.t(SELECTION_ERRORS.noSelection, { ns: 'panel' }));
+      if (!captured.ok) throw new Error(i18n.t(SELECTION_ERRORS[captured.reason], { ns: 'panel' }));
       return { text: captured.text, capturedAt: captured.capturedAt };
     }
     const { text } = await this.bridge.call('clipboard.read', {});
-    if (!text.trim()) throw new Error('The clipboard does not contain text.');
+    if (!text.trim()) throw new Error(i18n.t('input.errors.clipboardEmpty', { ns: 'panel' }));
     if (text.length > MAX_CAPTURE_LENGTH)
-      throw new Error('Clipboard text exceeds the input limit.');
+      throw new Error(i18n.t('input.errors.clipboardTooLong', { ns: 'panel' }));
     return { text, capturedAt: new Date().toISOString() };
   }
 

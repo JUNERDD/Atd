@@ -54,6 +54,35 @@ public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
 /// Result of the `commandOptions.set` call.
 public typealias CommandOptionsSetResult = NativeEmpty
 
+/// Params of the `app.about` call.
+public typealias AppAboutParams = NativeEmpty
+
+/// Result of the `app.about` call.
+public struct AppAboutResult: Codable, Equatable, Sendable {
+  public let version: String
+  public let build: String
+  public let updates: Bool
+
+  public init(version: String, build: String, updates: Bool) {
+    self.version = version
+    self.build = build
+    self.updates = updates
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    version = try container.string(.version, maxLength: 64)
+    build = try container.string(.build, maxLength: 64)
+    updates = try container.boolean(.updates)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case version
+    case build
+    case updates
+  }
+}
+
 /// Params of the `approval.request` call.
 public struct ApprovalRequestParams: Codable, Equatable, Sendable {
   public let serverId: String
@@ -242,12 +271,3 @@ public typealias AccessibilityRequestParams = NativeEmpty
 
 /// Result of the `accessibility.request` call.
 public typealias AccessibilityRequestResult = NativeEmpty
-
-/// Params of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestParams = NativeEmpty
-
-/// Result of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestResult = NativeEmpty
-
-/// Params of the `apps.pick` call.
-public typealias AppsPickParams = NativeEmpty

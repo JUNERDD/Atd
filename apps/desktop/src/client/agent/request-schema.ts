@@ -5,6 +5,7 @@ import {
   MemorySaveRequestSchema,
   MemorySettingsRequestSchema,
   SessionEntryId,
+  TaskSearchQuerySchema,
 } from '@atd/agent-contracts';
 import { CommandSchema, Identifier } from './command-schema';
 import { PermissionAnswerSchema, PermissionTierSchema } from './permission-schema';
@@ -116,6 +117,7 @@ export const AgentRequestSchema = Type.Union([
     instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
   }),
   Type.Object({ action: Type.Literal('contextBreakdown'), taskId: Identifier }),
+  Type.Object({ action: Type.Literal('searchTasks'), search: TaskSearchQuerySchema }),
   Type.Object({
     action: Type.Literal('forkTask'),
     taskId: Identifier,

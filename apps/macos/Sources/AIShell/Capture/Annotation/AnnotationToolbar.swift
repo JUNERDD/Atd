@@ -35,10 +35,11 @@ final class AnnotationToolbar: NSView {
 
   override init(frame: NSRect) {
     let actions = [undoButton, redoButton, cancelButton, copyButton, confirmButton]
-    bar = AnnotationGlassBar(groups: [
-      [grip] + (tools as [NSView]), [undoButton, redoButton],
-      [cancelButton, copyButton, confirmButton],
-    ])
+    bar = AnnotationGlassBar(
+      groups: [
+        [grip] + (tools as [NSView]), [undoButton, redoButton],
+        [cancelButton, copyButton, confirmButton],
+      ], blending: .withinWindow)
     super.init(frame: frame)
     for button in tools + actions { button.target = self }
     addSubview(bar)

@@ -1,7 +1,0 @@
-{
-  "fileAlias": "project",
-  "nodeId": "1:400",
-  "retrieved": "2026-09-09",
-  "status": "historical-reference-only; current icons use lucide-react",
-  "assetNames": ["history.svg", "settings.svg", "close.svg", "plus.svg", "arrow-up.svg"]
-}

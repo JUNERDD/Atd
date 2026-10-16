@@ -262,7 +262,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         // A Personal skill or subagent it saves is recorded for the turn's artifact cards.
         const saves = written === null ? null : await catalogArtifactWrite(written);
         const done = await calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
-        await saves?.record(host.sessions, id);
+        await saves?.record(host.sessions, id, host.dataDir);
         // What an unattended run wrote is audited, so its folder automation skips its own output.
         if (written !== null && name !== 'read' && host.unattended()) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };

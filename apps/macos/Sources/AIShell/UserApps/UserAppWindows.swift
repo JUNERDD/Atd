@@ -117,8 +117,8 @@ final class UserAppWindows {
     windows[appId]?.close()
   }
 
-  /// `userApp.clearData`: closes the app's window, which releases its web view, then removes
-  /// its website data store; with `forget` (a deleted app) also its rule list and frame.
+  /// `userApp.clearData`: closes the app's window, which releases its web view, then clears
+  /// its website data; with `forget` (a deleted app) removes the store, rule list and frame.
   func clearData(appId: String, forget: Bool) async throws(BridgeError) {
     guard UserAppOrigin.isValidAppId(appId) else {
       throw BridgeError(ShellStrings.shared.text(.userAppClearFailed))

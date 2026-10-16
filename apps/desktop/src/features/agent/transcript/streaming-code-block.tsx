@@ -1,33 +1,15 @@
 import { createUnsafeCSSStyleNode, FileStream, wrapUnsafeCSS } from '@pierre/diffs';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useSyncExternalStore,
-  type UIEvent,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, type UIEvent } from 'react';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
+import { useColorScheme, type ColorScheme } from '../../../theme/color-scheme';
 import { CODE_CSS, CodeFile } from './code-block';
 import { CopyButton } from './copy-button';
 import { CodeDownloadButton } from './download-button';
 import { codeSource } from './selection-toolbar/code-sources';
 
-type ThemeType = 'light' | 'dark';
-
 /** Within this many pixels of the bottom the reader still counts as following the stream. */
 const FOLLOW_SLACK = 8;
-
-function subscribeTheme(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-  return () => observer.disconnect();
-}
-
-/** The app's theme, as `CodeFile` reads it: `class="dark"` on the root element. */
-function themeSnapshot(): ThemeType {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-}
 
 /** One `FileStream` and the stream feeding it; `sent` is the text it has been given so far. */
 type Feed = {
@@ -46,7 +28,7 @@ type Feed = {
 function openFeed(
   host: HTMLElement,
   language: string,
-  themeType: ThemeType,
+  themeType: ColorScheme,
   onRender: () => void,
 ): Feed {
   // Live from the stream's start until the renderer cancels it (`cleanUp`, or a failed pipe).
@@ -135,7 +117,7 @@ export function StreamingCodeBlock({
   const following = useRef(true);
   // Where the box was scrolled as the stream's mount left it, until the closed fence takes over.
   const closing = useRef<ScrollSnapshot | null>(null);
-  const themeType = useSyncExternalStore(subscribeTheme, themeSnapshot);
+  const themeType = useColorScheme();
   // A fence's final newline ends its last line, as in `CodeFile`; dropping it keeps each patch a
   // pure append of the text before it.
   const text = contents.replace(/\r?\n$/, '');
@@ -204,13 +186,22 @@ export function StreamingCodeBlock({
 
   return (
     <div {...codeSource({ contents, language })} className={cn('code-block group', className)}>
-      <div ref={viewport} className="code-block-file" onScroll={onScroll}>
+      {/* The bars float over the code, as overlay scrollers do: a lane would leave a strip of
+          the transcript beside the code's own surface. */}
+      <ScrollArea
+        orientation="both"
+        gutter="none"
+        className="code-block-scroll"
+        viewportClassName="max-h-[inherit]"
+        viewportRef={viewport}
+        viewportProps={{ onScroll }}
+      >
         {open ? (
           <div ref={mountStream} />
         ) : (
           <CodeFile contents={contents} language={language} disableWorkerPool />
         )}
-      </div>
+      </ScrollArea>
       <div className="code-block-actions">
         {!open && <CodeDownloadButton contents={contents} language={language} />}
         <CopyButton text={contents} className="static" />

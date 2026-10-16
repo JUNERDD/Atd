@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useSettingsSubpage } from './settings-navigation';
 
 export function SettingsHeading({
@@ -8,6 +9,7 @@ export function SettingsHeading({
   children,
   subpage = false,
   backLabel,
+  scrollDescription = false,
 }: {
   title: string;
   /** A note beside the title, such as a FieldHint whose text shows on hover or focus. */
@@ -21,6 +23,11 @@ export function SettingsHeading({
   subpage?: boolean;
   /** Accessible name of the header's Back while this sub-page is shown. */
   backLabel?: string | undefined;
+  /**
+   * Holds the description in a ScrollArea, for a page that caps a long one (the extension page's
+   * Show more) so it scrolls with the shared bar instead of WebKit's own.
+   */
+  scrollDescription?: boolean;
 }) {
   useSettingsSubpage(subpage ? { title, ...(backLabel === undefined ? {} : { backLabel }) } : null);
   return (
@@ -34,7 +41,17 @@ export function SettingsHeading({
           <h2 title={title}>{title}</h2>
           {titleHint}
         </div>
-        {description && <p>{description}</p>}
+        {description &&
+          (scrollDescription ? (
+            <ScrollArea
+              className="settings-heading-description"
+              viewportClassName="max-h-[inherit]"
+            >
+              <p>{description}</p>
+            </ScrollArea>
+          ) : (
+            <p>{description}</p>
+          ))}
       </div>
       {children && <div className="settings-overview-toolbar">{children}</div>}
     </header>

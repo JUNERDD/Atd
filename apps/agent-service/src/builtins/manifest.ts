@@ -58,21 +58,26 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // steps the request leaves open; saves one model-loadable SKILL.md by default and reports the
   // defaults it assumed, since the write may not ask; and keeps the description's intent within
   // the 250 characters the catalog shows.
-  skill('create-skill', 6, [
+  // Version 7 resolves the Personal catalog from the loaded skill's base directory, so isolated
+  // profiles use their own product home without widening access to the rest of their data dir.
+  skill('create-skill', 7, [
     '52ab561a0217ae8a36d38f325cac6ad50fef2e9a08ebe2b909cf583a49c1f4ae', // v0.1.0
     'd1a926174cf39e889bb828f533cd6e5025753dd5f5b58a907d1298207240a261', // v0.2.0
     '507a3dd5b0aaf1bad22e95b69a725d70f57c4be00dbd1c0517d1705a360a177b', // v0.3.0
     '2140d55c1734d3af7e809a67179880c6d4b202c5ec6911ceebb4219746940945', // v0.4.0
     '291d1d6f98f5267e6363b205e6e4cf27929929830374e1b1420135383b6dbb2f', // v0.7.0
+    'bf8c5d94445d00bc0ea07712ca6be924617c57fad151c7a76960a6865e242bcf', // v0.8.0
   ]),
   // Version 5 drops the subagent model, which runs never apply (children use the parent run's
   // model with reasoning off), asks through ask_user what the subagent may do (its tools) and, when
   // vague, when to delegate to it, and saves without a draft since the write always shows the file.
-  skill('create-subagent', 5, [
+  // Version 6 resolves the Personal agents directory from this skill's active product home.
+  skill('create-subagent', 6, [
     'afcd5e17fcd95c7a24175b9ad23b1d34fa5d7ec91a2ba2535b3708d2f8a18716', // v0.1.0
     '8d375554aef2b10a951ae07c8fa1b08e8ca14a4099fbb160c61e74ccd43217f9', // v0.2.0
     '037b52d1b12f3eb384c20b4613592d4b166fd6cd6ab88ceb656cbfea5e472e5a', // v0.3.0
     'd9b472312c181712db6891c44c99eac33ba131b5f8fa9e65ed333321a510126a', // v0.7.0
+    '8b302d312310a13a717679bf6dec11e4a4a447123ed2b238e5cca9a35b4699a9', // v0.8.0
   ]),
   // Version 4 asks through ask_user only which server to add when the request names a capability
   // and how a remote server signs in, never for commands, URLs or secrets; relies on configure_mcp
@@ -121,8 +126,13 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   ]),
   // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
   // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
-  skill('create-app', 2, [
+  // Version 3 states the WebKit 18.0 baseline: type checking is advisory and covers only ECMAScript
+  // built-ins (fix it in web/ and shared/, ignore the ES2025 class in server/, which runs on Node
+  // 24), DOM and CSS APIs need feature detection, the window material differs between macOS 15 and
+  // 26, and widget symbols must exist on macOS 15.0.
+  skill('create-app', 3, [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
+    'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
   ]),
 ];
 

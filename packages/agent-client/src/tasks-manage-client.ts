@@ -13,6 +13,8 @@ import {
   ReplaceQueueResponseSchema,
   TaskFoldersResponseSchema,
   TaskResponseSchema,
+  TaskSearchQuerySchema,
+  TaskSearchResponseSchema,
   type CompactTaskResponse,
   type ContextBreakdownResponse,
   type DeleteTaskResponse,
@@ -24,6 +26,8 @@ import {
   type ReplaceQueueResponse,
   type TaskFoldersResponse,
   type TaskResponse,
+  type TaskSearchQuery,
+  type TaskSearchResponse,
 } from '@atd/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
 import { authHeaders, type AgentClientOptions } from './types.js';
@@ -107,6 +111,28 @@ export function taskContextBreakdown(
     'GET',
     undefined,
     (json) => parse(ContextBreakdownResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Tasks whose user or assistant messages hold every term of `query.query`, the most recently
+ * updated first, each with the excerpt of its best-matching message.
+ */
+export function searchTasks(
+  options: AgentClientOptions,
+  query: TaskSearchQuery,
+  fetchImpl?: typeof fetch,
+): Promise<TaskSearchResponse> {
+  const { query: text, limit } = parse(TaskSearchQuerySchema, query);
+  const params = new URLSearchParams({ query: text });
+  if (limit !== undefined) params.set('limit', String(limit));
+  return manageRequest(
+    options,
+    `/v1/tasks/search?${params.toString()}`,
+    'GET',
+    undefined,
+    (json) => parse(TaskSearchResponseSchema, json),
     fetchImpl,
   );
 }

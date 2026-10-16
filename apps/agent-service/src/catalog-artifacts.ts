@@ -1,4 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
+import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { parseFrontmatter } from '@earendil-works/pi-coding-agent';
 import { Type, type Static } from 'typebox';
@@ -31,6 +32,17 @@ export function artifactEntryOf(customType: string, data: unknown): ArtifactEntr
 
 /** Item names in the catalogs are at most this long (atd-agents/catalog.ts `MAX_NAME`). */
 const MAX_NAME = 128;
+
+const changes = new EventEmitter();
+
+/** Catalog saves made by file tools have no route response to invalidate open extension views. */
+export function onCatalogArtifactChanged(dataDir: string, listener: () => void): () => void {
+  const key = path.resolve(dataDir);
+  changes.on(key, listener);
+  return () => {
+    changes.off(key, listener);
+  };
+}
 
 /** A catalog file one write or edit is about to change. */
 interface CatalogFile {
@@ -87,7 +99,7 @@ type EntrySink = { appendCustomEntry(customType: string, data?: unknown): string
 
 /** Records the item a successful write saved, under the call's id. */
 export interface CatalogArtifactWrite {
-  record(sessions: EntrySink, toolCallId: string): Promise<void>;
+  record(sessions: EntrySink, toolCallId: string, dataDir: string): Promise<void>;
 }
 
 /**
@@ -98,7 +110,7 @@ export async function catalogArtifactWrite(real: string): Promise<CatalogArtifac
   const file = await catalogFileAt(real);
   if (!file) return null;
   return {
-    record: async (sessions, toolCallId) => {
+    record: async (sessions, toolCallId, dataDir) => {
       const name = await loadedName(real, file.fallback);
       const artifact: ProductArtifact = {
         kind: file.kind,
@@ -107,6 +119,7 @@ export async function catalogArtifactWrite(real: string): Promise<CatalogArtifac
         name,
       };
       sessions.appendCustomEntry(ARTIFACT_ENTRY, { toolCallId, artifact } satisfies ArtifactEntry);
+      changes.emit(path.resolve(dataDir));
     },
   };
 }

@@ -185,7 +185,9 @@ final class SelectionToolbarPanel: NSObject {
       items.append(more)
     }
     for control in items { control.target = self }
-    let bar = AnnotationGlassBar(groups: [[grip] + views], padding: SelectionToolbarLayout.padding)
+    let bar = AnnotationGlassBar(
+      groups: [[grip] + views], blending: .behindWindow,
+      padding: SelectionToolbarLayout.padding)
     bar.onDrag = { [weak self] in self?.drag($0) }
     bar.setAccessibilityElement(true)
     bar.setAccessibilityRole(.toolbar)

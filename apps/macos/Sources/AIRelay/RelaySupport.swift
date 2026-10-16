@@ -41,6 +41,11 @@ nonisolated enum RelayLog {
 final class BoundedWaiters<Value: Sendable> {
   private var waiters: [UUID: CheckedContinuation<Value?, Never>] = [:]
 
+  // Declared, though empty, because Swift 6.2.4's optimizer crashes (EarlyPerfInliner, signal 11)
+  // on the synthesized deinit of a generic main-actor class when the deployment target is below
+  // macOS 26. Remove once the toolchain no longer does.
+  deinit {}
+
   func wait(atMost limit: Duration) async -> Value? {
     let id = UUID()
     return await withCheckedContinuation { continuation in

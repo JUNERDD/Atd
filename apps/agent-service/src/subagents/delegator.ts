@@ -6,10 +6,8 @@ import {
   type ExtensionAPI,
   type ExtensionFactory,
 } from '@earendil-works/pi-coding-agent';
-import { collectPermissionLookups } from '../transcript-blocks.js';
-import { fromServiceBranch } from '../transcript.js';
 import { registerRuntimeAgents, type RuntimeAgent, type RuntimeAgentDefinition } from './agents.js';
-import { childApprovals } from './approvals.js';
+import { childApprovals, parentPermissionLookups } from './approvals.js';
 import { ensureManagedSubagentConfig } from './config.js';
 import {
   nameCollisions,
@@ -296,7 +294,7 @@ function registerParentSession(
         data,
       });
     },
-    parentPermissions: () => collectPermissionLookups(fromServiceBranch(sessions.getBranch())),
+    parentPermissions: parentPermissionLookups(sessions),
   });
   registrations.push(
     preloaded.registerRequired({

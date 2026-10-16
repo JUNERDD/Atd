@@ -17,7 +17,12 @@ import { refreshTrigger, sameTrigger, triggerField } from '../composer-editor/tr
 import type { TriggerState } from '../quick-panel/trigger';
 import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
 import { instructionDocument, instructionText, pastedTokenChips } from './instruction-chips';
-import { instructionTheme } from './instruction-theme';
+import { currentColorScheme, useColorScheme, type ColorScheme } from '../../theme/color-scheme';
+import {
+  instructionAppearance,
+  instructionColorScheme,
+  instructionTheme,
+} from './instruction-theme';
 
 export interface InstructionEditorOptions {
   /** The draft's instructions text, the single source of truth for the editor content. */
@@ -67,6 +72,7 @@ class InstructionEditorHost {
   private appliedVariables: Extension;
   private appliedAria: ComboboxAria | null;
   private appliedErrorId: string | null;
+  private colorScheme: ColorScheme = currentColorScheme();
   private reported: TriggerState | null = null;
   /** The last trigger line, relative to the editor's top; see `triggerRect`. */
   private triggerLine: { top: number; height: number } | null = null;
@@ -98,6 +104,15 @@ class InstructionEditorHost {
   update(options: InstructionEditorOptions) {
     this.options = options;
     if (this.view) this.sync(this.view);
+  }
+
+  /** Follows the page's color scheme without rebuilding the editor. */
+  setColorScheme(scheme: ColorScheme) {
+    if (scheme === this.colorScheme) return;
+    this.colorScheme = scheme;
+    this.view?.dispatch({
+      effects: instructionAppearance.reconfigure(instructionColorScheme(scheme)),
+    });
   }
 
   /**
@@ -161,6 +176,7 @@ class InstructionEditorHost {
         ),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         instructionTheme,
+        instructionAppearance.of(instructionColorScheme(this.colorScheme)),
         EditorView.contentAttributes.of({ 'aria-autocomplete': 'list', spellcheck: 'false' }),
         variables.of(this.appliedVariables),
         labelling.of(ariaExtension(this.appliedAria, this.appliedErrorId)),
@@ -233,6 +249,8 @@ class InstructionEditorHost {
 
 export function useInstructionEditor(options: InstructionEditorOptions) {
   const [host] = useState(() => new InstructionEditorHost(options));
+  const colorScheme = useColorScheme();
   useLayoutEffect(() => host.update(options));
+  useLayoutEffect(() => host.setColorScheme(colorScheme), [host, colorScheme]);
   return host;
 }

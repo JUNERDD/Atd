@@ -44,8 +44,10 @@ export default defineConfig(({ command }) => ({
     watch: { ignored: ['**/.artifacts/**'] },
   },
   build: {
-    // WKWebView still needs prefixes such as `-webkit-user-select`.
-    target: 'safari26',
+    // WebKit 18.0 (macOS 15.0) is the oldest engine the shell hosts. The target only lowers
+    // syntax; built-in APIs are held to the same baseline by `lib` in `tsconfig.json`. WKWebView
+    // still needs prefixes such as `-webkit-user-select`.
+    target: 'safari18',
     outDir: 'dist-native',
   },
   // `CodeHighlightPool` starts its worker as an ES module (`{ type: 'module' }`), so the worker is

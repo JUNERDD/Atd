@@ -22,7 +22,7 @@ const BADGE_VARIANT = { on: 'secondary', off: 'outline', error: 'destructive' } 
 function useDescriptionClamped(page: RefObject<HTMLElement | null>, text: string | undefined) {
   const [clamped, setClamped] = useState(false);
   useLayoutEffect(() => {
-    const paragraph = page.current?.querySelector<HTMLElement>('.settings-section-heading > p');
+    const paragraph = page.current?.querySelector<HTMLElement>('.settings-heading-description p');
     if (!paragraph) return;
     // The observer reports the paragraph's size once on observing it, then on every change.
     const observer = new ResizeObserver(() =>
@@ -95,6 +95,7 @@ export function ExtensionPage({
           ) : null
         }
         description={description}
+        scrollDescription
         subpage
         backLabel={backLabel}
       />

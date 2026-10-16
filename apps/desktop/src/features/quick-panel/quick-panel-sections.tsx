@@ -186,7 +186,7 @@ export function QuickPanelSections({
                         // circles (quick-panel.css), 3px clear of the row's edges, so they never
                         // meet the first row's highlight below; its own full-size hover is off.
                         className={cn(
-                          'relative hover:bg-transparent dark:hover:bg-transparent',
+                          'relative hover:bg-transparent',
                           current ? 'text-foreground' : 'text-muted-foreground',
                         )}
                         onClick={() => onPick(index)}

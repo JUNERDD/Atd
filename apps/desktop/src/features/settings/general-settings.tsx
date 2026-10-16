@@ -5,6 +5,7 @@ import { Button } from '@atd/ui/components/button';
 import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
+import { AppearanceRow } from './appearance-row';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
 import { PanelPlacementRow } from './panel-placement-row';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
@@ -63,6 +64,19 @@ export function GeneralSettings({
     <>
       <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
+        {/* The color scheme is the desktop app's: the shell mirrors it onto its windows. */}
+        {desktopApp && (
+          <section className="settings-shortcut-group" aria-labelledby="settings-appearance-group">
+            <h3 id="settings-appearance-group" className="settings-section-title">
+              {t('shortcuts.groups.appearance')}
+            </h3>
+            <Card size="sm" className="settings-card">
+              <ItemGroup>
+                <AppearanceRow snapshot={snapshot} />
+              </ItemGroup>
+            </Card>
+          </section>
+        )}
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
           <h3 id="settings-global-shortcuts" className="settings-section-title">
             {t('shortcuts.groups.global')}

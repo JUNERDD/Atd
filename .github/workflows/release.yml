@@ -1,51 +1,96 @@
 name: Release
 
-# Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>`
-# with the arm64 dmg of the Release app. The app is signed with the project's self-signed release
-# certificate and not notarized (until Developer ID signing lands), so a downloaded copy is opened
-# once from Privacy & Security. Installed copies update themselves with Sparkle (AppUpdater): each release
-# also publishes `appcast.xml` with the dmg's EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY`
-# secret (the private half of `SUPublicEDKey` in project.yml). That feed names the GitHub asset and
-# serves installs whose `SUFeedURL` is still the latest release's; the mirror job then republishes
-# it on R2, pointing at the verified mirror copy, for the `SUFeedURL` current builds read. A
-# prerelease is never the latest release and is never mirrored, so it is not offered.
+# Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>` with
+# two native builds of the Release app for macOS 15 or later: Atd-<version>-arm64.dmg (Apple
+# silicon, built on macos-26) and Atd-<version>-x64.dmg (Intel, built on macos-26-intel), plus the
+# stable names Atd-arm64.dmg and Atd-x64.dmg. Both are signed with the project's self-signed
+# release certificate and not notarized (until Developer ID signing lands), so a downloaded copy is
+# opened once from Privacy & Security. A macos-15 and a macos-15-intel job check each dmg with
+# verify-app.mjs before anything is signed for Sparkle or published.
+#
+# Installed copies update themselves with Sparkle (AppUpdater). Each release carries one feed per
+# architecture, `appcast.xml` (arm64) and `appcast-x64.xml`, whose enclosures carry the dmg's
+# EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY` secret (the private half of
+# `SUPublicEDKey` in project.yml). Both name the GitHub asset. `appcast.xml` stays the arm64 feed
+# because installs of 0.4.0–0.7.9 read the latest release's `appcast.xml` from GitHub; 0.7.10 and
+# later read the mirror's feeds, which the mirror job republishes on R2 pointing at its verified
+# copies. A prerelease is never the latest release and never enters those feeds, so installed
+# copies are not offered it. After every publish the mirror also moves the website's preview
+# channel (`/rc/` on the mirror) to the newest published release, release candidate or stable.
+#
 # A push that leaves the version as it was builds nothing, even when that version has no release
-# yet. A manual run releases the current version unless its tag exists: use it for a first
-# release without a bump, or to retry a release whose build failed.
+# yet. A manual run on main in the default `release` mode releases the current version unless its
+# tag exists: use it for a first release without a bump, or to retry a release whose build failed.
+# On a `release/` branch the same run publishes only a prerelease version (such as 0.9.0-rc.1),
+# tagged at that branch's commit; stable versions publish only from main. A manual run on any
+# branch can instead use `artifacts` (build, verify and sign both dmgs and feeds into one workflow
+# artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
+# under a throwaway tag that is checked and always deleted).
 on:
   push:
     branches: [main]
     paths: [apps/macos/package.json]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: release publishes from main (prereleases also from release/*); artifacts and rehearsal never publish
+        type: choice
+        options: [release, artifacts, rehearsal]
+        default: release
+      marketing_version:
+        description: artifacts/rehearsal only; shown version such as 0.9.0-rc.3 (default project.yml)
+        type: string
+        required: false
+      build_version:
+        description: artifacts/rehearsal only; CFBundleVersion without '-' such as 0.9.0rc.3
+        type: string
+        required: false
 
 permissions:
   contents: read
 
+# Only a release-mode run on main (including a push) joins the publishing group, so a run on
+# another branch can never displace a queued release; prerelease, artifact and rehearsal runs on
+# another branch queue per branch. The mirror serializes every channel's uploads itself.
 concurrency:
-  group: release
+  group: release-${{ github.ref == 'refs/heads/main' && (inputs.mode || 'release') == 'release' && 'publish' || github.ref }}
   cancel-in-progress: false
 
+# `shell: bash` adds pipefail, so a failing command inside a pipeline fails its step.
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  # The only place that decides the mode. It runs in every mode: a skipped job would skip every
+  # job that needs it, so skipping cannot express a mode.
   version:
-    name: Detect version bump
-    # A manual run from another branch must not tag and publish unreviewed code.
-    if: github.ref == 'refs/heads/main'
+    name: Detect the version and mode
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      release: ${{ steps.version.outputs.release }}
+      mode: ${{ steps.version.outputs.mode }}
+      marketing_version: ${{ steps.version.outputs.marketing_version }}
+      build_version: ${{ steps.version.outputs.build_version }}
+      build: ${{ steps.version.outputs.build }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           # The version before the push is read from `github.event.before`.
           fetch-depth: 0
+          persist-credentials: false
       - id: version
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
+          MODE: ${{ inputs.mode || 'release' }}
+          INPUT_MARKETING_VERSION: ${{ inputs.marketing_version }}
+          INPUT_BUILD_VERSION: ${{ inputs.build_version }}
         run: |
+          output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           version=$(node -p "require('./apps/macos/package.json').version")
-          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          if ! [[ "$version" =~ $semver ]]; then
             echo "::error::apps/macos/package.json version '$version' is not semver."
             exit 1
           fi
@@ -56,52 +101,135 @@ jobs:
             echo "::error::MARKETING_VERSION '$marketing' in apps/macos/project.yml differs from package.json version '$version'."
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          # A push releases only a version bump; other edits to package.json (dependencies,
-          # scripts) do not. An unreadable previous manifest falls through to the tag check.
-          if [ "$EVENT" = push ]; then
-            previous=$(git show "$BEFORE:apps/macos/package.json" 2> /dev/null \
-              | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2> /dev/null \
-              || true)
-            if [ "$previous" = "$version" ]; then
-              echo "The push kept version $version; nothing to release." >> "$GITHUB_STEP_SUMMARY"
-              echo "release=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          fi
-          # --exit-code returns 2 only when the tag is absent; any other failure stops the run.
-          status=0
-          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
-          case $status in
-            0)
-              echo "v$version is already released; nothing to build." >> "$GITHUB_STEP_SUMMARY"
-              echo "release=false" >> "$GITHUB_OUTPUT"
+          case $MODE in
+            release | artifacts | rehearsal) output mode "$MODE" ;;
+            *)
+              echo "::error::Unknown mode '$MODE'."
+              exit 1
               ;;
-            2) echo "release=true" >> "$GITHUB_OUTPUT" ;;
-            *) exit "$status" ;;
           esac
+          if [ "$MODE" = release ]; then
+            # A stable release publishes only reviewed code from main. A release branch may publish
+            # a prerelease, which never becomes the latest release or enters the update feeds.
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              if [[ "$GITHUB_REF" != refs/heads/release/* ]]; then
+                echo "::error::The release mode publishes only from main or a release/ branch; use artifacts or rehearsal on $GITHUB_REF_NAME."
+                exit 1
+              fi
+              if [[ "$version" != *-* ]]; then
+                echo "::error::$GITHUB_REF_NAME can publish only a prerelease such as $version-rc.1; stable $version publishes from main."
+                exit 1
+              fi
+            fi
+            if [ -n "$INPUT_MARKETING_VERSION$INPUT_BUILD_VERSION" ]; then
+              echo "::error::A release takes its version from apps/macos/package.json; version inputs are for artifacts and rehearsal."
+              exit 1
+            fi
+            output marketing_version "$version"
+            # CFBundleVersion must not contain `-`, where Sparkle stops comparing, so a prerelease
+            # builds without it: 0.9.1-rc.1 as 0.9.1rc.1, the form artifacts and rehearsal runs take.
+            # Its identifiers must start with a letter for Sparkle to order it before the release
+            # (0.9.1rc.1 < 0.9.1), where 0.9.1-0.2 would build as 0.9.10.2, a later version.
+            build_version=${version//-/}
+            if ! [[ "$build_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([A-Za-z][0-9A-Za-z]*(\.[0-9A-Za-z]+)*)?$ ]]; then
+              echo "::error::Version '$version' has no build version that sorts before its release; start its prerelease part with a letter, such as -rc.1."
+              exit 1
+            fi
+            output build_version "$build_version"
+            publish=true
+            # A push releases only a version bump; other edits to package.json (dependencies,
+            # scripts) do not. An unreadable previous manifest falls through to the tag check.
+            if [ "$EVENT" = push ]; then
+              previous=$(git show "$BEFORE:apps/macos/package.json" 2> /dev/null \
+                | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2> /dev/null \
+                || true)
+              if [ "$previous" = "$version" ]; then
+                echo "The push kept version $version; nothing to release." >> "$GITHUB_STEP_SUMMARY"
+                publish=false
+              fi
+            fi
+            if [ "$publish" = true ]; then
+              # --exit-code returns 2 only when the tag is absent; any other failure stops the run.
+              status=0
+              git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
+              case $status in
+                0)
+                  echo "v$version is already released; nothing to build." >> "$GITHUB_STEP_SUMMARY"
+                  publish=false
+                  ;;
+                2) ;;
+                *) exit "$status" ;;
+              esac
+            fi
+            output build "$publish"
+            output publish "$publish"
+            exit 0
+          fi
+          # artifacts and rehearsal: the inputs, else project.yml's values. CURRENT_PROJECT_VERSION
+          # is `$(MARKETING_VERSION)` there, which follows the marketing version in effect.
+          marketing_version=${INPUT_MARKETING_VERSION:-$version}
+          project_build=$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p' apps/macos/project.yml | head -n 1)
+          # shellcheck disable=SC2016 # The literal Xcode reference, not a command substitution.
+          if [ "$project_build" = '$(MARKETING_VERSION)' ]; then project_build=$marketing_version; fi
+          build_version=${INPUT_BUILD_VERSION:-$project_build}
+          if ! [[ "$marketing_version" =~ $semver ]]; then
+            echo "::error::marketing_version '$marketing_version' is not semver."
+            exit 1
+          fi
+          # Sparkle ignores everything after `-`, so 0.9.0-rc.1 and 0.9.0-rc.2 would compare equal.
+          if [[ "$build_version" == *-* ]]; then
+            echo "::error::build_version '$build_version' contains '-'; pass one such as 0.9.0rc.3."
+            exit 1
+          fi
+          if ! [[ "$build_version" =~ ^[0-9]+(\.[0-9A-Za-z]+)+$ ]]; then
+            echo "::error::build_version '$build_version' is not a dot-separated version."
+            exit 1
+          fi
+          output marketing_version "$marketing_version"
+          output build_version "$build_version"
+          output build true
+          output publish false
+          echo "$MODE run for $marketing_version (build $build_version); nothing is published." >> "$GITHUB_STEP_SUMMARY"
 
-  release:
-    name: Publish v${{ needs.version.outputs.version }}
+  # One native build per architecture from the same commit, version, bundle ID, signing
+  # certificate and Sparkle key; each runner checks out and installs on its own.
+  build:
+    name: Build ${{ matrix.arch }} ${{ needs.version.outputs.marketing_version }}
     needs: version
-    if: needs.version.outputs.release == 'true'
-    # Pinned like the CI desktop job: the native shell targets macOS 26 and Xcode 26. The app is
-    # arm64 only, so one runner builds the one installer.
-    runs-on: macos-26
-    permissions:
-      contents: write
+    if: needs.version.outputs.build == 'true'
+    strategy:
+      matrix:
+        include:
+          - { arch: arm64, machine: arm64, runner: macos-26 }
+          - { arch: x64, machine: x86_64, runner: macos-26-intel }
+    runs-on: ${{ matrix.runner }}
+    # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
+    # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
+    timeout-minutes: 45
     env:
-      VERSION: ${{ needs.version.outputs.version }}
+      VERSION: ${{ needs.version.outputs.marketing_version }}
+      BUILD_VERSION: ${{ needs.version.outputs.build_version }}
+      # Not ARCH or MACHINE: tools the build runs read those from the environment.
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_MACHINE: ${{ matrix.machine }}
       # The SHA-1 of the self-signed release certificate. It is public: every signed app names it
       # in its designated requirement.
       RELEASE_SIGNING_SHA1: 2CB9D1EA2DA706E7C5B422E6A80AA48638FE83E9
     steps:
+      # build.mjs builds only for the host's native architecture.
+      - name: Check the runner architecture
+        run: |
+          echo "$(uname -m), macOS $(sw_vers -productVersion)"
+          [ "$(uname -m)" = "$RELEASE_MACHINE" ]
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
+      # The project's Xcode, which the macos-26 and macos-26-intel images both carry.
       - name: Select Xcode 26.3
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.3.app
@@ -109,7 +237,7 @@ jobs:
       - name: Install XcodeGen
         run: command -v xcodegen > /dev/null || brew install xcodegen
       # The service's file index is a Rust addon that `bundle` builds through turbo; with no
-      # argument, rustup installs the toolchain rust-toolchain.toml pins.
+      # argument, rustup installs the toolchain rust-toolchain.toml pins for the host.
       - name: Install the Rust toolchain
         run: |
           rustup toolchain install
@@ -118,14 +246,14 @@ jobs:
       # TCC records an Accessibility or Screen Recording grant with the app's designated
       # requirement. An ad hoc build's requirement is its cdhash, so every update dropped the
       # grants; this certificate makes it `identifier "com.junerdd.ai" and certificate leaf =
-      # H"<SHA-1>"`, the same for every release. A different certificate drops every installed
-      # copy's grants once (StaleGrantRecovery asks again), so the step accepts only this one.
-      # `RELEASE_SIGNING_P12` is its base64 PKCS#12, `RELEASE_SIGNING_P12_PASSWORD` the password.
-      # The certificate is public (apps/macos/release-certificate.pem); only its private key is
-      # kept outside the repository, and apps/macos/scripts/restore-release-signing.mjs packs the
-      # two under a new password and sets both secrets again.
-      # codesign finds an identity only in a keychain on the search list; a self-signed
-      # certificate needs no trust settings to sign.
+      # H"<SHA-1>"`, the same for every release and both architectures. A different certificate
+      # drops every installed copy's grants once (StaleGrantRecovery asks again), so the step
+      # accepts only this one. `RELEASE_SIGNING_P12` is its base64 PKCS#12,
+      # `RELEASE_SIGNING_P12_PASSWORD` the password. The certificate is public
+      # (apps/macos/release-certificate.pem); only its private key is kept outside the repository,
+      # and apps/macos/scripts/restore-release-signing.mjs packs the two under a new password and
+      # sets both secrets again. codesign finds an identity only in a keychain on the search list;
+      # a self-signed certificate needs no trust settings to sign.
       - name: Import the release signing certificate
         env:
           RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
@@ -153,19 +281,39 @@ jobs:
           fi
           # project.yml signs with AI_CODE_SIGN_IDENTITY; the hash names an untrusted identity.
           echo "AI_CODE_SIGN_IDENTITY=$RELEASE_SIGNING_SHA1" >> "$GITHUB_ENV"
+      - name: Bundle the service and the renderer
+        run: pnpm --filter @atd/macos bundle
+      # build.mjs maps the architecture, sets the x64 feed URL and overrides the versions. The
+      # build version is passed only when it differs from the marketing version, as a prerelease's
+      # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
       - name: Build the Release app
-        run: pnpm --filter @atd/macos build:release
-      - name: Package the dmg
+        run: |
+          args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION")
+          if [ "$BUILD_VERSION" != "$VERSION" ]; then args+=(--build-version "$BUILD_VERSION"); fi
+          node apps/macos/scripts/build.mjs "${args[@]}"
+      - name: Check the built app
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app
-          # Sparkle compares CFBundleVersion, so the appcast names this version for both.
-          for key in CFBundleShortVersionString CFBundleVersion; do
-            built=$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/Contents/Info.plist")
-            if [ "$built" != "$VERSION" ]; then
-              echo "::error::The built app's $key is $built, not $VERSION."
+          echo "APP=$app" >> "$GITHUB_ENV"
+          check() {
+            built=$(/usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist")
+            if [ "$built" != "$3" ]; then
+              echo "::error::$(basename "$1")'s $2 is $built, not $3."
               exit 1
             fi
+          }
+          # Sparkle compares CFBundleVersion, the feed's sparkle:version; the widget shares it.
+          check "$app" CFBundleShortVersionString "$VERSION"
+          check "$app" CFBundleVersion "$BUILD_VERSION"
+          for appex in "$app"/Contents/PlugIns/*.appex; do
+            check "$appex" CFBundleVersion "$BUILD_VERSION"
           done
+          executable="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          archs=$(lipo -archs "$executable")
+          if [ "$archs" != "$RELEASE_MACHINE" ]; then
+            echo "::error::The main executable holds '$archs', not $RELEASE_MACHINE."
+            exit 1
+          fi
           codesign --verify --deep --strict "$app"
           # Installed copies keep their privacy grants only under this exact requirement.
           leaf=$(printf '%s' "$RELEASE_SIGNING_SHA1" | tr 'A-F' 'a-f')
@@ -175,78 +323,413 @@ jobs:
             echo "::error::The app's designated requirement is '$requirement', not '$expected'."
             exit 1
           fi
-          # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon
-          # positions and the Applications link, written straight into the image's .DS_Store
-          # without driving Finder. build.py corrects its background bookmark before compression;
-          # dmgbuild is pinned by hash in its own virtual environment.
+      # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon positions
+      # and the Applications link, written straight into the image's .DS_Store without driving
+      # Finder. build.py corrects its background bookmark before compression; dmgbuild is pinned
+      # by hash in its own virtual environment. package.mjs names the dmg after the app's version
+      # and its main executable's architecture. Packaging takes under 2 minutes, but hdiutil can
+      # hang silently on the image it attaches or detaches (once for 27 minutes on macos-26-intel;
+      # a rerun passed). dmgbuild retries a detach only when it fails and waits on hdiutil with no
+      # timeout, so the step fails fast here instead.
+      - name: Package the dmg
+        timeout-minutes: 10
+        run: |
           venv="$RUNNER_TEMP/dmgbuild"
           python3 -m venv "$venv"
           "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
-          mkdir dist
-          DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$app" "dist/Atd-$VERSION-arm64.dmg"
-          # Keep the README's latest/download URL stable while Sparkle uses the versioned asset.
-          cp "dist/Atd-$VERSION-arm64.dmg" dist/Atd-arm64.dmg
-          ls -lh dist
-      - name: Write the update feed
+          dmg="Atd-$VERSION-$RELEASE_ARCH.dmg"
+          built=$(DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$APP" dist | tail -n 1)
+          if ! [ "$built" -ef "dist/$dmg" ]; then
+            echo "::error::package.mjs wrote $built, not dist/$dmg."
+            exit 1
+          fi
+          (cd dist && shasum -a 256 "$dmg" > "$dmg.sha256" && cat "$dmg.sha256")
+          ls -l dist
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+          # The dmg is already compressed.
+          compression-level: 0
+          retention-days: 7
+
+  # The macOS 15 runners prove the signed installers run where the oldest supported system runs:
+  # the app is copied out of the read-only image and checked with its own Node.
+  verify:
+    name: Verify ${{ matrix.arch }} on ${{ matrix.runner }}
+    needs: [version, build]
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            machine: arm64
+            runner: macos-15
+            feed: https://downloads.atd.best/appcast.xml
+          - arch: x64
+            machine: x86_64
+            runner: macos-15-intel
+            feed: https://downloads.atd.best/appcast-x64.xml
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ needs.version.outputs.marketing_version }}
+      BUILD_VERSION: ${{ needs.version.outputs.build_version }}
+      DMG: Atd-${{ needs.version.outputs.marketing_version }}-${{ matrix.arch }}.dmg
+      RELEASE_MACHINE: ${{ matrix.machine }}
+    steps:
+      - name: Check the runner architecture
+        run: |
+          echo "$(uname -m), macOS $(sw_vers -productVersion)"
+          [ "$(uname -m)" = "$RELEASE_MACHINE" ]
+      # verify-app.mjs uses Node built-ins and the Command Line Tools only, so no install is needed.
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: dmg
+      - name: Check the dmg's digest
+        working-directory: dmg
+        run: shasum -a 256 -c "$DMG.sha256"
+      # The mount point must not contain a space; the volume name ("Atd <version>") does.
+      - name: Copy the app out of the dmg
+        run: |
+          mount="$RUNNER_TEMP/atd-dmg"
+          app="$RUNNER_TEMP/verify/Atd.app"
+          case "$mount$app" in *' '*)
+            echo "::error::$RUNNER_TEMP contains a space."
+            exit 1
+            ;;
+          esac
+          mkdir -p "$mount" "$(dirname "$app")"
+          hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dmg/$DMG"
+          ditto "$mount/Atd.app" "$app"
+          hdiutil detach "$mount"
+          echo "APP=$app" >> "$GITHUB_ENV"
+      - name: Verify the app
         env:
-          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
-          REPO: ${{ github.repository }}
+          FEED_URL: ${{ matrix.feed }}
+        run: |
+          for pair in "CFBundleShortVersionString=$VERSION" "CFBundleVersion=$BUILD_VERSION"; do
+            built=$(plutil -extract "${pair%%=*}" raw "$APP/Contents/Info.plist")
+            if [ "$built" != "${pair#*=}" ]; then
+              echo "::error::The app's ${pair%%=*} is $built, not ${pair#*=}."
+              exit 1
+            fi
+          done
+          codesign --verify --deep --strict "$APP"
+          key=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)
+          "$APP/Contents/Resources/node/bin/node" apps/macos/scripts/verify-app.mjs app \
+            --app "$APP" \
+            --feed-url "$FEED_URL" \
+            --arm64-feed-url https://downloads.atd.best/appcast.xml \
+            --public-ed-key "$key"
+      # Reuse the verified x64 Release bundle. Only the test driver is compiled here; the app
+      # and its embedded service are neither rebuilt nor re-signed. A failure gates collect.
+      - name: Compile the Intel Release smoke driver
+        if: matrix.arch == 'x64'
+        env:
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          mkdir -p "$ATD_SMOKE_EVIDENCE"
+          xcrun swiftc -swift-version 6 -parse-as-library -target x86_64-apple-macos15.0 \
+            apps/macos/Tests/ReleaseSmoke/AppDriver.swift \
+            -o "$RUNNER_TEMP/atd-smoke-driver" 2>&1 | tee "$ATD_SMOKE_EVIDENCE/driver-build.log"
+      - name: Test Intel Release startup and core functions
+        if: matrix.arch == 'x64'
+        timeout-minutes: 8
+        env:
+          ATD_SMOKE_DRIVER: ${{ runner.temp }}/atd-smoke-driver
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          "$APP/Contents/Resources/node/bin/node" --test --test-reporter=tap \
+            apps/macos/Tests/ReleaseSmoke/harness.test.mjs \
+            apps/macos/Tests/ReleaseSmoke/release-smoke.test.mjs \
+            2>&1 | tee "$ATD_SMOKE_EVIDENCE/tests.tap"
+      - name: Confirm smoke tests preserved the bundle signature
+        if: always() && matrix.arch == 'x64' && env.APP != ''
+        run: codesign --verify --deep --strict "$APP"
+      - name: Upload Intel macOS 15 smoke evidence
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: intel-macos15-smoke-evidence
+          path: ${{ runner.temp }}/intel-macos15-smoke/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
+  # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
+  collect:
+    name: Sign the update feeds for ${{ needs.version.outputs.marketing_version }}
+    needs: [version, verify]
+    runs-on: macos-26
+    env:
+      VERSION: ${{ needs.version.outputs.marketing_version }}
+      BUILD_VERSION: ${{ needs.version.outputs.build_version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: dmg
+      - name: Check the dmgs' digests
+        run: |
+          mkdir dist
+          for arch in arm64 x64; do
+            dmg="Atd-$VERSION-$arch.dmg"
+            (cd dmg && shasum -a 256 -c "$dmg.sha256")
+            mv "dmg/$dmg" dist/
+          done
+          ls -l dist
+      - name: Download Sparkle's sign_update
+        env:
           # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
           SPARKLE: 2.10.0
           SPARKLE_SHA256: c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
         run: |
-          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
-            echo "::error::The SPARKLE_ED_PRIVATE_KEY secret is missing; installed apps would reject an unsigned update."
-            exit 1
-          fi
           tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
           curl -fsSL -o "$tools/sparkle.tar.xz" \
             "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
           echo "$SPARKLE_SHA256  $tools/sparkle.tar.xz" | shasum -a 256 -c -
           tar -xf "$tools/sparkle.tar.xz" -C "$tools"
-          dmg="Atd-$VERSION-arm64.dmg"
-          # Prints the enclosure's `sparkle:edSignature="…" length="…"` attributes.
-          signature=$(printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | "$tools/bin/sign_update" --ed-key-file - "dist/$dmg")
-          cat > dist/appcast.xml <<EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-            <channel>
-              <title>Atd</title>
-              <item>
-                <title>$VERSION</title>
-                <pubDate>$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
-                <sparkle:version>$VERSION</sparkle:version>
-                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
-                <link>https://github.com/$REPO/releases/tag/v$VERSION</link>
-                <enclosure url="https://github.com/$REPO/releases/download/v$VERSION/$dmg" type="application/octet-stream" $signature/>
-              </item>
-            </channel>
-          </rss>
-          EOF
-          cat dist/appcast.xml
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        # Creates the tag at the commit that was built. A prerelease version (1.2.0-beta.1)
-        # is published as a prerelease so it never becomes the latest release.
+          echo "SIGN_UPDATE=$tools/bin/sign_update" >> "$GITHUB_ENV"
+      # The public key the installed apps verify with: project.yml's, and the one each built app
+      # actually carries. feeds.mjs checks every enclosure against all three.
+      - name: Read the public EdDSA keys
         run: |
-          flags=()
-          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "v$VERSION" dist/* \
-            --target "$GITHUB_SHA" \
-            --title "v$VERSION" \
-            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is not signed with an Apple Developer ID and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies of 0.4.0 or later update themselves." \
-            --generate-notes \
-            "${flags[@]}"
+          {
+            echo "PROJECT_ED_KEY=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)"
+            for arch in arm64 x64; do
+              mount="$RUNNER_TEMP/atd-dmg-$arch"
+              mkdir -p "$mount"
+              hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dist/Atd-$VERSION-$arch.dmg" > /dev/null
+              key=$(plutil -extract SUPublicEDKey raw "$mount/Atd.app/Contents/Info.plist")
+              hdiutil detach "$mount" > /dev/null
+              if [ "$arch" = arm64 ]; then echo "ARM64_ED_KEY=$key"; else echo "X64_ED_KEY=$key"; fi
+            done
+          } >> "$GITHUB_ENV"
+      - name: Write and check the update feeds
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          node apps/macos/scripts/release/feeds.mjs \
+            --dir dist \
+            --marketing-version "$VERSION" \
+            --build-version "$BUILD_VERSION" \
+            --repo "$REPO" \
+            --commit "$GITHUB_SHA" \
+            --sign-update "$SIGN_UPDATE" \
+            --public-ed-key "project.yml=$PROJECT_ED_KEY" \
+            --public-ed-key "arm64 app=$ARM64_ED_KEY" \
+            --public-ed-key "x64 app=$X64_ED_KEY"
+          cat dist/appcast.xml dist/appcast-x64.xml
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Atd-${{ needs.version.outputs.marketing_version }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+
+  # Builds the GitHub release as a draft, checks it by id and publishes it only when every check
+  # passed. A rehearsal does the same under a throwaway tag and always deletes its draft.
+  release:
+    name: ${{ needs.version.outputs.mode == 'rehearsal' && 'Rehearse the release of' || 'Publish' }} v${{ needs.version.outputs.marketing_version }}
+    needs: [version, verify, collect]
+    if: needs.version.outputs.publish == 'true' || needs.version.outputs.mode == 'rehearsal'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.marketing_version }}
+      BUILD_VERSION: ${{ needs.version.outputs.build_version }}
+      MODE: ${{ needs.version.outputs.mode }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          name: Atd-${{ needs.version.outputs.marketing_version }}
+          path: dist
+      - name: Check the artifact against its manifest
+        run: |
+          jq -e --arg v "$VERSION" --arg b "$BUILD_VERSION" \
+            '.marketingVersion == $v and .buildVersion == $b and .commit == env.GITHUB_SHA' \
+            dist/manifest.json > /dev/null || {
+            echo "::error::manifest.json names another version or commit."
+            exit 1
+          }
+          for arch in arm64 x64; do
+            dmg="Atd-$VERSION-$arch.dmg"
+            want=$(jq -r --arg dmg "$dmg" '.artifacts[] | select(.dmg == $dmg) | .sha256' dist/manifest.json)
+            got=$(sha256sum "dist/$dmg" | cut -d ' ' -f 1)
+            if [ "$want" != "$got" ]; then
+              echo "::error::$dmg's sha256 is $got, not the manifest's $want."
+              exit 1
+            fi
+            # The README and the website link the unversioned names.
+            cp "dist/$dmg" "dist/Atd-$arch.dmg"
+          done
+          if [ "$MODE" = rehearsal ]; then tag="v$VERSION-rehearsal.$GITHUB_RUN_ID"; else tag="v$VERSION"; fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          ls -l dist
+      # A draft has no tag and no readers, so it is always rebuilt rather than reused; the API
+      # allows several drafts with one tag name.
+      - name: Delete leftover drafts
+        run: |
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" \
+            --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" \
+            | while read -r id; do
+              echo "Deleting leftover draft $id"
+              gh api -X DELETE "repos/$GH_REPO/releases/$id"
+            done
+      - name: Create the draft
+        id: draft
+        run: |
+          notes="Atd-$VERSION-arm64.dmg is the Apple silicon (arm64) build and Atd-$VERSION-x64.dmg the Intel (x64) build; both run on macOS 15 or later. The app is not signed with an Apple Developer ID and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies update themselves: on Apple silicon from 0.4.0 or later, on Intel from 0.9.0 or later."
+          if [[ "$VERSION" == *-* ]]; then
+            notes="$notes This is a prerelease: installed stable copies are not offered it, and it updates itself to the next stable release, not to later prereleases."
+          fi
+          # The body precedes the generated notes, like `gh release create --notes --generate-notes`.
+          gh api -X POST "repos/$GH_REPO/releases" \
+            -F draft=true \
+            -F generate_release_notes=true \
+            -f tag_name="$TAG" \
+            -f target_commitish="$GITHUB_SHA" \
+            -f name="$TAG" \
+            -f body="$notes" > "$RUNNER_TEMP/draft.json"
+          id=$(jq -r .id "$RUNNER_TEMP/draft.json")
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "Created draft $id for $TAG"
+      # By the draft's own upload URL, so the assets cannot land on another release with this tag.
+      - name: Upload the assets
+        run: |
+          upload_url=$(jq -r '.upload_url | sub("\\{.*$"; "")' "$RUNNER_TEMP/draft.json")
+          for file in dist/*.dmg dist/appcast.xml dist/appcast-x64.xml; do
+            printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" \
+              | curl --config - --fail-with-body --silent --show-error \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'Content-Type: application/octet-stream' \
+                --data-binary "@$file" "$upload_url?name=$(basename "$file")" \
+              | jq -r '"Uploaded \(.name): \(.size) bytes, \(.state)"'
+          done
+      - name: Check the draft
+        env:
+          DRAFT_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          release="$RUNNER_TEMP/release.json"
+          gh api "repos/$GH_REPO/releases/$DRAFT_ID" > "$release"
+          jq -e --arg tag "$TAG" \
+            '.draft and .tag_name == $tag and .name == $tag and .target_commitish == env.GITHUB_SHA' \
+            "$release" > /dev/null || {
+            echo "::error::Draft $DRAFT_ID is not an unpublished $TAG at $GITHUB_SHA."
+            exit 1
+          }
+          expected=$(printf '%s\n' "Atd-$VERSION-arm64.dmg" "Atd-$VERSION-x64.dmg" Atd-arm64.dmg \
+            Atd-x64.dmg appcast.xml appcast-x64.xml | sort)
+          actual=$(jq -r '.assets[].name' "$release" | sort)
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::The draft holds [${actual//$'\n'/ }], not [${expected//$'\n'/ }]."
+            exit 1
+          fi
+          while IFS= read -r name; do
+            asset=$(jq -c --arg name "$name" '.assets[] | select(.name == $name)' "$release")
+            want="sha256:$(sha256sum "dist/$name" | cut -d ' ' -f 1)"
+            size=$(stat -c %s "dist/$name")
+            if [ "$(jq -r .state <<< "$asset")" != uploaded ] || [ "$(jq -r .size <<< "$asset")" != "$size" ]; then
+              echo "::error::$name is not fully uploaded: $asset"
+              exit 1
+            fi
+            digest=$(jq -r '.digest // empty' <<< "$asset")
+            if [ -z "$digest" ]; then
+              gh api -H 'Accept: application/octet-stream' \
+                "repos/$GH_REPO/releases/assets/$(jq -r .id <<< "$asset")" > "$RUNNER_TEMP/asset"
+              digest="sha256:$(sha256sum "$RUNNER_TEMP/asset" | cut -d ' ' -f 1)"
+            fi
+            if [ "$digest" != "$want" ]; then
+              echo "::error::$name on the draft has $digest, not the artifact's $want."
+              exit 1
+            fi
+            echo "$name: $digest"
+          done <<< "$expected"
+      - name: Delete the rehearsal draft
+        if: always() && needs.version.outputs.mode == 'rehearsal' && steps.draft.outputs.id != ''
+        env:
+          DRAFT_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          gh api -X DELETE "repos/$GH_REPO/releases/$DRAFT_ID"
+          if gh api "repos/$GH_REPO/releases/$DRAFT_ID" > /dev/null 2>&1; then
+            echo "::error::Draft $DRAFT_ID still exists."
+            exit 1
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "::error::The rehearsal left the tag $TAG."
+            exit 1
+          fi
+          echo "Deleted draft $DRAFT_ID; no $TAG tag exists."
+      # Publishing creates the tag at target_commitish. make_latest is a string enum (-f); a
+      # prerelease version is published as a prerelease, which never becomes the latest release.
+      - name: Publish the release
+        if: needs.version.outputs.publish == 'true'
+        env:
+          DRAFT_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          if [[ "$VERSION" == *-* ]]; then
+            gh api -X PATCH "repos/$GH_REPO/releases/$DRAFT_ID" -F draft=false -F prerelease=true > /dev/null
+          else
+            gh api -X PATCH "repos/$GH_REPO/releases/$DRAFT_ID" -F draft=false -f make_latest=true > /dev/null
+          fi
+          tagged=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq .object.sha)
+          if [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "::error::$TAG points at $tagged, not the built commit $GITHUB_SHA."
+            exit 1
+          fi
+          if [[ "$VERSION" != *-* ]]; then
+            latest=$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)
+            if [ "$latest" != "$TAG" ]; then
+              echo "::error::The latest release is $latest, not $TAG."
+              exit 1
+            fi
+          fi
+          echo "Published $TAG at $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
 
   mirror:
-    name: Mirror the published stable download
+    name: Mirror the published stable downloads
     needs: [version, release]
-    if: needs.release.result == 'success' && !contains(needs.version.outputs.version, '-')
+    if: needs.version.outputs.publish == 'true' && needs.release.result == 'success' && !contains(needs.version.outputs.marketing_version, '-')
     uses: ./.github/workflows/mirror-release.yml
     with:
-      tag: v${{ needs.version.outputs.version }}
+      tag: v${{ needs.version.outputs.marketing_version }}
+      channel: stable
+    secrets:
+      R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
+      R2_DOWNLOAD_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
+      R2_DOWNLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}
+
+  # The website's preview downloads follow the newest published release, a release candidate or
+  # the stable release once it catches up, so they move after every publish: after the stable
+  # mirror for a stable release (skipped for a prerelease), which its versioned DMGs then reuse.
+  mirror-preview:
+    name: Mirror the preview downloads
+    needs: [version, release, mirror]
+    if: >-
+      always() && needs.version.outputs.publish == 'true' && needs.release.result == 'success' &&
+      (needs.mirror.result == 'success' || needs.mirror.result == 'skipped')
+    uses: ./.github/workflows/mirror-release.yml
+    with:
+      tag: latest
+      channel: rc
     secrets:
       R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
       R2_DOWNLOAD_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}

@@ -20,7 +20,9 @@ import {
 } from './command-options.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
+import { NativePreferencePosts } from './preference-posts.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
+import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
 import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
 
@@ -53,11 +55,7 @@ export const MAX_PRACTICE_SELECTION_LENGTH = 2000;
 export const NativePosts = {
   /** The page installed its delivery function; Swift flushes what it queued until now. */
   'bridge.ready': Empty,
-  /** The app language, after load and on every change (Swift uses the OS language until then). */
-  'language.set': Type.Object(
-    { language: Type.Union([Type.Literal('en'), Type.Literal('zh-CN')]) },
-    { additionalProperties: false },
-  ),
+  ...NativePreferencePosts,
   ...NativeTextPosts,
   /**
    * The window drag regions in CSS pixels from the web view's top-left, interactive children
@@ -109,11 +107,7 @@ export const NativePosts = {
     { socketId: Type.String({ minLength: 1, maxLength: 64 }), data: Type.String() },
     { additionalProperties: false },
   ),
-  /**
-   * Installs the update `update.state` names and relaunches, through the app's quit flow (which
-   * still asks before stopping running tasks). Ignored while no update waits.
-   */
-  'update.install': Empty,
+  ...NativeUpdatePosts,
   'socket.close': Type.Object(
     {
       socketId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -261,14 +255,7 @@ export const NativeEvents = {
     { trusted: Type.Boolean() },
     { additionalProperties: false },
   ),
-  /**
-   * The version of a downloaded update that installs when the app quits, null while none waits.
-   * Sent to the panel on each change and replayed when its page becomes ready.
-   */
-  'update.state': Type.Object(
-    { version: Type.Union([Text(64), Type.Null()]) },
-    { additionalProperties: false },
-  ),
+  ...NativeUpdateEvents,
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

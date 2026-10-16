@@ -3,8 +3,8 @@ import AppKit
 import SwiftUI
 
 /// The command island as drawn: one glass shape on the shell's glass surface, as the mini panel's
-/// body is (``View/glassSurface(in:animation:opacity:)``: the panel's dark base fill on regular
-/// Liquid Glass, the content kept in the dark scheme), with its contents riding inside it. The
+/// body is (``View/glassSurface(in:animation:opacity:)``: the panel's base fill on regular
+/// Liquid Glass, the content kept in the app's scheme), with its contents riding inside it. The
 /// glass, its clip and every content take the same animated shape value (``IslandShape``), the
 /// clip erased as the glass's shape is so the two move as one, so the content can
 /// never show outside the glass; each content is laid out where its shape rests and follows the shape as
@@ -21,20 +21,19 @@ struct IslandView: View {
     let canvas = IslandMetrics.canvas
     let shape = model.shape
     let outline = MiniPanelGlassOutline(shape: shape.glass)
-    GlassEffectContainer {
-      ZStack(alignment: .topLeading) {
-        ForEach(model.layers) { layer in
-          IslandLayerView(model: model, layer: layer)
-        }
+    ZStack(alignment: .topLeading) {
+      ForEach(model.layers) { layer in
+        IslandLayerView(model: model, layer: layer)
       }
-      .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
-      .glassSurface(in: outline, animation: shape.animation)
-      // The island times its own entrance; the glass adds no transition of its own.
-      .glassEffectTransition(.identity)
     }
+    .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
+    .glassSurface(in: outline, animation: shape.animation)
+    // The island times its own entrance; the glass adds no transition of its own.
+    .backport.glassEffectTransition(.identity)
+    .backport.glassEffectContainer()
     .id(model.appearance)
     .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
-    // The glass draws its first frame in this scheme, whatever the system appearance.
+    // The glass draws its first frame in the app's scheme, and follows it when it changes.
     .environment(\.colorScheme, GlassSurface.colorScheme)
   }
 }

@@ -7,13 +7,17 @@ import {
   type PatchSettingsRequest,
   type SettingsResponse,
 } from '@atd/agent-contracts';
-import { AutomationSessionTargetSchema, parseExtensionSession } from '../client/agent/bridge';
+import {
+  AutomationSessionTargetSchema,
+  parseExtensionSession,
+} from '../client/agent/session-handoff';
 import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
 import { parse } from '../client/agent/validation';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
   DEFAULT_SELECTION_TOOLBAR,
+  isAppAppearance,
   isAppLanguage,
   resolveLanguage,
   type SettingsBridge,
@@ -92,6 +96,7 @@ export function nativeSettings(
       connections: live?.connections ?? [],
       defaultConnectionId: live?.defaultConnectionId ?? null,
       language: settings?.language ?? resolveLanguage(navigator.language),
+      appearance: settings?.appearance ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
       ...shell,
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
@@ -201,6 +206,11 @@ export function nativeSettings(
     setLanguage: async (language) => {
       if (!isAppLanguage(language)) throw new TypeError('Unsupported language.');
       return write({ language });
+    },
+    setAppearance: async (appearance) => {
+      if (appearance !== null && !isAppAppearance(appearance))
+        throw new TypeError('Unsupported appearance.');
+      return write({ appearance });
     },
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
     restoreShortcuts: () => write({ shortcuts: { ...DEFAULT_SHORTCUTS } }),

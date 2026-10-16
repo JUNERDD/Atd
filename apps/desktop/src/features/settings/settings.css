@@ -122,9 +122,23 @@
 }
 .settings-navigation {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 4px;
   padding: 3px;
+}
+/* About sits at the bottom of the card while the list leaves room, and follows the list when it
+ * scrolls; in the compact bar it wraps into the rows like any other section. */
+.settings-navigation .settings-nav-button:not([data-footer]) + [data-footer] {
+  margin-top: auto;
+}
+.settings-window[data-layout='top'] .settings-navigation .settings-nav-button[data-footer] {
+  margin-top: 0;
+}
+/* Results have no footer to pin, so a search's list keeps its own height and the empty state below
+ * it stays right under the search field. */
+.settings-navigation[data-searching] {
+  flex: none;
 }
 /* Every state fills the whole row: the Button's transparent border would otherwise inset its
  * hover fill 1px (`bg-clip-padding`) inside the selected and best-match fills. */
@@ -180,8 +194,11 @@
   background-color: var(--ata-surface-ghost-hover);
   color: var(--foreground);
 }
-/* The search's empty state, sized for the navigation card rather than a page. */
+/* The search's empty state, sized for the navigation card rather than a page: it keeps its own
+ * height instead of `Empty`'s fill, which in the card's full-height column would centre it in the
+ * space below the list. */
 .settings-nav-empty[data-slot='empty'] {
+  flex: none;
   gap: 12px;
   padding: 16px 8px;
 }
@@ -496,7 +513,8 @@
   white-space: nowrap;
 }
 /* A page's description explains it, so it wraps at a readable measure instead of truncating. */
-.settings-section-heading > p {
+.settings-section-heading > p,
+.settings-heading-description {
   min-width: 0;
   max-width: 72ch;
   text-wrap: pretty;
@@ -825,6 +843,7 @@
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
+  background: var(--ata-surface-card);
 }
 /*
  * A skill folder as a file browser on the skill's details page: the tree beside the open file,
@@ -842,6 +861,7 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
+  background: var(--ata-surface-card);
 }
 @container (max-width: 32rem) {
   .skill-browser {
@@ -1057,18 +1077,20 @@
 }
 /* An item's own description reads as content: it wraps, capped so a long one cannot push the body
  * out of a short window. Show more under it (extension-page.tsx) unclamps it in place; expanded,
- * it still stops at part of the window height and scrolls, so the body keeps its room. */
-.extension-page .settings-section-heading > p {
+ * it still stops at part of the window height and scrolls in its ScrollArea, so the body keeps
+ * its room. */
+.extension-page .settings-heading-description p {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
   white-space: normal;
 }
-.extension-page[data-description='full'] .settings-section-heading > p {
-  display: block;
+.extension-page[data-description='full'] .settings-heading-description {
   max-height: 40vh;
-  overflow-y: auto;
+}
+.extension-page[data-description='full'] .settings-heading-description p {
+  display: block;
   -webkit-line-clamp: unset;
 }
 /* Sits right under the description, level with its text, instead of a full editor gap below. */
@@ -1083,8 +1105,11 @@
 .settings-permission-option {
   cursor: pointer;
 }
+/* The chosen tier takes the shared selected wash: the Item's `muted` fill sat below the card fill
+ * of the other tiers, so the chosen one read as the dimmest. */
 .settings-permission-option[data-variant='muted'] {
   border-color: var(--border);
+  background: var(--ata-material-selected);
 }
 .settings-permission-option:has(input:disabled) {
   cursor: not-allowed;
@@ -1095,10 +1120,7 @@
   cursor: inherit;
 }
 /* Item only styles hover for links; an enabled option row fills like the other settings rows. */
-.settings-permission-option:hover:not(:has(input:disabled)) {
-  background: var(--muted);
-}
-.dark .settings-permission-option:hover:not(:has(input:disabled)) {
+.settings-permission-option:hover:not([data-variant='muted'], :has(input:disabled)) {
   background: var(--ata-surface-ghost-hover);
 }
 .settings-permission-option [data-slot='label'] {
@@ -1153,9 +1175,6 @@
   cursor: pointer;
 }
 .settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
-  background: var(--muted);
-}
-.dark .settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
   background: var(--ata-surface-ghost-hover);
 }
 /* The drawer presents the sidebar card over the content: inset like the sidebar, on the same
@@ -1191,8 +1210,12 @@
 }
 .settings-drawer-overlay[data-slot='sheet-overlay'] {
   left: calc(var(--settings-inset) + min(var(--settings-sidebar-width), calc(100vw - 56px)));
-  background: rgb(0 0 0 / 30%);
+  background: rgb(0 0 0 / 20%);
   backdrop-filter: none;
+}
+/* A light window dims less for the same separation. */
+.dark .settings-drawer-overlay[data-slot='sheet-overlay'] {
+  background: rgb(0 0 0 / 30%);
 }
 /* Under reduced motion the drawer fades in and out in place instead of sliding. */
 @media (prefers-reduced-motion: reduce) {
@@ -1239,6 +1262,7 @@
 .settings-shell-allowlist-card {
   min-width: 0;
   overflow: hidden;
+  background: var(--ata-surface-card);
 }
 .settings-shell-allowlist-form {
   padding: 6px;

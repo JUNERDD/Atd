@@ -12,6 +12,7 @@ import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
+import { useRevealMore } from '../../components/use-reveal-more';
 import { rankModels } from './model-match';
 import { sortModels } from './model-order';
 import { useCatalogRefresh } from './use-catalog-refresh';
@@ -32,6 +33,28 @@ function rankConnections(connections: readonly Connection[], query: string, scop
     })
     .filter((group) => group.models.length > 0)
     .sort((a, b) => b.best - a.best || a.index - b.index);
+}
+
+/** Model rows mounted at first, and added each time the end of the list nears the viewport. */
+const MODEL_BATCH = 100;
+
+type RankedGroup = ReturnType<typeof rankConnections>[number];
+
+/**
+ * The first `count` model rows across the groups in rank order. The selected model stays in its
+ * own group even beyond the window, so its checked mark never goes missing; a group with no row in
+ * the window is left out rather than shown as a bare heading.
+ */
+function windowGroups(groups: RankedGroup[], count: number, value: ModelReference | null) {
+  let remaining = count;
+  return groups.flatMap((group) => {
+    const taken = Math.min(remaining, group.models.length);
+    remaining -= taken;
+    const selected =
+      value?.connectionId === group.connection.connectionId ? value.modelId : undefined;
+    const models = group.models.filter(({ item }, index) => index < taken || item.id === selected);
+    return models.length ? [{ ...group, models, first: group.models[0] }] : [];
+  });
 }
 
 /**
@@ -62,6 +85,10 @@ export function ModelList({
   const search = useCompositionQuery();
   // Popover content mounts only while shown, so mounting is opening the list.
   useCatalogRefresh(true);
+  const groups = rankConnections(connections, search.query, scoped);
+  const total = groups.reduce((sum, group) => sum + group.models.length, 0);
+  // Catalogs hold up to thousands of models: mount a batch and the next as the end comes into view.
+  const { count, sentinel } = useRevealMore(total, MODEL_BATCH, search.query);
   return (
     <Command shouldFilter={false} className="min-h-0 bg-transparent">
       <CommandInput
@@ -91,16 +118,13 @@ export function ModelList({
             ? t('models.noMatch')
             : t('models.none')}
         </CommandEmpty>
-        {rankConnections(connections, search.query, scoped).map(({ connection, models }) => (
+        {windowGroups(groups, count, value).map(({ connection, models, first }) => (
           <CommandGroup
             key={connection.connectionId}
             heading={
               // Every model matches the connection name alike, so the heading shows that match once.
               scoped ? undefined : (
-                <HighlightedText
-                  text={connection.name}
-                  ranges={models[0]?.match?.ranges.connection}
-                />
+                <HighlightedText text={connection.name} ranges={first?.match?.ranges.connection} />
               )
             }
             title={connection.name}
@@ -132,6 +156,7 @@ export function ModelList({
             ))}
           </CommandGroup>
         ))}
+        {count < total && <div ref={sentinel} aria-hidden className="h-px" />}
       </CommandList>
     </Command>
   );

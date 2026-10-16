@@ -4,6 +4,15 @@
 
 import Foundation
 
+/// Params of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestParams = NativeEmpty
+
+/// Result of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestResult = NativeEmpty
+
+/// Params of the `apps.pick` call.
+public typealias AppsPickParams = NativeEmpty
+
 /// Result of the `apps.pick` call.
 public struct AppsPickResult: Codable, Equatable, Sendable {
   public let apps: [App]

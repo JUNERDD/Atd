@@ -68,7 +68,17 @@ public struct WidgetLauncherView: View {
     if tiles.indices.contains(index) {
       let tile = tiles[index]
       if let url = tile.url {
-        Link(destination: url) { WidgetLauncherTileView(tile: tile, layout: layout) }
+        // WidgetKit drops a Link's destination over a desaturated image in its label.
+        // Keep the rendered tile behind a separate, full-cell link hit target.
+        WidgetLauncherTileView(tile: tile, layout: layout)
+          .accessibilityHidden(true)
+          .overlay {
+            Link(destination: url) {
+              Rectangle().fill(.clear).contentShape(.rect)
+            }
+            .accessibilityLabel(Text(verbatim: tile.name))
+            .accessibilityValue(Text(verbatim: tile.description ?? ""))
+          }
       } else {
         WidgetLauncherTileView(tile: tile, layout: layout)
       }
@@ -164,7 +174,7 @@ private struct WidgetLauncherIconView: View {
     case .symbol(let name):
       shape.fill(fill)
         .overlay {
-          Image(systemName: name)
+          Image(systemName: WidgetSymbol.resolved(name))
             .font(.system(size: side * 0.46, weight: .semibold))
             .foregroundStyle(glyph)
         }

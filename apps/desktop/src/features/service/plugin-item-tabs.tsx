@@ -53,7 +53,7 @@ export function PluginItemTabs({
           give the list a vertical scrollbar; the focus ring stays within the list's padding. */}
       <TabsList
         aria-label={t('extensions.plugins.page.kindsLabel')}
-        className="max-w-full justify-start overflow-x-auto overflow-y-hidden"
+        className="scrollbar-none max-w-full justify-start overflow-x-auto overflow-y-hidden"
       >
         {tabs.map(([kind, count]) => (
           <TabsTrigger key={kind} value={kind} className="flex-none px-2.5">

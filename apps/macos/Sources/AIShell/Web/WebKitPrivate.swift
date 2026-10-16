@@ -13,8 +13,8 @@ public enum WebKitPrivate {
     set(true, forKey: "useSystemAppearance", setter: "_setUseSystemAppearance:", on: preferences)
   }
 
-  /// Stops the web view painting its own background, so the window's `NSGlassEffectView` shows
-  /// through a transparent page.
+  /// Stops the web view painting its own background, so the window's material
+  /// (``NativeMaterialView``) shows through a transparent page.
   @discardableResult
   public static func disableBackground(_ webView: WKWebView) -> Bool {
     set(false, forKey: "drawsBackground", setter: "_setDrawsBackground:", on: webView)

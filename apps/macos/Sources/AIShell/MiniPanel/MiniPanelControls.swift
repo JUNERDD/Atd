@@ -145,7 +145,9 @@ struct MiniPanelFlyout: View {
       if scrolls {
         let shown = rest.height - MiniPanelMetrics.cardPadding * 2
         ScrollView(.vertical) { rows(middleY: model.flyoutScroll + shown / 2) }
-          .scrollIndicators(.hidden)
+          // `.never`, not `.hidden`: `.hidden` still shows the legacy scroller, track and all,
+          // when a mouse is connected or "Show scroll bars" is Always, beside the card's thumb.
+          .scrollIndicators(.never)
           .scrollPosition($position)
           .onScrollGeometryChange(for: MiniPanelScrollMetrics.Geometry.self) { geometry in
             MiniPanelScrollMetrics.Geometry(geometry)
@@ -181,8 +183,10 @@ struct MiniPanelFlyout: View {
 
   private func rows(middleY: Double?) -> some View {
     VStack(spacing: 0) {
-      ForEach(model.commands.indices, id: \.self) { index in
-        MiniPanelRow(index: index, name: model.commands[index].name, model: model)
+      // SwiftUI can update a departing row after the live list has shrunk. Keep each row's
+      // command in the collection snapshot instead of subscripting the observable list again.
+      ForEach(Array(model.commands.enumerated()), id: \.element.id) { index, command in
+        MiniPanelRow(index: index, name: command.name, model: model)
       }
     }
     .animation(animation) { $0.modifier(follow(middleY: middleY)) }

@@ -209,11 +209,12 @@ export function AgentForm({
         <Textarea
           id={fieldId('systemPrompt')}
           value={draft.systemPrompt}
-          rows={10}
           maxLength={AGENT_LIMITS.systemPrompt}
           placeholder={t('extensions.agentPage.systemPromptPlaceholder')}
           disabled={disabled}
-          className="field-sizing-fixed resize-y"
+          // Grows with the prompt, from about ten lines, and the page scrolls past it: a capped
+          // field would scroll inside the page's own scroll area under WebKit's bar.
+          className="min-h-54"
           onChange={(event) => setDraft({ ...draft, systemPrompt: event.target.value })}
           {...invalid('systemPrompt')}
         />

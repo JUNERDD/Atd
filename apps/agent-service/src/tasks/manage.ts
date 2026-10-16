@@ -9,6 +9,8 @@ import {
   parse,
   PatchTaskRequestSchema,
   ReplaceQueueRequestSchema,
+  TaskSearchQuerySchema,
+  type TaskSearchResponse,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import type { FolderStore } from '../folders/store.js';
@@ -38,7 +40,8 @@ export interface TaskManageContext {
  * GET context splits the task's context usage by category, computed on request
  * from its live or stored session (compaction/context-breakdown.ts). POST fork
  * copies a task up to a turn into a new task (fork.ts) and announces the new
- * task to every client.
+ * task to every client. GET search finds tasks by what was said in them (search.ts); its static
+ * path wins over `/v1/tasks/:taskId`, since Fastify matches static segments before parameters.
  */
 export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageContext): void {
   app.patch<{ Params: { taskId: string } }>(
@@ -109,6 +112,10 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
     },
   );
 
+  app.get('/v1/tasks/search', RENDERER_ROUTE, async (request): Promise<TaskSearchResponse> => {
+    return ctx.manager.search(parse(TaskSearchQuerySchema, searchQuery(request.query)));
+  });
+
   app.get<{ Params: { taskId: string } }>(
     '/v1/tasks/:taskId/context',
     RENDERER_ROUTE,
@@ -143,4 +150,16 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       return { queue };
     },
   );
+}
+
+/**
+ * The search query string as TaskSearchQuerySchema reads it: query values arrive as strings, so a
+ * plain decimal `limit` becomes a number, and anything else is left for validation to refuse.
+ */
+function searchQuery(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const query: Record<string, unknown> = { ...raw };
+  if (typeof query.limit === 'string' && /^[0-9]{1,3}$/.test(query.limit))
+    query.limit = Number(query.limit);
+  return query;
 }

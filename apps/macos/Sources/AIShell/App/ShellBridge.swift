@@ -36,6 +36,7 @@ final class ShellBridge {
     switch post {
     case .bridgeReady: host.pageDidBecomeReady()
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
+    case .appearanceSet(let post): AppAppearance.shared.apply(post.appearance)
     case .typingSet(let post):
       shell?.summoner.writeTargets.animatesTyping = post.animation
       shell?.summoner.writeTargets.typesAnswers = post.typing
@@ -45,6 +46,7 @@ final class ShellBridge {
     case .socketOpen(let post): host.pipe?.open(post)
     case .socketSend(let post): host.pipe?.send(post)
     case .socketClose(let post): host.pipe?.close(post)
+    case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
     case .userAppPinDrag(let post): shell?.startPinDrag(post.appId, from: host)
     }
@@ -84,6 +86,8 @@ final class ShellBridge {
       return try Self.encode(shell.setPanelPlacement(params.placement))
     case .appState:
       return try Self.encode(shell.appState())
+    case .appAbout:
+      return try Self.encode(shell.updater.about())
     case .appSetShowInDock(let params):
       shell.setShowInDock(params.show)
       return try Self.encode(AppSetShowInDockResult(show: params.show))

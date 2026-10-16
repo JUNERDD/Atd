@@ -131,6 +131,7 @@ export function SideChatLayer({
         ) : (
           <Transcript
             detail={detail}
+            covered={covered}
             onAttach={onAttach}
             onNewTask={onNewTask}
             onOpenTask={onOpenTask}

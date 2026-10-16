@@ -14,6 +14,12 @@ export const APP_LANGUAGES = ['en', 'zh-CN'] as const;
 export type AppLanguage = (typeof APP_LANGUAGES)[number];
 export const AppLanguageSchema = Type.Union([Type.Literal('en'), Type.Literal('zh-CN')]);
 
+/** Color schemes a user can pin; an unset `appearance` follows the system. */
+export const APP_APPEARANCES = ['light', 'dark'] as const;
+/** Kept literal so the static type stays a union; update it together with `APP_APPEARANCES`. */
+export type AppAppearance = (typeof APP_APPEARANCES)[number];
+export const AppAppearanceSchema = Type.Union([Type.Literal('light'), Type.Literal('dark')]);
+
 /**
  * Maps an OS or browser locale such as `zh-Hans-CN` to the nearest shipped language; clients and
  * the service resolve an unset `language` setting through it, so they agree.
@@ -136,11 +142,13 @@ export type OnboardingProgress = Static<typeof OnboardingProgressSchema>;
 
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
- * from its locale; `shortcuts: null` means the defaults.
+ * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
+ * means the defaults.
  */
 export const UserSettingsSchema = Type.Object(
   {
     language: Type.Union([AppLanguageSchema, Type.Null()]),
+    appearance: Type.Union([AppAppearanceSchema, Type.Null()]),
     /** Tier a new task freezes at creation; existing tasks keep their own. */
     permissionTier: PermissionTierSchema,
     /** The user shell allowlist, in the user's order; the operator env list is never included. */
@@ -185,6 +193,7 @@ export type SettingsResponse = Static<typeof SettingsResponseSchema>;
 export const PatchSettingsRequestSchema = Type.Object(
   {
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
+    appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),

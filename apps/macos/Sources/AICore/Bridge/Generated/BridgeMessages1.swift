@@ -74,6 +74,7 @@ public enum NativeCall: Equatable, Sendable {
   case commandProgressShow(CommandProgressShowParams)
   case commandProgressHide(CommandProgressHideParams)
   case commandOptionsSet(CommandOptionsSetParams)
+  case appAbout(AppAboutParams)
   case approvalRequest(ApprovalRequestParams)
   case toolbarSet(ToolbarSetParams)
   case accessibilityRequest(AccessibilityRequestParams)
@@ -123,6 +124,7 @@ public enum NativeCall: Equatable, Sendable {
     case .commandProgressShow: "commandProgress.show"
     case .commandProgressHide: "commandProgress.hide"
     case .commandOptionsSet: "commandOptions.set"
+    case .appAbout: "app.about"
     case .approvalRequest: "approval.request"
     case .toolbarSet: "toolbar.set"
     case .accessibilityRequest: "accessibility.request"
@@ -136,12 +138,14 @@ public enum NativeCall: Equatable, Sendable {
 public enum NativePost: Equatable, Sendable {
   case bridgeReady(BridgeReadyPost)
   case languageSet(LanguageSetPost)
+  case appearanceSet(AppearanceSetPost)
   case typingSet(TypingSetPost)
   case windowDragRegions(WindowDragRegionsPost)
   case onboardingSurface(OnboardingSurfacePost)
   case onboardingSelection(OnboardingSelectionPost)
   case socketOpen(SocketOpenPost)
   case socketSend(SocketSendPost)
+  case updateCheck(UpdateCheckPost)
   case updateInstall(UpdateInstallPost)
   case socketClose(SocketClosePost)
   case userAppPinDrag(UserAppPinDragPost)
@@ -151,12 +155,14 @@ public enum NativePost: Equatable, Sendable {
     switch self {
     case .bridgeReady: "bridge.ready"
     case .languageSet: "language.set"
+    case .appearanceSet: "appearance.set"
     case .typingSet: "typing.set"
     case .windowDragRegions: "window.dragRegions"
     case .onboardingSurface: "onboarding.surface"
     case .onboardingSelection: "onboarding.selection"
     case .socketOpen: "socket.open"
     case .socketSend: "socket.send"
+    case .updateCheck: "update.check"
     case .updateInstall: "update.install"
     case .socketClose: "socket.close"
     case .userAppPinDrag: "userApp.pinDrag"

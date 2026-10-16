@@ -34,6 +34,7 @@ export const SECTION_DESCRIPTIONS = {
   memory: 'memory:memory.description',
   apps: 'apps:settings.description',
   extensions: 'extensions.plugins.description',
+  about: 'about.description',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
 export const SECTION_KEYWORDS = {
@@ -45,6 +46,7 @@ export const SECTION_KEYWORDS = {
   memory: 'search.keywords.sectionMemory',
   apps: 'search.keywords.sectionApps',
   extensions: 'search.keywords.sectionExtensions',
+  about: 'search.keywords.sectionAbout',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
 /**
@@ -70,6 +72,14 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: `shortcuts.actions.${action}.description`,
     keywords: 'search.keywords.shortcutAction',
   })),
+  {
+    id: 'appearance-theme',
+    section: 'general',
+    anchor: 'settings-appearance',
+    label: 'shortcuts.appearance.title',
+    description: 'shortcuts.appearance.description',
+    keywords: 'search.keywords.appearance',
+  },
   {
     id: 'window-open-at-login',
     section: 'general',
@@ -296,6 +306,14 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     section: 'extensions',
     label: 'extensions.plugins.kinds.mcp',
     keywords: 'search.keywords.mcp',
+  },
+  {
+    id: 'about-check-updates',
+    section: 'about',
+    anchor: 'about-check-updates',
+    label: 'about.updatesTitle',
+    description: 'about.updatesNote',
+    keywords: 'search.keywords.checkForUpdates',
   },
   {
     id: 'language',

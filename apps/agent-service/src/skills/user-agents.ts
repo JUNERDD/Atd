@@ -4,7 +4,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
 import { isItemName } from '@atd/plugin-kit';
-import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
+import { loaderDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 
 /**
@@ -26,9 +26,7 @@ export async function discoverUserAgentSkills(): Promise<{
 }> {
   const root = userAgentsSkillsDir();
   const loaded = loadSkillsFromDir({ dir: root, source: 'agents' });
-  const diagnostics = mapPiDiagnostics(loaded.diagnostics)
-    .filter((item) => item.code === 'same_name')
-    .slice(0, MAX_DIAGNOSTICS);
+  const diagnostics = loaderDiagnostics(loaded).slice(0, MAX_DIAGNOSTICS);
   const records = await Promise.all(loaded.skills.map((skill) => toRecord(skill, diagnostics)));
   const skills = records
     .flatMap((record) => (record ? [record] : []))

@@ -15,7 +15,11 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
 import { revealSettingsAnchor } from './reveal-settings-anchor';
 import { SettingsSearchField } from './settings-search-field';
-import { settingsSections, type SettingsSectionId } from './settings-sections';
+import {
+  isSettingsFooterSection,
+  settingsSections,
+  type SettingsSectionId,
+} from './settings-sections';
 import { useSettingsSearch, type SettingsSearchResult } from './use-settings-search';
 
 /** Keys that move focus between the navigation rows, whether they stack or wrap into rows. */
@@ -118,6 +122,8 @@ export function SettingsNavPanel({
       </output>
       <ScrollArea
         className="settings-nav-scroll"
+        // The list fills the card's height, so its footer rows can sit at the bottom edge.
+        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
         gutter="none"
         scrollShadow
         data-searching={searching || undefined}
@@ -164,6 +170,7 @@ export function SettingsNavPanel({
                   variant="ghost"
                   className="settings-nav-button"
                   aria-current={current === id ? 'page' : undefined}
+                  data-footer={isSettingsFooterSection(id) || undefined}
                   tabIndex={current === id ? 0 : -1}
                   disabled={disabled}
                   onClick={() => onNavigate(id)}

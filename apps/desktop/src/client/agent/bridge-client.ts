@@ -1,12 +1,5 @@
-import type {
-  AgentBridge,
-  AgentEvent,
-  AgentRequest,
-  AutomationSessionTarget,
-  CommandLaunch,
-  CommandSession,
-  ExtensionSession,
-} from './bridge';
+import type { AgentBridge, AgentEvent, AgentRequest, CommandLaunch } from './bridge';
+import type { AutomationSessionTarget, CommandSession, ExtensionSession } from './session-handoff';
 
 /** What each push channel of the agent bridge carries. */
 export interface AgentChannelValues {
@@ -64,6 +57,7 @@ export function createAgentBridge(
         ...(instructions === undefined ? {} : { instructions }),
       }),
     contextBreakdown: (taskId) => invoke({ action: 'contextBreakdown', taskId }),
+    searchTasks: (search) => invoke({ action: 'searchTasks', search }),
     forkTask: (taskId, entryId, title) =>
       invoke({ action: 'forkTask', taskId, entryId, ...(title === undefined ? {} : { title }) }),
     chooseFiles: () => invoke({ action: 'chooseFiles' }),

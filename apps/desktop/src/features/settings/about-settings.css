@@ -1,0 +1,80 @@
+/*
+ * Settings › About (about-settings.tsx), after a Mac app's About window: one centered column with
+ * the app icon, name and version, the update action, then a row of text links. Every color is a
+ * theme token, so the page follows light and dark with the window.
+ */
+/* The page fills the content height so the column can sit in its middle, scrolling when short. */
+.settings-page:has(> .about-page) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.settings-page[hidden]:has(> .about-page) {
+  display: none;
+}
+.about-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 560px;
+  /* Centered, a little above the middle where the eye expects a window's focal point. */
+  margin: auto;
+  padding-block: 16px 48px;
+}
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+/* The icon PNG carries its own transparent margin (80 of 1024px), so the visible tile is about
+ * 94px. Its off-white tile would melt into a light window, so a soft shadow lifts it in both. */
+.about-app-icon {
+  display: block;
+  width: 112px;
+  aspect-ratio: 1;
+  margin-bottom: 8px;
+  background: url('@atd/ui/assets/brands/atd/app-icon.png') center / contain no-repeat;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 18%));
+}
+.about-app-icon[data-dev] {
+  background-image: url('@atd/ui/assets/brands/atd/app-icon-dev.png');
+}
+.about-product-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+.about-product-name:lang(zh) {
+  letter-spacing: 0;
+}
+/* The version can be selected and copied into a bug report, unlike the rest of the chrome. */
+.about-version {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+  cursor: text;
+}
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 4px;
+  max-width: 100%;
+}
+/* Secondary to the update action: muted until hovered, in the link variant's own shape. */
+.about-links [data-slot='button'] {
+  color: var(--muted-foreground);
+}
+.about-links [data-slot='button']:hover,
+.about-links [data-slot='button']:focus-visible {
+  color: var(--foreground);
+}

@@ -4,15 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Stable release tag, or latest (older releases cannot replace latest)
+        description: Stable release tag, or latest (older releases cannot replace latest); rc takes only latest
         type: string
         default: latest
         required: true
+      channel:
+        description: stable moves /latest/ and the update feeds; rc moves /rc/ to the newest release, candidate or stable
+        type: choice
+        options: [stable, rc]
+        default: stable
   workflow_call:
     inputs:
       tag:
         type: string
         required: true
+      channel:
+        type: string
+        default: stable
     secrets:
       R2_DOWNLOAD_ACCOUNT_ID:
         required: true
@@ -30,8 +38,12 @@ concurrency:
 
 jobs:
   mirror:
-    name: Mirror and verify the latest stable DMG and update feed
-    if: github.ref == 'refs/heads/main'
+    name: Mirror and verify the ${{ inputs.channel }} channel
+    # The stable channel and its update feeds move only from reviewed code on main; a release
+    # branch publishes prereleases, so it may move the preview channel.
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      (inputs.channel == 'rc' && startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -44,10 +56,12 @@ jobs:
         run: |
           aws --version
           gh --version
+      # Mirrors every architecture the release has (ops/release-downloads/README.md).
       - name: Upload and verify the official release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
           R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}
@@ -56,4 +70,4 @@ jobs:
           AWS_MAX_ATTEMPTS: '3'
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-        run: node ops/release-downloads/mirror.mjs --tag "$RELEASE_TAG"
+        run: node ops/release-downloads/mirror.mjs --tag "$RELEASE_TAG" --channel "$RELEASE_CHANNEL"

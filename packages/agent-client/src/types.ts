@@ -61,7 +61,8 @@ export interface StreamHandlers {
   onSummaries: (frame: SummariesFrame) => void;
   onEvent: (event: ServiceEvent) => void;
   onResumed?: (seq: number) => void;
-  onDisconnect?: (reason: string) => void;
+  /** The transport's close code, when it closed; absent for a stream decoding error. */
+  onDisconnect?: (reason: string, closeCode?: number) => void;
   /** Shared data outside the task stream changed; reload the named scope. */
   onInvalidate?: (frame: InvalidateFrame) => void;
 }

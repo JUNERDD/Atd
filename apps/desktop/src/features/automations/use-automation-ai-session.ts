@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { AutomationSessionTarget } from '../../client/agent/bridge';
+import type { AutomationSessionTarget } from '../../client/agent/session-handoff';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { isSkillDisabled } from '../service/extension-rows';
 

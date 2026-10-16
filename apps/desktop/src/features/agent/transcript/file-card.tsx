@@ -2,16 +2,12 @@ import { getFiletypeFromFileName, type FileDiffMetadata } from '@pierre/diffs';
 import { FileDiff } from '@pierre/diffs/react';
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@atd/ui/lib/utils';
+import { useColorScheme } from '../../../theme/color-scheme';
 import { CodeBlock, FLUSH_CODE_CLASS, FLUSH_CODE_CSS } from './code-block';
 import { codeCacheKey } from './code-cache-key';
 import { excerptPatch, parsePatch } from './pi-diff';
 import { ToolCard } from './tool-card';
 import './tool-code.css';
-
-/** The app's theme as `CodeBlock` reads it: `class="dark"` on the root element. */
-function themeType(): 'light' | 'dark' {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-}
 
 /** The last segment of a tool's `path` argument, which names the file in the card header. */
 function fileName(path: string): string {
@@ -79,12 +75,15 @@ export function DiffView({
   fileDiff: FileDiffMetadata;
   indicators?: boolean;
 }) {
+  // The same scheme `CodeFile` reads; pierre keeps both themes' colors in one highlight, so a
+  // switch only repaints.
+  const themeType = useColorScheme();
   return (
     <FileDiff
       className={cn('code-block-file', FLUSH_CODE_CLASS)}
       fileDiff={fileDiff}
       options={{
-        themeType: themeType(),
+        themeType,
         diffStyle: 'unified',
         diffIndicators: indicators ? 'classic' : 'none',
         hunkSeparators: 'simple',

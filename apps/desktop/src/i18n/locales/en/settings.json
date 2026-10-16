@@ -18,7 +18,8 @@
     "automations": "Automations",
     "memory": "Memory",
     "apps": "Apps",
-    "general": "General"
+    "general": "General",
+    "about": "About"
   },
   "drawer": {
     "title": "Settings navigation",
@@ -60,6 +61,7 @@
       "alwaysOnTop": "pin float window topmost keep on top sticky",
       "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
+      "appearance": "theme appearance color scheme light dark mode night day system automatic follow",
       "panelPlacement": "position place location where appear open center centre middle corner bottom right remember last moved dragged display monitor screen multiple",
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
@@ -82,7 +84,9 @@
       "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility",
       "selectionToolbarActivation": "hold key option command shift press twice toggle switch modifier activation trigger toolbar selection",
       "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
-      "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection"
+      "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
+      "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
+      "checkForUpdates": "update updates upgrade new version latest sparkle download install"
     }
   },
   "providers": {
@@ -229,9 +233,21 @@
     }
   },
   "shortcuts": {
+    "appearance": {
+      "title": "Theme",
+      "description": "Follow the system, or always use light or dark.",
+      "label": "Theme",
+      "saveFailed": "The theme could not be saved.",
+      "modes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
     "groups": {
       "global": "Global",
       "inApp": "In app",
+      "appearance": "Appearance",
       "window": "Window"
     },
     "actions": {
@@ -347,7 +363,7 @@
     "fileBinary": "This file is not text, so it is not shown.",
     "fileTooLarge": "This file is too large to show.",
     "detailModel": "Model",
-    "sourceAtdAgents": "~/.atd/agents",
+    "sourceAtdAgents": "Personal subagents",
     "agentToolsFromTask": "The task's tools",
     "agentToolsWithinTask": "{{tools}} (within the task's tools)",
     "agentPermissionsAction": "Permissions…",
@@ -426,8 +442,8 @@
     "deleteTitle": "Delete {{name}}?",
     "deleted": "Deleted {{name}}.",
     "removed": "Removed {{name}}.",
-    "deleteSkillDescription": "Its files in ~/.atd/skills are deleted, so later runs can't use it. This can't be undone.",
-    "deleteAgentDescription": "Its file in ~/.atd/agents and its saved permissions are deleted, so later runs can't use it. This can't be undone.",
+    "deleteSkillDescription": "Its Personal skill files are deleted, so later runs can't use it. This can't be undone.",
+    "deleteAgentDescription": "Its Personal subagent file and saved permissions are deleted, so later runs can't use it. This can't be undone.",
     "builtinModified": "Modified",
     "builtinUpdateAvailable": "New version",
     "restoreAction": "Restore built-in version",
@@ -490,7 +506,7 @@
       "builtinCurrent": "Same as the version that ships with the app"
     },
     "agentPage": {
-      "addDescription": "Define a specialist the task can hand work to. It is saved to ~/.atd/agents.",
+      "addDescription": "Define a Personal specialist the task can hand work to in later tasks.",
       "create": "Create subagent",
       "save": "Save changes",
       "namePlaceholder": "code-reviewer",
@@ -785,5 +801,22 @@
     "rolesNote": "Subagent roles bounding what a run may use. Edits apply to the next run.",
     "mcpTitle": "MCP servers",
     "emptyRoles": "No roles are configured."
+  },
+  "about": {
+    "description": "The version you're running, updates, and links to the website and source code.",
+    "version": "Version {{version}} ({{build}})",
+    "versionOnly": "Version {{version}}",
+    "versionUnavailable": "Version unavailable",
+    "developmentVersion": "{{version}} · Development build",
+    "updatesTitle": "Check for updates",
+    "checkForUpdates": "Check for updates…",
+    "updatesNote": "Updates download in the background and install when Atd quits.",
+    "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",
+    "links": {
+      "title": "Links",
+      "website": "Website",
+      "repository": "Source code",
+      "issues": "Report an issue"
+    }
   }
 }

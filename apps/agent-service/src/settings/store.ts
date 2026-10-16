@@ -43,12 +43,22 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
   }
   return parse(
     SettingsFileSchema,
-    withAddedCommandTypingAnimation(
-      withAddedCommandTyping(
-        withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    withAddedAppearance(
+      withAddedCommandTypingAnimation(
+        withAddedCommandTyping(
+          withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+        ),
       ),
     ),
   );
+}
+
+/** A file written before the appearance setting existed follows the system. */
+function withAddedAppearance(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return { ...file, settings: { appearance: null, ...settings } };
 }
 
 /**
@@ -200,6 +210,7 @@ export class SettingsStore {
     if (!stored) {
       const settings: UserSettings = {
         language: null,
+        appearance: null,
         permissionTier: defaultTier,
         shellAllowlist: [],
         shortcuts: null,

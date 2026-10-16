@@ -30,7 +30,7 @@ struct IslandFadingScroll<Content: View, Edges: View>: View {
     let plain = reduceTransparency || contrast == .increased
     let vertical = axis == .vertical
     ScrollView(vertical ? .vertical : .horizontal) { content }
-      .scrollEdgeEffectHidden(true, for: vertical ? .vertical : .horizontal)
+      .backport.scrollEdgeEffectHidden(true, for: vertical ? .vertical : .horizontal)
       .onScrollGeometryChange(for: AnswerOverflow.self) { geometry in
         vertical
           ? AnswerOverflow(

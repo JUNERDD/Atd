@@ -5,10 +5,15 @@
 .context-category {
   /* Skills have no status or syntax hue of their own; a violet keeps them apart from the blue
      messages and the indigo-leaning sidebar primary. */
-  --context-skills: #a78bfa;
+  --context-skills: #8b5cf6;
   /* Memory sits beside skills in the prompt; a pink keeps it apart from the violet skills. */
-  --context-memory: #f472b6;
+  --context-memory: #ec4899;
   --context-color: var(--border);
+}
+/* Dark takes the lighter steps of both hues; each theme's pair keeps 3:1 on the panel. */
+.dark .context-category {
+  --context-skills: #a78bfa;
+  --context-memory: #f472b6;
 }
 .context-category[data-category='messages'] {
   --context-color: var(--ata-syntax-variable);

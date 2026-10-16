@@ -49,7 +49,7 @@ export function ParameterList({
           const type = t(parameterTypeTag(item.type));
           const required = item.required ? ` · ${t('parameters.required')}` : '';
           return (
-            <li key={item.key} className="parameter-item hover:bg-muted/50">
+            <li key={item.key} className="parameter-item">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium" title={item.label}>
                   {item.label}

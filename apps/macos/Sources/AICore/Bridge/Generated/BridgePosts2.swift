@@ -4,6 +4,32 @@
 
 import Foundation
 
+/// Params of the `socket.open` post.
+public struct SocketOpenPost: Codable, Equatable, Sendable {
+  public let socketId: String
+
+  public init(socketId: String) {
+    self.socketId = socketId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    socketId = try container.string(.socketId, minLength: 1, maxLength: 64)
+    try container.literal(.path, "/v1/stream")
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(socketId, forKey: .socketId)
+    try container.encode("/v1/stream", forKey: .path)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case socketId
+    case path
+  }
+}
+
 /// Params of the `socket.send` post.
 public struct SocketSendPost: Codable, Equatable, Sendable {
   public let socketId: String
@@ -25,6 +51,9 @@ public struct SocketSendPost: Codable, Equatable, Sendable {
     case data
   }
 }
+
+/// Params of the `update.check` post.
+public typealias UpdateCheckPost = NativeEmpty
 
 /// Params of the `update.install` post.
 public typealias UpdateInstallPost = NativeEmpty

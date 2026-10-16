@@ -252,15 +252,25 @@ body {
   flex-direction: column;
   padding: 20px 16px 16px;
 }
-.history-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+/* The virtualized history (history-list.tsx): the list holds the height of every row, and each
+   mounted row sits at its own offset. The virtualizer keeps 4px between rows; a row opening a later
+   section adds the rest of the 16px between sections above its heading. */
+.history-list {
+  position: relative;
+  height: var(--history-list-height);
 }
-.history-section {
+.history-list-item {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
+  width: 100%;
   flex-direction: column;
   gap: 4px;
+  transform: translateY(var(--history-row-y));
+}
+.history-list-item[data-later-section] {
+  padding-top: 12px;
 }
 /* The section names the day range, so rows below it only need the time or date within it. The
    title starts at the row text's 12px inset. */
@@ -270,11 +280,6 @@ body {
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
-}
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 .task-row {
   width: 100%;
@@ -331,6 +336,17 @@ body {
 }
 .task-row-status[data-tone='error'] {
   color: var(--destructive);
+}
+/* A conversation match under the meta line while searching: one line of the message around its
+   first match, the matches marked. */
+.task-row-snippet {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saved-prompt {

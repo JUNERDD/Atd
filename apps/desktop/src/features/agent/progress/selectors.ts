@@ -108,3 +108,24 @@ export function taskProgress(blocks: readonly Block[]): TaskProgress {
     childrenTruncated: truncated,
   };
 }
+
+function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+/**
+ * Whether two derivations show the same progress: the same todo and child objects in order, and
+ * equal counts. Unchanged blocks keep their objects across patches, so a patch that left the
+ * todo and subagent calls alone derives the same progress.
+ */
+export function sameProgress(a: TaskProgress, b: TaskProgress): boolean {
+  return (
+    sameItems(a.todos, b.todos) &&
+    a.step?.current === b.step?.current &&
+    a.step?.total === b.step?.total &&
+    a.completed === b.completed &&
+    a.subagents === b.subagents &&
+    sameItems(a.children, b.children) &&
+    a.childrenTruncated === b.childrenTruncated
+  );
+}

@@ -18,6 +18,7 @@ import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import '../agent/agent.css';
+import { AboutSettings } from './about-settings';
 import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
 import { ShellAllowlistSettings } from './shell-allowlist-settings';
@@ -263,6 +264,7 @@ export function SettingsWindow() {
                                 </SettingsExtensionLinkContext>,
                               )}
                               {page('apps', <AppSettings />)}
+                              {page('about', <AboutSettings />)}
                               {page(
                                 'general',
                                 <GeneralSettings

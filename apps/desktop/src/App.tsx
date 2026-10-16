@@ -134,6 +134,12 @@ export function App() {
   }, []);
   useSelectionAsk({ quote: (markdown) => quoteToDraft(markdown, undefined), showComposer });
   useNewTaskRequest(newTask);
+  // Declared outside the JSX, where the compiler memoizes each on its own inputs: the header and
+  // the composer then keep them while streamed patches render the panel again.
+  const submitDraft = () => submit();
+  const openSettingsWindow = () => void openSettings();
+  const toggleView = (next: 'history') => setView(view === next ? 'new' : next);
+  const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
       <CodeHighlightPool>
@@ -148,14 +154,15 @@ export function App() {
                 view={view}
                 taskId={taskId}
                 title={title}
-                detail={view === 'task' ? current.detail : null}
+                task={view === 'task' ? (current.detail?.task ?? null) : null}
+                context={view === 'task' ? (current.detail?.context ?? null) : null}
                 onNewTask={newTask}
-                onToggleView={(next) => setView(view === next ? 'new' : next)}
-                onOpenSettings={() => void openSettings()}
+                onToggleView={toggleView}
+                onOpenSettings={openSettingsWindow}
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
-                <ServiceBanner onOpenSettings={() => void openSettings()} />
+                <ServiceBanner onOpenSettings={openSettingsWindow} />
                 {view === 'new' && (
                   <ScrollArea
                     className="panel-content"
@@ -194,7 +201,7 @@ export function App() {
                     onChange={(input) => setPrepared({ ...prepared, input })}
                     onOutputChange={(output) => setPrepared({ ...prepared, output })}
                     policy={policy}
-                    onRun={() => submit()}
+                    onRun={submitDraft}
                     onOpenSettings={() => void openCommandSettings(prepared.command.id)}
                     pending={pending}
                     connections={snapshot?.connections ?? []}
@@ -278,15 +285,15 @@ export function App() {
                         policy={policy}
                         onPolicyChange={changePolicy}
                         onChange={changeDraft}
-                        onSubmit={() => submit()}
+                        onSubmit={submitDraft}
                         pending={pending}
                         followup={view === 'task'}
                         shortcuts={shortcuts}
                         connections={snapshot?.connections ?? []}
                         model={model}
-                        onOpenSettings={() => void openSettings()}
+                        onOpenSettings={openSettingsWindow}
                         consents={consents}
-                        quickActions={{ newTask, openHistory: () => setView('history') }}
+                        quickActions={quickActions}
                         tasks={agent.snapshot?.tasks ?? []}
                         overlayBoundary={panelBody}
                       />

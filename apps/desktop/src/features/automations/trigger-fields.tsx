@@ -124,7 +124,7 @@ export function TriggerFields({
       <Tabs value={trigger.kind} onValueChange={switchKind}>
         <TabsList
           aria-label={t('trigger.kindLabel')}
-          className="max-w-full justify-start overflow-x-auto overflow-y-hidden"
+          className="scrollbar-none max-w-full justify-start overflow-x-auto overflow-y-hidden"
         >
           {TRIGGER_KINDS.map((kind) => (
             <TabsTrigger key={kind} value={kind} className="flex-none px-2.5">

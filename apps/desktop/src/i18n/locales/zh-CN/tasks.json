@@ -214,7 +214,9 @@
   "history": {
     "label": "任务历史",
     "searchLabel": "搜索任务",
-    "searchPlaceholder": "搜索任务…",
+    "searchPlaceholder": "搜索任务和对话内容…",
+    "searchingConversations": "正在搜索对话内容…",
+    "conversationSearchFailed": "无法搜索对话内容。",
     "importedDraft": "导入的草稿",
     "delete": "删除",
     "more": "更多",
@@ -325,6 +327,13 @@
       "actionWithCount": "加载更早的 {{count}} 条消息",
       "loading": "正在加载更早的消息…"
     },
+    "prompts": {
+      "label": "你的消息（{{count}} 条）",
+      "listLabel": "你的消息",
+      "filter": "筛选消息",
+      "empty": "没有匹配的消息",
+      "step": "上一条 / 下一条"
+    },
     "code": {
       "copy": "复制代码",
       "copied": "已复制",
@@ -400,7 +409,7 @@
     "save": {
       "action": "保存为我的子智能体…",
       "title": "保存为我的子智能体",
-      "description": "之后的任务可以像使用你在设置中添加的子智能体一样使用它。它会保存在 ~/.atd/agents 中。",
+      "description": "它会保存为个人子代理，之后的任务可以像使用你在设置中添加的子代理一样使用它。",
       "name": "名称",
       "descriptionLabel": "描述",
       "tools": "工具",

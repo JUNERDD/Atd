@@ -126,7 +126,9 @@ final class GlassHUD: NSObject {
     // Every appearance starts at home, even one that interrupts the exit fade.
     let appearing = !window.isVisible || window.alphaValue < 1
     if appearing { dropped = nil }
-    let bar = AnnotationGlassBar(groups: [content.views], padding: SelectionToolbarLayout.padding)
+    let bar = AnnotationGlassBar(
+      groups: [content.views], blending: .behindWindow,
+      padding: SelectionToolbarLayout.padding)
     if content.grip != nil { bar.onDrag = { [weak self] in self?.drag($0) } }
     bar.setAccessibilityElement(true)
     bar.setAccessibilityRole(.group)

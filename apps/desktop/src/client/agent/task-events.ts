@@ -1,33 +1,49 @@
 import { TaskContextStateSchema, type ServiceEvent } from '@atd/agent-contracts';
-import type { TaskClient } from './service-tasks';
+import type { CachedTask, TaskClient } from './service-tasks';
 import { mapBlock, mapRequest } from './service-map';
-import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
+import { applyTranscriptPatch, QueueStateSchema, type TranscriptPatch } from './transcript-schema';
 import { parse } from './validation';
 
 /**
- * Applies one stream event to a task the cache already has and publishes the change. Transcript
- * and context events apply only to tasks a view has loaded; a revision gap reloads the transcript
- * instead of guessing, and a run or capability the summary lacks reloads the summary.
+ * What applying an event's state to a cached task changed: its summary state (`task`), its
+ * transcript (`patch`, to emit to the views), or nothing. `reload` means the event cannot apply:
+ * the summary lacks what it refers to, or the patch does not follow the transcript's revision.
  */
-export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEvent): Promise<void> {
+type EventChange =
+  | { kind: 'none' }
+  | { kind: 'task' }
+  | { kind: 'patch'; patch: TranscriptPatch }
+  | { kind: 'reload'; scope: 'summary' | 'transcript' };
+
+const NONE: EventChange = { kind: 'none' };
+const TASK: EventChange = { kind: 'task' };
+
+/**
+ * Applies the task state one event carries to `task`, a cached task or one a load is bringing up
+ * to the stream (`TaskClient` replays the events a load answered before). Only the state changes
+ * here; the caller publishes it. Transcript and context events apply only while `task` has its
+ * transcript. Events that carry no task state (`notice`, `child.transcript.patch`) are no-ops.
+ * Answer revisions are not task state: `TaskClient` keeps them (`store`, `trackRevisions`).
+ */
+export function applyEventState(task: CachedTask, event: ServiceEvent): EventChange {
   const data = event.data as Record<string, unknown>;
-  const cached = tasks.entries.get(event.taskId);
   switch (event.type) {
     case 'run.status': {
-      if (!cached || !event.runId) return;
-      const run = cached.task.runs.find((item) => item.id === event.runId);
+      if (!event.runId) return NONE;
+      const run = task.task.runs.find((item) => item.id === event.runId);
       // A run another client just submitted is not in the cached task yet.
-      if (!run) return tasks.refreshSummary(event.taskId);
+      if (!run) return { kind: 'reload', scope: 'summary' };
       const status = data['status'] as typeof run.status;
       if (status) run.status = status;
       if (typeof data['error'] === 'string') run.error = data['error'];
-      cached.task.updatedAt = event.at;
-      tasks.publishTask(event.taskId);
-      return;
+      task.task.updatedAt = event.at;
+      return TASK;
     }
     case 'transcript.patch': {
-      const transcript = cached?.transcript;
-      if (!transcript) return;
+      const transcript = task.transcript;
+      if (!transcript) return NONE;
+      // A snapshot too large for the stream: its blocks come from the snapshot endpoint.
+      if (data['reload'] === true) return { kind: 'reload', scope: 'transcript' };
       const revision = typeof data['revision'] === 'number' ? data['revision'] : -1;
       const blocks = Array.isArray(data['blocks']) ? data['blocks'] : [];
       const removed = Array.isArray(data['removed']) ? (data['removed'] as string[]) : [];
@@ -39,62 +55,79 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
         removed,
       };
       const next = applyTranscriptPatch(transcript, patch);
-      if (!next) return tasks.reloadTranscript(event.taskId);
+      if (!next) return { kind: 'reload', scope: 'transcript' };
       transcript.revision = next.revision;
       transcript.blocks = next.blocks;
-      tasks.host.emit({ type: 'transcript', patch });
-      return;
+      return { kind: 'patch', patch };
     }
-    case 'child.transcript.patch':
-      tasks.children.onPatch(event.taskId, event.data);
-      return;
-    case 'queue.update': {
+    case 'queue.update':
       // The service's only live queue signal: queued, delivered, replaced or withdrawn by Stop.
-      if (!cached) return;
-      cached.queue = parse(QueueStateSchema, event.data);
-      tasks.publishTask(event.taskId);
-      return;
-    }
+      task.queue = parse(QueueStateSchema, event.data);
+      return TASK;
     case 'confirm.requested': {
-      const raw = data['request'] as Parameters<typeof mapRequest>[0] & { revision: number };
-      const request = mapRequest(raw);
-      tasks.revisions.set(raw.id, { revision: raw.revision, taskId: raw.taskId, runId: raw.runId });
-      if (cached && !cached.requests.some((item) => item.id === request.id)) {
-        cached.requests.push(request);
-        tasks.publishTask(event.taskId);
-      }
-      return;
+      const request = mapRequest(data['request'] as Parameters<typeof mapRequest>[0]);
+      if (task.requests.some((item) => item.id === request.id)) return NONE;
+      task.requests.push(request);
+      return TASK;
     }
     case 'confirm.resolved': {
       const requestId = typeof data['requestId'] === 'string' ? data['requestId'] : '';
-      tasks.revisions.delete(requestId);
-      if (cached) {
-        cached.requests = cached.requests.filter((item) => item.id !== requestId);
-        tasks.publishTask(event.taskId);
-      }
-      return;
+      task.requests = task.requests.filter((item) => item.id !== requestId);
+      return TASK;
     }
     case 'capability.requested':
     case 'capability.resolved':
-      // The pending capabilities are part of the summary. Capability-only events never break
-      // task state.
-      return tasks.refreshSummary(event.taskId).catch(() => undefined);
-    case 'notice': {
-      const text = typeof data['text'] === 'string' ? data['text'] : '';
-      const kind = data['kind'] === 'warning' || data['kind'] === 'error' ? data['kind'] : 'info';
-      tasks.host.emit({ type: 'notice', notice: { taskId: event.taskId, text, kind } });
-      return;
-    }
-    case 'context.update': {
+      // The pending capabilities are part of the summary, which these events do not carry.
+      return { kind: 'reload', scope: 'summary' };
+    case 'context.update':
       // The whole state each time: after a turn, around a compaction, and on a model change.
-      if (!cached?.transcript) return;
-      cached.transcript.context = parse(TaskContextStateSchema, event.data);
-      tasks.publishTask(event.taskId);
-      return;
-    }
+      if (!task.transcript) return NONE;
+      task.transcript.context = parse(TaskContextStateSchema, event.data);
+      return TASK;
+    case 'notice':
+    case 'child.transcript.patch':
+      return NONE;
     default: {
       const _exhaustive: never = event.type;
       throw new Error(`Unsupported service event: ${String(_exhaustive)}`);
     }
+  }
+}
+
+/**
+ * Applies one stream event to a task the cache already has and publishes the change. A revision
+ * gap reloads the transcript instead of guessing, and a run or capability the summary lacks
+ * reloads the summary. Notices reach the views and child patches the views holding that child.
+ */
+export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEvent): Promise<void> {
+  const data = event.data as Record<string, unknown>;
+  if (event.type === 'child.transcript.patch') {
+    tasks.children.onPatch(event.taskId, event.data);
+    return;
+  }
+  if (event.type === 'notice') {
+    const text = typeof data['text'] === 'string' ? data['text'] : '';
+    const kind = data['kind'] === 'warning' || data['kind'] === 'error' ? data['kind'] : 'info';
+    tasks.host.emit({ type: 'notice', notice: { taskId: event.taskId, text, kind } });
+    return;
+  }
+  // A load answered after this event already holds its state (`TaskLoads`).
+  if (tasks.loads.covers(event)) return;
+  const cached = tasks.entries.get(event.taskId);
+  if (!cached) return;
+  const change = applyEventState(cached, event);
+  switch (change.kind) {
+    case 'none':
+      return;
+    case 'task':
+      tasks.publishTask(event.taskId);
+      return;
+    case 'patch':
+      tasks.host.emit({ type: 'transcript', patch: change.patch });
+      return;
+    case 'reload':
+      return change.scope === 'summary'
+        ? tasks.refreshSummary(event.taskId)
+        : tasks.reloadTranscript(event.taskId);
   }
 }

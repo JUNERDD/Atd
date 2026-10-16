@@ -27,6 +27,19 @@ globalThis.ResizeObserver = class implements ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+// Virtualized lists (TanStack Virtual) mount the rows that fit their scroll viewport's offset size,
+// which jsdom reports as 0; scroll area viewports take the window's size so their rows render.
+for (const [property, size] of [
+  ['offsetHeight', () => window.innerHeight],
+  ['offsetWidth', () => window.innerWidth],
+] as const) {
+  Object.defineProperty(HTMLElement.prototype, property, {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.dataset.slot === 'scroll-area-viewport' ? size() : 0;
+    },
+  });
+}
 // Nothing ever scrolls into view without layout: lazily loaded images keep their placeholder.
 globalThis.IntersectionObserver = class implements IntersectionObserver {
   readonly root = null;

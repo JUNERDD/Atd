@@ -23,10 +23,11 @@ public final class VirtualSocketPipe {
   /// Frames a page may send before its socket opened; the browser would throw instead.
   public static let maxQueuedSends = 32
 
-  /// RFC 6455 codes the pipe itself uses besides 1008 and 1012.
+  /// WebSocket close codes the pipe itself uses besides 1008 and 1012.
   public enum CloseCode {
     public static let goingAway: UInt16 = 1001
     public static let unsupportedData: UInt16 = 1003
+    public static let internalError: UInt16 = 1011
     public static let tryAgainLater: UInt16 = 1013
   }
 
@@ -62,14 +63,19 @@ public final class VirtualSocketPipe {
     Task {
       let resolved = await link.endpoint()
       guard document == self.document, sockets[id] === socket else { return }
-      guard case .success(let endpoint) = resolved else {
+      switch resolved {
+      case .failure(let reason):
         sockets[id] = nil
+        // Only an active start is temporary. A failed start must end the page's loading state.
         return deliverClose(
-          id, code: CloseCode.tryAgainLater, reason: "The agent service is not available.")
+          id, code: reason == .starting ? CloseCode.tryAgainLater : CloseCode.internalError,
+          reason: reason == .starting
+            ? "The agent service is starting." : "The agent service is not available.")
+      case .success(let endpoint):
+        let upstream = ServiceWebSocket(endpoint: endpoint, events: events(for: id, socket))
+        socket.upstream = upstream
+        upstream.start()
       }
-      let upstream = ServiceWebSocket(endpoint: endpoint, events: events(for: id, socket))
-      socket.upstream = upstream
-      upstream.start()
     }
   }
 

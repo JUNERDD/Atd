@@ -144,7 +144,7 @@ export class AgentStreamClient {
         this.socket = null;
         this.live = null;
         const detail = reason ? ` ${reason}` : '';
-        this.handlers.onDisconnect?.(`Stream closed (${code}${detail}).`);
+        this.handlers.onDisconnect?.(`Stream closed (${code}${detail}).`, code);
         this.scheduleReconnect();
       },
       // Errors surface through close; no separate handling needed.

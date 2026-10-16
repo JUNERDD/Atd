@@ -50,13 +50,10 @@
   padding-inline-end: calc(var(--spacing) * 2 + var(--quick-panel-bar-width, 0px));
 }
 
-/* The section bar's hover wash: a ghost button's hover fill (`--muted`; in dark mode the ghost hover
-   token), drawn as a 22px circle inside the 28px button like the highlight, not across the whole
-   button, so it stays clear of the first row's highlight below. The highlighted button has none. */
+/* The section bar's hover wash: a ghost button's hover fill (the ghost hover token), drawn as a
+   22px circle inside the 28px button like the highlight, not across the whole button, so it stays
+   clear of the first row's highlight below. The highlighted button has none. */
 .quick-panel-section-bar button:not([aria-current]):hover .quick-panel-section-fill {
-  background: var(--muted);
-}
-.dark .quick-panel-section-bar button:not([aria-current]):hover .quick-panel-section-fill {
   background: var(--ata-surface-ghost-hover);
 }
 

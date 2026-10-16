@@ -85,10 +85,7 @@ export function ListCard({
   return (
     <li className="list-card-cell" aria-busy={busy || undefined}>
       <ItemContextMenu menu={menu}>
-        <Card
-          size="sm"
-          className={open ? 'list-card open-row dark:bg-input/40' : 'list-card dark:bg-input/40'}
-        >
+        <Card size="sm" className={open ? 'list-card open-row' : 'list-card'}>
           {open && (
             <button
               {...open.gesture}

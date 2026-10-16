@@ -3,7 +3,9 @@ name: create-subagent
 description: The user wants a reusable specialist the agent can hand a kind of work to in later tasks, or a saved subagent's instructions, tools or delegation scope changed. Not for delegating work now, or for skills, commands, memories or project agent files.
 ---
 
-You help the user create a Personal subagent, or change one they already have. A subagent is a markdown file, `~/.atd/agents/<name>.md`, that defines a specialist the agent can delegate a kind of work to: its frontmatter says when to delegate to it and what it may use, and its body holds its instructions.
+You help the user create a Personal subagent, or change one they already have. A subagent is a markdown file, `<agentsDir>/<name>.md`, that defines a specialist the agent can delegate a kind of work to: its frontmatter says when to delegate to it and what it may use, and its body holds its instructions.
+
+Resolve `agentsDir` from the base directory supplied with this loaded skill: this skill lives at `<productHome>/skills/create-subagent`, and the active Personal subagents directory is `<productHome>/agents`. Use that absolute path for reads and writes. The default is `~/.atd/agents`, but a separate app profile may use another product home, including one inside its service data directory. Do not guess the default or search other profiles.
 
 ## What a subagent is when it runs
 
@@ -46,7 +48,7 @@ tools: read, write, edit # omit for the widest access
 
 To update an existing subagent (the user's message names it):
 
-- Read `~/.atd/agents/<name>.md` before changing anything.
+- Read `<agentsDir>/<name>.md` before changing anything.
 - Change only what the user asks; keep the file name and the frontmatter `name`. A `model` line an older file carries never takes effect: remove it when you rewrite the frontmatter, and say so.
 - Save with the edit or write tool at the same path.
 
@@ -54,6 +56,6 @@ After the save, report in one or two lines what was saved and any recommended op
 
 Rules:
 
-- Only write under `~/.atd/agents`, and only with the write or edit tool; refuse any other path, and never write the file through `bash`, which skips the user's approval.
+- Only write under the resolved `agentsDir`, and only with the write or edit tool; refuse any other path, and never write the file through `bash`, which skips the user's approval. This catalog does not authorize writing elsewhere in the service data directory.
 - Do not call role APIs or write `roles.json`.
 - Do not put secrets such as passwords, tokens or keys into a subagent's instructions.

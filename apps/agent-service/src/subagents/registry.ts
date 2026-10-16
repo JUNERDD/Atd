@@ -6,7 +6,7 @@ import {
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
 import type { ExtensionFactory, ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { PermissionLookups } from '../transcript-blocks.js';
+import type { PermissionLookup } from '../transcript-blocks.js';
 import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';
 import type { ParentAgents } from './task-agents.js';
 
@@ -93,7 +93,7 @@ export interface SubagentHost {
     data: ChildTranscriptPatchData,
   ) => void;
   /** Permission outcomes recorded in the parent session; child approvals land there. */
-  parentPermissions: () => PermissionLookups;
+  parentPermissions: () => ReadonlyMap<string, PermissionLookup>;
 }
 
 interface RegistryStore {

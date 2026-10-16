@@ -150,7 +150,7 @@ const WeekInfoSchema = Type.Object({ firstDay: Type.Integer({ minimum: 1, maximu
 
 /**
  * The week days (cron numbering) in the order the language's calendar lists them: from Monday
- * for Chinese, from Sunday for US English. `Intl.Locale.getWeekInfo` is not in the ES2025 typings
+ * for Chinese, from Sunday for US English. `Intl.Locale.getWeekInfo` is not in the ES2024 typings
  * yet, so its answer is checked at runtime; a WebKit without it starts the week on Monday (ISO).
  */
 export function weekdayOrder(language: string): number[] {

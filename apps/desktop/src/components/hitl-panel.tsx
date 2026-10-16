@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@atd/ui/components/scroll-area';
 import type { HitlRequest } from './hitl-request';
 import type { QueueState } from '../client/agent/transcript-schema';
 import { HitlRegion } from './hitl-region';
@@ -10,6 +11,9 @@ import { QueueRegion } from './queue-region';
 import { useHitlPager, type HitlPager } from './use-hitl-pager';
 import type { HitlSummary } from './use-hitl-summary';
 import './hitl-queue-popover.css';
+
+/** A ScrollArea viewport that motion can measure as a scroller (`layoutScroll`). */
+const MotionViewport = motion.create(ScrollAreaViewport);
 
 /**
  * Previous, `n / m`, next. Like the header close, the arrows carry no tooltip: the glyph and
@@ -98,23 +102,26 @@ export function HitlPanel({
       </div>
       {/* The queue reorders inside this scroller; motion must account for its offset. Opening
           the view from the pill focuses the first action here, past the header close. */}
-      <motion.div layoutScroll className="hitl-queue-body" data-panel-focus>
-        {pager.request && (
-          <HitlRegion
-            request={pager.request}
-            focusOnMount={pager.focusOnMount}
-            hideApprovalTitle={summary.mergedApproval}
-          />
-        )}
-        {summary.hasQueue && taskId !== null && (
-          <QueueRegion
-            taskId={taskId}
-            queue={queue}
-            disabled={queueDisabled}
-            onEdit={onEditQueued}
-          />
-        )}
-      </motion.div>
+      <ScrollAreaRoot>
+        <MotionViewport layoutScroll data-panel-focus>
+          {pager.request && (
+            <HitlRegion
+              request={pager.request}
+              focusOnMount={pager.focusOnMount}
+              hideApprovalTitle={summary.mergedApproval}
+            />
+          )}
+          {summary.hasQueue && taskId !== null && (
+            <QueueRegion
+              taskId={taskId}
+              queue={queue}
+              disabled={queueDisabled}
+              onEdit={onEditQueued}
+            />
+          )}
+        </MotionViewport>
+        <ScrollBar />
+      </ScrollAreaRoot>
     </div>
   );
 }

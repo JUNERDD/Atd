@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react';
 import { useIsPresent } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { SelectionToolbarSettings } from '../../client/settings-contract';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { activationAccelerator } from '../settings/use-selection-toolbar-settings';
@@ -44,22 +45,28 @@ export function SelectionPractice({
   if (!trusted) caption = t('selection.practice.needsAccess');
   else if (!enabled) caption = t('selection.practice.needsToolbar');
   return (
-    <div className="guide-practice">
-      <section
-        aria-label={t('selection.practice.label')}
-        aria-describedby={captionId}
-        className="guide-practice-page"
-      >
-        <p ref={text}>{t('selection.practice.sample')}</p>
-      </section>
-      <p id={captionId} className="guide-practice-caption">
-        {caption}
-      </p>
-      {activation !== 'always' && (
-        <div className="guide-practice-keys">
-          <Keycaps accelerator={accelerator} platform={platform} />
-        </div>
-      )}
-    </div>
+    <ScrollArea
+      className="guide-practice-scroll"
+      viewportClassName="overscroll-contain"
+      gutter="none"
+    >
+      <div className="guide-practice">
+        <section
+          aria-label={t('selection.practice.label')}
+          aria-describedby={captionId}
+          className="guide-practice-page"
+        >
+          <p ref={text}>{t('selection.practice.sample')}</p>
+        </section>
+        <p id={captionId} className="guide-practice-caption">
+          {caption}
+        </p>
+        {activation !== 'always' && (
+          <div className="guide-practice-keys">
+            <Keycaps accelerator={accelerator} platform={platform} />
+          </div>
+        )}
+      </div>
+    </ScrollArea>
   );
 }

@@ -32,6 +32,26 @@ struct ServiceLaunchPlanTests {
     #expect(Self.plan.environment(inheriting: [:])["PATH"] == bin)
   }
 
+  @Test("Resolves relative bundle and data URLs before passing paths to Node")
+  func relativePaths() {
+    let bundle = URL(fileURLWithPath: "/Applications/测试 Atd.app", isDirectory: true)
+    let home = URL(fileURLWithPath: "/Users/test", isDirectory: true)
+    let plan = ServiceLaunchPlan(
+      resources: URL(
+        fileURLWithPath: "Contents/Resources", isDirectory: true, relativeTo: bundle),
+      dataDirectory: URL(
+        fileURLWithPath: "Library/Application Support/测试", isDirectory: true, relativeTo: home))
+    #expect(
+      plan.arguments == [
+        "/Applications/测试 Atd.app/Contents/Resources/agent-service/dist/cli.js", "serve",
+        "--dataDir", "/Users/test/Library/Application Support/测试", "--login-shell-path",
+      ])
+    #expect(
+      plan.environment(inheriting: [:])["PATH"]
+        == "/Applications/测试 Atd.app/Contents/Resources/node/bin")
+    #expect(ServiceLaunchPlan.path(of: URL(fileURLWithPath: "/", isDirectory: true)) == "/")
+  }
+
   @Test("Reuses a running service only for the same known build")
   func reuse() {
     #expect(ServiceLaunchPlan.canReuse(running: "b1", bundled: "b1"))

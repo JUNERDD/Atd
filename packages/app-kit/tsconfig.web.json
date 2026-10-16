@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Code that runs in WebKit 18.0 (macOS 15.0): ES2024 plus the Set methods (Safari 17). The
+    // lib must be explicit; without it the program would inherit ES2025 from tsconfig.json.
+    "lib": ["ES2024", "ES2025.Collection", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/sdk/client", "template/web/src", "template/shared", "types"]
+}
