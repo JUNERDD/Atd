@@ -55,6 +55,8 @@ function keysProblem(
   } catch {
     return { code: 'invalidKeys' };
   }
+  // Disabled commands retain their keys but do not register them with the shell.
+  if (!command.enabled) return null;
   const holder = commandShortcutHolder(
     shortcut,
     context.appShortcuts,
