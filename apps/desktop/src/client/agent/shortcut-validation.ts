@@ -1,5 +1,6 @@
 import {
   actsOnSelection,
+  commandHoldingShortcut,
   commandShortcutHolder,
   parseAccelerator,
   readsSelection,
@@ -16,7 +17,8 @@ import { parameterError } from './command-validation';
  * it on the shortcut's row. The service checks the same rules again on save, in English.
  * - `invalidKeys`: the keys are not a combination the shell can register;
  * - `conflict`: an app action, the selection toolbar's double-tap or another enabled command's
- *   shortcut (this command's other shortcuts included) already presses them;
+ *   shortcut (this command's other shortcuts included) already presses them; a disabled command
+ *   conflicts only with its own other shortcuts;
  * - `pinnedValue`: a pinned value is no longer one the parameter takes, or the parameter is gone
  *   (`label` is its label, else its key);
  * - `outputUnavailable`: the result override acts on the selection, which the command no longer
@@ -55,16 +57,42 @@ function keysProblem(
   } catch {
     return { code: 'invalidKeys' };
   }
-  // Disabled commands retain their keys but do not register them with the shell.
-  if (!command.enabled) return null;
-  const holder = commandShortcutHolder(
-    shortcut,
-    context.appShortcuts,
-    withDraft(context.commands, command),
-    context.platform,
-    context.selectionToolbar,
-  );
+  const holder = command.enabled
+    ? commandShortcutHolder(
+        shortcut,
+        context.appShortcuts,
+        withDraft(context.commands, command),
+        context.platform,
+        context.selectionToolbar,
+      )
+    : ownShortcutHolder(command, shortcut, context.platform);
   return holder ? { code: 'conflict', holder } : null;
+}
+
+/**
+ * A disabled command keeps its keys without registering them, so only its own shortcuts can hold
+ * them: turning it on would register both, which the service refuses on save in any state.
+ */
+function ownShortcutHolder(
+  command: CommandDefinition,
+  shortcut: CommandShortcut,
+  platform: string,
+): ShortcutHolder | null {
+  const held = commandHoldingShortcut(
+    shortcut.accelerator,
+    [{ ...command, enabled: true }],
+    platform,
+    shortcut.id,
+  );
+  if (!held) return null;
+  return {
+    kind: 'command',
+    id: command.id,
+    name: command.name,
+    shortcutId: held.shortcut.id,
+    shortcutName: held.shortcut.name,
+    accelerator: held.shortcut.accelerator,
+  };
 }
 
 function settingsProblem(
