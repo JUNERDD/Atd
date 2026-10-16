@@ -12,7 +12,8 @@ import AppKit
 /// superview and so up its responder chain):
 /// - From ``AnnotationEditor/show`` on, this view is the window's first responder (the text
 ///   view is while text is edited). The host must not take first responder back while the
-///   editor is shown.
+///   editor is shown. While text is open on another display's canvas, every key reaching this
+///   view goes to the text, whose window takes the keyboard back.
 /// - The host routes the pointer (``AnnotationHostView``): the selection's handles and edge
 ///   band always go to the session, the rest of the interior comes here only once a tool is
 ///   chosen. Before that, of the keys only tool letters, ⌘Z and ⇧⌘Z are taken here.
@@ -217,6 +218,10 @@ final class AnnotationCanvasView: NSView {
   // MARK: Keys
 
   override func keyDown(with event: NSEvent) {
+    if textEditor.isEditing, !textEditor.isHosted(in: self) {
+      textEditor.type(event)
+      return
+    }
     if handleKey(event) { return }
     super.keyDown(with: event)
   }

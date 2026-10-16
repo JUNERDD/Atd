@@ -69,6 +69,17 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     canvas.window?.makeFirstResponder(view)
   }
 
+  /// A key that reached another canvas while text is open: a press on the bars or the
+  /// selection's handles on another display made that overlay key. The text's window takes the
+  /// keyboard back and the key is typed, so letters, Return and arrows act on the text as they
+  /// would had the keyboard stayed with it.
+  func type(_ event: NSEvent) {
+    guard let view = session?.view, let window = view.window else { return }
+    window.makeKey()
+    window.makeFirstResponder(view)
+    view.keyDown(with: event)
+  }
+
   /// Restyles the whole text being edited (colour, size or background from the style bar).
   func setStyle(_ style: AnnotationStyle) {
     guard let view = session?.view, let storage = view.textStorage else { return }

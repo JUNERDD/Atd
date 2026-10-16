@@ -68,6 +68,9 @@ final class CaptureSession {
   /// The selection geometry over the displays added so far.
   private(set) var model = SelectionModel(bounds: .zero, displays: [])
   private(set) var overlays: [CaptureOverlayView] = []
+  /// Set by ``activate()`` once every display is frozen. Until then the overlays are inert: the
+  /// pointer is ignored, so nothing is selected over displays that have no overlay yet.
+  private(set) var isActive = false
   var phase = Phase.idle
   /// A tool is chosen: presses inside the selection, away from its handles and edge band, are
   /// the editor's. The selection itself stays adjustable either way (D14).
@@ -151,6 +154,7 @@ final class CaptureSession {
   /// detected area follows the pointer.
   func activate() {
     guard !isFinished else { return }
+    isActive = true
     let mouse = NSEvent.mouseLocation
     let overlay =
       overlays.first { NSMouseInRect(mouse, $0.window?.frame ?? .zero, false) } ?? overlays.first

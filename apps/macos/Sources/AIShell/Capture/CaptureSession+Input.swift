@@ -5,9 +5,13 @@ import AppKit
 /// drag selects freely, and a committed selection resizes from its handles and edge band at any
 /// time, moves from inside until a tool claims the interior, and confirms. Points are desktop
 /// points. A drag keeps reaching the overlay it began on wherever the pointer goes, so a
-/// selection is drawn, moved or resized across displays from any of them.
+/// selection is drawn, moved or resized across displays from any of them. Overlays take first
+/// mouse and track the pointer while inactive, so pointer input before ``activate()`` (the
+/// displays still freezing) is dropped here: a press then would commit a selection reaching
+/// displays whose overlays, and so whose canvases, do not exist yet.
 extension CaptureSession: CaptureOverlayDelegate {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint) {
+    guard isActive else { return }
     pointer = (overlay, point)
     guard case .idle = phase else { return }
     // While nothing is selected the keyboard follows the pointer's display.
@@ -20,6 +24,7 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int) {
+    guard isActive else { return }
     switch phase {
     case .idle:
       if isTrustRequest(point, on: overlay) {
@@ -51,6 +56,7 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, square: Bool) {
+    guard isActive else { return }
     switch phase {
     case .pressing(_, let start):
       guard !SelectionModel.isClick(from: start, to: point) else { return }
@@ -71,6 +77,7 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, square: Bool) {
+    guard isActive else { return }
     switch phase {
     case .pressing(let owner, let start):
       let selection = model.settled(offeredArea(on: owner))
@@ -88,7 +95,7 @@ extension CaptureSession: CaptureOverlayDelegate {
 
   /// Clears the selection back to idle, unless that would lose annotations (or open text).
   func overlayRightClicked(_ overlay: CaptureOverlayView) {
-    guard case .selected = phase, editor?.hasAnnotations != true else { return }
+    guard isActive, case .selected = phase, editor?.hasAnnotations != true else { return }
     editor?.hide()
     editor = nil
     interiorClaimed = false
@@ -103,6 +110,8 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand) {
+    // The wheel walks the chain through here; keys cannot arrive before activation.
+    guard isActive else { return }
     switch command {
     case .cancel:
       cancel()
