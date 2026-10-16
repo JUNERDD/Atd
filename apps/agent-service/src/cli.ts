@@ -10,7 +10,7 @@ import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './confi
 import { createService } from './index.js';
 import { createLogger } from './logging.js';
 import { applyLoginShellPath } from './login-shell-path.js';
-import { applySystemProxy } from './network/system-proxy.js';
+import { createSystemProxy } from './network/system-proxy.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
 import { resolveAtdHome, resolveDataDir } from './storage.js';
 import { installedProfile } from './development/plan.js';
@@ -82,7 +82,7 @@ function usage(): string {
 
 async function serve(flags: Flags): Promise<void> {
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
-  await applySystemProxy(log);
+  const systemProxy = await createSystemProxy(log);
   if (flags.port === RENDERER_PORT)
     throw new Error('Port 5173 belongs to the renderer preview; choose another port.');
   if (
@@ -124,6 +124,7 @@ async function serve(flags: Flags): Promise<void> {
       });
   };
   const handle = await createService(config, {
+    systemProxy,
     tier: flags.tier,
     development: flags.development ? installedProfile() : undefined,
     onShutdownRequest: shutdown,

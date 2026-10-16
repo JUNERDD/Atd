@@ -17,6 +17,7 @@ import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
 import { createMemoryConsolidator } from './memory/consolidation/index.js';
+import { createSystemProxy, type SystemProxy } from './network/system-proxy.js';
 import { PluginHost } from './plugins/host.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
@@ -62,6 +63,8 @@ export interface ServiceHandle {
 export async function createService(
   config: ServiceConfig,
   options: {
+    /** A host may establish networking before spawning helpers; the service adopts its lifetime. */
+    systemProxy?: SystemProxy;
     /** The CLI's `--tier` flag, passed through when given. */
     tier?: PermissionTier | undefined;
     /** Explicit development CLI capability; packaged app launchers leave it off. */
@@ -75,6 +78,7 @@ export async function createService(
   } = {},
 ): Promise<ServiceHandle> {
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
+  const systemProxy = options.systemProxy ?? (await createSystemProxy(log));
   const startedAt = new Date().toISOString();
   const ledger = await Ledger.load(config.paths);
   const events = new EventLog(config.serviceId, config.epoch);
@@ -132,6 +136,7 @@ export async function createService(
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
+    systemProxy,
     config,
     development: options.development,
     ledger,
@@ -169,6 +174,7 @@ export async function createService(
     await app.close();
     await McpAuthority.closeFor(config.paths.root);
     await PluginHost.closeFor(config.paths.root);
+    await systemProxy.close();
     await clearEndpoint(config.paths);
     await releaseLock(config.paths);
   };

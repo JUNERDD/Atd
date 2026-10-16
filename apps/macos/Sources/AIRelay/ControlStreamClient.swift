@@ -52,6 +52,13 @@ public final class ControlStreamClient {
   private var pinger: Task<Void, Never>?
   private var observation: ServiceLinkObservation?
   private var wake: CheckedContinuation<Void, Never>?
+  private lazy var systemProxy = ServiceSystemProxyObserver { [weak self] snapshot in
+    do {
+      self?.socket?.send(try ServiceSystemProxy.frame(snapshot))
+    } catch {
+      RelayLog.control.error("Could not encode the system proxy update.")
+    }
+  }
 
   public init(link: ServiceLink, capabilities: any CapabilityHandling) {
     self.link = link
@@ -132,6 +139,7 @@ public final class ControlStreamClient {
     guard let socket else { return }
     socket.send(ControlStream.subscribe())
     socket.send(ControlStream.register(DesktopCapability.allCases))
+    systemProxy.start()
     state = .connected
     pinger = Task { [weak self] in
       while !Task.isCancelled {
@@ -143,6 +151,7 @@ public final class ControlStreamClient {
   }
 
   private func connectionEnded() {
+    systemProxy.stop()
     pinger?.cancel()
     pinger = nil
     socket = nil

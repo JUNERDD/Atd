@@ -40,8 +40,10 @@ import { StreamHub } from './stream.js';
 import { taskStatusCounts } from './task-status.js';
 import { registerDevelopmentRoutes } from './development/routes.js';
 import type { SyncProfile } from './development/plan.js';
+import type { SystemProxy } from './network/system-proxy.js';
 
 export interface ServerDeps {
+  systemProxy: SystemProxy;
   config: ServiceConfig;
   ledger: Ledger;
   events: EventLog;
@@ -151,6 +153,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   const hub = new StreamHub({
+    systemProxy: deps.systemProxy,
     events: deps.events,
     capabilities: deps.capabilities,
     snapshot: (taskId) => deps.manager.snapshot(taskId),

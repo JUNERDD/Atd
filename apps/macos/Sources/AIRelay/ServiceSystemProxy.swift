@@ -1,19 +1,15 @@
 import CFNetwork
 import Foundation
 
-/// A launch-time snapshot for the bundled Node service, whose networking does not read macOS
-/// proxy preferences. Read the effective settings rather than a proxy app's configuration.
+/// Effective macOS proxy settings for the Node service. Used at launch and by the control stream
+/// when System Configuration reports a change; never writes system preferences.
 enum ServiceSystemProxy {
   static let environmentKey = "AI_AGENT_SYSTEM_PROXY"
 
   static func environment(inheriting parent: [String: String]) -> [String: String] {
     var environment = parent
     environment[environmentKey] = nil
-    guard
-      let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue()
-        as? [String: Any]
-    else { return environment }
-    guard let snapshot = snapshot(settings) else { return environment }
+    guard let snapshot = current() else { return environment }
     do {
       environment[environmentKey] = String(
         decoding: try JSONEncoder().encode(snapshot), as: UTF8.self)
@@ -23,21 +19,42 @@ enum ServiceSystemProxy {
     return environment
   }
 
-  struct Snapshot: Encodable {
+  struct Snapshot: Encodable, Equatable {
     let http: String?
     let https: String?
     let exceptions: [String]
     let excludeSimpleHostnames: Bool
+
+    static let direct = Snapshot(
+      http: nil, https: nil, exceptions: [], excludeSimpleHostnames: false)
   }
 
-  static func snapshot(_ settings: [String: Any]) -> Snapshot? {
+  static func current() -> Snapshot? {
+    guard let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue() as? [String: Any]
+    else {
+      RelayLog.service.error(
+        "Could not read the system proxy settings; keeping the previous rules.")
+      return nil
+    }
+    return snapshot(settings)
+  }
+
+  static func frame(_ snapshot: Snapshot) throws -> String {
+    struct Update: Encodable {
+      let type = "system.proxy"
+      let settings: Snapshot
+    }
+    return String(decoding: try JSONEncoder().encode(Update(settings: snapshot)), as: UTF8.self)
+  }
+
+  static func snapshot(_ settings: [String: Any]) -> Snapshot {
     // PAC/WPAD needs per-URL resolution, so a static HTTP snapshot cannot represent it.
     if enabled(kCFNetworkProxiesProxyAutoConfigEnable, in: settings)
       || enabled(kCFNetworkProxiesProxyAutoDiscoveryEnable, in: settings)
     {
       RelayLog.service.warning(
         "The service does not inherit automatic proxy configuration (PAC/WPAD).")
-      return nil
+      return .direct
     }
     let http = endpoint(
       enabled: kCFNetworkProxiesHTTPEnable, host: kCFNetworkProxiesHTTPProxy,
@@ -50,7 +67,7 @@ enum ServiceSystemProxy {
         RelayLog.service.warning(
           "The service needs an HTTP/HTTPS system proxy; SOCKS-only is unsupported.")
       }
-      return nil
+      return .direct
     }
     return Snapshot(
       http: http, https: https,

@@ -12,11 +12,11 @@ const SystemProxySchema = Type.Object(
   { additionalProperties: false },
 );
 
-type SystemProxySettings = Static<typeof SystemProxySchema>;
+export type SystemProxySettings = Static<typeof SystemProxySchema>;
 
 /** The native shell supplies only HTTP CONNECT proxy endpoints, never account credentials. */
-export function readSystemProxySettings(raw: string): SystemProxySettings {
-  const settings = parse(SystemProxySchema, JSON.parse(raw));
+export function readSystemProxySettings(raw: unknown): SystemProxySettings {
+  const settings = parse(SystemProxySchema, raw);
   for (const endpoint of [settings.http, settings.https]) {
     if (!endpoint) continue;
     const url = new URL(endpoint);
@@ -40,7 +40,7 @@ export type SystemProxyResolver = (protocol: string, hostname: string) => string
 /**
  * Preserve macOS exceptions (including FlClash's IP-prefix wildcards) for both HTTP stacks.
  * Like CFNetwork, an entry that cannot be applied is skipped rather than abandoning the proxy;
- * `skipped` counts them for the startup log.
+ * `skipped` counts them for the configuration log.
  */
 export function systemProxyResolver(settings: SystemProxySettings): {
   resolve: SystemProxyResolver;
