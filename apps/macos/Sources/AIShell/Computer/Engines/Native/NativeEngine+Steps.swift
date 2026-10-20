@@ -155,20 +155,27 @@ extension NativeEngine {
   ) async throws(ComputerFailure) -> EngineStepOutcome {
     context.report(.waiting)
     let limit = min(.now + .milliseconds(timeoutMs), context.deadline)
+    var missed: ComputerFailure?
     while true {
       try dispatchable(context)
-      if try await holds(
-        condition, ref: ref, baseline: NativeObservation.texts(baseline.elements),
-        screenBaseline: targets[ref.id]?.recognizedText, observation: baseline,
-        operation: context.operationId)
-      {
-        return EngineStepOutcome(
-          .notDispatched, evidence: [.init(kind: .text, summary: "The condition held.")])
+      do throws(ComputerFailure) {
+        if try await holds(
+          condition, ref: ref, baseline: NativeObservation.texts(baseline.elements),
+          screenBaseline: targets[ref.id]?.recognizedText, observation: baseline,
+          operation: context.operationId)
+        {
+          return EngineStepOutcome(
+            .notDispatched, evidence: [.init(kind: .text, summary: "The condition held.")])
+        }
+        missed = nil
+      } catch let failure where Self.readsAgain(after: failure, condition) {
+        missed = failure
       }
       guard ContinuousClock.now + Self.waitInterval < limit else { break }
       try? await Task.sleep(for: Self.waitInterval)
     }
-    throw ComputerFailure(.timeout, "The condition did not hold within \(timeoutMs) ms.")
+    throw missed
+      ?? ComputerFailure(.timeout, "The condition did not hold within \(timeoutMs) ms.")
   }
 
   /// An enabled text field or area `locator` names, with a token the driver resolves, reported

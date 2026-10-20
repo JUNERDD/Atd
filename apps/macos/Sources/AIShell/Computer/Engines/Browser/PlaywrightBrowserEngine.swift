@@ -199,9 +199,11 @@ final class PlaywrightBrowserEngine: ComputerEngine {
     pressBaselines = pressBaselines.filter { !$0.key.hasPrefix(ref.id + " ") }
   }
 
-  /// Checks a condition on the page `baseline` read (the bound page without one).
+  /// Checks a condition on the page `baseline` read (the bound page without one), within the
+  /// worker's own wait of ``checkTimeoutMs``.
   func check(
-    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?
+    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?,
+    context: EngineCheckContext
   ) async throws(ComputerFailure) -> Bool {
     let (page, instance, binding) = try await target(ref)
     let record = baseline.flatMap { observations[$0.ref.id] } ?? latestObservation(of: ref.id)

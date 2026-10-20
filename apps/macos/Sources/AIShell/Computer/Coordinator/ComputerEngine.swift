@@ -83,6 +83,20 @@ struct EngineObserveContext {
   }
 }
 
+/// The bounds of an action's postcondition check after its steps: the request's deadline, which
+/// ends a polling check as unmet, and whether the coordinator stopped the action meanwhile
+/// (cancel, deadline, quit), which ends it `cancelled` at its next read.
+struct EngineCheckContext {
+  let deadline: ContinuousClock.Instant
+  let isStopping: () -> Bool
+
+  func check() throws(ComputerFailure) {
+    if Task.isCancelled || isStopping() {
+      throw ComputerFailure(.cancelled, "Verification was cancelled.")
+    }
+  }
+}
+
 /// The context of one step: who it is for, when it must end, and the coordinator's callbacks.
 /// Delivery is always background, and the engine (not the model) picks the route.
 struct EngineStepContext {
@@ -209,9 +223,12 @@ protocol ComputerEngine: AnyObject {
     _ step: ComputerStepWire, on ref: TargetRefWire, observation: ObservationRefWire,
     context: EngineStepContext
   ) async throws(ComputerFailure) -> EngineStepOutcome
-  /// Checks a condition; `baseline` is the observation the action started from (`newText`).
+  /// Checks a postcondition after the steps; `baseline` is the observation the action started
+  /// from (`newText`). An engine may keep reading a condition that can show a moment after the
+  /// input, within `context`.
   func check(
-    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?
+    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?,
+    context: EngineCheckContext
   ) async throws(ComputerFailure) -> Bool
   /// Asks the engine to end the step it runs for `operationId` as soon as it safely can.
   func cancel(operationId: String) async

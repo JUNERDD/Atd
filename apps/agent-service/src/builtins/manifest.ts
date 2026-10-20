@@ -200,7 +200,13 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 18 states the postcondition rule by step kind: every `click` (any locator, including
   // `text`), `menu`, `drag`, `upload`, non-typing key and typed line break is an `invoke`, so it
   // needs a postcondition, not only a screenshot click.
-  skill('computer-use', 18, []),
+  // Version 19: an app's `menuItemAvailable` postcondition is read for about eight seconds and a
+  // `textAppears` one for three, so a `wait` helps only a longer change; a submit or invoke whose
+  // `textAppears` text its observation already shows is refused before input; navigation names
+  // text the destination is sure to show, preferring a control it always offers over its title
+  // and never a recalled label or a variant of a title already on screen; and an action whose
+  // postcondition did not hold returns the observation read after its steps.
+  skill('computer-use', 19, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

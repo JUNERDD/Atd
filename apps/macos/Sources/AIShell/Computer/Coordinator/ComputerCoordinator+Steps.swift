@@ -97,11 +97,20 @@ extension ComputerCoordinator {
       case .held: fold.postcondition = .held
       case .stopped(let failure): fold.stop(failure.wire)
       case .check:
+        let context = EngineCheckContext(
+          deadline: deadline, isStopping: { [weak execution] in execution?.stop != nil })
         do throws(ComputerFailure) {
-          let held = try await engine.check(postcondition, on: ref, baseline: observation)
+          let held = try await engine.check(
+            postcondition, on: ref, baseline: observation, context: context)
           fold.postcondition = held ? .held : .notHeld(postcondition)
         } catch {
-          fold.postcondition = .failed(error.wire)
+          // A stop ends the check `cancelled`; the action then reports why it stopped, as it does
+          // for a stop just before the check.
+          if error.code == .cancelled, let stop = execution.stop {
+            fold.stop(stop.wire)
+          } else {
+            fold.postcondition = .failed(error.wire)
+          }
         }
       }
     }

@@ -12,7 +12,11 @@ import { observationOutput } from './observation-output.js';
 // turn and repeat the same read while a normal full observation is still completing.
 const NEXT_OBSERVATION_MS = 10_000;
 
-/** A best-effort read after a settled write or a no-input stale refusal; never retries input. */
+/**
+ * A best-effort read after a settled write or a no-input stale refusal; never retries input. A
+ * write that settled without verifying, because its postcondition did not hold, gets one too, so
+ * the model judges the state the unconfirmed action left from it instead of observing first.
+ */
 export async function nextObservation(
   ctx: CallContext,
   action: ComputerAction,
@@ -24,24 +28,40 @@ export async function nextObservation(
     ctx.unattended ||
     ctx.signal?.aborted ||
     coordinator.isClosed(ctx.runId) ||
-    (!staleBeforeDispatch(fact) &&
-      (fact.effect === 'read' ||
-        fact.result?.effect !== 'verified' ||
-        fact.result.dispatch !== 'settled' ||
-        fact.result.completedSteps !== action.steps.length ||
-        fact.result.error !== undefined))
+    (!staleBeforeDispatch(fact) && !settledWrite(fact, action))
   )
     return null;
   const output = await readNextObservation(ctx, targetRef, action.surfaceRefId);
-  return staleBeforeDispatch(fact)
+  if (staleBeforeDispatch(fact))
+    return {
+      ...output,
+      next:
+        'nextObservation' in output
+          ? 'Nothing was sent. Inspect the fresh nextObservation image, locate the intended control again, and use its observationRefId and a new actionId. Never replay the old coordinates.'
+          : 'Nothing was sent. Obtain a fresh observation, inspect it and locate the control again before another action with a new actionId. Never replay the old coordinates.',
+    };
+  return fact.result?.effect === 'partial' && 'nextObservation' in output
     ? {
         ...output,
-        next:
-          'nextObservation' in output
-            ? 'Nothing was sent. Inspect the fresh nextObservation image, locate the intended control again, and use its observationRefId and a new actionId. Never replay the old coordinates.'
-            : 'Nothing was sent. Obtain a fresh observation, inspect it and locate the control again before another action with a new actionId. Never replay the old coordinates.',
+        next: 'Inspect the fresh nextObservation, read after the steps, instead of observing again; what it shows does not confirm this action.',
       }
     : output;
+}
+
+/**
+ * A write whose every step ran and settled without error: `verified`, or `partial` because its
+ * postcondition did not hold after the steps, the only way such a result is partial (the host
+ * reports an action that stopped with its error).
+ */
+function settledWrite(fact: ComputerFact, action: ComputerAction): boolean {
+  const result = fact.result;
+  return (
+    fact.effect !== 'read' &&
+    (result?.effect === 'verified' || result?.effect === 'partial') &&
+    result.dispatch === 'settled' &&
+    result.completedSteps === action.steps.length &&
+    result.error === undefined
+  );
 }
 
 /** Only an explicit no-input stale failure may obtain a recovery observation. */

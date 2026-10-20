@@ -6,11 +6,11 @@ Read this reference when the requested outcome lacks reliable state, observation
 
 Choose the condition before input. It proves the immediate action, not every later stage of the task. Ground input in the latest observed controls and coordinates; a condition may name the expected resulting state while that state is absent from the baseline.
 
-An app's `textAppears` checks fresh screenshot OCR when accessibility text does not contain the expected substring, ignoring case and spacing, and a postcondition keeps reading for about two seconds after the steps while the view renders. Existing baseline text, compared the same way, is not evidence of a new effect. Likewise, an enabled control says nothing about completion, and an already available menu item cannot prove a transition.
+An app's `textAppears` checks fresh screenshot OCR when accessibility text does not contain the expected substring, ignoring case and spacing. After the steps, an app's `textAppears` postcondition keeps reading for about three seconds while the view renders, and a `menuItemAvailable` one for about eight, since an app may relabel its menu only once the state behind it changed; other conditions are read once. Existing baseline text, compared the same way, is not evidence of a new effect, and the host refuses a submit or invoke that names it before input. Likewise, an enabled control says nothing about completion, and an already available menu item cannot prove a transition.
 
 `menuItemAvailable` reads an exact application menu path without opening or invoking it. Native observations expose immediate application menu items through accessibility; discovery omits the system Apple menu and submenu contents. Menu items are read-only state, not element refs. Prefer app-reported state when the app exposes it; do not assume an unknown app uses a particular Play or Pause label.
 
-When a transition takes time, include a short wait for the real resulting condition, followed by the same postcondition. A timeout ends remaining steps and proves no success. Do not use nonexistent text as a delay. For a later observation use `observe.afterMs` (0–5000).
+When a transition takes longer than the host keeps reading, include a wait for the real resulting condition with a timeout beyond that, followed by the same postcondition. A timeout ends remaining steps and proves no success. Do not use nonexistent text as a delay. For a later observation use `observe.afterMs` (0–5000).
 
 A read-only check still uses the complete action shape:
 

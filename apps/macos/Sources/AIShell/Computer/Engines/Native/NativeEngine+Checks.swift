@@ -92,32 +92,63 @@ extension NativeEngine {
     }
   }
 
+  /// How long a postcondition may take to show after the steps before the check reports it unmet
+  /// (zero: one read). Native menus and window text can change a while after input returns: the
+  /// driver settles only briefly after a click, a view may render later still, and an app may
+  /// relabel its menu only once the state behind it changed, such as playback that had to load
+  /// first. A menu read is a few accessibility messages, so a menu state is watched longest; a
+  /// text read takes a fresh snapshot and often OCR of the window, and a label that never shows
+  /// should be reported soon. The computer tool's description and the computer-use skill state
+  /// these windows to the model.
+  static func checkWindow(_ condition: ComputerConditionWire) -> Duration {
+    switch condition {
+    case .menuItemAvailable: .seconds(8)
+    case .textAppears: .seconds(3)
+    case .valueEquals, .enabled, .newText, .urlMatches: .zero
+    }
+  }
+
   func check(
-    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?
+    _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?,
+    context: EngineCheckContext
   ) async throws(ComputerFailure) -> Bool {
     let before = (baseline?.elements ?? []).flatMap { [$0.name, $0.value].compactMap { $0 } }
-    // Native menus and window text can change a moment after input returns: the driver settles
-    // only briefly after a click, and a view may render later still. Menu and text conditions
-    // therefore poll reads for a short grace, never the input, and hold once a read shows them.
-    let grace: Duration =
-      switch condition {
-      case .menuItemAvailable, .textAppears: .seconds(2)
-      case .valueEquals, .enabled, .newText, .urlMatches: .zero
-      }
-    let until = ContinuousClock.now + grace
+    // Reads are polled, never the input, and the first read that shows the condition ends it.
+    let until = min(ContinuousClock.now + Self.checkWindow(condition), context.deadline)
+    var missed: ComputerFailure?
     repeat {
+      try context.check()
       _ = try window(of: ref)
-      if try await holds(
-        condition, ref: ref, baseline: before, screenBaseline: baseline?.text?.map(\.text),
-        observation: targets[ref.id]?.observation, operation: nil)
-      {
-        return true
+      do throws(ComputerFailure) {
+        if try await holds(
+          condition, ref: ref, baseline: before, screenBaseline: baseline?.text?.map(\.text),
+          observation: targets[ref.id]?.observation, operation: nil)
+        {
+          return true
+        }
+        missed = nil
+      } catch let failure where Self.readsAgain(after: failure, condition) {
+        missed = failure
       }
-      guard ContinuousClock.now < until else { return false }
+      guard ContinuousClock.now < until else {
+        // The last read decides: a menu that did not answer it shows no missing item.
+        if let missed { throw missed }
+        return false
+      }
       do { try await Task.sleep(for: Self.waitInterval) } catch {
         throw ComputerFailure(.cancelled, "Verification was cancelled.")
       }
     } while true
+  }
+
+  /// Whether a poll reads `condition` again after a read failed with `failure` instead of ending:
+  /// only when the app's menu did not answer that read (``NativeMenuProbe/available(pid:path:)``),
+  /// which says nothing about the item.
+  static func readsAgain(after failure: ComputerFailure, _ condition: ComputerConditionWire)
+    -> Bool
+  {
+    guard case .menuItemAvailable = condition else { return false }
+    return failure.code == .timeout
   }
 
   /// Whether `condition` holds now. `baseline` is the visible text the action started from

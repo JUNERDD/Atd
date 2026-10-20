@@ -6,10 +6,11 @@ import type { ImportedDownload } from './transfers.js';
 /*
  * What the model reads in answer to an `act` (act.ts): the action's fact, the earlier actions its
  * check resolved or left unresolved, the downloads it imported as task files (or could not) and
- * what to do next. Besides a background refusal (refusals.ts) or a stale observation, `next`
- * explains the hold of a free run (policy.ts) when the action's own outcome sets it and when a
- * check leaves actions it named unresolved, so the model neither repeats an effect that may have
- * run nor stops without the person's check that ends the hold.
+ * what to do next. Besides a background refusal (refusals.ts), a stale observation or the
+ * observation read after an unconfirmed action, `next` explains the hold of a free run
+ * (policy.ts) when the action's own outcome sets it and when a check leaves actions it named
+ * unresolved, so the model neither repeats an effect that may have run nor stops without the
+ * person's check that ends the hold.
  */
 
 /** What an answer reports besides the action's own fact. */
@@ -25,8 +26,9 @@ export interface ActAnswer {
   /** The downloads it imported as task files, and those it could not. */
   files?: { downloads: readonly ImportedDownload[]; notImported: readonly string[] } | null;
   /**
-   * The observation read after it, or that none is available, and what to do after a stale
-   * observation refused it (`next`), as next-observation.ts reports them.
+   * The observation read after it, or that none is available, and what to do (`next`) after a
+   * stale observation refused it or with the observation read after its unmet postcondition, as
+   * next-observation.ts reports them.
    */
   observation?: { next?: string; [field: string]: unknown };
 }

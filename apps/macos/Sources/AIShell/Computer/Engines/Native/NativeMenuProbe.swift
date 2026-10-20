@@ -27,24 +27,26 @@ nonisolated enum NativeMenuProbe {
     return read.expired ? nil : items
   }
 
-  /// A missing item is false; an unreadable or ambiguous menu is never evidence of state.
+  /// A missing or disabled item is false; an unreadable or ambiguous menu is never evidence of
+  /// state. A read the app did not answer in time is `timeout`, which a later read may get past.
   static func available(pid: pid_t, path: [String]) -> Result<Bool, ComputerFailure> {
     let read = Read(pid: pid)
+    let unanswered = ComputerFailure(.timeout, "The application menu did not answer in time.")
     guard var parent = read.menu else {
-      return .failure(ComputerFailure(.unsupported, "The application menu is not readable."))
+      return .failure(
+        read.unanswered
+          ? unanswered : ComputerFailure(.unsupported, "The application menu is not readable."))
     }
     for title in path {
       let matches = read.children(parent).filter { read.title($0) == title }
-      if read.expired {
-        return .failure(ComputerFailure(.timeout, "The application menu did not answer in time."))
-      }
+      if read.expired || read.unanswered { return .failure(unanswered) }
       guard !matches.isEmpty else { return .success(false) }
       guard matches.count == 1, let item = matches.first else {
         return .failure(ComputerFailure(.ambiguous, "The menu path matches more than one item."))
       }
-      guard read.attribute(item, kAXEnabledAttribute) as? Bool == true else {
-        return .success(false)
-      }
+      let enabled = read.attribute(item, kAXEnabledAttribute) as? Bool == true
+      if read.expired || read.unanswered { return .failure(unanswered) }
+      guard enabled else { return .success(false) }
       parent = item
     }
     return .success(true)
@@ -102,9 +104,13 @@ nonisolated enum NativeMenuProbe {
       character: character, virtualKey: code, modifiers: (modifiers as? NSNumber)?.intValue ?? 0)
   }
 
-  private struct Read {
+  /// One read of the app's menu, within its own deadline. A child, title or state it could not
+  /// read is left out, so `unanswered` records whether a read could have hidden one: the app did
+  /// not answer in time while busy, or an item went away as the app rebuilt its menu.
+  private final class Read {
     let app: AXUIElement
     let deadline = ContinuousClock.now + .seconds(2)
+    private(set) var unanswered = false
 
     init(pid: pid_t) {
       app = AXUIElementCreateApplication(pid)
@@ -123,10 +129,13 @@ nonisolated enum NativeMenuProbe {
     func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
       guard !expired else { return nil }
       var value: CFTypeRef?
-      guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else {
+      switch AXUIElementCopyAttributeValue(element, name as CFString, &value) {
+      case .success: return value
+      case .cannotComplete, .invalidUIElement:
+        unanswered = true
         return nil
+      default: return nil
       }
-      return value
     }
 
     /// Several attributes of `element` in one request, in order; a missing one is nil.
