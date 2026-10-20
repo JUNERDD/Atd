@@ -722,8 +722,8 @@
       "notRepaired": "not put back"
     },
     "visual": {
-      "unverified": "Visual steps are off: this model isn’t checked yet for acting on pictures of the screen, so Atd acts only through controls it can read.",
-      "unavailable": "Visual steps are off: this model can’t read pictures, so Atd acts only through controls it can read."
+      "unverified": "Visual steps are off: this model isn’t checked yet for acting on pictures of the screen, so Atd acts only through controls it can read and text it recognizes.",
+      "unavailable": "Visual steps are off: this model can’t read pictures, so Atd acts only through controls it can read and text it recognizes."
     },
     "check": {
       "action": "Mark as checked",
