@@ -47,7 +47,10 @@ export const COMPUTER_SCREENSHOT_MAX_BASE64 = 11184812;
  * missing; `needsConsent`: screen capture was never prepared in Settings, and an unattended run
  * never prompts for it; `locked` / `busy`: another host holds the session lock or the resource;
  * `targetInUse`: the person is using the target (it is in front of them and they typed, clicked
- * or scrolled in the last few seconds), so the host yields; `hostUnavailable`: no bound host answered (or it speaks another computer protocol);
+ * or scrolled in the last few seconds), so the host yields; `inputInUse`: the person is using the
+ * keyboard or pointer right now, in any app, so the host sent nothing rather than open a key
+ * scope under their input, and the step can be tried again in a few seconds; `hostUnavailable`:
+ * no bound host answered (or it speaks another computer protocol);
  * `modalBlocked`: the step wrote to a surface while a modal child of it was open; `disturbed`:
  * the action disturbed the person (`ActionResult.disturbances` attributes it to the agent), so the
  * host repaired what it could and ended the action; on an app it keeps that route off until the
@@ -67,6 +70,7 @@ export const ComputerErrorCodeSchema = Type.Union([
   Type.Literal('locked'),
   Type.Literal('busy'),
   Type.Literal('targetInUse'),
+  Type.Literal('inputInUse'),
   Type.Literal('cancelled'),
   Type.Literal('timeout'),
   Type.Literal('unsupported'),

@@ -172,7 +172,7 @@ public enum NativeRouteExclusion: String, Equatable, Sendable {
 }
 
 extension DriverPrimitive {
-  /// The route the driver delivers this primitive on (driver protocol v1).
+  /// The route the driver delivers this primitive on.
   public var route: DriverRoute {
     switch self {
     case .axAction, .axFocus: .axAction

@@ -114,11 +114,15 @@ extension NativeEngine {
   ) async throws(ComputerFailure) -> Bool {
     let before = (baseline?.elements ?? []).flatMap { [$0.name, $0.value].compactMap { $0 } }
     // Reads are polled, never the input, and the first read that shows the condition ends it.
-    let until = min(ContinuousClock.now + Self.checkWindow(condition), context.deadline)
+    let start = ContinuousClock.now
+    let until = min(start + Self.checkWindow(condition), context.deadline)
     var missed: ComputerFailure?
+    var reads = 0
+    defer { context.phases.add(.check, since: start, count: reads) }
     repeat {
       try context.check()
       _ = try window(of: ref)
+      reads += 1
       do throws(ComputerFailure) {
         if try await holds(
           condition, ref: ref, baseline: before, screenBaseline: baseline?.text?.map(\.text),

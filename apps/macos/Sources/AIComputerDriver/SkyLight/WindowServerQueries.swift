@@ -93,7 +93,11 @@ enum WindowServerQueries {
     var previous: UInt8 = 0
     let status = enable(main(), windowId, enabled ? 1 : 0, &previous)
     guard status == 0 else {
-      spi.latchUnavailable(DriverCapabilityName.occlusionKeepAlive)
+      spi.latchUnavailable(
+        DriverCapabilityName.occlusionKeepAlive,
+        cause:
+          "SLSPackagesEnableWindowOcclusionNotifications(\(enabled)) returned \(status) for "
+          + "window \(windowId)")
       return nil
     }
     return previous != 0

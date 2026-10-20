@@ -15,23 +15,23 @@ final class OcclusionKeepAlive: @unchecked Sendable {
   private var previousStates: [CGWindowID: Bool] = [:]
   private var exitHookInstalled = false
 
-  /// Pin the window's visible state if it is currently unoccluded. Returns whether it is pinned
-  /// (now or already). A window that is already covered cannot be pinned (returns false).
-  @discardableResult
-  func keepVisible(windowId: CGWindowID, bounds: CGRect) -> Bool {
+  /// Pin the window's visible state if it is currently unoccluded, and say what came of it. A
+  /// window that is already covered cannot be pinned (`covered`); a refused switch latches the
+  /// capability off for the process (`failed`).
+  func keepVisible(windowId: CGWindowID, bounds: CGRect) -> DriverKeepAliveOutcome {
     guard PrivateSymbols.shared.capability(DriverCapabilityName.occlusionKeepAlive).available else {
-      return false
+      return .unavailable
     }
     lock.lock()
     defer { lock.unlock() }
-    if previousStates[windowId] != nil { return true }
-    guard looksUnoccluded(windowId: windowId, bounds: bounds) else { return false }
+    if previousStates[windowId] != nil { return .pinned }
+    guard looksUnoccluded(windowId: windowId, bounds: bounds) else { return .covered }
     guard
       let previous = WindowServerQueries.setOcclusionNotificationsEnabled(false, windowId: windowId)
-    else { return false }
+    else { return .failed }
     previousStates[windowId] = previous
     installExitHookIfNeeded()
-    return true
+    return .pinned
   }
 
   func isPinned(windowId: CGWindowID) -> Bool {

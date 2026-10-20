@@ -134,30 +134,53 @@ extension NativeEngine {
   // MARK: Pinning
 
   /// Chromium, Electron and WebKit stop rendering once covered, and Chromium builds its web tree
-  /// only on request. While the window is still unoccluded the driver pins its visible state
-  /// (and turns web accessibility on for the Chromium family, once per app); a window that is
-  /// covered now is tried again on the next observation (plan §4.4).
-  func prepare(_ place: NativeSurfaceRead, toolkit: DriverToolkit, for ref: TargetRefWire) async {
+  /// only on request. While the window is still unoccluded the driver pins its visible state; a
+  /// window that is covered now is tried again on the next observation (plan §4.4), unless the
+  /// driver latched keep-alive off. The Chromium family's web accessibility is asked for once per
+  /// process, whatever comes of it: the driver waits up to 3 s for a web area then, and the
+  /// attribute stays on, so a tree the app builds later is in a later observation's snapshot
+  /// (and the probe's web-area check) without another wait, while an app that never shows one,
+  /// such as an embedded browser exposing only its window, pays the wait once rather than on
+  /// every observation. Only an app that took neither attribute, which nothing waited for, is
+  /// asked again. What came of it goes on the observation's line in the log (`web`, `pin`).
+  func prepare(
+    _ place: NativeSurfaceRead, toolkit: DriverToolkit, for ref: TargetRefWire,
+    phases: OperationPhases
+  ) async {
     let web = [.chromium, .electron, .cef].contains(toolkit)
     guard web || toolkit == .webKit else { return }
     if pinned[place.windowKey] != nil {
       pinned[place.windowKey]?.insert(ref.id)
+      phases.note("pin", DriverKeepAliveOutcome.pinned.rawValue)
       return
     }
+    let process = NativeProcessKey.running(place.pid)
     let keepAlive = capabilities.contains(DriverCapabilityName.occlusionKeepAlive)
-    let enableWeb = web && !webAccessibility.contains(place.pid)
+    let enableWeb = web && process.map { !webAccessibility.contains($0) } == true
     guard keepAlive || enableWeb else { return }
     let request = DriverPrepareRequest(
       target: place.driverTarget, enableWebAccessibility: enableWeb, occlusionKeepAlive: keepAlive)
-    guard
-      let prepared = try? await fetch(
-        .prepare(request), operation: nil,
-        {
-          if case .prepare(let prepared) = $0 { prepared } else { nil }
-        })
-    else { return }
-    if prepared.webAccessibilityEnabled { webAccessibility.insert(place.pid) }
-    if prepared.occlusionKeepAlivePinned { pinned[place.windowKey, default: []].insert(ref.id) }
+    let prepared: DriverPrepareResult
+    do throws(ComputerFailure) {
+      prepared = try await fetch(.prepare(request), operation: nil) {
+        if case .prepare(let prepared) = $0 { prepared } else { nil }
+      }
+    } catch {
+      phases.note("prepareFailed", error.code.rawValue)
+      return
+    }
+    if let outcome = prepared.webAccessibility {
+      phases.note("web", outcome.rawValue)
+      if outcome != .refused, let process { webAccessibility.insert(process) }
+    }
+    if let outcome = prepared.occlusionKeepAlive {
+      phases.note("pin", outcome.rawValue)
+      switch outcome {
+      case .pinned: pinned[place.windowKey, default: []].insert(ref.id)
+      case .covered: break
+      case .failed, .unavailable: driverTurnedOff(DriverCapabilityName.occlusionKeepAlive)
+      }
+    }
   }
 
   /// Undoes the pins `ref` holds: a window no other ref needs is released (its occlusion

@@ -1,3 +1,4 @@
+import AIComputerDriverKit
 import AppKit
 import ApplicationServices
 import Foundation
@@ -26,25 +27,27 @@ enum WebAccessibility {
     }
   }
 
-  /// Enable the web tree and, for lazy engines, wait up to 3s for an `AXWebArea` to appear under
-  /// the window. Returns whether a web area is present after enablement.
-  @discardableResult
-  static func enable(appElement: AXUIElement, window: AXUIElement, pid: pid_t) -> Bool {
-    let setManual = AXUIElementSetAttributeValue(
-      appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue)
-    if setManual != .success {
-      _ = AXUIElementSetAttributeValue(
-        appElement, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
-    }
-    guard hasLazyWebTree(pid: pid) else {
-      return containsWebArea(window)
+  /// Enable the web tree and, for a lazy engine that took the attribute, wait up to 3s for an
+  /// `AXWebArea` to appear under the window. An app that took neither attribute is not waited
+  /// for: nothing was turned on, so no tree is coming.
+  static func enable(appElement: AXUIElement, window: AXUIElement, pid: pid_t)
+    -> DriverWebAccessibilityOutcome
+  {
+    let took =
+      AXUIElementSetAttributeValue(
+        appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue) == .success
+      || AXUIElementSetAttributeValue(
+        appElement, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue) == .success
+    let missing: DriverWebAccessibilityOutcome = took ? .noWebArea : .refused
+    guard took, hasLazyWebTree(pid: pid) else {
+      return containsWebArea(window) ? .webArea : missing
     }
     let deadline = Date().addingTimeInterval(treeWait)
     while Date() < deadline {
-      if containsWebArea(window) { return true }
+      if containsWebArea(window) { return .webArea }
       Thread.sleep(forTimeInterval: pollInterval)
     }
-    return containsWebArea(window)
+    return containsWebArea(window) ? .webArea : missing
   }
 
   /// Whether an `AXWebArea` exists in the first few levels of the window's subtree.

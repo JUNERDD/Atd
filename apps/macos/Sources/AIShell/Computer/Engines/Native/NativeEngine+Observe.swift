@@ -24,11 +24,14 @@ extension NativeEngine {
     try Self.requireUnlockedSession()
     try requireAccessibility()
     let include = operation.include
+    var laps = context.phases.laps()
     try await refreshSurfaces(ref)
+    laps.end(.surfaces)
     try context.check()
     let place = try surfaceRead(ref, operation.surfaceRefId)
     let region = try regionCrop(operation.region, ref: ref, place: place)
     let probe = try await probe(place, operation: context.operationId)
+    laps.end(.probe)
     try context.check()
     guard !probe.placement.minimized else {
       throw ComputerFailure(
@@ -37,13 +40,17 @@ extension NativeEngine {
           + "observe again.", reason: .minimized)
     }
     targets[ref.id]?.toolkit = probe.toolkit
-    await prepare(place, toolkit: probe.toolkit, for: ref)
+    context.phases.note("toolkit", probe.toolkit.rawValue)
+    context.phases.note("webArea", "\(probe.webAccessibility)")
+    await prepare(place, toolkit: probe.toolkit, for: ref, phases: context.phases)
+    laps.end(.prepare)
     try context.check()
     let before = Date()
     let useBy = NativeCapture.UseBy(before: before, clock: .now)
     var snapshot: DriverSnapshotResult?
     if include.tree {
       snapshot = try await self.snapshot(place, operation: context.operationId)
+      laps.end(.snapshot)
       try context.check()
     }
     guard let version = targets[ref.id].map({ $0.version + 1 }) else { throw Self.changed }
@@ -60,9 +67,11 @@ extension NativeEngine {
     }
     var shot = Shot()
     if include.screenshot {
+      laps = context.phases.laps()
       shot = await self.shot(
         place, region: region, onActiveSpace: probe.placement.onActiveSpace,
         id: "\(observationId).c", useBy: useBy, operation: context.operationId)
+      laps.end(.capture)
       problems += shot.problems
     }
     if let capture = shot.capture, place.root == .window,
@@ -73,11 +82,8 @@ extension NativeEngine {
     }
     // OCR and the app menu are independent reads; retain both before publishing this observation.
     let (pixels, capture) = (include.text ? shot.image : nil, shot.capture)
-    async let recognized = recognize(pixels, in: capture)
-    async let menuRead: [ComputerMenuItemWire]? = NativeTargetProbe.detached {
-      guard include.tree && place.pid == ref.native?.pid else { return nil }
-      return NativeMenuProbe.snapshot(pid: pid_t(place.pid))
-    }
+    async let recognized = recognize(pixels, in: capture, phases: context.phases)
+    async let menuRead = menu(of: include.tree ? place : nil, ref: ref, phases: context.phases)
     let (text, menuItems) = await (recognized, menuRead)
     try context.check()
     // A Mac that locked while the reads ran showed them its stub tree; nothing of it is published.
@@ -148,14 +154,27 @@ extension NativeEngine {
     return area
   }
 
+  /// The app's menu, read off the main actor, when `place` (nil: no tree asked for) is in the
+  /// target's own process.
+  private func menu(of place: NativeSurfaceRead?, ref: TargetRefWire, phases: OperationPhases)
+    async -> [ComputerMenuItemWire]?
+  {
+    guard let place, place.pid == ref.native?.pid else { return nil }
+    let start = ContinuousClock.now
+    defer { phases.add(.menu, since: start) }
+    return await NativeTargetProbe.detached { NativeMenuProbe.snapshot(pid: pid_t(place.pid)) }
+  }
+
   /// The text Vision finds in the capture, boxes in its pixels, at most
   /// ``ComputerWireLimits/maxTextBoxes``; nil when there is no capture or recognition failed.
-  private func recognize(_ image: CGImage?, in capture: NativeCapture?) async
-    -> [ComputerTextBoxWire]?
+  private func recognize(_ image: CGImage?, in capture: NativeCapture?, phases: OperationPhases)
+    async -> [ComputerTextBoxWire]?
   {
-    guard let image, let capture,
-      let boxes = await ScreenText.boxes(in: image, limit: ComputerWireLimits.maxTextBoxes)
-    else { return nil }
+    guard let image, let capture else { return nil }
+    let start = ContinuousClock.now
+    let found = await ScreenText.boxes(in: image, limit: ComputerWireLimits.maxTextBoxes)
+    phases.add(.ocr, since: start)
+    guard let boxes = found else { return nil }
     return boxes.compactMap { box in
       let text = box.text.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !text.isEmpty else { return nil }

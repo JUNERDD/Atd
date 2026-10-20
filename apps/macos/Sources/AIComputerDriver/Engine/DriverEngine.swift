@@ -52,17 +52,17 @@ final class DriverEngine: @unchecked Sendable {
     guard let resolved = WindowResolver.resolve(request.target) else {
       throw DriverFailure(code: .targetGone)
     }
-    var web = false
+    var web: DriverWebAccessibilityOutcome?
     if request.enableWebAccessibility {
       web = WebAccessibility.enable(
         appElement: resolved.app, window: resolved.window, pid: pid_t(request.target.pid))
     }
-    var pinned = false
+    var pin: DriverKeepAliveOutcome?
     if request.occlusionKeepAlive {
-      pinned = OcclusionKeepAlive.shared.keepVisible(
+      pin = OcclusionKeepAlive.shared.keepVisible(
         windowId: CGWindowID(request.target.windowId), bounds: resolved.bounds)
     }
-    return DriverPrepareResult(webAccessibilityEnabled: web, occlusionKeepAlivePinned: pinned)
+    return DriverPrepareResult(webAccessibility: web, occlusionKeepAlive: pin)
   }
 
   func release(_ request: DriverReleaseRequest) -> DriverAck {

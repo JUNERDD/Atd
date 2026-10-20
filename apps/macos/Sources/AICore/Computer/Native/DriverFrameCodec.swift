@@ -1,10 +1,10 @@
 import AIComputerDriverKit
 import Foundation
 
-/// The host side of the driver's stdio framing (driver protocol v1): each frame is a 4-byte
-/// big-endian length followed by that many bytes of UTF-8 JSON, a `DriverRequestFrame` towards
-/// the driver and a `DriverOutgoing` back. The driver exits on a frame it cannot read, so the
-/// host never writes one it did not encode here.
+/// The host side of the driver's stdio framing: each frame is a 4-byte big-endian length
+/// followed by that many bytes of UTF-8 JSON, a `DriverRequestFrame` towards the driver and a
+/// `DriverOutgoing` back. The driver exits on a frame it cannot read, so the host never writes
+/// one it did not encode here.
 public enum DriverFrameCodec {
   /// The largest frame either side accepts; a longer length prefix is a desynchronized stream.
   public static let maxFrameBytes = 64 * 1024 * 1024

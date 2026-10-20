@@ -36,9 +36,12 @@ extension NativeEngine {
         condition, timeoutMs: timeoutMs, ref: ref, baseline: current, context: context)
     }
     try requireAccessibility()
+    var laps = context.phases.laps()
     try await requireUnblocked(ref, surface: named)
+    laps.end(.surfaces)
     let place = try observedRead(ref)
     let facts = try await writeFacts(ref, place: place, kind: step.kind, context: context)
+    laps.end(.probe)
     let write = Write(ref: ref, observation: current, place: place, facts: facts, context: context)
     switch step {
     case .setValue(let locator, let text):
@@ -156,8 +159,12 @@ extension NativeEngine {
     context.report(.waiting)
     let limit = min(.now + .milliseconds(timeoutMs), context.deadline)
     var missed: ComputerFailure?
+    let start = ContinuousClock.now
+    var reads = 0
+    defer { context.phases.add(.wait, since: start, count: reads) }
     while true {
       try dispatchable(context)
+      reads += 1
       do throws(ComputerFailure) {
         if try await holds(
           condition, ref: ref, baseline: NativeObservation.texts(baseline.elements),

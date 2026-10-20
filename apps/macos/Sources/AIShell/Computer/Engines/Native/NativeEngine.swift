@@ -47,13 +47,16 @@ final class NativeEngine: ComputerEngine {
   /// The id of the driver's newest snapshot of each window (``NativeSurfaceRead/windowKey``),
   /// whichever target read it: a newer snapshot of a window stales the tokens of the older.
   var snapshots: [String: String] = [:]
-  /// The driver capabilities available in this generation (``DriverCapabilityName``).
+  /// The driver capabilities available in this generation (``DriverCapabilityName``): those
+  /// `hello` reported, less any the driver reported latched off since.
   private(set) var capabilities: Set<String> = []
   /// Windows the driver pinned visible (``NativeSurfaceRead/windowKey``), with the target refs
   /// that need them; a window is released once no ref does.
   var pinned: [String: Set<String>] = [:]
-  /// Apps whose web accessibility the driver turned on; it stays on (toggling it has effects).
-  var webAccessibility: Set<Int> = []
+  /// Processes the driver asked to turn web accessibility on, whatever came of it. It stays on
+  /// for the life of the process, whichever generation of the driver asked (toggling it has
+  /// effects), so each process is asked once.
+  var webAccessibility: Set<NativeProcessKey> = []
   /// Routes the disturbance guard demoted, with how long each stays off (``RouteDemotion``). Keyed
   /// by the app rather than a ref, they outlive the driver's generation: a strike is kept until
   /// Atd quits, never cleared by the driver's idle stop, so a second one is always counted.
@@ -163,9 +166,21 @@ final class NativeEngine: ComputerEngine {
     targets = [:]
     snapshots = [:]
     pinned = [:]
-    webAccessibility = []
+    // Web accessibility outlives the driver; only processes that ended are forgotten.
+    webAccessibility = webAccessibility.filter {
+      NativeTargetProbe.processStart(pid: pid_t($0.pid)) == $0.start
+    }
     capabilities = []
     driverProcess = nil
+  }
+
+  /// The driver answered that `capability` is off although `hello` reported it on: it latched it
+  /// off after a failed call, for the rest of its process. The host stops asking for it.
+  func driverTurnedOff(_ capability: String) {
+    guard capabilities.remove(capability) != nil else { return }
+    Self.log.notice(
+      "Driver capability \(capability, privacy: .public) is off: latched off at runtime in generation \(self.generation ?? 0); no longer asked for"
+    )
   }
 
   /// Stops the driver once no call ran for the idle grace and no ref it resolved is held; the
@@ -225,4 +240,16 @@ struct NativeDemotion: Hashable {
   let toolkit: DriverToolkit
   let route: ActionResultWire.Route
   let kind: ComputerStepKind
+}
+
+/// One process, by pid and start time (``NativeTargetProbe/processStart(pid:)``), so a reused pid
+/// never stands for the process before it.
+struct NativeProcessKey: Hashable {
+  let pid: Int
+  let start: UInt64
+
+  /// The process running as `pid` now; nil when none does.
+  static func running(_ pid: Int) -> NativeProcessKey? {
+    NativeTargetProbe.processStart(pid: pid_t(pid)).map { NativeProcessKey(pid: pid, start: $0) }
+  }
 }

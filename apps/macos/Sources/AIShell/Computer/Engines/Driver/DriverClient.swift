@@ -21,11 +21,11 @@ enum DriverClientFailure: Error, Equatable, Sendable {
   case malformed(String)
 }
 
-/// The shell's connection to one `atd-computer-driver` at a time (driver protocol v1): it spawns
-/// the helper (``DriverProcess``), writes length-prefixed request frames, correlates the
-/// responses by id, bounds each request, and reads the capabilities from the `ready` event the
-/// driver sends first. Every start is a new generation, stamped into the driver's events; the
-/// engine numbers them.
+/// The shell's connection to one `atd-computer-driver` at a time, speaking
+/// ``driverProtocolVersion``: it spawns the helper (``DriverProcess``), writes length-prefixed
+/// request frames, correlates the responses by id, bounds each request, and reads the
+/// capabilities from the `ready` event the driver sends first. Every start is a new generation,
+/// stamped into the driver's events; the engine numbers them.
 ///
 /// A driver that exits on its own (a crash in a private call, a framing error) ends its
 /// generation: requests in flight fail `exited` (a `perform` may then have dispatched), `onExit`

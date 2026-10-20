@@ -1,9 +1,9 @@
 import AIComputerDriverKit
 import Foundation
 
-/// How a failure the driver reports maps onto the host's error codes and refusal reasons (driver
-/// protocol v1, finalized by the host). `mayHaveDispatched` is the driver's own: when it is set
-/// the step stops and is never replayed on another route.
+/// How a failure the driver reports maps onto the host's error codes and refusal reasons, as the
+/// host finalizes them. `mayHaveDispatched` is the driver's own: when it is set the step stops and
+/// is never replayed on another route.
 public enum NativeDriverFailureMap {
   public struct Mapped: Equatable, Sendable {
     public let code: ComputerErrorCode
@@ -11,9 +11,9 @@ public enum NativeDriverFailureMap {
     public let mayHaveDispatched: Bool
   }
 
-  /// A refused or failed `perform` of a `kind` step. A route limit is `noBackgroundRoute` with
-  /// its reason; the target's own state keeps its code.
-  public static func perform(_ failure: DriverFailure, step kind: ComputerStepKind) -> Mapped {
+  /// A refused or failed `perform`. A route limit is `noBackgroundRoute` with its reason; the
+  /// target's own state, and the person's input in progress, keep their codes.
+  public static func perform(_ failure: DriverFailure) -> Mapped {
     let refusal: ComputerRefusalReason? =
       switch failure.code {
       case .noRoute, .capabilityUnavailable, .badRequest, .internalError: .noRoute
@@ -28,8 +28,7 @@ public enum NativeDriverFailureMap {
       case .minimized: .minimized
       case .offSpace: .offSpace
       case .fullScreen: .fullScreen
-      case .userTyping: NativeTypingGuard.reason(for: kind)
-      case .staleElement, .targetGone, .cancelled: nil
+      case .userTyping, .staleElement, .targetGone, .cancelled: nil
       }
     if let refusal {
       return Mapped(
@@ -79,26 +78,40 @@ public enum NativeDriverFailureMap {
   }
 
   /// A stale element asks for a new observation, a gone window or process for a new target ref;
-  /// a cancelled request that may have acted is cancelled, a busy target is busy.
+  /// a cancelled request that may have acted is cancelled, a busy target is busy, and the
+  /// person's typing is their input in use.
   private static func state(_ failure: DriverFailure) -> ComputerErrorCode {
     switch failure.code {
     case .staleElement: .staleObservation
     case .targetGone: .targetChanged
     case .cancelled: failure.mayHaveDispatched ? .cancelled : .busy
+    case .userTyping: .inputInUse
     default: .engineFailed
     }
   }
 }
 
 /// The typing guard of the key-scope routes (plan I2, §4.2): a route that makes the target's
-/// window key for its app must not start while the person types, or a keystroke of theirs could
-/// land in the target. It waits once for 300 ms of quiet, at most one second, then refuses.
+/// window key for its app must not start while the person types, clicks or scrolls, or a
+/// keystroke of theirs could land in the target. It waits once for 300 ms of quiet, at most one
+/// second, then refuses `inputInUse`: a passing condition, not a missing route, so the step can be
+/// tried again in a few seconds.
 public enum NativeTypingGuard {
   /// How long the person must not have typed before a key scope opens.
   public static let quiet: Duration = .milliseconds(300)
   /// The longest the guard waits for that quiet, once.
   public static let longestWait: Duration = .seconds(1)
-  public static let message = "The person is typing; Atd did not open a key scope."
+
+  /// What the refusal says: that nothing was sent, or, once an earlier primitive of the step went
+  /// out (`committed`, such as the click that places a caret before typing), that the rest did
+  /// not.
+  public static func message(committed: Bool) -> String {
+    committed
+      ? "The person started using the keyboard or pointer during this step, so Atd sent no more "
+        + "of it and opened no key scope; what it sent before may have acted."
+      : "The person is using the keyboard or pointer right now, so Atd sent nothing and did not "
+        + "open a key scope."
+  }
 
   /// How long to wait before a key scope may open; nil when the person has been quiet long
   /// enough (or no input is known).
@@ -109,10 +122,5 @@ public enum NativeTypingGuard {
     let quietAt = lastInput + quiet
     guard now < quietAt else { return nil }
     return min(quietAt - now, longestWait)
-  }
-
-  /// The refusal reason a `kind` step names when the guard refuses it.
-  public static func reason(for kind: ComputerStepKind) -> ComputerRefusalReason {
-    kind == .type ? .textUnavailable : .keyUnavailable
   }
 }

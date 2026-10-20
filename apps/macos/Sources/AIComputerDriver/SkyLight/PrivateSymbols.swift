@@ -62,7 +62,8 @@ final class PrivateSymbols: @unchecked Sendable {
   let axGetWindow: AXGetWindowFn?
 
   private let latch = NSLock()
-  private var disabled: Set<String> = []
+  /// Capabilities latched off, with the failure that latched each.
+  private var disabled: [String: String] = [:]
 
   private init() {
     dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY | RTLD_GLOBAL)
@@ -91,17 +92,24 @@ final class PrivateSymbols: @unchecked Sendable {
     axGetWindow = sym("_AXUIElementGetWindow")
   }
 
-  /// Latch a capability off after a runtime failure; it stays off for the process (fail-closed).
-  func latchUnavailable(_ capability: String) {
+  /// Latch a capability off after a runtime failure (`cause`); it stays off for the process
+  /// (fail-closed). The first latch of each capability goes to the app's computer log, since the
+  /// host learns of it only from a later answer.
+  func latchUnavailable(_ capability: String, cause: String) {
     latch.lock()
-    disabled.insert(capability)
+    let first = disabled[capability] == nil
+    if first { disabled[capability] = cause }
     latch.unlock()
+    guard first else { return }
+    DriverLog.computer.error(
+      "Driver latched \(capability, privacy: .public) off for the rest of its process: \(cause, privacy: .public)"
+    )
   }
 
-  private func isLatched(_ capability: String) -> Bool {
+  private func latchCause(_ capability: String) -> String? {
     latch.lock()
     defer { latch.unlock() }
-    return disabled.contains(capability)
+    return disabled[capability]
   }
 
   /// A capability is present only when its symbols resolve, a first-use behavioral check passes,
@@ -111,8 +119,9 @@ final class PrivateSymbols: @unchecked Sendable {
   private func present(_ capability: String, _ symbolsResolved: Bool, _ behavioral: Bool = true)
     -> DriverCapability
   {
-    if isLatched(capability) {
-      return DriverCapability(name: capability, available: false, detail: "latched off at runtime")
+    if let cause = latchCause(capability) {
+      return DriverCapability(
+        name: capability, available: false, detail: "latched off at runtime: \(cause)")
     }
     if !symbolsResolved {
       return DriverCapability(name: capability, available: false, detail: "missing private symbols")

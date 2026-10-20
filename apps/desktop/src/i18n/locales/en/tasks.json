@@ -662,6 +662,7 @@
       "locked": "Another copy of Atd is using computer use.",
       "busy": "The target was busy with another task.",
       "targetInUse": "You were using this target, so Atd held off.",
+      "inputInUse": "You were typing, clicking or scrolling at that moment, so Atd held this step back.",
       "cancelled": "The action was stopped.",
       "timeout": "The target didn’t answer in time.",
       "unsupported": "This target doesn’t support that step.",

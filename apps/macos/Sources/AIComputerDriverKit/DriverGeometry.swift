@@ -2,8 +2,9 @@ import Foundation
 
 /// The frozen wire protocol version. The shell sends it in `hello`; the driver echoes the
 /// version it speaks. A client that sees a different major refuses to drive the process rather
-/// than guessing at an incompatible frame layout.
-public let driverProtocolVersion = 1
+/// than guessing at an incompatible frame layout. Version 2 reports `prepare` outcomes
+/// (``DriverPrepareResult``) instead of two flags.
+public let driverProtocolVersion = 2
 
 /// A point in global, top-left-origin screen points (y grows downward), the same convention the
 /// host already uses for `NativeCapture` geometry. Declared here, rather than reusing `CGPoint`,

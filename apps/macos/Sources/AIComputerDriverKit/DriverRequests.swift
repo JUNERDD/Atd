@@ -20,9 +20,10 @@ public struct DriverProbeRequest: Codable, Equatable, Sendable {
 }
 
 /// `prepare`: arm background-observation aids for a target. `enableWebAccessibility` sets
-/// `AXManualAccessibility` (Chromium/Electron/CEF) and waits for the tree; `occlusionKeepAlive`
-/// pins the window's visible state while it is still unoccluded. Both are idempotent and are
-/// undone by `release`, driver exit, or `atexit`.
+/// `AXManualAccessibility` (Chromium/Electron/CEF) and, when the app took it, waits for the tree;
+/// `occlusionKeepAlive` pins the window's visible state while it is still unoccluded. Both are
+/// idempotent. The pin is undone by `release`, driver exit, or `atexit`; web accessibility stays
+/// on.
 public struct DriverPrepareRequest: Codable, Equatable, Sendable {
   public var target: DriverTarget
   public var enableWebAccessibility: Bool

@@ -83,6 +83,8 @@ function noRouteGuidance(reason: ComputerRefusalReason | undefined): string {
 const GUIDANCE: Readonly<Partial<Record<ComputerErrorCode, string>>> = {
   targetInUse:
     'The person is working in this target right now (it is in front of them and they typed, clicked or scrolled in the last few seconds), so Atd yielded and sent nothing. Never ask them to stop. Wait a few seconds (observe with afterMs), then try again; if it stays in use, tell them you will continue once they are done with it, and stop for now.',
+  inputInUse:
+    'The person is using the keyboard or pointer right now (typing, clicking or scrolling in any app), so Atd held the step back rather than send input while they do; with effect none, nothing was sent. This passes in a moment: never ask them to stop, and never ask them to do the step themselves. Wait a few seconds (observe with afterMs), then try it again; if it keeps happening, tell them you will continue once they pause, and stop for now. If effect is not none, part of the step went out before they started: read effect and retry as for any uncertain result.',
   needsConsent:
     'Screen capture was never prepared for Atd, and a run never asks for it while working. Continue without screenshots if the accessibility tree is enough; otherwise tell the person to prepare screen access once in Settings → Computer use.',
   disturbed:
@@ -91,8 +93,9 @@ const GUIDANCE: Readonly<Partial<Record<ComputerErrorCode, string>>> = {
 
 /**
  * What to do after an error the imperceptible contract caused, or null for any other error:
- * `noBackgroundRoute` hands the step to the person, `targetInUse` waits for them, `needsConsent`
- * needs screen capture prepared in Settings, and `disturbed` stops work on the target.
+ * `noBackgroundRoute` hands the step to the person, `targetInUse` waits for them, `inputInUse`
+ * waits a moment and tries again, `needsConsent` needs screen capture prepared in Settings, and
+ * `disturbed` stops work on the target.
  */
 export function refusalGuidance(error: Pick<ComputerError, 'code' | 'reason'>): string | null {
   if (error.code === 'noBackgroundRoute') return noRouteGuidance(error.reason);

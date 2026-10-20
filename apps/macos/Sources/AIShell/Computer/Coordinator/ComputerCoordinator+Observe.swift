@@ -36,6 +36,19 @@ extension ComputerCoordinator {
       executions[key] = nil
       refreshIfIdle()
     }
+    let reply = await claimAndRead(
+      request, operation, engine: engine, execution: execution, deadline: deadline)
+    logTiming(of: request, target: ref.id, reply: reply, phases: execution.phases)
+    return reply
+  }
+
+  /// Claims the target, then reads it, keeping the claim until the engine has returned.
+  private func claimAndRead(
+    _ request: HostRequestWire, _ operation: ObserveOperationWire, engine: any ComputerEngine,
+    execution: ActionExecution, deadline: ContinuousClock.Instant
+  ) async -> HostReplyWire {
+    let ref = operation.targetRef
+    let screenshot = operation.include.screenshot
     let claim: ResourceClaim
     switch await execution.claim(
       engine.resources(for: ref), on: arbiter, deadline: deadline)

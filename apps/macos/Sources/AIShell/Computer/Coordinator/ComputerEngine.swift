@@ -72,6 +72,8 @@ struct EngineObserveContext {
   let operationId: String
   let deadline: ContinuousClock.Instant
   let isStopping: () -> Bool
+  /// Where the engine records the time each phase of the read took.
+  let phases: OperationPhases
 
   func check() throws(ComputerFailure) {
     if Task.isCancelled || isStopping() {
@@ -89,6 +91,8 @@ struct EngineObserveContext {
 struct EngineCheckContext {
   let deadline: ContinuousClock.Instant
   let isStopping: () -> Bool
+  /// The action's phases, where the engine records its reads.
+  let phases: OperationPhases
 
   func check() throws(ComputerFailure) {
     if Task.isCancelled || isStopping() {
@@ -117,9 +121,11 @@ struct EngineStepContext {
   /// When the person last pressed a key, clicked or scrolled (hardware input in any app, as the
   /// disturbance guard reads it); nil when unknown. A route that opens a target-only key scope
   /// must not start within 300 ms of it: the engine waits once, at most 1 s, then refuses
-  /// `noBackgroundRoute` with `keyUnavailable` or `textUnavailable` ("the person is typing").
+  /// `inputInUse`, sending nothing more of the step.
   let lastPersonInput: () -> ContinuousClock.Instant?
   let report: (EngineStepEvent) -> Void
+  /// The action's phases, where the engine records the time each part of the step took.
+  let phases: OperationPhases
 }
 
 /// The driver's account of a step's input, which the disturbance guard merges with its own

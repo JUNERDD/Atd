@@ -56,7 +56,9 @@ extension NativeEngine {
     var snapshotId = observation.snapshotId
     let place = try observedRead(ref)
     if snapshots[place.windowKey] != observation.snapshotId {
+      let start = ContinuousClock.now
       let snapshot = try await freshSnapshot(ref, surface: place, operation: context?.operationId)
+      context?.phases.add(.snapshot, since: start)
       guard let counterpart = NativeObservation.counterpart(of: element, in: snapshot) else {
         throw ComputerFailure(
           .staleObservation, "The window changed since it was observed; observe it again.")

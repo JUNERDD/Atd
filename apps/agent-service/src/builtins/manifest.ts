@@ -206,7 +206,10 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // text the destination is sure to show, preferring a control it always offers over its title
   // and never a recalled label or a variant of a title already on screen; and an action whose
   // postcondition did not hold returns the observation read after its steps.
-  skill('computer-use', 19, []),
+  // Version 20: a step the host held back because the person is typing, clicking or scrolling
+  // right now is refused `inputInUse`, no longer `noBackgroundRoute`: it passes in a moment, so
+  // the agent waits a few seconds and tries again, never asking the person to stop or to do it.
+  skill('computer-use', 20, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

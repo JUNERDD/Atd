@@ -24,9 +24,11 @@ extension NativeEngine {
     }
     let place = try observedRead(ref)
     let onActiveSpace = targets[ref.id]?.observedPlacement?.onActiveSpace ?? true
-    guard
-      let pixels = await windowPixels(
-        place, onActiveSpace: onActiveSpace, operation: context.operationId),
+    var laps = context.phases.laps()
+    let captured = await windowPixels(
+      place, onActiveSpace: onActiveSpace, operation: context.operationId)
+    laps.end(.capture)
+    guard let pixels = captured,
       NativeCapture.scale(
         frame: pixels.frame, width: pixels.image.width, height: pixels.image.height) != nil
     else { throw Self.unreadable }
@@ -44,9 +46,12 @@ extension NativeEngine {
       id: "\(ref.id).text", surfaceRefId: place.surfaceRefId, pid: place.pid,
       windowId: place.windowId, frame: pixels.frame, crop: surface, mime: .png,
       sourceWidth: whole.width, sourceHeight: whole.height, capturedAt: Date())
-    guard let image = surface == nil ? whole : whole.cropping(to: read.sourcePixels),
-      let boxes = await ScreenText.boxes(in: image, limit: ComputerWireLimits.maxTextBoxes)
-    else { throw Self.unreadable }
+    guard let image = surface == nil ? whole : whole.cropping(to: read.sourcePixels) else {
+      throw Self.unreadable
+    }
+    let textBoxes = await ScreenText.boxes(in: image, limit: ComputerWireLimits.maxTextBoxes)
+    laps.end(.ocr)
+    guard let boxes = textBoxes else { throw Self.unreadable }
     try dispatchable(context)
     let recognized = boxes.compactMap { box -> ComputerTextBoxWire? in
       let shown = box.text.trimmingCharacters(in: .whitespacesAndNewlines)

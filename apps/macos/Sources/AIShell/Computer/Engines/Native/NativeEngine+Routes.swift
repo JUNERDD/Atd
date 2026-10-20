@@ -36,6 +36,7 @@ extension NativeEngine {
         .minimized, "The window is minimized; Atd never restores a window. Nothing was sent.")
     }
     targets[ref.id]?.toolkit = probe.toolkit
+    context.phases.note("toolkit", probe.toolkit.rawValue)
     var facts = routeFacts(toolkit: probe.toolkit)
     if let app = targets[ref.id]?.app {
       facts.demoted = demoted(in: app, toolkit: probe.toolkit, kind: kind, run: context.runId)
@@ -81,7 +82,7 @@ extension NativeEngine {
     let scoped = NativeRoutePolicy.opensKeyScope(primitive.route)
     var waited = false
     while true {
-      if scoped { waited = try await typingGuard(kind, context: context) || waited }
+      if scoped { waited = try await typingGuard(context, committed: committed) || waited }
       try dispatchable(context)
       let remaining = context.deadline - .now
       guard remaining > .milliseconds(300) else {
@@ -95,8 +96,14 @@ extension NativeEngine {
         userTypedWithinGuard: NativeTypingGuard.wait(
           lastInput: context.lastPersonInput(), now: .now) != nil)
       targets[ref.id]?.acted = true
+      let sent = ContinuousClock.now
       let result = await self.request(
         .perform(request), timeout: budget + Self.performGrace, operation: context.operationId)
+      if case .success(.perform(let performed)) = result, performed.receipt.keyScope?.used == true {
+        context.phases.add(.keyScope, since: sent)
+      } else {
+        context.phases.add(.perform, since: sent)
+      }
       switch result {
       case .success(.perform(let performed)):
         if let scope = performed.receipt.keyScope {
@@ -111,10 +118,10 @@ extension NativeEngine {
         continue
       case .failure(.refused(let refusal)):
         if !committed, NativeDriverFailureMap.degrades(refusal) { return .failure(refusal) }
-        let mapped = NativeDriverFailureMap.perform(refusal, step: kind)
+        let mapped = NativeDriverFailureMap.perform(refusal)
         let message =
           refusal.code == .userTyping
-          ? NativeTypingGuard.message
+          ? NativeTypingGuard.message(committed: committed)
           : "The driver refused the \(kind.rawValue) step: \(refusal.message ?? refusal.code.rawValue)"
         throw ComputerFailure(
           mapped.code, message, mayHaveDispatched: mapped.mayHaveDispatched || committed,
@@ -136,19 +143,23 @@ extension NativeEngine {
     )
   }
 
-  /// Waits once, at most a second, while the person types; refuses when they still do. Returns
-  /// whether it waited.
-  func typingGuard(_ kind: ComputerStepKind, context: EngineStepContext)
-    async throws(ComputerFailure) -> Bool
+  /// Waits once, at most a second, while the person types, clicks or scrolls; refuses
+  /// `inputInUse` when they still do, sending nothing more of the step (`committed`: an earlier
+  /// primitive of it went out). Returns whether it waited.
+  func typingGuard(_ context: EngineStepContext, committed: Bool) async throws(ComputerFailure)
+    -> Bool
   {
     guard let wait = NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now)
     else { return false }
+    let start = ContinuousClock.now
+    defer { context.phases.add(.typingGuard, since: start) }
     do { try await Task.sleep(for: wait) } catch {
       throw ComputerFailure(.cancelled, "The step was cancelled.")
     }
     try dispatchable(context)
     if NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now) != nil {
-      throw .noBackgroundRoute(NativeTypingGuard.reason(for: kind), NativeTypingGuard.message)
+      throw ComputerFailure(
+        .inputInUse, NativeTypingGuard.message(committed: committed), mayHaveDispatched: committed)
     }
     return true
   }
@@ -159,8 +170,7 @@ extension NativeEngine {
     -> ComputerFailure
   {
     var notes: [String] = []
-    let reason = ladder.refusal(
-      after: last.flatMap { NativeDriverFailureMap.perform($0, step: kind).reason })
+    let reason = ladder.refusal(after: last.flatMap { NativeDriverFailureMap.perform($0).reason })
     if let last {
       notes.append("the driver refused the last route (\(last.message ?? last.code.rawValue))")
     }

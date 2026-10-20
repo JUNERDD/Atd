@@ -56,16 +56,44 @@ public struct DriverCaptureResult: Codable, Equatable, Sendable {
   }
 }
 
-/// `prepare`/`release` result: what the driver actually armed or restored, so the host tracks the
-/// prepared state without assuming success.
+/// `prepare` result: what the driver actually armed, so the host tracks the prepared state without
+/// assuming success. Each outcome is nil when the request did not ask for it.
 public struct DriverPrepareResult: Codable, Equatable, Sendable {
-  public var webAccessibilityEnabled: Bool
-  public var occlusionKeepAlivePinned: Bool
+  public var webAccessibility: DriverWebAccessibilityOutcome?
+  public var occlusionKeepAlive: DriverKeepAliveOutcome?
 
-  public init(webAccessibilityEnabled: Bool, occlusionKeepAlivePinned: Bool) {
-    self.webAccessibilityEnabled = webAccessibilityEnabled
-    self.occlusionKeepAlivePinned = occlusionKeepAlivePinned
+  public init(
+    webAccessibility: DriverWebAccessibilityOutcome?, occlusionKeepAlive: DriverKeepAliveOutcome?
+  ) {
+    self.webAccessibility = webAccessibility
+    self.occlusionKeepAlive = occlusionKeepAlive
   }
+}
+
+/// What turning on an app's web accessibility did.
+public enum DriverWebAccessibilityOutcome: String, Codable, Equatable, Sendable {
+  /// The window shows a web area, at once or within the wait.
+  case webArea
+  /// The app took the attribute, but no web area showed within the wait: it may build one later,
+  /// or never (an embedded browser that exposes only its window).
+  case noWebArea
+  /// The app took neither attribute, so nothing was waited for; it may not have answered yet.
+  case refused
+}
+
+/// What pinning a window's visible state did.
+public enum DriverKeepAliveOutcome: String, Codable, Equatable, Sendable {
+  /// The window is pinned, now or from an earlier request.
+  case pinned
+  /// Every point of the window's grid is under another window, so nothing was tried: the switch
+  /// cannot un-hide a window its app already treats as hidden.
+  case covered
+  /// The window server refused the switch; the driver latched occlusion keep-alive off for the
+  /// rest of its process.
+  case failed
+  /// Occlusion keep-alive is off in this driver process (latched off earlier, or never present),
+  /// so nothing was tried.
+  case unavailable
 }
 
 /// A bare acknowledgement for requests whose success is their only payload (`release`, `cancel`).

@@ -22,6 +22,8 @@ final class ActionExecution {
   let operationId: String
   let actionId: String
   let serviceEpoch: String
+  /// Where the action has spent its time so far, for its line in the computer log.
+  let phases = OperationPhases()
   /// The reply every request for this action gets, including a repeated one that joins it.
   var reply: Task<HostReplyWire, Never>?
   /// Why the action must stop; nil while it may go on.
@@ -51,6 +53,7 @@ final class ActionExecution {
   ) async -> Result<ResourceClaim, ClaimRefusal> {
     if stop != nil { return .failure(.cancelled) }
     let owner = ClaimOwner.computer(ComputerOperation(runId: runId, operationId: operationId))
+    let start = ContinuousClock.now
     let wait = Task { () async -> Result<ResourceClaim, ClaimRefusal> in
       do throws(ClaimRefusal) {
         return .success(try await arbiter.claim(resources, owner: owner, deadline: deadline))
@@ -61,6 +64,7 @@ final class ActionExecution {
     stopHandler = { wait.cancel() }
     let result = await wait.value
     stopHandler = nil
+    phases.add(.claim, since: start)
     return result
   }
 
@@ -73,7 +77,7 @@ final class ActionExecution {
     if let stop { return .failure(stop) }
     let context = EngineObserveContext(
       operationId: operationId, deadline: deadline,
-      isStopping: { [weak self] in self?.stop != nil })
+      isStopping: { [weak self] in self?.stop != nil }, phases: phases)
     let running = Task { () async -> Result<ObservationWire, ComputerFailure> in
       do throws(ComputerFailure) {
         try context.check()

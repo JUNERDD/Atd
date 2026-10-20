@@ -176,6 +176,9 @@ public enum ComputerErrorCode: String, Codable, CaseIterable, Sendable {
   /// The person is using the target (it is in front of them and they just typed, clicked or
   /// scrolled), so the host yields.
   case targetInUse
+  /// The person is using the keyboard or pointer right now, in any app, so the host sent nothing
+  /// rather than open a key scope under their input; the step can be tried again in a moment.
+  case inputInUse
   case cancelled
   case timeout
   case unsupported

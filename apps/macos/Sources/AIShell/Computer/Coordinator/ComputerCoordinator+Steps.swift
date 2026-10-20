@@ -41,7 +41,8 @@ extension ComputerCoordinator {
         unattended: request.envelope.unattended, typing: typing.options, deadline: deadline,
         isStopping: { [weak execution] in execution?.stop != nil },
         lastPersonInput: { [weak self] in self?.disturbance.lastPersonInput() },
-        report: { [weak self] event in self?.stepEvent(event, subject: subject, step: step) })
+        report: { [weak self] event in self?.stepEvent(event, subject: subject, step: step) },
+        phases: execution.phases)
       let guarded = step.effect == .read ? nil : watch
       if let guarded { disturbance.begin(guarded) }
       let end = await execution.perform(
@@ -98,7 +99,8 @@ extension ComputerCoordinator {
       case .stopped(let failure): fold.stop(failure.wire)
       case .check:
         let context = EngineCheckContext(
-          deadline: deadline, isStopping: { [weak execution] in execution?.stop != nil })
+          deadline: deadline, isStopping: { [weak execution] in execution?.stop != nil },
+          phases: execution.phases)
         do throws(ComputerFailure) {
           let held = try await engine.check(
             postcondition, on: ref, baseline: observation, context: context)
@@ -128,11 +130,11 @@ extension ComputerCoordinator {
   }
 
   /// The last frame of an action: withdrawn when it was stopped from outside or yielded to the
-  /// person, failed when it ended in error or uncertainty, done (with its completion only when
-  /// verified) otherwise.
+  /// person (their target or their input in use), failed when it ended in error or uncertainty,
+  /// done (with its completion only when verified) otherwise.
   func reportEnd(_ subject: ProgressSubject, result: ActionResultWire) {
     switch result.error?.code {
-    case .cancelled?, .targetInUse?, .timeout?, .hostUnavailable?:
+    case .cancelled?, .targetInUse?, .inputInUse?, .timeout?, .hostUnavailable?:
       progress.report(subject, .cleared)
     case .some:
       progress.report(subject, .failed)

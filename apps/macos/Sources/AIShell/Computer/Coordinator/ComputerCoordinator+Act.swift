@@ -41,6 +41,7 @@ extension ComputerCoordinator {
     execution.reply = task
     let reply = await task.value
     executions[action.actionId] = nil
+    logTiming(of: action, reply: reply, phases: execution.phases)
     refreshIfIdle()
     return reply
   }

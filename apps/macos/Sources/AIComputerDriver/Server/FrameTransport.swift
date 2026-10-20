@@ -1,6 +1,7 @@
 import AIComputerDriverKit
 import Darwin
 import Foundation
+import OSLog
 
 /// Length-prefixed JSON framing over stdin/stdout: a 4-byte big-endian length followed by that
 /// many bytes of a JSON `DriverRequestFrame` (in) or `DriverOutgoing` (out). stdin closing is the
@@ -83,8 +84,12 @@ final class FrameTransport: @unchecked Sendable {
   }
 }
 
-/// Diagnostic logging to stderr only. Never writes to stdout (the frame channel).
+/// Diagnostic logging, never to stdout (the frame channel): `log` writes to stderr, which the shell
+/// keeps in the driver's log file; `computer` is the app's own computer category of the unified
+/// log, for a fact best read next to the host's lines there, such as a capability latched off.
 enum DriverLog {
+  static let computer = Logger(subsystem: "com.junerdd.ai", category: "computer")
+
   static func log(_ message: String) {
     FileHandle.standardError.write(Data("[atd-computer-driver] \(message)\n".utf8))
   }

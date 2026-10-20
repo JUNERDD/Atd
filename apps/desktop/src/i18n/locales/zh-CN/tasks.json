@@ -662,6 +662,7 @@
       "locked": "另一个 Atd 正在使用电脑操作。",
       "busy": "目标正被其他任务使用。",
       "targetInUse": "你正在使用此目标，Atd 暂时没有操作。",
+      "inputInUse": "你当时正在打字、点击或滚动，Atd 暂缓了这一步。",
       "cancelled": "操作已停止。",
       "timeout": "目标没有及时响应。",
       "unsupported": "此目标不支持这一步。",
