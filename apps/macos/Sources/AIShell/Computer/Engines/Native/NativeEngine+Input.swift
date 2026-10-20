@@ -50,8 +50,11 @@ extension NativeEngine {
     return Self.outcome(delivered, "Clicked\(twice)")
   }
 
-  /// A chord with ⌘, ⌃ or ⌥ that is a menu item's shortcut goes to that item (a background
-  /// command chord never reaches the app's menus); everything else is the chord in a key scope.
+  /// A plain Return in a field that confirms on it (the field the step names, else the one the
+  /// observation shows focused) is the field's own confirm action, which an app that drops
+  /// window-routed keys still takes. A chord with ⌘, ⌃ or ⌥ that is a menu item's shortcut goes
+  /// to that item (a background command chord never reaches the app's menus); everything else is
+  /// the chord in a key scope.
   private func key(
     _ key: ComputerKeyName, _ modifiers: [ComputerModifier], _ locator: ComputerLocatorWire?,
     _ write: Write
@@ -61,6 +64,17 @@ extension NativeEngine {
       let element = try Self.element(locator, in: write.observation)
       focus = try await liveElement(
         element, ref: write.ref, observation: write.observation, context: write.context)
+    }
+    // Where a plain Return goes: the field the step names, else the one shown focused.
+    var field = focus
+    if field == nil, key == .return, modifiers.isEmpty,
+      let focused = write.observation.elements.first(where: {
+        $0.focused == true && NativeRoutePlan.confirmsOnReturn($0)
+      })
+    {
+      // A focused field the window no longer shows leaves Return to the key rung, as before.
+      field = try? await liveElement(
+        focused, ref: write.ref, observation: write.observation, context: nil)
     }
     var menuPath: [String]?
     if !Set(modifiers).isDisjoint(with: [.cmd, .ctrl, .option]),
@@ -72,17 +86,20 @@ extension NativeEngine {
       }
     }
     try dispatching(
-      focus.flatMap { NativeTargetProbe.screenGeometry($0.element.frame?.cgRect) },
+      (focus ?? field).flatMap { NativeTargetProbe.screenGeometry($0.element.frame?.cgRect) },
       context: write.context)
     let ladder = NativeRoutePlan.key(
       chord: NativeKeyChord.chord(key, modifiers: modifiers), menuPath: menuPath, focus: focus,
-      facts: write.facts)
+      field: field, facts: write.facts)
     let delivered = try await climb(
       ladder, kind: .key, place: write.place, ref: write.ref, context: write.context)
     let combination = (modifiers.map(\.rawValue) + [key.rawValue]).joined(separator: "+")
     if delivered.rung.route == .axMenu, let menuPath {
       return Self.outcome(
         delivered, "Pressed \(combination) as \(menuPath.joined(separator: " > "))")
+    }
+    if delivered.rung.route == .axAction, let field {
+      return Self.outcome(delivered, "Pressed \(combination) as confirm of \(field.element.role)")
     }
     return Self.outcome(delivered, "Pressed \(combination)")
   }

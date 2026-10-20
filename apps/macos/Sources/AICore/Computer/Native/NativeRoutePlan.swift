@@ -82,14 +82,28 @@ public enum NativeRoutePlan {
   /// One wheel unit of a `scroll` step in line units: about one notch.
   public static let linesPerUnit = 3.0
 
-  public static func press(_ target: Element, facts: NativeRouteFacts) -> NativeLadder {
+  /// `press`: the element's `AXPress`, else its `AXPick`; a `submit` press of a field that
+  /// confirms on Return (``confirmsOnReturn(_:)``) is its `AXConfirm`. A `click` press never
+  /// confirms a field, since that would submit what it holds under a lower effect.
+  public static func press(
+    _ target: Element, effect: ComputerStepWire.PressEffect, facts: NativeRouteFacts
+  ) -> NativeLadder {
     var ladder = Builder(facts)
     if target.element.offers("Press") {
       ladder.add(.axAction, [.axAction(element: target.token, action: .press)])
     } else if target.element.offers("Pick") {
       ladder.add(.axAction, [.axAction(element: target.token, action: .pick)])
+    } else if effect == .submit, confirmsOnReturn(target.element) {
+      ladder.add(.axAction, [.axAction(element: target.token, action: .confirm)])
     }
     return ladder.result(.noRoute)
+  }
+
+  /// Whether a plain Return in `element` is its own `AXConfirm`: a text field, search field or
+  /// combo box that offers it sends the action Return would, through accessibility; a text view,
+  /// where Return is a line break, offers none.
+  public static func confirmsOnReturn(_ element: DriverElement) -> Bool {
+    NativeObservation.textInputRoles.contains(element.role) && element.offers("Confirm")
   }
 
   /// A click: a single left click of an element presses it; otherwise, and for a capture point or
@@ -152,12 +166,20 @@ public enum NativeRoutePlan {
     return ladder.result(refusal)
   }
 
-  /// `key`: the menu item whose shortcut it is, pressed through accessibility, else the chord in
-  /// a key scope; both after focusing `focus` when the step names an element.
+  /// `key`: a plain Return in `field` (the field the step names, else the focused one) that
+  /// confirms on it (``confirmsOnReturn(_:)``) is the field's `AXConfirm`; otherwise the menu
+  /// item whose shortcut the chord is, pressed through accessibility, else the chord in a key
+  /// scope; both after focusing `focus` when the step names an element.
   public static func key(
-    chord: String, menuPath: [String]?, focus: Element?, facts: NativeRouteFacts
+    chord: String, menuPath: [String]?, focus: Element?, field: Element?,
+    facts: NativeRouteFacts
   ) -> NativeLadder {
     var ladder = Builder(facts)
+    if chord == NativeKeyChord.chord(.return, modifiers: []), let field,
+      confirmsOnReturn(field.element)
+    {
+      ladder.add(.axAction, [.axAction(element: field.token, action: .confirm)])
+    }
     var preface: [DriverPrimitive] = []
     if let focus {
       guard let prepared = focusing(focus) else { return ladder.result(.keyUnavailable) }
@@ -244,7 +266,7 @@ public enum NativeRoutePlan {
       case .click: [.axAction, .pointer]
       case .setValue, .clear: [.axText]
       case .type: [.axText, .text]
-      case .key: [.axMenu, .keys]
+      case .key: [.axAction, .axMenu, .keys]
       case .menu: [.axMenu]
       case .scroll: [.axScroll, .scroll]
       case .drag: [.drag]

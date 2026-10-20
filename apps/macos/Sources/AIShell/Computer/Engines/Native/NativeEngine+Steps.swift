@@ -45,8 +45,8 @@ extension NativeEngine {
       return try await setValue(locator, text, write)
     case .clear(let locator):
       return try await clear(locator, write)
-    case .press(let locator, _):
-      return try await press(locator, write)
+    case .press(let locator, let effect):
+      return try await press(locator, effect: effect, write)
     case .click, .key, .type, .menu, .scroll, .drag:
       return try await input(step, write)
     case .navigate, .fill, .wait, .select, .upload:
@@ -129,9 +129,9 @@ extension NativeEngine {
       mayHaveDispatched: !unchanged)
   }
 
-  private func press(_ locator: ComputerLocatorWire, _ write: Write)
-    async throws(ComputerFailure) -> EngineStepOutcome
-  {
+  private func press(
+    _ locator: ComputerLocatorWire, effect: ComputerStepWire.PressEffect, _ write: Write
+  ) async throws(ComputerFailure) -> EngineStepOutcome {
     let element = try Self.element(locator, in: write.observation)
     guard element.enabled != false else {
       throw ComputerFailure(.unsupported, "The control is disabled.")
@@ -141,9 +141,12 @@ extension NativeEngine {
     try dispatching(
       NativeTargetProbe.screenGeometry(live.element.frame?.cgRect), context: write.context)
     let delivered = try await climb(
-      NativeRoutePlan.press(live, facts: write.facts), kind: .press, place: write.place,
-      ref: write.ref, context: write.context)
-    return Self.outcome(delivered, "Pressed \(live.element.role) \(live.element.label ?? "")")
+      NativeRoutePlan.press(live, effect: effect, facts: write.facts), kind: .press,
+      place: write.place, ref: write.ref, context: write.context)
+    let verb =
+      delivered.rung.primitives.contains(.axAction(element: live.token, action: .confirm))
+      ? "Confirmed" : "Pressed"
+    return Self.outcome(delivered, "\(verb) \(live.element.role) \(live.element.label ?? "")")
   }
 
   private func wait(
