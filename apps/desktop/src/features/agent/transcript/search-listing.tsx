@@ -59,7 +59,11 @@ export function ListingBody({ block }: { block: BlockOf<'tool'> }) {
       block={block}
       text={text}
       icon={isFind ? <FileSearch /> : <FolderOpen />}
-      label={<span className="font-mono">{label}</span>}
+      label={
+        <span className="font-mono" title={label}>
+          {label}
+        </span>
+      }
       meta={settled && text ? count : undefined}
       notice={settled ? notice : null}
     >

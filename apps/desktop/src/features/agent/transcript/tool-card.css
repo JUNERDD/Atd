@@ -35,22 +35,29 @@
   width: 12px;
   height: 12px;
 }
-.tool-card-label {
+/* Label and meta share the row fairly: each grows from nothing up to its own length, so a short
+   one stays whole and leaves the rest to the other, and two long ones split the room, each cut
+   with an ellipsis and its full value on hover (`header.tsx`). */
+.tool-card-label,
+.tool-card-meta {
   min-width: 0;
-  flex: 1;
+  max-width: max-content;
+  flex: 1 1 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tool-card-label {
+  /* Keeps the meta and the copy action on the trailing edge when everything fits. */
+  margin-inline-end: auto;
+  text-overflow: ellipsis;
   font-weight: 500;
   color: var(--foreground);
 }
 .tool-card-meta {
   display: inline-flex;
-  flex-shrink: 0;
   align-items: center;
   gap: 6px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 /* In the header the copy action sits in the flow at the trailing edge instead of on a corner. */
 .tool-card-header .tool-card-copy {

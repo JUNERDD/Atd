@@ -8,6 +8,7 @@ import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
+import { HitlActions } from '../../../components/hitl-actions';
 import { DetailBox } from './detail-box';
 import { scopeKey } from './permission-copy';
 
@@ -132,7 +133,7 @@ export function ApprovalControls({
           <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{preview}</pre>
         </DetailBox>
       ) : null}
-      <div className="approval-actions">
+      <HitlActions error={error}>
         {/* One variant for every decision: none is the recommended answer, and the focused one
             already shows the Enter target through its focus ring. */}
         <Button
@@ -191,12 +192,7 @@ export function ApprovalControls({
           {bash ? t('permission.bash.deny') : t('permission.decline')}
           <ShortcutHint accelerator="Escape" />
         </Button>
-      </div>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
+      </HitlActions>
     </div>
   );
 }

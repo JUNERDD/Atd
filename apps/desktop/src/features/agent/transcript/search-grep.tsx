@@ -119,7 +119,11 @@ export function GrepBody({ block }: { block: BlockOf<'tool'> }) {
       block={block}
       text={text}
       icon={<TextSearch />}
-      label={<span className="font-mono">{pattern}</span>}
+      label={
+        <span className="font-mono" title={pattern}>
+          {pattern}
+        </span>
+      }
       meta={meta}
       notice={parsed || empty ? notice : null}
     >
