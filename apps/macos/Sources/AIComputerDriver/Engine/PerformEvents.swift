@@ -5,9 +5,9 @@ import CoreGraphics
 import Foundation
 
 /// The window-routed event primitives (pointer, scroll, keys, text, drag). These need the
-/// `windowEvents` capability; the ones that type also need a confirmed key scope, which the driver
-/// refuses to open when the host reports the user typed within the guard window (`userTyping`), so
-/// a keystroke can never land in the wrong app (plan I2).
+/// `windowEvents` capability; the ones that click or type also need a confirmed key scope, which
+/// the driver refuses to open when the host reports the user typed within the guard window
+/// (`userTyping`), so a keystroke can never land in the wrong app (plan I2).
 enum PerformEvents {
   static func pointer(_ ctx: PerformContext, point: DriverPoint, clickCount: Int) throws
     -> DriverReceipt
@@ -19,23 +19,13 @@ enum PerformEvents {
     try requireDeliverableToolkit(toolkit)
     let target = PointerTarget(
       pid: ctx.pid, windowId: ctx.windowId, windowBounds: resolved.bounds, screenPoint: cg(point))
-    let chromium = isChromiumToolkit(toolkit)
     let before = WindowServerQueries.frontProcessPID()
-
-    var keyScope: DriverKeyScopeReport?
-    if chromium {
-      guard
-        PointerRecipes.click(
-          factory: ctx.factory, target: target, clickCount: clickCount, chromium: true)
+    // A mouse-down reaches a window's content only while the window is key (AppKit and Chromium
+    // alike), so every click runs inside a target-only key scope.
+    try requireKeyScope(ctx)
+    let keyScope = try WindowKeyScope.run(targetPid: ctx.pid, targetWindowId: ctx.windowId) {
+      guard PointerRecipes.click(factory: ctx.factory, target: target, clickCount: clickCount)
       else { throw DriverFailure(code: .noRoute, message: "could not build click events") }
-    } else {
-      // Ordinary AppKit controls discard a background mouse-down to a non-key window, so the click
-      // runs inside a target-only key scope.
-      try requireKeyScope(ctx)
-      keyScope = try WindowKeyScope.run(targetPid: ctx.pid, targetWindowId: ctx.windowId) {
-        _ = PointerRecipes.click(
-          factory: ctx.factory, target: target, clickCount: clickCount, chromium: false)
-      }
     }
     return DriverReceipt(
       route: .pointer, dispatched: true, keyScope: keyScope,
@@ -109,13 +99,6 @@ enum PerformEvents {
       throw DriverFailure(code: .targetGone)
     }
     return resolved
-  }
-
-  private static func isChromiumToolkit(_ toolkit: DriverToolkit) -> Bool {
-    switch toolkit {
-    case .chromium, .electron, .cef: return true
-    default: return false
-    }
   }
 
   /// A window-routed event only reaches a toolkit that honors the delivered window-local point.

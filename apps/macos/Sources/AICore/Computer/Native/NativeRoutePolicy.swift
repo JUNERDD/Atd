@@ -21,8 +21,8 @@ public struct NativeRoutePolicy: Equatable, Sendable {
   /// Flutter read the real pointer or track only in the key window, an opaque surface drops
   /// posted input, and an unclassified window stays on accessibility.
   private static let native: Set<DriverToolkit> = [.appKit, .swiftUI, .catalyst, .webKit]
-  /// Chromium, Electron and CEF: pointer recipes work without a key scope, but posted keyboard
-  /// input needs an authentication envelope this round does not open, so keys and text stay off.
+  /// Chromium, Electron and CEF: posted keyboard input needs an authentication envelope this
+  /// round does not open, so keys and text stay off.
   private static let chromium: Set<DriverToolkit> = [.chromium, .electron, .cef]
 
   /// The event rungs per toolkit for when an unlocked, on-console run of S2, S3 and S5 passes.
@@ -46,13 +46,12 @@ public struct NativeRoutePolicy: Equatable, Sendable {
     return events[route]?.contains(toolkit) == true
   }
 
-  /// Whether `route` opens a target-only key scope on a window of `toolkit`: keys and text do,
-  /// and so does a pointer click outside the Chromium family, since AppKit discards a mouse-down
-  /// to a window that is not key while the Chromium recipe primes without one.
-  public static func opensKeyScope(_ route: DriverRoute, on toolkit: DriverToolkit) -> Bool {
+  /// Whether `route` opens a target-only key scope: keys and text do, and so does a pointer click
+  /// on every toolkit, since AppKit discards a mouse-down to a window that is not key and Chromium
+  /// takes a first mouse only in the active window.
+  public static func opensKeyScope(_ route: DriverRoute) -> Bool {
     switch route {
-    case .keys, .text: true
-    case .pointer: !chromium.contains(toolkit)
+    case .keys, .text, .pointer: true
     default: false
     }
   }
@@ -145,7 +144,7 @@ public struct NativeRouteFacts: Equatable, Sendable {
 
   /// Whether `route` opens a target-only key scope on this window.
   public func opensKeyScope(_ route: DriverRoute) -> Bool {
-    NativeRoutePolicy.opensKeyScope(route, on: toolkit)
+    NativeRoutePolicy.opensKeyScope(route)
   }
 }
 

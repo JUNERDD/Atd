@@ -113,9 +113,10 @@ final class EventFactory: @unchecked Sendable {
     setLocation(opaque, windowPoint.x, windowPoint.y)
   }
 
-  /// Post `event` to `pid`. The Chromium path needs the SkyLight route (which goes through the
-  /// activity monitor so the target accepts the event as live); the public `postToPid` preserves
-  /// AppKit compatibility. `dualPost` posts through both, as the current Chromium recipe does.
+  /// Post `event` to `pid`. Chromium needs the SkyLight route (which goes through the activity
+  /// monitor so the target accepts the event as live); the public `postToPid` preserves AppKit
+  /// compatibility. `dualPost` posts through both, as the keyboard recipes do; a click must not,
+  /// since Chromium then delivers each mouse-down and mouse-up twice.
   func post(_ event: CGEvent, to pid: pid_t, dualPost: Bool) {
     if let skyLight = PrivateSymbols.shared.postToPid {
       skyLight(pid, Unmanaged.passUnretained(event).toOpaque())

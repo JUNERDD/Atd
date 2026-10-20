@@ -74,8 +74,7 @@ extension NativeEngine {
     _ primitive: DriverPrimitive, kind: ComputerStepKind, place: NativeSurfaceRead,
     ref: TargetRefWire, context: EngineStepContext, committed: Bool
   ) async throws(ComputerFailure) -> Result<DriverReceipt, DriverFailure> {
-    let scoped = NativeRoutePolicy.opensKeyScope(
-      primitive.route, on: targets[ref.id]?.toolkit ?? .unknown)
+    let scoped = NativeRoutePolicy.opensKeyScope(primitive.route)
     var waited = false
     while true {
       if scoped { waited = try await typingGuard(kind, context: context) || waited }
