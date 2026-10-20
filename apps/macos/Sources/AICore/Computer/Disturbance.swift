@@ -78,7 +78,8 @@ public struct DisturbanceReading: Equatable, Sendable {
 /// The guard's attribution rules (plan §4.3, the eight kinds of Cua Bench v2). The host says the
 /// agent caused a change only on the engine's receipt or when the target changed what the person
 /// sees without any input of theirs; an `agent` disturbance ends the action `disturbed` and
-/// demotes the route. `person` and `unknown` ones are recorded and change nothing.
+/// demotes the route (``RouteDemotion``). `person` and `unknown` ones are recorded and change
+/// nothing.
 public enum DisturbanceRules {
   public static func disturbances(in reading: DisturbanceReading) -> [ComputerDisturbanceWire] {
     var found: [ComputerDisturbanceWire] = []
@@ -151,6 +152,31 @@ public enum DisturbanceRules {
     if reading.activated.contains(where: counts) { return true }
     if let after = reading.frontmostAfter, counts(after) { return true }
     return reading.receipt?.frontmostChanged == true
+  }
+}
+
+/// How long a route stays off for an app and step kind after the guard attributed a disturbance
+/// to it (plan §4.3, I6). The first keeps it off for the rest of the run whose step caused it, so
+/// the agent cannot take it again before the person has seen the report; their reply starts a new
+/// run, where the route is back. A second, from any run, keeps it off in every run until Atd quits.
+public enum RouteDemotion: Equatable, Sendable {
+  /// Off for the rest of this run.
+  case run(String)
+  /// Off in every run.
+  case everyRun
+
+  /// What a disturbance by a step of `run` leaves after `previous`, the route's demotion so far:
+  /// the first strike holds for its run, a second one for every run.
+  public static func after(_ previous: RouteDemotion?, run: String) -> RouteDemotion {
+    previous == nil ? .run(run) : .everyRun
+  }
+
+  /// Whether the route is off for a step of `run`.
+  public func applies(to run: String) -> Bool {
+    switch self {
+    case .run(let struck): struck == run
+    case .everyRun: true
+    }
   }
 }
 

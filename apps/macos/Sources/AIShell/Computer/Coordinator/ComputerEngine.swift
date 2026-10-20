@@ -229,10 +229,14 @@ protocol ComputerEngine: AnyObject {
   /// The host calls it once no live run uses `ref`, also for a ref that went stale meanwhile;
   /// another ref resolved for the same window may still need that preparation, which stays.
   func releaseTarget(_ ref: TargetRefWire) async
-  /// Stops using `route` for `kind` steps on the app behind `ref` for the rest of the engine's
-  /// generation, after the guard attributed a disturbance to it. The engine keys the demotion by
-  /// what decides the app's behavior (bundle id, version, toolkit), not by the ref alone.
-  func demote(_ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire)
+  /// Stops using `route` for `kind` steps on the app behind `ref` after the guard attributed a
+  /// disturbance by a step of `run` to it, and says for how long (``RouteDemotion``); nil when
+  /// the engine demoted nothing. The engine keys the demotion by what decides the app's behavior
+  /// (bundle id, version, toolkit), not by the ref alone.
+  func demote(
+    _ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire,
+    run: String
+  ) -> RouteDemotion?
   /// The processes that post the engine's input events, so the host's input monitor never
   /// mistakes them for the person's.
   var inputProcesses: Set<pid_t> { get }
@@ -256,8 +260,9 @@ extension ComputerEngine {
   func releaseTarget(_ ref: TargetRefWire) async {}
 
   func demote(
-    _ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire
-  ) {}
+    _ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire,
+    run: String
+  ) -> RouteDemotion? { nil }
 
   var inputProcesses: Set<pid_t> { [] }
 }

@@ -123,36 +123,44 @@ extension NativeEngine {
   /// The effects an observed native target accepts.
   static let targetEffects: [ComputerEffect] = [.read, .input, .click, .invoke, .submit]
 
-  /// The route facts for a `kind` step on a window of `toolkit` of `app`, with the routes the
-  /// guard demoted for that app (none without a kind or an app).
-  func routeFacts(for app: AppIdentity?, toolkit: DriverToolkit, kind: ComputerStepKind?)
-    -> NativeRouteFacts
-  {
-    var demoted: Set<DriverRoute> = []
-    if let kind, let app {
-      demoted = Set(
-        DriverRoute.all.filter {
-          demotions.contains(
-            NativeDemotion(
-              bundleId: app.bundleId, appVersion: app.version, toolkit: toolkit, route: $0.wire,
-              kind: kind))
-        })
-    }
-    return NativeRouteFacts(
+  /// The route facts for a window of `toolkit`, with no route demoted.
+  func routeFacts(toolkit: DriverToolkit) -> NativeRouteFacts {
+    NativeRouteFacts(
       toolkit: toolkit, capabilities: capabilities, postsEvents: CGPreflightPostEventAccess(),
-      demoted: demoted, policy: configuration.routes)
+      policy: configuration.routes)
   }
 
-  func demote(_ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire) {
+  /// The routes the guard demoted for a `kind` step of `run` on a window of `toolkit` of `app`,
+  /// with how long each stays off.
+  func demoted(
+    in app: AppIdentity, toolkit: DriverToolkit, kind: ComputerStepKind, run: String
+  ) -> [DriverRoute: RouteDemotion] {
+    var off: [DriverRoute: RouteDemotion] = [:]
+    for route in DriverRoute.all {
+      let key = NativeDemotion(
+        bundleId: app.bundleId, appVersion: app.version, toolkit: toolkit, route: route.wire,
+        kind: kind)
+      if let demotion = demotions[key], demotion.applies(to: run) { off[route] = demotion }
+    }
+    return off
+  }
+
+  func demote(
+    _ route: ActionResultWire.Route, for kind: ComputerStepKind, on ref: TargetRefWire,
+    run: String
+  ) -> RouteDemotion? {
     guard ref.engineGeneration == generation, let target = targets[ref.id],
       let toolkit = target.toolkit
-    else { return }
-    demotions.insert(
-      NativeDemotion(
-        bundleId: target.app.bundleId, appVersion: target.app.version, toolkit: toolkit,
-        route: route, kind: kind))
+    else { return nil }
+    let key = NativeDemotion(
+      bundleId: target.app.bundleId, appVersion: target.app.version, toolkit: toolkit,
+      route: route, kind: kind)
+    let demotion = RouteDemotion.after(demotions[key], run: run)
+    demotions[key] = demotion
+    let span = demotion == .everyRun ? "in every run" : "for the rest of its run"
     Self.log.notice(
-      "Demoted \(route.rawValue, privacy: .public) for \(kind.rawValue, privacy: .public) in \(target.app.bundleId, privacy: .public) after a disturbance."
+      "Demoted \(route.rawValue, privacy: .public) for \(kind.rawValue, privacy: .public) in \(target.app.bundleId, privacy: .public) \(span, privacy: .public) after a disturbance."
     )
+    return demotion
   }
 }

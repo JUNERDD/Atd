@@ -57,7 +57,7 @@ extension NativeEngine {
     window: NativeSurfaceProbe.AppWindow, toolkit: DriverToolkit?, hostGeneration: Int
   ) throws(ComputerFailure) -> TargetRefWire {
     guard let engineGeneration = generation else { throw Self.notRunning }
-    let facts = routeFacts(for: nil, toolkit: toolkit ?? .unknown, kind: nil)
+    let facts = routeFacts(toolkit: toolkit ?? .unknown)
     let ref = TargetRefWire(
       id: "atd.\(engineGeneration).\(UUID().uuidString.lowercased())",
       bindingId: native.bindingId, bindingRevision: native.revision,

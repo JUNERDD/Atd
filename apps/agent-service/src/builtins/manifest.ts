@@ -195,7 +195,9 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 16 scopes native `newText` for a submit or invoke by a pattern or region: the host
   // refuses an unscoped one, which any text changing anywhere in the window would satisfy, and an
   // automation scope whose app step submits with one is refused when saved.
-  skill('computer-use', 16, []),
+  // Version 17: after a `disturbed` action, the route it took stays off for that app until the
+  // person replies, and until Atd restarts once that route has disturbed them twice.
+  skill('computer-use', 17, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

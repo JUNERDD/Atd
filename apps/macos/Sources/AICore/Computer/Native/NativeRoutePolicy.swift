@@ -106,14 +106,15 @@ public struct NativeRouteFacts: Equatable, Sendable {
   public var capabilities: Set<String>
   /// Whether Atd may post input events (the PostEvent grant).
   public var postsEvents: Bool
-  /// The routes the disturbance guard demoted for this app and step kind.
-  public var demoted: Set<DriverRoute>
+  /// The routes the disturbance guard demoted for this app, step kind and run, with how long each
+  /// stays off.
+  public var demoted: [DriverRoute: RouteDemotion]
   public var policy: NativeRoutePolicy
   public var placement: NativeWindowPlacement
 
   public init(
     toolkit: DriverToolkit, capabilities: Set<String>, postsEvents: Bool,
-    demoted: Set<DriverRoute> = [], policy: NativeRoutePolicy = .standard,
+    demoted: [DriverRoute: RouteDemotion] = [:], policy: NativeRoutePolicy = .standard,
     placement: NativeWindowPlacement = .activeSpace
   ) {
     self.toolkit = toolkit
@@ -126,7 +127,9 @@ public struct NativeRouteFacts: Equatable, Sendable {
 
   /// Why `route` is ruled out before anything is sent; nil when it may be tried.
   public func exclusion(of route: DriverRoute) -> NativeRouteExclusion? {
-    if demoted.contains(route) { return .demoted }
+    if let demotion = demoted[route] {
+      return demotion == .everyRun ? .demotedForEveryRun : .demotedForRun
+    }
     guard NativeRoutePolicy.eventRoutes.contains(route) else {
       return capabilities.contains(DriverCapabilityName.accessibility) ? nil : .capability
     }
@@ -162,8 +165,10 @@ public enum NativeRouteExclusion: String, Equatable, Sendable {
   case capability
   /// Atd may not post input events (the PostEvent grant is missing).
   case permission
-  /// The route disturbed the person on this app earlier in the engine's generation.
-  case demoted
+  /// The route disturbed the person on this app earlier in this run (``RouteDemotion/run(_:)``).
+  case demotedForRun
+  /// The route disturbed the person on this app twice (``RouteDemotion/everyRun``).
+  case demotedForEveryRun
 }
 
 extension DriverPrimitive {

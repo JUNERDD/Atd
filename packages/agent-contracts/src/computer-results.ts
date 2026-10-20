@@ -50,9 +50,9 @@ export const COMPUTER_SCREENSHOT_MAX_BASE64 = 11184812;
  * or scrolled in the last few seconds), so the host yields; `hostUnavailable`: no bound host answered (or it speaks another computer protocol);
  * `modalBlocked`: the step wrote to a surface while a modal child of it was open; `disturbed`:
  * the action disturbed the person (`ActionResult.disturbances` attributes it to the agent), so the
- * host repaired what it could, ended the action and stops using that route for the rest of its
- * generation. Records written before protocol 8 may hold retired codes; readers map them
- * (`currentComputerErrorCode`).
+ * host repaired what it could and ended the action; on an app it keeps that route off until the
+ * person replies, and until the host restarts once the route disturbed them twice. Records written
+ * before protocol 8 may hold retired codes; readers map them (`currentComputerErrorCode`).
  */
 export const ComputerErrorCodeSchema = Type.Union([
   Type.Literal('notQualified'),

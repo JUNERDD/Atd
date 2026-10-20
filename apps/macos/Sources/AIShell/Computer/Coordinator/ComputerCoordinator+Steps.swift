@@ -5,7 +5,7 @@ import Foundation
 /// write step the host yields to the person (``interruption(_:engine:)``), and each write step runs
 /// under the disturbance guard: what it changed for the person goes on the result, and a change
 /// the guard attributes to the agent, made by a step that reached the target, ends the action
-/// `disturbed` (``endDisturbed(_:step:route:engine:ref:fold:)``).
+/// `disturbed` (``endDisturbed(_:step:route:engine:ref:run:fold:)``).
 extension ComputerCoordinator {
   /// Returns the step still running when one did not stop in time.
   func runSteps(
@@ -63,7 +63,9 @@ extension ComputerCoordinator {
           targets.invalidateObservation(refId: ref.id)
         }
         if found.anyByAgent, outcome.outcome != .notDispatched || outcome.receipt != nil {
-          endDisturbed(found, step: step, route: route, engine: engine, ref: ref, fold: &fold)
+          endDisturbed(
+            found, step: step, route: route, engine: engine, ref: ref, run: subject.runId,
+            fold: &fold)
         }
       case .finished(.failure(let failure)):
         if failure.mayHaveDispatched { markDispatched() }

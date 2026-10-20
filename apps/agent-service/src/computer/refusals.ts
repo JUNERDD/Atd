@@ -86,7 +86,7 @@ const GUIDANCE: Readonly<Partial<Record<ComputerErrorCode, string>>> = {
   needsConsent:
     'Screen capture was never prepared for Atd, and a run never asks for it while working. Continue without screenshots if the accessibility tree is enough; otherwise tell the person to prepare screen access once in Settings → Computer use.',
   disturbed:
-    "This action changed something of the person's (disturbances lists what, who caused it and whether it was repaired); Atd repaired what it could, ended the action and no longer uses that route on this target. Stop acting on this target, tell the person what was disturbed and anything not repaired, and continue only when they ask you to. Read effect and retry as for any uncertain result.",
+    "This action changed something of the person's (disturbances lists what, who caused it and whether it was repaired); Atd repaired what it could and ended the action, and on an app it keeps the route the action took off until the person replies (until Atd restarts once that route has disturbed them twice). Stop acting on this target, tell the person what was disturbed and anything not repaired, and continue only when they ask you to. Read effect and retry as for any uncertain result.",
 };
 
 /**
