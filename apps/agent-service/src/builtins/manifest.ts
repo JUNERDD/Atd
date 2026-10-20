@@ -192,7 +192,10 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // and allow the view a moment to render; `press` needs an element, never recognized text; and
   // an unconfirmed action whose original condition cannot hold goes to the person's Mark as
   // checked on its step instead of retries, releases or new access requests.
-  skill('computer-use', 15, []),
+  // Version 16 scopes native `newText` for a submit or invoke by a pattern or region: the host
+  // refuses an unscoped one, which any text changing anywhere in the window would satisfy, and an
+  // automation scope whose app step submits with one is refused when saved.
+  skill('computer-use', 16, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

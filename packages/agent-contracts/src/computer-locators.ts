@@ -90,8 +90,9 @@ export const ComputerMenuPathSchema = Type.Array(Type.String({ minLength: 1, max
  * What a host can check, before a step (`wait`), after an action (`postcondition`) or as an
  * automation's completion. `urlMatches` is a page URL prefix; `newText` compares identifiers
  * against the action's baseline, optionally inside `locator` or a native capture `region`, and
- * matching an ICU/ECMAScript pattern. `menuItemAvailable` reads an exact native application menu
- * path without invoking it.
+ * matching an ICU/ECMAScript pattern. A native submit or invoke takes `newText` only with one of
+ * the three, since unscoped it holds on any text that changes in the window. `menuItemAvailable`
+ * reads an exact native application menu path without invoking it.
  */
 export const ComputerConditionSchema = Type.Union([
   Type.Object(

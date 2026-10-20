@@ -71,6 +71,15 @@ extension NativeEngine {
         .unsupported,
         "An enabled control is a precondition, not proof of completion; nothing was sent.")
     }
+    // Unscoped, newText holds on any text the window changes on its own (a rotating placeholder,
+    // a carousel, playback time) or that recognition reads differently from the observation, so
+    // it cannot show that a click or submit did anything.
+    if case .newText(.none, .none, .none) = condition {
+      throw ComputerFailure(
+        .unsupported,
+        "A newText without locator, region or pattern holds on any text that changes anywhere in the window, so it cannot show this step worked. Use textAppears with text only the result shows, menuItemAvailable for app state, or newText with a pattern for the new value's shape or a region where it appears; nothing was sent."
+      )
+    }
     if case .textAppears(let text) = condition {
       let before = baseline.elements.flatMap { [$0.name, $0.value].compactMap { $0 } }
       // Compared as `holds` compares, so the check can never pass on text shown all along.

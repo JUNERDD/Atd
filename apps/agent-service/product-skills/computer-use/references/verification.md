@@ -34,7 +34,7 @@ This check is not a way to replace a failed action's recorded postcondition. Res
 
 ## Focused native text verification
 
-An element `locator` addresses one accessibility element, never an OCR box. On apps with sparse trees, verify with native `newText` without a locator; acting on observed screenshot points needs a model qualified for visual steps (`observe` reports `visual`) and a route the host offers for input to the window. It compares fresh AX/OCR text with the action's observation baseline. Specify an outcome-specific pattern when useful; a broad match proves only that some text changed and still needs inspection of the requested outcome.
+An element `locator` addresses one accessibility element, never an OCR box. On apps with sparse trees, verify with native `newText` without a locator; acting on observed screenshot points needs a model qualified for visual steps (`observe` reports `visual`) and a route the host offers for input to the window. It compares fresh AX/OCR text with the action's observation baseline. For a submit or invoke, give it an outcome-specific pattern or a region: the host refuses one with neither, because a rotating placeholder, a carousel or a playback timer anywhere in the window would satisfy it. A broad pattern still proves only that some text changed and needs inspection of the requested outcome.
 
 For focused changes, add `newText.region: {capture, rect}` from the action's full observation. It is available only for attended native app actions, exclusive with `locator`, must fit the capture, and belongs to the same observed surface. Attended means an interactive user-started run rather than an automation; every run acts in the background either way.
 

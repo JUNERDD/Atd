@@ -213,7 +213,7 @@ function freeAction(
     return refuse('menuItemAvailable reads native application menus only; nothing was sent.');
   if (isBusinessEffect(effect) && !action.postcondition)
     return refuse(
-      'A submit or invoke (including a screenshot click) needs a postcondition before input is sent. Choose an observable result, such as new text, a changed value or URL, and include a short wait when the UI needs time. No input was sent.',
+      'A submit or invoke (including a screenshot click) needs a postcondition before input is sent. Choose an observable result, such as text only the result shows, a changed value or URL, and include a short wait when the UI needs time. No input was sent.',
     );
   if (resolves) {
     if (effect !== 'read' || !action.postcondition)

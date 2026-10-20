@@ -92,7 +92,7 @@ Choose an absolute condition when possible:
 - Navigation: `textAppears` with destination-specific text absent from the baseline. Name text the destination is sure to show, not a remembered or guessed label: a condition that never holds leaves the action unconfirmed and holds back later business actions on the target. Native matching reads accessibility text and fresh OCR as substrings, ignoring case and spacing, and allows the view about two seconds to render.
 - App state: `menuItemAvailable` with the exact expected resulting path. It reads whether that menu item exists and is enabled, without invoking it. The resulting path need not be available before input; an already available item proves no transition.
 - Values and URLs: `valueEquals` or `urlMatches` when relevant. `enabled` is a precondition, not completion evidence.
-- New content of unknown value: locator-free native `newText`, optionally with an outcome-specific pattern. Existing labels and unrelated text changes prove nothing about the action.
+- New content of unknown value: native `newText` without a locator, scoped by an outcome-specific `pattern` or a `region` of the observed capture. For a `submit` or `invoke` the host refuses one with neither, since any text changing anywhere in the window would satisfy it. Existing labels and unrelated text changes prove nothing about the action.
 
 Include a short `wait` for the same real condition when the UI needs time. A timeout is not success and ends remaining steps. Use `observe.afterMs` (0–5000) for elapsed-time observations, not invented wait text. The host applies typing-feedback preferences; do not split fills or add cosmetic delays.
 

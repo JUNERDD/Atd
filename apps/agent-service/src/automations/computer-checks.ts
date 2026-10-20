@@ -1,5 +1,7 @@
 import {
   COMPUTER_STEP_KINDS_FOR_KIND,
+  isBusinessEffect,
+  recipeStepEffect,
   type AutomationComputerPolicy,
   type AutomationDraft,
   type ComputerRecipeStep,
@@ -12,8 +14,9 @@ import { completionSteps } from './computer-outcome.js';
  * What a saved computer scope must satisfy beyond its schema (plan §7.3): only a prompt or command
  * may act on the computer, every binding is registered, each step acts on one of the policy's
  * bindings with a step kind that target supports, a navigation stays inside the binding's origins,
- * step ids are unique and every branch names a step, the steps never loop, and some step lets the
- * host verify the completion condition, since only that verification makes a run delivered.
+ * a step that submits on an app proves it with more than any new text in its window, step ids are
+ * unique and every branch names a step, the steps never loop, and some step lets the host verify
+ * the completion condition, since only that verification makes a run delivered.
  * Recipe steps keep their own closed kinds (`ComputerRecipeStepSchema`): the pointer, key, typing,
  * clearing, menu and drag steps of attended runs and their capture points never enter a recipe, so
  * no unattended run carries an `invoke` effect.
@@ -50,6 +53,19 @@ function checkStep(
     );
   if (step.kind === 'navigate' && !withinOrigins(step.urlPrefix, binding))
     throw invalid(`recipe step "${step.stepId}" navigates outside the target's allowed sites.`);
+  // The host refuses this proof for every run, so the scope is refused when it is saved instead.
+  const proof = step.postcondition;
+  if (
+    binding.kind === 'native' &&
+    isBusinessEffect(recipeStepEffect(step)) &&
+    proof?.kind === 'newText' &&
+    !proof.locator &&
+    !proof.region &&
+    !proof.pattern
+  )
+    throw invalid(
+      `recipe step "${step.stepId}" submits on an app with a newText postcondition that names no element or pattern, which any text changing in the window would satisfy.`,
+    );
 }
 
 /** Whether following `next` from any step can come back to it. */
