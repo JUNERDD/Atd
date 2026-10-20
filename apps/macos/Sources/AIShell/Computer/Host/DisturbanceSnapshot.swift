@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 
 /// What the person sees at one moment, as the disturbance guard reads it before and after a write
-/// step (plan §4.3): the frontmost app, whether a window of the target is above the person's front
+/// step (plan §4.3): the frontmost app, whether a window of the target covers the person's front
 /// window, how many windows the frontmost app shows, the pointer and the pasteboard's change count.
 /// Read from WindowServer and AppKit only, never with accessibility calls into other apps, and
 /// without window titles, so it needs no Screen Recording grant.
@@ -10,7 +10,9 @@ struct DisturbanceSnapshot {
   let frontmost: pid_t?
   /// The person's front window: the frontmost app's topmost window, by window number.
   let personWindow: Int?
-  /// Whether a window of the target is above ``personWindow`` in the on-screen order.
+  /// Whether a window of the target is above ``personWindow`` in the on-screen order and overlaps
+  /// it. The order is global across displays, so a target window brought up on another display
+  /// precedes the person's window without covering anything of it.
   let targetAbove: Bool
   /// The frontmost app's windows on screen.
   let personWindows: Int?
@@ -20,6 +22,8 @@ struct DisturbanceSnapshot {
   private struct Window {
     let number: Int
     let pid: pid_t
+    /// In global display coordinates, the same space for every window in the list.
+    let bounds: CGRect
   }
 
   /// Reads the moment for a step on `target`. `personWindow` names the window to compare with
@@ -32,7 +36,9 @@ struct DisturbanceSnapshot {
       personWindow.flatMap { number in windows.firstIndex { $0.number == number } }
       ?? frontmost.flatMap { pid in windows.firstIndex { $0.pid == pid } }
     let above = reference.map { index in
-      windows[..<index].contains { target.contains($0.pid) }
+      windows[..<index].contains { window in
+        target.contains(window.pid) && !window.bounds.intersection(windows[index].bounds).isEmpty
+      }
     }
     return DisturbanceSnapshot(
       frontmost: frontmost, personWindow: reference.map { windows[$0].number },
@@ -58,9 +64,11 @@ struct DisturbanceSnapshot {
     return list.compactMap { info in
       guard let number = info[kCGWindowNumber as String] as? Int,
         let pid = info[kCGWindowOwnerPID as String] as? pid_t,
-        let layer = info[kCGWindowLayer as String] as? Int, (0..<ceiling).contains(layer)
+        let layer = info[kCGWindowLayer as String] as? Int, (0..<ceiling).contains(layer),
+        let frame = info[kCGWindowBounds as String] as? NSDictionary,
+        let bounds = CGRect(dictionaryRepresentation: frame as CFDictionary)
       else { return nil }
-      return Window(number: number, pid: pid)
+      return Window(number: number, pid: pid, bounds: bounds)
     }
   }
 }
