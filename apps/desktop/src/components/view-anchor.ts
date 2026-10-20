@@ -11,14 +11,17 @@ function easeOut(progress: number): number {
 /**
  * Where the popover anchors for a view: horizontally the part that opens it, so each view centers
  * on its part; the HITL view spans the whole anchor instead (the composer's width, which its
- * panel reads as the trigger width). Vertically the top of the pill, so every view stacks above
- * it.
+ * panel reads as the trigger width). Vertically from the top of the pill, so every view stacks
+ * above it, down to the bottom of the composer surface: Floating UI's flip then weighs the room
+ * below the composer, not the composer itself, so a view taller than the room above (a long draft
+ * in a short window) stays above and is capped to that room instead of flipping over the input.
  */
 function viewRect(root: HTMLElement, view: PillView | null): DOMRect {
   const part = view === 'hitl' ? null : root.querySelector(`[data-pill-view="${view}"]`);
-  const { left, width } = (part ?? root).getBoundingClientRect();
+  const box = root.getBoundingClientRect();
+  const { left, width } = part?.getBoundingClientRect() ?? box;
   const top = (root.querySelector('.composer-progress') ?? root).getBoundingClientRect().top;
-  return new DOMRect(left, top, width, 0);
+  return new DOMRect(left, top, width, box.bottom - top);
 }
 
 /**
@@ -51,7 +54,7 @@ export function createViewAnchor() {
     const eased = easeOut(progress);
     const left = slide.from.left + (target.left - slide.from.left) * eased;
     const width = slide.from.width + (target.width - slide.from.width) * eased;
-    last = new DOMRect(left, target.top, width, 0);
+    last = new DOMRect(left, target.top, width, target.height);
     return last;
   };
 }

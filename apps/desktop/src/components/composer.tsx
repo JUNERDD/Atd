@@ -65,7 +65,7 @@ export interface ComposerProps {
   quickActions: QuickActions;
   /** Snapshot tasks: `@` conversations and recently attached files. */
   tasks: readonly AgentTask[];
-  /** The panel body below the header, which the quick panel must not leave. */
+  /** The panel body below the header, which the composer's popovers must not leave. */
   overlayBoundary: Element | null;
   /**
    * Hides the composer without unmounting it, while a read-only view (a subagent's transcript)
@@ -259,6 +259,7 @@ export function Composer({
           live={active && status !== 'queued'}
           compacting={context?.compacting ?? false}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
+          boundary={overlayBoundary}
         >
           <QuickPanel
             trigger={trigger}
