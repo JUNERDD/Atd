@@ -22,8 +22,8 @@ extension NativeEngine {
     var dispatched: Bool { receipts.contains(where: \.dispatched) }
   }
 
-  /// The route facts of a write of `kind` to `place`, with where its window sits now; a
-  /// minimized window is refused.
+  /// The route facts of a write of `kind` to `place`, with the routes demoted for the app in
+  /// this run and where its window sits now; a minimized window is refused.
   func writeFacts(
     _ ref: TargetRefWire, place: NativeSurfaceRead, kind: ComputerStepKind,
     context: EngineStepContext
@@ -35,7 +35,10 @@ extension NativeEngine {
         .minimized, "The window is minimized; Atd never restores a window. Nothing was sent.")
     }
     targets[ref.id]?.toolkit = probe.toolkit
-    var facts = routeFacts(for: targets[ref.id]?.app, toolkit: probe.toolkit, kind: kind)
+    var facts = routeFacts(toolkit: probe.toolkit)
+    if let app = targets[ref.id]?.app {
+      facts.demoted = demoted(in: app, toolkit: probe.toolkit, kind: kind, run: context.runId)
+    }
     facts.placement = NativeWindowPlacement(
       onActiveSpace: placement.onActiveSpace, fullScreen: placement.fullScreen)
     return facts
@@ -172,7 +175,10 @@ extension NativeEngine {
     case .toolkit: "this app's toolkit takes no such input in the background"
     case .capability: "the driver cannot do it on this Mac"
     case .permission: "Atd is not allowed to send input events to apps"
-    case .demoted: "it disturbed the person earlier and stays off for this app until Atd restarts"
+    case .demotedForRun:
+      "it disturbed the person earlier in this run and stays off for this app until they reply"
+    case .demotedForEveryRun:
+      "it disturbed the person twice and stays off for this app until Atd restarts"
     }
   }
 

@@ -54,8 +54,10 @@ final class NativeEngine: ComputerEngine {
   var pinned: [String: Set<String>] = [:]
   /// Apps whose web accessibility the driver turned on; it stays on (toggling it has effects).
   var webAccessibility: Set<Int> = []
-  /// Routes the disturbance guard demoted in this generation.
-  var demotions: Set<NativeDemotion> = []
+  /// Routes the disturbance guard demoted, with how long each stays off (``RouteDemotion``). Keyed
+  /// by the app rather than a ref, they outlive the driver's generation: a strike is kept until
+  /// Atd quits, never cleared by the driver's idle stop, so a second one is always counted.
+  var demotions: [NativeDemotion: RouteDemotion] = [:]
   /// Operations the coordinator cancelled, and how to cancel each one's request in flight.
   var stopping: Set<String> = []
   var cancels: [String: () -> Void] = [:]
@@ -162,7 +164,6 @@ final class NativeEngine: ComputerEngine {
     snapshots = [:]
     pinned = [:]
     webAccessibility = []
-    demotions = []
     capabilities = []
     driverProcess = nil
   }
@@ -217,7 +218,7 @@ final class NativeEngine: ComputerEngine {
 
 /// A route the guard demoted (plan §4.2): keyed by what decides how the app takes input, its
 /// bundle, version and toolkit, so a relaunch or a second window of the same app stays demoted
-/// for the rest of the engine's generation.
+/// for as long as the demotion lasts (``RouteDemotion``).
 struct NativeDemotion: Hashable {
   let bundleId: String
   let appVersion: String

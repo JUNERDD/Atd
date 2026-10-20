@@ -192,7 +192,9 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // and allow the view a moment to render; `press` needs an element, never recognized text; and
   // an unconfirmed action whose original condition cannot hold goes to the person's Mark as
   // checked on its step instead of retries, releases or new access requests.
-  skill('computer-use', 15, []),
+  // Version 16: after a `disturbed` action, the route it took stays off for that app until the
+  // person replies, and until Atd restarts once that route has disturbed them twice.
+  skill('computer-use', 16, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to
