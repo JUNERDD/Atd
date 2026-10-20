@@ -31,6 +31,12 @@ Not for: pure source questions or aesthetic judgement — Web Inspector answers 
 - The Swift shell logs through `Logger` under the subsystem `com.junerdd.ai` (categories such as `shell`, `relay`, `service`): `log stream --predicate 'subsystem == "com.junerdd.ai"'`. In Debug, the service's output stays in the `pnpm dev` terminal; a Release app writes it to `~/Library/Logs/AI/service.log`, keeping the previous four launches.
 - Use `screencapture` for the OS-composited window; page screenshots do not show the native glass.
 
+### Prepare a profile for repeated checks
+
+For checks unrelated to onboarding, prepare the task-owned isolated profile before opening the native app. Start the service and renderer with `pnpm dev:headless`, then use that service's authenticated `PATCH /v1/settings` route to set `onboardingCompleted: true` and `onboardingProgress: null`. Verify both fields with `GET /v1/settings` before launching the Debug app with the same `AI_AGENT_DATA_DIR` and `AI_RENDERER_DEV_ORIGIN`. The one-step `pnpm dev` launch opens the app before this preparation can finish.
+
+Each fresh data directory otherwise starts the onboarding intro again. Reuse the prepared task-owned profile within a check sequence, or repeat this preparation for each new profile; never seed or reuse the user's profile. Keep the default onboarding state when first-run or onboarding behavior is what the task tests.
+
 ## Read facts, not dumps
 
 - In the Web Inspector console, project the answer into a small value instead of dumping markup:
