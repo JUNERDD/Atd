@@ -73,7 +73,8 @@ extension NativeEngine {
     }
     if case .textAppears(let text) = condition {
       let before = baseline.elements.flatMap { [$0.name, $0.value].compactMap { $0 } }
-      if (before + (baseline.text?.map(\.text) ?? [])).contains(where: { $0.contains(text) }) {
+      // Compared as `holds` compares, so the check can never pass on text shown all along.
+      if NativeRecognizedText.appears(text, in: before + (baseline.text?.map(\.text) ?? [])) {
         throw ComputerFailure(
           .unsupported,
           "The postcondition text already appears in the baseline. Choose evidence of the intended change, not an existing label; nothing was sent."
@@ -86,9 +87,14 @@ extension NativeEngine {
     _ condition: ComputerConditionWire, on ref: TargetRefWire, baseline: ObservationWire?
   ) async throws(ComputerFailure) -> Bool {
     let before = (baseline?.elements ?? []).flatMap { [$0.name, $0.value].compactMap { $0 } }
-    // Native menu state can update just after input returns. Poll reads briefly, never the input.
-    let grace: Duration
-    if case .menuItemAvailable = condition { grace = .seconds(2) } else { grace = .zero }
+    // Native menus and window text can change a moment after input returns: the driver settles
+    // only briefly after a click, and a view may render later still. Menu and text conditions
+    // therefore poll reads for a short grace, never the input, and hold once a read shows them.
+    let grace: Duration =
+      switch condition {
+      case .menuItemAvailable, .textAppears: .seconds(2)
+      case .valueEquals, .enabled, .newText, .urlMatches: .zero
+      }
     let until = ContinuousClock.now + grace
     repeat {
       _ = try window(of: ref)
@@ -120,17 +126,19 @@ extension NativeEngine {
       let element = try await current(locator, ref: ref, observation: observation, operation)
       return element.enabled != false
     case .textAppears(let text):
+      // Compared as locating compares (``NativeRecognizedText/appears(_:in:)``), since
+      // recognition spaces the same text differently from one read to the next.
       if let region = targets[ref.id]?.recognizedRegion {
-        return try await screenTexts(ref, region: region, operation: operation).contains {
-          $0.contains(text)
-        }
+        return try await NativeRecognizedText.appears(
+          text, in: screenTexts(ref, region: region, operation: operation))
       }
       let snapshot = try await freshSnapshot(ref, operation: operation)
       let window = NativeObservation(id: "check", snapshot: snapshot, root: surfaceRoot(ref))
-      if NativeObservation.texts(window.elements).contains(where: { $0.contains(text) }) {
+      if NativeRecognizedText.appears(text, in: NativeObservation.texts(window.elements)) {
         return true
       }
-      return try await screenTexts(ref, operation: operation).contains { $0.contains(text) }
+      return try await NativeRecognizedText.appears(
+        text, in: screenTexts(ref, operation: operation))
     case .newText(let locator, let pattern, let region):
       if let region {
         return try await regionalNewText(region, pattern: pattern, ref: ref, operation: operation)

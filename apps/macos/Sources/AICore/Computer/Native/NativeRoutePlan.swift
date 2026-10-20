@@ -62,6 +62,9 @@ public enum NativeRoutePlan {
     case element(Element)
     /// A capture point, as the host mapped it to the screen.
     case point(DriverPoint)
+    /// The middle of text the window shows, as the host found and mapped it
+    /// (``NativeRecognizedText``), with the text it found.
+    case text(DriverPoint, String)
   }
 
   /// Where a `type` step's text goes.
@@ -89,9 +92,9 @@ public enum NativeRoutePlan {
     return ladder.result(.noRoute)
   }
 
-  /// A click: a single left click of an element presses it; otherwise, and for a capture point,
-  /// a window-routed click. A right click would open a context menu, which is visible interface
-  /// (plan I3), so it has no rung.
+  /// A click: a single left click of an element presses it; otherwise, and for a capture point or
+  /// text on screen, a window-routed click. A right click would open a context menu, which is
+  /// visible interface (plan I3), so it has no rung.
   public static func click(
     _ aim: Aim, button: ComputerStepWire.ClickButton, count: Int, facts: NativeRouteFacts
   ) -> NativeLadder {
@@ -106,7 +109,7 @@ public enum NativeRoutePlan {
       if let point = target.point {
         ladder.add(.pointer, [.pointer(point: point, clickCount: count)])
       }
-    case .point(let point):
+    case .point(let point), .text(let point, _):
       ladder.add(.pointer, [.pointer(point: point, clickCount: count)])
     }
     return ladder.result(toolkit)

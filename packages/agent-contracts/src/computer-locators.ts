@@ -8,9 +8,10 @@ import {
 
 /**
  * What a step points at and what a host can check. Element locators (a ref or a semantic
- * description) name one element of the target's accessibility tree; an image point names a pixel
- * of one capture the model saw and only point-capable steps accept it. Conditions address elements
- * or screen text; native newText can narrow verification to a region of the observed capture.
+ * description) name one element of the target's accessibility tree, or, for an app's pointer step,
+ * text it shows that no element holds; an image point names a pixel of one capture the model saw
+ * and only point-capable steps accept it. Conditions address elements or screen text; native
+ * newText can narrow verification to a region of the observed capture.
  */
 
 /** A locator by element ref: valid only for the observation (`observationRefId`) it came from. */
@@ -21,7 +22,11 @@ export const ComputerRefLocatorSchema = Type.Object(
 
 /**
  * A semantic locator, the only kind a recipe stores: the host resolves it to exactly one element
- * of the current target, or fails the step with `ambiguous` or `notFound`. At least one field.
+ * of the current target, or fails the step with `ambiguous` or `notFound`. At least one field. On
+ * an application target, a `click` or `drag` locator that names only `text` no element holds is
+ * located on that text as the window shows it when the step runs (recognized text, read again so
+ * a moved, resized or zoomed window is followed); the host picks the point, so the step is not
+ * visual.
  */
 export const ComputerSemanticLocatorSchema = Type.Object(
   {

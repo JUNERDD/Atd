@@ -43,7 +43,11 @@ extension NativeEngine {
     let delivered = try await climb(
       NativeRoutePlan.click(aim, button: button, count: count, facts: write.facts), kind: .click,
       place: write.place, ref: write.ref, context: write.context)
-    return Self.outcome(delivered, "Clicked\(count == 2 ? " twice" : "")")
+    let twice = count == 2 ? " twice" : ""
+    if case .text(_, let text) = aim {
+      return Self.outcome(delivered, "Clicked the text “\(text)”\(twice)")
+    }
+    return Self.outcome(delivered, "Clicked\(twice)")
   }
 
   /// A chord with ⌘, ⌃ or ⌥ that is a menu item's shortcut goes to that item (a background
@@ -212,7 +216,7 @@ extension NativeEngine {
           .noRoute, "The element shows no point inside its window to drag; nothing was sent.")
       }
       return point
-    case .point(let point):
+    case .point(let point), .text(let point, _):
       return point
     }
   }

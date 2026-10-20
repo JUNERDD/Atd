@@ -20,19 +20,27 @@ extension NativeEngine {
     }
   }
 
-  /// What a pointer step aims at; `uses` marks a capture point's capture used.
+  /// What a pointer step aims at; `uses` marks a capture point's capture used. A locator that
+  /// names only text no element of the observation holds is aimed at that text on screen.
   func aim(
     _ locator: ComputerPointLocatorWire, ref: TargetRefWire, in observation: NativeObservation,
     context: EngineStepContext, uses: Bool
   ) async throws(ComputerFailure) -> NativeRoutePlan.Aim {
     switch locator {
     case .element(let locator):
-      let found = try Self.element(locator, in: observation)
-      guard found.enabled != false else {
-        throw ComputerFailure(.unsupported, "The element is disabled.")
+      switch observation.resolve(locator) {
+      case .success(let found):
+        guard found.enabled != false else {
+          throw ComputerFailure(.unsupported, "The element is disabled.")
+        }
+        return .element(
+          try await liveElement(found, ref: ref, observation: observation, context: context))
+      case .failure(let failure):
+        if failure == .notFound, let text = NativeRecognizedText.text(of: locator) {
+          return try await textAim(text, ref: ref, context: context)
+        }
+        throw ComputerFailure(failure.code, failure.message)
       }
-      return .element(
-        try await liveElement(found, ref: ref, observation: observation, context: context))
     case .imagePoint(let point):
       return .point(try await screenPoint(point, ref: ref, context: context, uses: uses))
     }
@@ -126,7 +134,7 @@ extension NativeEngine {
   func geometry(of aim: NativeRoutePlan.Aim) -> ComputerGeometryWire? {
     switch aim {
     case .element(let element): NativeTargetProbe.screenGeometry(element.element.frame?.cgRect)
-    case .point(let point):
+    case .point(let point), .text(let point, _):
       NativeTargetProbe.screenGeometry(CGRect(x: point.x - 1, y: point.y - 1, width: 2, height: 2))
     }
   }
