@@ -181,7 +181,18 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // preparing screen access in Settings and `disturbed` stops work on the target. Foreground
   // delivery, takeover and `flow` are gone, capture points need a background visual
   // qualification, and browser targets list no `click` step.
-  skill('computer-use', 14, []),
+  // Version 15 submits a text or search field with Return or a `submit` press, which the host
+  // sends as the field's own confirm action; a `click` press never submits a field. A click or
+  // drag on text no element holds names it with a `text` locator, which the host finds on screen
+  // when the step runs. An app that is still starting is requested again, never opened from a
+  // shell, which would bring it in front of the person. `targetInUse` means the target is in
+  // front of the person and they just typed, clicked or scrolled; Atd keeps working on a target
+  // they only watch. A navigation postcondition names text the destination is sure to show, since
+  // one that never holds leaves the action unconfirmed; app text checks ignore case and spacing
+  // and allow the view a moment to render; `press` needs an element, never recognized text; and
+  // an unconfirmed action whose original condition cannot hold goes to the person's Mark as
+  // checked on its step instead of retries, releases or new access requests.
+  skill('computer-use', 15, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to
