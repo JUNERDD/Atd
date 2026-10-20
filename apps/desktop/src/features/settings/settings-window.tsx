@@ -22,6 +22,7 @@ import { AboutSettings } from './about-settings';
 import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
 import { ShellAllowlistSettings } from './shell-allowlist-settings';
+import { ComputerSettings } from '../computer/computer-settings';
 import { ProviderSettingsForm } from './provider-settings';
 import { GeneralSettings } from './general-settings';
 import { ServiceSettings } from '../service/service-settings';
@@ -238,6 +239,7 @@ export function SettingsWindow() {
                                   <ShellAllowlistSettings snapshot={snapshot} />
                                 </>,
                               )}
+                              {page('computer', <ComputerSettings snapshot={snapshot} />)}
                               {page('extensions', <ServiceSettings activeItem={extensionTarget} />)}
                               {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
                               {page(

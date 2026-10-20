@@ -204,7 +204,7 @@ function gatedSave(gate: Gate, toolCallId: string, signal: AbortSignal | undefin
   };
 }
 
-/** The parent's `command` tool; saves go through the service gate. */
+/** The parent's deferred `command` tool; saves go through the service gate. */
 export function commandToolDefinition(
   dataDir: string,
   gate: Gate,
@@ -215,6 +215,7 @@ export function commandToolDefinition(
     description: DESCRIPTION,
     parameters: CommandToolParametersSchema,
     executionMode: 'sequential',
+    exposure: 'deferred',
     async execute(id, args, signal) {
       signal?.throwIfAborted();
       const text = await runCommandCall(dataDir, args, gatedSave(gate, id, signal ?? undefined));

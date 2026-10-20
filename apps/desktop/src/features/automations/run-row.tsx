@@ -13,7 +13,13 @@ import {
 } from '@atd/ui/components/item';
 import { cn } from '@atd/ui/lib/utils';
 import { formatDuration, formatWhen } from './automation-time';
-import { isUnread, outcomeTone, outcomeWords, reasonWords } from './automation-words';
+import {
+  computerFactsWords,
+  isUnread,
+  outcomeTone,
+  outcomeWords,
+  reasonWords,
+} from './automation-words';
 import { OutcomeIcon } from './run-outcome';
 
 /**
@@ -80,6 +86,9 @@ export function RunRow({
                 <span className="automation-problem-detail font-mono"> {run.detail}</span>
               )}
             </p>
+          )}
+          {run.computer && (
+            <p className="automation-run-meta">{computerFactsWords(run.computer, t)}</p>
           )}
           {run.files?.length ? (
             <p className="automation-run-meta line-clamp-1" title={run.files.join('\n')}>

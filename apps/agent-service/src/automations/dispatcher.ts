@@ -6,21 +6,37 @@ import {
   type AutomationRunReason,
   type FolderRef,
 } from '@atd/agent-contracts';
-import { DrainingError } from '../errors.js';
+import { chainedTo } from './chain.js';
 import { ConsolidationRuns } from './consolidate-run.js';
+import {
+  CHANGED_SINCE_FIRE,
+  decideFire,
+  fireFingerprint,
+  stillFrozen,
+  type FrozenComputer,
+} from './computer-fire.js';
+import { endedSettlement } from './computer-outcome.js';
 import type { EngineDeps } from './engine-deps.js';
 import { absoluteFiles, type FolderWatch } from './folder-watch.js';
-import { launchRun, LaunchFailure, type LaunchDeps } from './launch-run.js';
-import { classify, type RunEnd } from './outcome.js';
-import { clip, type FireFacts, type Upstream } from './prompt.js';
-import { recordFire, settleRun, skipFire, type FireRequest, type Settlement } from './records.js';
+import { launchRun, launchSettlement, type LaunchDeps } from './launch-run.js';
+import type { RunEnd } from './outcome.js';
+import { fireFacts, type FireFacts, type Upstream } from './prompt.js';
+import {
+  previousDelivered,
+  recordFire,
+  settleRun,
+  skipFire,
+  type FireRequest,
+  type Settlement,
+} from './records.js';
 import { RunSupervisor, type WatchedRun } from './supervisor.js';
 
 /**
  * From a fire to a settled record: the durable receipt, a FIFO queue in front of two slots shared
  * by every automation (decision D6), the launch through the run pipeline and its supervision (or a
  * memory consolidation, which starts no task), the result, and the automations chained to that
- * result (at most `MAX_CHAIN_DEPTH` hops from the first run).
+ * result (at most `MAX_CHAIN_DEPTH` hops from the first run). A computer automation's fire freezes
+ * its grant in the receipt and never runs content newer than that (computer-fire.ts).
  */
 
 /** Automation runs at once, across all automations. */
@@ -43,6 +59,8 @@ interface Queued {
   facts: FireFacts;
   filePaths: string[];
   depth: number;
+  /** What a computer automation's receipt froze. */
+  frozen?: FrozenComputer;
 }
 
 export class Dispatcher {
@@ -63,6 +81,7 @@ export class Dispatcher {
       ledger: deps.ledger,
       manager: deps.manager,
       auditDir: deps.paths.auditDir,
+      facts: (runId) => deps.computer?.readRunFacts(runId) ?? Promise.resolve([]),
       log: deps.log,
       now: deps.now,
       ended: (run, end) => this.ended(run, end),
@@ -98,9 +117,16 @@ export class Dispatcher {
     extras: FireExtras,
   ): Promise<AutomationRun | null> {
     const recordId = randomUUID();
+    const fingerprint = await fireFingerprint(automation, this.deps.paths.root);
+    const unresolved = extras.upstream?.unresolved ?? false;
     const receipt = await this.deps.store.change((draft) => {
       const live = draft.definitions.automations.find((item) => item.id === automation.id);
-      return live ? recordFire(draft, live, request, now, recordId) : null;
+      if (!live) return null;
+      const state = draft.state.automations[live.id];
+      const decision = decideFire(live, state, this.deps.computer, fingerprint, unresolved);
+      const blocked = 'blocked' in decision ? decision.blocked : undefined;
+      const fired = recordFire(draft, live, request, now, recordId, blocked);
+      return fired && { ...fired, frozen: 'frozen' in decision ? decision.frozen : undefined };
     });
     if (!receipt?.fired) return receipt?.record ?? null;
     // Only once the receipt is durable do the files count as handled (decision D8). A snapshot
@@ -116,17 +142,10 @@ export class Dispatcher {
       automationId: automation.id,
       record: receipt.record,
       taskId: randomUUID(),
-      facts: {
-        source: request.source,
-        firedAt: now,
-        ...(request.scheduledFor !== undefined ? { scheduledFor: request.scheduledFor } : {}),
-        late: request.late ?? false,
-        ...(extras.folder ? { folderName: extras.folder.name } : {}),
-        ...(request.files?.length ? { files: request.files } : {}),
-        ...(extras.upstream ? { upstream: extras.upstream } : {}),
-      },
+      facts: fireFacts(request, now, extras.folder?.name, extras.upstream),
       filePaths: extras.folder ? absoluteFiles(extras.folder, request.files ?? []) : [],
       depth: extras.depth,
+      ...(receipt.frozen ? { frozen: receipt.frozen } : {}),
     });
     this.pump();
     return receipt.record;
@@ -203,6 +222,10 @@ export class Dispatcher {
         this.consolidations.start(automation, entry.record.id, entry.depth);
         return;
       }
+      if (!stillFrozen(automation, entry.frozen)) {
+        await this.settle(entry.automationId, entry.record.id, CHANGED_SINCE_FIRE, entry.depth, '');
+        return;
+      }
       let accepted: { taskId: string; runId: string };
       try {
         accepted = await launchRun(this.launchDeps(), {
@@ -211,10 +234,12 @@ export class Dispatcher {
           taskId: entry.taskId,
           facts: entry.facts,
           filePaths: entry.filePaths,
-          previous: this.previousDelivered(entry.automationId),
+          previous: previousDelivered(this.deps.store.data.state.automations[entry.automationId]),
+          ...(entry.frozen ? { frozen: entry.frozen } : {}),
         });
       } catch (error) {
-        await this.settle(entry.automationId, entry.record.id, failure(error), entry.depth, '');
+        const failed = launchSettlement(error);
+        await this.settle(entry.automationId, entry.record.id, failed, entry.depth, '');
         return;
       }
       await this.attach(entry, accepted);
@@ -257,8 +282,10 @@ export class Dispatcher {
   }
 
   private launchDeps(): LaunchDeps {
-    const { paths, manager, launchCommand, folders, resources } = this.deps;
-    return { dataDir: paths.root, manager, launchCommand, folders, resources };
+    const { paths, manager, launchCommand, folders, resources, computer, store } = this.deps;
+    const held = (id: string) => store.data.state.automations[id]?.computerHold !== undefined;
+    const base = { dataDir: paths.root, manager, launchCommand, folders, resources, held };
+    return computer ? { ...base, computer } : base;
   }
 
   private async ended(run: WatchedRun, end: RunEnd): Promise<void> {
@@ -271,8 +298,7 @@ export class Dispatcher {
           error: errorMessage(error),
         });
       });
-    const notify = automation?.delivery.notify ?? 'always';
-    const result: Settlement = { ...classify(end, notify), declined: end.declined };
+    const result = endedSettlement(end, automation, this.deps.computer);
     await this.settle(run.automationId, run.recordId, result, run.depth, end.answer);
   }
 
@@ -283,21 +309,12 @@ export class Dispatcher {
     answer: string,
     now: number,
   ): Promise<void> {
-    const outcome = record.outcome === 'timedOut' ? 'failed' : record.outcome;
-    if (
-      outcome !== 'delivered' &&
-      outcome !== 'nothingNew' &&
-      outcome !== 'needsAttention' &&
-      outcome !== 'failed'
-    )
-      return;
     const upstream = this.definition(upstreamId);
     const { definitions } = this.deps.store.data;
     if (!upstream || this.stopped) return;
-    for (const automation of definitions.automations) {
-      const { trigger } = automation;
-      if (!automation.enabled || trigger.kind !== 'automation') continue;
-      if (trigger.automationId !== upstreamId || !trigger.outcomes.includes(outcome)) continue;
+    const chained = chainedTo(definitions.automations, upstream, record, answer);
+    if (!chained) return;
+    for (const automation of chained.followers) {
       if (depth + 1 > MAX_CHAIN_DEPTH) {
         this.deps.log.info('A chain of automations reached its depth limit.', {
           automationId: automation.id,
@@ -310,7 +327,7 @@ export class Dispatcher {
         if (definitions.paused) await this.skip(automation.id, 'paused', request, now);
         else
           await this.fire(automation, request, now, {
-            upstream: { name: upstream.name, result: outcome, answer },
+            upstream: chained.upstream,
             depth: depth + 1,
           });
       } catch (error) {
@@ -325,22 +342,4 @@ export class Dispatcher {
   private definition(automationId: string): Automation | undefined {
     return this.deps.store.data.definitions.automations.find((item) => item.id === automationId);
   }
-
-  /** The newest delivered run with a task, whose answer a run may compare with. */
-  private previousDelivered(automationId: string): { taskId: string; runId: string } | null {
-    const runs = this.deps.store.data.state.automations[automationId]?.runs ?? [];
-    const run = runs.find((item) => item.outcome === 'delivered' && item.taskId && item.runId);
-    return run?.taskId && run.runId ? { taskId: run.taskId, runId: run.runId } : null;
-  }
-}
-
-/** How a fire whose run could not start settles; a drain is no failure of the automation. */
-function failure(error: unknown): Settlement {
-  if (error instanceof DrainingError)
-    return { outcome: 'interrupted', detail: 'Atd quit before the run started.' };
-  const reason = error instanceof LaunchFailure ? error.reason : 'submitFailed';
-  const detail = clip(errorMessage(error), 2000);
-  // Files a command cannot take are no failure of the automation; they are not tried again.
-  if (reason === 'unsupportedFiles') return { outcome: 'skipped', reason, detail };
-  return { outcome: 'failed', reason, detail };
 }

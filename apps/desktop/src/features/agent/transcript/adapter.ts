@@ -304,7 +304,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
   const head = turn.user ?? source[0];
   const runId = head?.runId ?? '';
   const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
-  // Standalone blocks (prose, notes, compactions) carry no call, so no request reaches them.
+  // Standalone blocks carry no request but a waiting view's, which arrives with a new `run`.
   const inputs = [
     turn.id,
     run,

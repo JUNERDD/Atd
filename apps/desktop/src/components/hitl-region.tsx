@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { AppConsentControls } from '../features/apps/app-consent-controls';
 import { ApprovalControls } from '../features/agent/transcript/approval-controls';
+import { ViewRequestControls } from '../features/agent/generative-views/view-request-controls';
 import { QuestionControls } from '../features/agent/transcript/question-block';
 import type { HitlRequest } from './hitl-request';
 
@@ -10,7 +11,7 @@ import type { HitlRequest } from './hitl-request';
  * input questions resolve with a chip, a free-text answer, or skip. Polite live so arrivals and
  * page changes announce without interrupting typing. A lone approval drops its scope title
  * because the popover header already merges it. App consents resolve with Allow or Deny, which
- * Atd remembers for the app.
+ * Atd remembers for the app. A waiting view is answered in its window, so its part opens it.
  */
 export function HitlRegion({
   request,
@@ -23,7 +24,9 @@ export function HitlRegion({
 }) {
   const { t } = useTranslation('tasks');
   const label =
-    request.kind === 'input' ? t('permission.waitingAnswer') : t('permission.waitingApproval');
+    request.kind === 'input' || request.kind === 'view'
+      ? t('permission.waitingAnswer')
+      : t('permission.waitingApproval');
   return (
     // A named section carries the implicit region role; no explicit role needed.
     <section aria-live="polite" aria-label={label} className="hitl-region">
@@ -38,6 +41,12 @@ export function HitlRegion({
         <AppConsentControls
           key={request.id}
           consent={request.consent}
+          focusOnMount={focusOnMount}
+        />
+      ) : request.kind === 'view' ? (
+        <ViewRequestControls
+          key={request.id}
+          request={request.request}
           focusOnMount={focusOnMount}
         />
       ) : (

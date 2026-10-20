@@ -121,15 +121,33 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // to create another one, that fixed values are never remembered, that a save's list replaces the
   // stored one (an id updates a shortcut, an omitted field keeps the list, [] removes it) and that
   // a shortcut's model is the user's to set in Settings.
-  skill('create-command', 3, [
+  // Version 4 says that computer use is no command field or tool: the user picks the registered
+  // targets for a run, editing a command that a computer automation runs voids that automation's
+  // authorization, and targets need the add-on of their engine installed first.
+  // Version 5 discovers the deferred management tool before using it.
+  // Version 7 drops `computer.flow` and foreground routes: a repeated route is described by its
+  // control labels and immediate checks, apps need no engine add-on (websites need the browser
+  // engine), and every step runs in the background, so a step the app offers no other way to do
+  // becomes one the run asks the user to do.
+  skill('create-command', 7, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
+    '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
   ]),
   // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
   // asks through ask_user only when an automation runs, what each run produces and, for work that
   // writes or runs commands, what a run may do, and saves without a draft since the save confirms.
-  skill('create-automation', 2, [
+  // Version 3 lets the agent propose a computer scope (`policy.computer`) but never authorize it:
+  // the user runs a trial and authorizes it in Settings, a new one is saved switched off, and only
+  // the user resolves a hold; a scope's engines are add-ons the user installs, and without them a
+  // trial cannot run and each run fails naming the missing add-on.
+  // Version 4 discovers deferred automation and command management tools when needed.
+  // Version 5 says that app targets need no engine install (their engine is built in) but are not
+  // qualified for unattended runs, so a computer scope uses browser targets, whose engine is the
+  // add-on a trial and each run need.
+  skill('create-automation', 5, [
     'f390806f5e7adad1ce065e0c01c93ce4aaab1422bd7b776ffe6e05e1213f2fc1', // v0.7.0
+    'fedcfc22a10b6877f5deef0aa01cc31d31e6b12ae2b230463aead37f8264a0ea', // v0.8.0
   ]),
   // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
   // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
@@ -141,6 +159,34 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
     'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
   ]),
+  // Teaches the `computer` tool: act only on targets approved for the run, observe
+  // before and after every change, prove completion with an explicit postcondition rather than a
+  // dispatched click, never retry an unknown or partial submit, and propose but never authorize an
+  // automation's computer scope. Version 2 adds live setup diagnosis and screenshot/OCR
+  // verification; attended runs keep the tool even before targets or engines are available.
+  // Version 4 adds on-demand access: Manual lasts for the run; Auto and Always save approved
+  // target access for later attended tasks. Access approval resumes the pending tool call.
+  // Version 5 uses native menu state for playback verification instead of OCR icon guesses.
+  // Version 6 resolves application mentions by bundle id through the existing access flow.
+  // Version 7 uses returned nextObservation images and native regional newText baselines.
+  // Version 8 describes host-owned typing feedback without agent pacing or split tool calls.
+  // Version 9 bundles initial/recovery observations, exposes capture use-by deadlines, and
+  // prefers app-reported playback state over redundant progress checks for start/stop requests.
+  // Version 10 separates observed inputs from expected results and keeps advanced verification
+  // and automation guidance in references loaded only when those conditions apply.
+  // Version 12 adds system-selected screen sharing scoped to the current attended run.
+  // Version 14 is background only: the host picks each step's route and never takes the person's
+  // pointer, keyboard or screen; a step without a route is refused (`noBackgroundRoute` and its
+  // reason) and handed to the person, `targetInUse` waits for them, `needsConsent` points to
+  // preparing screen access in Settings and `disturbed` stops work on the target. Foreground
+  // delivery, takeover and `flow` are gone, capture points need a background visual
+  // qualification, and browser targets list no `click` step.
+  skill('computer-use', 14, []),
+  // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
+  // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
+  // write messages that read as the user's own; close every loop with `update_ui`; and build to
+  // the view runtime, the sandbox limits and the apple-design rules for a compact inline view.
+  skill('generative-ui', 1, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

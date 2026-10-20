@@ -112,7 +112,7 @@ export function nativeApps(
   connection: NativeConnection,
   native: NativeBridge,
   messages: WindowMessages,
-  surface: 'panel' | 'settings' | 'onboarding',
+  surface: 'panel' | 'settings' | 'onboarding' | 'view',
 ): AppsBridge {
   if (surface === 'panel') followOpenApps(connection, native);
   const pins = followPins(native);

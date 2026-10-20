@@ -97,6 +97,58 @@ struct RelayRequestGateTests {
   }
 }
 
+@Suite("View request gate")
+struct ViewRequestGateTests {
+  private static let view = URL(string: "ai-view://view/t1/c1?theme=dark&lang=en")
+  private static let renderer = URL(string: "ai-app://renderer/#settings")
+
+  private static func check(
+    _ method: String = "GET", url: URL? = view, headers: [String: String] = [:],
+    document: URL? = renderer
+  ) -> Result<ViewDocument, ViewRequestGate.Refusal> {
+    ViewRequestGate.check(method: method, url: url, headers: headers, mainDocumentURL: document)
+  }
+
+  @Test("Serves GET and HEAD under the renderer page, with no Origin or the renderer's")
+  func serves() {
+    let view = ViewDocument(taskId: "t1", callId: "c1")
+    #expect(Self.check() == .success(view))
+    #expect(Self.check("HEAD") == .success(view))
+    #expect(Self.check(headers: ["Origin": "ai-app://renderer"]) == .success(view))
+  }
+
+  @Test(
+    "Refuses requests whose main document is not the renderer page",
+    arguments: [
+      "ai-view://view/t1/c1", "ai-app-other://page/", "https://example.com/",
+      "ai-app://renderer:1/", "ai-app://u@renderer/", "about:blank",
+    ])
+  func refusesForeignDocument(document: String) {
+    #expect(Self.check(document: URL(string: document)) == .failure(.foreignDocument))
+  }
+
+  @Test("Refuses requests without a main document, or with another Origin")
+  func refusesForeignOrigin() {
+    #expect(Self.check(document: nil) == .failure(.foreignDocument))
+    #expect(Self.check(headers: ["Origin": "null"]) == .failure(.foreignDocument))
+    #expect(Self.check(headers: ["origin": "ai-view://view"]) == .failure(.foreignDocument))
+  }
+
+  @Test("Takes GET and HEAD only, then a view's URL only")
+  func refusesMethodsAndURLs() {
+    for method in ["POST", "PUT", "DELETE", "OPTIONS", "get"] {
+      #expect(Self.check(method) == .failure(.methodNotAllowed))
+    }
+    for url in ["ai-view://view/t1", "ai-view://view/t%2F1/c1", "ai-app://renderer/v1/echo"] {
+      #expect(Self.check(url: URL(string: url)) == .failure(.notFound))
+    }
+    #expect(Self.check(url: nil) == .failure(.notFound))
+    #expect(ViewRequestGate.Refusal.foreignDocument.status == 403)
+    #expect(ViewRequestGate.Refusal.methodNotAllowed.status == 405)
+    #expect(ViewRequestGate.Refusal.notFound.status == 404)
+  }
+}
+
 @Suite("Relay error bodies and renderer MIME types")
 struct RelayResponseTests {
   @Test("Relay errors use the service's error envelope")

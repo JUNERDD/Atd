@@ -5,6 +5,7 @@ import { outcomeKey } from './permission-copy';
 import { hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
 import { BashBody } from './bash-body';
 import { CodemodeBody } from './codemode-body';
+import { ComputerBody } from './computer-body';
 import { EditBody } from './edit-body';
 import { ReadBody, WriteBody } from './file-bodies';
 import { GenericBody } from './generic-body';
@@ -53,6 +54,8 @@ function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails
       return <EditBody block={block} diff={data.diff} truncated={data.truncated} />;
     case 'subagentDefine':
       return <SubagentDefineBody details={data} copyText={block.output} />;
+    case 'computer':
+      return <ComputerBody block={block} data={data} />;
     default: {
       const _exhaustive: never = data;
       void _exhaustive;

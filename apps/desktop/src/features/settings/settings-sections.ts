@@ -1,10 +1,22 @@
-import { AppWindow, Blocks, Brain, Command, Info, Plug, Settings, Shield, Zap } from 'lucide-react';
+import {
+  AppWindow,
+  Blocks,
+  Brain,
+  Command,
+  Info,
+  MousePointerClick,
+  Plug,
+  Settings,
+  Shield,
+  Zap,
+} from 'lucide-react';
 
 /** The destinations the navigation lists from its top, in order. */
 const listedSections = [
   { id: 'general', labelKey: 'nav.general', icon: Settings },
   { id: 'providers', labelKey: 'nav.providers', icon: Plug },
   { id: 'permissions', labelKey: 'nav.permissions', icon: Shield },
+  { id: 'computer', labelKey: 'nav.computer', icon: MousePointerClick },
   { id: 'commands', labelKey: 'nav.commands', icon: Command },
   { id: 'automations', labelKey: 'nav.automations', icon: Zap },
   { id: 'memory', labelKey: 'nav.memory', icon: Brain },

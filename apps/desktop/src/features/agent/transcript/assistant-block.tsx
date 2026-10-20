@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
+import { isRequestTooLarge } from '@atd/agent-contracts';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { LazyMarkdown } from './lazy-markdown';
+import { RequestTooLargeError } from './request-too-large';
 
 /** One assistant message; the turn's action bar (copy) sits below the whole turn instead. */
 export function AssistantBlock({ block }: { block: BlockOf<'assistant'> }) {
@@ -17,7 +19,14 @@ export function AssistantBlock({ block }: { block: BlockOf<'assistant'> }) {
       {block.stopReason === 'aborted' && (
         <p className="text-xs text-muted-foreground">{t('conversation.stopped')}</p>
       )}
-      {block.error && <p className="text-sm text-destructive">{block.error}</p>}
+      {block.error &&
+        (isRequestTooLarge(block.error) ? (
+          <div className="text-sm text-destructive">
+            <RequestTooLargeError error={block.error} />
+          </div>
+        ) : (
+          <p className="text-sm text-destructive">{block.error}</p>
+        ))}
     </div>
   );
 }

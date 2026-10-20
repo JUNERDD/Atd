@@ -8,6 +8,7 @@ import { isActive, type FileRef, type TaskRun } from '../../../client/agent/task
 import { compactBlock } from '../compaction/compact-availability';
 import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
+import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
 import { adaptTranscript, type AdaptedTurn } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
@@ -183,6 +184,10 @@ export function Transcript({
     remember: onRemember,
     runCommand: onCommand,
   };
+  // Each view's data, folded from the whole transcript: a later turn's update reaches a view card
+  // in a settled turn, which the adapter keeps as it was.
+  const views = useViewSnapshots(blocks);
+  const taskViews: TaskViews = { taskId: task.id, views };
 
   return (
     <div className="conversation" data-covered={covered || undefined} inert={covered}>
@@ -216,20 +221,22 @@ export function Transcript({
           )}
           <CompactionRetryContext value={retry}>
             <TaskTurnsContext value={turnTask}>
-              <TurnList
-                key={task.id}
-                turns={turns}
-                runs={task.runs}
-                artifacts={artifacts}
-                anchors={anchors}
-                requests={requestIndex}
-                live={live && !pending}
-                status={pending ? null : <StatusBar run={run} />}
-                firstVisible={firstVisible}
-                sentinel={sentinel}
-                loadEarlier={loadEarlier}
-                onAttach={onAttach}
-              />
+              <TaskViewsContext value={taskViews}>
+                <TurnList
+                  key={task.id}
+                  turns={turns}
+                  runs={task.runs}
+                  artifacts={artifacts}
+                  anchors={anchors}
+                  requests={requestIndex}
+                  live={live && !pending}
+                  status={pending ? null : <StatusBar run={run} />}
+                  firstVisible={firstVisible}
+                  sentinel={sentinel}
+                  loadEarlier={loadEarlier}
+                  onAttach={onAttach}
+                />
+              </TaskViewsContext>
             </TaskTurnsContext>
           </CompactionRetryContext>
           {pending && (

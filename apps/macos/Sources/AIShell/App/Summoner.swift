@@ -13,6 +13,8 @@ final class Summoner {
   private let trust: AccessibilityTrust
   /// A summon during a capture session would show the panel against the overlays.
   private let isCapturing: () -> Bool
+  /// Admits the simulated ⌘C of ``CopySelection``.
+  private let arbiter: DeviceArbiter
 
   /// A summon's steps are running; the panel may still be moving.
   private(set) var isSummoning = false
@@ -23,13 +25,14 @@ final class Summoner {
 
   init(
     panel: PanelWindowController, panelHost: WebViewHost, systemPanels: SystemPanels,
-    trust: AccessibilityTrust, isCapturing: @escaping () -> Bool
+    trust: AccessibilityTrust, isCapturing: @escaping () -> Bool, arbiter: DeviceArbiter
   ) {
     self.panel = panel
     self.panelHost = panelHost
     self.systemPanels = systemPanels
     self.trust = trust
     self.isCapturing = isCapturing
+    self.arbiter = arbiter
   }
 
   /// `selectedText` is the selection when it is already known: the welcome guide's practice
@@ -114,7 +117,8 @@ final class Summoner {
     switch await SelectionReader.readBounded(frontmostPID: pid) {
     case .text(let text): return .field(text)
     case .none(let focus):
-      guard let pid, let text = await CopySelection.copy(from: pid, after: focus) else {
+      guard let pid, let text = await CopySelection.copy(from: pid, after: focus, arbiter: arbiter)
+      else {
         return .field(nil)
       }
       return .copied(text)

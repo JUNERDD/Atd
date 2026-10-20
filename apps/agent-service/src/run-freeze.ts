@@ -25,6 +25,7 @@ import {
   type RunReferences,
 } from './references/material.js';
 import { takeTaskReferences } from './references/staging.js';
+import { computerToolFor, withheldSkills } from './computer/tool-set.js';
 import { ResourceStore } from './resources.js';
 import { ensureSkillProfile, skillProfilePaths } from './skills/profile.js';
 import { freezeRunRole } from './skills/roles.js';
@@ -57,6 +58,8 @@ export interface FrozenSelections {
    * referenced or not (atd-agents/run-agents.ts); none when the catalog has none enabled.
    */
   agents: RuntimeAgent[];
+  /** Whether the run has the `computer` tool (computer/tool-set.ts `computerToolFor`). */
+  computer: boolean;
 }
 
 /**
@@ -75,8 +78,10 @@ export async function freezeRunSelections(
   // snapshot, so a plugin or item toggled later never changes what this run may use. Skills, MCP
   // and the agent harness do not read each other, so they freeze together.
   const plugins = await freezePlugins(deps, run);
+  // Decided once here, so the catalog's skills and the session's tools agree (run-binding.ts).
+  const computer = computerToolFor(run.snapshot, deps.ctx.computer);
   const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
-    freezeSkills(deps, run, plugins.skills),
+    freezeSkills(deps, run, plugins.skills, computer),
     freezeMcp(deps, run),
     // Agents turned off in Settings stay off for this run even if they are turned on during it,
     // and a permission change made during the run applies from the next one.
@@ -103,7 +108,7 @@ export async function freezeRunSelections(
     agents: catalogAgents,
   });
   const agents = catalogAgents.registered.map(({ agent }) => agent);
-  return { references, skills, catalog, memory, agents };
+  return { references, skills, catalog, memory, agents, computer };
 }
 
 /**
@@ -262,6 +267,7 @@ async function freezeSkills(
   deps: RunFreezeDeps,
   run: TaskRun,
   plugins: PluginSkillSet,
+  computer: boolean,
 ): Promise<{ toolCeiling: string[]; skills: RunSkills; catalog: RunSkillCatalog }> {
   // T3 additive freeze: staged next-run selection is consumed once; runs
   // without staging freeze empty skills + the default role (T1/T2 shape).
@@ -277,7 +283,12 @@ async function freezeSkills(
     requestedSkills: snapshot.skills.map((skill) => skill.name),
   });
   const skills = await captureRunSkills(snapshot, capabilities);
-  const catalog = freezeSkillCatalog(catalogRecords, role, capabilities.revokedSkills);
+  const catalog = freezeSkillCatalog(
+    catalogRecords,
+    role,
+    capabilities.revokedSkills,
+    withheldSkills(computer),
+  );
   deps.audit({
     taskId: deps.taskId,
     runId: run.id,

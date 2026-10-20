@@ -11,7 +11,8 @@ settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: '15.0'
     # No ARCHS here: scripts/build.mjs passes the host's native architecture to xcodebuild, which
-    # also covers the AIMac package targets (their Release builds otherwise include both slices).
+    # also covers the AIMac package targets and the driver helper (their Release builds otherwise
+    # include both slices).
     SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: 0.9.1
@@ -74,10 +75,23 @@ targets:
         copy:
           destination: plugins
           subpath: $(ATD_WIDGETS_EMBED_SUBPATH)
+      # The background computer-use driver (the `atd-computer-driver` target below), signed with
+      # the app's identity and copied next to the main executable in Debug and Release alike. The
+      # shell spawns it from Contents/MacOS as a direct child. Never linked into the app: it is a
+      # separate process, so a crash or hang in its private-symbol calls stays out of the shell.
+      - target: atd-computer-driver
+        embed: true
+        codeSign: true
+        link: false
+        copy:
+          destination: executables
     # Release only: embeds the renderer (`apps/desktop/dist-native`) and the service pack with its
-    # bundled Node (`scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
-    # RendererSource expect them. `pnpm --filter @atd/macos build:release` prepares both first;
-    # Debug builds skip it and use `pnpm dev`'s dev server and service.
+    # bundled Node (`scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan, RendererSource and
+    # EngineBinaries expect them. The computer-use engines that ship as add-ons are installed by
+    # the service into its data directory, not part of the bundle; the background driver is the
+    # embedded target above. `pnpm --filter @atd/macos build:release` prepares all of them first;
+    # Debug builds skip it, use `pnpm dev`'s dev server and service, and run the checkout's staged
+    # Node (`pnpm --filter @atd/macos addons:pack`).
     postBuildScripts:
       - name: Embed renderer and service
         basedOnDependencyAnalysis: false
@@ -231,6 +245,36 @@ targets:
         AtdURLScheme: $(AI_URL_SCHEME)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  # The background computer-use driver helper (Sources/AIComputerDriver*): the package's
+  # `atd-computer-driver` executable built as a command-line tool, so the App target can embed it
+  # at Contents/MacOS/atd-computer-driver. Only the entry point (Sources/AtdComputerDriverCLI,
+  # shared with the SwiftPM executable target and so inside its lint and format scope) is
+  # compiled here; the driver itself is the AIComputerDriver library product. The shell spawns
+  # the helper directly, not through LaunchServices, which is how it inherits Atd's Accessibility
+  # and PostEvent grants. It takes the build settings above, so it is built for the same
+  # architecture, deployment target and signing identity as the app (scripts/verify-app.mjs
+  # checks the embedded binary: architecture, signature, minimum macOS, and a start).
+  atd-computer-driver:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/AtdComputerDriverCLI
+    dependencies:
+      - package: AIMac
+        product: AIComputerDriver
+    settings:
+      base:
+        PRODUCT_NAME: atd-computer-driver
+        # One binary in Debug too, without the `.debug.dylib` stub: the shell spawns this file
+        # itself, and a stub would leave the driver's code in a second file to find and sign.
+        ENABLE_DEBUG_DYLIB: NO
+        # Built only to be embedded in the app, never installed.
+        SKIP_INSTALL: YES
+        # Without this, Xcode signs a tool with an empty `com.apple.application-identifier`
+        # entitlement (the app and its extension get none), an identifier that belongs to
+        # provisioning profiles, which an ad hoc or self-signed build does not have. The helper
+        # needs no entitlements; an ad hoc build still gets the base get-task-allow, like the app.
+        ENTITLEMENTS_REQUIRED: NO
 schemes:
   AI:
     build:

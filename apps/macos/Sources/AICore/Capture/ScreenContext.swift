@@ -20,14 +20,16 @@ public struct ScreenContext: Equatable, Sendable {
   }
 
   /// One piece of recognized text with its box in the image, normalized to 0…1 with the origin
-  /// at the top-left and y down.
+  /// at the top-left and y down, and the recognizer's confidence (0…1) when it gave one.
   public struct TextBox: Equatable, Sendable {
     public var text: String
     public var box: CGRect
+    public var confidence: Double?
 
-    public init(text: String, box: CGRect) {
+    public init(text: String, box: CGRect, confidence: Double? = nil) {
       self.text = text
       self.box = box
+      self.confidence = confidence
     }
   }
 

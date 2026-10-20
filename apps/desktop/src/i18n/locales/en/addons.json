@@ -1,0 +1,50 @@
+{
+  "actions": {
+    "install": "Install",
+    "update": "Update",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "tryAgain": "Try again",
+    "more": "More",
+    "moreFor": "More actions for {{name}}"
+  },
+  "unavailable": "Not offered",
+  "detail": {
+    "size": "Download size: {{size}}.",
+    "installed": "Installed · version {{version}}",
+    "outdated": "Version {{installed}} is installed, but this version of Atd uses {{version}}.",
+    "outdatedSize": "Version {{installed}} is installed, but this version of Atd uses {{version}}. Download size: {{size}}.",
+    "unavailable": "This build of Atd does not offer it for your Mac.",
+    "loadFailed": "The add-on status could not be read."
+  },
+  "status": {
+    "downloading": "Downloading {{received}} of {{total}}",
+    "downloadingUnknown": "Downloading…",
+    "updatingDownload": "Updating: {{received}} of {{total}}",
+    "updating": "Updating…",
+    "verifying": "Verifying…",
+    "installing": "Installing…",
+    "removing": "Removing…"
+  },
+  "remove": {
+    "title": "Remove {{name}}?",
+    "description": "Its files are deleted from this Mac, and the features that need it stop working until you install it again."
+  },
+  "error": {
+    "network": "The download did not finish. Check your connection and try again.",
+    "integrity": "The download did not match what this version of Atd expects, so it was discarded.",
+    "disk": "The files could not be saved. Check your free disk space and try again.",
+    "unavailable": "This build of Atd does not offer it for your Mac.",
+    "inUse": "It is still in use. Stop the tasks that use it, then remove it again.",
+    "cancelled": "The install was cancelled.",
+    "internal": "Something went wrong while managing it.",
+    "request": "The request could not be sent."
+  },
+  "computer": {
+    "label": "Engines",
+    "browser": {
+      "title": "Browser engine",
+      "description": "Operates web pages in Atd's own managed Chrome profile, kept apart from your everyday browser."
+    }
+  }
+}

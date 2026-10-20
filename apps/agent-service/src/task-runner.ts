@@ -22,6 +22,7 @@ import { Ledger } from './ledger.js';
 import type { Logger } from './logging.js';
 import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
+import type { ComputerRuntime } from './computer/runtime.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
 import type { RunFolders } from './folders/material.js';
@@ -50,6 +51,8 @@ export interface RunnerContext {
   events: EventLog;
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
+  /** Computer use: targets, action facts and the host coordinator (computer/runtime.ts). */
+  computer: ComputerRuntime;
   paths: ServicePaths;
   log: Logger;
   tier: PermissionTier;
@@ -235,13 +238,18 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
-      // Only the catalog and the memory sections outlive the run: a prompt the idle session sends
-      // keeps its system prompt sections (skills/session-catalog.ts, memory/session-memory.ts);
-      // attachment and skill text are let go.
-      const { catalog, memory } = this.material;
-      this.material = { ...NO_RUN_MATERIAL, catalog, memory };
+      // Only the catalog, the memory sections and the view level outlive the run: a prompt the idle
+      // session sends keeps its system prompt sections (skills/session-catalog.ts,
+      // memory/session-memory.ts, views/tools.ts); attachment and skill text are let go.
+      const { catalog, memory, viewInitiative } = this.material;
+      this.material = { ...NO_RUN_MATERIAL, catalog, memory, viewInitiative };
       // A lite run froze nothing (run-prepare.ts).
       if (!run.snapshot.lite) await releaseRunSelections(this.session, run.id);
+      // The host keeps per-run state (screen shares, previews, run-scoped browser profiles, target
+      // preparation such as occlusion keep-alive) until it hears the run ended normally
+      // (`finished`); an aborted run already told it through `abort`.
+      if (!this.aborted)
+        await this.ctx.computer.cancelRun(this.taskId, run.id, 'finished').catch(() => undefined);
       await this.audit?.flush();
     }
   }
@@ -253,6 +261,9 @@ export class TaskRunner {
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.ctx.capabilities.cancelRun(this.taskId, runId, 'Task stopped.');
+    // Before the session's abort: the host is told to stop first, so the computer call that the
+    // abort unblocks waits for the host's terminal reply instead of guessing.
+    await this.ctx.computer.cancelRun(this.taskId, runId, 'stopped');
     await this.slot.live?.session.abort();
     return unsent;
   }

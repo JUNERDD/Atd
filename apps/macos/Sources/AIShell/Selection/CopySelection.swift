@@ -13,6 +13,10 @@ import Carbon.HIToolbox
 /// changed the pasteboard counts, so the user's own clipboard is never taken for the selection.
 /// A copy that lands after ``CopyFallback/copyLimit`` still gets the pasteboard put back.
 ///
+/// The copy holds global input (``DeviceArbiter``) until ⌘C landed or timed out, and the
+/// clipboard until the pasteboard is back, its late restore included, so no other write lands
+/// in between to be overwritten. Either held by someone else rules the copy out.
+///
 /// What the user can notice: a clipboard manager may record the copied text (the app writes it,
 /// unmarked), and an app that copies something when nothing is selected hands that over as the
 /// selection (VS Code copies the current line, `editor.emptySelectionClipboard`).
@@ -21,20 +25,30 @@ enum CopySelection {
 
   /// The text a ⌘C into `pid`, the app the read just found `focus` in, copies; nil when
   /// ``CopyFallback`` rules the copy out or it copied no text.
-  static func copy(from pid: pid_t, after focus: SelectionFocus) async -> String? {
+  static func copy(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter) async
+    -> String?
+  {
     guard allowed(into: pid, focus: focus),
       await modifiersReleased(within: CopyFallback.releaseLimit),
       // The user may have switched apps, or Atd taken the keyboard, while the keys came up.
-      allowed(into: pid, focus: focus)
+      allowed(into: pid, focus: focus),
+      let input = try? arbiter.tryClaim([.globalInput], owner: .user(.copySelection))
+    else { return nil }
+    defer { input.release() }
+    guard let clipboard = try? arbiter.tryClaim([.clipboard], owner: .user(.copySelection))
     else { return nil }
     let pasteboard = NSPasteboard.general
     let saved = PasteboardSnapshot(of: pasteboard)
     let before = pasteboard.changeCount
     KeyPress.post(KeyPress.copyKeyCode(), flags: .maskCommand)
     guard await copyLanded(on: pasteboard, since: before, within: CopyFallback.copyLimit) else {
-      Task { await restoreLateCopy(saved, to: pasteboard, since: before) }
+      Task {
+        await restoreLateCopy(saved, to: pasteboard, since: before)
+        clipboard.release()
+      }
       return nil
     }
+    defer { clipboard.release() }
     let text = CopyFallback.copiedText(
       string: pasteboard.string(forType: .string),
       hasFiles: pasteboard.types?.contains(.fileURL) ?? false)

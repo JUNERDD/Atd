@@ -10,11 +10,27 @@ public protocol CapabilityHandling: AnyObject {
   func handle(_ request: CapabilityRequest) async throws -> JSONValue
 }
 
+/// Serves the computer frames (D3) for the shell that may be the computer host. Called on the
+/// main actor. The client tracks every request until its terminal reply. Actions converge even
+/// after disconnection: the undelivered reply is reconciled through `computer.hello` and `status`.
+/// Screen sharing instead belongs to its connection and is cancelled when that connection ends.
+public protocol ComputerRequestHandling: AnyObject {
+  /// The host as this connection's `computer.hello` announces it, current when it opens.
+  func computerHello() -> ComputerHelloWire
+  /// Serves one request to its terminal reply; never throws, a failure is a failed reply.
+  func serve(_ request: HostRequestWire) async -> HostReplyWire
+  /// `computer.cancel`: stop admitting the run's (or operation's) work and converge what runs.
+  func cancel(_ cancel: ComputerCancelWire)
+  /// The reply to `request` left on the connection the request came on (`delivered`), or could
+  /// not, because that connection closed first.
+  func replyFinished(_ request: HostRequestWire, delivered: Bool)
+}
+
 /// The shell's own stream connection (decisions Q4-4', Q5-A1/A2): the only connection Swift
 /// reconnects itself. On every open it subscribes with no tasks and `status: true`, registers
 /// the five desktop capabilities, and pings inside the capability lease. It decodes only the
-/// control frames (``ControlFrame``), including the `widgets`, `automations` and `taskNotices`
-/// invalidations, and drops everything else.
+/// control frames (``ControlFrame``), including the `widgets`, `automations`, `taskNotices` and
+/// `addons` invalidations, and drops everything else.
 public final class ControlStreamClient {
   public enum ConnectionState: Equatable, Sendable {
     /// Trying to connect, and never connected since ``start()``: keep the last known status.
@@ -44,11 +60,23 @@ public final class ControlStreamClient {
   public var onAutomationsInvalidated: (@MainActor () -> Void)?
   /// The service queued a task notice (`invalidate` scope `taskNotices`).
   public var onTaskNoticesInvalidated: (@MainActor () -> Void)?
+  /// The installed add-ons may have changed: a connection opened (a new or restarted service) or
+  /// the service sent `invalidate` scope `addons`.
+  public var onAddonsChanged: (@MainActor () -> Void)?
   /// Why the service is unavailable while ``state`` is ``ConnectionState/disconnected``.
   public private(set) var unavailable: ServiceUnavailable?
 
+  /// The computer host, when this shell serves computer requests; set before ``start()``.
+  public weak var computer: (any ComputerRequestHandling)?
+
   private let link: ServiceLink
   private weak var capabilities: (any CapabilityHandling)?
+  /// Computer requests being served, by request id, with the connection each came on.
+  private var computerRequests:
+    [String: (task: Task<Void, Never>, connection: Int?, screenSharing: Bool)] = [:]
+  /// The open connection's number; nil while none is open.
+  private var liveConnection: Int?
+  private var connections = 0
   private var socket: ServiceWebSocket?
   private var loop: Task<Void, Never>?
   private var pinger: Task<Void, Never>?
@@ -141,6 +169,10 @@ public final class ControlStreamClient {
     guard let socket else { return }
     socket.send(ControlStream.subscribe())
     socket.send(ControlStream.register(DesktopCapability.allCases))
+    connections += 1
+    liveConnection = connections
+    announceComputerHost()
+    onAddonsChanged?()
     systemProxy.start()
     state = .connected
     pinger = Task { [weak self] in
@@ -153,6 +185,10 @@ public final class ControlStreamClient {
   }
 
   private func connectionEnded() {
+    liveConnection = nil
+    // Sharing is session-scoped read access. Unlike input actions it has nothing to converge
+    // after disconnection, and a queued start must never present a picker on a later connection.
+    for request in computerRequests.values where request.screenSharing { request.task.cancel() }
     systemProxy.stop()
     pinger?.cancel()
     pinger = nil
@@ -182,6 +218,12 @@ public final class ControlStreamClient {
       onAutomationsInvalidated?()
     case .frame(.taskNoticesInvalidated):
       onTaskNoticesInvalidated?()
+    case .frame(.addonsInvalidated):
+      onAddonsChanged?()
+    case .frame(.computerRequest(let request)):
+      serveComputer(request)
+    case .frame(.computerCancel(let cancel)):
+      computer?.cancel(cancel)
     case .frame(.pong), .ignored:
       break
     case .frame(.error(let message)):
@@ -210,6 +252,73 @@ public final class ControlStreamClient {
         (try? ControlStream.result(result))
         ?? (try? ControlStream.result(.failure(request, error: "The result could not be encoded.")))
       if let frame { socket?.send(frame) }
+    }
+  }
+
+  /// Sends `computer.hello` on the open connection: after every subscribe, and again when the
+  /// host's lock or published profiles change.
+  public func announceComputerHost() {
+    guard let socket, liveConnection != nil, let computer else { return }
+    do {
+      socket.send(try ComputerFrames.hello(computer.computerHello()))
+    } catch {
+      RelayLog.control.error("Could not encode the computer hello.")
+    }
+  }
+
+  /// Sends one `computer.progress` on the open connection; progress is display state, so with
+  /// none open it is dropped.
+  public func sendComputerProgress(_ progress: ComputerProgressWire) {
+    guard let socket, liveConnection != nil,
+      let frame = try? ComputerFrames.progress(progress)
+    else { return }
+    socket.send(frame)
+  }
+
+  /// Computer requests not answered yet.
+  public var computerRequestsInFlight: Int { computerRequests.count }
+
+  /// Serves a request in a tracked task. A repeated request id joins the one already running,
+  /// whose reply answers it; without a host the request is refused at once.
+  private func serveComputer(_ request: HostRequestWire) {
+    guard let computer else {
+      sendComputerReply(
+        .failed(request, .hostUnavailable, "This app does not serve computer requests."))
+      return
+    }
+    guard computerRequests[request.requestId] == nil else { return }
+    let connection = liveConnection
+    let screenSharing = if case .screenShare = request.op { true } else { false }
+    let task = Task { [weak self] in
+      if screenSharing,
+        Task.isCancelled || connection == nil || self?.liveConnection != connection
+      {
+        self?.finishComputer(
+          request, reply: .failed(request, .hostUnavailable, "The sharing connection ended."),
+          connection: connection)
+        return
+      }
+      let reply = await computer.serve(request)
+      self?.finishComputer(request, reply: reply, connection: connection)
+    }
+    computerRequests[request.requestId] = (task, connection, screenSharing)
+  }
+
+  private func finishComputer(_ request: HostRequestWire, reply: HostReplyWire, connection: Int?) {
+    computerRequests[request.requestId] = nil
+    let delivered = connection != nil && connection == liveConnection && sendComputerReply(reply)
+    computer?.replyFinished(request, delivered: delivered)
+  }
+
+  @discardableResult
+  private func sendComputerReply(_ reply: HostReplyWire) -> Bool {
+    guard let socket else { return false }
+    do {
+      socket.send(try ComputerFrames.reply(reply))
+      return true
+    } catch {
+      RelayLog.control.error("Could not encode a computer reply.")
+      return false
     }
   }
 

@@ -22,9 +22,11 @@ import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
+import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
 import { nativeAutomations, nativeTaskOpen } from './native-automations';
 import { nativeCommandOptions } from './native-command-options';
+import { nativeComputer } from './native-computer';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -43,6 +45,7 @@ import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
 import { nativeToolbar } from './native-toolbar';
 import { nativeAbout, nativeUpdate } from './native-update';
+import { nativeViews } from './native-views';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -60,12 +63,12 @@ function pageOrigin(): string {
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
  * global shortcuts (the screenshot one included), the language push, file search, the files the
  * shell imports from drops and pastes, and opening the welcome guide on a first launch; the
- * settings and welcome guide windows hand launches to it. Each window publishes its own drag
+ * settings, welcome guide and view windows hand launches to it. Each window publishes its own drag
  * regions and runs the menu's Undo/Redo.
  */
 export async function installNativeHost(
   native: NativeBridge,
-  surface: 'panel' | 'settings' | 'onboarding',
+  surface: 'panel' | 'settings' | 'onboarding' | 'view',
 ): Promise<void> {
   // Before the first await: the shell replays `update.state` as soon as the page is ready, and
   // can send an Ask or the mini panel's New task before this host is installed.
@@ -84,6 +87,8 @@ export async function installNativeHost(
   const messages = windowMessages();
   // Subscribes to `userApp.state` before the first await, like `update.state`.
   const apps = nativeApps(connection, native, messages, surface);
+  // `computer.state` too: the shell replays it when the page becomes ready.
+  const computer = nativeComputer(connection, native);
   const channels: { [C in AgentChannel]: Set<(value: AgentChannelValues[C]) => void> } = {
     changed: new Set(),
     launch: new Set(),
@@ -266,9 +271,12 @@ export async function installNativeHost(
       : {}),
     ...(update ? { update } : {}),
     about: nativeAbout(native),
+    addons: nativeAddons(connection),
     apps,
     automations: nativeAutomations(connection, native, messages),
+    computer,
     notifications: nativeNotifications(native, surface),
+    views: nativeViews(native),
     agent: {
       ...createAgentBridge(async (request) => {
         // Only the panel receives `launch` events, so the other windows hand their launches over.

@@ -308,6 +308,21 @@
 .prompt-rail .prompt-rail-tick[data-current] {
   background: var(--foreground);
 }
+/* The list of messages the rail opens: the scoped model picker's and the quick panel's composition,
+ * one 4px inset (the command's own padding) for the filter, the options and the key hint alike,
+ * which keeps the 18px surface concentric with the 14px options. */
+.prompt-list[data-slot='popover-content'] {
+  gap: 0;
+  padding: 0;
+  border-radius: var(--radius-2xl);
+}
+.prompt-list [data-slot='command'] {
+  gap: var(--spacing);
+  border-radius: inherit;
+}
+.prompt-list [data-slot='command-input-wrapper'] {
+  padding: 0;
+}
 /* The list's numbers are tabular, so the messages line up past 9. */
 .prompt-list-index {
   min-width: 1.25rem;
@@ -320,8 +335,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
-  padding: 6px 8px 4px;
+  padding: 6px 8px;
   border-top: 1px solid var(--border);
   color: var(--muted-foreground);
   font-size: 12px;
@@ -1183,7 +1197,8 @@
   max-width: 100%;
   justify-content: flex-end;
 }
-.user-message .image-lightbox-trigger:focus-visible {
+/* Wherever an image opens in the lightbox (a message's attachments, a computer call's views). */
+.image-lightbox-trigger:focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }

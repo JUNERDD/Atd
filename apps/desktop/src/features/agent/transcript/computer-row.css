@@ -1,0 +1,189 @@
+/*
+ * The detail of a `computer` call (computer-body.tsx, computer-outcome.tsx, computer-steps.tsx),
+ * inside the opaque tool card. Hierarchy comes from weight, the foreground/muted pair and the
+ * glyph column, never from extra frames: content in the card draws no second border or radius.
+ * Its row is the shared tool row and carries no outcome mark; its header, like every tool
+ * card's, is the one title, with the outcome among its trailing facts. An unchecked effect repeats
+ * its words in the warning tone (which keeps 4.5:1 as text); a checked result reads in the plain
+ * foreground, and no tone ever carries the meaning alone.
+ */
+.computer-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.computer-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The opening lines under the header: plain detail text, no second title. */
+.computer-summary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.computer-outcome,
+.computer-error,
+.computer-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.computer-outcome {
+  color: var(--foreground);
+}
+.computer-outcome[data-tone='warning'] {
+  color: var(--ata-status-warning);
+}
+.computer-note {
+  color: var(--muted-foreground);
+}
+
+/*
+ * Steps on a rail: a 14px node per step, joined to the next by a hairline down the node column,
+ * the summary beside it and the effect and state under the summary. The rail runs from below one
+ * node to the top of the next, so it never crosses a glyph.
+ */
+.computer-steps,
+.computer-evidence {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.computer-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.computer-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 8px;
+  min-width: 0;
+}
+.computer-step:not(:last-child)::after {
+  position: absolute;
+  top: 18px;
+  bottom: -4px;
+  left: 6.5px;
+  width: 1px;
+  background: var(--ata-border-detail);
+  content: '';
+}
+.computer-step-node {
+  display: flex;
+  height: 18px;
+  align-items: center;
+  color: var(--muted-foreground);
+}
+.computer-step-node > svg {
+  width: 14px;
+  height: 14px;
+}
+.computer-step[data-state='done'] .computer-step-node {
+  color: var(--foreground);
+}
+.computer-step-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+.computer-step-meta {
+  grid-column: 2;
+  color: var(--muted-foreground);
+}
+.computer-step[data-state='notReached'] .computer-step-summary {
+  color: var(--muted-foreground);
+}
+/* The step where the action stopped is the one to check; its words say so, the tone repeats it. */
+.computer-step[data-state='stopped'] .computer-step-node,
+.computer-step[data-state='stopped'] .computer-step-meta {
+  color: var(--ata-status-warning);
+}
+
+/*
+ * Evidence: one two-column grid for the list, so every summary starts on the same edge after the
+ * widest kind (glyph and name); a picture spans both columns under its row.
+ */
+.computer-evidence {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 10px;
+}
+.computer-evidence-item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+  row-gap: 6px;
+}
+.computer-evidence-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted-foreground);
+}
+.computer-evidence-kind > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.computer-evidence-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+.computer-evidence-picture {
+  grid-column: 1 / -1;
+}
+
+.computer-visual-note {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.computer-visual-note > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/*
+ * What changed for the person: one plain line per change, its words saying who caused it and
+ * whether it was put back; one left as it was repeats that in the warning tone.
+ */
+.computer-disturbances {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.computer-disturbance {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+.computer-disturbance[data-tone='warning'] {
+  color: var(--ata-status-warning);
+}
+
+/* The latest view: its thumbnail, which opens the lightbox, beside when it was saved. */
+.computer-view {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.computer-view-caption {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted-foreground);
+}

@@ -12,6 +12,7 @@
     "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests Widgets",
     "build:release": "pnpm run bundle && node scripts/build.mjs --configuration Release",
     "bundle": "pnpm -w exec turbo run build --filter=@atd/agent-service... --filter=@atd/agent-client && pnpm --filter @atd/desktop build && node scripts/prepare-service-pack.mjs",
+    "addons:pack": "node scripts/addons/pack.mjs",
     "codegen": "node scripts/generate-bridge-types.mjs",
     "codegen:check": "node scripts/generate-bridge-types.mjs --check"
   }

@@ -34,6 +34,11 @@ body {
   min-height: 100%;
   background: var(--ata-surface-panel);
 }
+/* A view's window gets its glass and the panel's fill from the shell, drawn natively under the
+   page (`view.open`), so its fallback paints nothing: a second fill would tint it twice. */
+:root[data-window='view'] .window-loading {
+  background: none;
+}
 
 .task-panel {
   position: fixed;

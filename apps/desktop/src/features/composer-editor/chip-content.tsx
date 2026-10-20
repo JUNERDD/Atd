@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import {
+  AppWindow,
   BookOpen,
   Bot,
   Brain,
@@ -12,23 +13,27 @@ import {
   TextQuote,
   type LucideIcon,
 } from 'lucide-react';
+import { ApplicationIcon } from '../computer/application-icon';
 import type { Chip } from './draft';
 import './chips.css';
 
 export type ChipKind = Chip['kind'];
 
 /** What a chip shows wherever it appears: its kind's icon and its name. */
-export interface ChipLabel {
-  kind: ChipKind;
+export type ChipLabel = {
   name: string;
   /** An image file in the composer: an image icon, and a tooltip that clicking edits it. */
   image?: boolean;
   /** The full value the tooltip names instead of `name`, such as a folder's path. */
   detail?: string | undefined;
-}
+} & (
+  | { kind: 'application'; bundleId: string }
+  | { kind: Exclude<ChipKind, 'application'>; bundleId?: never }
+);
 
 /** Same marks as the extension settings (skills, subagents, MCP) and the transcript file rows. */
 const ICONS: Record<ChipKind, LucideIcon> = {
+  application: AppWindow,
   file: FileText,
   folder: Folder,
   task: MessageSquare,
@@ -43,6 +48,7 @@ const ICONS: Record<ChipKind, LucideIcon> = {
 };
 
 const LABEL_KEYS = {
+  application: 'composer.chips.application',
   file: 'composer.chips.file',
   folder: 'composer.chips.folder',
   task: 'composer.chips.task',
@@ -60,7 +66,7 @@ const LABEL_KEYS = {
  * path), or names the edit an image chip opens. The spoken label is not selectable, so copying
  * text that spans a chip copies only its visible name.
  */
-export function ChipContent({ kind, name, image = false, detail }: ChipLabel) {
+export function ChipContent({ kind, name, bundleId, image = false, detail }: ChipLabel) {
   const { t } = useTranslation('panel');
   const Icon = image ? Image : ICONS[kind];
   const label = t(LABEL_KEYS[kind], { name });
@@ -73,7 +79,11 @@ export function ChipContent({ kind, name, image = false, detail }: ChipLabel) {
     <>
       <span className="sr-only select-none">{label}</span>
       <span aria-hidden="true" title={title}>
-        <Icon className="composer-chip-icon" />
+        {kind === 'application' ? (
+          <ApplicationIcon bundleId={bundleId} className="composer-chip-icon" />
+        ) : (
+          <Icon className="composer-chip-icon" />
+        )}
         <span className="composer-chip-name">{name}</span>
       </span>
     </>
@@ -86,26 +96,25 @@ export function ChipContent({ kind, name, image = false, detail }: ChipLabel) {
  * `onReveal` (a quote that knows its passage) the root is a button that shows the passage.
  */
 export function ChipToken({
-  kind,
-  name,
   onReveal,
+  ...label
 }: ChipLabel & { onReveal?: (() => void) | undefined }) {
   if (onReveal) {
     return (
       <button
         type="button"
         className="composer-chip"
-        data-kind={kind}
+        data-kind={label.kind}
         data-action="reveal"
         onClick={onReveal}
       >
-        <ChipContent kind={kind} name={name} />
+        <ChipContent {...label} />
       </button>
     );
   }
   return (
-    <span className="composer-chip" data-kind={kind}>
-      <ChipContent kind={kind} name={name} />
+    <span className="composer-chip" data-kind={label.kind}>
+      <ChipContent {...label} />
     </span>
   );
 }

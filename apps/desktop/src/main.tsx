@@ -16,11 +16,15 @@ import { installColorScheme } from './theme/color-scheme';
 const disposeColorScheme = installColorScheme();
 import.meta.hot?.dispose(disposeColorScheme);
 
-/** Which window this page is: the shell loads the settings and welcome guide windows by hash. */
+/**
+ * Which window this page is: the shell loads the settings, welcome guide and generative view
+ * windows by hash.
+ */
 const windowKind = (() => {
   const { hash } = window.location;
   if (hash === '#settings' || hash.startsWith('#settings?')) return 'settings';
   if (hash === '#onboarding') return 'onboarding';
+  if (hash.startsWith('#view?')) return 'view';
   return 'panel';
 })();
 const root = document.getElementById('root')!;
@@ -44,8 +48,9 @@ async function renderWindow(native: NativeBridge) {
   // text renders.
   const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady]);
   // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
-  // over the whole display, so it waits on nothing visible. The others paint their content surface
-  // and name the window being opened; their own trees place any shapes.
+  // over the whole display, so it waits on nothing visible. The others name the window being
+  // opened and paint their content surface, except a view's window, whose surface the shell draws
+  // (styles.css); their own trees place any shapes.
   const fallback =
     windowKind === 'onboarding' ? null : (
       <div className="window-loading">
@@ -53,7 +58,9 @@ async function renderWindow(native: NativeBridge) {
           label={
             windowKind === 'settings'
               ? i18n.t('window.loading')
-              : i18n.t('panelLoading', { ns: 'common' })
+              : windowKind === 'view'
+                ? i18n.t('view.loading', { ns: 'tasks' })
+                : i18n.t('panelLoading', { ns: 'common' })
           }
         />
       </div>
@@ -81,6 +88,10 @@ async function loadWindowRoot() {
   if (windowKind === 'onboarding') {
     const module = await import('./features/onboarding/onboarding-window');
     return module.OnboardingWindow;
+  }
+  if (windowKind === 'view') {
+    const module = await import('./features/agent/generative-views/view-window');
+    return module.ViewWindow;
   }
   const module = await import('./App');
   return module.App;

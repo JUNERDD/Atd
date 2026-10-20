@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { ADDON_TYPE } from './addons.mjs';
 import { command, SENSITIVE_ENV } from './command.mjs';
 import { IMMUTABLE_CACHE, LATEST_CACHE } from './delivery.mjs';
 
@@ -82,6 +83,30 @@ export function openBucket({ bucket, prefix, directory }) {
         artifact.file,
         `s3://${bucket}/${key}`,
         ...dmgHeaders(artifact, version, IMMUTABLE_CACHE),
+        '--only-show-errors',
+        '--no-progress',
+      ]);
+    },
+
+    /**
+     * Uploads an add-on archive to its content-addressed key under the one-year immutable cache
+     * policy (addons.mjs). Its download name is the release asset's.
+     * @param {import('./addons.mjs').Addon} addon
+     */
+    uploadAddon(addon) {
+      aws([
+        's3',
+        'cp',
+        addon.file,
+        `s3://${bucket}/${addon.key}`,
+        '--content-type',
+        ADDON_TYPE,
+        '--content-disposition',
+        `attachment; filename="${addon.name}"`,
+        '--cache-control',
+        IMMUTABLE_CACHE,
+        '--metadata',
+        `sha256=${addon.sha256},version=${addon.version}`,
         '--only-show-errors',
         '--no-progress',
       ]);

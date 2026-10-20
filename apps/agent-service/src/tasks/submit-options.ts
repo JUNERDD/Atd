@@ -1,6 +1,7 @@
 import type {
   AgentTask,
   PermissionTier,
+  RunComputer,
   RunSnapshot,
   RunTrigger,
   TaskOrigin,
@@ -29,6 +30,11 @@ export interface InternalSubmitOptions {
    * carry it.
    */
   lite?: true;
+  /**
+   * Frozen as `RunSnapshot.computer` with the automation grant or trial a request body cannot
+   * carry. Only automation launches set it; a follow-up keeps the binding ids and drops the rest.
+   */
+  computer?: RunComputer;
 }
 
 /**

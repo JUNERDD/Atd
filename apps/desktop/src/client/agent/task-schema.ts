@@ -97,6 +97,13 @@ export const RunSnapshotSchema = Type.Object(
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     tools: Type.Array(ToolIdSchema),
     memory: Type.Boolean(),
+    /**
+     * The registered computer targets the run may act on, always in the background; absent
+     * without computer use.
+     */
+    computer: Type.Optional(
+      Type.Object({ bindingIds: Type.Array(Identifier) }, { additionalProperties: false }),
+    ),
   },
   { additionalProperties: false },
 );

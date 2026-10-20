@@ -1,6 +1,7 @@
 import type {
   CapabilityRequest,
   CapabilityResult,
+  ComputerProgress,
   DesktopCapability,
   InvalidateFrame,
   ServiceEvent,
@@ -65,6 +66,11 @@ export interface StreamHandlers {
   onDisconnect?: (reason: string, closeCode?: number) => void;
   /** Shared data outside the task stream changed; reload the named scope. */
   onInvalidate?: (frame: InvalidateFrame) => void;
+  /**
+   * Live progress of a computer action (`computer.progress`): transient display state, never an
+   * event of the log, so it moves no stream position. A frame that does not validate is dropped.
+   */
+  onComputerProgress?: (progress: ComputerProgress) => void;
 }
 
 /** Desktop capability served by this client with a result producer. */

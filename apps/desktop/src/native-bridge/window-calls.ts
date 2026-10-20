@@ -1,8 +1,8 @@
 /**
  * The native bridge's window and app presence calls (`NativeWindowCalls`, part of `NativeCalls` in
  * `calls.ts`): showing and pinning the panel, the shell's app preferences, the mini panel on the
- * screen edge, opening the settings, welcome guide and user app windows, and pinning user apps to
- * the desktop. Loaded by the export
+ * screen edge, opening the settings, welcome guide, user app and generative view windows, and
+ * pinning user apps to the desktop. Loaded by the export
  * script with Node's type stripping, so it imports nothing but TypeBox and its sibling contract
  * files (by their `.ts` names) and uses only erasable TypeScript syntax.
  */
@@ -18,6 +18,8 @@ const PinFamily = Type.Union([
 ]);
 /** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
 const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
+/** The service's task identifier, as the view origin accepts it (`ViewOrigin` in the shell). */
+const ViewTaskId = Type.String({ pattern: '^[a-zA-Z0-9_-]{1,128}$' });
 
 /**
  * How the mini panel opens from its pill: `hover` as the pointer reaches it, or `click` only on a
@@ -267,6 +269,27 @@ export const NativeWindowCalls = {
   /** Removes the app's desktop pin; a no-op when it has none. */
   'userApp.unpin': {
     params: Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
+    result: Empty,
+  },
+  /**
+   * Opens the window of a generative view (agent-contracts `views.ts`), or brings its open window
+   * forward: a titled window on the computer-use monitor's glass and fill whose renderer page
+   * (`#view?task=…&call=…`) frames the view's window document. `title` names the window; `width`
+   * and `height` are the view's preferred size in points, title bar included (`show_ui` `window`,
+   * bounded like `VIEW_WINDOW_*`), null for the default size; the shell keeps the window inside
+   * the work area. Rejects ids the view origin refuses (`ViewOrigin` in the shell).
+   */
+  'view.open': {
+    params: Type.Object(
+      {
+        taskId: ViewTaskId,
+        callId: Type.String({ minLength: 1, maxLength: 256 }),
+        title: Type.String({ minLength: 1, maxLength: 120 }),
+        width: Type.Union([Type.Integer({ minimum: 320, maximum: 1600 }), Type.Null()]),
+        height: Type.Union([Type.Integer({ minimum: 240, maximum: 1200 }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
     result: Empty,
   },
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

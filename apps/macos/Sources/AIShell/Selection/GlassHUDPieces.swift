@@ -2,9 +2,10 @@ import AICore
 import AppKit
 
 /// The parts the glass status HUD (``GlassHUD``) builds its rows from, in the selection toolbar's
-/// vocabulary: the grip, the app's monochrome mark (the menu bar's), text in the toolbar's label
-/// type, a hint with its keys as keycaps (the page's `Kbd`: 20 pt tall, 12 pt medium on a muted
-/// fill, fully rounded), and the round close button. The command island
+/// vocabulary: the grip, the app's monochrome mark (the menu bar's) or the island's activity
+/// indicator, text in the toolbar's label type, a hint with its keys as keycaps (the page's
+/// `Kbd`: 20 pt tall, 12 pt medium on a muted fill, fully rounded), and round glyph buttons such
+/// as close. The command island
 /// (``IslandController``) draws the same vocabulary in SwiftUI and shares ``keysMarker`` and
 /// ``keycapHeight``.
 enum GlassHUDPieces {
@@ -24,12 +25,30 @@ enum GlassHUDPieces {
 
   /// The round × button, named `label` for VoiceOver and its tooltip.
   static func close(label: String, target: AnyObject, action: Selector) -> AnnotationToolbarButton {
-    let close = AnnotationToolbarButton(selection: nil, action: action)
-    close.image = AnnotationIcons.glyph(AnnotationIcons.cancel, label: label)
-    close.setAccessibilityLabel(label)
-    close.toolTip = label
-    close.target = target
-    return close
+    button(glyph: AnnotationIcons.cancel, label: label, target: target, action: action)
+  }
+
+  /// A round button showing the Lucide glyph `glyph`, named `label` for VoiceOver and its tooltip.
+  static func button(glyph: String, label: String, target: AnyObject, action: Selector)
+    -> AnnotationToolbarButton
+  {
+    let button = AnnotationToolbarButton(selection: nil, action: action)
+    button.image = AnnotationIcons.glyph(glyph, label: label)
+    button.setAccessibilityLabel(label)
+    button.toolTip = label
+    button.target = target
+    return button
+  }
+
+  /// The island's activity indicator in the glyph slot, for a status that is under way.
+  static func activity() -> NSView {
+    let view = IslandSpinnerView()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      view.widthAnchor.constraint(equalToConstant: glyphSide),
+      view.heightAnchor.constraint(equalToConstant: glyphSide),
+    ])
+    return view
   }
 
   /// The menu bar's template mark, tinted like the text beside it.
@@ -42,6 +61,10 @@ enum GlassHUDPieces {
     view.setContentHuggingPriority(.required, for: .horizontal)
     return view
   }
+
+  /// How wide a title that shows user data (a command name, target names) grows before it
+  /// tail-truncates.
+  static let titleLimit: CGFloat = 220
 
   /// One line of text: `primary` in the toolbar's label type, else secondary 12 pt.
   static func text(_ string: String, primary: Bool) -> NSTextField {

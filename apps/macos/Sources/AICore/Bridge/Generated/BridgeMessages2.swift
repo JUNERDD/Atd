@@ -56,6 +56,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "userApp.pin": call = try .userAppPin(container.value(.params, UserAppPinParams.self))
       case "userApp.unpin":
         call = try .userAppUnpin(container.value(.params, UserAppUnpinParams.self))
+      case "view.open": call = try .viewOpen(container.value(.params, ViewOpenParams.self))
       case "shortcuts.set":
         call = try .shortcutsSet(container.value(.params, ShortcutsSetParams.self))
       case "capture": call = try .capture(container.value(.params, CaptureParams.self))
@@ -91,6 +92,36 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "notifications.openSystemSettings":
         call = try .notificationsOpenSystemSettings(
           container.value(.params, NotificationsOpenSystemSettingsParams.self))
+      case "computer.applicationIcon":
+        call = try .computerApplicationIcon(
+          container.value(.params, ComputerApplicationIconParams.self))
+      case "computer.listApplications":
+        call = try .computerListApplications(
+          container.value(.params, ComputerListApplicationsParams.self))
+      case "computer.prepareBrowser":
+        call = try .computerPrepareBrowser(
+          container.value(.params, ComputerPrepareBrowserParams.self))
+      case "computer.prepareApplication":
+        call = try .computerPrepareApplication(
+          container.value(.params, ComputerPrepareApplicationParams.self))
+      case "computer.openProfile":
+        call = try .computerOpenProfile(container.value(.params, ComputerOpenProfileParams.self))
+      case "computer.authorizeAutomation":
+        call = try .computerAuthorizeAutomation(
+          container.value(.params, ComputerAuthorizeAutomationParams.self))
+      case "computer.acknowledgeUnsettled":
+        call = try .computerAcknowledgeUnsettled(
+          container.value(.params, ComputerAcknowledgeUnsettledParams.self))
+      case "computer.setTyping":
+        call = try .computerSetTyping(container.value(.params, ComputerSetTypingParams.self))
+      case "computer.setPointerVisible":
+        call = try .computerSetPointerVisible(
+          container.value(.params, ComputerSetPointerVisibleParams.self))
+      case "computer.primeCaptureConsent":
+        call = try .computerPrimeCaptureConsent(
+          container.value(.params, ComputerPrimeCaptureConsentParams.self))
+      case "computer.preview.show":
+        call = try .computerPreviewShow(container.value(.params, ComputerPreviewShowParams.self))
       case "approval.request":
         call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
       case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
@@ -176,6 +207,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityTrust(AccessibilityTrustEvent)
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
+  case computerState(ComputerStateEvent)
   case socketFrames(SocketFramesEvent)
   case userAppState(UserAppStateEvent)
   case userAppPins(UserAppPinsEvent)
@@ -201,6 +233,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust: "accessibility.trust"
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
+    case .computerState: "computer.state"
     case .socketFrames: "socket.frames"
     case .userAppState: "userApp.state"
     case .userAppPins: "userApp.pins"
@@ -227,6 +260,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
+    case .computerState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     case .userAppState(let payload): try payload.encode(to: encoder)
     case .userAppPins(let payload): try payload.encode(to: encoder)

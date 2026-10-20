@@ -163,7 +163,7 @@ export function PromptRail({
           side="right"
           align="center"
           material="backdrop"
-          className="w-80 gap-0 p-1"
+          className="prompt-list w-80"
           onPointerEnter={() => clearTimeout(timer.current)}
           onPointerLeave={leave}
           onOpenAutoFocus={(event) => {

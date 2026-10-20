@@ -17,6 +17,7 @@ import type { LiveSlot } from './session-release.js';
 import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
+import { freezeViewInitiative } from './views/initiative.js';
 
 /**
  * What a run executes with before it prompts (task-runner.ts): its material and the session it
@@ -31,8 +32,9 @@ export type PreparedRun =
   | { blocked: null; material: RunMaterial; agents: RuntimeAgent[] };
 
 /**
- * Freezes the run's selections and reads its folders into its material. A run whose selected
- * skills cannot load is `blocked`; a folder that cannot be read throws, which fails the run.
+ * Freezes the run's selections and view level and reads its folders into its material. A run whose
+ * selected skills cannot load is `blocked`; a folder or the settings file that cannot be read
+ * throws, which fails the run.
  */
 export async function prepareRun(
   deps: SessionFactoryDeps,
@@ -70,6 +72,9 @@ export async function prepareRun(
     skills: frozen.skills.loaded,
     catalog: frozen.catalog,
     memory: frozen.memory,
+    computer: frozen.computer,
+    // As the run starts, so a change in Settings applies from the next run; a lite run keeps null.
+    viewInitiative: await freezeViewInitiative(deps.ctx.paths),
   };
   return { blocked: null, material, agents: frozen.agents };
 }

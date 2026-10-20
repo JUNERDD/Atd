@@ -16,6 +16,8 @@ final class RelayHarness: NSObject, WKNavigationDelegate {
   let dataDirectory: URL
   let link: ServiceLink
   let handler: RendererSchemeHandler
+  /// Serves the page's `ai-view://` frames, as in the app's renderer web views.
+  let views: ViewSchemeHandler
   let webView: WKWebView
   let pipe: VirtualSocketPipe
   /// What the pipe delivered, in order: the web view's outbox in the app.
@@ -45,9 +47,11 @@ final class RelayHarness: NSObject, WKNavigationDelegate {
       devServer
       ? .devServer(DevServerOrigin(URL(string: "http://127.0.0.1:\(port)")!)!) : .bundle(bundle)
     handler = RendererSchemeHandler(renderer: renderer, link: link)
+    views = ViewSchemeHandler(link: link)
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
     configuration.setURLSchemeHandler(handler, forURLScheme: RendererSchemeHandler.scheme)
+    configuration.setURLSchemeHandler(views, forURLScheme: ViewSchemeHandler.scheme)
     webView = WKWebView(
       frame: CGRect(x: 0, y: 0, width: 400, height: 300), configuration: configuration)
     let log = FrameLog()
@@ -127,6 +131,24 @@ final class RelayHarness: NSObject, WKNavigationDelegate {
 @MainActor
 final class FrameLog {
   var frames: [SocketFrame] = []
+}
+
+/// A scheme task a test starts itself, recording the handler's answer. WebKit shows neither the
+/// page nor a navigation delegate the status or headers of a custom scheme's response.
+final class RecordingSchemeTask: NSObject, WKURLSchemeTask {
+  let request: URLRequest
+  private(set) var response: HTTPURLResponse?
+  private(set) var body = Data()
+  private(set) var ended = false
+
+  init(_ request: URLRequest) {
+    self.request = request
+  }
+
+  func didReceive(_ response: URLResponse) { self.response = response as? HTTPURLResponse }
+  func didReceive(_ data: Data) { body.append(data) }
+  func didFinish() { ended = true }
+  func didFailWithError(_ error: any Error) { ended = true }
 }
 
 /// Records capability requests and answers them.

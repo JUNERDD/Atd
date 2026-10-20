@@ -12,9 +12,12 @@ import {
   type ErrorCode,
 } from '@atd/agent-contracts';
 import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
+import { registerAddonRoutes, type AddonRegistry } from './addons/index.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ServiceConfig } from './config.js';
+import { registerComputerRoutes } from './computer/routes.js';
+import type { ComputerRuntime } from './computer/runtime.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
 import { registerFileRoutes } from './file-routes.js';
@@ -51,6 +54,8 @@ export interface ServerDeps {
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
   resources: ResourceStore;
+  computer: ComputerRuntime;
+  addons: AddonRegistry;
   manager: RunnerManager;
   settings: SettingsStore;
   folders: FolderStore;
@@ -71,7 +76,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ bodyLimit: 1024 * 1024, logger: false, exposeHeadRoutes: false });
   await app.register(websocketPlugin, {
     options: {
-      maxPayload: 1024 * 1024,
+      // A computer observation carries its screenshot (up to 8 MiB, base64-encoded) in one frame.
+      maxPayload: 12 * 1024 * 1024,
       // Clients offer `ai.v1` plus their credential; only `ai.v1` is ever selected and echoed.
       handleProtocols: (protocols) => (protocols.has(STREAM_PROTOCOL) ? STREAM_PROTOCOL : false),
     },
@@ -157,6 +163,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     systemProxy: deps.systemProxy,
     events: deps.events,
     capabilities: deps.capabilities,
+    computer: deps.computer.coordinator,
     snapshot: (taskId) => deps.manager.snapshot(taskId),
     summaries: () => deps.manager.summaries(),
     status: () => taskStatusCounts(deps.ledger.data),
@@ -294,6 +301,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
+  registerComputerRoutes(app, deps.computer);
+  registerAddonRoutes(app, deps.addons);
   registerTaskNotices(app, deps);
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,

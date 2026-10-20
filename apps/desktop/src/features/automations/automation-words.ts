@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type {
+  AutomationComputerFacts,
   AutomationItem,
   AutomationOutcome,
   AutomationResult,
@@ -230,6 +231,22 @@ export function outcomeTone(outcome: AutomationOutcome): 'progress' | 'warning' 
 /** Whether the person has yet to open a finished run's result; a running run has none yet. */
 export function isUnread(run: AutomationRun): boolean {
   return run.outcome !== 'running' && !run.readAt;
+}
+
+/**
+ * What a run did on a computer, in counts: actions checked, partly done, of unknown effect and not
+ * carried out (only the counts that are not zero), then how many still wait for a person.
+ */
+export function computerFactsWords(computer: AutomationComputerFacts, t: Translate): string {
+  const { facts, unresolvedActionIds } = computer;
+  const parts = (['verified', 'partial', 'unknown', 'notDispatched'] as const)
+    .filter((kind) => facts[kind] > 0)
+    .map((kind) => t(`computer.facts.${kind}`, { count: facts[kind] }));
+  if (unresolvedActionIds.length)
+    parts.push(t('computer.facts.unresolved', { count: unresolvedActionIds.length }));
+  return parts.length
+    ? t('computer.facts.summary', { facts: parts.join(' · ') })
+    : t('computer.facts.none');
 }
 
 /** Why a run was skipped or failed, as a sentence. */

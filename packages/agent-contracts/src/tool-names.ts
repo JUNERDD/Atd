@@ -23,6 +23,21 @@ export const LIST_MCP_TOOL = 'list_mcp_servers';
 export const AUTOMATION_TOOL = 'automation';
 
 /**
+ * Acts on registered browser and app targets through the computer host (`targets`, `observe`,
+ * `act`, `status`, `release`). Registered only for runs that carry `RunSnapshot.computer`, never in
+ * a lite session or a subagent child. Parent-only.
+ */
+export const COMPUTER_TOOL = 'computer';
+
+/**
+ * Renders an interactive view inline in the turn (views.ts), optionally waiting for the user's
+ * response through it. Parent-only and model-only.
+ */
+export const SHOW_UI_TOOL = 'show_ui';
+/** Replaces the data of a view an earlier `show_ui` call of the task rendered. Parent-only. */
+export const UPDATE_UI_TOOL = 'update_ui';
+
+/**
  * Loads one skill from the run's model-invocable catalog. Parent-only, and registered only when
  * that catalog is not empty.
  */

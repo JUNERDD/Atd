@@ -34,6 +34,7 @@ import { compactBlock } from '../features/agent/compaction/compact-availability'
 import { useCompactTask } from '../features/agent/compaction/use-compact-task';
 import { showErrorToast } from './toast-store';
 import './composer.css';
+import { ComputerLiveView } from '../features/computer/computer-live-view';
 
 export interface ComposerProps {
   policy: RunPolicy;
@@ -236,6 +237,7 @@ export function Composer({
   const { room, attach } = useComposerAttach(draft, commands);
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
+      <ComputerLiveView taskId={taskId} hidden={hidden} />
       <form
         className="composer"
         aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}

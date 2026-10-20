@@ -1,10 +1,11 @@
-import { Bot, MessageSquare, Plug } from 'lucide-react';
+import { AppWindow, Bot, MessageSquare, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
-import type { MemoryUnit } from '@atd/agent-contracts';
+import type { ApplicationReference, MemoryUnit } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Chip } from '../composer-editor/draft';
+import { ApplicationIcon } from '../computer/application-icon';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/extension-rows';
 import { useMcpStateLabel } from '../service/use-mcp-state-label';
@@ -22,7 +23,7 @@ const CONVERSATIONS_RECENT = 5;
 const CONVERSATIONS_MATCHES = 20;
 
 /**
- * The `@` panel: files, conversations, MCP servers, subagents, saved commands and memories
+ * The `@` panel: files, applications, conversations, MCP servers, subagents, saved commands and memories
  * (use-saved-groups.tsx). A pick inserts a chip; the
  * references themselves are derived from the chips when the draft is sent. Only conversations
  * with a session transcript can be referenced, and the current task is left out. A source with
@@ -40,6 +41,7 @@ export function useMentionView({
   mcp,
   commands,
   memories,
+  applications = { status: 'unavailable' },
   files: offerFiles,
   accepts = () => true,
 }: {
@@ -55,6 +57,8 @@ export function useMentionView({
   /** Snapshot commands; none where the editor offers no command chips. */
   commands: readonly CommandDefinition[];
   memories: ServiceListView<MemoryUnit>;
+  /** Installed apps are offered by the composer only, without granting computer access. */
+  applications?: ServiceListView<Pick<ApplicationReference, 'bundleId' | 'name'>>;
   /** Whether files and "Browse files…" are offered (the composer). */
   files: boolean;
   /** Whether the editor can hold this chip; items it cannot are not offered. */
@@ -167,10 +171,37 @@ export function useMentionView({
     })),
   };
 
+  const applicationGroup: QuickGroup = {
+    id: 'applications',
+    heading: t('quickPanel.groups.applications'),
+    icon: <AppWindow />,
+    options: rankByQuery(
+      applications.status === 'ready'
+        ? applications.rows.filter((app) => accepts({ kind: 'application', ...app }))
+        : [],
+      query,
+      (app) => ({ title: app.name, description: app.bundleId }),
+    )
+      .slice(0, query ? 20 : 5)
+      .map(({ item: app, match }): QuickOption => ({
+        value: `application:${app.bundleId}`,
+        score: match?.score,
+        ranges: match?.ranges,
+        icon: <ApplicationIcon bundleId={app.bundleId} />,
+        title: app.name,
+        description: app.bundleId,
+        select: () => editor.insertChips([{ kind: 'application', ...app }]),
+      })),
+  };
+
   // A source still answering may yet match, so it is not reported as no match.
   const loading =
-    files?.loading || mcp.status === 'loading' || agents.status === 'loading' || saved.loading;
-  const references = [conversations, mcpGroup, agentGroup, ...saved.groups];
+    files?.loading ||
+    mcp.status === 'loading' ||
+    agents.status === 'loading' ||
+    applications.status === 'loading' ||
+    saved.loading;
+  const references = [applicationGroup, conversations, mcpGroup, agentGroup, ...saved.groups];
   return {
     // "Browse files…" ends the list, so the first candidate, not the picker, is active by default.
     groups: orderGroups(files ? [...files.lists, ...references, files.browse] : references, query),

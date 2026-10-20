@@ -15,10 +15,11 @@ import SwiftUI
 /// switches after its first luminance reading, 200–650 ms later, then animates for about 750 ms,
 /// so over a white window every appearance of a dark surface went from black to white. So the
 /// glass is pinned to the app's scheme before its first frame and its adaptation is off
-/// (``disableAdaptation(_:)``): it looks the same from its first frame over any backdrop, and the
-/// fill keeps its labels readable over a contrasting one. When the app's scheme changes, the live
-/// AppKit glass is pinned again and refilled (``schemeDidChange()``); SwiftUI glass reads the
-/// scheme through observation.
+/// (``pin(_:to:)``): it looks the same from its first frame over any backdrop, and the fill keeps
+/// its labels readable over a contrasting one. When the app's scheme changes, the live AppKit glass
+/// is pinned again and refilled (``schemeDidChange()``); SwiftUI glass reads the scheme through
+/// observation. ``pin(_:to:)`` is also the one way to pin AppKit glass whose scheme has another
+/// owner: a glass user app's window, pinned to its page's scheme (``UserAppGlass``).
 ///
 /// On macOS 15 the material is `NSVisualEffectView` (``NativeMaterialView``), which does not adapt:
 /// it takes the pinned appearance directly. Its blur shows only through a thinner fill
@@ -57,9 +58,10 @@ enum GlassSurface {
     Color(nsColor: fill(reduceTransparency: reduceTransparency))
   }
 
-  /// Pins `material` to the current ``appearance`` and, on Liquid Glass, stops it adapting to the
-  /// backdrop's brightness. macOS 15's material has no such adaptation and takes the appearance
-  /// alone.
+  /// Pins `material` to `appearance` and, on Liquid Glass, stops it adapting to the backdrop's
+  /// brightness. macOS 15's material has no such adaptation and takes the appearance alone. The
+  /// appearance reaches the material's content too, as any view's does; content that must keep
+  /// another scheme sets its own (``UserAppGlass``).
   ///
   /// Adaptation has no public switch (`NSGlassEffectView` has `style` and `tintColor` only, and
   /// SwiftUI's `Glass` none at all); the private `_adaptiveAppearance` is 0 for automatic, 1 for
@@ -68,7 +70,7 @@ enum GlassSurface {
   /// cannot be reached this way; its surfaces cover the adaptation with the fill instead, and pin
   /// ``colorScheme`` one container inside the glass content's root, since the glass writes its
   /// adapted scheme into that root's children (``GlassSurfaceFace``).
-  static func disableAdaptation(_ material: NativeMaterialView) {
+  static func pin(_ material: NativeMaterialView, to appearance: NSAppearance?) {
     // On macOS 26 the view is the glass itself; on macOS 15 the effect view or its shadow host.
     material.view.appearance = appearance
     guard #available(macOS 26, *), let glass = material.glass,
@@ -86,7 +88,7 @@ enum GlassSurface {
   static func attach(_ material: NativeMaterialView, content: NSView) {
     content.wantsLayer = true
     material.contentView = content
-    disableAdaptation(material)
+    pin(material, to: appearance)
     live.setObject(content, forKey: material.view)
   }
 

@@ -1,5 +1,7 @@
+import { Value } from 'typebox/value';
 import {
   CapabilityRequestSchema,
+  ComputerProgressSchema,
   InvalidateFrameSchema,
   parse,
   ServiceEventSchema,
@@ -193,6 +195,14 @@ export class AgentStreamClient {
       }
       case 'invalidate': {
         this.handlers.onInvalidate?.(parse(InvalidateFrameSchema, message));
+        break;
+      }
+      case 'computer.progress': {
+        // Display state only: a frame this client cannot read is dropped rather than ending the
+        // stream, and the next one replaces it anyway.
+        const progress = field(message, 'progress');
+        if (Value.Check(ComputerProgressSchema, progress))
+          this.handlers.onComputerProgress?.(progress);
         break;
       }
       case 'capability.request': {

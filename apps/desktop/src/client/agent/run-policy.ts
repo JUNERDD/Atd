@@ -1,5 +1,10 @@
 import { Type, type Static } from 'typebox';
-import { MAX_RUN_REFERENCES, MAX_RUN_SKILLS, RunReferenceSchema } from '@atd/agent-contracts';
+import {
+  ComputerRunRequestSchema,
+  MAX_RUN_REFERENCES,
+  MAX_RUN_SKILLS,
+  RunReferenceSchema,
+} from '@atd/agent-contracts';
 import { ToolIdSchema } from './command-schema';
 import { ModelReferenceSchema, ModelThinkingLevelSchema } from '../providers/schema';
 
@@ -41,6 +46,11 @@ export const RunPolicySchema = Type.Object(
      * tool set.
      */
     references: Type.Optional(Type.Array(RunReferenceSchema, { maxItems: MAX_RUN_REFERENCES })),
+    /**
+     * Registered computer targets picked for the next run (`SubmitTaskRequest.computer`). Absent
+     * leaves the choice to the service, which keeps the task's last run's targets.
+     */
+    computer: Type.Optional(ComputerRunRequestSchema),
   },
   { additionalProperties: false },
 );

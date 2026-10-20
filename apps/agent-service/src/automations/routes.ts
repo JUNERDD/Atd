@@ -20,6 +20,7 @@ import {
 } from '@atd/agent-contracts';
 import { invalidateOffRoute } from '../invalidate.js';
 import { RENDERER_ROUTE, SHELL_ROUTE } from '../relay-routes.js';
+import { registerComputerAutomationRoutes } from './computer-routes.js';
 import {
   ackNotices,
   createAutomation,
@@ -147,4 +148,6 @@ export function registerAutomationRoutes(app: FastifyInstance, service: Automati
     service.activity.report(parse(SystemActivityReportSchema, request.body).idleSeconds);
     return reply.code(204).send();
   });
+
+  registerComputerAutomationRoutes(app, service);
 }

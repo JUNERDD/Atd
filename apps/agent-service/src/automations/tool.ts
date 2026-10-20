@@ -14,6 +14,7 @@ import type { HarnessDeps } from '../harness/deps.js';
 import type { Gate } from '../harness/gate.js';
 import { isUnattendedRun } from '../unattended.js';
 import { checkDraft } from './checks.js';
+import { computerConfirmation } from './computer-tool.js';
 import { automationDetail } from './describe.js';
 import {
   createAutomation,
@@ -108,7 +109,7 @@ export const AutomationToolParametersSchema = Type.Object(
     automation: Type.Optional({
       ...AutomationDraftSchema,
       description:
-        "create, update: the whole automation. Schedule times are wall-clock times in the trigger time zone (an IANA id; context answers the Mac's); one-time runs are ISO date-times with an offset; intervals and custom cron fire at most every 15 minutes. An idle trigger fires at most once a day, the first time the Mac has had no input for idleMinutes (5 to 120) while none of the person's tasks is running; its time zone bounds the day. A folder trigger and policy.folderIds name folders by the ids context lists. permissionTier decides what the unattended runs may do: actions it would ask about are declined. The consolidateMemory action starts no task: the memory engine merges duplicate memories and rewrites outdated ones, and only suggests removals; it uses policy.model, thinkingLevel and maxDurationMinutes and ignores the tier, tools, memory switch and folders.",
+        "create, update: the whole automation. Schedule times are wall-clock times in the trigger time zone (an IANA id; context answers the Mac's); one-time runs are ISO date-times with an offset; intervals and custom cron fire at most every 15 minutes. An idle trigger fires at most once a day, the first time the Mac has had no input for idleMinutes (5 to 120) while none of the person's tasks is running; its time zone bounds the day. A folder trigger and policy.folderIds name folders by the ids context lists. permissionTier decides what the unattended runs may do: actions it would ask about are declined. The consolidateMemory action starts no task: the memory engine merges duplicate memories and rewrites outdated ones, and only suggests removals; it uses policy.model, thinkingLevel and maxDurationMinutes and ignores the tier, tools, memory switch and folders. policy.computer requests computer use on registered targets through a fixed recipe; you may propose it but never authorize it: until the person runs a trial and authorizes that exact scope, the automation must stay disabled.",
     }),
     trigger: Type.Optional({ ...AutomationTriggerSchema, description: 'preview: the trigger.' }),
   },
@@ -153,11 +154,11 @@ export async function runAutomationCall(
     throw new Error(
       'An automation started this run, so it cannot change or run automations. Use list, get, context or preview, and say in your answer what should change.',
     );
-  const approve = async (title: string, draft: AutomationDraft | Automation, note = '') => {
+  const approve: Approve = async (title, draft, note = '', scope = null) => {
     const check = service.checkContext();
     const commandId = draft.action.kind === 'command' ? draft.action.commandId : null;
     const command = commandId ? await check.lookups.command(commandId) : null;
-    const detail = `${note}${automationDetail(draft, check, command?.name ?? null)}`;
+    const detail = `${note}${automationDetail(draft, check, command?.name ?? null, scope)}`;
     await ctx.gate({
       toolCallId,
       scope: { tool: 'automation' },
@@ -200,15 +201,25 @@ async function read(ctx: ToolContext, service: AutomationService, call: ReadCall
   }
 }
 
-type Approve = (title: string, draft: AutomationDraft | Automation, note?: string) => Promise<void>;
+type Approve = (
+  title: string,
+  draft: AutomationDraft | Automation,
+  note?: string,
+  computerScope?: string | null,
+) => Promise<void>;
 
-/** Validates, asks the person, then applies; whatever would be refused is refused before asking. */
+/**
+ * Validates, asks the person, then applies; whatever would be refused is refused before asking.
+ * A computer scope is shown in full, and only the confirmation may mint its grant, when a passed
+ * trial qualifies exactly the confirmed content (computer-tool.ts).
+ */
 async function write(service: AutomationService, call: WriteCall, approve: Approve) {
   const edits = service.edits();
   switch (call.op) {
     case 'create': {
       await checkDraft(call.automation, service.checkContext(), undefined);
-      await approve(`Create the automation "${call.automation.name}"?`, call.automation);
+      const { scope } = await computerConfirmation(service, call.automation, null);
+      await approve(`Create the automation "${call.automation.name}"?`, call.automation, '', scope);
       return JSON.stringify(summary(await createAutomation(edits, call.automation, 'agent')));
     }
     case 'update': {
@@ -216,9 +227,16 @@ async function write(service: AutomationService, call: WriteCall, approve: Appro
       if (current.revision !== call.expectedRevision)
         throw new Error('This automation changed. Get it again, then apply your change.');
       await checkDraft(call.automation, service.checkContext(), current.id);
-      await approve(`Change the automation "${current.name}"?`, call.automation);
+      const computer = await computerConfirmation(service, call.automation, current);
+      await approve(
+        `Change the automation "${current.name}"?`,
+        call.automation,
+        '',
+        computer.scope,
+      );
+      const mint = await computer.confirmed();
       const request = { expectedRevision: call.expectedRevision, automation: call.automation };
-      return JSON.stringify(summary(await updateAutomation(edits, current.id, request)));
+      return JSON.stringify(summary(await updateAutomation(edits, current.id, request, mint)));
     }
     case 'delete': {
       const current = service.automation(call.automationId);
@@ -233,9 +251,14 @@ async function write(service: AutomationService, call: WriteCall, approve: Appro
       const enabled = call.op === 'enable';
       if (enabled) await checkDraft(current, service.checkContext(), current.id);
       const verb = enabled ? 'Turn on' : 'Turn off';
-      await approve(`${verb} the automation "${current.name}"?`, { ...current, enabled });
+      const computer = enabled
+        ? await computerConfirmation(service, { ...current, enabled }, current)
+        : null;
+      const title = `${verb} the automation "${current.name}"?`;
+      await approve(title, { ...current, enabled }, '', computer?.scope);
+      const mint = await computer?.confirmed();
       const request = { enabled, expectedRevision: current.revision };
-      return JSON.stringify(summary(await setAutomationEnabled(edits, current.id, request)));
+      return JSON.stringify(summary(await setAutomationEnabled(edits, current.id, request, mint)));
     }
     case 'run': {
       const current = service.automation(call.automationId);
@@ -244,7 +267,8 @@ async function write(service: AutomationService, call: WriteCall, approve: Appro
         current.action.kind === 'consolidateMemory'
           ? 'Consolidates memory now.\n\n'
           : 'Runs it now, as a new task with nobody present.\n\n';
-      await approve(`Run the automation "${current.name}" now?`, current, note);
+      const { scope } = await computerConfirmation(service, current, current);
+      await approve(`Run the automation "${current.name}" now?`, current, note, scope);
       const run = await service.engine.runNow(current.id);
       return JSON.stringify({ runId: run.id, outcome: run.outcome });
     }
@@ -267,6 +291,7 @@ export function automationExtension(deps: HarnessDeps): ExtensionFactory {
       description: DESCRIPTION,
       parameters: AutomationToolParametersSchema,
       executionMode: 'sequential',
+      exposure: 'deferred',
       async execute(toolCallId, params, signal) {
         signal?.throwIfAborted();
         const text = await runAutomationCall(ctx, params, toolCallId, signal ?? undefined);

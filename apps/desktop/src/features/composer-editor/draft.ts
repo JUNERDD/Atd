@@ -1,5 +1,6 @@
 import {
   quoteLabel,
+  type ApplicationReference,
   type InputChip,
   type InputChipRange,
   type MAX_INPUT_CHIPS,
@@ -18,6 +19,7 @@ import type { FileChip, FolderChip } from './draft-attachments';
  * the selection toolbar; the draft's only source of truth for it.
  */
 export type Chip =
+  | ApplicationReference
   | FileChip
   | FolderChip
   | { kind: 'task'; taskId: string; title: string }
@@ -59,6 +61,7 @@ export function chipName(chip: Chip): string {
   switch (chip.kind) {
     case 'file':
       return chip.file.name;
+    case 'application':
     case 'folder':
       return chip.name;
     case 'task':
@@ -79,6 +82,8 @@ export function chipName(chip: Chip): string {
 /** Identity of the referenced item, independent of its display name. */
 function chipKey(chip: Chip): string {
   switch (chip.kind) {
+    case 'application':
+      return `application:${chip.bundleId}`;
     case 'file':
       return `file:${chip.file.id}`;
     case 'folder':
@@ -101,12 +106,13 @@ function chipKey(chip: Chip): string {
 
 /**
  * Serialized chip text: a skill reads as `/skill:<name>`, every other chip as `@<name>`, quoted
- * when the name contains whitespace. The text around a chip, separating spaces included, belongs
- * to the document.
+ * when the name contains whitespace. App tokens include their bundle id so plain-text edits and
+ * resends cannot exchange two apps with the same display name. The chip itself shows only the
+ * name. The text around a chip, separating spaces included, belongs to the document.
  */
 export function chipText(chip: Chip): string {
   if (chip.kind === 'skill') return `/skill:${chip.name}`;
-  const name = chipName(chip);
+  const name = chip.kind === 'application' ? `${chip.name} (${chip.bundleId})` : chipName(chip);
   return /\s/.test(name) ? `@"${name}"` : `@${name}`;
 }
 
@@ -203,6 +209,8 @@ export function draftSkills(draft: ComposerDraft): string[] {
 
 function referenceOf(chip: Chip): RunReference | null {
   switch (chip.kind) {
+    case 'application':
+      return chip;
     case 'task':
       return { kind: 'task', taskId: chip.taskId };
     case 'mcpServer':
@@ -238,6 +246,8 @@ export function draftReferences(draft: ComposerDraft): RunReference[] {
 /** What the transcript needs to show a chip again: its kind, what it names, and the item's id. */
 function inputChipOf(chip: Chip): InputChip {
   switch (chip.kind) {
+    case 'application':
+      return chip;
     case 'file':
       return { kind: 'file', fileId: chip.file.id, name: chip.file.name };
     case 'folder':

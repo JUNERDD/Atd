@@ -14,7 +14,7 @@ import { useTaskProgress } from '../features/agent/progress/use-task-progress';
 import { useSideChats } from '../features/agent/side-chat/side-chats';
 import { useSubagents } from '../features/agent/transcript/subagent-context';
 import { HitlPanel } from './hitl-panel';
-import { consentRequest } from './hitl-request';
+import { consentRequest, taskHitlRequests } from './hitl-request';
 import { MorphViewport } from './morph-viewport';
 import { useComposerView } from './use-composer-view';
 import { useHitlSummary } from './use-hitl-summary';
@@ -87,9 +87,12 @@ export function ComposerPopover({
   const { t: tp } = useTranslation('panel');
   const anchor = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  // A waiting view's request points to the view (`taskHitlRequests`); the list is the task's own
+  // while none waits, so transcript patches leave it alone.
+  const viewAware = taskHitlRequests(taskRequests, blocks);
   const requests = useMemo(
-    () => [...taskRequests, ...consents.map(consentRequest)],
-    [taskRequests, consents],
+    () => [...viewAware, ...consents.map(consentRequest)],
+    [viewAware, consents],
   );
   const hitl = useHitlSummary(requests, queue, taskId);
   const progress = useTaskProgress(blocks);

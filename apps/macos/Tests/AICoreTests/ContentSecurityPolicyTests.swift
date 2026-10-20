@@ -7,13 +7,30 @@ import Testing
 struct ContentSecurityPolicyTests {
   private static let vite = DevServerOrigin(URL(string: "http://127.0.0.1:5173")!)!
 
-  @Test("Production allows no inline script, no frames and fetches to the relay only")
+  @Test("Production allows no inline script, frames of views only and fetches to the relay only")
   func production() {
     #expect(
       ContentSecurityPolicy.production
         == "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
         + "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; "
-        + "base-uri 'self'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'")
+        + "base-uri 'self'; form-action 'self'; frame-src ai-view:; frame-ancestors 'none'")
+  }
+
+  @Test("View documents get a sandboxed, inline-only policy without network")
+  func view() {
+    #expect(
+      ViewOrigin.contentSecurityPolicy
+        == "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+        + "img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; "
+        + "frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; "
+        + "form-action 'none'; frame-ancestors ai-app://renderer; "
+        + "sandbox allow-scripts allow-forms")
+    #expect(
+      ViewOrigin.documentHeaders == [
+        "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": ViewOrigin.contentSecurityPolicy,
+      ])
   }
 
   @Test("Development allows the refresh preamble by hash and the HMR socket, nothing inline")
@@ -28,7 +45,7 @@ struct ContentSecurityPolicyTests {
     let preamble = "'sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk='"
     #expect(directives["script-src"] == "'self' \(preamble)")
     #expect(directives["connect-src"] == "'self' ws://127.0.0.1:5173")
-    #expect(directives["frame-src"] == "'none'")
+    #expect(directives["frame-src"] == "ai-view:")
     #expect(directives["frame-ancestors"] == "'none'")
     #expect(directives["object-src"] == "'none'")
     #expect(!policy.contains("unsafe-eval"))

@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ComputerRunRequestSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import {
   CapabilityResultSchema,
@@ -58,6 +59,11 @@ export const SubmitTaskRequestSchema = Type.Object(
      * new task (no `taskId`), and the conversation must exist. Frozen as `AgentTask.sideChatOf`.
      */
     sideChatOf: Type.Optional(Identifier),
+    /**
+     * Registered computer targets the run may act on, frozen as `RunSnapshot.computer`. Absent
+     * keeps the task's last run's bindings (never an automation's grant), else no computer use.
+     */
+    computer: Type.Optional(ComputerRunRequestSchema),
   },
   { additionalProperties: false },
 );

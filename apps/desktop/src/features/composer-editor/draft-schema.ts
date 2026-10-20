@@ -1,11 +1,16 @@
 import { Type } from 'typebox';
-import { MemoryTargetSchema, QuoteSourceSchema } from '@atd/agent-contracts';
+import {
+  ApplicationReferenceSchema,
+  MemoryTargetSchema,
+  QuoteSourceSchema,
+} from '@atd/agent-contracts';
 import { FileRefSchema } from '../../client/agent/task-schema';
 
 const name = Type.String({ maxLength: 1024 });
 
 /** Runtime shape of `Chip`; drafts persisted by an earlier build are checked against it. */
 const ChipSchema = Type.Union([
+  ApplicationReferenceSchema,
   Type.Object(
     { kind: Type.Literal('file'), file: FileRefSchema, context: Type.Optional(FileRefSchema) },
     { additionalProperties: false },

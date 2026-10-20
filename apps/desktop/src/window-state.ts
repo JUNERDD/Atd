@@ -6,6 +6,7 @@
  * does not expose as a media feature. Unset reads as active, visible and transparent.
  */
 const activeListeners = new Set<(active: boolean) => void>();
+const visibleListeners = new Set<() => void>();
 
 export function setWindowActive(active: boolean) {
   document.documentElement.dataset.windowActive = String(active);
@@ -20,6 +21,13 @@ export function onWindowActive(listener: (active: boolean) => void): () => void 
 
 export function setWindowVisible(visible: boolean) {
   document.documentElement.dataset.windowVisible = String(visible);
+  for (const listener of visibleListeners) listener();
+}
+
+/** Panel hiding uses native alpha, so document.visibilityState alone cannot stop live readers. */
+export function onWindowVisible(listener: () => void): () => void {
+  visibleListeners.add(listener);
+  return () => void visibleListeners.delete(listener);
 }
 
 export function setReducedTransparency(reduce: boolean) {

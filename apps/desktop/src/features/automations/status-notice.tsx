@@ -7,10 +7,12 @@ import { problemWords } from './automation-words';
 /**
  * Why a saved automation does not run as it stands, above its editor and its run history: a
  * problem the service found, or the service turned it off (repeated failures, or its one-time run
- * is done). Nothing shows while it can run.
+ * is done). Nothing shows while it can run. A computer hold reads in `ComputerHoldNotice`.
  */
 export function AutomationStatusNotice({ status }: { status: AutomationStatus }) {
   const { t } = useTranslation('automations');
+  // A computer hold has its own notice, with the way to review and resolve it.
+  if (status.problem === 'computerHold' && status.computerHold) return null;
   if (status.problem)
     return (
       <Alert variant="destructive">

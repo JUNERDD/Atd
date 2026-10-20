@@ -17,6 +17,7 @@ final class WebViewHost: NSObject {
   private(set) var pipe: VirtualSocketPipe?
   /// Counts committed documents, so a call's answer never reaches a later page.
   private(set) var document = 0
+  var onDocumentUnload: (() -> Void)?
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -70,6 +71,7 @@ final class WebViewHost: NSObject {
 
   /// Takes the current web view down: its stream connections and its bridge handler.
   private func tearDown() {
+    onDocumentUnload?()
     pipe?.invalidate()
     pipe = nil
     webView.configuration.userContentController.removeAllScriptMessageHandlers()
@@ -157,6 +159,10 @@ final class WebViewHost: NSObject {
   ) -> ShellWebView {
     let configuration = WKWebViewConfiguration()
     configuration.setURLSchemeHandler(services.schemeHandler, forURLScheme: RendererOrigin.scheme)
+    // The documents of the generative views the page frames; the navigation lock below admits
+    // subframes there and nowhere else.
+    configuration.setURLSchemeHandler(
+      services.viewSchemeHandler, forURLScheme: ViewSchemeHandler.scheme)
     configuration.userContentController.add(
       handler, contentWorld: .page, name: NativeBridgeContract.messageHandler)
     configuration.preferences.isElementFullscreenEnabled = false
@@ -194,6 +200,7 @@ final class WebViewHost: NSObject {
 
   /// The page went away: its sockets close, and results and frames meant for it are dropped.
   private func pageDidUnload() {
+    onDocumentUnload?()
     document += 1
     pipe?.resetForNewDocument()
     outbox.pageDidUnload()
@@ -224,13 +231,20 @@ final class WebViewHost: NSObject {
 }
 
 extension WebViewHost: WKNavigationDelegate, WKUIDelegate {
-  /// Plan decision R6: subframes never navigate, the main frame stays on the renderer origin.
+  /// Plan decision R6, widened for generative views: the main frame stays on the renderer origin,
+  /// a subframe may load only a view's document (`ai-view://view/<taskId>/<callId>`, sandboxed
+  /// and network-less by its own CSP), and an action without a target frame (a new window) is
+  /// cancelled.
   func webView(
     _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction
   ) async -> WKNavigationActionPolicy {
-    let allowed = RendererOrigin.allowsNavigation(
-      to: navigationAction.request.url,
-      targetIsMainFrame: navigationAction.targetFrame?.isMainFrame == true)
+    let target: RendererOrigin.NavigationTarget =
+      switch navigationAction.targetFrame?.isMainFrame {
+      case true?: .mainFrame
+      case false?: .subframe
+      case nil: .newWindow
+      }
+    let allowed = RendererOrigin.allowsNavigation(to: navigationAction.request.url, target: target)
     return allowed ? .allow : .cancel
   }
 

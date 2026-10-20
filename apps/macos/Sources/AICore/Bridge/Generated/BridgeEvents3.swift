@@ -4,94 +4,249 @@
 
 import Foundation
 
-/// Payload of the `commandProgress.action` event.
-public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
-  public let target: String
-  public let action: Action
-  public let arguments: CommandArguments?
-  public let compose: Compose?
+/// Payload of the `computer.state` event.
+public struct ComputerStateEvent: Codable, Equatable, Sendable {
+  public let host: Host
+  public let pointerVisible: Bool
+  public let typing: Bool
+  public let typingAnimation: Bool
+  public let previews: [Preview]
+  public let engines: [Engine]
+  public let unsettled: Unsettled
+  public let captureConsent: CaptureConsent?
+  public let postEventAccess: Bool
 
-  public init(target: String, action: Action, arguments: CommandArguments?, compose: Compose?) {
-    self.target = target
-    self.action = action
-    self.arguments = arguments
-    self.compose = compose
+  public init(
+    host: Host, pointerVisible: Bool, typing: Bool, typingAnimation: Bool, previews: [Preview],
+    engines: [Engine], unsettled: Unsettled, captureConsent: CaptureConsent?, postEventAccess: Bool
+  ) {
+    self.host = host
+    self.pointerVisible = pointerVisible
+    self.typing = typing
+    self.typingAnimation = typingAnimation
+    self.previews = previews
+    self.engines = engines
+    self.unsettled = unsettled
+    self.captureConsent = captureConsent
+    self.postEventAccess = postEventAccess
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    target = try container.string(.target, minLength: 1, maxLength: 128)
-    action = try container.value(.action, Action.self)
-    arguments = try container.optional(.arguments) {
-      try container.value($0, CommandArguments.self)
+    host = try container.value(.host, Host.self)
+    pointerVisible = try container.boolean(.pointerVisible)
+    typing = try container.boolean(.typing)
+    typingAnimation = try container.boolean(.typingAnimation)
+    previews = try container.array(.previews, of: Preview.self, maxItems: 4)
+    engines = try container.array(.engines, of: Engine.self, maxItems: 4)
+    unsettled = try container.value(.unsettled, Unsettled.self)
+    captureConsent = try container.nullable(.captureConsent) {
+      try container.value($0, CaptureConsent.self)
     }
-    compose = try container.optional(.compose) { try container.value($0, Compose.self) }
+    postEventAccess = try container.boolean(.postEventAccess)
   }
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(target, forKey: .target)
-    try container.encode(action, forKey: .action)
-    try container.encodeIfPresent(arguments, forKey: .arguments)
-    try container.encodeIfPresent(compose, forKey: .compose)
+    try container.encode(host, forKey: .host)
+    try container.encode(pointerVisible, forKey: .pointerVisible)
+    try container.encode(typing, forKey: .typing)
+    try container.encode(typingAnimation, forKey: .typingAnimation)
+    try container.encode(previews, forKey: .previews)
+    try container.encode(engines, forKey: .engines)
+    try container.encode(unsettled, forKey: .unsettled)
+    try container.encode(captureConsent, forKey: .captureConsent)
+    try container.encode(postEventAccess, forKey: .postEventAccess)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case target
-    case action
-    case arguments
-    case compose
+    case host
+    case pointerVisible
+    case typing
+    case typingAnimation
+    case previews
+    case engines
+    case unsettled
+    case captureConsent
+    case postEventAccess
   }
 
-  public enum Action: String, Codable, Equatable, Sendable {
-    case cancel
-    case open
-    case change
-    case run
-    case edit
-    case pick
+  public enum Host: String, Codable, Equatable, Sendable {
+    case starting
+    case ready
+    case locked
+    case unavailable
   }
 
-  public struct Compose: Codable, Equatable, Sendable {
-    public let text: String
-    public let files: [FileRef]
+  public struct Preview: Codable, Equatable, Sendable {
+    public let sourceId: String
+    public let taskId: String
+    public let runId: String
+    public let label: String
+    public let kind: Kind
 
-    public init(text: String, files: [FileRef]) {
-      self.text = text
-      self.files = files
+    public init(sourceId: String, taskId: String, runId: String, label: String, kind: Kind) {
+      self.sourceId = sourceId
+      self.taskId = taskId
+      self.runId = runId
+      self.label = label
+      self.kind = kind
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      text = try container.string(.text, maxLength: 100_000)
-      files = try container.array(.files, of: FileRef.self, maxItems: 10)
+      sourceId = try container.string(
+        .sourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      taskId = try container.string(
+        .taskId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      runId = try container.string(
+        .runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      label = try container.string(.label, minLength: 1, maxLength: 120)
+      kind = try container.value(.kind, Kind.self)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
-      case text
-      case files
+      case sourceId
+      case taskId
+      case runId
+      case label
+      case kind
+    }
+
+    public enum Kind: String, Codable, Equatable, Sendable {
+      case native
+      case browser
+    }
+  }
+
+  public struct Engine: Codable, Equatable, Sendable {
+    public let engine: Engine
+    public let state: State
+    public let detail: String
+
+    public init(engine: Engine, state: State, detail: String) {
+      self.engine = engine
+      self.state = state
+      self.detail = detail
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      engine = try container.value(.engine, Engine.self)
+      state = try container.value(.state, State.self)
+      detail = try container.string(.detail, maxLength: 500)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case engine
+      case state
+      case detail
+    }
+
+    public enum Engine: String, Codable, Equatable, Sendable {
+      case playwright
+      case atd
+    }
+
+    public enum State: String, Codable, Equatable, Sendable {
+      case starting
+      case ready
+      case unqualified
+      case unavailable
+      case notInstalled
+    }
+  }
+
+  public struct Unsettled: Codable, Equatable, Sendable {
+    public let count: Int
+    public let actionIds: [String]
+
+    public init(count: Int, actionIds: [String]) {
+      self.count = count
+      self.actionIds = actionIds
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      count = try container.integer(.count, minimum: 0)
+      actionIds = try container.array(.actionIds, of: String.self, maxItems: 50)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case count
+      case actionIds
+    }
+  }
+
+  public struct CaptureConsent: Codable, Equatable, Sendable {
+    public let bundleId: String
+    public let primedAt: String
+
+    public init(bundleId: String, primedAt: String) {
+      self.bundleId = bundleId
+      self.primedAt = primedAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
+      primedAt = try container.dateTime(.primedAt, maxLength: 64)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case bundleId
+      case primedAt
     }
   }
 }
 
-/// Payload of the `commandOptions.picked` event.
-public struct CommandOptionsPickedEvent: Codable, Equatable, Sendable {
-  public let id: String
-  public let arguments: CommandArguments
+/// Payload of the `socket.frames` event.
+public struct SocketFramesEvent: Codable, Equatable, Sendable {
+  public let frames: [SocketFrame]
 
-  public init(id: String, arguments: CommandArguments) {
-    self.id = id
-    self.arguments = arguments
+  public init(frames: [SocketFrame]) {
+    self.frames = frames
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    id = try container.string(.id, minLength: 1, maxLength: 128)
-    arguments = try container.value(.arguments, CommandArguments.self)
+    frames = try container.array(.frames, of: SocketFrame.self, minItems: 1)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case id
-    case arguments
+    case frames
+  }
+}
+
+/// Payload of the `userApp.state` event.
+public struct UserAppStateEvent: Codable, Equatable, Sendable {
+  public let appId: String
+  public let open: Bool
+  public let version: Int?
+
+  public init(appId: String, open: Bool, version: Int?) {
+    self.appId = appId
+    self.open = open
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    open = try container.boolean(.open)
+    version = try container.nullable(.version) { try container.integer($0, minimum: 1) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appId, forKey: .appId)
+    try container.encode(open, forKey: .open)
+    try container.encode(version, forKey: .version)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+    case open
+    case version
   }
 }

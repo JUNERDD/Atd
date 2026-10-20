@@ -9,6 +9,8 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCommandOptionsCalls } from './command-options.ts';
+import { NativeComputerCalls } from './computer-calls.ts';
+import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
 import { NativeTextCalls } from './text-calls.ts';
@@ -255,6 +257,8 @@ export const NativeCalls = {
   ...NativeCommandOptionsCalls,
   ...NativeUpdateCalls,
   ...NativeNotificationCalls,
+  ...NativeComputerCalls,
+  ...NativeComputerPreviewCalls,
   /**
    * Confirms a launch approval in a native dialog the page cannot forge. Only the server id
    * crosses: Swift reads what would run from the service (`GET /v1/admin/approvals/mcp/:serverId`),

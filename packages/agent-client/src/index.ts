@@ -18,4 +18,6 @@ export * from './plugins-client.js';
 export * from './files-client.js';
 export * from './apps-client.js';
 export * from './automations-client.js';
+export * from './computer-client.js';
+export * from './addons-client.js';
 export { syncDevelopmentData } from './development.js';

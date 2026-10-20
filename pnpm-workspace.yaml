@@ -46,5 +46,5 @@ overrides:
 
 patchedDependencies:
   # Keep malformed loopback callback URLs from crashing OpenRouter and Radius sign-in.
-  '@earendil-works/pi-ai@1.1.0': patches/@earendil-works__pi-ai@1.1.0.patch
+  '@earendil-works/pi-ai@1.3.0': patches/@earendil-works__pi-ai@1.3.0.patch
   pi-subagents@0.76.1: patches/pi-subagents@0.76.1.patch

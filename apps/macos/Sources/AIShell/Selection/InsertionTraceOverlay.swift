@@ -42,14 +42,43 @@ final class InsertionTraceOverlay {
   private var washes: [(layer: CALayer, gone: CFTimeInterval)] = []
   /// Whether the system reduces motion, which leaves the glow out.
   private let reducesMotion: Bool
+  private let isCurrent: () -> Bool
+  private var closed = false
+  private var validity: Task<Void, Never>?
+  private var fadeTask: Task<Void, Never>?
+  private static var captureHolds = 0
+  private static let active = NSHashTable<InsertionTraceOverlay>.weakObjects()
 
-  init(reducesMotion: Bool = false) {
+  /// Captures must contain the target's pixels, never Atd's insertion feedback.
+  static func beginCapture() {
+    captureHolds += 1
+    cancelAll()
+  }
+
+  static func endCapture() { captureHolds -= 1 }
+
+  static func cancelAll() {
+    for trace in active.allObjects { trace.cancel() }
+  }
+
+  func cancel() {
+    closed = true
+    validity?.cancel()
+    fadeTask?.cancel()
+    window?.orderOut(nil)
+    window = nil
+  }
+
+  init(reducesMotion: Bool = false, isCurrent: @escaping () -> Bool = { true }) {
     self.reducesMotion = reducesMotion
+    self.isCurrent = isCurrent
+    Self.active.add(self)
   }
 
   /// Moves the glow to `anchor`, the last character in, and lays a fading wash over `wash`; all
   /// in Quartz points. The window opens with the first mark.
   func show(anchor: CGRect?, wash: [CGRect], field: CGRect?) {
+    guard !closed, Self.captureHolds == 0, isCurrent() else { return cancel() }
     let anchor = reducesMotion ? nil : anchor
     guard let first = anchor ?? wash.first else { return }
     // Layers move only as the animations below say, the window's first ones included.
@@ -69,16 +98,16 @@ final class InsertionTraceOverlay {
 
   /// Fades the glow out and closes the window once the last wash is gone.
   func finish() {
-    guard let window else { return }
+    guard window != nil else { return }
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     fade(glow)
     CATransaction.commit()
     let remaining = max(Self.glowFade, (washes.map(\.gone).max() ?? 0) - CACurrentMediaTime())
-    self.window = nil
-    Task {
+    fadeTask = Task {
       try? await Task.sleep(for: .seconds(remaining + 0.05))
-      window.orderOut(nil)
+      guard !Task.isCancelled else { return }
+      cancel()
     }
   }
 
@@ -111,6 +140,16 @@ final class InsertionTraceOverlay {
     buildGlow(scale: screen.backingScaleFactor)
     window.orderFrontRegardless()
     self.window = window
+    validity = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(50))
+        guard let self, !Task.isCancelled else { return }
+        if !self.isCurrent() {
+          self.cancel()
+          return
+        }
+      }
+    }
     return true
   }
 

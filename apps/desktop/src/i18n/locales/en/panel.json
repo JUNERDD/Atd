@@ -76,6 +76,7 @@
     "reorderQueued": "Drag to reorder",
     "chipsAfterRun": "Send mentions and skills after this run finishes.",
     "chips": {
+      "application": "Application: {{name}}",
       "file": "File: {{name}}",
       "folder": "Folder: {{name}}",
       "task": "Conversation: {{name}}",
@@ -258,6 +259,7 @@
     "listLabel": "Suggestions",
     "sectionsLabel": "Groups",
     "groups": {
+      "applications": "Applications",
       "commands": "Quick commands",
       "skills": "Skills",
       "recentAttached": "Recently attached",

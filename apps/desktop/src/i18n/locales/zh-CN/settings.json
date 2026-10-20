@@ -12,6 +12,7 @@
     "label": "设置分类",
     "navigationLabel": "设置导航",
     "permissions": "权限",
+    "computer": "电脑操作",
     "extensions": "扩展",
     "providers": "模型",
     "commands": "命令",
@@ -62,6 +63,7 @@
       "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
       "appearance": "主题 外观 配色 颜色 浅色 深色 亮色 暗色 夜间 日间 白天 黑夜 跟随系统 自动 light dark theme",
+      "viewInitiative": "视图 交互 界面 小组件 窗口 卡片 图表 表单 看板 可视化 显示 展示 智能体 主动 积极 适中 平衡 按需 要求 对话 聊天",
       "panelPlacement": "位置 显示位置 出现 打开 居中 中央 中间 右下角 角落 记住 上次 拖动 移动 显示器 屏幕 多屏 position center corner remember display",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
@@ -90,7 +92,17 @@
       "notificationsFinished": "通知 提醒 横幅 完成 结束 失败 出错 系统 离开 没在看 notification notify finished failed",
       "notificationsAttention": "通知 提醒 横幅 批准 审批 确认 问题 回答 输入 等待 需要 notification approval question",
       "notificationsSound": "通知 提示音 声音 铃声 静音 notification sound",
-      "notificationsPreviews": "通知 预览 内容 文字 隐私 隐藏 消息 锁屏 横幅 notification preview privacy"
+      "notificationsPreviews": "通知 预览 内容 文字 隐私 隐藏 消息 锁屏 横幅 notification preview privacy",
+      "computer": "电脑操作 浏览器 自动操作 网站 应用 后台 控制",
+      "computerPointer": "指针 光标 实时 高亮 显示 隐藏",
+      "computerTargets": "目标 网站 应用 浏览器环境 配置文件",
+      "computerBrowser": "浏览器 Chrome 配置文件 网站 登录",
+      "computerStop": "停止 取消 中止 紧急 电脑操作",
+      "computerEngines": "引擎 组件 附加组件 下载 安装 移除 浏览器 engine addon",
+      "computerApplication": "应用 程序 窗口 原生 application app",
+      "computerTyping": "电脑操作 打字机 逐步输入 高亮 动画 command",
+      "computerVision": "视觉 模型 画面 监看 共享",
+      "computerCapture": "屏幕访问 屏幕采集 屏幕录制 同意 准备 权限 弹窗 screen capture"
     }
   },
   "providers": {
@@ -284,10 +296,27 @@
         "dark": "深色"
       }
     },
+    "viewInitiative": {
+      "title": "交互视图",
+      "description": "选择智能体是主动显示交互视图、仅在视图明显更合适时显示，还是只在你要求时显示。",
+      "label": "智能体显示交互视图的时机",
+      "saveFailed": "无法保存交互视图设置。",
+      "modes": {
+        "proactive": "积极",
+        "balanced": "适中",
+        "onRequest": "按需"
+      },
+      "hints": {
+        "proactive": "只要视图能帮上忙，就主动显示。",
+        "balanced": "视图明显比文字更合适时才显示。",
+        "onRequest": "只在你要求时显示视图。"
+      }
+    },
     "groups": {
       "global": "全局",
       "inApp": "应用内",
       "appearance": "外观",
+      "conversation": "对话",
       "window": "窗口"
     },
     "actions": {
@@ -870,5 +899,186 @@
     "success": "已同步 {{commands}} 个命令、{{skills}} 个技能和 {{agents}} 个智能体。",
     "backup": "备份位置：{{path}}",
     "keywords": "开发版 dev 同步 导入 正式版 设置 命令 个人 技能 智能体 备份"
+  },
+  "computer": {
+    "title": "电脑操作",
+    "description": "Atd 会主动请求任务所需应用和网站的访问权限。自动和全批准模式会将授权保存到这里，供后续任务使用；手动批准仅在本次运行有效。移除目标即可撤销保存的授权。自动化仍只使用单独授权的范围。",
+    "statusLabel": "电脑操作状态",
+    "host": {
+      "ready": {
+        "title": "已就绪",
+        "description": "Atd 可以在后台操作你的目标。"
+      },
+      "starting": {
+        "title": "正在启动…",
+        "description": "Atd 正在准备电脑操作。"
+      },
+      "locked": {
+        "title": "正被另一个 Atd 使用",
+        "description": "同一时间只能有一个 Atd 操作网站和应用。退出另一个 Atd 后即可在这里使用。"
+      },
+      "unavailable": {
+        "title": "不可用",
+        "description": "Atd 的后台服务未连接，目前无法操作网站或应用。"
+      }
+    },
+    "unsettled": {
+      "title": "后台电脑操作已暂停",
+      "description_other": "Atd 无法确认 {{count}} 个操作是否产生了改动。在你检查电脑自动化所用的应用和网站之前，它们不会在后台操作这些目标。",
+      "review": "我已检查…",
+      "confirmTitle": "恢复后台电脑操作？",
+      "confirmDescription": "请确认你已查看这些操作可能改动过的应用和网站，并修正了不对的地方。Atd 会将它们记为已完成、结果未知，并且不会重复执行。",
+      "confirm": "我已检查"
+    },
+    "engine": {
+      "playwright": "网站",
+      "atd": "应用"
+    },
+    "engineState": {
+      "starting": "正在启动…",
+      "ready": "已就绪",
+      "unqualified": "可用于任务，暂不能用于自动化",
+      "unavailable": "不可用",
+      "notInstalled": "未安装"
+    },
+    "engineVersion": "版本 {{version}}",
+    "permission": {
+      "accessibility": {
+        "title": "辅助功能未开启",
+        "description": "Atd 需要辅助功能权限，才能读取和操作应用中的控件。"
+      },
+      "screenRecording": {
+        "title": "屏幕录制未开启",
+        "description": "Atd 需要屏幕录制权限，才能保存目标画面作为证据。"
+      },
+      "open": "打开系统设置"
+    },
+    "capture": {
+      "title": "屏幕访问",
+      "searchDescription": "让 macOS 在这里询问屏幕采集权限，而不是在任务进行中询问。",
+      "notPrepared": "macOS 可能会询问 Atd 能否直接采集屏幕。请在这里提前准备，这样询问就不会打断任务。",
+      "preparing": "如果 macOS 询问 Atd 能否采集屏幕，请选择允许。",
+      "prepared": "已于 {{time}} 准备好。如果之后 macOS 再次询问，请在这里重新准备。",
+      "denied": "macOS 没有允许屏幕采集。请在系统设置中为 Atd 开启屏幕录制，然后重试。",
+      "unavailable": "Atd 暂时无法准备屏幕访问。请稍后重试。",
+      "prepare": "准备屏幕访问"
+    },
+    "pointer": {
+      "title": "显示实时指针",
+      "description": "Atd 操作你能看到的目标时，标出它正在操作的位置。这只影响显示。"
+    },
+    "targets": {
+      "title": "目标",
+      "searchDescription": "Atd 可以操作的浏览器环境和应用。",
+      "addBrowser": "添加浏览器环境",
+      "inUse": "使用中",
+      "kind": {
+        "browser": "浏览器环境",
+        "application": "应用"
+      },
+      "signIn": "重新登录",
+      "disconnect": "断开",
+      "more": "更多",
+      "moreFor": "{{name}} 的更多操作",
+      "disconnectedAutomations_other": "已断开目标。{{count}} 个自动化需要重新授权。",
+      "disconnectTitle": "要断开“{{name}}”吗？",
+      "disconnectDescription": "任务和自动化将无法再使用它；为它授权的自动化会停止运行，直到你重新授权。它的浏览器环境中的登录数据会保留。",
+      "add": "添加目标",
+      "browserHint": "需要登录的网站",
+      "emptyTitle": "还没有目标",
+      "emptyDescription": "为网站添加浏览器环境，或添加允许 Atd 操作的应用。",
+      "needsEngine": "请先安装对应引擎",
+      "addApplication": "添加应用",
+      "applicationHint": "Atd 可以操作其窗口的应用"
+    },
+    "stopAll": {
+      "action": "停止全部电脑操作",
+      "description": "结束 Atd 在网站和应用上的所有操作，任务和自动化都包括在内。",
+      "stopped_other": "已停止 {{count}} 次运行中的电脑操作。",
+      "nothing": "当前没有正在操作的目标。",
+      "button": "全部停止"
+    },
+    "browser": {
+      "title": "添加浏览器环境",
+      "description": "Atd 会为此单独打开一个 Chrome 配置文件，绝不使用你日常的配置文件。请在其中登录，完成后即会添加该环境。",
+      "label": "名称",
+      "labelPlaceholder": "团队报销表",
+      "startUrl": "起始页",
+      "origins": "允许的网站",
+      "originsNote": "每行一个网站。Atd 不会打开这些网站之外的页面。留空则只允许起始页所在的网站。",
+      "waiting": "请在 Atd 打开的窗口中登录。你在那里完成后，此步骤即结束。",
+      "preparing": "正在等待登录…",
+      "add": "添加并登录",
+      "errors": {
+        "label": "请输入名称。",
+        "startUrl": "请输入以 http 或 https 开头的网址。",
+        "origin": "“{{entry}}”不是网站地址。",
+        "outside": "请把起始页所在的网站加入允许的网站。"
+      }
+    },
+    "prepareFailed": {
+      "unavailable": "电脑操作目前不可用。",
+      "busy": "另一个目标正在设置中，请先完成它。",
+      "unsupported": "无法将它添加为目标。",
+      "notInstalled": "该应用已不在 Atd 找到它的位置。请重新选择。"
+    },
+    "cancel": "取消",
+    "groups": {
+      "status": "状态",
+      "controls": "控制",
+      "engines": "引擎"
+    },
+    "engines": {
+      "searchDescription": "下载或移除网站目标所用的浏览器引擎。"
+    },
+    "application": {
+      "title": "添加应用",
+      "description": "Atd 会在后台操作此应用的窗口，不会把它切到前台，也不会占用你的指针。它会在不打开、不激活应用的情况下检查能读取哪些内容。",
+      "label": "名称",
+      "labelPlaceholder": "日历",
+      "app": "应用",
+      "noApp": "未选择应用",
+      "chooseApp": "选择应用…",
+      "add": "添加应用",
+      "errors": {
+        "label": "请输入名称。",
+        "app": "请选择应用。",
+        "unsupported": "此应用无法作为目标。请选择其他应用。"
+      },
+      "probe": {
+        "title": "已添加“{{name}}”",
+        "description": "Atd 刚才在不打开、不激活应用的情况下读取到的内容：",
+        "windows_other": "{{count}} 个已打开的窗口",
+        "noWindows": "没有已打开的窗口。打开一个窗口后 Atd 即可操作。",
+        "tree": "Atd 可以读取它的控件。",
+        "noTree": "Atd 暂时无法读取它的控件。请在“状态”中检查辅助功能权限。",
+        "screenshot": "Atd 可以拍摄它的窗口画面。",
+        "noScreenshot": "Atd 暂时无法拍摄它的窗口画面。请在“状态”中检查屏幕录制权限。",
+        "done": "完成"
+      }
+    },
+    "capability": {
+      "background": "在后台工作",
+      "qualified": "已通过自动化核验",
+      "unqualified": "尚未通过自动化核验"
+    },
+    "typing": {
+      "title": "逐步输入文字",
+      "description": "在应用和浏览器中使用 Command 的输入节奏。不支持的输入框会一次填入；此设置与 Command 相互独立。",
+      "reducedMotion": "系统已开启“减少动态效果”，文字会一次填入。逐步输入的偏好仍会保留。"
+    },
+    "typingAnimation": {
+      "title": "高亮新文字",
+      "description": "输入时短暂高亮，即使关闭逐步输入也可使用。开启“减少动态效果”时只保留高亮。"
+    },
+    "vision": {
+      "title": "画面理解",
+      "model": "视觉模型",
+      "followTask": "跟随任务模型",
+      "description": "每轮读取最新画面。",
+      "choose": "选择视觉模型：{{model}}",
+      "search": "搜索支持图像的模型",
+      "unavailable": "模型不可用，请重新连接或更换。"
+    }
   }
 }

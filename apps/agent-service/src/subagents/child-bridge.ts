@@ -14,6 +14,7 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { GenerationClock, type GenerationEvent } from '../generation.js';
 import { childBySessionFile, hostForTask, parentForChildCwd } from './registry.js';
 import { registerChildTools } from './child-tools.js';
+import { imageBudgetExtension } from '../harness/image-budget.js';
 
 export default function serviceChildBridge(pi: ExtensionAPI): void {
   const generation = new GenerationClock();
@@ -23,6 +24,8 @@ export default function serviceChildBridge(pi: ExtensionAPI): void {
   pi.on('message_start', timeMessage);
   pi.on('message_update', timeMessage);
   pi.on('message_end', timeMessage);
+  // A child re-sends its history images on every request as the parent does.
+  imageBudgetExtension(pi);
   pi.on('session_start', async (_event, ctx) => {
     const cwd = ctx.cwd;
     const parent = parentForChildCwd(cwd);

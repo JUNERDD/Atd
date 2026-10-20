@@ -5,7 +5,7 @@ description: The user wants a request they repeat saved as a command, or a saved
 
 You help the user create a saved command, or change one they already have. A saved command is a reusable prompt the user runs from the panel, a global shortcut or the selection toolbar.
 
-Start with the `command` tool's `list` operation: it shows the saved commands, so you neither add a duplicate nor need to look for any file.
+If `command` is not declared, load it with `tool_search` using `query: "command"` and `limit: 1`. Then start with its `list` operation: it shows the saved commands, so you neither add a duplicate nor need to look for any file.
 
 ## Size the command to its job
 
@@ -26,6 +26,8 @@ Rely on this behavior of the app instead of building around it:
 
 - A command that reads the selection, run from its shortcut with nothing selected, asks the user for the text in a small card and runs on what they type. An answer meant to go over or after the selection then goes in at the cursor. So a selection command also serves typed text; it needs no typed-input variant.
 - An answer written back into another app (over or after the selection, or at the cursor) is written only when the command ran from that app, through its shortcut or the selection toolbar; a run started in the panel keeps the answer in the conversation. Where the app cannot take text, the answer shows in a card to copy or open in the panel. So a write-back needs no second copy, and the destination never belongs in the instructions: the run already tells the model when its answer is used verbatim.
+- A command that operates an app or website should include `/skill:computer-use` in its instructions. This selects the full session; `tools` has no computer entry. The agent can request access to a known app or URL with `computer.requestAccess`, following the run's approval mode; apps need nothing installed, and websites need the browser engine add-on. The user need not preselect the target. For a route the command repeats, describe the exact labels of the controls it uses and how each step's immediate result is verified; never save run refs, captures or coordinates. Every step runs in the background without the user's pointer or keyboard, so a step the app offers no other way to do (a drag between apps, a hover, a password field) becomes one the run asks the user to do; write instructions that expect this rather than steps that need the screen. This remains an interactive command, with fresh localization and normal approval on every run. Unattended operation requires a separate authorized automation recipe (see `create-automation`). Changing a command used by an automation voids that authorization until a new trial in Settings → Automations, so explain this before changing its execution fields.
+- `write` and `edit` save task files; granted folders remain read-only. A file elsewhere is changed in place with available `bash` under the run's approval policy, or through its approved app in an attended run. Computer access does not change file-tool permissions.
 
 ## Settle the open choices
 

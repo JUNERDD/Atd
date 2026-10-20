@@ -69,6 +69,7 @@ export async function submitTask<S>(
     ...(policy?.model ? { model: policy.model } : {}),
     ...(policy?.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
     ...(policy ? { tools: snapshotToolsFor(policy.tools), memory: policy.memory } : {}),
+    ...(policy?.computer ? { computer: policy.computer } : {}),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
   });
@@ -111,6 +112,7 @@ async function runSavedCommand<S>(
           },
         }
       : {}),
+    ...(policy?.computer ? { computer: policy.computer } : {}),
     ...(request.output ? { output: request.output } : {}),
     ...(request.shortcutId ? { shortcutId: request.shortcutId } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),

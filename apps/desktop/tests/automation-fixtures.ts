@@ -138,6 +138,18 @@ export function fakeAutomations(
     })),
     showTask: vi.fn(async () => {}),
     taskExists: vi.fn(async (_taskId: string) => true),
+    computerTrial: vi.fn(async (_id: string, _revision: number) => ({
+      trialId: 'trial',
+      taskId: 'trial-task',
+      runId: 'trial-run',
+    })),
+    authorizeComputer: vi.fn(
+      async (): Promise<Awaited<ReturnType<AutomationsBridge['authorizeComputer']>>> => ({
+        approved: false,
+        reason: 'cancelled',
+      }),
+    ),
+    resolveComputerHold: vi.fn(async (_id: string, _runId: string) => {}),
     onChange: (listener: () => void) => {
       listeners.add(listener);
       return () => void listeners.delete(listener);

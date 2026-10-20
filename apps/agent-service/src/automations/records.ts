@@ -1,11 +1,15 @@
-import type {
-  Automation,
-  AutomationFireSource,
-  AutomationOutcome,
-  AutomationRun,
-  AutomationRunReason,
+import {
+  COMPUTER_MAX_UNRESOLVED,
+  type Automation,
+  type AutomationComputerFacts,
+  type AutomationFireSource,
+  type AutomationOutcome,
+  type AutomationRun,
+  type AutomationRunReason,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
+import { blockedMessage } from './computer-fire.js';
+import type { HoldFinding } from './computer-outcome.js';
 import {
   AUTOMATION_FIRES_PER_HOUR,
   emptyAutomationState,
@@ -44,6 +48,14 @@ export function stateOf(draft: AutomationData, automationId: string): Automation
   const created = emptyAutomationState();
   draft.state.automations[automationId] = created;
   return created;
+}
+
+/** The newest delivered run with a task, whose answer a run may compare with. */
+export function previousDelivered(
+  state: AutomationState | undefined,
+): { taskId: string; runId: string } | null {
+  const run = state?.runs.find((item) => item.outcome === 'delivered' && item.taskId && item.runId);
+  return run?.taskId && run.runId ? { taskId: run.taskId, runId: run.runId } : null;
 }
 
 /** Whether the automation has a run that has not ended: waiting for a slot, starting or running. */
@@ -108,7 +120,11 @@ export function recordSkip(
   recordId: string,
 ): AutomationRun {
   const newest = state.runs[0];
-  const coalesce = reason === 'paused' || reason === 'rateLimited';
+  const coalesce =
+    reason === 'paused' ||
+    reason === 'rateLimited' ||
+    reason === 'computerHold' ||
+    reason === 'computerGrantInvalid';
   if (coalesce && newest?.outcome === 'skipped' && newest.reason === reason) return newest;
   const record: AutomationRun = {
     ...baseRecord(automationId, recordId, request, now),
@@ -152,8 +168,9 @@ function rateLimited(state: AutomationState, now: number): boolean {
  * the advanced schedule cursor, written before anything is submitted. A fire the automation cannot
  * take becomes a skip: everything is paused, its previous run is still going (`overlap`, except
  * that Run now answers 409 and a folder keeps its files waiting), or too many trigger fires
- * happened this hour. Answers the record, and whether it fired; null when a folder's files stay
- * pending or the automation was turned off.
+ * happened this hour. `blocked` is why a computer automation may not fire now (computer-fire.ts):
+ * a skip, which Run now answers with a 409 instead. Answers the record, and whether it fired;
+ * null when a folder's files stay pending or the automation was turned off.
  */
 export function recordFire(
   draft: AutomationData,
@@ -161,6 +178,7 @@ export function recordFire(
   request: FireRequest,
   now: number,
   recordId: string,
+  blocked?: 'computerHold' | 'computerGrantInvalid',
 ): { record: AutomationRun; fired: boolean } | null {
   const state = stateOf(draft, automation.id);
   const manual = request.source === 'manual';
@@ -172,6 +190,10 @@ export function recordFire(
   // automation was paused does not start. Run now does, whatever the switch and the pause.
   if (!manual && !automation.enabled) return null;
   if (!manual && draft.definitions.paused) return skip('paused');
+  if (blocked) {
+    if (manual) throw new ConflictError(blockedMessage(blocked));
+    return skip(blocked);
+  }
   if (hasActiveRun(state)) {
     if (manual) throw new ConflictError('The automation is already running.');
     return request.source === 'folder' ? null : skip('overlap');
@@ -193,9 +215,15 @@ export function recordFire(
 
 /**
  * What a finished run settles with. `read`: the record has nothing to open (a memory
- * consolidation starts no task), so it is recorded as read whatever its result.
+ * consolidation starts no task), so it is recorded as read whatever its result. `computer`: the
+ * run's computer facts; `hold`: the unresolved effects that hold the automation.
  */
-export type Settlement = Classified & { declined?: number; read?: true };
+export type Settlement = Classified & {
+  declined?: number;
+  read?: true;
+  computer?: AutomationComputerFacts;
+  hold?: HoldFinding;
+};
 
 /** Turns the automation off with a reason, as a definitions change. */
 function pause(automation: Automation, now: number): void {
@@ -229,6 +257,7 @@ export function settleRun(
     ...(result.detail ? { detail: result.detail } : {}),
     ...(result.summary ? { summary: result.summary } : {}),
     ...(result.declined ? { declined: result.declined } : {}),
+    ...(result.computer ? { computer: result.computer } : {}),
     finishedAt: iso(now),
     // A run that found nothing new is silent, a skip or a consolidation has nothing to open: read.
     ...(result.read || outcome === 'nothingNew' || outcome === 'skipped'
@@ -236,6 +265,7 @@ export function settleRun(
       : {}),
   };
   replaceRun(state, settled);
+  if (result.hold) hold(state, settled.id, result.hold, now);
   const notices = [];
   const kind = noticeKind(outcome, automation.delivery.notify);
   if (kind) notices.push(makeNotice(automation, kind, settled, now));
@@ -254,6 +284,20 @@ export function settleRun(
   }
   draft.state.notices = liveNotices([...draft.state.notices, ...notices], now);
   return settled;
+}
+
+/**
+ * Sets the computer hold in the same write as the record that explains it. A hold already
+ * standing keeps its run (the one a person resolves) and gains the new unresolved actions.
+ */
+function hold(state: AutomationState, recordId: string, finding: HoldFinding, now: number): void {
+  const standing = state.computerHold;
+  if (!standing) {
+    state.computerHold = { since: iso(now), runId: recordId, ...finding };
+    return;
+  }
+  const ids = [...new Set([...standing.unresolvedActionIds, ...finding.unresolvedActionIds])];
+  standing.unresolvedActionIds = ids.slice(0, COMPUTER_MAX_UNRESOLVED);
 }
 
 function succeeded(outcome: AutomationOutcome): boolean {

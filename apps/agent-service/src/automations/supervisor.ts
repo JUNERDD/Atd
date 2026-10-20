@@ -3,6 +3,7 @@ import {
   errorMessage,
   isTerminalStatus,
   RunStatusDataSchema,
+  type ComputerFact,
   type RunStatus,
   type ServiceEvent,
 } from '@atd/agent-contracts';
@@ -18,8 +19,8 @@ import { finalAnswer, type RunEnd } from './outcome.js';
  * stream announces the end, the ledger is read again when a watch begins (the run may already
  * have ended), and a run past its maximum duration is stopped through `RunnerManager.cancel` and
  * ends timed out. At the end it reads the run's final answer and what its audit recorded (the
- * unattended declines, the files it wrote), which is complete once the run's end is published
- * (task-runner.ts), and hands them to the engine.
+ * unattended declines, the files it wrote) and its durable computer facts, which are complete
+ * once the run's end is published (task-runner.ts), and hands them to the engine.
  */
 
 const RunStatusData = Compile(RunStatusDataSchema);
@@ -47,6 +48,8 @@ export interface SupervisorDeps {
   ledger: Pick<Ledger, 'run'>;
   manager: Pick<AutomationRuns, 'cancel' | 'snapshot'>;
   auditDir: string;
+  /** The run's computer facts (an empty list when it has none). */
+  facts: (runId: string) => Promise<ComputerFact[]>;
   log: Logger;
   now: () => number;
   /** The run ended; it still counts as active until this settles. */
@@ -159,7 +162,15 @@ export class RunSupervisor {
   private async finish(run: WatchedRun, status: RunStatus, error: string): Promise<void> {
     const answer = status === 'completed' ? await this.answer(run) : '';
     const { declined, wrote } = await readUnattendedAudit(this.deps.auditDir, run.runId);
-    await this.deps.ended(run, { status, error, answer, declined, wrote, timedOut: run.timedOut });
+    const facts = await this.deps.facts(run.runId).catch((failure: unknown) => {
+      this.deps.log.warn('The computer facts of an automation run could not be read.', {
+        automationId: run.automationId,
+        error: errorMessage(failure),
+      });
+      return null;
+    });
+    const timedOut = run.timedOut;
+    await this.deps.ended(run, { status, error, answer, declined, wrote, timedOut, facts });
   }
 
   private async answer(run: WatchedRun): Promise<string> {

@@ -11,11 +11,18 @@ public final class ShellController {
   let services: ShellServices
   private let defaults: UserDefaults
   let panelHost: WebViewHost
+  var shownComputerTaskId: String?
   let panel: PanelWindowController
   let settings: SettingsWindowController
   let onboarding: OnboardingWindowController
   var launchPresentation = LaunchPresentation(revealPanel: false)
   let systemPanels: SystemPanels
+  /// Every native writer's admission to the screen, input, clipboard and computer targets.
+  let deviceArbiter: DeviceArbiter
+  /// The computer host lock, journal and generation, held from ``start(revealPanel:)`` to quit.
+  let computerHost: ComputerHostSession
+  /// The computer host's coordinator: requests, engines, targets, the live pointer.
+  let computer: ComputerCoordinator
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
   let control: ControlStreamClient
@@ -45,13 +52,15 @@ public final class ShellController {
     answerWriter: { [weak self] answer, mode in
       await self?.writeAnswer(answer, mode: mode)
         ?? AnswerWriteOutcome(result: .notOk(.init(reason: .failed)), app: "")
-    })
+    }, arbiter: deviceArbiter)
   /// Command shortcuts' presses and releases, which hold for a command's options.
   lazy var shortcutHolds = makeShortcutHolds()
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
   let miniPanel: MiniPanelController
   /// Generated apps' windows (`userApp.*`).
   let userApps: UserAppWindows
+  /// Generative views' windows (`view.open`).
+  let viewWindows: ViewWindows
   /// The WidgetKit extension's files and the service's list of live widgets.
   let widgets: WidgetSyncController
   /// Automation and task notifications; nil outside an app bundle.
@@ -86,6 +95,7 @@ public final class ShellController {
       host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
       host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
       bridge.shell?.replayPins(to: host)
+      bridge.shell?.replayComputer(to: host)
       bridge.shell?.replayMiniPanel(to: host)
       return host
     }
@@ -97,17 +107,26 @@ public final class ShellController {
       bridge.shell?.replayMiniPanel(to: host)
       return host
     }
+    viewWindows = Self.makeViewWindows(services: services, bridge: bridge)
+    let arbiter = DeviceArbiter()
+    deviceArbiter = arbiter
+    let computerHost = ComputerHostSession(lock: ComputerHostLock(), arbiter: arbiter)
+    self.computerHost = computerHost
+    let computer = Self.makeComputer(host: computerHost, arbiter: arbiter, defaults: defaults)
+    self.computer = computer
     let systemPanels = SystemPanels(
-      lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) })
+      lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) },
+      arbiter: arbiter)
     self.systemPanels = systemPanels
     let capabilities = ShellCapabilities(
-      services: services, panelVisible: { panel.isVisible }, systemPanels: systemPanels)
+      services: services, panelVisible: { panel.isVisible }, systemPanels: systemPanels,
+      arbiter: arbiter)
     self.capabilities = capabilities
     let control = ControlStreamClient(link: services.link, capabilities: capabilities)
     self.control = control
     artifacts = ArtifactActions(
-      services: services, downloads: ArtifactActions.downloadsFolder(), confirmations: confirmations
-    )
+      services: services, downloads: ArtifactActions.downloadsFolder(),
+      confirmations: confirmations, arbiter: arbiter)
     let attachments = AttachmentImporter(
       services: services, panel: panelHost, systemPanels: systemPanels)
     self.attachments = attachments
@@ -117,18 +136,19 @@ public final class ShellController {
     }
     let screenshots = ScreenshotTaker(
       library: library, panel: panel, targeting: ElementResolver(), access: screenRecording,
-      makeEditor: { AnnotationEditor() })
+      makeEditor: { AnnotationEditor() }, arbiter: arbiter)
     self.screenshots = screenshots
     launchApprovals = LaunchApprovals(
       services: services, confirmations: confirmations, systemPanels: systemPanels)
     summoner = Summoner(
       panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
-      isCapturing: { screenshots.isCapturing })
+      isCapturing: { screenshots.isCapturing }, arbiter: arbiter)
     toolbar = SelectionToolbarController(trust: trust)
     miniPanel = MiniPanelController(defaults: defaults)
     // After the panel's web view: WebKit's static data store API needs one to exist.
     userApps = UserAppWindows(
-      services: services, storage: UserAppStorage(defaults: defaults), confirmations: confirmations)
+      services: services, storage: UserAppStorage(defaults: defaults), confirmations: confirmations,
+      arbiter: arbiter)
     widgets = WidgetSyncController(
       services: services, files: .forMainBundle())
     notifications = Self.makeNotifications(services: services, defaults: defaults, panel: panel)
@@ -141,6 +161,7 @@ public final class ShellController {
         return await services.link.activeRunsForQuitGuard()
       },
       stopService: {
+        await computer.shutdown()
         control.stop()
         await services.stopForQuit()
       },
@@ -170,6 +191,8 @@ public final class ShellController {
       self?.registrar?.reapply()
       self?.broadcast(.accessibilityTrust(.init(trusted: trusted)))
       self?.toolbar.update()
+      // `computer.state` carries the PostEvent grant, which macOS never announces by itself.
+      self?.broadcastComputerState()
     }
     panelHost.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
     screenRecording.onChange = { [weak self] trusted in
@@ -198,7 +221,7 @@ public final class ShellController {
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
     control.onConnectionState = { [weak self] state in
       self?.refreshStatus()
-      self?.systemActivityConnectionChanged(state)
+      self?.computerConnectionChanged(state)
       if state == .disconnected { _ = try? self?.presentLaunch(.unavailable) }
       if state == .connected {
         self?.attachments.serviceDidConnect()
@@ -213,6 +236,8 @@ public final class ShellController {
     startNotifications()
     startSystemActivity()
     control.start()
+    // Before the stream's first connection opens, which says whether this shell is the host.
+    startComputer()
     updater.start()
     miniPanel.start()
     trust.start()
@@ -264,18 +289,6 @@ public final class ShellController {
   }
 
   // MARK: Entry points for the bridge
-
-  /// A new settings window opens `commandId`'s editor or `section`; an open one keeps its page,
-  /// which the page's own window message steers.
-  func openSettings(commandId: String?, section: String?) {
-    // The settings window would activate and order in against the capture overlays.
-    guard !screenshots.isCapturing else { return }
-    settings.open(
-      fragment: SettingsWindowController.fragment(commandId: commandId, section: section),
-      title: ShellStrings.shared.text(.windowSettingsTitle))
-  }
-
-  func closeSettings() { settings.close() }
 
   func applyShortcuts(_ registrations: [ShortcutRegistration], selectionWanted: Bool)
     -> [ShortcutResult]

@@ -58,6 +58,20 @@ struct RelayHTTPTests {
     return [await settled];
     """
 
+  /// Frames a view without a `sandbox` attribute, so only the document's own CSP can sandbox it,
+  /// and answers what the frame posted: `[origin, blocked directive]`, or nulls after 4 s.
+  private static let viewFrame = """
+    const frame = document.createElement('iframe');
+    const posted = new Promise((resolve) => window.addEventListener('message', (event) => {
+      if (event.source === frame.contentWindow) resolve(event.data);
+    }));
+    frame.src = 'ai-view://view/t1/c1?theme=dark&lang=en';
+    document.body.append(frame);
+    const late = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
+    const data = await Promise.race([posted, late]);
+    return [data?.origin ?? null, data?.blocked ?? null];
+    """
+
   @Test("Serves bundle files with an explicit type and the production CSP")
   func assets() async throws {
     let h = try await RelayHarness.started()
@@ -123,6 +137,72 @@ struct RelayHTTPTests {
     #expect(await Task.until { h.handler.liveTaskCount == 0 })
   }
 
+  @Test("Frames views from the service with the token, sandboxed and without network")
+  func viewFrames() async throws {
+    let h = try await RelayHarness.started()
+    defer { h.tearDown() }
+    let posted = try await h.values(Self.viewFrame)
+    #expect(posted[0] as? String == "null")
+    #expect(posted[1] as? String == "connect-src")
+    #expect(!h.stub.hits.contains { $0.path == "/v1/probe" })
+    let hit = try #require(h.stub.hits.first { $0.path.contains("/views/") })
+    #expect("\(hit.method) \(hit.path)" == "GET /v1/tasks/t1/views/c1")
+    #expect(hit.headers["authorization"] == "Bearer \(h.stub.token)")
+    for name in ["origin", "referer", "cookie", "x-relay-epoch"] {
+      #expect(hit.headers[name] == nil)
+    }
+    #expect(await Task.until { h.views.liveTaskCount == 0 })
+  }
+
+  @Test("Answers view documents with their headers, passes errors through, refuses the rest")
+  func viewAnswers() async throws {
+    let h = try await RelayHarness.started()
+    defer { h.tearDown() }
+    let document = await Self.view(h, "ai-view://view/t1/c1?theme=dark")
+    #expect(document.response?.statusCode == 200)
+    for (name, value) in ViewOrigin.documentHeaders {
+      #expect(document.response?.value(forHTTPHeaderField: name) == value)
+    }
+    let host = try #require(h.stub.hits.last?.headers["host"])
+    #expect(document.body == Data(StubService.viewDocument(host: host).utf8))
+    let head = await Self.view(h, "ai-view://view/t1/c1", method: "HEAD")
+    #expect(head.response?.statusCode == 200)
+    #expect(head.body.isEmpty)
+    #expect(h.stub.hits.last.map { "\($0.method) \($0.path)" } == "GET /v1/tasks/t1/views/c1")
+
+    let missing = await Self.view(h, "ai-view://view/t1/missing")
+    #expect(missing.response?.statusCode == 404)
+    #expect(missing.response?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    let apiPolicy = RelayHeaders.responseDefaults["Content-Security-Policy"]
+    #expect(missing.response?.value(forHTTPHeaderField: "Content-Security-Policy") == apiPolicy)
+    let widget = await Self.view(h, "ai-view://view/t1/c1/widget?theme=dark")
+    #expect(widget.response?.statusCode == 404)
+    #expect(
+      h.stub.hits.last.map { "\($0.method) \($0.path)" } == "GET /v1/tasks/t1/views/c1/widget")
+    let hits = h.stub.hits.count
+    #expect(await Self.view(h, "ai-view://view/t1/c1", method: "POST").response?.statusCode == 405)
+    #expect(await Self.view(h, "ai-view://view/t1/c1", document: nil).response?.statusCode == 403)
+    #expect(await Self.view(h, "ai-view://view/t1").response?.statusCode == 404)
+    #expect(h.stub.hits.count == hits)
+    try FileManager.default.removeItem(at: h.dataDirectory.appending(path: "endpoint.json"))
+    #expect(await Self.view(h, "ai-view://view/t1/c1").response?.statusCode == 503)
+    #expect(h.views.liveTaskCount == 0)
+  }
+
+  /// Starts a view request as WebKit would and waits for the handler's whole answer.
+  private static func view(
+    _ h: RelayHarness, _ url: String, method: String = "GET",
+    document: String? = "ai-app://renderer/"
+  ) async -> RecordingSchemeTask {
+    var request = URLRequest(url: URL(string: url)!)
+    request.httpMethod = method
+    request.mainDocumentURL = document.flatMap(URL.init(string:))
+    let task = RecordingSchemeTask(request)
+    h.views.webView(h.webView, start: task)
+    _ = await Task.until { task.ended }
+    return task
+  }
+
   @Test("Development: proxies Vite, runs the refresh preamble by hash, blocks other inline script")
   func devServer() async throws {
     let h = try await RelayHarness.started(devServer: true)
@@ -149,7 +229,7 @@ struct RelayHTTPTests {
     #expect(result.dropFirst(5).compactMap { $0 as? Int } == [200, 403, 403, 200])
   }
 
-  @Test("Refuses requests another origin's page sends to ai-app://renderer")
+  @Test("Refuses requests and view frames another origin's page sends to the shell's schemes")
   func refusesForeignOrigin() async throws {
     let h = try await RelayHarness.started()
     defer { h.tearDown() }
@@ -157,6 +237,7 @@ struct RelayHTTPTests {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
     configuration.setURLSchemeHandler(h.handler, forURLScheme: RendererSchemeHandler.scheme)
+    configuration.setURLSchemeHandler(h.views, forURLScheme: ViewSchemeHandler.scheme)
     configuration.setURLSchemeHandler(other, forURLScheme: "ai-app-other")
     let view = WKWebView(frame: .zero, configuration: configuration)
     view.load(URLRequest(url: URL(string: "ai-app-other://page/")!))
@@ -167,11 +248,17 @@ struct RelayHTTPTests {
       await fetch(target, { method: 'POST', mode: 'no-cors', body: 'x' }).catch(() => null);
       await fetch(target, { mode: 'no-cors' }).catch(() => null);
       await fetch(target).catch(() => null);
+      const frame = document.createElement('iframe');
+      const loaded = new Promise((resolve) => { frame.onload = resolve; });
+      frame.src = 'ai-view://view/t1/c1';
+      document.body.append(frame);
+      await Promise.race([loaded, new Promise((resolve) => setTimeout(resolve, 4000))]);
       return 'sent';
       """
     let sent = try await view.callAsyncJavaScript(script, contentWorld: .page)
     #expect(sent as? String == "sent")
     #expect(h.stub.hits.count == before)
+    #expect(await Task.until { h.views.liveTaskCount == 0 })
   }
 }
 

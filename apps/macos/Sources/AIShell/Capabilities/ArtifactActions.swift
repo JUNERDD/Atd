@@ -11,6 +11,7 @@ final class ArtifactActions {
   private let services: ShellServices
   private let downloads: URL
   private let confirmations: ConfirmationPrompter
+  private let arbiter: DeviceArbiter
 
   private enum OpenChoice {
     case reveal, open, cancel
@@ -24,10 +25,14 @@ final class ArtifactActions {
       .appending(path: "downloads")
   }
 
-  init(services: ShellServices, downloads: URL, confirmations: ConfirmationPrompter) {
+  init(
+    services: ShellServices, downloads: URL, confirmations: ConfirmationPrompter,
+    arbiter: DeviceArbiter
+  ) {
     self.services = services
     self.downloads = downloads
     self.confirmations = confirmations
+    self.arbiter = arbiter
   }
 
   /// The downloaded file as the page's `FileRef`, whatever the user chose for a confirmed open.
@@ -46,9 +51,9 @@ final class ArtifactActions {
     case .reveal:
       NSWorkspace.shared.activateFileViewerSelecting([downloaded.fileURL])
     case .copyPath:
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(
-        downloaded.fileURL.path(percentEncoded: false), forType: .string)
+      guard arbiter.writeClipboard(downloaded.fileURL.path(percentEncoded: false)) else {
+        throw BridgeError("The clipboard is in use; try again.")
+      }
     }
     return FileRef(
       id: artifactId, name: downloaded.name, size: downloaded.size, type: downloaded.mime)

@@ -1,3 +1,4 @@
+import { SHOW_UI_TOOL } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Artifact } from '../../../client/agent/task-schema';
 import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
@@ -78,9 +79,11 @@ export function isLiveBlock(block: Block, request: PermissionRequest | undefined
 
 /** Foldable work: tool calls, questions, and thinking. Pending edits fold like any other
  * step now — the approval diff moved to the composer popover, so the transcript row only needs
- * the tool name plus waiting text. */
+ * the tool name plus waiting text. A view the agent shows (`show_ui`) is part of its answer, not a
+ * step of its work, so it stands alone like prose; updates to it (`update_ui`) are steps. */
 function isActivityKind(block: Block): boolean {
-  return block.kind === 'thinking' || block.kind === 'tool' || block.kind === 'question';
+  if (block.kind === 'tool') return block.name !== SHOW_UI_TOOL;
+  return block.kind === 'thinking' || block.kind === 'question';
 }
 
 function isIgnoredBlock(block: Block): boolean {
@@ -124,8 +127,8 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
     activity = [];
   };
   rest.forEach((block) => {
-    // Assistant prose always renders standalone at full strength; only foldable work enters an
-    // activity group.
+    // Assistant prose and views always render standalone at full strength; only foldable work
+    // enters an activity group.
     if (isActivityKind(block)) {
       activity.push(block);
       return;

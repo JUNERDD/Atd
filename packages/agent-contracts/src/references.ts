@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ApplicationReferenceSchema } from './application-reference.js';
 import { Identifier } from './identifiers.js';
 import { McpServerIdSchema } from './mcp.js';
 import { MemoryTargetSchema } from './memory.js';
@@ -17,8 +18,10 @@ export const MAX_RUN_REFERENCES = 16;
  * command's definition, and `memory` gives it that memory entry's content. Agents and MCP servers
  * an installed plugin contributes are named `<plugin>:<item>`; a command is named by its id, and a
  * memory entry by its content-derived id with its target, so an edited entry no longer resolves.
+ * An application names an installed app by bundle id, without granting computer access.
  */
 export const RunReferenceSchema = Type.Union([
+  ApplicationReferenceSchema,
   Type.Object({ kind: Type.Literal('task'), taskId: Identifier }, { additionalProperties: false }),
   Type.Object(
     { kind: Type.Literal('agent'), name: SubagentNameSchema },
@@ -42,6 +45,8 @@ export type RunReference = Static<typeof RunReferenceSchema>;
 /** Identity of a referenced item; one staging, and one run, holds each item once. */
 export function runReferenceKey(reference: RunReference): string {
   switch (reference.kind) {
+    case 'application':
+      return `application:${reference.bundleId}`;
     case 'task':
       return `task:${reference.taskId}`;
     case 'agent':

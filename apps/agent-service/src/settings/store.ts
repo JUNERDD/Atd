@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_SHORTCUTS,
+  DEFAULT_VIEW_INITIATIVE,
   parse,
   parseShortcutBindings,
   UserSettingsSchema,
@@ -45,14 +46,34 @@ export async function readStoredSettings(
   }
   return parse(
     SettingsFileSchema,
-    withAddedAppearance(
-      withAddedCommandTypingAnimation(
-        withAddedCommandTyping(
-          withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+    withAddedViewInitiative(
+      withAddedVisionModel(
+        withAddedAppearance(
+          withAddedCommandTypingAnimation(
+            withAddedCommandTyping(
+              withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+            ),
+          ),
         ),
       ),
     ),
   );
+}
+
+/** A file written before views had a level takes the default, which is proactive. */
+function withAddedViewInitiative(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return { ...file, settings: { viewInitiative: DEFAULT_VIEW_INITIATIVE, ...settings } };
+}
+
+/** Old settings follow the task model without selecting another connection. */
+function withAddedVisionModel(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return { ...file, settings: { computerVisionModel: null, ...settings } };
 }
 
 /** A file written before the appearance setting existed follows the system. */
@@ -213,12 +234,14 @@ export class SettingsStore {
       const settings: UserSettings = {
         language: null,
         appearance: null,
+        computerVisionModel: null,
         permissionTier: defaultTier,
         shellAllowlist: [],
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
         commandTyping: DEFAULT_COMMAND_TYPING,
         commandTypingAnimation: null,
+        viewInitiative: DEFAULT_VIEW_INITIATIVE,
         onboardingCompleted: false,
         onboardingProgress: null,
       };

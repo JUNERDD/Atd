@@ -1,5 +1,7 @@
 import type {
   AutomationDraft,
+  ComputerAuthorizationResult,
+  ComputerTrialResponse,
   AutomationItem,
   AutomationListResponse,
   AutomationRun,
@@ -92,6 +94,21 @@ export interface AutomationsBridge {
    * cannot say.
    */
   taskExists(taskId: string): Promise<boolean>;
+  /**
+   * Starts an attended trial of the saved automation's computer steps, which act for real; rejects
+   * with `AutomationConflictError` when `expectedRevision` is no longer current.
+   */
+  computerTrial(id: string, expectedRevision: number): Promise<ComputerTrialResponse>;
+  /**
+   * Asks the shell to authorize the saved automation's computer scope: it shows the exact scope in
+   * its own dialog and records the grant only when the person allows it there.
+   */
+  authorizeComputer(id: string, expectedRevision: number): Promise<ComputerAuthorizationResult>;
+  /**
+   * Clears the hold that run `runId` set after a person reviewed what it did; rejects with
+   * `AutomationConflictError` when another run holds it now.
+   */
+  resolveComputerHold(id: string, runId: string): Promise<void>;
   /** Any automation, run, notice or the global pause changed, or the service reconnected. */
   onChange(listener: () => void): () => void;
 }

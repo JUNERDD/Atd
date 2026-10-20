@@ -76,6 +76,7 @@
     "reorderQueued": "拖动调整顺序",
     "chipsAfterRun": "请等这次运行结束后再发送提及和技能。",
     "chips": {
+      "application": "应用：{{name}}",
       "file": "文件：{{name}}",
       "folder": "文件夹：{{name}}",
       "task": "对话：{{name}}",
@@ -258,6 +259,7 @@
     "listLabel": "建议",
     "sectionsLabel": "分组",
     "groups": {
+      "applications": "应用",
       "commands": "快捷指令",
       "skills": "技能",
       "recentAttached": "最近附加",

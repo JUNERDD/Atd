@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { CommandOutputSchema } from './command-output.js';
+import { ComputerRunRequestSchema } from './computer-grants.js';
 import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
 import { Identifier, OperationId } from './identifiers.js';
 import { ThinkingLevelSchema } from './models.js';
@@ -82,6 +83,8 @@ export const CommandRunRequestSchema = Type.Object(
      * run never starts with half of a deleted shortcut's settings. Absent for every other launch.
      */
     shortcutId: Type.Optional(Identifier),
+    /** Registered computer targets the run may act on (`SubmitTaskRequest.computer`). */
+    computer: Type.Optional(ComputerRunRequestSchema),
   },
   { additionalProperties: false },
 );

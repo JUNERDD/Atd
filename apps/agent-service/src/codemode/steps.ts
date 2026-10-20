@@ -91,6 +91,8 @@ function stepDetails(name: string, raw: unknown): CodemodeStepDetails | undefine
       return details;
     case 'app':
     case 'codemode':
+    // `computer` is model-only, so a script never reaches it.
+    case 'computer':
     case 'mcpApproval':
     case 'subagent':
     case 'subagentDefine':

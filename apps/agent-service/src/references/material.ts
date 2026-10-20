@@ -6,6 +6,7 @@ import { mcpProxyPrefix } from '../mcp/index.js';
 import type { McpToolSelection } from '../mcp/staging.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import { resolveAgentReference } from './agents.js';
+import { applicationHint } from './application.js';
 import {
   CONVERSATION_EXCERPT_CHARS,
   excerptConversation,
@@ -113,6 +114,9 @@ async function resolveStaged(
   const saved: SavedItems = savedItems(context);
   for (const reference of references) {
     switch (reference.kind) {
+      case 'application':
+        hints.push({ reference, ...applicationHint(reference) });
+        break;
       case 'task': {
         if (sources.length >= MAX_TASK_REFERENCES) {
           const reason = `only ${MAX_TASK_REFERENCES} conversations can be referenced per message`;
@@ -300,6 +304,8 @@ function taskLabel(context: ReferenceContext, taskId: string): string {
 
 function target(reference: RunReference): { reference: string; target: string } {
   switch (reference.kind) {
+    case 'application':
+      return { reference: 'application', target: reference.bundleId };
     case 'task':
       return { reference: 'task', target: reference.taskId };
     case 'agent':

@@ -23,8 +23,9 @@ function SentText({ segments }: { segments: readonly SentSegment[] }) {
         ) : (
           <ChipToken
             key={index}
-            kind={segment.kind}
-            name={sentChipName(segment)}
+            {...(segment.kind === 'application'
+              ? { kind: segment.kind, bundleId: segment.bundleId, name: segment.name }
+              : { kind: segment.kind, name: sentChipName(segment) })}
             onReveal={revealerOf(segment)}
           />
         ),

@@ -90,6 +90,7 @@ export class NativeBridge {
     'task.open': new Set(),
     'commandProgress.action': new Set(),
     'commandOptions.picked': new Set(),
+    'computer.state': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

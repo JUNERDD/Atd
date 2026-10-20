@@ -6,10 +6,12 @@ import Carbon.HIToolbox
 /// Performs `text.write` (contract: `text-calls.ts`): checks the refusals of ``TextWritePlan``
 /// before changing anything, then hides the panel, brings the target app forward, restores its
 /// field and selection (``FieldRestore``) and types the text in through the clipboard as the
-/// user's typing setting says (``ClipboardPaste``), resolving once the field shows the last of it in. One
-/// write runs at a time; a second one while it runs fails.
+/// user's typing setting says (``ClipboardPaste``), resolving once the field shows the last of it in. A
+/// write holds global input and the clipboard (``DeviceArbiter``) from its checks until the
+/// user's pasteboard is back; it fails without changing anything while another feature of the
+/// shell holds either, a second write included, or a background write still does after
+/// ``DeviceArbiter/userWait``.
 enum TextWriter {
-  private static var writing = false
   /// How long the target app gets to come forward.
   private static let activationLimit: Duration = .seconds(1)
   /// A net over the restore's AX messages, each bounded by the messaging timeout.
@@ -17,12 +19,16 @@ enum TextWriter {
   /// Lets the window server route the keyboard to the target app before keys are posted.
   private static let settle: Duration = .milliseconds(60)
 
-  static func write(_ params: TextWriteParams, to target: WriteTarget?, hidePanel: () -> Void)
-    async -> TextWriteResult
-  {
-    guard !writing else { return refuse(.failed) }
-    writing = true
-    defer { writing = false }
+  static func write(
+    _ params: TextWriteParams, to target: WriteTarget?, arbiter: DeviceArbiter,
+    hidePanel: () -> Void
+  ) async -> TextWriteResult {
+    guard
+      let claim = try? await arbiter.claim(
+        [.globalInput, .clipboard], owner: .user(.textWrite),
+        deadline: .now + DeviceArbiter.userWait)
+    else { return refuse(.failed) }
+    defer { claim.release() }
     let app = target.flatMap { NSRunningApplication(processIdentifier: $0.pid) }
     let facts = TextWriteFacts(
       trusted: AXIsProcessTrusted(), targetAvailable: app.map { !$0.isTerminated } ?? false,

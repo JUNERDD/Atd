@@ -13,6 +13,7 @@ import {
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { copyDraft, draftFromCommand, draftOf, newDraft } from './automation-draft';
 import { AutomationEditor } from './automation-editor';
+import { authorizeComputer } from './computer-authorize';
 import { AutomationOverview } from './automation-overview';
 import { AutomationRuns, RunRowsPlaceholder } from './automation-runs';
 import { startRun, useAutomations } from './use-automations';
@@ -110,7 +111,7 @@ export function AutomationSettings({
         automations={items}
         commands={commands}
         onCancel={history.back}
-        onSaved={(item, thenRun) => {
+        onSaved={(item, then) => {
           // A saved draft becomes its automation, which Forward then reopens.
           if (saved) history.leave(from);
           else {
@@ -119,7 +120,8 @@ export function AutomationSettings({
             history.leave(page);
           }
           showToast({ kind: 'info', text: t('list.saved') });
-          if (thenRun) run(item);
+          if (then === 'run') run(item);
+          else if (then) authorizeComputer(item, t, then === 'authorizeAndEnable');
         }}
       />
     );

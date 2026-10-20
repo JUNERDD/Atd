@@ -6,16 +6,21 @@ import {
   type AutomationStatus,
   type AutomationTrigger,
   type AutomationTriggerProblem,
+  type ComputerHold,
   type ModelSelection,
   type ServiceCommandFull,
 } from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
+import { commandFingerprint } from '../commands/fingerprint.js';
 import { defaultArguments, parameterError, templateReferences } from '../commands/templates.js';
 import { readTempCredentials } from '../credentials.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { FolderStore } from '../folders/store.js';
 import { findPluginCommand } from '../plugins/commands.js';
 import { TEMP_CONNECTION_ID } from '../tasks/run-selection.js';
+import { checkComputerDraft } from './computer-checks.js';
+import type { AutomationComputer } from './computer-deps.js';
+import { grantProblem } from './computer-grant.js';
 import { scheduleProblem, validTimeZone } from './schedule.js';
 
 /**
@@ -31,6 +36,10 @@ export interface CheckContext {
   automations: readonly Automation[];
   lookups: Lookups;
   now: number;
+  /** Computer use; absent when the service runs without it. */
+  computer?: AutomationComputer;
+  /** The automation's standing computer hold (`AutomationState.computerHold`). */
+  hold: (automationId: string) => ComputerHold | undefined;
 }
 
 /** The saved commands and provider connections, read once per check. */
@@ -79,6 +88,9 @@ const PROBLEM_TEXT: Record<Exclude<Problem, 'commandUnavailable'>, string> = {
   chainLoop: 'Following that automation would make a chain lead back to this one.',
   folderUnavailable: 'The watched folder cannot be read.',
   modelUnavailable: "The chosen model's provider connection no longer exists.",
+  computerNeedsAuthorization:
+    'Its computer actions are not authorized for this version; run a trial and authorize it again.',
+  computerHold: 'An earlier run left computer actions unresolved; review that run first.',
 };
 
 /** The 400 a save answers: the code in parentheses, then a sentence. */
@@ -225,12 +237,32 @@ export async function checkDraft(
     const refusal = commandRefusal(command, draft.action, draft.trigger);
     if (refusal) throw problemError('commandUnavailable', refusal);
   }
+  checkComputerDraft(draft, ctx.computer?.bindings);
+}
+
+/**
+ * Whether the automation's computer scope is authorized as it is now: its grant matches the live
+ * definition, recipe and bindings, is not revoked, and a command action's command still has the
+ * fingerprint the grant approved. An automation without a computer scope needs no grant.
+ */
+export function computerAuthorized(
+  automation: Automation,
+  ctx: CheckContext,
+  command: ServiceCommandFull | null,
+): boolean {
+  if (!automation.policy.computer) return true;
+  if (!ctx.computer || grantProblem(automation, ctx.computer.bindings)) return false;
+  if (automation.action.kind !== 'command') return true;
+  return (
+    command !== null && automation.computerGrant?.commandFingerprint === commandFingerprint(command)
+  );
 }
 
 /**
  * Why a saved automation cannot fire as it is now (`AutomationStatus.problem`): its trigger, a
- * folder, its command or its model no longer resolves. `folderTrouble` is what the last scan of
- * its watched folder found.
+ * folder, its command or its model no longer resolves, a computer hold stands, or its computer
+ * scope is not authorized as it is now. `folderTrouble` is what the last scan of its watched
+ * folder found.
  */
 export async function firingProblem(
   automation: Automation,
@@ -246,5 +278,7 @@ export async function firingProblem(
   if (action.kind === 'command' && commandRefusal(command, action, automation.trigger))
     return 'commandUnavailable';
   if (!(await ctx.lookups.modelAvailable(runModel(automation, command)))) return 'modelUnavailable';
+  if (automation.policy.computer && ctx.hold(automation.id)) return 'computerHold';
+  if (!computerAuthorized(automation, ctx, command)) return 'computerNeedsAuthorization';
   return undefined;
 }

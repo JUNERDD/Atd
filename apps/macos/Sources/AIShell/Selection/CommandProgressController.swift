@@ -59,18 +59,21 @@ final class CommandProgressController: NSObject {
   let answerFocus = AnswerFocusWatch()
   /// The shell's own write of the answer card's answer into the focused field.
   let answerWriter: AnswerWriter
+  /// Claims the clipboard for Copy and for the answer a stopped write leaves there.
+  let arbiter: DeviceArbiter
   /// The answer card's write hot keys, held while it offers a write (``holdWriteKeys(_:)``).
   var writeKeys: [UInt32] = []
 
   init(
     _ panel: WebViewHost, toolbar: SelectionToolbarController,
     returnFocus: @escaping (String) -> Void, attachments: ComposeAttachments,
-    answerWriter: @escaping AnswerWriter
+    answerWriter: @escaping AnswerWriter, arbiter: DeviceArbiter
   ) {
     self.panel = panel
     self.returnFocus = returnFocus
     self.attachments = attachments
     self.answerWriter = answerWriter
+    self.arbiter = arbiter
     super.init()
     island.onVisibilityChange = { [weak toolbar] visible in toolbar?.hudYields(visible) }
     island.model.act = { [weak self] action in self?.act(action) }
@@ -233,12 +236,12 @@ final class CommandProgressController: NSObject {
   }
 
   /// Copy on the answer card: the whole answer goes on the clipboard as plain text, and the
-  /// card turns into "Copied", giving the keyboard back to the target's field.
+  /// card turns into "Copied", giving the keyboard back to the target's field. While another
+  /// write holds the clipboard the card stays as it is.
   func copyAnswer() {
-    guard let target = state.shown?.target, let answer = state.answerShown else { return }
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-    pasteboard.setString(answer, forType: .string)
+    guard let target = state.shown?.target, let answer = state.answerShown,
+      arbiter.writeClipboard(answer)
+    else { return }
     present(target: target, phase: .copied)
   }
 

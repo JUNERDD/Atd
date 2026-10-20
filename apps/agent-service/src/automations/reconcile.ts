@@ -29,7 +29,8 @@ export interface ReconcileDeps {
  * whose task run exists is watched again: the supervisor settles a run that already ended from the
  * ledger (recovery marked runs that were live as interrupted), and a queued run of an automation
  * that is off is cancelled first. Queued runs of automations that were deleted or turned off are
- * cancelled too.
+ * cancelled too. An adopted run settles through the supervisor, which reads its durable computer
+ * facts: one that left effects unresolved before the restart needs attention and sets the hold.
  */
 export async function reconcileRuns(deps: ReconcileDeps): Promise<void> {
   const { store, ledger } = deps;

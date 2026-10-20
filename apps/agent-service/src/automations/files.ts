@@ -6,6 +6,7 @@ import {
   AutomationPauseReasonSchema,
   AutomationRunSchema,
   AutomationSchema,
+  ComputerHoldSchema,
   MAX_AUTOMATION_NOTICES,
   MAX_AUTOMATIONS,
   type AutomationRun,
@@ -66,6 +67,11 @@ export const AutomationStateSchema = Type.Object(
     recentFires: Type.Array(Type.String(), { maxItems: AUTOMATION_FIRES_PER_HOUR }),
     /** Run records, newest first. */
     runs: Type.Array(AutomationRunSchema, { maxItems: AUTOMATION_RUN_HISTORY }),
+    /**
+     * Unresolved computer side effects of a run, written with its settled record. It blocks the
+     * automation's computer runs until a person resolves it (`computer-edits.ts` `resolveHold`).
+     */
+    computerHold: Type.Optional(ComputerHoldSchema),
   },
   { additionalProperties: false },
 );

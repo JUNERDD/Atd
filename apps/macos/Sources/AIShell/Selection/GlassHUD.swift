@@ -1,19 +1,20 @@
 import AICore
 import AppKit
 
-/// A Liquid Glass status capsule near the bottom of the screen (``AnnotationGlassBar``, the
-/// single native glass material): the selection toolbar's listening HUD, which yields its place
-/// while the command island (``IslandController``) is on screen. Clients supply only the row and
-/// react to its buttons; this owns everything else:
+/// A Liquid Glass status capsule near the bottom of the screen (``AnnotationGlassBar``, the single
+/// native glass material): the selection toolbar's listening HUD, which yields its place while
+/// the command island (``IslandController``) is on screen. Clients supply only the row and react
+/// to its buttons; this owns everything else:
 ///
 /// - the window: a borderless ``ToolbarWindow`` that never takes the keyboard or activates Atd,
 ///   joins every Space and reaches ``inset`` past the capsule so its shadow and entrance are
 ///   never cut off (the margin is transparent to clicks);
 /// - placement (``GlassHUDPlacement``): every appearance starts at home, the bottom centre of
-///   the display under the pointer; a row with a grip drags within the work area of the display
-///   under it and stays where it is dropped while on screen, and a double-click puts it back;
-/// - motion: it enters like the selection toolbar (``SelectionToolbarEntrance``, growing from
-///   its bottom edge), changes in place without one, and fades out on ``exit()``;
+///   the display under the pointer; a row with a grip drags within the work area of
+///   the display under it and stays where it is dropped while on screen, and a double-click puts
+///   it back;
+/// - motion: it enters like the selection toolbar (``SelectionToolbarEntrance``, growing up from
+///   the bottom edge), changes in place without one, and fades out on ``exit()``;
 /// - timing: a show `lasting` a duration exits after it unless something showed meanwhile;
 /// - hover (``SelectionToolbarHover``): the button wash and pointing hand, the open hand on the
 ///   grip; tracking pauses while the pointer rests away and the window's ``HoverWakeView``
@@ -74,6 +75,12 @@ final class GlassHUD: NSObject {
 
   /// On screen and not leaving.
   var isShown: Bool { window.isVisible && window.alphaValue == 1 }
+
+  /// While true, clicks go through the capsule to whatever is under it.
+  var passesClicks: Bool {
+    get { window.ignoresMouseEvents }
+    set { window.ignoresMouseEvents = newValue }
+  }
 
   @objc private func languageChanged() {
     if isShown, let rebuild { present(rebuild()) }

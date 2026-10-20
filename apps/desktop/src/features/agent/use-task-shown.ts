@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 /**
  * Tells the shell which task the panel shows (`null` for none), on mount and on every change, so a
@@ -6,7 +6,7 @@ import { useEffect } from 'react';
  * host is installed, so the first report is never lost.
  */
 export function useTaskShown(taskId: string | null) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.desktop?.notifications?.taskShown?.(taskId);
   }, [taskId]);
 }

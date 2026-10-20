@@ -82,6 +82,9 @@ function isShellPath(pathPattern: string): boolean {
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/folders/register' ||
+    pathPattern === '/v1/computer/bindings' ||
+    pathPattern === '/v1/tasks/:taskId/views/:callId' ||
+    pathPattern === '/v1/tasks/:taskId/views/:callId/widget' ||
     pathPattern === '/v1/stream'
   );
 }
@@ -124,9 +127,31 @@ test('the route manifest classifies every route the service serves', async () =>
     'PATCH /v1/automation-settings',
     'GET /v1/automation-notices',
     'POST /v1/automation-notices/ack',
+    // Computer authorization: only the shell grants; the page starts trials and resolves holds.
+    'GET /v1/admin/approvals/automation-computer/:id',
+    'POST /v1/admin/approvals/automation-computer',
+    'POST /v1/automations/:id/computer-trial',
+    'POST /v1/automations/:id/computer-hold/resolve',
     'POST /v1/system-activity',
     'GET /v1/task-notices',
     'POST /v1/task-notices/ack',
+    // Computer use: only the shell writes a target's content; the page reads, deletes and stops.
+    'GET /v1/computer',
+    'GET /v1/computer/progress',
+    'POST /v1/computer/bindings',
+    'DELETE /v1/computer/bindings/:id',
+    'GET /v1/computer/facts/unresolved',
+    'POST /v1/computer/facts/resolve',
+    'POST /v1/computer/stop-all',
+    // Add-ons: the page manages them; the shell reads the same list with its main token.
+    'GET /v1/addons',
+    'POST /v1/addons/:id/install',
+    'POST /v1/addons/:id/cancel',
+    'DELETE /v1/addons/:id',
+    // Generative views: only the shell fetches a view's window and widget documents, for the view
+    // origin it serves.
+    'GET /v1/tasks/:taskId/views/:callId',
+    'GET /v1/tasks/:taskId/views/:callId/widget',
     ...[...SHELL_MCP_PATHS].map((pathPattern) =>
       pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
     ),

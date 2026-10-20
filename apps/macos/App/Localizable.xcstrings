@@ -2017,6 +2017,710 @@
         }
       }
     },
+    "computerApproval.allow" : {
+      "comment" : "Button that authorizes an automation's computer use",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authorize"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "授权"
+          }
+        }
+      }
+    },
+    "computerApproval.effect.business" : {
+      "comment" : "Effect of a step that submits a form",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "submits"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提交"
+          }
+        }
+      }
+    },
+    "computerApproval.effect.change" : {
+      "comment" : "Effect of a step that changes a page or app without submitting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "changes the page or app"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修改页面或应用"
+          }
+        }
+      }
+    },
+    "computerApproval.effect.read" : {
+      "comment" : "Effect of a step that only reads",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reads only"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅读取"
+          }
+        }
+      }
+    },
+    "computerApproval.field.app" : {
+      "comment" : "Label of the app a native target is",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用："
+          }
+        }
+      }
+    },
+    "computerApproval.field.sites" : {
+      "comment" : "Label of the websites a browser target may reach",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sites:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网站："
+          }
+        }
+      }
+    },
+    "computerApproval.field.steps" : {
+      "comment" : "Heading of the steps an automation may perform",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steps:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "步骤："
+          }
+        }
+      }
+    },
+    "computerApproval.field.target" : {
+      "comment" : "Label of a target an automation may act on, before its quoted name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标："
+          }
+        }
+      }
+    },
+    "computerApproval.message" : {
+      "comment" : "Body of the automation computer authorization; %lld is the most submits one run may make",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When it runs on its own, Atd works in the background on the targets below and does only these steps. Submits per run: at most %lld. Atd never retries a submission."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它自动运行时，Atd 只会在下列目标中于后台执行这些步骤。每次运行最多提交 %lld 次，且不会自动重试提交。"
+          }
+        }
+      }
+    },
+    "computerApproval.title" : {
+      "comment" : "Title of the confirmation before an automation may use the computer unattended; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow “%@” to use this Mac on its own?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许“%@”自行在这台 Mac 上操作吗？"
+          }
+        }
+      }
+    },
+    "computerBrowser.chromeMissing.download" : {
+      "comment" : "Button that opens the Google Chrome download page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Google Chrome"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取 Google Chrome"
+          }
+        }
+      }
+    },
+    "computerBrowser.chromeMissing.message" : {
+      "comment" : "Alert message when a browser target is prepared without Google Chrome installed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Websites Atd operates open in a separate Chrome profile that Atd manages. Install Google Chrome, then try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 操作的网站会在它管理的独立 Chrome 配置文件中打开。请先安装 Google Chrome，然后重试。"
+          }
+        }
+      }
+    },
+    "computerBrowser.chromeMissing.title" : {
+      "comment" : "Alert title when a browser target is prepared without Google Chrome installed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Chrome is required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要 Google Chrome"
+          }
+        }
+      }
+    },
+    "computerBrowser.signIn.done" : {
+      "comment" : "Button confirming that the person finished signing in to a managed browser profile",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "computerBrowser.signIn.message" : {
+      "comment" : "Message while the person signs in to a managed browser profile; %@ is the target's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd opened “%@” in a separate Chrome profile that it manages. Sign in there, then come back and click Done. Your own Chrome profile and its cookies are not used."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 已在它管理的独立 Chrome 配置文件中打开“%@”。请在那里登录，然后回到这里点击“完成”。不会使用你自己的 Chrome 配置文件及其 Cookie。"
+          }
+        }
+      }
+    },
+    "computerBrowser.signIn.title" : {
+      "comment" : "Title while the person signs in to a managed browser profile; %@ is the target's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录“%@”"
+          }
+        }
+      }
+    },
+    "computerMonitor.title" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Monitor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕监看"
+          }
+        }
+      }
+    },
+    "computerMonitor.sourceCount" : {
+      "comment" : "Independent native screen monitor: window subtitle with the number of sources shown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@sources@"
+          },
+          "substitutions" : {
+            "sources" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg Source"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg Sources"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@sources@"
+          },
+          "substitutions" : {
+            "sources" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 个来源"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "computerMonitor.emptyTitle" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Screens to Show"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可显示的画面"
+          }
+        }
+      }
+    },
+    "computerMonitor.emptyDetail" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screens appear here while this task uses the computer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务使用电脑时，画面会显示在这里。"
+          }
+        }
+      }
+    },
+    "computerMonitor.enlarge" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlarge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大"
+          }
+        }
+      }
+    },
+    "computerMonitor.allSources" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Sources"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部来源"
+          }
+        }
+      }
+    },
+    "computerMonitor.previousSource" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous Source"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一个来源"
+          }
+        }
+      }
+    },
+    "computerMonitor.nextSource" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Source"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一个来源"
+          }
+        }
+      }
+    },
+    "computerMonitor.keepOnTop" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep on Top"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持置顶"
+          }
+        }
+      }
+    },
+    "computerMonitor.live" : {
+      "comment" : "Independent native screen monitor: accessibility value of a source whose frames are showing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时"
+          }
+        }
+      }
+    },
+    "computerMonitor.starting" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在启动…"
+          }
+        }
+      }
+    },
+    "computerMonitor.blank" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Visible Content"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可见内容"
+          }
+        }
+      }
+    },
+    "computerMonitor.suspended" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temporarily Unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂时不可用"
+          }
+        }
+      }
+    },
+    "computerMonitor.captureFailed" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t Show This Source"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法显示此来源"
+          }
+        }
+      }
+    },
+    "computerMonitor.locked" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Locked"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕已锁定"
+          }
+        }
+      }
+    },
+    "computerMonitor.lockedDetail" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock this Mac to continue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解锁这台 Mac 后继续。"
+          }
+        }
+      }
+    },
+    "computerMonitor.targetUnavailable" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source No Longer Available"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来源已不可用"
+          }
+        }
+      }
+    },
+    "computerMonitor.permission" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Recording Not Allowed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未允许录屏"
+          }
+        }
+      }
+    },
+    "computerMonitor.openPrivacySettings" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Privacy Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开隐私设置"
+          }
+        }
+      }
+    },
+    "computerMonitor.disconnected" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Computer Disconnected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电脑已断开连接"
+          }
+        }
+      }
+    },
+    "computerMonitor.sharedSource" : {
+      "comment" : "Independent native screen monitor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared source %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "共享来源 %lld"
+          }
+        }
+      }
+    },
     "error.developmentLogs" : {
       "comment" : "Alert message when Show Service Logs is chosen in a development build",
       "extractionState" : "manual",
@@ -3849,6 +4553,258 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法显示这个小组件。"
+          }
+        }
+      }
+    },
+    "pointer.phase.clicking" : {
+      "comment" : "Live operation pointer label beside its arrow while an input was sent to the target",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clicking"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击中"
+          }
+        }
+      }
+    },
+    "pointer.phase.done" : {
+      "comment" : "Live operation pointer label beside its arrow while verification confirmed the step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        }
+      }
+    },
+    "pointer.phase.filling" : {
+      "comment" : "Live operation pointer label beside its arrow while a value is being filled into a field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filling in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "填写中"
+          }
+        }
+      }
+    },
+    "pointer.phase.acting" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acting"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作中"
+          }
+        }
+      }
+    },
+    "pointer.phase.typing" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入中"
+          }
+        }
+      }
+    },
+    "pointer.phase.clearing" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clearing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清空中"
+          }
+        }
+      }
+    },
+    "pointer.phase.scrollUp" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolling up"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向上滚动"
+          }
+        }
+      }
+    },
+    "pointer.phase.scrollDown" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolling down"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向下滚动"
+          }
+        }
+      }
+    },
+    "pointer.phase.scrollLeft" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolling left"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向左滚动"
+          }
+        }
+      }
+    },
+    "pointer.phase.scrollRight" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolling right"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向右滚动"
+          }
+        }
+      }
+    },
+    "pointer.phase.sent" : {
+      "comment" : "Live operation pointer feedback; sent confirms dispatch only, not the outcome.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input sent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已发出"
+          }
+        }
+      }
+    },
+    "pointer.phase.locating" : {
+      "comment" : "Live operation pointer label beside its arrow while the target is being located",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查找中"
+          }
+        }
+      }
+    },
+    "pointer.phase.verifying" : {
+      "comment" : "Live operation pointer label beside its arrow while the outcome is being checked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核对中"
+          }
+        }
+      }
+    },
+    "pointer.phase.waiting" : {
+      "comment" : "Live operation pointer label beside its arrow while waiting for the target to settle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待中"
           }
         }
       }

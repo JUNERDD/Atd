@@ -4,9 +4,10 @@ import {
   type AgentSession,
   type SessionManager,
 } from '@earendil-works/pi-coding-agent';
-import type { RunStatus, TaskRun } from '@atd/agent-contracts';
+import type { RunStatus, TaskRun, ViewInitiative } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
 import { compactionSettings } from './compaction/policy.js';
+import { restrictedComputerRunOf } from './computer/tool-set.js';
 import { pruneToolOutputs } from './compaction/prune.js';
 import type { RunFolder } from './folders/material.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
@@ -15,7 +16,7 @@ import type { LiveState } from './live-state.js';
 import { mcpServersSection } from './mcp/servers-section.js';
 import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
 import { ResourceStore } from './resources.js';
-import type { RunBinding } from './run-binding.js';
+import { DEFERRED_SERVICE_TOOLS, type RunBinding } from './run-binding.js';
 import { rewindSession } from './session-rewind.js';
 import { reuseRunModel } from './run-model.js';
 import { buildRunSession, openSessionBase } from './session-base.js';
@@ -100,6 +101,14 @@ export interface RunMaterial {
   catalog: RunSkillCatalog;
   /** The memory sections frozen with the run (memory/run-memory.ts, memory/session-memory.ts). */
   memory: RunMemory;
+  /** Whether the run has the `computer` tool, decided at freeze (computer/tool-set.ts). */
+  computer: boolean;
+  /**
+   * How readily the model shows views, as the stored setting stood when the run started
+   * (views/initiative.ts). Null for a lite run, which has no view tools, and before a runner's
+   * first run; without a level the model is told nothing about views.
+   */
+  viewInitiative: ViewInitiative | null;
 }
 
 /** The material before a runner's first run; a run replaces it before its session is bound. */
@@ -111,6 +120,8 @@ export const NO_RUN_MATERIAL: RunMaterial = {
   skills: [],
   catalog: EMPTY_SKILL_CATALOG,
   memory: EMPTY_RUN_MEMORY,
+  computer: false,
+  viewInitiative: null,
 };
 
 /**
@@ -156,6 +167,7 @@ export async function createLiveState(
     },
     taskResources: resources.forTask(taskId),
     folders: () => deps.currentMaterial().folders.map((folder) => folder.path),
+    writesInsideOnly: () => restrictedComputerRunOf(ctx.ledger, taskId, deps.currentRunId()),
     upsertMcp: binding.mcp.upsertMcp,
     listMcp: binding.mcp.listMcp,
   };
@@ -180,12 +192,18 @@ export async function createLiveState(
       },
   });
   state = await buildRunSession(deps, run, base, {
-    systemPrompt: SERVICE_SYSTEM_PROMPT,
+    systemPrompt: [
+      SERVICE_SYSTEM_PROMPT,
+      ...DEFERRED_SERVICE_TOOLS.filter((name) => binding.tools.includes(name)).map(
+        (name) =>
+          `The ${name} management tool loads on demand: if it is not declared, use tool_search with query: "${name}" and limit: 1 before managing ${name === 'command' ? 'saved commands' : 'automations'}.`,
+      ),
+    ].join(' '),
     extensionFactories: [
       serviceTools(host),
       binding.mcp.factory,
       mcpServersSection(binding.mcp.bindings),
-      // Registered inactive; the allowlist declares it when a bound MCP server is deferred.
+      // Registered inactive; the allowlist declares it for deferred service tools or MCP servers.
       createToolSearchExtension(),
       // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
       codemodeExtension({
@@ -251,15 +269,19 @@ export async function applyRunToSession(
 /**
  * The tools a session declares for a run. Pi activates every tool its allowlist names, deferred
  * ones included, and with an allowlist it does not restore the transcript's loadout. So deferred
- * MCP proxies are left out, except those the branch's transcript declares: the ones `tool_search`
+ * service tools and MCP proxies are left out, except those the branch's transcript declares: the ones `tool_search`
  * loaded on it, which stay loaded across runs, rewinds to where they were loaded, and reopened
- * sessions, as pi's own loadout restore keeps them.
+ * sessions, as pi's own loadout restore keeps them. Older branches retain their already-declared
+ * management tools; only a fresh branch starts with those schemas deferred.
  */
 function declaredTools(manager: SessionManager, binding: RunBinding): string[] {
   const deferred = new Set(
-    binding.mcp.bindings.flatMap((proxy) =>
-      proxy.exposure === 'deferred' ? [proxy.proxyName] : [],
-    ),
+    [
+      ...(binding.tools.includes('tool_search') ? DEFERRED_SERVICE_TOOLS : []),
+      ...binding.mcp.bindings.flatMap((proxy) =>
+        proxy.exposure === 'deferred' ? [proxy.proxyName] : [],
+      ),
+    ].filter((name) => binding.tools.includes(name)),
   );
   if (!deferred.size) return binding.tools;
   const loaded = getCurrentTools(manager.buildSessionContext().messages)

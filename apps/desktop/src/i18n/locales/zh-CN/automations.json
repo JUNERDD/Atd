@@ -63,7 +63,9 @@
     "chainLoop": "自动化之间不能循环跟随。",
     "commandUnavailable": "它的命令已被删除、已关闭，或需要自动化无法提供的输入。",
     "folderUnavailable": "它使用的某个文件夹已不可用。",
-    "modelUnavailable": "它的模型不可用。请选择其他模型，或连接该模型的提供商。"
+    "modelUnavailable": "它的模型不可用。请选择其他模型，或连接该模型的提供商。",
+    "computerNeedsAuthorization": "它的电脑操作尚未获得此版本的授权。请先试跑并完成授权。",
+    "computerHold": "之前的一次运行留下了未确认的电脑操作。请查看那次运行后再继续。"
   },
   "summary": {
     "once": "仅一次：{{when}}",
@@ -375,7 +377,12 @@
     "folderUnavailable": "它使用的某个文件夹不可用。",
     "submitFailed": "Atd 无法启动这次运行。",
     "agentReported": "智能体报告它无法完成。",
-    "runFailed": "运行失败。"
+    "runFailed": "运行失败。",
+    "computerGrantInvalid": "它的电脑操作已不再获得授权。请先试跑，再重新授权。",
+    "computerHold": "之前的一次运行留下了未确认的电脑操作。请先查看那次运行。",
+    "computerTargetUnavailable": "它操作的某个网站或应用不可用。",
+    "computerUnknownEffect": "Atd 无法确认某个电脑操作是否已生效。请自行检查结果。",
+    "computerNeedsHuman": "某个电脑操作需要你先查看，之后才能继续。"
   },
   "source": {
     "schedule": "按计划",
@@ -383,5 +390,108 @@
     "idle": "Mac 空闲",
     "automation": "跟随另一个自动化",
     "manual": "立即运行"
+  },
+  "computer": {
+    "title": "电脑操作",
+    "description": "它的运行可以在后台对已登记的网站和应用做什么。只会执行下方的步骤，并受你设定的目标和限制约束。",
+    "notApplicable": "整理记忆不会操作网站或应用。",
+    "noScope": "Atd 可以重复它与你一起在网站或应用中完成的工作。先在任务中完成一次，再让 Atd 把那个任务变成自动化；它的步骤会显示在这里，供你检查、试跑和授权。",
+    "targets": "目标",
+    "targetGone": "已断开的目标",
+    "targetGoneDescription": "请在“设置 › 电脑操作”中重新登记，或在这里关闭它。",
+    "targetsNote": "自动化至少需要一个目标，所以不能关闭最后一个。",
+    "steps": "步骤",
+    "stepsNote": "步骤来自录制它们的任务，无法在这里调整顺序。如需修改，请让 Atd 修改。",
+    "stepTitle": "{{number}}. {{label}}",
+    "submits": "会提交",
+    "stepTargetUnpicked": "上方没有选择此步骤的目标。",
+    "maxLength": "最多字符数",
+    "maxLengthInvalid": "请输入 1 到 {{max}} 之间的整数。",
+    "textPattern": "须匹配 {{pattern}}",
+    "textOneOf": "可选值：{{values}}",
+    "stepKind": {
+      "navigate": "打开 {{url}}",
+      "fill": "填写 {{control}}",
+      "click": "点击 {{control}}",
+      "submit": "通过 {{control}} 提交",
+      "scroll": "滚动页面",
+      "wait": "等待{{condition}}"
+    },
+    "condition": {
+      "enabled": "{{control}} 变为可用",
+      "valueEquals": "{{control}} 显示“{{text}}”",
+      "textAppears": "出现“{{text}}”",
+      "urlMatches": "页面地址以 {{url}} 开头",
+      "newText": "出现新的确认信息",
+      "newTextMatching": "出现匹配 {{pattern}} 的新确认信息",
+      "someControl": "该控件",
+      "menuItemAvailable": "应用菜单项“{{path}}”可用"
+    },
+    "maxSubmits": "每次运行最多提交次数",
+    "submitsValue_other": "{{count}} 次",
+    "maxSubmitsNote": "运行会在超出前停止。Atd 绝不会自动重试提交。",
+    "completion": "完成条件",
+    "completionNote": "只有满足此条件，运行才算完成。如果 Atd 无法确认，这次运行会需要你处理。",
+    "authorization": {
+      "needed": {
+        "title": "需要授权",
+        "description": "试跑通过且你授权了这些步骤之前，运行不能操作网站或应用。"
+      },
+      "authorized": {
+        "title": "已授权",
+        "description": "运行可以在此范围内操作。修改步骤、目标、触发条件或动作后需要重新授权。"
+      },
+      "changed": {
+        "title": "授权已不匹配",
+        "description": "授权后，它依赖的内容发生了变化。请重新试跑并授权。"
+      }
+    },
+    "trial": {
+      "note": "试跑会立即真实执行已保存的步骤：按所写内容填写和提交，并由你在场批准每个操作。",
+      "saveFirst": "请先保存更改。试跑执行的是已保存的步骤。",
+      "run": "现场试跑",
+      "open": "打开试跑",
+      "running": "试跑进行中…",
+      "finished": "试跑已结束。如果结果符合预期，请完成授权。",
+      "incomplete": "试跑没有完成。打开它查看发生了什么。",
+      "passed": "试跑已通过：每个步骤都已核验，现在可以授权。",
+      "failed": "试跑未通过：有步骤未能核验。打开试跑查看原因后再试一次。"
+    },
+    "saveAndAuthorize": "保存并授权",
+    "authorize": {
+      "approved": "已授权。运行现在可以在此范围内操作。",
+      "refused": {
+        "changed": "授权过程中自动化发生了变化。请检查后重试。",
+        "notQualified": "请先完成一次通过的试跑。授权只涵盖试跑实际执行的内容。",
+        "unavailable": "电脑操作目前不可用。",
+        "busy": "另一个确认窗口已打开，请先完成它。"
+      }
+    },
+    "hold": {
+      "title": "等待你核对",
+      "reason": {
+        "unknownEffect": "{{since}}的一次运行留下了 Atd 无法确认是否生效的电脑操作（未解决：{{count}}）。",
+        "partialEffect": "{{since}}的一次运行留下了只部分生效的电脑操作（未解决：{{count}}）。",
+        "needsHuman": "{{since}}的一次运行停在了需要你查看的地方（未解决：{{count}}）。"
+      },
+      "markReadNote": "在你解除之前，它的电脑操作不会再运行，无论是按计划还是“立即运行”。标为已读不会解除此状态。",
+      "review": "核对并解除",
+      "dialogTitle": "解除未确认的电脑操作",
+      "dialogDescription": "打开那次运行，自行检查网站或应用，并修正出错的地方。解除后自动化可以再次操作；解除不会撤销任何操作。",
+      "openRun": "打开那次运行",
+      "acknowledge": "我已检查目标，并了解这些操作的结果。",
+      "resolve": "解除",
+      "resolved": "已解除。自动化可以再次操作。",
+      "conflict": "现在需要核对的是另一次运行，请改为核对那一次。"
+    },
+    "facts": {
+      "verified_other": "{{count}} 项已核实",
+      "partial_other": "{{count}} 项部分完成",
+      "unknown_other": "{{count}} 项结果不明",
+      "notDispatched_other": "{{count}} 项未执行",
+      "unresolved_other": "{{count}} 项等待核对",
+      "summary": "电脑操作：{{facts}}",
+      "none": "没有电脑操作"
+    }
   }
 }

@@ -25,6 +25,7 @@ import { isUnread, runBlockWords, triggerNames, triggerWords } from './automatio
 import { RunNowButton } from './run-now-button';
 import { RunRow } from './run-row';
 import { AutomationStatusNotice } from './status-notice';
+import { ComputerHoldNotice } from './computer-hold-notice';
 import { automationsBridge, useAutomationRuns, useAutomations } from './use-automations';
 
 /**
@@ -103,6 +104,7 @@ export function AutomationRuns({
       </SettingsHeading>
       <div className="automation-runs-body">
         <AutomationStatusNotice status={status} />
+        <ComputerHoldNotice item={item} />
         {runs === null ? (
           error ? (
             <ExtensionLoadError message={error} onRetry={retry} />

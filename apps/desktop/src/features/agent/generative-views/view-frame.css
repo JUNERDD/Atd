@@ -1,0 +1,85 @@
+/*
+ * A view's frame (view-frame.tsx) on either surface: the view's own document, transparent, so the
+ * surface behind it shows through the view (the card's glass and fill, or the window's native
+ * material and fill). The frame fills its surface edge to edge, with no inset: a view pads itself
+ * with the kit's spacing, so a host inset would pad it twice.
+ */
+.view-stage {
+  position: relative;
+  min-width: 0;
+}
+.view-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+/*
+ * Until the view answered the handshake and reported its size, the frame loads out of the flow
+ * behind the loading line, so its surface changes once. It stays laid out at its final width, so
+ * the view measures itself there, and transparent rather than hidden, so WebKit keeps rendering it
+ * and the view's size reports arrive.
+ */
+.view-stage:not([data-ready]) > .view-frame {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * The widget never scrolls inside its card: it takes the card's width and the height the view
+ * reports, clamped to the widget's range, which the host sets on the element (`VIEW_HEIGHT_MIN`
+ * until then). It only shows: the card's button above it takes the pointer.
+ */
+.view-stage[data-surface='widget'] > .view-frame {
+  height: 32px;
+  pointer-events: none;
+}
+.view-stage[data-surface='widget']:not([data-ready]) > .view-frame {
+  inset: 0 0 auto;
+}
+
+/*
+ * The window's frame fills the page below the title bar, and the view's document scrolls itself.
+ * Focus moves into it once it shows; the view draws focus on its own controls, so the frame, the
+ * window's whole content, draws no ring of its own.
+ */
+.view-stage[data-surface='window'] {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.view-stage[data-surface='window'] > .view-frame {
+  min-height: 0;
+  flex: 1;
+  outline: none;
+}
+.view-stage[data-surface='window']:not([data-ready]) > .view-frame {
+  inset: 0;
+  height: 100%;
+}
+
+/* A line in place of the view: preparing, loading, or why there is none, with its retry. */
+.view-note {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+/* In a window the line stands alone in the space below the title bar, centered in it. */
+.view-note[data-surface='window'] {
+  flex: 1;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+}

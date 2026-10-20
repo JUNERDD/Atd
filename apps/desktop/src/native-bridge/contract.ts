@@ -18,6 +18,7 @@ import {
   NativeCommandOptionsEvents,
   ShortcutCommandIntentSchema,
 } from './command-options.ts';
+import { NativeComputerEvents } from './computer-calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { NativeNotificationPosts } from './notification-calls.ts';
 import { Empty, Text } from './primitives.ts';
@@ -261,6 +262,7 @@ export const NativeEvents = {
     { additionalProperties: false },
   ),
   ...NativeUpdateEvents,
+  ...NativeComputerEvents,
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

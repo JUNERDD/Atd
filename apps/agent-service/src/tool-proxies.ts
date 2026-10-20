@@ -80,6 +80,8 @@ export interface ServiceToolHost {
    * material the read tool (and grep/find/ls) reads without a confirmation; writes never reach it.
    */
   folders: () => readonly string[];
+  /** Whether write and edit may reach only the task output directory (computer/tool-set.ts). */
+  writesInsideOnly?: () => boolean;
   upsertMcp?: UpsertMcp;
   listMcp?: ListMcp;
 }
@@ -180,6 +182,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   const guard = invocation.guard;
 
   const authorize = createGate(host);
+  const insideOnly = () => host.writesInsideOnly?.() ?? false;
 
   /**
    * Whether a read targets a directory of the current run's skills. Their files are read-only
@@ -241,7 +244,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           const target = resolveToolPath(host.cwd, pathOf(args));
           if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
           else {
-            written = (await confinedWrite(host.cwd, host.dataDir, target)).real;
+            written = (await confinedWrite(host.cwd, host.dataDir, target, insideOnly())).real;
             catalogWrite = (await catalogTarget(host.dataDir, written)) !== null;
           }
           if (!catalogWrite)
@@ -282,7 +285,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     };
   const writable: ResolvePath = async (target) => {
     guard();
-    return (await confinedWrite(host.cwd, host.dataDir, target)).real;
+    return (await confinedWrite(host.cwd, host.dataDir, target, insideOnly())).real;
   };
   const noRoots = async () => [];
   // Writes that change the subagent catalog ask the user every time (atd-agents/catalog-writes.ts).
@@ -341,9 +344,3 @@ function detailOf(name: string, args: unknown): string {
     return name;
   }
 }
-
-// T4 MCP proxy registration (exclusive owner T4): runner MCP tools register
-// through the authority facade only; skills stay untouched. T34int composes
-// the prepared factory from prepareMcpTools alongside serviceTools.
-export { mcpProxyName, prepareMcpTools } from './mcp/tool-proxies.js';
-export type { McpProxyDetails, McpProxyHost, McpProxyOptions } from './mcp/tool-proxies.js';

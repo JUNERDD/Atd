@@ -1,4 +1,6 @@
+import { ComputerAccessScopeSchema } from './computer-access.js';
 import { Type, type Static } from 'typebox';
+import { ComputerEffectSchema } from './computer-actions.js';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistEntrySchema } from './shell.js';
 
@@ -22,6 +24,7 @@ export type GrantLocation = Static<typeof GrantLocationSchema>;
 
 /** Unit a permission decision applies to; session grants reuse the same scope. */
 export const GrantScopeSchema = Type.Union([
+  ComputerAccessScopeSchema,
   Type.Object(
     {
       tool: Type.Union([Type.Literal('read'), Type.Literal('write'), Type.Literal('edit')]),
@@ -41,11 +44,29 @@ export const GrantScopeSchema = Type.Union([
   // Automations: the `automation` harness tool's saves, deletes and Run now. Always asked
   // (`askAlways`): a saved automation acts later without anyone present.
   Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
+  // Computer use: one effect on one revision of one registered target, always in the background,
+  // so approving a page once never becomes a session grant over the whole computer or an edited
+  // binding.
+  Type.Object(
+    {
+      tool: Type.Literal('computer'),
+      bindingId: Identifier,
+      revision: Type.Integer({ minimum: 1 }),
+      effect: ComputerEffectSchema,
+    },
+    { additionalProperties: false },
+  ),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
-/** Stable identity of a scope, used as the key of the per-session grant set. */
+/**
+ * Stable identity of a scope, used as the key of the per-session grant set. A computer scope keys
+ * by binding revision, so an approval never carries over to an edited binding.
+ */
 export function grantKey(scope: GrantScope): string {
+  if (scope.tool === 'computerAccess') return `computerAccess:${JSON.stringify(scope)}`;
+  if (scope.tool === 'computer')
+    return `computer:${scope.bindingId}@${scope.revision}:${scope.effect}`;
   return 'location' in scope ? `${scope.tool}:${scope.location}` : scope.tool;
 }
 
@@ -147,10 +168,16 @@ export type PermissionAnswer = Static<typeof PermissionAnswerSchema>;
 /**
  * Whether a scope is allowed without a prompt or review under a tier. Reads inside the
  * task folder never prompt: the agent reading its own output is not a decision.
+ * A `computer` scope follows the tier only in attended runs: the computer path enforces its hard
+ * scope check and the unattended rule (only an approved recipe step of the frozen grant) before it
+ * calls the gate, so an unattended computer action never reaches this function. Reading a target
+ * the run already selected (`effect: 'read'`) never prompts, as reading the task folder does not.
+ * Access scopes are reviewed under `auto`.
  */
 export function tierAllows(tier: PermissionTier, scope: GrantScope): boolean {
   if (tier === 'always') return true;
   if ('location' in scope && scope.tool === 'read' && scope.location === 'inside') return true;
+  if (scope.tool === 'computer' && scope.effect === 'read') return true;
   if (tier === 'manual') return false;
   // `auto` needs no review for the task's own folder, for web search and fetch, which only
   // read (a search query, a GET per URL), or for the `app` tool, which publishes only the task's

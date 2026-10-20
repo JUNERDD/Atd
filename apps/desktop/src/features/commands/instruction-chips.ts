@@ -31,6 +31,7 @@ function referenceOf(chip: Chip): InstructionReference | null {
       return { kind: 'mcpServer', serverId: chip.serverId };
     case 'task':
       return { kind: 'task', taskId: chip.taskId };
+    case 'application':
     case 'file':
     case 'folder':
     case 'quote':

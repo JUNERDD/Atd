@@ -2,6 +2,7 @@ import {
   DEFAULT_RUN_TOOLS,
   type AgentTask,
   type ModelSelection,
+  type RunComputer,
   type RunSnapshot,
   type ServiceBlock,
   type SubmitTaskRequest,
@@ -57,7 +58,8 @@ function submitModelSelection(
  * as `branchUserEntries` read them. `internal` carries what only service code sets: the `trigger`
  * that names the automation that started the run, the hidden `instructions` it is told, and
  * whether it runs `lite`. None of them carries over to a follow-up. Background inference is
- * derived from this submission's service-owned source, never the task's earlier runs.
+ * derived from this submission's service-owned source, never the task's earlier runs. Computer use
+ * is frozen by `runComputer`; a run with it never runs `lite`, whose session has no tools.
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
@@ -72,6 +74,7 @@ export function freezeRunSnapshot(
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel, catalog);
   const contextWindow = catalog.contextWindow(model);
+  const computer = runComputer(request, last, internal);
   const snapshot: RunSnapshot = {
     input: request.input,
     instructions,
@@ -85,11 +88,30 @@ export function freezeRunSnapshot(
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
     ...(isFromCommand(request, task, onBranch) ? { fromCommand: true } : {}),
     ...(trigger ? { trigger } : {}),
-    ...(lite ? { lite } : {}),
+    ...(lite && !computer ? { lite } : {}),
+    ...(computer ? { computer } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');
   return snapshot;
+}
+
+/**
+ * The computer use a run freezes (`RunSnapshot.computer`). An automation's run takes exactly what
+ * the automation passed (its grant or trial, `InternalSubmitOptions.computer`), and no other run
+ * it starts may act on the computer. A person's run takes the bindings the request names, else
+ * those of the task's last run; a follow-up copies only the binding ids, never a grant or a trial.
+ * Every run acts in the background only, so nothing here selects a delivery.
+ */
+function runComputer(
+  request: SubmitTaskRequest,
+  last: TaskRun | undefined,
+  internal: InternalSubmitOptions,
+): RunComputer | undefined {
+  if (internal.computer) return internal.computer;
+  if (internal.trigger) return undefined;
+  const bindingIds = request.computer?.bindingIds ?? last?.snapshot.computer?.bindingIds;
+  return bindingIds ? { bindingIds: [...bindingIds] } : undefined;
 }
 
 /**

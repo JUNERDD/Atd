@@ -8,13 +8,19 @@ import {
   markAutomationRunsRead,
   patchAutomationSettings,
   previewAutomationTrigger,
+  resolveComputerHold,
   runAutomation,
   setAutomationEnabled,
+  startComputerTrial,
   updateAutomation,
 } from '@atd/agent-client';
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
-import { AUTOMATION_RUN_HISTORY, AutomationTriggerProblemSchema } from '@atd/agent-contracts';
+import {
+  AUTOMATION_RUN_HISTORY,
+  AutomationTriggerProblemSchema,
+  ComputerStatusProblemSchema,
+} from '@atd/agent-contracts';
 import {
   AutomationConflictError,
   AutomationProblemError,
@@ -30,6 +36,7 @@ const ProblemSchema = Type.Union([
   Type.Literal('commandUnavailable'),
   Type.Literal('folderUnavailable'),
   Type.Literal('modelUnavailable'),
+  ...ComputerStatusProblemSchema.anyOf,
 ]);
 
 /**
@@ -79,6 +86,12 @@ export function nativeAutomations(
     markRead: (request) => markAutomationRunsRead(options(), request),
     setPaused: async (paused) => void (await patchAutomationSettings(options(), { paused })),
     pickFolder: () => native.call('files.pickFolder', {}),
+    computerTrial: (id, expectedRevision) =>
+      typed(startComputerTrial(options(), id, { expectedRevision })),
+    authorizeComputer: (automationId, expectedRevision) =>
+      native.call('computer.authorizeAutomation', { automationId, expectedRevision }),
+    resolveComputerHold: async (id, runId) =>
+      void (await typed(resolveComputerHold(options(), id, { runId, acknowledged: true }))),
     showTask: async (taskId) => {
       messages.post({ type: 'openTask', taskId });
       await native.call('window.show', {});

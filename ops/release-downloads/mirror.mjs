@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { listedAddonLocks, mirrorAddon, readAddons } from './addons.mjs';
 import { readOptions } from './args.mjs';
 import {
   ARCHES,
@@ -92,7 +93,8 @@ function stopsAt(point) {
 
 /**
  * R2 has no multi-object transaction, so the run moves forward in an order where every public
- * state is valid and a rerun recovers from any stop: upload and verify every versioned DMG, then
+ * state is valid and a rerun recovers from any stop: upload and verify every versioned DMG and
+ * every add-on archive the release's locks pin (immutable, content-addressed, never removed), then
  * move each architecture's permanent DMG and feed in turn, then the manifest, then cleanup. A feed
  * only ever names a verified DMG of its own architecture, and cleanup never removes one a current
  * feed names.
@@ -101,6 +103,7 @@ async function run(directory) {
   const bucket = openBucket({ bucket: options.bucket, prefix, directory });
   if (!sourceDir) await downloadGitHubRelease(release, directory);
   const entries = await prepare();
+  const addons = await readAddons(release, { sourceDir, directory, prefix });
 
   for (const { artifact, key } of entries) {
     // A rerun keeps an object that already holds these exact bytes.
@@ -116,6 +119,7 @@ async function run(directory) {
       full: true,
     });
   }
+  for (const addon of addons) await mirrorAddon({ bucket, baseUrl, addon, nonce });
   if (stopsAt('after-immutable-upload')) return false;
   // A rehearsal source is not a GitHub release, so there is nothing newer to defer to.
   if (!sourceDir) assertStillLatest(release, channel);
@@ -177,8 +181,15 @@ console.log(
   }),
 );
 if (options.dryRun) {
-  // A local source can be checked completely; a GitHub release's feeds are not downloaded.
-  if (sourceDir) await prepare();
+  // A local source can be checked completely; a GitHub release's feeds and add-ons are not
+  // downloaded, only its add-on locks named.
+  if (sourceDir) {
+    await prepare();
+    const addons = await readAddons(release, { sourceDir, prefix });
+    console.log(JSON.stringify({ addons: addons.map(({ key, size }) => ({ key, size })) }));
+  } else {
+    console.log(JSON.stringify({ addonLocks: listedAddonLocks(release) }));
+  }
   process.exit(0);
 }
 

@@ -1,0 +1,50 @@
+{
+  "actions": {
+    "install": "安装",
+    "update": "更新",
+    "cancel": "取消",
+    "remove": "移除",
+    "tryAgain": "重试",
+    "more": "更多",
+    "moreFor": "{{name}}的更多操作"
+  },
+  "unavailable": "暂不提供",
+  "detail": {
+    "size": "下载大小：{{size}}。",
+    "installed": "已安装 · 版本 {{version}}",
+    "outdated": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。",
+    "outdatedSize": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。下载大小：{{size}}。",
+    "unavailable": "当前版本的 Atd 未为你的 Mac 提供此组件。",
+    "loadFailed": "无法读取组件状态。"
+  },
+  "status": {
+    "downloading": "正在下载 {{received}} / {{total}}",
+    "downloadingUnknown": "正在下载…",
+    "updatingDownload": "正在更新：{{received}} / {{total}}",
+    "updating": "正在更新…",
+    "verifying": "正在校验…",
+    "installing": "正在安装…",
+    "removing": "正在移除…"
+  },
+  "remove": {
+    "title": "移除{{name}}？",
+    "description": "它的文件会从这台 Mac 上删除，依赖它的功能会停止工作，直到你再次安装。"
+  },
+  "error": {
+    "network": "下载未能完成。请检查网络连接后重试。",
+    "integrity": "下载内容与当前版本的 Atd 预期不符，已被丢弃。",
+    "disk": "无法保存文件。请检查可用磁盘空间后重试。",
+    "unavailable": "当前版本的 Atd 未为你的 Mac 提供此组件。",
+    "inUse": "它仍在使用中。请先停止使用它的任务，然后再移除。",
+    "cancelled": "安装已取消。",
+    "internal": "管理该组件时出了问题。",
+    "request": "请求未能发出。"
+  },
+  "computer": {
+    "label": "引擎",
+    "browser": {
+      "title": "浏览器引擎",
+      "description": "在 Atd 专用的受管 Chrome 配置文件中操作网页，与你日常使用的浏览器互相隔离。"
+    }
+  }
+}

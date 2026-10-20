@@ -8,6 +8,7 @@ import {
   type AutomationOutcome,
   type AutomationRun,
   type AutomationRunReason,
+  type ComputerFact,
   type RunStatus,
   type ServiceBlock,
 } from '@atd/agent-contracts';
@@ -36,6 +37,11 @@ export interface RunEnd {
   wrote: readonly string[];
   /** The supervisor stopped it for running past its maximum duration. */
   timedOut: boolean;
+  /**
+   * The run's durable computer facts (computer-outcome.ts decides with them); empty for a run that
+   * acted on nothing, null when its records could not be read.
+   */
+  facts: readonly ComputerFact[] | null;
 }
 
 export interface Classified {

@@ -99,7 +99,8 @@
       "automationDelete": "删除自动化",
       "automationEnable": "开启自动化",
       "automationDisable": "关闭自动化",
-      "automationRun": "运行自动化"
+      "automationRun": "运行自动化",
+      "updateView": "更新视图"
     },
     "target": {
       "user": "用户",
@@ -126,7 +127,9 @@
       "mcp": "使用 MCP 工具或保存 MCP 服务器",
       "web": "访问网络",
       "app": "构建或运行此任务的应用",
-      "automation": "保存、删除或运行自动化"
+      "automation": "保存、删除或运行自动化",
+      "computer": "操作已登记的网站或应用",
+      "computerAccess": "授权电脑操作"
     },
     "outcome": {
       "once": "已允许一次",
@@ -162,7 +165,11 @@
       "flagged": "自动审查认为有风险：{{reason}}",
       "flaggedNoReason": "自动审查认为此操作有风险。",
       "unavailable": "自动审查暂不可用，请你来决定。"
-    }
+    },
+    "allowAccess": "允许访问",
+    "accessSaved": "允许访问 {{target}}，并保存到“电脑操作”设置供后续任务使用。你可以随时在设置中移除授权。",
+    "accessRun": "仅在本次运行中允许访问 {{target}}。运行结束或停止后，临时授权失效。",
+    "accessBackground": "Atd 将在后台操作此目标，不会把它切到前台，也不会占用你的指针和键盘。"
   },
   "question": {
     "skip": "跳过",
@@ -191,6 +198,10 @@
   },
   "retry": {
     "running": "请求失败 · 正在重试（{{attempt}}/{{max}}）…"
+  },
+  "requestTooLarge": {
+    "message": "模型服务商以请求过大为由拒绝了这次请求，原因多半是对话中的图片太多。之后发给模型的内容将不再包含较早的图片。请重新发送消息；如果仍然失败，请整理上下文或新建任务。",
+    "details": "错误详情"
   },
   "files": {
     "open": "打开",
@@ -560,5 +571,248 @@
     "page_other": "{{count}} 个网页",
     "query_one": "{{count}} 个查询",
     "query_other": "{{count}} 个查询"
+  },
+  "computer": {
+    "step": {
+      "targets": "查找目标",
+      "observe": "查看目标",
+      "act": "操作目标",
+      "fill": "填写",
+      "click": "点击",
+      "submit": "提交",
+      "navigate": "打开页面",
+      "scroll": "滚动",
+      "wait": "等待完成",
+      "status": "核对之前的操作",
+      "release": "释放目标",
+      "type": "输入文字",
+      "clear": "清空字段",
+      "key": "按键",
+      "menu": "选择菜单命令",
+      "drag": "拖移",
+      "select": "选择选项",
+      "upload": "上传文件",
+      "requestAccess": "请求电脑操作授权",
+      "shareScreen": "请求共享屏幕",
+      "watchScreen": "查看共享画面",
+      "stopSharing": "停止共享屏幕"
+    },
+    "live": {
+      "finding": "正在查找目标",
+      "viewing": "正在查看",
+      "filling": "正在填写",
+      "clicking": "正在点击",
+      "submitting": "正在提交",
+      "opening": "正在打开",
+      "waitingCompletion": "正在等待完成",
+      "verifying": "正在核对结果",
+      "waitingTarget": "正在等待目标空闲",
+      "checking": "正在核对之前的操作",
+      "releasing": "正在释放目标",
+      "stopping": "正在停止…",
+      "typing": "正在输入",
+      "clearing": "正在清空字段",
+      "pressingKey": "正在按键",
+      "choosingMenu": "正在选择菜单命令",
+      "dragging": "正在拖移",
+      "selecting": "正在选择选项",
+      "uploading": "正在上传文件",
+      "requestingAccess": "正在请求电脑操作授权",
+      "sharingScreen": "等待选择共享内容",
+      "watchingScreen": "正在观察共享画面",
+      "stoppingShare": "正在停止屏幕共享"
+    },
+    "outcome": {
+      "verified": "已完成并核实",
+      "partial": "部分完成",
+      "unknown": "结果不明",
+      "notDispatched": "未执行",
+      "none": "没有变化"
+    },
+    "outcomeDetail": {
+      "verified": "Atd 已核实此操作生效。",
+      "partial": "只有部分步骤生效（{{completed}}/{{total}}）。再次尝试前，请先检查目标。",
+      "unknown": "Atd 无法确认此操作是否生效。再次尝试前，请自行检查目标。",
+      "notDispatched": "没有向目标发送任何操作。",
+      "none": "操作已结束，没有改变任何内容。"
+    },
+    "effect": {
+      "read": "只读",
+      "navigate": "跳转页面",
+      "input": "输入文字",
+      "click": "点击",
+      "submit": "提交",
+      "invoke": "执行应用操作"
+    },
+    "stepState": {
+      "done": "已完成",
+      "stopped": "在此停止",
+      "notReached": "未执行到"
+    },
+    "error": {
+      "notQualified": "此目标尚未支持这类操作。",
+      "targetUnavailable": "目标不可用。",
+      "targetChanged": "目标在 Atd 上次查看后发生了变化。",
+      "staleObservation": "页面在 Atd 上次查看后发生了变化。",
+      "ambiguous": "匹配到多个控件，Atd 没有自行猜测。",
+      "notFound": "没有找到该控件。",
+      "noBackgroundRoute": "Atd 无法在后台完成这一步，已留给你来完成。",
+      "needsPermission": "Atd 需要一项系统权限才能执行此操作。请查看“设置 › 电脑操作”。",
+      "needsConsent": "屏幕访问尚未准备好，Atd 没有截取屏幕。",
+      "locked": "另一个 Atd 正在使用电脑操作。",
+      "busy": "目标正被其他任务使用。",
+      "targetInUse": "你正在使用此目标，Atd 暂时没有操作。",
+      "cancelled": "操作已停止。",
+      "timeout": "目标没有及时响应。",
+      "unsupported": "此目标不支持这一步。",
+      "engineFailed": "Atd 的浏览器或应用引擎出错。",
+      "hostUnavailable": "Atd 无法连接到后台宿主。",
+      "modalBlocked": "此窗口前面有一个对话框，Atd 没有在它后面操作。",
+      "disturbed": "此操作干扰了你正在做的事，Atd 已尽量恢复原状并停止。"
+    },
+    "refusal": {
+      "dragAndDrop": "这一步需要拖放，只有你自己的指针能完成。",
+      "hover": "这一步需要把指针停留在某处。",
+      "opaqueSurface": "这个区域由应用自行绘制，没有 Atd 能触及的控件。",
+      "pointerToolkit": "此应用跟随真实指针，在后台发送的点击会落空。",
+      "secureInput": "当前是密码输入框，只接受你自己的键入。",
+      "menuUnavailable": "应用在后台时，这个菜单命令不可用。",
+      "textUnavailable": "这里无法在后台输入这段文字。",
+      "keyUnavailable": "这里无法在后台按下这个键。",
+      "minimized": "窗口已最小化，Atd 不会还原窗口。",
+      "offSpace": "这一步需要向窗口发送输入，只能送达你当前所在的空间，Atd 不会切换空间。",
+      "fullScreen": "这一步需要向窗口发送输入，全屏窗口收不到，Atd 也不会切换过去。",
+      "noRoute": "Atd 在后台的各种操作方式都不适用于这一步。",
+      "openBrowser": "Atd 无法在后台启动浏览器。",
+      "screenLocked": "你的 Mac 当时已锁定，锁定期间 macOS 会隐藏应用窗口。"
+    },
+    "retry": {
+      "never": "Atd 不会自动重复此操作。",
+      "after_review": "请先检查结果，再重新尝试。"
+    },
+    "evidenceKind": {
+      "value": "字段内容",
+      "text": "页面文字",
+      "url": "页面地址",
+      "file": "文件",
+      "screenshot": "画面"
+    },
+    "progress_one": "{{completed}}/{{count}} 步",
+    "progress_other": "{{completed}}/{{count}} 步",
+    "steps": "步骤",
+    "evidence": "证据",
+    "latestView": "目标的最新画面",
+    "viewCaption": "{{time}} 保存 · 非实时画面",
+    "unnamedTarget": "目标",
+    "disturbance": {
+      "title": "对你的影响",
+      "kind": {
+        "keyFocus": "你当前的窗口失去了焦点",
+        "raise": "有窗口挡到了你的窗口前面",
+        "pointer": "你的指针移动了",
+        "clipboard": "剪贴板内容变了",
+        "space": "你所在的空间切换了",
+        "dialog": "你的应用中弹出了对话框",
+        "activation": "你当前使用的应用切换了",
+        "input": "你的部分键入或点击落到了别处"
+      },
+      "byAtd": "由 Atd 造成",
+      "byUnknown": "原因不明",
+      "repaired": "已恢复",
+      "notRepaired": "未恢复"
+    },
+    "visual": {
+      "unverified": "视觉步骤已关闭：此模型尚未通过基于屏幕画面操作的核验，Atd 只会通过可读取的控件操作。",
+      "unavailable": "视觉步骤已关闭：此模型无法读取图片，Atd 只会通过可读取的控件操作。"
+    },
+    "check": {
+      "action": "标记为已核对",
+      "title": "将此操作标记为已核对？",
+      "description": "请确认你已亲自查看“{{target}}”，它处于应有的状态，或你已修正问题。Atd 会将结果记为由你核对，此操作不再阻止对该目标的后续操作。",
+      "confirm": "我已核对",
+      "done": "你已将此操作标记为已核对。",
+      "nothing": "无需核对：此操作已处理完毕。",
+      "cancel": "取消"
+    },
+    "handoff": {
+      "route": {
+        "dragAndDrop": "请在“{{target}}”中自行完成拖放，然后告诉 Atd 继续。",
+        "hover": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
+        "opaqueSurface": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
+        "pointerToolkit": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
+        "secureInput": "请在“{{target}}”中自行输入，然后告诉 Atd 继续。",
+        "menuUnavailable": "请在“{{target}}”中自行选择该菜单命令，然后告诉 Atd 继续。",
+        "textUnavailable": "请在“{{target}}”中自行输入这段文字，然后告诉 Atd 继续。",
+        "keyUnavailable": "请在“{{target}}”中自行按下该键，然后告诉 Atd 继续。",
+        "minimized": "请还原“{{target}}”的窗口，然后告诉 Atd 继续。",
+        "offSpace": "请把“{{target}}”的窗口移到你当前所在的空间，然后告诉 Atd 继续。",
+        "fullScreen": "请让“{{target}}”退出全屏，然后告诉 Atd 继续。",
+        "noRoute": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
+        "openBrowser": "请打开“{{target}}”的浏览器，然后告诉 Atd 继续。",
+        "screenLocked": "Mac 解锁后，告诉 Atd 继续即可。"
+      },
+      "inUse": "你在“{{target}}”中操作完后，告诉 Atd 继续即可。",
+      "consent": "请先在设置中准备屏幕访问，然后告诉 Atd 继续。",
+      "consentReady": "屏幕访问已准备好。告诉 Atd 继续即可。",
+      "disturbed": "请确认“{{target}}”和你自己的工作都保持原样，然后告诉 Atd 继续。",
+      "prepareConsent": "准备屏幕访问",
+      "openBrowser": "打开浏览器",
+      "settingsOpened": "准备好屏幕访问后，告诉 Atd 继续即可。",
+      "browserOpened": "浏览器已打开。告诉 Atd 继续即可。"
+    },
+    "preview": {
+      "image": "{{target}} 的实时画面",
+      "connecting": "正在连接…",
+      "live": "实时预览",
+      "unavailable": "预览不可用",
+      "ended": "预览已结束",
+      "collapsed": "预览已收起",
+      "waiting": "等待下一步操作",
+      "captured": "采集于 {{time}}",
+      "enlarge": "放大预览",
+      "close": "关闭预览",
+      "collapse": "收起预览",
+      "expand": "显示预览",
+      "retry": "重新连接",
+      "reason": {
+        "starting": "正在准备预览…",
+        "targetUnavailable": "窗口暂时不可用",
+        "permission": "需要屏幕录制权限",
+        "locked": "锁屏期间无法预览",
+        "unsupported": "更新电脑操作组件后可预览此目标",
+        "disconnected": "预览已断开",
+        "failed": "无法启动预览"
+      },
+      "showMonitor": "监看 {{count}} 个画面",
+      "noSources": "当前没有可监看的画面。",
+      "showMonitor_one": "监看 {{count}} 个画面",
+      "showMonitor_other": "监看 {{count}} 个画面"
+    }
+  },
+  "view": {
+    "untitled": "交互视图",
+    "preparing": "正在准备视图…",
+    "loading": "正在加载视图…",
+    "responded": "已回应",
+    "response": "你的回应：{{response}}",
+    "unavailable": "不可用",
+    "unavailableNote": "无法显示此视图。",
+    "widgetLost": "无法显示小组件。",
+    "retry": "重试",
+    "scriptError_one": "此视图出错了。",
+    "scriptError_other": "此视图出错了 {{count}} 次。",
+    "scriptErrorDetail_one": "此视图出错了：{{message}}",
+    "scriptErrorDetail_other": "此视图出错了 {{count}} 次。第一个错误：{{message}}",
+    "openWindow": "在窗口中打开“{{title}}”",
+    "respondInWindow": "请在视图的窗口中回应。",
+    "open": "打开视图",
+    "refused": {
+      "empty": "请输入要发送的消息。",
+      "engage": "请先与视图交互。",
+      "tooSoon": "请稍候再试。",
+      "tooMany": "此视图的请求过多，请一分钟后再试。",
+      "link": "只能打开网页链接。",
+      "widget": "请在视图的窗口中执行此操作。"
+    }
   }
 }

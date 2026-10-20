@@ -63,6 +63,7 @@ final class UserAppBridge {
   weak var windows: UserAppWindows?
   private let services: ShellServices
   private let confirmations: ConfirmationPrompter
+  private let arbiter: DeviceArbiter
   /// The shared open and save panels (``SystemPanels``); set by the shell.
   var systemPanels: SystemPanels?
   /// True while a screenshot capture runs: panels would open beneath its overlays.
@@ -71,10 +72,14 @@ final class UserAppBridge {
   private var flushing: Set<String> = []
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "user-apps")
 
-  init(services: ShellServices, windows: UserAppWindows, confirmations: ConfirmationPrompter) {
+  init(
+    services: ShellServices, windows: UserAppWindows, confirmations: ConfirmationPrompter,
+    arbiter: DeviceArbiter
+  ) {
     self.services = services
     self.windows = windows
     self.confirmations = confirmations
+    self.arbiter = arbiter
   }
 
   /// The reply value: the call's result as a JSON object, or `NSNull` for a post.
@@ -92,8 +97,9 @@ final class UserAppBridge {
       host.setDragRegions(params.rects)
       return NSNull()
     case .call(.clipboardWrite(let params)):
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(params.text, forType: .string)
+      guard arbiter.writeClipboard(params.text) else {
+        throw BridgeError("The clipboard is in use; try again.")
+      }
       return try Self.encode(UserAppClipboardWriteResult())
     case .call(.linkOpen(let params)):
       guard let url = ExternalLink.openable(params.url) else {

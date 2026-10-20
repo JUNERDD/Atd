@@ -8,6 +8,7 @@ import type { ResourceStore } from '../resources.js';
 import type { RunnerManager } from '../runner-manager.js';
 import type { ServicePaths } from '../storage.js';
 import type { SystemActivity } from '../system-activity.js';
+import type { AutomationComputer } from './computer-deps.js';
 import type { FolderSnapshots } from './folder-snapshots.js';
 import type { FolderScanner } from './folder-watch.js';
 import type { CommandLauncher } from './launch-run.js';
@@ -44,4 +45,6 @@ export interface EngineDeps {
   scanner?: FolderScanner;
   /** Something the status shows changed without a store write. */
   changed: () => void;
+  /** Computer use; absent when the service runs without it. */
+  computer?: AutomationComputer;
 }

@@ -79,12 +79,13 @@ function storeEntry(store, dir) {
 }
 
 /**
- * Cuts the `UNUSED_LINKS`, then keeps only the virtual-store entries Node can still reach from
- * the pack's own dependencies through declared links, deletes the rest (including the unlinked
- * `.pnpm/@` copies pnpm 12's legacy deploy leaves) and the hoisted fallback links to them, and
- * trims `UNUSED_FILES` from what stays.
+ * Cuts the `UNUSED_LINKS` and the pack's own dependency links named in `rootUnused` (each must
+ * exist, so a stale name fails the pack), then keeps only the virtual-store entries Node can still
+ * reach from the pack's remaining dependencies through declared links, deletes the rest
+ * (including the unlinked `.pnpm/@` copies pnpm 12's legacy deploy leaves) and the hoisted
+ * fallback links to them, and trims `UNUSED_FILES` from what stays.
  */
-export async function pruneStore(modules) {
+export async function pruneStore(modules, rootUnused = []) {
   const store = path.join(modules, '.pnpm');
   const live = new Set();
   const pending = [];
@@ -106,7 +107,11 @@ export async function pruneStore(modules) {
       }
     }
   };
-  await follow(modules, []);
+  const rootLinks = new Set((await packageEntries(modules)).map((dep) => dep.name));
+  const absent = rootUnused.filter((name) => !rootLinks.has(name));
+  if (absent.length > 0)
+    throw new Error(`The pack has no ${absent.join(', ')} link to cut; update the rule.`);
+  await follow(modules, rootUnused);
   for (let entry = pending.pop(); entry !== undefined; entry = pending.pop()) {
     const entryModules = path.join(entry, 'node_modules');
     const own = (await packageEntries(entryModules)).filter((dep) => !dep.link);
@@ -151,9 +156,12 @@ export async function pruneStore(modules) {
     )
       await rm(dep.path);
   }
-  for (const scope of await readdir(hoisted).catch(() => [])) {
-    if (scope.startsWith('@') && (await readdir(path.join(hoisted, scope))).length === 0)
-      await rm(path.join(hoisted, scope), { recursive: true });
+  // Scopes whose last link was cut, among the pack's own links or the hoisted ones.
+  for (const dir of [modules, hoisted]) {
+    for (const scope of await readdir(dir).catch(() => [])) {
+      if (scope.startsWith('@') && (await readdir(path.join(dir, scope))).length === 0)
+        await rm(path.join(dir, scope), { recursive: true });
+    }
   }
   process.stdout.write(
     `Pruned the virtual store: cut ${cut} unused links, kept ${live.size} entries, removed ${removed}\n`,
