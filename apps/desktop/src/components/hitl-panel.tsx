@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@atd/ui/components/scroll-area';
 import type { HitlRequest } from './hitl-request';
 import type { QueueState } from '../client/agent/transcript-schema';
+import { HitlFooterScope } from './hitl-actions';
 import { HitlRegion } from './hitl-region';
 import { IconButton } from './icon-button';
 import { QueueRegion } from './queue-region';
@@ -64,8 +65,9 @@ function PagerControls({ pager }: { pager: HitlPager }) {
 /**
  * The composer popover's HITL view: one pending request at a time (top, urgent) and the queue
  * (bottom) under a header whose close button dismisses the view, never resolves a request. With
- * several requests the header pages through them and shows `n / m`. The body owns scrolling so
- * neither region can push the composer surface around.
+ * several requests the header pages through them and shows `n / m`. The request and the queue
+ * each scroll on their own, so neither can push the composer surface around, and the request's
+ * decisions sit fixed between them (`HitlActions`), in reach however far the request scrolls.
  */
 export function HitlPanel({
   summary,
@@ -100,28 +102,38 @@ export function HitlPanel({
         </span>
         {pager.count > 1 && <PagerControls pager={pager} />}
       </div>
-      {/* The queue reorders inside this scroller; motion must account for its offset. Opening
-          the view from the pill focuses the first action here, past the header close. */}
-      <ScrollAreaRoot>
-        <MotionViewport layoutScroll data-panel-focus>
-          {pager.request && (
-            <HitlRegion
-              request={pager.request}
-              focusOnMount={pager.focusOnMount}
-              hideApprovalTitle={summary.mergedApproval}
-            />
-          )}
-          {summary.hasQueue && taskId !== null && (
+      {/* Opening the view from the pill focuses the first enabled button of the request, its
+          decisions or the queue (`data-panel-focus`, in that order), past the header close. */}
+      {pager.request && (
+        <HitlFooterScope>
+          {/* The bar floats in the region's own 16px inset (`gutter="none"`), so the request
+              keeps its decisions' width whether or not it scrolls. */}
+          <ScrollAreaRoot>
+            <ScrollAreaViewport gutter="none" scrollShadow data-panel-focus>
+              <HitlRegion
+                request={pager.request}
+                focusOnMount={pager.focusOnMount}
+                hideApprovalTitle={summary.mergedApproval}
+              />
+            </ScrollAreaViewport>
+            <ScrollBar />
+          </ScrollAreaRoot>
+        </HitlFooterScope>
+      )}
+      {summary.hasQueue && taskId !== null && (
+        // The queue reorders inside this scroller; motion must account for its offset.
+        <ScrollAreaRoot className="hitl-queue-list">
+          <MotionViewport layoutScroll scrollShadow data-panel-focus>
             <QueueRegion
               taskId={taskId}
               queue={queue}
               disabled={queueDisabled}
               onEdit={onEditQueued}
             />
-          )}
-        </MotionViewport>
-        <ScrollBar />
-      </ScrollAreaRoot>
+          </MotionViewport>
+          <ScrollBar />
+        </ScrollAreaRoot>
+      )}
     </div>
   );
 }

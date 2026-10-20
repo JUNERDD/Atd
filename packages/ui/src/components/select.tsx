@@ -77,15 +77,31 @@ function SelectContent({
       >
         <ScrollAreaRoot className="flex min-h-0 flex-1 flex-col">
           <SelectPrimitive.Viewport asChild>
-            <ScrollAreaViewport className="h-auto min-h-0 flex-1" gutter="none">
+            <SelectScrollViewport className="h-auto min-h-0 flex-1" gutter="none">
               {children}
-            </ScrollAreaViewport>
+            </SelectScrollViewport>
           </SelectPrimitive.Viewport>
           <ScrollBar />
         </ScrollAreaRoot>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
+}
+
+/**
+ * Select's viewport and the scroll area's are one element. Radix Select styles its viewport
+ * inline (`position: relative; flex: 1; overflow: hidden auto`), while the scroll area sets
+ * overflow per axis and changes it when its bar mounts; on one element the shorthand and those
+ * longhands depend on the order React applied them, and React warns wherever a Select renders.
+ * So Select's inline style stays out: its position becomes a class (the scroll area's viewport
+ * already flexes), and the scroll area alone owns overflow.
+ */
+function SelectScrollViewport({
+  style: _selectStyle,
+  className,
+  ...props
+}: React.ComponentProps<typeof ScrollAreaViewport>) {
+  return <ScrollAreaViewport className={cn('relative', className)} {...props} />;
 }
 
 function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
