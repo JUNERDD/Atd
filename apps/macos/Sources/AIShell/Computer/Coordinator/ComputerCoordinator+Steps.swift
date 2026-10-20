@@ -97,7 +97,7 @@ extension ComputerCoordinator {
       case .check:
         do throws(ComputerFailure) {
           let held = try await engine.check(postcondition, on: ref, baseline: observation)
-          fold.postcondition = held ? .held : .notHeld
+          fold.postcondition = held ? .held : .notHeld(postcondition)
         } catch {
           fold.postcondition = .failed(error.wire)
         }

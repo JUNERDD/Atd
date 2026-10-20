@@ -209,8 +209,10 @@ export type ComputerDownload = Static<typeof ComputerDownloadSchema>;
 
 /**
  * What one action did. `dispatch`: whether any step reached the target (`settled`: the host saw
- * its last dispatched step finish). `effect`: `none` (nothing changed), `partial` (some steps took
- * effect), `unknown` (dispatched with no way to know), `verified` (the postcondition held).
+ * its last dispatched step finish). `effect`: `none` (nothing changed), `partial` (input reached
+ * the target but its outcome is not confirmed: the action stopped after some writes, or every step
+ * ran and the postcondition did not hold, which `evidence` then says), `unknown` (dispatched with
+ * no way to know), `verified` (the postcondition held).
  * `completedSteps` counts steps that finished; `stoppedAt` is the index of the step that stopped
  * the action. `retry`: `safe` when no write reached the target, `never` when a business step did
  * or may have, and `after_review` when only non-business writes reached it. `invalidated` names

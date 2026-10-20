@@ -12,6 +12,10 @@ import Foundation
 ///   otherwise `unknown`.
 /// - `retry`: `safe` only when no write reached the target; `never` once a business effect
 ///   (`invoke`, `submit`) did or may have; `after_review` otherwise.
+///
+/// `evidence` is what the steps reported, led by one `text` entry naming the postcondition when
+/// it was checked after the steps and did not hold: nothing else in the result says so in words,
+/// and leading the list keeps the entry whenever the list is cut to its limit.
 public struct ActionResultFold: Sendable {
   /// How a step that ran to its end went, as the engine reported it.
   public enum StepOutcome: Equatable, Sendable {
@@ -26,7 +30,8 @@ public struct ActionResultFold: Sendable {
   public enum Postcondition: Equatable, Sendable {
     case absent
     case held
-    case notHeld
+    /// The condition, checked after the steps, did not hold.
+    case notHeld(ComputerConditionWire)
     /// The check itself failed; whether the action worked is unknown.
     case failed(ComputerErrorWire)
   }
@@ -125,11 +130,37 @@ public struct ActionResultFold: Sendable {
       writes.isEmpty && !uncertain ? .safe : touchedBusiness ? .never : .afterReview
     var error = stop?.error
     if error == nil, case .failed(let failure) = postcondition { error = failure }
+    var reported = evidence
+    if case .notHeld(let condition) = postcondition {
+      reported.insert(Self.unmet(condition), at: 0)
+    }
     return ActionResultWire(
       actionId: actionId, dispatch: dispatch, effect: effect, completedSteps: outcomes.count,
       stoppedAt: stop != nil && outcomes.count < steps.count ? outcomes.count : nil, error: error,
-      evidence: evidence, retry: retry, invalidated: invalidated, delivery: delivery, route: route,
+      evidence: reported, retry: retry, invalidated: invalidated, delivery: delivery, route: route,
       disturbances: disturbances, downloads: downloads)
+  }
+
+  /// The entry saying `condition` did not hold after the steps: its kind and what it names (its
+  /// text or value, menu path or pattern), clipped so the summary fits the 500 characters
+  /// evidence holds.
+  private static func unmet(_ condition: ComputerConditionWire) -> ComputerEvidenceWire {
+    let (kind, detail): (String, String?) =
+      switch condition {
+      case .textAppears(let text): ("textAppears", text)
+      case .valueEquals(_, let text): ("valueEquals", text)
+      case .menuItemAvailable(let path): ("menuItemAvailable", path.joined(separator: " > "))
+      case .urlMatches(let pattern): ("urlMatches", pattern)
+      case .newText(_, let pattern, _): ("newText", pattern)
+      case .enabled: ("enabled", nil)
+      }
+    var summary = "Postcondition not met after the steps: \(kind)"
+    if let detail {
+      // 400 leaves the rest of the summary room within its 500.
+      let shown = detail.unicodeScalars.count > 400 ? detail.wireClipped(399) + "…" : detail
+      summary += " “\(shown)”"
+    }
+    return ComputerEvidenceWire(kind: .text, summary: summary + ".")
   }
 
   /// The result of an action refused before any step ran, with the background limit behind the
