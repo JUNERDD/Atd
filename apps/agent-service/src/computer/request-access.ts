@@ -145,7 +145,9 @@ export async function requestAccess(
         next:
           'nextObservation' in preview
             ? 'Inspect the returned nextObservation image and continue directly with act using its targetRefId and observationRefId. No targets or preparatory observe call is needed.'
-            : 'Access was approved. The first observation is unavailable; inspect target availability and observe when the target is ready.',
+            : resolved.targets.length
+              ? 'Access was approved. The first observation is unavailable; observe the target.'
+              : NOT_READY,
       }),
       ...(image ? { image } : {}),
       ...(snapshot ? { snapshot } : {}),
@@ -161,6 +163,13 @@ export async function requestAccess(
     if (ctx.signal?.aborted) runtime.access.forget(runId);
   }
 }
+
+/**
+ * Access was approved but no target resolved. The model must not start or show the app itself:
+ * that would change what the person has in front of them while they work.
+ */
+const NOT_READY =
+  'Access was approved, but the target is not ready yet. An app that was not running starts in the background and can take a few seconds to show its window: call requestAccess again to continue. Never open, activate or switch to the target yourself, such as with open or AppleScript in a shell: that would bring it in front of the person while they work. If it is still unavailable, tell the person.';
 
 /** Access succeeded already: target resolution or capture failure must not revoke that fact. */
 async function firstObservation(ctx: CallContext, bindingId: string) {

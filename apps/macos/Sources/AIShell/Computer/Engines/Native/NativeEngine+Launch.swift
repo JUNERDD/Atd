@@ -6,10 +6,10 @@ import AppKit
 /// host never activates anything to hand focus back (plan I2); an app that brings itself
 /// forward as it starts is logged, and like any target in front of the person it is in use only
 /// while they type, click or scroll (`targetInUse`).
-/// Resolving then waits for the app's first window.
+/// Resolving then waits until the app shows the window it works in.
 extension NativeEngine {
-  /// How long a started app may take to show its first window, within the request's deadline;
-  /// resolving finds no window when it does not show one in time.
+  /// How long a started app may take to show the window resolving works in, within the
+  /// request's deadline; resolving finds no window when none shows in time.
   static let launchWindowWait: Duration = .seconds(8)
   static let launchWindowPoll: Duration = .milliseconds(200)
 
@@ -53,21 +53,21 @@ extension NativeEngine {
     return app
   }
 
-  /// Waits, within the request's deadline, until the process shows any window; choosing the
-  /// root among them is the root-window rule's job.
-  func awaitFirstWindow(pid: pid_t, start: UInt64, context: EngineResolveContext)
-    async throws(ComputerFailure)
+  /// Waits, within the request's deadline, until the root-window rule finds the process's root
+  /// window, and returns it; nil when none shows in time. Any window is not enough: a starting
+  /// app can list windows it never shows (Chromium-based apps keep several off screen) before its
+  /// main window is on screen and readable.
+  func awaitRootWindow(pid: pid_t, start: UInt64, context: EngineResolveContext)
+    async throws(ComputerFailure) -> NativeSurfaceProbe.AppWindow?
   {
     let end = min(ContinuousClock.now + Self.launchWindowWait, context.deadline)
     while true {
       try context.check()
       guard NativeTargetProbe.processStart(pid: pid) == start else { throw Self.changed }
-      let shown = await NativeTargetProbe.detached {
-        !NativeSurfaceProbe.windowIds(of: pid).isEmpty
-      }
+      let root = await NativeTargetProbe.detached { NativeSurfaceProbe.rootWindow(pid: pid) }
       try context.check()
       let now = ContinuousClock.now
-      if shown || now >= end { return }
+      if root != nil || now >= end { return root }
       do { try await Task.sleep(for: min(Self.launchWindowPoll, end - now)) } catch {
         throw ComputerFailure(.cancelled, "Waiting for the application's window was cancelled.")
       }

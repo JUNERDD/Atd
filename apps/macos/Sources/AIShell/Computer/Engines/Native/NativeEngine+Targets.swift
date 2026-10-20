@@ -30,11 +30,9 @@ extension NativeEngine {
       throw ComputerFailure(.targetUnavailable, "\(native.appName) quit while it was resolved.")
     }
     // An app launched just now (here or by requestAccess) may not show its window yet.
-    try await awaitFirstWindow(pid: pid, start: start, context: context)
+    let root = try await awaitRootWindow(pid: pid, start: start, context: context)
     let path = native.appPath
-    let (root, version) = await NativeTargetProbe.detached {
-      (NativeSurfaceProbe.rootWindow(pid: pid), NativeAppIdentity.version(path: path))
-    }
+    let version = await NativeTargetProbe.detached { NativeAppIdentity.version(path: path) }
     try context.check()
     guard NativeTargetProbe.processStart(pid: pid) == start else { throw Self.changed }
     guard let root else {
