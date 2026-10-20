@@ -32,10 +32,29 @@ enum WindowServerQueries {
 
   /// The pid WindowServer has frontmost right now, without waiting on an AppKit run loop.
   static func frontProcessPID() -> pid_t? {
-    guard let getFront = spi.getFrontProcess, let toPID = spi.getProcessPID else { return nil }
+    guard let getFront = spi.getFrontProcess else { return nil }
     var psn = [UInt8](repeating: 0, count: 8)
-    let gotFront = psn.withUnsafeMutableBytes { getFront($0.baseAddress) == 0 }
-    guard gotFront, psn.contains(where: { $0 != 0 }) else { return nil }
+    guard psn.withUnsafeMutableBytes({ getFront($0.baseAddress) == 0 }) else { return nil }
+    return pid(of: psn)
+  }
+
+  /// The pid WindowServer sends key events to right now. That is the front process unless a
+  /// non-activating panel of another process took key focus (Atd's own task panel, a launcher,
+  /// Spotlight): the app behind it stays frontmost and keeps naming its window in
+  /// `AXFocusedWindow`, so neither of those shows who holds key. nil when the symbol is absent or
+  /// the call fails.
+  static func keyFocusProcessPID() -> pid_t? {
+    guard let getKeyFocus = spi.getKeyFocusProcess else { return nil }
+    var psn = [UInt8](repeating: 0, count: 8)
+    let got = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 1) { flag in
+      psn.withUnsafeMutableBytes { getKeyFocus($0.baseAddress, flag.baseAddress) == 0 }
+    }
+    return got ? pid(of: psn) : nil
+  }
+
+  /// The pid behind a process serial number; nil for an empty PSN or a failed lookup.
+  private static func pid(of psn: [UInt8]) -> pid_t? {
+    guard psn.contains(where: { $0 != 0 }), let toPID = spi.getProcessPID else { return nil }
     var pid: pid_t = 0
     let ok = psn.withUnsafeBytes { toPID($0.baseAddress, &pid) == 0 }
     return ok && pid > 0 ? pid : nil

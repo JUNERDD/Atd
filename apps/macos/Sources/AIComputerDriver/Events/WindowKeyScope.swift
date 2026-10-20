@@ -4,24 +4,30 @@ import CoreGraphics
 import Foundation
 
 /// Gives the target window the app's key status for the duration of one keyboard/click primitive
-/// WITHOUT activating the app or raising a window, then hands key back to the user's previous key
-/// window and verifies it (plan I2). The focus and make-key records are the yabai/Cua recipe
+/// WITHOUT activating the app or raising a window, then hands key back to the window that held
+/// key focus and verifies it (plan I2). The focus and make-key records are the yabai/Cua recipe
 /// (MIT); `SLPSSetFrontProcess` is deliberately never called, which is what keeps the user's
-/// front app and Chromium's user-activation gate intact.
+/// front app and Chromium's user-activation gate intact. The records change only the target
+/// app's own key window, never WindowServer's key focus.
+///
+/// Who holds key is read from WindowServer's key-focus process, not the front process: a
+/// non-activating panel (Atd's own task panel among them) takes key focus while the app behind
+/// it stays frontmost and keeps its window in `AXFocusedWindow`, though that window is not key.
 enum WindowKeyScope {
   private static let settle: TimeInterval = 0.08
 
   /// Open a key scope around `body`. Returns a report of what happened (confirmed, returned,
   /// user window restored). Throws `capabilityUnavailable` when the PSN cannot be resolved, and
   /// `noRoute` when the target could not be confirmed as key (so no key ever left the scope).
-  /// A target window that is already the frontmost app's key window needs no scope: `body` runs
-  /// as it is, since opening one would take key from that window and give it back.
+  /// A target window that already holds key focus needs no scope: `body` runs as it is, since
+  /// opening one would take key from that window and give it back.
   static func run(
     targetPid: pid_t, targetWindowId: CGWindowID, _ body: () throws -> Void
   ) throws -> DriverKeyScopeReport {
-    if WindowServerQueries.frontProcessPID() == targetPid,
-      focusedWindowId(targetPid) == targetWindowId
-    {
+    let frontPid = WindowServerQueries.frontProcessPID()
+    // Without the key-focus symbol the front process stands in, blind to a panel's key focus.
+    let keyFocusPid = WindowServerQueries.keyFocusProcessPID() ?? frontPid
+    if keyFocusPid == targetPid, focusedWindowId(targetPid) == targetWindowId {
       try body()
       return DriverKeyScopeReport(used: false)
     }
@@ -33,9 +39,17 @@ enum WindowKeyScope {
       throw DriverFailure(code: .capabilityUnavailable, message: "key scope PSN unavailable")
     }
 
-    let previousFrontPid = WindowServerQueries.frontProcessPID()
-    let previousKeyWindow = previousFrontPid.flatMap(focusedWindowId)
+    // A target in front whose key focus another process holds stays active, and AppKit then
+    // makes none of its windows key on a mouse-down: the scope deactivates it first and, when it
+    // closes, activates it again without a key window, the state it was found in.
+    let reactivate = frontPid == targetPid && keyFocusPid != targetPid
+    // The person's key window is the focused window of the process holding key focus.
+    let previousKeyWindow = keyFocusPid.flatMap(focusedWindowId)
 
+    if reactivate {
+      postRecord(post, psn: targetPSN, record: focusRecord(targetWindowId, focused: false))
+      Thread.sleep(forTimeInterval: settle)
+    }
     postRecord(post, psn: targetPSN, record: focusRecord(targetWindowId, focused: true))
     Thread.sleep(forTimeInterval: settle)
     for kind in [UInt8(0x01), UInt8(0x02)] {
@@ -43,12 +57,16 @@ enum WindowKeyScope {
     }
     Thread.sleep(forTimeInterval: settle)
 
+    // Only the app's own account can show the records took: WindowServer's key focus does not
+    // move, and Chromium windows report `AXFocused` false even while key. When the app already
+    // named the target here (it had lost key focus to another process, not its focused window),
+    // this proves the records addressed the right window, not that it became key.
     let confirmed = focusedWindowId(targetPid) == targetWindowId
     guard confirmed else {
       // Release the half-open scope before refusing so the target is not left key.
       close(
-        post, targetPSN: targetPSN, targetWindowId: targetWindowId, previousPid: previousFrontPid,
-        previousKeyWindow: previousKeyWindow)
+        post, targetPSN: targetPSN, targetWindowId: targetWindowId, reactivate: reactivate,
+        previousPid: keyFocusPid, previousKeyWindow: previousKeyWindow)
       throw DriverFailure(
         code: .noRoute, message: "target window could not be confirmed as the app's key window")
     }
@@ -57,8 +75,8 @@ enum WindowKeyScope {
     // window is re-read: restoration can only be checked after the reverse records are posted.
     let outcome = Result(catching: body)
     let handedBack = close(
-      post, targetPSN: targetPSN, targetWindowId: targetWindowId, previousPid: previousFrontPid,
-      previousKeyWindow: previousKeyWindow)
+      post, targetPSN: targetPSN, targetWindowId: targetWindowId, reactivate: reactivate,
+      previousPid: keyFocusPid, previousKeyWindow: previousKeyWindow)
     if case .failure(let error) = outcome { throw error }
 
     guard let previousKeyWindow else {
@@ -68,20 +86,26 @@ enum WindowKeyScope {
         used: true, confirmed: true, returned: true, userWindowRestored: nil)
     }
     Thread.sleep(forTimeInterval: settle)
-    let restored = previousFrontPid.flatMap(focusedWindowId) == previousKeyWindow
+    let restored = keyFocusPid.flatMap(focusedWindowId) == previousKeyWindow
     return DriverKeyScopeReport(
       used: true, confirmed: true, returned: handedBack, userWindowRestored: restored)
   }
 
-  /// Reverse the scope: defocus the target, re-focus the user's previous key window. Returns
-  /// whether the person's previous key window was addressed with the re-focus record (false when
-  /// there was none, or its process could not be resolved).
+  /// Reverse the scope: defocus the target (and with `reactivate` activate it again, without a
+  /// key window), then re-focus the user's previous key window. Returns whether the person's
+  /// previous key window was addressed with the re-focus record (false when there was none, or
+  /// its process could not be resolved).
   @discardableResult
   private static func close(
     _ post: PrivateSymbols.PostEventRecordFn, targetPSN: [UInt8], targetWindowId: CGWindowID,
-    previousPid: pid_t?, previousKeyWindow: CGWindowID?
+    reactivate: Bool, previousPid: pid_t?, previousKeyWindow: CGWindowID?
   ) -> Bool {
     postRecord(post, psn: targetPSN, record: focusRecord(targetWindowId, focused: false))
+    if reactivate {
+      // Posted at once, the two records cancel out in AppKit and leave the window key.
+      Thread.sleep(forTimeInterval: settle)
+      postRecord(post, psn: targetPSN, record: focusRecord(targetWindowId, focused: true))
+    }
     guard let previousPid, let previousKeyWindow,
       let previousPSN = WindowServerQueries.processSerialNumber(
         windowId: previousKeyWindow, pid: previousPid)

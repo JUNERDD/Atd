@@ -1,6 +1,7 @@
 import AIComputerDriverKit
 import AICore
 import Foundation
+import OSLog
 
 /// Climbing a step's ladder (``NativeRoutePlan``, plan §4.2). Before any rung the window's
 /// placement is read: a write to a minimized window is refused, since Atd never restores a
@@ -95,6 +96,9 @@ extension NativeEngine {
         .perform(request), timeout: budget + Self.performGrace, operation: context.operationId)
       switch result {
       case .success(.perform(let performed)):
+        if let scope = performed.receipt.keyScope {
+          Self.logKeyScope(scope, route: primitive.route)
+        }
         return .success(performed.receipt)
       case .success:
         throw ComputerFailure(
@@ -118,6 +122,15 @@ extension NativeEngine {
         throw thrown
       }
     }
+  }
+
+  /// Records what the driver did with the key scope, the one fact that shows afterwards whether
+  /// a click or keystroke reached a window that held key.
+  private static func logKeyScope(_ scope: DriverKeyScopeReport, route: DriverRoute) {
+    let restored = scope.userWindowRestored.map { "\($0)" } ?? "none"
+    log.notice(
+      "Key scope: route=\(route.rawValue, privacy: .public) used=\(scope.used) confirmed=\(scope.confirmed) returned=\(scope.returned) restored=\(restored, privacy: .public)"
+    )
   }
 
   /// Waits once, at most a second, while the person types; refuses when they still do. Returns

@@ -22,6 +22,8 @@ final class PrivateSymbols: @unchecked Sendable {
   typealias SetWindowLocationFn = @convention(c) (UnsafeMutableRawPointer?, Double, Double) -> Void
   typealias PostEventRecordFn = @convention(c) (UnsafeRawPointer?, UnsafePointer<UInt8>?) -> Int32
   typealias GetFrontProcessFn = @convention(c) (UnsafeMutableRawPointer?) -> Int32
+  typealias GetKeyFocusProcessFn =
+    @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<UInt8>?) -> Int32
   typealias GetProcessForPIDFn = @convention(c) (pid_t, UnsafeMutableRawPointer?) -> Int32
   typealias GetProcessPIDFn =
     @convention(c) (UnsafeRawPointer?, UnsafeMutablePointer<pid_t>?) -> Int32
@@ -43,6 +45,11 @@ final class PrivateSymbols: @unchecked Sendable {
   let setWindowLocation: SetWindowLocationFn?
   let postEventRecord: PostEventRecordFn?
   let getFrontProcess: GetFrontProcessFn?
+  /// `SLPSGetKeyFocusProcess(psn, flag)`: the process WindowServer sends key events to. Both
+  /// pointers must be valid, since the call writes the second one even on failure (a byte seen as
+  /// 1 while the front process holds key focus, 0 while another process does); only the PSN is
+  /// read.
+  let getKeyFocusProcess: GetKeyFocusProcessFn?
   let getProcessForPID: GetProcessForPIDFn?
   let getProcessPID: GetProcessPIDFn?
   let mainConnection: MainConnectionFn?
@@ -71,6 +78,7 @@ final class PrivateSymbols: @unchecked Sendable {
     setWindowLocation = sym("CGEventSetWindowLocation")
     postEventRecord = sym("SLPSPostEventRecordTo")
     getFrontProcess = sym("_SLPSGetFrontProcess")
+    getKeyFocusProcess = sym("SLPSGetKeyFocusProcess")
     getProcessForPID = sym("GetProcessForPID")
     getProcessPID = sym("GetProcessPID")
     mainConnection = sym("SLSMainConnectionID")

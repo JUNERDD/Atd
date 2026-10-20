@@ -27,7 +27,7 @@ public enum DriverRoute: String, Codable, Equatable, Sendable {
 /// disturbance guard trusts this over its own global monitor for key-focus facts (plan I8).
 public struct DriverKeyScopeReport: Codable, Equatable, Sendable {
   /// Whether a key scope was opened at all (AX routes do not need one, nor a target window that
-  /// is already the frontmost app's key window).
+  /// already holds WindowServer's key focus).
   public var used: Bool
   /// Whether the driver confirmed the target window became the app's key window before acting
   /// (via the app's `AXFocusedWindow`). False means the scope could not be proven and the
