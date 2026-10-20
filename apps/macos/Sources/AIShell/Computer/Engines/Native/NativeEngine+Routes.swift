@@ -80,12 +80,13 @@ extension NativeEngine {
     ref: TargetRefWire, context: EngineStepContext, committed: Bool
   ) async throws(ComputerFailure) -> Result<DriverReceipt, DriverFailure> {
     let scoped = NativeRoutePolicy.opensKeyScope(primitive.route)
-    var waited = false
+    // One bound for the primitive's whole wait for the person, a driver refusal included.
+    let giveUp = min(.now + NativeTypingGuard.longestWait, context.deadline - Self.leastSendTime)
     while true {
-      if scoped { waited = try await typingGuard(context, committed: committed) || waited }
+      if scoped { try await typingGuard(context, committed: committed, until: giveUp) }
       try dispatchable(context)
       let remaining = context.deadline - .now
-      guard remaining > .milliseconds(300) else {
+      guard remaining > Self.leastSendTime else {
         throw ComputerFailure(
           .timeout, "The step's deadline passed before it was sent.", mayHaveDispatched: committed)
       }
@@ -113,8 +114,8 @@ extension NativeEngine {
       case .success:
         throw ComputerFailure(
           .engineFailed, "The driver answered a perform unexpectedly.", mayHaveDispatched: true)
-      case .failure(.refused(let refusal)) where refusal.code == .userTyping && !waited:
-        waited = true
+      case .failure(.refused(let refusal)) where refusal.code == .userTyping && scoped:
+        // The person typed between the guard and the request: wait for their pause again.
         continue
       case .failure(.refused(let refusal)):
         if !committed, NativeDriverFailureMap.degrades(refusal) { return .failure(refusal) }
@@ -143,25 +144,32 @@ extension NativeEngine {
     )
   }
 
-  /// Waits once, at most a second, while the person types, clicks or scrolls; refuses
-  /// `inputInUse` when they still do, sending nothing more of the step (`committed`: an earlier
-  /// primitive of it went out). Returns whether it waited.
-  func typingGuard(_ context: EngineStepContext, committed: Bool) async throws(ComputerFailure)
-    -> Bool
-  {
-    guard let wait = NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now)
-    else { return false }
+  /// Waits while the person types, clicks or scrolls, until they pause for
+  /// ``NativeTypingGuard/quiet``; refuses `inputInUse` once that pause cannot come before
+  /// `giveUp`, sending nothing more of the step (`committed`: an earlier primitive of it went
+  /// out). Each further input of theirs pushes the pause back, so a refusal before `giveUp` is
+  /// already certain. The whole wait is the act's `typingGuard` phase.
+  func typingGuard(
+    _ context: EngineStepContext, committed: Bool, until giveUp: ContinuousClock.Instant
+  ) async throws(ComputerFailure) {
+    guard var wait = NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now)
+    else { return }
     let start = ContinuousClock.now
     defer { context.phases.add(.typingGuard, since: start) }
-    do { try await Task.sleep(for: wait) } catch {
-      throw ComputerFailure(.cancelled, "The step was cancelled.")
+    while true {
+      guard ContinuousClock.now + wait < giveUp else {
+        throw ComputerFailure(
+          .inputInUse, NativeTypingGuard.message(committed: committed),
+          mayHaveDispatched: committed)
+      }
+      do { try await Task.sleep(for: wait) } catch {
+        throw ComputerFailure(.cancelled, "The step was cancelled.")
+      }
+      try dispatchable(context)
+      guard let next = NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now)
+      else { return }
+      wait = next
     }
-    try dispatchable(context)
-    if NativeTypingGuard.wait(lastInput: context.lastPersonInput(), now: .now) != nil {
-      throw ComputerFailure(
-        .inputInUse, NativeTypingGuard.message(committed: committed), mayHaveDispatched: committed)
-    }
-    return true
   }
 
   /// The refusal when no rung delivered, with the reason ``NativeLadder/refusal(after:)`` picks

@@ -11,6 +11,9 @@ extension NativeEngine {
   static let readLimit: Duration = .seconds(15)
   /// How long the host waits past a `perform`'s own deadline before the driver counts as stuck.
   static let performGrace: Duration = .seconds(2)
+  /// The least time before the step's deadline a `perform` is still sent with; the typing guard
+  /// stops waiting for the person that early too.
+  static let leastSendTime: Duration = .milliseconds(300)
   /// The tries a request gets while its target process is busy, and the pause between them.
   static let busyTries = 3
   static let busyPause: Duration = .milliseconds(250)

@@ -93,14 +93,16 @@ public enum NativeDriverFailureMap {
 
 /// The typing guard of the key-scope routes (plan I2, §4.2): a route that makes the target's
 /// window key for its app must not start while the person types, clicks or scrolls, or a
-/// keystroke of theirs could land in the target. It waits once for 300 ms of quiet, at most one
-/// second, then refuses `inputInUse`: a passing condition, not a missing route, so the step can be
-/// tried again in a few seconds.
+/// keystroke of theirs could land in the target. It waits for a 300 ms pause in their input, for
+/// at most ``longestWait`` (less when the step's deadline is nearer), then refuses `inputInUse`: a
+/// passing condition, not a missing route, so the step can be tried again in a few seconds.
 public enum NativeTypingGuard {
   /// How long the person must not have typed before a key scope opens.
   public static let quiet: Duration = .milliseconds(300)
-  /// The longest the guard waits for that quiet, once.
-  public static let longestWait: Duration = .seconds(1)
+  /// The longest the guard waits for that pause while the person keeps going. Long enough for
+  /// the gap between words or between a click and the next, short against the several seconds a
+  /// refused step costs before the model tries it again.
+  public static let longestWait: Duration = .seconds(2)
 
   /// What the refusal says: that nothing was sent, or, once an earlier primitive of the step went
   /// out (`committed`, such as the click that places a caret before typing), that the rest did
@@ -113,14 +115,14 @@ public enum NativeTypingGuard {
         + "open a key scope."
   }
 
-  /// How long to wait before a key scope may open; nil when the person has been quiet long
-  /// enough (or no input is known).
+  /// How long until the person will have paused for ``quiet``, if they do nothing more; nil when
+  /// they already have (or no input is known).
   public static func wait(lastInput: ContinuousClock.Instant?, now: ContinuousClock.Instant)
     -> Duration?
   {
     guard let lastInput else { return nil }
     let quietAt = lastInput + quiet
     guard now < quietAt else { return nil }
-    return min(quietAt - now, longestWait)
+    return quietAt - now
   }
 }

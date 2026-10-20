@@ -120,8 +120,8 @@ struct EngineStepContext {
   let isStopping: () -> Bool
   /// When the person last pressed a key, clicked or scrolled (hardware input in any app, as the
   /// disturbance guard reads it); nil when unknown. A route that opens a target-only key scope
-  /// must not start within 300 ms of it: the engine waits once, at most 1 s, then refuses
-  /// `inputInUse`, sending nothing more of the step.
+  /// must not start within 300 ms of it: the engine waits for such a pause, at most 2 s and never
+  /// past the step's deadline, then refuses `inputInUse`, sending nothing more of the step.
   let lastPersonInput: () -> ContinuousClock.Instant?
   let report: (EngineStepEvent) -> Void
   /// The action's phases, where the engine records the time each part of the step took.
