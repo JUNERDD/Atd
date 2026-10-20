@@ -144,7 +144,7 @@ export async function requestAccess(
         ...observation,
         next:
           'nextObservation' in preview
-            ? 'Inspect the returned nextObservation image and continue directly with act using its targetRefId and observationRefId. No targets or preparatory observe call is needed.'
+            ? 'Inspect the returned nextObservation image and continue directly with act using its targetRefId and observationRefId, plus a postcondition when a step is a click or another invoke or submit. No targets or preparatory observe call is needed.'
             : resolved.targets.length
               ? 'Access was approved. The first observation is unavailable; observe the target.'
               : NOT_READY,

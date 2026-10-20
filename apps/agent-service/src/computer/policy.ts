@@ -179,8 +179,8 @@ export function checkAct(
 
 function visualRefusal(state: ComputerVisualState): string {
   return state === 'unavailable'
-    ? 'notQualified: the model of this run takes no images, so it cannot act on capture points. Nothing was sent. Use element refs or semantic locators; a click may name only text the observation recognized ({text}), which the host finds on screen.'
-    : 'notQualified: this model is not qualified for capture-point steps in the background. Nothing was sent. Use element refs or semantic locators from the observation; a click may name only text the observation recognized ({text}), which the host finds on screen. If the control has neither an element nor text, ask the person to do this step.';
+    ? 'notQualified: the model of this run takes no images, so it cannot act on capture points. Nothing was sent. Use element refs or semantic locators; a click may name only text the observation recognized ({text}), which the host finds on screen; such a click still needs a postcondition.'
+    : 'notQualified: this model is not qualified for capture-point steps in the background. Nothing was sent. Use element refs or semantic locators from the observation; a click may name only text the observation recognized ({text}), which the host finds on screen; such a click still needs a postcondition. If the control has neither an element nor text, ask the person to do this step.';
 }
 
 type Built = Omit<AllowedAction, 'visualOverride'>;
@@ -211,9 +211,12 @@ function freeAction(
     conditions.some((condition) => condition.kind === 'menuItemAvailable')
   )
     return refuse('menuItemAvailable reads native application menus only; nothing was sent.');
+  const businessKinds = new Set(
+    action.steps.filter((step) => isBusinessEffect(stepEffect(step))).map((step) => step.kind),
+  );
   if (isBusinessEffect(effect) && !action.postcondition)
     return refuse(
-      'A submit or invoke (including a screenshot click) needs a postcondition before input is sent. Choose an observable result, such as text only the result shows, a changed value or URL, and include a short wait when the UI needs time. No input was sent.',
+      `An act with a ${[...businessKinds].join(' or ')} step needs a postcondition before input is sent: every click (any locator), menu, drag, upload, key other than plain typing or navigation keys and typed line break is an invoke, and press with effect submit is a submit. Choose an observable result, such as text only the result shows, a changed value or URL, and include a short wait when the UI needs time. No input was sent.`,
     );
   if (resolves) {
     if (effect !== 'read' || !action.postcondition)
