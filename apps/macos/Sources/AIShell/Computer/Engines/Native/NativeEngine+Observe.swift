@@ -8,9 +8,9 @@ import Foundation
 /// and the capture are separate reads: each carries its own time, and a capture whose window
 /// frame disagrees with the tree's is reported as a conflict rather than presented as the same
 /// state. A minimized window is never restored; observing it fails `targetUnavailable` with
-/// `minimized`. A Chromium, Electron or WebKit window is pinned visible first while it still is,
-/// so it keeps rendering in the background. What the host could not provide is listed in
-/// `problems`, never papered over with another source.
+/// `minimized`. A Chromium, Electron or WebKit window that resolving could not pin is pinned
+/// visible first while it still is, so it keeps rendering in the background. What the host could
+/// not provide is listed in `problems`, never papered over with another source.
 extension NativeEngine {
   func observe(
     _ ref: TargetRefWire, _ operation: ObserveOperationWire, context: EngineObserveContext
@@ -42,7 +42,7 @@ extension NativeEngine {
     targets[ref.id]?.toolkit = probe.toolkit
     context.phases.note("toolkit", probe.toolkit.rawValue)
     context.phases.note("webArea", "\(probe.webAccessibility)")
-    await prepare(place, toolkit: probe.toolkit, for: ref, phases: context.phases)
+    await prepare(place, toolkit: probe.toolkit, for: ref.id, phases: context.phases)
     laps.end(.prepare)
     try context.check()
     let before = Date()

@@ -15,6 +15,7 @@ extension NativeEngine {
     guard case .native(let native) = binding else {
       throw ComputerFailure(.unsupported, "The native engine drives applications only.")
     }
+    let phases = OperationPhases()
     try context.check()
     try Self.requireUnlockedSession()
     try requireAccessibility()
@@ -23,6 +24,7 @@ extension NativeEngine {
     case .success(.running(let running)): app = running
     case .success(.notRunning(let identity)):
       app = try await launchInBackground(native, identity, until: context.deadline)
+      phases.note("launched", "true")
     case .failure(let failure): throw failure
     }
     let pid = app.processIdentifier
@@ -30,42 +32,63 @@ extension NativeEngine {
       throw ComputerFailure(.targetUnavailable, "\(native.appName) quit while it was resolved.")
     }
     // An app launched just now (here or by requestAccess) may not show its window yet.
-    let root = try await awaitRootWindow(pid: pid, start: start, context: context)
-    let path = native.appPath
-    let version = await NativeTargetProbe.detached { NativeAppIdentity.version(path: path) }
-    try context.check()
-    guard NativeTargetProbe.processStart(pid: pid) == start else { throw Self.changed }
-    guard let root else {
+    guard let root = try await awaitRootWindow(pid: pid, start: start, context: context) else {
       throw ComputerFailure(
         .targetUnavailable,
         "Needs preparing: \(native.appName) has no open window to work in on this Mac.")
     }
+    guard let engineGeneration = generation else { throw Self.notRunning }
+    let id = "atd.\(engineGeneration).\(UUID().uuidString.lowercased())"
     let place = NativeSurfaceRead(
       surfaceRefId: nil, pid: Int(pid), windowId: root.windowId, root: .window, cropFrame: nil)
+    var laps = phases.laps()
     let toolkit = (try? await probe(place, operation: nil))?.toolkit
+    laps.end(.probe)
     try context.check()
-    return try mint(
-      native, app: AppIdentity(bundleId: native.bundleId, version: version), pid: pid,
-      start: start, window: root, toolkit: toolkit, hostGeneration: hostGeneration)
+    // Pinned now, while a window that just showed is still uncovered; the pin is the new ref's.
+    if let toolkit {
+      phases.note("toolkit", toolkit.rawValue)
+      await prepare(place, toolkit: toolkit, for: id, phases: phases)
+      laps.end(.prepare)
+    }
+    do throws(ComputerFailure) {
+      try context.check()
+      let path = native.appPath
+      let version = await NativeTargetProbe.detached { NativeAppIdentity.version(path: path) }
+      try context.check()
+      guard NativeTargetProbe.processStart(pid: pid) == start else { throw Self.changed }
+      let ref = try mint(
+        native, id: id, engineGeneration: engineGeneration,
+        app: AppIdentity(bundleId: native.bundleId, version: version), pid: pid, start: start,
+        window: root, toolkit: toolkit, hostGeneration: hostGeneration)
+      Self.log.notice(
+        "Resolve \(native.bindingId, privacy: .public) as \(id, privacy: .public) \(phases.summary, privacy: .public)"
+      )
+      return ref
+    } catch {
+      await releasePins(heldBy: id)
+      throw error
+    }
   }
 
-  /// Mints the ref of a resolved root window and starts its surface set with the root alone.
-  /// A ref the same binding had before is replaced, and the windows it pinned pass to the new
-  /// one.
+  /// Mints the ref `id` of a resolved root window and starts its surface set with the root
+  /// alone. A ref the same binding had before is replaced, and the windows it pinned pass to the
+  /// new one.
   private func mint(
-    _ native: TargetBindingWire.Native, app: AppIdentity, pid: pid_t, start: UInt64,
-    window: NativeSurfaceProbe.AppWindow, toolkit: DriverToolkit?, hostGeneration: Int
+    _ native: TargetBindingWire.Native, id: String, engineGeneration: Int, app: AppIdentity,
+    pid: pid_t, start: UInt64, window: NativeSurfaceProbe.AppWindow, toolkit: DriverToolkit?,
+    hostGeneration: Int
   ) throws(ComputerFailure) -> TargetRefWire {
-    guard let engineGeneration = generation else { throw Self.notRunning }
+    guard let current = generation else { throw Self.notRunning }
+    guard current == engineGeneration else { throw Self.changed }
     let facts = routeFacts(toolkit: toolkit ?? .unknown)
     let ref = TargetRefWire(
-      id: "atd.\(engineGeneration).\(UUID().uuidString.lowercased())",
-      bindingId: native.bindingId, bindingRevision: native.revision,
+      id: id, bindingId: native.bindingId, bindingRevision: native.revision,
       hostGeneration: hostGeneration, engine: .atd, engineGeneration: engineGeneration,
       native: .init(pid: Int(pid), processStart: String(start), windowId: window.windowId),
       capabilities: Self.capabilities(facts))
     let replaced = Set(targets.filter { $0.value.ref.bindingId == native.bindingId }.keys)
-    for id in replaced { targets[id] = nil }
+    for old in replaced { targets[old] = nil }
     for (key, holders) in pinned where !holders.isDisjoint(with: replaced) {
       pinned[key] = holders.subtracting(replaced).union([ref.id])
     }

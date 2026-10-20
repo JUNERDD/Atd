@@ -27,12 +27,18 @@ extension ComputerCoordinator {
         try await engines.ensureStarted(engine)
         try context.check()
         let ref = try await engine.resolve(binding, generation: generation, context: context)
-        try context.check()
-        guard ref.bindingId == binding.bindingId, ref.bindingRevision == binding.revision,
-          ref.hostGeneration == generation, ref.engine == engine.id,
-          ref.engineGeneration == engine.generation
-        else {
-          throw ComputerFailure(.engineFailed, "The engine resolved another target.")
+        // A ref dropped here is never handed out, so what resolving prepared for it is undone.
+        do throws(ComputerFailure) {
+          try context.check()
+          guard ref.bindingId == binding.bindingId, ref.bindingRevision == binding.revision,
+            ref.hostGeneration == generation, ref.engine == engine.id,
+            ref.engineGeneration == engine.generation
+          else {
+            throw ComputerFailure(.engineFailed, "The engine resolved another target.")
+          }
+        } catch {
+          await engine.releaseTarget(ref)
+          throw error
         }
         targets.record(ref, binding: binding, runId: request.envelope.runId)
         refs.append(ref)

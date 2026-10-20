@@ -137,23 +137,26 @@ extension NativeEngine {
   // MARK: Pinning
 
   /// Chromium, Electron and WebKit stop rendering once covered, and Chromium builds its web tree
-  /// only on request. While the window is still unoccluded the driver pins its visible state; a
-  /// window that is covered now is tried again on the next observation (plan §4.4), unless the
-  /// driver latched keep-alive off. The Chromium family's web accessibility is asked for once per
-  /// process, whatever comes of it: the driver waits up to 3 s for a web area then, and the
-  /// attribute stays on, so a tree the app builds later is in a later observation's snapshot
-  /// (and the probe's web-area check) without another wait, while an app that never shows one,
-  /// such as an embedded browser exposing only its window, pays the wait once rather than on
-  /// every observation. Only an app that took neither attribute, which nothing waited for, is
-  /// asked again. What came of it goes on the observation's line in the log (`web`, `pin`).
+  /// only on request. While the window is still unoccluded the driver pins its visible state, so
+  /// resolving asks as soon as the root window shows, before the person's windows can cover a
+  /// just-started app; a window that is covered then is tried again at each observation (plan
+  /// §4.4), unless the driver latched keep-alive off. A pin belongs to `holder`, the id of the ref
+  /// that needs it, and goes with it (``releasePins(heldBy:)``). The Chromium family's web
+  /// accessibility is asked for once per process, whatever comes of it: the driver waits up to
+  /// 3 s for a web area then, and the attribute stays on, so a tree the app builds later is in a
+  /// later observation's snapshot (and the probe's web-area check) without another wait, while an
+  /// app that never shows one, such as an embedded browser exposing only its window, pays the
+  /// wait once rather than on every observation. Only an app that took neither attribute, which
+  /// nothing waited for, is asked again. What came of it goes on the log line of the resolve or
+  /// observation that asked (`web`, `pin`).
   func prepare(
-    _ place: NativeSurfaceRead, toolkit: DriverToolkit, for ref: TargetRefWire,
+    _ place: NativeSurfaceRead, toolkit: DriverToolkit, for holder: String,
     phases: OperationPhases
   ) async {
     let web = [.chromium, .electron, .cef].contains(toolkit)
     guard web || toolkit == .webKit else { return }
     if pinned[place.windowKey] != nil {
-      pinned[place.windowKey]?.insert(ref.id)
+      pinned[place.windowKey]?.insert(holder)
       phases.note("pin", DriverKeepAliveOutcome.pinned.rawValue)
       return
     }
@@ -179,23 +182,29 @@ extension NativeEngine {
     if let outcome = prepared.occlusionKeepAlive {
       phases.note("pin", outcome.rawValue)
       switch outcome {
-      case .pinned: pinned[place.windowKey, default: []].insert(ref.id)
+      case .pinned: pinned[place.windowKey, default: []].insert(holder)
       case .covered: break
       case .failed, .unavailable: driverTurnedOff(DriverCapabilityName.occlusionKeepAlive)
       }
     }
   }
 
-  /// Undoes the pins `ref` holds: a window no other ref needs is released (its occlusion
-  /// notifications restored; web accessibility stays on). The ref no longer keeps the driver
+  /// Undoes the pins `ref` holds (``releasePins(heldBy:)``). The ref no longer keeps the driver
   /// running; once no ref does, the idle timer runs again.
   func releaseTarget(_ ref: TargetRefWire) async {
     guard ref.engineGeneration == generation else { return }
     if targets[ref.id]?.ref == ref { targets[ref.id]?.released = true }
     defer { if activeCalls == 0, generation != nil, !holdsRefs { scheduleIdleStop() } }
+    await releasePins(heldBy: ref.id)
+  }
+
+  /// Drops `holder` from the windows it pinned: a window no other ref needs is released (its
+  /// occlusion notifications restored; web accessibility stays on). Also undoes the pin of a ref
+  /// whose resolving failed after pinning, before it was ever handed out.
+  func releasePins(heldBy holder: String) async {
     var released: [DriverTarget] = []
-    for (key, holders) in pinned where holders.contains(ref.id) {
-      let rest = holders.subtracting([ref.id])
+    for (key, holders) in pinned where holders.contains(holder) {
+      let rest = holders.subtracting([holder])
       pinned[key] = rest.isEmpty ? nil : rest
       if rest.isEmpty, let target = Self.driverTarget(windowKey: key) { released.append(target) }
     }

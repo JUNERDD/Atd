@@ -6,7 +6,8 @@ import AppKit
 /// host never activates anything to hand focus back (plan I2); an app that brings itself
 /// forward as it starts is logged, and like any target in front of the person it is in use only
 /// while they type, click or scroll (`targetInUse`).
-/// Resolving then waits until the app shows the window it works in.
+/// Resolving then waits until the app shows the window it works in, and asks the driver to pin
+/// it at once, while nothing covers it yet (``prepare(_:toolkit:for:phases:)``).
 extension NativeEngine {
   /// How long a started app may take to show the window resolving works in, within the
   /// request's deadline; resolving finds no window when none shows in time.
