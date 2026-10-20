@@ -55,10 +55,14 @@ export function ComputerBody({ block, data }: { block: BlockOf<'tool'>; data: Co
   const disturbances = (result?.disturbances ?? []).filter(
     ({ attribution }) => attribution !== 'person',
   );
+  // An act held back for earlier actions recorded nothing else: nothing was sent, and its footer
+  // offers the check that lifts the hold, so the card is its header and that footer.
+  const held = !result && Boolean(data.blockedBy?.length);
+  const sections = Boolean(result || data.error || steps.length > 0 || latestView || visualOff);
   // The header is the card's one title: the target on the left, and on the right how the action
   // turned out and how many of its steps took effect, like every tool card's facts.
   const facts = [
-    outcome && t(`computer.outcome.${outcome}`),
+    outcome ? t(`computer.outcome.${outcome}`) : held && t('computer.outcome.notDispatched'),
     result &&
       steps.length > 0 &&
       t('computer.progress', { completed: result.completedSteps, count: steps.length }),
@@ -71,37 +75,39 @@ export function ComputerBody({ block, data }: { block: BlockOf<'tool'>; data: Co
         meta={facts.length > 0 ? facts.join(' · ') : undefined}
         copyText={block.output}
       />
-      <ToolCard.Body size="lg" className="computer-sections">
-        {result && outcome && (
-          <ComputerSummary outcome={outcome} result={result} total={steps.length} />
-        )}
-        {!result && data.error && <ComputerErrorLine error={data.error} />}
-        {disturbances.length > 0 && (
-          <section className="computer-section">
-            <h4 className="generic-section-label">{t('computer.disturbance.title')}</h4>
-            <ComputerDisturbances disturbances={disturbances} />
-          </section>
-        )}
-        {steps.length > 0 && (
-          <section className="computer-section">
-            <h4 className="generic-section-label">{t('computer.steps')}</h4>
-            <ComputerSteps steps={steps} result={result} />
-          </section>
-        )}
-        {evidence.length > 0 && (
-          <section className="computer-section">
-            <h4 className="generic-section-label">{t('computer.evidence')}</h4>
-            <ComputerEvidence evidence={evidence} />
-          </section>
-        )}
-        {latestView && <LatestView resourceId={latestView} recordedAt={block.endedAt} />}
-        {visualOff && (
-          <p className="computer-visual-note">
-            <EyeOff strokeWidth={1.75} aria-hidden="true" />
-            {t(`computer.visual.${visualOff}`)}
-          </p>
-        )}
-      </ToolCard.Body>
+      {sections && (
+        <ToolCard.Body size="lg" className="computer-sections">
+          {result && outcome && (
+            <ComputerSummary outcome={outcome} result={result} total={steps.length} />
+          )}
+          {!result && data.error && <ComputerErrorLine error={data.error} />}
+          {disturbances.length > 0 && (
+            <section className="computer-section">
+              <h4 className="generic-section-label">{t('computer.disturbance.title')}</h4>
+              <ComputerDisturbances disturbances={disturbances} />
+            </section>
+          )}
+          {steps.length > 0 && (
+            <section className="computer-section">
+              <h4 className="generic-section-label">{t('computer.steps')}</h4>
+              <ComputerSteps steps={steps} result={result} />
+            </section>
+          )}
+          {evidence.length > 0 && (
+            <section className="computer-section">
+              <h4 className="generic-section-label">{t('computer.evidence')}</h4>
+              <ComputerEvidence evidence={evidence} />
+            </section>
+          )}
+          {latestView && <LatestView resourceId={latestView} recordedAt={block.endedAt} />}
+          {visualOff && (
+            <p className="computer-visual-note">
+              <EyeOff strokeWidth={1.75} aria-hidden="true" />
+              {t(`computer.visual.${visualOff}`)}
+            </p>
+          )}
+        </ToolCard.Body>
+      )}
       <ComputerFollowUp block={block} data={data} />
     </ToolCard.Root>
   );

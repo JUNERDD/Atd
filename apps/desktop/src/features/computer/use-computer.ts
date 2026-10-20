@@ -72,34 +72,36 @@ export function useComputerStatus({ live = false }: { live?: boolean } = {}) {
   };
 }
 
+const NO_ACTIONS: readonly string[] = [];
+
 /**
- * Whether the service still lists action `actionId` of the task among those awaiting a person's
- * check (`bridge.unresolvedFacts`), read per task and again when `revision` (the task's runs and
- * their states) changes or the computer data is invalidated. False until the read answers and
- * when it fails or `enabled` is false, so a control that depends on it stays hidden rather than
- * offering an action the service would ignore.
+ * Those of `actionIds` the service still lists among the task's actions awaiting a person's check
+ * (`bridge.unresolvedFacts`), read per task and again when `revision` (the task's runs and their
+ * states) changes or the computer data is invalidated. Empty until the read answers and when it
+ * fails or `enabled` is false, so a control that depends on it stays hidden rather than offering
+ * an action the service would ignore.
  */
-export function useActionUnresolved(
+export function useUnresolvedActions(
   taskId: string,
-  actionId: string,
+  actionIds: readonly string[],
   revision: string,
   enabled: boolean,
-): boolean {
+): readonly string[] {
   const connected = useServiceStatus().status?.state === 'connected';
   const bridge = computerBridge();
-  // One read per task and revision, shared by every row of the task; each row selects its own id.
-  const { data } = useQuery<readonly string[], Error, boolean>(
+  // One read per task and revision, shared by every row of the task; each row selects its own ids.
+  const { data } = useQuery<readonly string[], Error, readonly string[]>(
     {
       queryKey: [...computerKeys.unresolved, taskId, revision],
       queryFn: bridge && connected && enabled ? () => bridge.unresolvedFacts(taskId) : skipToken,
-      select: (actionIds) => actionIds.includes(actionId),
+      select: (unresolved) => actionIds.filter((id) => unresolved.includes(id)),
       meta: { errorToast: false },
       placeholderData: keepPreviousData,
       retry: false,
     },
     queryClient,
   );
-  return enabled && data === true;
+  return enabled && data ? data : NO_ACTIONS;
 }
 
 /** Reloads the computer status now, after this window changed it. */

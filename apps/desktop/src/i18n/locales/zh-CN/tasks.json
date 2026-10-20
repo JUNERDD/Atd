@@ -732,7 +732,16 @@
       "confirm": "我已核对",
       "done": "你已将此操作标记为已核对。",
       "nothing": "无需核对：此操作已处理完毕。",
-      "cancel": "取消"
+      "cancel": "取消",
+      "blocked_one": "“{{target}}”中之前的一个操作结果尚未确认，所以 Atd 暂缓了这一步。请亲自查看“{{target}}”；如果它处于应有的状态，就把那个操作标记为已核对，Atd 即可继续。",
+      "blocked_other": "“{{target}}”中之前的 {{count}} 个操作结果尚未确认，所以 Atd 暂缓了这一步。请亲自查看“{{target}}”；如果它处于应有的状态，就把上述操作标记为已核对，Atd 即可继续。",
+      "blockedTitle_one": "将之前的操作标记为已核对？",
+      "blockedTitle_other": "将之前的 {{count}} 个操作标记为已核对？",
+      "blockedDescription_one": "请确认你已亲自查看“{{target}}”，它处于应有的状态，或你已修正问题。Atd 会将之前的操作记为由你核对，它不再阻止对该目标的后续操作。",
+      "blockedDescription_other": "请确认你已亲自查看“{{target}}”，它处于应有的状态，或你已修正问题。Atd 会将之前的 {{count}} 个操作记为由你核对，此后不再阻止对该目标的后续操作。",
+      "blockedDone_one": "你已将之前的操作标记为已核对。告诉 Atd 继续即可。",
+      "blockedDone_other": "你已将之前的 {{count}} 个操作标记为已核对。告诉 Atd 继续即可。",
+      "blockedNothing": "无需核对：之前的操作已处理完毕。"
     },
     "handoff": {
       "route": {

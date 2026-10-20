@@ -732,7 +732,16 @@
       "confirm": "I checked it",
       "done": "You marked this action as checked.",
       "nothing": "Nothing left to check: this action was already settled.",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "blocked_one": "An earlier action in {{target}} has an unconfirmed outcome, so Atd held this step back. Look at {{target}} yourself; if it is as it should be, mark that action as checked so Atd can continue.",
+      "blocked_other": "{{count}} earlier actions in {{target}} have an unconfirmed outcome, so Atd held this step back. Look at {{target}} yourself; if it is as it should be, mark them as checked so Atd can continue.",
+      "blockedTitle_one": "Mark the earlier action as checked?",
+      "blockedTitle_other": "Mark the {{count}} earlier actions as checked?",
+      "blockedDescription_one": "Confirm that you looked at {{target}} yourself and it is as it should be, or that you fixed it. Atd records the earlier action as checked by you, and it no longer holds back later actions on this target.",
+      "blockedDescription_other": "Confirm that you looked at {{target}} yourself and it is as it should be, or that you fixed it. Atd records the {{count}} earlier actions as checked by you, and they no longer hold back later actions on this target.",
+      "blockedDone_one": "You marked the earlier action as checked. Tell Atd to continue.",
+      "blockedDone_other": "You marked the {{count}} earlier actions as checked. Tell Atd to continue.",
+      "blockedNothing": "Nothing left to check: the earlier actions were already settled."
     },
     "handoff": {
       "route": {

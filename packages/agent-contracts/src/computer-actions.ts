@@ -39,6 +39,9 @@ export const ComputerActionIdSchema = Type.String({
   pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
 });
 
+/** Actions one resolve request names, and so the most a refusal offers a person to check at once. */
+export const COMPUTER_MAX_RESOLVE_IDS = 20;
+
 /** A recipe step's stable id (`ComputerRecipeStep.stepId`), unique within its recipe. */
 export const ComputerStepIdSchema = Type.String({
   minLength: 1,

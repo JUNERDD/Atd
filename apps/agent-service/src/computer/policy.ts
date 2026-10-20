@@ -1,5 +1,7 @@
 import {
+  canonicalJson,
   COMPUTER_EFFECT_RANK,
+  COMPUTER_MAX_RESOLVE_IDS,
   isBusinessEffect,
   isUnresolvedFact,
   isVisualStep,
@@ -44,6 +46,9 @@ export type RunScope =
 function refuse(message: string): Refusal {
   return { ok: false, message };
 }
+
+/** A refused `act`; `blockedBy` names the earlier business actions whose outcome held it back. */
+export type ActRefusal = Refusal & { blockedBy?: readonly string[] };
 
 /**
  * The scope the current run acts in. A run with a grant or a trial is recipe-bound and checked
@@ -132,17 +137,18 @@ export interface ActCheck {
  * recipe-bound run the action must carry out an allowed next step of the recipe, and the
  * service, not the model, fills in its locator, condition, effect and postcondition; such a run
  * never takes visual steps or carries `invoke`. In a free run a new business action (`invoke`,
- * `submit`) waits until every unresolved business action of the task on the binding was resolved;
- * reads and other writes stay allowed. Every action runs in the background: the host picks each
- * step's route and refuses a step that has none (`noBackgroundRoute`), so nothing here chooses a
- * delivery. Visual steps (capture points) need the run's model qualified for them, which no
- * recorded qualification is yet (visual-qualifications.ts), unless the development override holds.
+ * `submit`) waits until every unresolved business action of the task on the binding was resolved,
+ * and its refusal names them (`blockedBy`); reads and other writes stay allowed. Every action runs
+ * in the background: the host picks each step's route and refuses a step that has none
+ * (`noBackgroundRoute`), so nothing here chooses a delivery. Visual steps (capture points) need
+ * the run's model qualified for them, which no recorded qualification is yet
+ * (visual-qualifications.ts), unless the development override holds.
  */
 export function checkAct(
   check: ActCheck,
   input: ComputerActionInput,
   actionId: string,
-): AllowedAction | Refusal {
+): AllowedAction | ActRefusal {
   const { scope, binding, profile } = check;
   const inputRegionProblem = regionalConditionsProblem(input, check);
   if (inputRegionProblem) return refuse(inputRegionProblem);
@@ -181,17 +187,18 @@ type Built = Omit<AllowedAction, 'visualOverride'>;
 
 /**
  * A free run's action: the model's own, behind the task's unresolved business gate (plan §5.2
- * item 6). Only a business effect waits, and only on an unresolved business effect: a `submit` or
- * `invoke` whose outcome nobody confirmed must not be followed by another one on the same target
- * (that could commit twice), while navigating, reading and editing fields stay as free as an
- * attended run always was. `resolves` lets a read-only action with a postcondition settle earlier
+ * item 6). Only a business effect waits, and only on an unresolved business effect that holds the
+ * target (`holdsBusiness`): a `submit` or `invoke` whose outcome nobody confirmed must not be
+ * followed by another one on the same target (that could commit twice), while navigating, reading
+ * and editing fields stay as free as an attended run always was. The refusal says how to resolve
+ * each holding action. `resolves` lets a read-only action with a postcondition settle earlier
  * unresolved actions of the task on the binding when the host reports it `verified`.
  */
 function freeAction(
   check: ActCheck,
   input: ComputerActionInput,
   actionId: string,
-): Built | Refusal {
+): Built | ActRefusal {
   const { resolves, ...rest } = input;
   const action: ComputerAction = { ...rest, actionId };
   const effect = highestEffect(action);
@@ -221,21 +228,79 @@ function freeAction(
     };
     for (const fact of check.taskUnresolved.filter((item) => resolves.includes(item.actionId))) {
       const problem = resolutionProblem(fact, verification);
-      if (problem) return refuse(problem);
+      if (problem)
+        return refuse(
+          `${problem} If only a person can resolve it, or its original condition cannot hold although the intended outcome is visible, ${personCheck("that action's step")}.`,
+        );
     }
   }
   if (isBusinessEffect(effect)) {
-    // The intent covers every planned step. The host's retry contract distinguishes a
-    // dispatched business step (`never`) from preparation that stopped before it ran.
-    const blocking = check.taskUnresolved.filter(
-      (fact) => isBusinessEffect(fact.effect) && (!fact.result || fact.result.retry === 'never'),
-    );
-    if (blocking.length)
-      return refuse(
-        `Earlier business actions on this target have an unconfirmed outcome (${blocking.map((fact) => fact.actionId).join(', ')}): no new submit or invoke runs on it until they are checked. Reads and the other changes (navigate, fill, setValue, clear, select, plain keys and text, press with effect click) still work. To check them, observe and act with read-only steps (wait or scroll), a postcondition that proves the outcome and resolves naming them (status helps only an action that got no result), or ask the person to check the target and mark them as checked in the task.`,
-      );
+    // A refusal names at most as many actions as one check by the person resolves.
+    const held = check.taskUnresolved.filter(holdsBusiness).slice(0, COMPUTER_MAX_RESOLVE_IDS);
+    if (held.length)
+      return {
+        ...refuse(holdRefusal(held, check.facts)),
+        blockedBy: held.map((fact) => fact.actionId),
+      };
   }
   return { ok: true, action, effect, ...(resolves ? { resolves } : {}) };
+}
+
+/**
+ * Whether a fact holds new business actions of its task on its binding back, in the task's later
+ * runs too, until it is resolved (resolve.ts): an unresolved `submit` or `invoke`. Its effect
+ * covers every planned step, so the result's retry contract tells a business step that reached or
+ * may have reached the target (`never`, or no result at all) from preparation that stopped before
+ * it ran (`after_review`), which holds nothing.
+ */
+export function holdsBusiness(fact: ComputerFact): boolean {
+  return (
+    isBusinessEffect(fact.effect) &&
+    isUnresolvedFact(fact) &&
+    (!fact.result || fact.result.retry === 'never')
+  );
+}
+
+/** The person's check of an outcome nothing else can confirm, offered on `step`. */
+export function personCheck(step: string): string {
+  return `ask the person to look at the target and choose Mark as checked on ${step} in the conversation (they may need to open the step), then continue once they confirm`;
+}
+
+/**
+ * How held facts (`holdsBusiness`) get resolved, as the model reads it: what the hold covers, the
+ * read-only check repeating each one's original condition and surface or why only a person can
+ * resolve it (`resolutionProblem`), and when to ask the person instead.
+ */
+export function holdGuidance(held: readonly ComputerFact[]): string {
+  const checks = held.map(
+    (fact) =>
+      resolutionProblem(fact, fact.verification) ??
+      `To resolve ${fact.actionId}, act with only wait or scroll steps and resolves: ["${fact.actionId}"], repeating its original condition and surface exactly as postcondition and surfaceRefId: ${canonicalJson(fact.verification)}.`,
+  );
+  return [
+    'The hold covers this target in this task, later runs included; release and a new requestAccess do not clear it.',
+    ...checks,
+    `If an action's condition cannot hold although its intended outcome is visible, or only a person can resolve it, ${personCheck('this step')}.`,
+  ].join(' ');
+}
+
+/**
+ * The refusal of a business action the hold keeps back: what holds it and how to resolve each
+ * (`status` may first settle one this run sent without getting a result), and what still runs.
+ * `press` resolves accessibility elements only, so it never reaches text found only by OCR.
+ */
+function holdRefusal(held: readonly ComputerFact[], runFacts: readonly ComputerFact[]): string {
+  const lost = held
+    .filter((fact) => !fact.result && runFacts.some((own) => own.actionId === fact.actionId))
+    .map((fact) => fact.actionId);
+  return [
+    'Nothing was sent: earlier business actions on this target have an unconfirmed outcome, so no new submit or invoke (click, menu, drag, upload, return, escape or shortcut key, typed line break, press with effect submit) runs on it until each is resolved.',
+    ...(lost.length
+      ? [`No result came back for ${lost.join(', ')}; status may settle that first.`]
+      : []),
+    holdGuidance(held),
+    'Still allowed: observe, and acts with wait, scroll, navigate, fill, setValue, clear, select, plain typing and navigation keys, text without line breaks, or press with effect click on an element the observation lists (never on text that appears only in its recognized text).',
+  ].join(' ');
 }
 
 /** A recipe-bound run's action: the recipe step it carries out, never invoke. */

@@ -3,12 +3,14 @@ import {
   canonicalJson,
   COMPUTER_ENGINE_FOR_KIND,
   COMPUTER_TOOL,
+  isUnresolvedFact,
   type ActionResult,
   type ComputerAction,
   type ComputerActionInput,
   type ComputerError,
   type ComputerFact,
 } from '@atd/agent-contracts';
+import { answerText } from './act-answer.js';
 import {
   auditComputer,
   envelopeFor,
@@ -21,9 +23,8 @@ import { computerDetails, stepSummary } from './details.js';
 import { checkAct, runBinding, type AllowedAction } from './policy.js';
 import { readRunFacts } from './records.js';
 import { resolveVerified } from './resolve.js';
-import { importDownloads, withUploadPaths, type ImportedDownload } from './transfers.js';
+import { importDownloads, withUploadPaths } from './transfers.js';
 import { nextObservation } from './next-observation.js';
-import { refusalGuidance } from './refusals.js';
 import { visualState } from './visual-qualifications.js';
 
 /** The host answers an action within this, plus the time its waits may take. */
@@ -113,52 +114,20 @@ function settledFact(intent: ComputerFact, outcome: HostOutcome): ComputerFact {
 }
 
 /**
- * What the model reads of an action's fact, the earlier actions its result resolved, the
- * downloads it imported as task files (or could not) and, after a background refusal, what to do
- * next (refusals.ts).
- */
-function answerText(
-  fact: ComputerFact,
-  repeated: boolean,
-  resolved: readonly string[] = [],
-  files: { downloads: readonly ImportedDownload[]; notImported: readonly string[] } | null = null,
-  extra: Record<string, unknown> = {},
-): string {
-  const guidance = fact.result?.error ? refusalGuidance(fact.result.error) : null;
-  const base = {
-    ...extra,
-    ...(guidance ? { next: guidance } : {}),
-    actionId: fact.actionId,
-    effect: fact.effect,
-    phase: fact.phase,
-    ...(resolved.length ? { resolved } : {}),
-    ...(files?.downloads.length ? { downloads: files.downloads } : {}),
-    ...(files?.notImported.length ? { downloadsNotImported: files.notImported } : {}),
-  };
-  if (fact.result)
-    return JSON.stringify({ ...base, ...(repeated ? { repeated } : {}), result: fact.result });
-  return JSON.stringify({
-    ...base,
-    ...(repeated ? { repeated } : {}),
-    outcome: 'unknown',
-    note: 'The action was sent but no result came back. Do not repeat it; check it later with status.',
-  });
-}
-
-/**
  * `act`: checks the action against the run's scope, asks the gate in attended runs, records the
  * intent durably, sends it to the host and records what came back. Repeating an action id of
  * this run answers its recorded fact without sending anything again.
  */
 export async function runAct(ctx: CallContext, input: ComputerActionInput): Promise<ToolAnswer> {
   const { runtime } = ctx;
+  const free = ctx.scope.mode === 'free';
   const actionId = input.actionId ?? randomUUID();
   const facts = await readRunFacts(runtime.dataDir, ctx.runId);
   const existing = facts.find((fact) => fact.actionId === actionId);
   if (existing) {
     auditComputer(ctx, 'repeated', { actionId });
     return {
-      text: answerText(existing, true),
+      text: answerText(existing, { free, repeated: true }),
       details: computerDetails({
         op: 'act',
         bindingId: existing.bindingId,
@@ -202,7 +171,11 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
     input,
     actionId,
   );
-  if (!checked.ok) refuse(ctx, checked.message, { bindingId: binding.bindingId });
+  if (!checked.ok)
+    refuse(ctx, checked.message, {
+      bindingId: binding.bindingId,
+      ...(checked.blockedBy ? { blockedBy: checked.blockedBy } : {}),
+    });
   if (checked.visualOverride)
     auditComputer(ctx, 'visualOverride', { actionId, bindingId: binding.bindingId });
   // Upload files are resolved before the person is asked: a foreign or missing file never reaches
@@ -259,6 +232,11 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
     checked.resolves && fact.result?.effect === 'verified'
       ? await resolveVerified(runtime.records, checked.resolves, fact)
       : [];
+  // The named actions still open after the check; one settled meanwhile is not among them.
+  const unresolved = (checked.resolves ?? []).filter((id) => {
+    const named = runtime.records.find(id);
+    return named !== undefined && isUnresolvedFact(named);
+  });
   auditComputer(ctx, 'act', {
     actionId,
     bindingId: binding.bindingId,
@@ -273,7 +251,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
   const next = await nextObservation(ctx, action, targetRef, fact);
   const { image, resourceId, snapshot, ...extra } = next ?? {};
   return {
-    text: answerText(fact, false, resolved, files, extra),
+    text: answerText(fact, { free, resolved, unresolved, files, observation: extra }),
     ...(image ? { image } : {}),
     ...(snapshot ? { snapshot } : {}),
     details: computerDetails({

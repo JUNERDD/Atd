@@ -78,7 +78,9 @@ export function stepSummary(step: ComputerStep): string {
  * disturbances it measured included; how it was delivered is that result's fact, since every
  * action runs in the background. `error` is the refusal or failure of any other operation, such as
  * an `observe` refused `needsConsent` or a `requestAccess` refused `noBackgroundRoute`
- * (`openBrowser`); an action never repeats its result's error there.
+ * (`openBrowser`); an action never repeats its result's error there. `blockedBy` names the earlier
+ * business actions whose unconfirmed outcome held a refused `act` back, set only when there are
+ * any (policy.ts names at most `COMPUTER_MAX_RESOLVE_IDS`, each once).
  */
 export function computerDetails(fields: {
   op: ComputerDetails['op'];
@@ -88,6 +90,7 @@ export function computerDetails(fields: {
   steps?: readonly ComputerStep[];
   result?: ActionResult | undefined;
   error?: ComputerError | undefined;
+  blockedBy?: readonly string[] | undefined;
   visual?: ComputerVisualState | undefined;
   resourceIds?: readonly string[];
 }): ComputerDetails {
@@ -104,6 +107,7 @@ export function computerDetails(fields: {
     })),
     ...(fields.result ? { result: fields.result } : {}),
     ...(fields.error && fields.op !== 'act' ? { error: fields.error } : {}),
+    ...(fields.blockedBy?.length ? { blockedBy: [...fields.blockedBy] } : {}),
     ...(fields.visual ? { visual: fields.visual } : {}),
     resourceIds: [...(fields.resourceIds ?? [])],
   };

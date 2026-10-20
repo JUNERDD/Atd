@@ -92,8 +92,9 @@ export function computerDetails(block: BlockOf<'tool'>): ComputerDetails | null 
 
 /**
  * Whether a call's details hold anything its card shows: an outcome, the refusal of another
- * operation, steps, a saved view or the visual-steps note. Details without any of them would draw
- * an empty card.
+ * operation, steps, a saved view, the visual-steps note, or the earlier actions that held a
+ * refused act back (`blockedBy`), which the card's footer offers to check. Details without any of
+ * them would draw an empty card.
  */
 export function computerHasDetail(data: ComputerDetails): boolean {
   return Boolean(
@@ -101,6 +102,7 @@ export function computerHasDetail(data: ComputerDetails): boolean {
     data.error ||
     data.steps.length > 0 ||
     data.resourceIds.length > 0 ||
+    data.blockedBy?.length ||
     computerVisualOff(data),
   );
 }

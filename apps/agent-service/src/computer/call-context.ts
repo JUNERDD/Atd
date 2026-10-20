@@ -71,8 +71,9 @@ export function auditComputer(
 
 /**
  * A refused call, thrown by `refuse`. `bindingId` names the registered target the call had
- * resolved before it was refused, if any, and `error` the host's own refusal or failure of a
- * non-act operation; the tool then answers an error result whose details carry both
+ * resolved before it was refused, if any, `error` the host's own refusal or failure of a non-act
+ * operation, and `blockedBy` the earlier business actions whose unconfirmed outcome held a refused
+ * `act` back; the tool then answers an error result whose details carry them
  * (computer/extension.ts).
  */
 export class ComputerRefusal extends Error {
@@ -80,21 +81,29 @@ export class ComputerRefusal extends Error {
     message: string,
     readonly bindingId: string | undefined,
     readonly error?: ComputerError,
+    readonly blockedBy?: readonly string[],
   ) {
     super(message);
   }
 }
 
+/** What a refusal concerned, audited with it; `ComputerRefusal` carries the fields it names. */
+export interface RefusalFields {
+  bindingId?: string;
+  blockedBy?: readonly string[];
+  [field: string]: unknown;
+}
+
 /**
  * Refuses a call the scope check does not allow, or one the host refused (`error`): audited, then
- * thrown as the tool's error (`ComputerRefusal`, with `fields.bindingId` when set). In an
- * unattended run the refusal is an unattended answer, so the automation reports that the run
- * needs attention.
+ * thrown as the tool's error (`ComputerRefusal`, with `fields.bindingId` and `fields.blockedBy`
+ * when set). In an unattended run the refusal is an unattended answer, so the automation reports
+ * that the run needs attention.
  */
 export function refuse(
   ctx: CallBase,
   message: string,
-  fields: Record<string, unknown> = {},
+  fields: RefusalFields = {},
   error?: ComputerError,
 ): never {
   if (ctx.unattended)
@@ -107,8 +116,7 @@ export function refuse(
       ...fields,
     });
   else auditComputer(ctx, 'refused', { reason: message, ...fields });
-  const { bindingId } = fields;
-  throw new ComputerRefusal(message, typeof bindingId === 'string' ? bindingId : undefined, error);
+  throw new ComputerRefusal(message, fields.bindingId, error, fields.blockedBy);
 }
 
 /**

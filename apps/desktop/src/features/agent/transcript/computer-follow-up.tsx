@@ -18,8 +18,8 @@ import { showErrorToast } from '../../../components/toast-store';
 import {
   computerBridge,
   refreshComputer,
-  useActionUnresolved,
   useComputerShellState,
+  useUnresolvedActions,
 } from '../../computer/use-computer';
 import { computerOutcome } from './computer-call';
 import { ToolCard } from './tool-card';
@@ -51,14 +51,17 @@ function handoffOf(error: ComputerError | undefined): Handoff | null {
  * effect is unknown or partial, or whose reply was lost, and that the service still lists as
  * unresolved (so it does not come back after a reload), after confirming they looked at the
  * target themselves, so the service records it resolved by a person and later business actions
- * on the target are no longer held back. On the task's latest run, a step the host left to the
- * person, whether an action's (`result.error`) or another operation's refusal (`details.error`,
- * such as an observation without prepared capture or an access request whose browser is not
- * open), says what to do themselves and to tell Atd to continue afterwards; Prepare screen access
- * opens Settings › Computer use, where the person prepares capture (the guidance turns to ready
- * once the shell reports it), and Open browser opens a browser environment the host could not
- * start in the background. Each answer reads as a short note in place of the guidance and its
- * buttons. Nothing here acts on the target: computer use never takes the foreground for a step.
+ * on the target are no longer held back. An act the service held back for such earlier actions
+ * (`blockedBy`) offers the same check for those still unresolved, under a line saying why the
+ * step waits, so the person can lift the hold where the agent stopped. On the task's latest run,
+ * a step the host left to the person, whether an action's (`result.error`) or another operation's
+ * refusal (`details.error`, such as an observation without prepared capture or an access request
+ * whose browser is not open), says what to do themselves and to tell Atd to continue afterwards;
+ * Prepare screen access opens Settings › Computer use, where the person prepares capture (the
+ * guidance turns to ready once the shell reports it), and Open browser opens a browser
+ * environment the host could not start in the background. Each answer reads as a short note in
+ * place of the guidance and its buttons. Nothing here acts on the target: computer use never
+ * takes the foreground for a step.
  */
 export function ComputerFollowUp({
   block,
@@ -78,23 +81,27 @@ export function ComputerFollowUp({
   const actionId = result?.actionId ?? data.actionId;
   const outcome = result ? computerOutcome(result) : null;
   // An action whose reply was lost has no result; the service still lists it while it may have
-  // taken effect, so it is as checkable as an unknown one.
-  const flagged =
-    data.op === 'act' && (outcome === null || outcome === 'unknown' || outcome === 'partial');
-  const unresolved = useActionUnresolved(
+  // taken effect, so it is as checkable as an unknown one. An act the service held back recorded
+  // nothing itself, so only the earlier actions it names can be checked from it.
+  const own =
+    data.op === 'act' &&
+    actionId !== undefined &&
+    (outcome === null || outcome === 'unknown' || outcome === 'partial');
+  const candidates = own ? [actionId] : (data.blockedBy ?? []);
+  // Only actions the service still lists can be checked.
+  const checkIds = useUnresolvedActions(
     turns?.taskId ?? '',
-    actionId ?? '',
+    candidates,
     turns?.runs.map(({ id, status }) => `${id}:${status}`).join(',') ?? '',
-    flagged && Boolean(turns) && Boolean(actionId),
+    candidates.length > 0 && Boolean(turns),
   );
   if (!bridge || !turns) return null;
-  // Only an action the service still lists can be checked, so only one with an id.
-  const checkId = flagged && unresolved ? actionId : undefined;
+  const blocked = !own && checkIds.length > 0;
   // Only the latest run still waits on the person; a later run already moved past this step. An
   // action carries its refusal in its result; any other operation in the details.
   const handoff =
     turns.runs.at(-1)?.id === block.runId ? handoffOf(result?.error ?? data.error) : null;
-  if (!note && !checkId && !handoff) return null;
+  if (!note && checkIds.length === 0 && !handoff) return null;
   const target = data.target ?? t('computer.unnamedTarget');
   const consentReady = Boolean(shell?.captureConsent);
   const browserId =
@@ -122,11 +129,17 @@ export function ComputerFollowUp({
       setPending(false);
     }
   }
-  const check = (id: string) =>
+  const check = (ids: readonly string[]) =>
     act(async () => {
-      const { resolved } = await bridge.resolveFacts({ taskId: turns.taskId, actionIds: [id] });
+      const { resolved } = await bridge.resolveFacts({
+        taskId: turns.taskId,
+        actionIds: [...ids],
+      });
       refreshComputer();
-      return resolved.includes(id) ? t('computer.check.done') : t('computer.check.nothing');
+      if (!blocked) return t(resolved.length ? 'computer.check.done' : 'computer.check.nothing');
+      return resolved.length
+        ? t('computer.check.blockedDone', { count: resolved.length })
+        : t('computer.check.blockedNothing');
     });
   const prepareConsent = () =>
     act(async () => {
@@ -148,9 +161,14 @@ export function ComputerFollowUp({
         // Guidance stacks above its buttons, so a long sentence never squeezes them.
         <div className="flex min-w-0 flex-col items-start gap-1.5">
           {handoff && <p className="m-0 wrap-anywhere">{guidance(handoff)}</p>}
-          {(checkId || offersConsent || browserId) && (
+          {blocked && (
+            <p className="m-0 wrap-anywhere">
+              {t('computer.check.blocked', { count: checkIds.length, target })}
+            </p>
+          )}
+          {(checkIds.length > 0 || offersConsent || browserId) && (
             <div className="flex flex-wrap gap-2">
-              {checkId && (
+              {checkIds.length > 0 && (
                 <Button
                   type="button"
                   variant="outline"
@@ -193,16 +211,22 @@ export function ComputerFollowUp({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('computer.check.title')}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {blocked
+                ? t('computer.check.blockedTitle', { count: checkIds.length })
+                : t('computer.check.title')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('computer.check.description', { target })}
+              {blocked
+                ? t('computer.check.blockedDescription', { count: checkIds.length, target })
+                : t('computer.check.description', { target })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('computer.check.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (checkId) void check(checkId);
+                if (checkIds.length > 0) void check(checkIds);
               }}
             >
               {t('computer.check.confirm')}

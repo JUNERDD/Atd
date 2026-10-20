@@ -105,6 +105,16 @@
   line-height: 16px;
   color: var(--muted-foreground);
 }
+/*
+ * A card with nothing between its header and footer keeps one hairline, the header's; a header
+ * with nothing under it closes on the card's own edge.
+ */
+.tool-card-header + .tool-card-footer {
+  border-top: 0;
+}
+.tool-card-header:last-child {
+  border-bottom: 0;
+}
 .tool-card-footer[data-tone='destructive'] {
   color: var(--destructive);
 }

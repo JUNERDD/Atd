@@ -1,5 +1,9 @@
 import { Type, type Static } from 'typebox';
-import { ComputerActionIdSchema, ComputerHashSchema } from './computer-actions.js';
+import {
+  COMPUTER_MAX_RESOLVE_IDS,
+  ComputerActionIdSchema,
+  ComputerHashSchema,
+} from './computer-actions.js';
 import { COMPUTER_MAX_PROFILES } from './computer-control.js';
 import { ComputerGrantSchema, ComputerTrialSchema } from './computer-grants.js';
 import { AutomationComputerPolicySchema } from './computer-recipes.js';
@@ -72,9 +76,6 @@ export const StopAllComputerResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type StopAllComputerResponse = Static<typeof StopAllComputerResponseSchema>;
-
-/** Actions one resolve request names. */
-export const COMPUTER_MAX_RESOLVE_IDS = 20;
 
 /**
  * POST `/v1/computer/facts/resolve`: a person checked what the named actions of a task did. Every

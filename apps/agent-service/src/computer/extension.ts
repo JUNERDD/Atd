@@ -144,19 +144,20 @@ async function operate(base: CallBase, call: ComputerCall, blockImages: () => bo
 
 /**
  * The tool's error result for a refusal that names what it concerned: the registered target the
- * call had resolved (by id and label), or the host's own refusal of a non-act operation
+ * call had resolved (by id and label) with the earlier actions that held a refused `act` back
+ * (`ComputerDetails.blockedBy`), or the host's own refusal of a non-act operation
  * (`ComputerDetails.error`), so the transcript can offer the person the matching next step. An
  * `act` carries its host refusal in its result instead. Any other failure is rethrown as the
  * tool's error.
  */
 function refusalResult(base: CallBase, op: ComputerDetails['op'], error: unknown) {
   if (!(error instanceof ComputerRefusal)) throw error;
-  const { bindingId } = error;
+  const { bindingId, blockedBy } = error;
   if (bindingId === undefined && error.error === undefined) throw error;
   const target = bindingId === undefined ? undefined : base.runtime.bindings.get(bindingId)?.label;
   return {
     content: [{ type: 'text' as const, text: error.message }],
-    details: computerDetails({ op, target, bindingId, error: error.error }),
+    details: computerDetails({ op, target, bindingId, error: error.error, blockedBy }),
     isError: true,
   };
 }

@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import {
+  COMPUTER_MAX_RESOLVE_IDS,
   COMPUTER_MAX_STEPS,
   ComputerActionIdSchema,
   ComputerDeliverySchema,
@@ -291,7 +292,9 @@ export type HostActionRecord = Static<typeof HostActionRecordSchema>;
  * recorded, also when its reply was lost and it has no result. `error` is the refusal of any other
  * operation (an `observe` without prepared capture consent, a `requestAccess` whose browser is not
  * open), so the transcript can offer the person the matching next step; an `act` carries its
- * refusal in `result.error`.
+ * refusal in `result.error`. `blockedBy` names the earlier business actions of the task whose
+ * unconfirmed outcome held a refused `act` back, so the transcript can offer the person to mark
+ * them as checked there.
  */
 export const ComputerDetailsSchema = Type.Object(
   {
@@ -323,6 +326,13 @@ export const ComputerDetailsSchema = Type.Object(
     ),
     result: Type.Optional(ActionResultSchema),
     error: Type.Optional(ComputerErrorSchema),
+    blockedBy: Type.Optional(
+      Type.Array(ComputerActionIdSchema, {
+        minItems: 1,
+        maxItems: COMPUTER_MAX_RESOLVE_IDS,
+        uniqueItems: true,
+      }),
+    ),
     delivery: Type.Optional(ComputerDeliverySchema),
     visual: Type.Optional(ComputerVisualStateSchema),
     resourceIds: Type.Array(Identifier, { maxItems: COMPUTER_MAX_EVIDENCE }),
