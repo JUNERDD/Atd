@@ -128,8 +128,8 @@ final class PlaywrightBrowserEngine: ComputerEngine {
     return [.page(profileId: page.profileId, contextId: page.contextId, pageId: page.pageId)]
   }
 
-  /// The managed browser of the ref. It being the frontmost app is necessary for the person to be
-  /// using the target, not sufficient: ``isInUse(_:)`` looks at the pages.
+  /// The managed browser of the ref. It being the frontmost app is necessary for the target to be
+  /// in front of the person, not sufficient: ``isInFront(_:)`` looks at the pages.
   func foregroundProcess(of ref: TargetRefWire) -> pid_t? {
     guard let page = ref.browser, let instance = chromes.tracked(page.profileId),
       instance.contextId == page.contextId

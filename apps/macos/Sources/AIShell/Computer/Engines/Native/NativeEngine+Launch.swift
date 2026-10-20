@@ -4,7 +4,8 @@ import AppKit
 /// Starting an application target that is not running (spec §11), for attended and unattended
 /// runs alike: the bound copy opens without activation and without a prompt of its own. The
 /// host never activates anything to hand focus back (plan I2); an app that brings itself
-/// forward as it starts is logged, and the run's next write finds it in use (`targetInUse`).
+/// forward as it starts is logged, and like any target in front of the person it is in use only
+/// while they type, click or scroll (`targetInUse`).
 /// Resolving then waits for the app's first window.
 extension NativeEngine {
   /// How long a started app may take to show its first window, within the request's deadline;

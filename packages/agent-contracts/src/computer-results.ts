@@ -45,8 +45,8 @@ export const COMPUTER_SCREENSHOT_MAX_BASE64 = 11184812;
  * (`reason` says which limit; a person can do the step); `needsPermission`: a privacy grant is
  * missing; `needsConsent`: screen capture was never prepared in Settings, and an unattended run
  * never prompts for it; `locked` / `busy`: another host holds the session lock or the resource;
- * `targetInUse`: the person is using the target (it is frontmost and focused), so the host
- * yields; `hostUnavailable`: no bound host answered (or it speaks another computer protocol);
+ * `targetInUse`: the person is using the target (it is in front of them and they typed, clicked
+ * or scrolled in the last few seconds), so the host yields; `hostUnavailable`: no bound host answered (or it speaks another computer protocol);
  * `modalBlocked`: the step wrote to a surface while a modal child of it was open; `disturbed`:
  * the action disturbed the person (`ActionResult.disturbances` attributes it to the agent), so the
  * host repaired what it could, ended the action and stops using that route for the rest of its

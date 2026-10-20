@@ -82,7 +82,7 @@ function noRouteGuidance(reason: ComputerRefusalReason | undefined): string {
 /** What to do after the other errors the imperceptible contract causes. */
 const GUIDANCE: Readonly<Partial<Record<ComputerErrorCode, string>>> = {
   targetInUse:
-    'The person is using this target right now, so Atd yielded and sent nothing. Never ask them to stop. Wait a few seconds (observe with afterMs), then try again; if it stays in use, tell them you will continue once they are done with it, and stop for now.',
+    'The person is working in this target right now (it is in front of them and they typed, clicked or scrolled in the last few seconds), so Atd yielded and sent nothing. Never ask them to stop. Wait a few seconds (observe with afterMs), then try again; if it stays in use, tell them you will continue once they are done with it, and stop for now.',
   needsConsent:
     'Screen capture was never prepared for Atd, and a run never asks for it while working. Continue without screenshots if the accessibility tree is enough; otherwise tell the person to prepare screen access once in Settings → Computer use.',
   disturbed:

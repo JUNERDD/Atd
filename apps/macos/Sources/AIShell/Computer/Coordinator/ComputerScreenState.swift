@@ -6,7 +6,7 @@ import CoreGraphics
 /// The live system state the coordinator checks before and between steps (plan §4.2, §6.2,
 /// §6.3, §8.3): privacy grants, the lock screen and secure input, and whether a target's rect may
 /// be drawn on screen. Read each time, never cached. Whether the person is using a target is the
-/// engine's to say (``ComputerEngine/isInUse(_:)``).
+/// yield's to decide (``ComputerCoordinator/interruption(_:engine:)``).
 enum ComputerScreenState {
   /// The grant a request lacks, checked live: Accessibility for a native target, through which
   /// the driver (a child process with Atd's grants) reads and acts; Screen Recording for a

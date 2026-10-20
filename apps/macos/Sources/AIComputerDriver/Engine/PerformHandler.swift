@@ -20,9 +20,10 @@ struct PerformContext {
 enum PerformHandler {
   static func perform(_ ctx: PerformContext) -> Result<DriverReceipt, DriverFailure> {
     let start = Date()
+    let front = WindowServerQueries.frontProcessPID()
     do {
-      let receipt = try dispatch(ctx)
-      var stamped = receipt
+      var stamped = try dispatch(ctx)
+      stamped.frontmost = frontmostCheck(ctx, before: front)
       stamped.elapsedMilliseconds = Date().timeIntervalSince(start) * 1000
       return .success(stamped)
     } catch let failure as DriverFailure {
@@ -39,18 +40,15 @@ enum PerformHandler {
     case .axSetValue(let element, let value):
       try ensure(.axText, ctx)
       try withElement(ctx, element) { try AXActions.setValue($0, value) }
-      return DriverReceipt(
-        route: .axText, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+      return DriverReceipt(route: .axText, dispatched: true)
     case .axInsertText(let element, let text, let range):
       try ensure(.axText, ctx)
       try withElement(ctx, element) { try AXTextWriter.insert($0, text: text, range: range) }
-      return DriverReceipt(
-        route: .axText, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+      return DriverReceipt(route: .axText, dispatched: true)
     case .axFocus(let element):
       try ensure(.axAction, ctx)
       try withElement(ctx, element) { try AXActions.focus($0) }
-      return DriverReceipt(
-        route: .axAction, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+      return DriverReceipt(route: .axAction, dispatched: true)
     case .axMenu(let path):
       return try axMenu(ctx, path: path)
     case .axScroll(let element, let kind):
@@ -93,8 +91,7 @@ enum PerformHandler {
     switch outcome {
     case .completed(let failure):
       if let failure { throw failure }
-      return DriverReceipt(
-        route: .axAction, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+      return DriverReceipt(route: .axAction, dispatched: true)
     case .timedOut:
       throw DriverFailure(
         code: .cancelled, message: "AX action exceeded the deadline and is still running",
@@ -123,8 +120,7 @@ enum PerformHandler {
     switch outcome {
     case .completed(let failure):
       if let failure { throw failure }
-      return DriverReceipt(
-        route: .axMenu, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+      return DriverReceipt(route: .axMenu, dispatched: true)
     case .timedOut:
       throw DriverFailure(
         code: .cancelled, message: "menu press exceeded the deadline", mayHaveDispatched: true)
@@ -144,8 +140,7 @@ enum PerformHandler {
       throw DriverFailure(code: .targetGone)
     }
     try AXScroll.scroll(element, kind)
-    return DriverReceipt(
-      route: .axScroll, dispatched: true, frontmost: frontmostCheck(ctx, before: nil))
+    return DriverReceipt(route: .axScroll, dispatched: true)
   }
 
   // MARK: - Shared helpers
@@ -173,9 +168,12 @@ enum PerformHandler {
     }
   }
 
-  /// A frontmost/z-order observation: the driver never intends to change either, so any change is
-  /// a disturbance the host attributes to the agent.
-  static func frontmostCheck(_ ctx: PerformContext, before: pid_t?) -> DriverFrontmostCheck {
+  /// The frontmost app around the primitive, read before it starts: the driver never intends to
+  /// change it, so a target that became frontmost during the primitive is a disturbance the host
+  /// attributes to the agent, while one the person already had in front is not.
+  private static func frontmostCheck(_ ctx: PerformContext, before: pid_t?)
+    -> DriverFrontmostCheck
+  {
     let after = WindowServerQueries.frontProcessPID()
     let raised = after == ctx.pid && before != ctx.pid
     return DriverFrontmostCheck(

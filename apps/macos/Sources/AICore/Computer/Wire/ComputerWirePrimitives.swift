@@ -173,7 +173,8 @@ public enum ComputerErrorCode: String, Codable, CaseIterable, Sendable {
   case needsConsent
   case locked
   case busy
-  /// The person is using the target (frontmost and focused), so the host yields.
+  /// The person is using the target (it is in front of them and they just typed, clicked or
+  /// scrolled), so the host yields.
   case targetInUse
   case cancelled
   case timeout

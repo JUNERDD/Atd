@@ -21,13 +21,13 @@ public struct BrowserWorkerReply: Decodable, Equatable, Sendable {
 
   /// What `page_focus` reports of one open page: `visible` is the tab a window shows, and
   /// `hasFocus` is `document.hasFocus()`, which Playwright's focus emulation makes true for every
-  /// page it drives. The person is using a page only when both hold.
+  /// page it drives. A page is in front of the person only when both hold.
   public struct PageFocus: Decodable, Equatable, Sendable {
     public let pageId: String
     public let hasFocus: Bool
     public let visible: Bool
 
-    public var isInUse: Bool { hasFocus && visible }
+    public var isInFront: Bool { hasFocus && visible }
   }
 
   /// A browser window's frame as the browser reports it, after the system had its say.

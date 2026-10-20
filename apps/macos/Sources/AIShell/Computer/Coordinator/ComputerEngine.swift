@@ -220,9 +220,10 @@ protocol ComputerEngine: AnyObject {
   /// The process a person would use to interact with `ref` (the browser of a managed profile,
   /// the app of a native target).
   func foregroundProcess(of ref: TargetRefWire) -> pid_t?
-  /// Whether the person is using `ref` right now, so the host yields (`targetInUse`) instead of
-  /// acting under their hands.
-  func isInUse(_ ref: TargetRefWire) async -> Bool
+  /// Whether `ref` is what the person has in front of them right now. With their own recent
+  /// input that makes it in use, and the host yields (`targetInUse`) instead of acting under
+  /// their hands (``ComputerCoordinator/interruption(_:engine:)``).
+  func isInFront(_ ref: TargetRefWire) async -> Bool
   /// Undoes the engine's per-target preparation (occlusion keep-alive; web accessibility stays
   /// on) when the run releases `ref`, the run ends, its binding is deleted or the host quits.
   /// The host calls it once no live run uses `ref`, also for a ref that went stale meanwhile;
@@ -246,8 +247,8 @@ extension ComputerEngine {
     ref.native.map { pid_t($0.pid) }
   }
 
-  /// By default the person uses the target while its process is the frontmost app.
-  func isInUse(_ ref: TargetRefWire) async -> Bool {
+  /// By default a target is in front of the person while its process is the frontmost app.
+  func isInFront(_ ref: TargetRefWire) async -> Bool {
     guard let pid = foregroundProcess(of: ref) else { return false }
     return NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
   }

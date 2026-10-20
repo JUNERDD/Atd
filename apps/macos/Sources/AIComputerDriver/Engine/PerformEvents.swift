@@ -19,7 +19,6 @@ enum PerformEvents {
     try requireDeliverableToolkit(toolkit)
     let target = PointerTarget(
       pid: ctx.pid, windowId: ctx.windowId, windowBounds: resolved.bounds, screenPoint: cg(point))
-    let before = WindowServerQueries.frontProcessPID()
     // A mouse-down reaches a window's content only while the window is key (AppKit and Chromium
     // alike), so every click runs inside a target-only key scope.
     try requireKeyScope(ctx)
@@ -27,9 +26,7 @@ enum PerformEvents {
       guard PointerRecipes.click(factory: ctx.factory, target: target, clickCount: clickCount)
       else { throw DriverFailure(code: .noRoute, message: "could not build click events") }
     }
-    return DriverReceipt(
-      route: .pointer, dispatched: true, keyScope: keyScope,
-      frontmost: PerformHandler.frontmostCheck(ctx, before: before))
+    return DriverReceipt(route: .pointer, dispatched: true, keyScope: keyScope)
   }
 
   static func scroll(
@@ -44,8 +41,7 @@ enum PerformEvents {
       pid: ctx.pid, windowId: ctx.windowId, windowBounds: resolved.bounds, screenPoint: cg(point))
     guard ScrollRecipes.scroll(factory: ctx.factory, target: target, deltaX: deltaX, deltaY: deltaY)
     else { throw DriverFailure(code: .noRoute, message: "could not build scroll event") }
-    return DriverReceipt(
-      route: .scroll, dispatched: true, frontmost: PerformHandler.frontmostCheck(ctx, before: nil))
+    return DriverReceipt(route: .scroll, dispatched: true)
   }
 
   static func keys(_ ctx: PerformContext, chord specification: String) throws -> DriverReceipt {
@@ -57,9 +53,7 @@ enum PerformEvents {
     let report = try WindowKeyScope.run(targetPid: ctx.pid, targetWindowId: ctx.windowId) {
       _ = KeyboardRecipes.pressChord(factory: ctx.factory, chord: chord, pid: ctx.pid)
     }
-    return DriverReceipt(
-      route: .keys, dispatched: true, keyScope: report,
-      frontmost: PerformHandler.frontmostCheck(ctx, before: nil))
+    return DriverReceipt(route: .keys, dispatched: true, keyScope: report)
   }
 
   static func text(_ ctx: PerformContext, text: String) throws -> DriverReceipt {
@@ -70,9 +64,7 @@ enum PerformEvents {
     let report = try WindowKeyScope.run(targetPid: ctx.pid, targetWindowId: ctx.windowId) {
       _ = KeyboardRecipes.typeText(factory: ctx.factory, text: text, pid: ctx.pid)
     }
-    return DriverReceipt(
-      route: .text, dispatched: true, keyScope: report,
-      frontmost: PerformHandler.frontmostCheck(ctx, before: nil))
+    return DriverReceipt(route: .text, dispatched: true, keyScope: report)
   }
 
   static func drag(_ ctx: PerformContext, from: DriverPoint, to: DriverPoint) throws
@@ -86,8 +78,7 @@ enum PerformEvents {
     try DragRecipes.drag(
       factory: ctx.factory, pid: ctx.pid, windowId: ctx.windowId, windowBounds: resolved.bounds,
       from: cg(from), to: cg(to))
-    return DriverReceipt(
-      route: .drag, dispatched: true, frontmost: PerformHandler.frontmostCheck(ctx, before: nil))
+    return DriverReceipt(route: .drag, dispatched: true)
   }
 
   // MARK: - Helpers

@@ -14,9 +14,17 @@ enum WindowKeyScope {
   /// Open a key scope around `body`. Returns a report of what happened (confirmed, returned,
   /// user window restored). Throws `capabilityUnavailable` when the PSN cannot be resolved, and
   /// `noRoute` when the target could not be confirmed as key (so no key ever left the scope).
+  /// A target window that is already the frontmost app's key window needs no scope: `body` runs
+  /// as it is, since opening one would take key from that window and give it back.
   static func run(
     targetPid: pid_t, targetWindowId: CGWindowID, _ body: () throws -> Void
   ) throws -> DriverKeyScopeReport {
+    if WindowServerQueries.frontProcessPID() == targetPid,
+      focusedWindowId(targetPid) == targetWindowId
+    {
+      try body()
+      return DriverKeyScopeReport(used: false)
+    }
     let spi = PrivateSymbols.shared
     guard let post = spi.postEventRecord,
       let targetPSN = WindowServerQueries.processSerialNumber(

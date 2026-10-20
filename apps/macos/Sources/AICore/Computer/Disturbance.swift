@@ -104,7 +104,10 @@ public enum DisturbanceRules {
           repaired: reading.frontmostAfter == reading.frontmostBefore,
           detail: "Another app became active while the step ran."))
     }
-    if reading.targetAboveAfter, !reading.targetAboveBefore {
+    // A target the person already had in front: its own windows coming up are what the step was
+    // for, not a window over theirs or a dialog in an app of theirs.
+    let targetInFront = reading.frontmostBefore.map(reading.target.contains) ?? false
+    if !targetInFront, reading.targetAboveAfter, !reading.targetAboveBefore {
       found.append(
         ComputerDisturbanceWire(
           kind: .raise, attribution: reading.personInput.contains(.clicks) ? .unknown : .agent,
@@ -129,8 +132,8 @@ public enum DisturbanceRules {
           kind: .clipboard, attribution: .unknown, repaired: false,
           detail: "The clipboard changed while the step ran."))
     }
-    if let before = reading.personWindowsBefore, let after = reading.personWindowsAfter,
-      after > before
+    if !targetInFront, let before = reading.personWindowsBefore,
+      let after = reading.personWindowsAfter, after > before
     {
       found.append(
         ComputerDisturbanceWire(

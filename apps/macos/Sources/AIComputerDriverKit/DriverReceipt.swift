@@ -26,7 +26,8 @@ public enum DriverRoute: String, Codable, Equatable, Sendable {
 /// What the driver did to the target-only key scope for a primitive that needed one. The host's
 /// disturbance guard trusts this over its own global monitor for key-focus facts (plan I8).
 public struct DriverKeyScopeReport: Codable, Equatable, Sendable {
-  /// Whether a key scope was opened at all (AX routes do not need one).
+  /// Whether a key scope was opened at all (AX routes do not need one, nor a target window that
+  /// is already the frontmost app's key window).
   public var used: Bool
   /// Whether the driver confirmed the target window became the app's key window before acting
   /// (via the app's `AXFocusedWindow`). False means the scope could not be proven and the
@@ -59,7 +60,8 @@ public struct DriverFrontmostCheck: Codable, Equatable, Sendable {
   /// The WindowServer-frontmost pid after the primitive. A change the driver did not intend is a
   /// disturbance.
   public var frontmostPidAfter: Int?
-  /// Whether the target's window moved above the user's windows in z-order during the primitive.
+  /// Whether the target became the frontmost app during the primitive; a target that was
+  /// frontmost before it was not raised by it.
   public var targetRaised: Bool
 
   public init(
