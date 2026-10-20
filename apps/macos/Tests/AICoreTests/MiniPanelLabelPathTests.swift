@@ -88,7 +88,7 @@ struct MiniPanelLabelPathTests {
     #expect(MiniPanelLabelPath.rect(fade: 0, rest: rest, edge: edge) == rest)
     let gone = MiniPanelLabelPath.rect(fade: 1, rest: rest, edge: edge)
     #expect(gone.width == 0 && gone.height == 0 && gone.origin == anchor)
-    // Its fill fades while its glass only draws a little toward the anchor, then the glass goes.
+    // It only draws a little toward the anchor while its text fades, then it goes.
     #expect(MiniPanelLabelPath.scale(fade: 0.5) == 1 - MiniPanelLabelPath.leaveShrink * 0.5)
     #expect(MiniPanelLabelPath.scale(fade: 0.8) < 0.5)
     #expect(MiniPanelLabelPath.scale(fade: -0.1) > 1)

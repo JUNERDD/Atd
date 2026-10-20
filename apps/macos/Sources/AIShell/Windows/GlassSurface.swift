@@ -4,7 +4,7 @@ import SwiftUI
 /// The surface the shell's floating glass shares with the main panel: the selection toolbar, its
 /// menus, the glass HUD, the capture toolbars, the mini panel and the command island. This is its
 /// one owner: AppKit glass takes it through ``attach(_:content:)`` and ``shape(_:content:cornerRadius:)``,
-/// SwiftUI glass through ``SwiftUI/View/glassSurface(in:animation:opacity:)``, so a new surface
+/// SwiftUI glass through ``SwiftUI/View/glassSurface(in:animation:)``, so a new surface
 /// cannot end up with the glass but without its fill and scheme. Like the panel's, it takes the
 /// app's light or dark scheme (``AppAppearance``, the user's Theme setting or the system's), and
 /// the glass carries the panel's base fill, `--ata-surface-panel` in `packages/ui/src/styles.css`,
@@ -119,14 +119,11 @@ extension View {
   /// This content on the shell's glass surface (``GlassSurfaceFace``), clipped to `outline` and
   /// on regular Liquid Glass of the same outline, which moves on `animation`, so the glass, its
   /// base and its content are one shape on every frame and only the outline changes from frame to
-  /// frame. `opacity` fades the surface and the content under the glass; a glass container drops
-  /// an opacity (as it drops a transform) set on the glass itself, so a piece's glass goes only
-  /// by its outline.
-  func glassSurface(in outline: some Shape, animation: Animation?, opacity: Double = 1)
-    -> some View
-  {
+  /// frame. A glass container drops an opacity (as it drops a transform) set on the glass itself,
+  /// so a piece's glass goes only by its outline, its fill and content with it.
+  func glassSurface(in outline: some Shape, animation: Animation?) -> some View {
     modifier(GlassSurfaceFace())
-      .animation(animation) { $0.opacity(opacity).clippedGlass(in: outline) }
+      .animation(animation) { $0.clippedGlass(in: outline) }
   }
 
   /// This content clipped to `outline` and on regular Liquid Glass of the same outline, the two
@@ -135,7 +132,7 @@ extension View {
   /// the clip, and the surface fill and content inside it, never part from the glass's rim. A
   /// clip given the shape itself would move per axis instead, and a fill inside it would slide
   /// off the glass. Set inside the piece's scoped animation; bare, it is glass without the
-  /// surface, so pieces take it through ``glassSurface(in:animation:opacity:)``.
+  /// surface, so pieces take it through ``glassSurface(in:animation:)``.
   ///
   /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
   /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows

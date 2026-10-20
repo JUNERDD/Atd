@@ -99,8 +99,6 @@ struct MiniPanelMotionTests {
     #expect(Choreography.labelGlide == MiniPanelSpring(0.35, 0.30))
     // The bubble leaves with its text, without overshoot.
     #expect(Choreography.labelLeave == MiniPanelSpring(0.2, 0))
-    // A card closing into the button leaves as a label does, its glass going once its fill has.
-    #expect(Choreography.flyoutFillLag == 0.06)
   }
 
   @Test("Reduce Motion keeps every timing, without bounce")

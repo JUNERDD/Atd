@@ -3,7 +3,8 @@ import AppKit
 import SwiftUI
 
 /// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule;
-/// it grows out of there to the card's frame on its own animation, and its rows, laid out where
+/// it grows out of there to the card's frame on its own animation, its fill with it, so no bare
+/// glass shows on the way in or out, and its rows, laid out where
 /// the open card rests, ride inside it, centered in it and scaled with it (``MiniPanelFlyout``),
 /// so they open out of the anchor with the card. It is drawn in a fixed lane that holds the card
 /// and every body shape it closes into, so its frames lay nothing out again while it opens or
@@ -21,7 +22,7 @@ struct MiniPanelCard: View {
       .frame(width: rows.width, height: rows.height)
       .animation(nil) { $0.offset(x: rows.minX, y: rows.minY) }
       .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      .glassSurface(in: outline, animation: card.animation, opacity: card.opacity)
+      .glassSurface(in: outline, animation: card.animation)
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(model.flyoutOpen)
       .accessibilityHidden(!model.flyoutOpen)
@@ -30,8 +31,8 @@ struct MiniPanelCard: View {
 
 /// The hover label (hover-label-v4): a small capsule of the same glass that grows out of an anchor
 /// on its side facing the capsule, level with the hovered control, glides from control to
-/// control, and leaves into that anchor: its glass leads its fill on the way in, and its fill and
-/// text fade before its glass draws in on the way out (``MiniPanelLabelPath``). Its text rides
+/// control, and leaves into that anchor, its fill with its glass, so it never shows as bare glass
+/// (``MiniPanelLabelPath``). Its text rides
 /// inside it on the same animated values (``MiniPanelLabelFollowEffect``): it grows with the
 /// label, glides with it, swapping through a blur, and shows only through its own presence.
 /// Visual only: VoiceOver reads the controls' own labels.
@@ -65,9 +66,9 @@ struct MiniPanelLabelView: View {
       .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
       .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
       .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      // Leaving, its fill and text fade where it rests, and its outline takes the bare glass
-      // away there, rather than shrinking into the capsule, whose fill its own would darken.
-      .glassSurface(in: outline, animation: label.animation, opacity: 1 - label.fade)
+      // Leaving, its outline takes it, fill and glass, into its anchor, rather than shrinking
+      // into the capsule, whose fill its own would darken.
+      .glassSurface(in: outline, animation: label.animation)
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(false)
       .accessibilityHidden(true)

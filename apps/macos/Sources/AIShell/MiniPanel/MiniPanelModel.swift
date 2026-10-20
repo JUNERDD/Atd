@@ -113,14 +113,12 @@ struct MiniPanelBodyFactors: Equatable {
 }
 
 /// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule,
-/// and it grows out of there to the card. Its glass stays on, shrunk to nothing, since switching a
-/// shape's glass off or on makes the glass container rebuild itself at once (measured: 4 to 12 ms
-/// of main thread, and dropped frames), while an empty shape costs next to nothing.
+/// and it grows out of there to the card, its fill with it. Its glass stays on, shrunk to
+/// nothing, since switching a shape's glass off or on makes the glass container rebuild itself at
+/// once (measured: 4 to 12 ms of main thread, and dropped frames), while an empty shape costs next
+/// to nothing.
 struct MiniPanelCardShape: Equatable {
   var frame = CGRect.zero
-  /// Its fill and rows, under the glass: 0 while closed, trailing the glass on the way in and
-  /// leading it on the way out.
-  var opacity = 1.0
   var animation: Animation?
 }
 

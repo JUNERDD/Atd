@@ -7,16 +7,16 @@ import CoreGraphics
 ///
 /// `fade` is how far it is out of sight: 0 at rest, 1 gone. Its glass cannot fade in the glass
 /// container (an opacity or a transform on the glass itself is dropped), so its size carries the
-/// way out (``scale(fade:)``): it draws a little toward its anchor while its fill and text fade
-/// under the glass, by ``leaveShrink`` at most, and from ``leaveCollapse`` on, once the fill has
-/// mostly gone, its bare glass draws in to nothing at the anchor. The way in runs the same values
-/// backward, so its glass grows first and its fill follows; a fade below 0 (an elastic entrance)
-/// grows it a little past its rest, away from the capsule.
+/// way out (``scale(fade:)``), its fill with it, so it never shows as bare glass: it draws a
+/// little toward its anchor while its text fades, by ``leaveShrink`` at most, and from
+/// ``leaveCollapse`` on, its text gone, it draws in to nothing at the anchor. The way in runs the
+/// same values backward; a fade below 0 (an elastic entrance) grows it a little past its rest,
+/// away from the capsule.
 public enum MiniPanelLabelPath {
-  /// How much smaller the label has drawn toward its anchor as its fill fades: a hint of where
+  /// How much smaller the label has drawn toward its anchor as its text fades: a hint of where
   /// it goes, not a way back.
   public static let leaveShrink = 0.12
-  /// How far out of sight the glass starts to draw in to nothing, the fill mostly gone by then.
+  /// How far out of sight the label starts to draw in to nothing, its text gone by then.
   public static let leaveCollapse = 0.6
 
   /// The label's size `fade` of its way out of sight, as a factor of its size at rest: drawing

@@ -6,7 +6,7 @@ import SwiftUI
 /// `GlassEffectContainer` on the same regular Liquid Glass, so the pieces read as one material
 /// and merge as they emerge from one another. Like the main panel, each piece takes the app's
 /// scheme whatever the window behind it: its glass carries the panel's base fill and its content
-/// keeps the app's scheme (``View/glassSurface(in:animation:opacity:)``), so a piece looks the
+/// keeps the app's scheme (``View/glassSurface(in:animation:)``), so a piece looks the
 /// same from its first frame rather than turning with the backdrop as the glass adapts. The container covers only where glass can be (``MiniPanelLayout/glassRegion``), never
 /// the whole transparent canvas.
 ///

@@ -114,7 +114,7 @@ extension MiniPanelController {
     model.bodyFactors = MiniPanelBodyFactors()
     for content in MiniPanelContent.allCases { model.setPresence(content, MiniPanelPresence()) }
     model.flyoutOpen = false
-    model.card = MiniPanelCardShape(frame: closedFlyoutFrame ?? .zero, opacity: 0)
+    model.card = MiniPanelCardShape(frame: closedFlyoutFrame ?? .zero)
     model.label = MiniPanelLabelShape()
   }
 
@@ -134,12 +134,11 @@ extension MiniPanelController {
   // MARK: The commands card
 
   /// As a popover does, the card grows out of its anchor beside the capsule, level with the
-  /// Commands button (``closedFlyoutFrame``), its glass first and its fill just after
-  /// (``MiniPanelChoreography/flyoutFillLag``), never out of the capsule, whose fill its own would
-  /// darken where the two overlap; its rows arrive just after. The button's label, when out,
-  /// becomes the card: the card takes its bubble's place in the same frame and grows from there as
-  /// the label's text fades out over it, so no label is left beside it; any other label goes at
-  /// once.
+  /// Commands button (``closedFlyoutFrame``), its fill with its glass, never out of the capsule,
+  /// whose fill its own would darken where the two overlap; its rows arrive just after. The
+  /// button's label, when out, becomes the card: the card takes its bubble's place in the same
+  /// frame and grows from there as the label's text fades out over it, so no label is left beside
+  /// it; any other label goes at once.
   func openFlyout() {
     guard model.phase == .expanded, !model.flyoutOpen, let card = layout?.flyout else { return }
     let from = stateName
@@ -158,8 +157,7 @@ extension MiniPanelController {
         model.card = shape
       }
     } else {
-      model.card = MiniPanelCardShape(frame: shape.frame, opacity: 0, animation: shape.animation)
-      fillCard(after: MiniPanelChoreography.flyoutFillLag)
+      model.card = shape
     }
     reveal(.rows, MiniPanelChoreography.rows)
     logState(from: from, trigger: "commands")
@@ -187,52 +185,30 @@ extension MiniPanelController {
     if let trigger { logState(from: from, trigger: trigger) }
   }
 
-  /// After `lag`, unless the card has closed again, its fill comes in under the glass that has
-  /// started growing, on the fill's own spring, while the glass keeps on growing.
-  private func fillCard(after lag: Double) {
-    let token = flyoutToken
-    Task { [weak self] in
-      try? await Task.sleep(for: .seconds(lag))
-      guard let self, token == flyoutToken, model.flyoutOpen else { return }
-      // Only the fill changes here, so the frame keeps on its opening animation.
-      var card = model.card
-      card.opacity = 1
-      card.animation = MiniPanelChoreography.labelLeave.animation
-      model.card = card
-    }
-  }
-
   /// The card leaves into its anchor, `delay` after its rows start leaving, as the hover label
-  /// does (``MiniPanelLabelPath``): its fill fades under the glass on the label's leave, and once
-  /// that has mostly gone, its bare glass, which cannot fade, draws in to nothing at the anchor.
+  /// does: its fill with its glass, on the label's leave, so no bare glass shows. A card still
+  /// opening keeps on toward its frame meanwhile.
   private func leaveCard(after delay: Double) {
     let leave = MiniPanelChoreography.labelLeave
-    // Only the fill changes here, so a card still opening keeps on toward its frame meanwhile.
-    var card = model.card
-    card.opacity = 0
-    card.animation = leave.animation.delay(delay)
-    model.card = card
     let token = flyoutToken
     Task { [weak self] in
-      try? await Task.sleep(for: .seconds(delay + MiniPanelChoreography.flyoutFillLag))
+      try? await Task.sleep(for: .seconds(delay))
       guard let self, token == flyoutToken, !model.flyoutOpen, let anchor = closedFlyoutFrame
       else { return }
-      card.frame = anchor
-      card.animation = leave.animation
-      model.card = card
+      model.card = MiniPanelCardShape(frame: anchor, animation: leave.animation)
       sendCardHome(after: MiniPanelMotion.settling(leave))
     }
   }
 
-  /// After `wait`, unless the card has opened again, puts it, shrunk to nothing and its fill out
-  /// of sight, where it waits closed, at its anchor.
+  /// After `wait`, unless the card has opened again, puts it, shrunk to nothing, where it waits
+  /// closed, at its anchor.
   private func sendCardHome(after wait: Double) {
     let token = flyoutToken
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(wait))
       guard let self, token == flyoutToken, !model.flyoutOpen, let closed = closedFlyoutFrame
       else { return }
-      model.card = MiniPanelCardShape(frame: closed, opacity: 0)
+      model.card = MiniPanelCardShape(frame: closed)
     }
   }
 

@@ -170,9 +170,10 @@ extension MiniPanelController {
     appear()
   }
 
-  /// The label leaves into its anchor without overshoot: its fill and text fade as it draws a
-  /// little toward the anchor, then its bare glass draws in to nothing there, never over the
-  /// capsule; it then waits out of sight at its rest. Anything still waiting to show it stops.
+  /// The label leaves into its anchor without overshoot: its text fades as it draws a little
+  /// toward the anchor, then it draws in to nothing there, fill and glass together, never over
+  /// the capsule; it then waits out of sight at its rest. Anything still waiting to show it
+  /// stops.
   private func hideLabel() {
     labelToken += 1
     conceal(.labelText, MiniPanelChoreography.labelText)

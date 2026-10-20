@@ -61,7 +61,7 @@ extension MiniPanelController {
     // The card takes its new place at once.
     let card = model.flyoutOpen ? layout.flyout.map { local($0) } : closedFlyoutFrame
     if let card, card != model.card.frame {
-      model.card = MiniPanelCardShape(frame: card, opacity: model.flyoutOpen ? 1 : 0)
+      model.card = MiniPanelCardShape(frame: card)
     }
     // The card's lane holds its frame and every body shape it closes into, with room for its
     // springs' overshoot: its base fill is drawn across the lane only, so glass sprung past the
