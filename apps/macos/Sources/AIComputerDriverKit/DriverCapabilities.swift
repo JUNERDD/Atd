@@ -80,6 +80,8 @@ public struct DriverHello: Codable, Equatable, Sendable {
 /// `minimized`/`offSpace`/`fullScreen` without the driver ever changing visibility.
 public struct DriverWindowPlacement: Codable, Equatable, Sendable {
   public var minimized: Bool
+  /// The window is on a Space one of the displays is showing: with separate Spaces per display,
+  /// the active Space of whichever display holds it, not only the focused display's.
   public var onActiveSpace: Bool
   public var fullScreen: Bool
 

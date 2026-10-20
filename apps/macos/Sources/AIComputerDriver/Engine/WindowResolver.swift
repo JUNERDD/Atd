@@ -32,7 +32,8 @@ enum WindowResolver {
     return Resolved(app: app, window: app, bounds: facts.bounds)
   }
 
-  /// Where the window sits: minimized, on the active Space, in a full-screen Space.
+  /// Where the window sits: minimized, on a Space one of the displays is showing (the active
+  /// Space of its display), in a full-screen Space.
   static func placement(_ target: DriverTarget, window: AXUIElement) -> DriverWindowPlacement {
     let minimized =
       AXBindings.copyBool(window, kAXMinimizedAttribute as String) == true
@@ -40,9 +41,9 @@ enum WindowResolver {
         && offScreenNoSpace(target))
     let onActive: Bool
     if let spaces = WindowServerQueries.spaces(forWindow: CGWindowID(target.windowId)),
-      let active = WindowServerQueries.activeSpace()
+      let shown = WindowServerQueries.shownSpaces()
     {
-      onActive = spaces.contains(active)
+      onActive = !shown.isDisjoint(with: spaces)
     } else {
       onActive = true  // cannot tell; do not falsely refuse as off-Space
     }

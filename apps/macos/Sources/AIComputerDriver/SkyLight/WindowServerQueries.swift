@@ -41,11 +41,18 @@ enum WindowServerQueries {
     return ok && pid > 0 ? pid : nil
   }
 
-  /// The active Space id of the main connection, or nil when the symbol is absent.
-  static func activeSpace() -> UInt64? {
-    guard let main = spi.mainConnection, let active = spi.getActiveSpace else { return nil }
-    let id = active(main())
-    return id != 0 ? id : nil
+  /// The Space each display is showing right now, or nil when the symbol is absent or reports
+  /// none. With "Displays have separate Spaces" every display shows its own current Space and
+  /// the person sees all of them at once; `SLSGetActiveSpace` names only the focused display's,
+  /// so a window in plain view on another display would read as being on another Space.
+  static func shownSpaces() -> Set<UInt64>? {
+    guard let main = spi.mainConnection, let copy = spi.copyManagedDisplaySpaces,
+      let displays = copy(main())?.takeRetainedValue() as? [[String: Any]]
+    else { return nil }
+    let shown = displays.compactMap { display in
+      ((display["Current Space"] as? [String: Any])?["id64"] as? NSNumber)?.uint64Value
+    }
+    return shown.isEmpty ? nil : Set(shown)
   }
 
   /// Every Space id that contains `windowId`; nil when unknown. Space membership must be queried

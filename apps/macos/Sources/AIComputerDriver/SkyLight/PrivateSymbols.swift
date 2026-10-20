@@ -31,7 +31,7 @@ final class PrivateSymbols: @unchecked Sendable {
   typealias GetConnectionPSNFn = @convention(c) (UInt32, UnsafeMutableRawPointer?) -> Int32
   typealias EnableOcclusionFn =
     @convention(c) (UInt32, CGWindowID, UInt8, UnsafeMutablePointer<UInt8>?) -> Int32
-  typealias GetActiveSpaceFn = @convention(c) (UInt32) -> UInt64
+  typealias CopyManagedDisplaySpacesFn = @convention(c) (UInt32) -> Unmanaged<CFArray>?
   typealias CopySpacesForWindowsFn = @convention(c) (UInt32, Int32, CFArray) -> Unmanaged<CFArray>?
   typealias HWCaptureFn =
     @convention(c) (UInt32, UnsafePointer<CGWindowID>, Int32, UInt32) -> Unmanaged<CFArray>?
@@ -49,7 +49,7 @@ final class PrivateSymbols: @unchecked Sendable {
   let getWindowOwner: GetWindowOwnerFn?
   let getConnectionPSN: GetConnectionPSNFn?
   let enableOcclusion: EnableOcclusionFn?
-  let getActiveSpace: GetActiveSpaceFn?
+  let copyManagedDisplaySpaces: CopyManagedDisplaySpacesFn?
   let copySpacesForWindows: CopySpacesForWindowsFn?
   let hwCapture: HWCaptureFn?
   let axGetWindow: AXGetWindowFn?
@@ -77,7 +77,7 @@ final class PrivateSymbols: @unchecked Sendable {
     getWindowOwner = sym("SLSGetWindowOwner")
     getConnectionPSN = sym("SLSGetConnectionPSN")
     enableOcclusion = sym("SLSPackagesEnableWindowOcclusionNotifications")
-    getActiveSpace = sym("SLSGetActiveSpace")
+    copyManagedDisplaySpaces = sym("SLSCopyManagedDisplaySpaces")
     copySpacesForWindows = sym("SLSCopySpacesForWindows")
     hwCapture = sym("SLSHWCaptureWindowList")
     axGetWindow = sym("_AXUIElementGetWindow")
