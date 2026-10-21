@@ -79,7 +79,11 @@ export function wrongKind(ctx: CallBase, op: string, bindingId?: string): never 
   });
 }
 
-/** Resolves the run's bindings and retains the host's current refs for subsequent calls. */
+/**
+ * Resolves the run's bindings and retains the host's current refs for subsequent calls. Their
+ * capabilities list `foreground` for a step only when the run may let the host fall back to it
+ * (foreground.ts), so the envelope names the kinds of the bindings asked for.
+ */
 export async function resolveTargets(ctx: CallContext) {
   const { bindings, coordinator } = ctx.runtime;
   const found: TargetBinding[] = [];
@@ -97,7 +101,11 @@ export async function resolveTargets(ctx: CallContext) {
   }
   if (!found.length) return { targets: [], unavailable: missing };
   const outcome = await coordinator.request(
-    envelopeFor(ctx, TARGETS_TIMEOUT_MS),
+    envelopeFor(
+      ctx,
+      TARGETS_TIMEOUT_MS,
+      found.map((binding) => binding.kind),
+    ),
     { kind: 'targets', bindings: found },
     { signal: ctx.signal, timeoutMs: TARGETS_TIMEOUT_MS },
   );

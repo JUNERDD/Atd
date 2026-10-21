@@ -129,7 +129,14 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // control labels and immediate checks, apps need no engine add-on (websites need the browser
   // engine), and every step runs in the background, so a step the app offers no other way to do
   // becomes one the run asks the user to do.
-  skill('create-command', 7, [
+  // Version 8: steps still run in the background, but when the user runs the command, a left
+  // click, key, typing or drag in an app that no background route can do runs briefly in the
+  // foreground: Atd sends that step's clicks and keys straight to the app without moving the
+  // user's pointer, then puts back the app and window the user had. Keys and typing in Chromium,
+  // Electron and CEF apps never run there; websites and automation-started runs stay in the
+  // background, and only a step neither way can do, such as one that needs the real pointer or a
+  // context menu, goes to the user.
+  skill('create-command', 8, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
     '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
@@ -209,7 +216,22 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 20: a step the host held back because the person is typing, clicking or scrolling
   // right now is refused `inputInUse`, no longer `noBackgroundRoute`: it passes in a moment, so
   // the agent waits a few seconds and tries again, never asking the person to stop or to do it.
-  skill('computer-use', 20, []),
+  // Version 21 adds the host's foreground fallback: in an interactive task, a left `click`, a
+  // `key`, a `type` or a `drag` with both ends on its window that no background route can do on
+  // an app (a route switched off after a disturbance included) is completed in the foreground
+  // within the same act: the host brings the app forward, sends the step's clicks and keys
+  // straight to it without moving the person's pointer, then puts back their app and window; the
+  // result's `delivery` says so, and the agent never requests it. Right clicks are refused (Atd
+  // never opens a context menu), and keys and text in Chromium, Electron and CEF apps, areas drawn
+  // without accessibility and steps that need the real pointer go to the person:
+  // `noBackgroundRoute` remains for these and the other limits the foreground does not lift, plus
+  // `covered` and `notActivated` when bringing the app forward failed, and a key or text refusal
+  // that names an input method asks the person to switch to a layout such as ABC. A
+  // `staleObservation` after part of a foreground step went out is an uncertain outcome. Person or
+  // unknown disturbances are only reported, and a raised window or an activated app a background
+  // route caused and the host repaired no longer stops the task. Websites, capture points,
+  // automation runs and trials stay in the background.
+  skill('computer-use', 21, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

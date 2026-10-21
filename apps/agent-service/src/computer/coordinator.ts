@@ -54,8 +54,9 @@ interface KnownTarget {
  * the host lock (any other host is recorded as busy), sends requests to that connection only,
  * accepts replies and progress only from it, and reconciles unresolved actions through `status`
  * on every hello. A host of another computer protocol is never bound. Stopping a run closes its
- * admission for good: later requests of that run are never sent. Protocol 8 has no foreground
- * control to report: a run's end reaches the host as a `finished` cancel (task-runner.ts).
+ * admission for good: later requests of that run are never sent. A foreground step begins and ends
+ * within one `act`, so there is no foreground control to report: a run's end reaches the host as a
+ * `finished` cancel (task-runner.ts).
  */
 export class ComputerCoordinator {
   readonly progress = new ProgressBoard();

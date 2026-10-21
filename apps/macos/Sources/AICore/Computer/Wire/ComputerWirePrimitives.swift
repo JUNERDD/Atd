@@ -18,9 +18,11 @@ public enum ComputerWireLimits {
   public static let maxScreenshotBase64 = 11_184_812
   public static let maxErrorMessage = 2000
   /// `COMPUTER_PROTOCOL`: the computer protocol this host speaks (`computer.hello.host.protocol`).
-  /// The service binds a host only when it speaks exactly this version. Protocol 8 is
-  /// background-only: no run mode, no foreground takeover, refusals and disturbances as facts.
-  public static let protocolVersion = 8
+  /// The service binds a host only when it speaks exactly this version. Protocol 9 keeps protocol
+  /// 8's background routes, with refusals and disturbances as facts, and adds the foreground
+  /// fallback: in an attended request the service allows (`foregroundAllowed`), a step every
+  /// background route refused is done in the foreground instead and reported as such.
+  public static let protocolVersion = 9
   /// `COMPUTER_MAX_SURFACES`: surfaces one observation lists.
   public static let maxSurfaces = 16
   /// `COMPUTER_MAX_TEXT_BOXES`: recognized text boxes one observation carries.
@@ -126,14 +128,21 @@ public enum ComputerStepKind: String, Codable, CaseIterable, Sendable {
   case upload
 }
 
-/// `ComputerDeliverySchema`: how input reaches a target. `background` is the only delivery, the
-/// imperceptible contract: the host never moves the person's pointer, never activates, raises or
-/// minimizes a window, hands back any key focus it borrows before that input ends, opens no
-/// visible menu, and leaves the Space and the clipboard alone. A step without such a route is
-/// refused (``ComputerErrorCode/noBackgroundRoute``), never escalated. It stays a reported fact
-/// (results, profiles) so another delivery could be added without reshaping them.
+/// `ComputerDeliverySchema`: how input reached a target, a fact the host reports; neither the
+/// model nor a run chooses it.
+/// - `background`, the imperceptible contract: the host never moves the person's pointer, never
+///   activates, raises or minimizes a window, hands back any key focus it borrows before that
+///   input ends, opens no visible menu, and leaves the Space and the clipboard alone.
+/// - `foreground`, the fallback of an attended request the service allows
+///   (``ExecutionEnvelopeWire/foregroundAllowed``): a click, key, type or drag step every
+///   background route refused, for a reason the foreground gets past, has its target app brought
+///   forward for that step alone, its input still posted to the target's process (never through
+///   the person's pointer or the HID system), and the person's front app and key window put back
+///   afterwards.
+/// A step with neither is refused (``ComputerErrorCode/noBackgroundRoute``).
 public enum ComputerDelivery: String, Codable, CaseIterable, Sendable {
   case background
+  case foreground
 }
 
 /// `ComputerEngineSchema`: the engines a host drives: `playwright` for managed browser profiles
@@ -166,7 +175,8 @@ public enum ComputerErrorCode: String, Codable, CaseIterable, Sendable {
   case staleObservation
   case ambiguous
   case notFound
-  /// The step has no imperceptible route on this target; the error's `reason` says which limit.
+  /// No route reached the step's target: no background route, nor the foreground fallback where
+  /// the request allows it; the error's `reason` says which limit.
   case noBackgroundRoute
   case needsPermission
   /// Screen capture was never prepared in Settings; an unattended run never prompts for it.
@@ -177,7 +187,8 @@ public enum ComputerErrorCode: String, Codable, CaseIterable, Sendable {
   /// scrolled), so the host yields.
   case targetInUse
   /// The person is using the keyboard or pointer right now, in any app, so the host sent nothing
-  /// rather than open a key scope under their input; the step can be tried again in a moment.
+  /// under their input, or stopped a foreground step at their first input; the step can be tried
+  /// again in a moment.
   case inputInUse
   case cancelled
   case timeout

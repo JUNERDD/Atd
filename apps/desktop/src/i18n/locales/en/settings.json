@@ -909,7 +909,7 @@
     "host": {
       "ready": {
         "title": "Ready",
-        "description": "Atd can act on your targets in the background."
+        "description": "Atd can act on your targets in the background. In tasks you run, when the background can’t do a step in an app, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app you were using."
       },
       "starting": {
         "title": "Starting…",
@@ -1038,7 +1038,7 @@
     },
     "application": {
       "title": "Add application",
-      "description": "Atd works in this app’s windows in the background, without bringing it forward or using your pointer. It checks what it can read without opening or activating the app.",
+      "description": "Atd works in this app’s windows in the background. In tasks you run, when the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app you were using. It checks what it can read without opening or activating the app.",
       "label": "Name",
       "labelPlaceholder": "Calendar",
       "app": "App",
@@ -1065,6 +1065,7 @@
     },
     "capability": {
       "background": "Works in the background",
+      "backgroundAndForeground": "Works in the background, and in the foreground when a task needs it",
       "qualified": "Checked for automations",
       "unqualified": "Not yet checked for automations"
     },

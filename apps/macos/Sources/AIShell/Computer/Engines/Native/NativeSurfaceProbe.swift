@@ -120,6 +120,54 @@ nonisolated enum NativeSurfaceProbe {
     serverWindows(of: pid).first { $0.windowId == windowId }?.bounds
   }
 
+  /// The accessibility window of `pid` that is window-server window `windowId`, matched by frame
+  /// as resolving matches them; nil when none matches, or several frames do. Every message is
+  /// bounded by `timeout`, set on the app and on each window it reads, and the whole search by four
+  /// such timeouts, so an app that hangs cannot hold it up window after window. The window it
+  /// returns keeps that bound for what the caller sends it next.
+  static func axWindow(pid: pid_t, windowId: Int, timeout: Float) -> AXUIElement? {
+    let end = ContinuousClock.now + .seconds(Double(timeout) * 4)
+    let listed = serverWindows(of: pid)
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, timeout)
+    let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] ?? []
+    return windows.lazy.prefix { _ in ContinuousClock.now < end }.first { window in
+      AXUIElementSetMessagingTimeout(window, timeout)
+      guard let frame = frame(of: window),
+        case .success(let id) = NativeWindowMatch.windowId(
+          frame: frame, pid: Int(pid), among: listed)
+      else { return false }
+      return id == windowId
+    }
+  }
+
+  /// The window-server id of `pid`'s focused window (`AXFocusedWindow`), where its keys go while
+  /// it is the active app; nil when it has none or its frame matches no single window.
+  static func focusedWindowId(pid: pid_t) -> Int? {
+    windowId(named: kAXFocusedWindowAttribute, pid: pid)
+  }
+
+  /// The window-server id of `pid`'s main window (`AXMainWindow`); nil when it has none or its
+  /// frame matches no single window.
+  static func mainWindowId(pid: pid_t) -> Int? {
+    windowId(named: kAXMainWindowAttribute, pid: pid)
+  }
+
+  /// The window-server id of the window the app `pid` names in `attribute`, every message, the
+  /// window's own included, bounded by a quarter of a second, since a foreground step reads it
+  /// while the app is in front of the person.
+  private static func windowId(named attribute: String, pid: pid_t) -> Int? {
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 0.25)
+    guard let window = element(app, attribute) else { return nil }
+    AXUIElementSetMessagingTimeout(window, 0.25)
+    guard let frame = frame(of: window),
+      case .success(let id) = NativeWindowMatch.windowId(
+        frame: frame, pid: Int(pid), among: serverWindows(of: pid))
+    else { return nil }
+    return id
+  }
+
   /// Read only the focused field's bounds for input feedback; never its value. An absent,
   /// secure, ambiguous or other-window field has no trustworthy position to draw.
   static func focusedTextFrame(windowId: Int, pid: pid_t) -> CGRect? {

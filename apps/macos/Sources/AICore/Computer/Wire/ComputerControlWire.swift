@@ -10,11 +10,17 @@ public struct ExecutionEnvelopeWire: Decodable, Equatable, Sendable {
   public let grantRef: ComputerGrantRefWire?
   /// Unattended runs never prompt for a system permission and need qualified engine profiles.
   public let unattended: Bool
+  /// Whether the host may do a step every background route refused in the foreground instead
+  /// (``ComputerDelivery/foreground``). The service sets it only for an attended root run in its
+  /// free scope on an application target; the host also requires ``unattended`` to be false and
+  /// no ``grantRef``.
+  public let foregroundAllowed: Bool
   public let deadlineAt: String
 
   public init(
     taskId: String, runId: String, executionId: String, toolCallId: String, operationId: String,
-    grantRef: ComputerGrantRefWire? = nil, unattended: Bool, deadlineAt: Date
+    grantRef: ComputerGrantRefWire? = nil, unattended: Bool, foregroundAllowed: Bool,
+    deadlineAt: Date
   ) {
     self.taskId = taskId
     self.runId = runId
@@ -23,6 +29,7 @@ public struct ExecutionEnvelopeWire: Decodable, Equatable, Sendable {
     self.operationId = operationId
     self.grantRef = grantRef
     self.unattended = unattended
+    self.foregroundAllowed = foregroundAllowed
     self.deadlineAt = ComputerWireCoding.timestamp(deadlineAt)
   }
 
@@ -41,11 +48,13 @@ public struct ExecutionEnvelopeWire: Decodable, Equatable, Sendable {
       try container.value($0, ComputerGrantRefWire.self)
     }
     unattended = try container.boolean(.unattended)
+    foregroundAllowed = try container.boolean(.foregroundAllowed)
     deadlineAt = try container.string(.deadlineAt)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case taskId, runId, executionId, toolCallId, operationId, grantRef, unattended, deadlineAt
+    case taskId, runId, executionId, toolCallId, operationId, grantRef, unattended
+    case foregroundAllowed, deadlineAt
   }
 }
 

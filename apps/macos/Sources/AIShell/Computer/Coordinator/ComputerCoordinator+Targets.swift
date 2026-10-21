@@ -19,7 +19,7 @@ extension ComputerCoordinator {
         return self.stopping
           || self.cancelled.isCancelled(
             runId: request.envelope.runId, operationId: request.envelope.operationId)
-      })
+      }, foreground: ForegroundPolicy.allows(request.envelope))
     for binding in bindings {
       do throws(ComputerFailure) {
         try context.check()

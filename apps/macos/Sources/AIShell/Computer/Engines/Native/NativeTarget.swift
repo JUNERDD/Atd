@@ -91,10 +91,17 @@ extension NativeEngine {
   }
 
   /// What a native target supports per step kind (spec §2), with the routes its toolkit takes
-  /// (``NativeRoutePlan/routes(for:facts:)``): a kind without a route is listed with no
-  /// delivery, and an image point is offered only where the event rung it needs is open. No step
-  /// carries verification evidence for application targets yet.
-  static func capabilities(_ facts: NativeRouteFacts) -> [TargetCapabilityWire] {
+  /// (``NativeRoutePlan/routes(for:facts:)``): `background` delivery where a route is open,
+  /// `foreground` beside it, or alone, for the kinds whose foreground input reaches the window's
+  /// toolkit when the request allows the foreground (`foreground`, R8,
+  /// ``ForegroundPolicy/delivery(_:background:foreground:postsEvents:toolkit:)``), and no delivery
+  /// at all otherwise. An image point is
+  /// offered only where the event rung it needs is open, which never holds for a kind listed with
+  /// the foreground alone: capture points never run in the foreground. No step carries
+  /// verification evidence for application targets yet.
+  static func capabilities(_ facts: NativeRouteFacts, foreground: Bool)
+    -> [TargetCapabilityWire]
+  {
     let element: [TargetCapabilityWire.Locate] = [.element, .semantic]
     let open = { (route: DriverRoute) in facts.exclusion(of: route) == nil }
     let kinds: [(ComputerStepKind, [TargetCapabilityWire.Locate])] = [
@@ -115,7 +122,10 @@ extension NativeEngine {
         routes.append(route.wire)
       }
       return TargetCapabilityWire(
-        action: kind, locate: locate, delivery: routes.isEmpty ? [] : [.background],
+        action: kind, locate: locate,
+        delivery: ForegroundPolicy.delivery(
+          kind, background: !routes.isEmpty, foreground: foreground,
+          postsEvents: facts.postsEvents, toolkit: facts.toolkit),
         verified: false, routes: routes)
     }
   }

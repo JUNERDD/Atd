@@ -31,9 +31,10 @@ type AccessGrant = Static<typeof GrantSchema>;
 
 /**
  * `access.json` as it reads today. A grant written before computer protocol 8 also records whether
- * it allowed foreground control (`foreground`); every access is background access now, so the
- * flag is dropped before the parse (docs/plans/2026-10-19-imperceptible-computer-use.md §10.2).
- * The file keeps it until the next change rewrites the grants.
+ * it allowed foreground control (`foreground`); access never selects a delivery now (the host's
+ * foreground fallback depends on the run, not on access), so the flag is dropped before the parse
+ * (docs/plans/2026-10-19-imperceptible-computer-use.md §10.2). The file keeps it until the next
+ * change rewrites the grants.
  */
 function withoutForeground(raw: unknown): unknown {
   if (typeof raw !== 'object' || raw === null || !('grants' in raw) || !Array.isArray(raw.grants))

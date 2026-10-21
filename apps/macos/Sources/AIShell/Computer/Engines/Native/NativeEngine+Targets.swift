@@ -60,7 +60,8 @@ extension NativeEngine {
       let ref = try mint(
         native, id: id, engineGeneration: engineGeneration,
         app: AppIdentity(bundleId: native.bundleId, version: version), pid: pid, start: start,
-        window: root, toolkit: toolkit, hostGeneration: hostGeneration)
+        window: root, toolkit: toolkit, hostGeneration: hostGeneration,
+        foreground: context.foreground)
       Self.log.notice(
         "Resolve \(native.bindingId, privacy: .public) as \(id, privacy: .public) \(phases.summary, privacy: .public)"
       )
@@ -72,12 +73,12 @@ extension NativeEngine {
   }
 
   /// Mints the ref `id` of a resolved root window and starts its surface set with the root
-  /// alone. A ref the same binding had before is replaced, and the windows it pinned pass to the
-  /// new one.
+  /// alone, its capabilities listing the foreground where the request allows it. A ref the same
+  /// binding had before is replaced, and the windows it pinned pass to the new one.
   private func mint(
     _ native: TargetBindingWire.Native, id: String, engineGeneration: Int, app: AppIdentity,
     pid: pid_t, start: UInt64, window: NativeSurfaceProbe.AppWindow, toolkit: DriverToolkit?,
-    hostGeneration: Int
+    hostGeneration: Int, foreground: Bool
   ) throws(ComputerFailure) -> TargetRefWire {
     guard let current = generation else { throw Self.notRunning }
     guard current == engineGeneration else { throw Self.changed }
@@ -86,7 +87,7 @@ extension NativeEngine {
       id: id, bindingId: native.bindingId, bindingRevision: native.revision,
       hostGeneration: hostGeneration, engine: .atd, engineGeneration: engineGeneration,
       native: .init(pid: Int(pid), processStart: String(start), windowId: window.windowId),
-      capabilities: Self.capabilities(facts))
+      capabilities: Self.capabilities(facts, foreground: foreground))
     let replaced = Set(targets.filter { $0.value.ref.bindingId == native.bindingId }.keys)
     for old in replaced { targets[old] = nil }
     for (key, holders) in pinned where !holders.isDisjoint(with: replaced) {

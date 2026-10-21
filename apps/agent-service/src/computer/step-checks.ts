@@ -17,11 +17,12 @@ import type { Refusal } from './recipe-step.js';
 
 /*
  * What one action's steps may do on one target (contract spec D3): the effective set is the
- * binding's kind, the engine profile and the target ref's own capabilities. Every step is
- * delivered in the background; the host picks its route and refuses one that has none, such as a
- * native drag and drop (`noBackgroundRoute`). Capture points must name a capture the run observed
- * of the same target and lie inside it. Part of the hard scope check (policy.ts), before any
- * approval.
+ * binding's kind, the engine profile and the target ref's own capabilities. The host picks each
+ * step's route and delivery; a step needs a delivery the request may use, `background`, or
+ * `foreground` where the request lets the host fall back to it (foreground.ts), and the host
+ * refuses one it finds none for when the step runs (`noBackgroundRoute`). Capture points must name
+ * a capture the run observed of the same target and lie inside it. Part of the hard scope check
+ * (policy.ts), before any approval.
  */
 
 export interface StepScope {
@@ -30,6 +31,11 @@ export interface StepScope {
   targetRef: TargetRef;
   /** A capture the run observed of this target ref, by id. */
   capture: (captureId: string) => KnownCapture | undefined;
+  /**
+   * Whether the request lets the host complete a step in the foreground when no background route
+   * can (`ExecutionEnvelope.foregroundAllowed`, foreground.ts).
+   */
+  foregroundAllowed: boolean;
 }
 
 function refuse(message: string): Refusal {
@@ -75,13 +81,19 @@ function pointProblem(point: ComputerImagePoint, scope: StepScope): string | nul
   return null;
 }
 
-/** Checks one step against the target ref's published capabilities, when it has any. */
+/**
+ * Checks one step against the target ref's published capabilities, when it has any: it needs a
+ * delivery the request may use, so a step the host lists only for the foreground is unavailable
+ * to a request that does not allow it.
+ */
 function targetAllows(step: ComputerStep, scope: StepScope): string | null {
   const { capabilities } = scope.targetRef;
   if (capabilities === undefined) return null;
   const entry = capabilities.find((item) => item.action === step.kind);
-  if (!entry || entry.delivery.length === 0)
-    return `This target cannot take the ${step.kind} step right now.`;
+  const usable = entry?.delivery.some(
+    (delivery) => delivery === 'background' || scope.foregroundAllowed,
+  );
+  if (!entry || !usable) return `This target cannot take the ${step.kind} step right now.`;
   for (const locator of stepLocators(step))
     if (!entry.locate.includes(locateKind(locator)))
       return `On this target the ${step.kind} step cannot locate by ${locateKind(locator)}.`;

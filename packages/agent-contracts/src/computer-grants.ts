@@ -140,8 +140,7 @@ const RunBindingIds = Type.Array(Identifier, {
 
 /**
  * Computer use requested for a run (`SubmitTaskRequest.computer`, `CommandRunRequest.computer`):
- * the registered bindings it may act on, always in the background. Only an attended run accepts
- * it.
+ * the registered bindings it may act on. Only an attended run accepts it.
  */
 export const ComputerRunRequestSchema = Type.Object(
   { bindingIds: RunBindingIds },
@@ -171,8 +170,9 @@ export type ComputerRunTrial = Static<typeof ComputerRunTrialSchema>;
  * that carry it, and it is part of the session's binding key. Attended runs carry `bindingIds`
  * from the submit (follow-ups copy them); unattended runs also carry `grant`, frozen at enqueue
  * and still checked live per step against the grant store, and a follow-up never inherits it. A
- * trial run carries `trial` instead (never both); a follow-up does not inherit it either. Every
- * run acts in the background only, so nothing here selects a delivery.
+ * trial run carries `trial` instead (never both); a follow-up does not inherit it either. Nothing
+ * here selects a delivery: the host picks it per step, and only an attended run with neither
+ * `grant` nor `trial` lets it fall back to the foreground (`ExecutionEnvelope.foregroundAllowed`).
  */
 export const RunComputerSchema = Type.Object(
   {

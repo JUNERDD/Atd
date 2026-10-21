@@ -100,10 +100,21 @@ final class ActionExecution {
     _ step: ComputerStepWire, engine: any ComputerEngine, ref: TargetRefWire,
     observation: ObservationRefWire, context: EngineStepContext
   ) async -> StepEnd {
+    await perform(engine: engine) { () async throws(ComputerFailure) -> EngineStepOutcome in
+      try await engine.perform(step, on: ref, observation: observation, context: context)
+    }
+  }
+
+  /// Runs `step`, a step's work on `engine` (its background ladder, or its foreground fallback), to
+  /// its end, or, once stopped, cancels it through the engine and waits at most
+  /// ``convergenceLimit`` for it to end.
+  func perform(
+    engine: any ComputerEngine,
+    _ step: @escaping @MainActor () async throws(ComputerFailure) -> EngineStepOutcome
+  ) async -> StepEnd {
     let running = Task { () async -> Result<EngineStepOutcome, ComputerFailure> in
       do throws(ComputerFailure) {
-        return .success(
-          try await engine.perform(step, on: ref, observation: observation, context: context))
+        return .success(try await step())
       } catch {
         return .failure(error)
       }

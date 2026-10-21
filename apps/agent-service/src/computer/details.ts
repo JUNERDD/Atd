@@ -75,12 +75,13 @@ export function stepSummary(step: ComputerStep): string {
 /**
  * The transcript details of one call (projected by transcript-details/computer.ts). An action's
  * `result` carries what the host reported, its route, a refusal's `error.reason` and the
- * disturbances it measured included; how it was delivered is that result's fact, since every
- * action runs in the background. `error` is the refusal or failure of any other operation, such as
- * an `observe` refused `needsConsent` or a `requestAccess` refused `noBackgroundRoute`
- * (`openBrowser`); an action never repeats its result's error there. `blockedBy` names the earlier
- * business actions whose unconfirmed outcome held a refused `act` back, set only when there are
- * any (policy.ts names at most `COMPUTER_MAX_RESOLVE_IDS`, each once).
+ * disturbances it measured included; `delivery` repeats how the host delivered it, when the result
+ * says, so the transcript can mark a step the host completed in the foreground. `error` is the
+ * refusal or failure of any other operation, such as an `observe` refused `needsConsent` or a
+ * `requestAccess` refused `noBackgroundRoute` (`openBrowser`); an action never repeats its
+ * result's error there. `blockedBy` names the earlier business actions whose unconfirmed outcome
+ * held a refused `act` back, set only when there are any (policy.ts names at most
+ * `COMPUTER_MAX_RESOLVE_IDS`, each once).
  */
 export function computerDetails(fields: {
   op: ComputerDetails['op'];
@@ -106,6 +107,7 @@ export function computerDetails(fields: {
       summary: stepSummary(step),
     })),
     ...(fields.result ? { result: fields.result } : {}),
+    ...(fields.result?.delivery ? { delivery: fields.result.delivery } : {}),
     ...(fields.error && fields.op !== 'act' ? { error: fields.error } : {}),
     ...(fields.blockedBy?.length ? { blockedBy: [...fields.blockedBy] } : {}),
     ...(fields.visual ? { visual: fields.visual } : {}),

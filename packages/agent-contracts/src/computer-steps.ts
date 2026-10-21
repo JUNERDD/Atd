@@ -47,11 +47,14 @@ const uploadFields = {
  * The steps every caller may express. `fill` clears and inserts the text as one field
  * transaction; `setValue` writes an accessibility value; `press` is a semantic press; `click`
  * acts like the pointer on an element or a capture point (`button` defaults to `left`, `count` to
- * 1); `key` presses one key with optional modifiers, after focusing `locator`; `type` types text
- * as keystrokes, after focusing `locator`; `clear` empties a field; `menu` invokes a menu-bar
- * item by its titles from the top; `drag` moves from one point to another inside the target's
- * content (a native drag-and-drop session is refused: `noBackgroundRoute` with `dragAndDrop`);
- * `select` chooses the option with this visible label; `scroll` and `wait` only read.
+ * 1; an app refuses a right click, `noBackgroundRoute` with `noRoute`, since Atd never opens a
+ * context menu); `key` presses one key with optional modifiers, after focusing `locator`; `type`
+ * types text as keystrokes, after focusing `locator`; `clear` empties a field; `menu` invokes a
+ * menu-bar item by its titles from the top; `drag` moves from one point to another inside the
+ * target's content (a native drag-and-drop session has no background route: where the request
+ * allows the foreground the host may complete one inside the window there, and refuses one that
+ * leaves the window or needs the real pointer, `noBackgroundRoute` with `dragAndDrop`); `select`
+ * chooses the option with this visible label; `scroll` and `wait` only read.
  */
 const SHARED_STEPS = [
   Type.Object(
@@ -209,11 +212,12 @@ const actionFields = {
 };
 
 /**
- * What the model supplies for `act`. It never names a task, grant, host, engine, route or lease:
- * the service adds the execution envelope and mints `actionId` when it is absent, and the host
- * picks each step's background route (`ComputerRoute`). `resolves` names earlier unresolved
- * actions of the run this one is meant to settle (`ComputerFact.resolution` `by`); it is
- * service-only and never forwarded to the host.
+ * What the model supplies for `act`. It never names a task, grant, host, engine, route, delivery
+ * or lease: the service adds the execution envelope and mints `actionId` when it is absent, and
+ * the host picks each step's route (`ComputerRoute`) and, where no background route can take it
+ * and the envelope allows it, completes it in the foreground (`ComputerDelivery`). `resolves`
+ * names earlier unresolved actions of the run this one is meant to settle
+ * (`ComputerFact.resolution` `by`); it is service-only and never forwarded to the host.
  */
 export const ComputerActionInputSchema = Type.Object(
   {

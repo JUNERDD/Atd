@@ -19,16 +19,19 @@ public struct DisturbanceReading: Equatable, Sendable {
     public var frontmostChanged: Bool
     /// The driver posted repair records (focus or ordering) after the primitive.
     public var repaired: Bool
+    /// What a foreground step put back (R6); nil for a step that stayed in the background.
+    public var foreground: ForegroundRestoration?
 
     public init(
       keyScopeUsed: Bool, keyScopeReturned: Bool, personWindowRestored: Bool?,
-      frontmostChanged: Bool, repaired: Bool
+      frontmostChanged: Bool, repaired: Bool, foreground: ForegroundRestoration? = nil
     ) {
       self.keyScopeUsed = keyScopeUsed
       self.keyScopeReturned = keyScopeReturned
       self.personWindowRestored = personWindowRestored
       self.frontmostChanged = frontmostChanged
       self.repaired = repaired
+      self.foreground = foreground
     }
   }
 
@@ -38,9 +41,9 @@ public struct DisturbanceReading: Equatable, Sendable {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
 
-    /// A key press.
+    /// A key press, a modifier key on its own, or a system key (media, Mission Control).
     public static let keys = PersonInput(rawValue: 1 << 0)
-    /// A click or a scroll.
+    /// A click, a scroll or a trackpad gesture.
     public static let clicks = PersonInput(rawValue: 1 << 1)
     /// A pointer movement.
     public static let motion = PersonInput(rawValue: 1 << 2)
@@ -79,11 +82,15 @@ public struct DisturbanceReading: Equatable, Sendable {
 /// agent caused a change only on the engine's receipt or when the target changed what the person
 /// sees without any input of theirs; an `agent` disturbance ends the action `disturbed` and
 /// demotes the route (``RouteDemotion``). `person` and `unknown` ones are recorded and change
-/// nothing.
+/// nothing. A foreground step activates and raises the target on purpose (R6), so its activation
+/// and raise are judged by where the person's screen ended against the step's start: what it put
+/// back is no disturbance, a switch the person made meanwhile is theirs, and what it left changed
+/// is the agent's, never repaired. It never moves the pointer (R13).
 public enum DisturbanceRules {
   public static func disturbances(in reading: DisturbanceReading) -> [ComputerDisturbanceWire] {
     var found: [ComputerDisturbanceWire] = []
     let personActed = !reading.personInput.isEmpty
+    let foreground = reading.receipt?.foreground
     if let receipt = reading.receipt, receipt.keyScopeUsed {
       if !receipt.keyScopeReturned || receipt.personWindowRestored == false {
         found.append(
@@ -98,7 +105,11 @@ public enum DisturbanceRules {
             detail: "The person typed while the target held a key scope."))
       }
     }
-    if activationChanged(reading) {
+    if let foreground {
+      if let activation = activation(after: foreground, reading, personActed: personActed) {
+        found.append(activation)
+      }
+    } else if activationChanged(reading) {
       found.append(
         ComputerDisturbanceWire(
           kind: .activation, attribution: personActed ? .unknown : .agent,
@@ -109,10 +120,18 @@ public enum DisturbanceRules {
     // for, not a window over theirs or a dialog in an app of theirs.
     let targetInFront = reading.frontmostBefore.map(reading.target.contains) ?? false
     if !targetInFront, reading.targetAboveAfter, !reading.targetAboveBefore {
+      // A foreground step's raise left behind is the agent's, unless the person switched to another
+      // app meanwhile: Atd leaves their choice alone then, so nobody in particular left it.
+      let attribution: ComputerDisturbanceWire.Attribution =
+        if let foreground {
+          foreground.front == .personSwitched ? .unknown : .agent
+        } else {
+          reading.personInput.contains(.clicks) ? .unknown : .agent
+        }
       found.append(
         ComputerDisturbanceWire(
-          kind: .raise, attribution: reading.personInput.contains(.clicks) ? .unknown : .agent,
-          repaired: false, detail: "A window of the target came above the person's window."))
+          kind: .raise, attribution: attribution, repaired: false,
+          detail: "A window of the target came above the person's window."))
     }
     if reading.spaceChanged {
       found.append(
@@ -126,6 +145,13 @@ public enum DisturbanceRules {
         ComputerDisturbanceWire(
           kind: .pointer, attribution: moved ? .person : .unknown, repaired: false,
           detail: "The pointer moved while the step ran."))
+    }
+    if foreground?.personTyped == true {
+      found.append(
+        ComputerDisturbanceWire(
+          kind: .input, attribution: .person, repaired: false,
+          detail: "The person pressed keys while the target was in front for this step; they may "
+            + "have reached it."))
     }
     if reading.pasteboardChanged {
       found.append(
@@ -142,6 +168,27 @@ public enum DisturbanceRules {
           detail: "A window, sheet or dialog appeared in the person's app."))
     }
     return found
+  }
+
+  /// The front app after a foreground step (R6): the target's own activation is what the step was
+  /// for, and the restore undoes it, so only where the front ended counts, against the step's
+  /// start. An app the person switched to is theirs (unknown when the guard saw no input of
+  /// theirs); anything else left in front, the target above all, is the agent's.
+  static func activation(
+    after foreground: ForegroundRestoration, _ reading: DisturbanceReading, personActed: Bool
+  ) -> ComputerDisturbanceWire? {
+    let ignored = reading.ignored.subtracting(reading.target)
+    guard let after = reading.frontmostAfter, after != reading.frontmostBefore,
+      !ignored.contains(after)
+    else { return nil }
+    guard foreground.front == .personSwitched else {
+      return ComputerDisturbanceWire(
+        kind: .activation, attribution: .agent, repaired: false,
+        detail: "The person's front app was not put back after the step.")
+    }
+    return ComputerDisturbanceWire(
+      kind: .activation, attribution: personActed ? .person : .unknown, repaired: false,
+      detail: "Another app came to the front while the step ran.")
   }
 
   /// Whether the frontmost app changed in a way this step accounts for: an app other than the
@@ -183,4 +230,34 @@ public enum RouteDemotion: Equatable, Sendable {
 extension [ComputerDisturbanceWire] {
   /// Whether the guard attributed any of these to the agent, which ends the action `disturbed`.
   public var anyByAgent: Bool { contains { $0.attribution == .agent } }
+
+  /// The kinds putting the person's front app and window back repairs (R7). The pointer is never
+  /// one: Atd never moves it (R13).
+  private static let frontKinds: Set<ComputerDisturbanceWire.Kind> = [.raise, .activation]
+
+  /// Whether the agent raised or activated a window over the person's, and that is not put back
+  /// yet: what a run that may use the foreground puts back (R7).
+  public var frontToRepair: Bool {
+    contains { $0.attribution == .agent && !$0.repaired && Self.frontKinds.contains($0.kind) }
+  }
+
+  /// Whether every disturbance attributed to the agent is a raise or an activation that is put
+  /// back: in a run that may use the foreground the action then goes on, its route still switched
+  /// off (R7), instead of ending `disturbed`.
+  public var onlyRepairedFront: Bool {
+    anyByAgent
+      && allSatisfy { found in
+        found.attribution != .agent || (found.repaired && Self.frontKinds.contains(found.kind))
+      }
+  }
+
+  /// These once the host put the person's front app and window back (R7): the agent's raise and
+  /// activation read as repaired.
+  public func repairing() -> [ComputerDisturbanceWire] {
+    map { found in
+      guard found.attribution == .agent, Self.frontKinds.contains(found.kind) else { return found }
+      return ComputerDisturbanceWire(
+        kind: found.kind, attribution: found.attribution, repaired: true, detail: found.detail)
+    }
+  }
 }

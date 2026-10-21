@@ -55,8 +55,8 @@ public struct ComputerDownloadWire: Codable, Equatable, Sendable {
 
 /// `ActionResultSchema`: what one action did. See ``ActionResultFold`` for how the host derives
 /// `dispatch`, `effect` and `retry` from its step outcomes. Decoding reads a result the host
-/// journaled before protocol 8 as today's: retired error codes map (``ComputerErrorCode/retired``)
-/// and the retired `foreground` delivery reads as none, so `status` can still answer with it.
+/// journaled before protocol 8 as today's: retired error codes map (``ComputerErrorCode/retired``),
+/// and a `foreground` delivery reads as written, so `status` can still answer with it.
 public struct ActionResultWire: Codable, Equatable, Sendable {
   public enum Dispatch: String, Codable, Sendable {
     case notDispatched = "not_dispatched"
@@ -91,7 +91,8 @@ public struct ActionResultWire: Codable, Equatable, Sendable {
   public let evidence: [ComputerEvidenceWire]
   public let retry: Retry
   public let invalidated: String?
-  /// How the input was actually delivered, when any was.
+  /// How the input was actually delivered, when any was: `foreground` once any step of the action
+  /// went to the foreground (``ActionResultFold/delivered(_:)``).
   public let delivery: ComputerDelivery?
   /// The route the action's input actually took.
   public let route: Route?
@@ -142,7 +143,9 @@ public struct ActionResultWire: Codable, Equatable, Sendable {
     invalidated = try container.optional(.invalidated) {
       try container.string($0, maxLength: 500)
     }
-    delivery = try Self.delivery(container)
+    delivery = try container.optional(.delivery) {
+      try container.value($0, ComputerDelivery.self)
+    }
     route = try container.optional(.route) { try container.value($0, Route.self) }
     disturbances = try container.optional(.disturbances) {
       try container.array(
@@ -152,17 +155,6 @@ public struct ActionResultWire: Codable, Equatable, Sendable {
       try container.array(
         $0, of: ComputerDownloadWire.self, maxItems: ComputerWireLimits.maxDownloads)
     }
-  }
-
-  /// `delivery`, where the `foreground` a result journaled before protocol 8 may name reads as
-  /// none: that fact is retired, and the rest of the result still holds.
-  private static func delivery(_ container: KeyedDecodingContainer<CodingKeys>) throws
-    -> ComputerDelivery?
-  {
-    guard container.contains(.delivery),
-      try container.decode(String.self, forKey: .delivery) != "foreground"
-    else { return nil }
-    return try container.value(.delivery, ComputerDelivery.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {

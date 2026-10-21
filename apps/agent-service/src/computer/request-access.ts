@@ -23,8 +23,8 @@ const KIND_FOR_TARGET: Readonly<Record<ComputerAccessTarget['kind'], ComputerTar
 };
 
 /**
- * Resolve the real target first, then authorize access through the task's existing gate. Access
- * is always background access: the host opens the target without bringing anything forward
+ * Resolve the real target first, then authorize access through the task's existing gate. Opening
+ * is always in the background: the host opens the target without bringing anything forward
  * (`accessOpened.activated` says when opening it made an app active anyway, such as a browser
  * that had to start), and refuses with `noBackgroundRoute` (`openBrowser`) when it cannot.
  */

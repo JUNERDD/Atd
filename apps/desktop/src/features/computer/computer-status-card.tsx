@@ -143,12 +143,12 @@ function CaptureConsentRow({ shell }: { shell: ComputerShellState }) {
 /**
  * What computer use can do right now: the host (ready, held by another Atd, starting or
  * unavailable), each engine's readiness with its version at the trailing edge, what its published
- * profile can do in plain words (in the background, and whether it was checked for automations,
- * unless its state already says it was not) and, when it failed, the shell's own words; the
- * system permissions apps need with the way to System Settings (Accessibility also when macOS
- * withholds posting input to apps, which System Settings lists under it); and Screen access once
- * the shell reports its state. The shell reports the host and engines; before its first report
- * the service's view stands in.
+ * profile can do in plain words (in the background, also in the foreground where its host can fall
+ * back to it for a task, and whether it was checked for automations, unless its state already says
+ * it was not) and, when it failed, the shell's own words; the system permissions apps need with
+ * the way to System Settings (Accessibility also when macOS withholds posting input to apps, which
+ * System Settings lists under it); and Screen access once the shell reports its state. The shell
+ * reports the host and engines; before its first report the service's view stands in.
  */
 export function ComputerStatusCard({
   shell,
@@ -166,12 +166,17 @@ export function ComputerStatusCard({
   const profiles = new Map(
     (status?.host.profiles ?? []).map((profile) => [profile.engine, profile]),
   );
-  // Every engine works only in the background, so its note says that and how it was checked.
+  // Every engine works in the background; the profile says whether its host can also fall back to
+  // the foreground for a task. The note says how it delivers and how it was checked.
   const capability = (profile: CapabilityProfile | undefined, unqualified: boolean) => {
     if (!profile) return undefined;
-    const background = t('computer.capability.background');
-    if (unqualified) return background;
-    return `${background} · ${t(`computer.capability.${profile.qualification}`)}`;
+    const delivery = t(
+      profile.delivery.includes('foreground')
+        ? 'computer.capability.backgroundAndForeground'
+        : 'computer.capability.background',
+    );
+    if (unqualified) return delivery;
+    return `${delivery} · ${t(`computer.capability.${profile.qualification}`)}`;
   };
   const permission = (
     key: 'accessibility' | 'screenRecording',

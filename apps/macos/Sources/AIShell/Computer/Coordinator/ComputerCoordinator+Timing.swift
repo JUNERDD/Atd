@@ -22,16 +22,18 @@ extension ComputerCoordinator {
     )
   }
 
-  /// `effect=verified route=events`, `effect=none error=inputInUse`, `error=staleObservation`,
-  /// or for an observation `elements=1 texts=72 problems=treeImageConflict`.
+  /// `effect=verified route=events`, `effect=verified route=events delivery=foreground`,
+  /// `effect=none error=inputInUse`, `error=staleObservation`, or for an observation
+  /// `elements=1 texts=72 problems=treeImageConflict`.
   private static func ending(_ reply: HostReplyWire) -> String {
     switch reply.outcome {
     case .failed(let error):
       return "error=\(error.code.rawValue)"
     case .ok(.actionResult(let result)):
       let route = result.route.map { " route=\($0.rawValue)" } ?? ""
+      let delivery = result.delivery == .foreground ? " delivery=foreground" : ""
       let error = result.error.map { " error=\($0.code.rawValue)" } ?? ""
-      return "effect=\(result.effect.rawValue)\(route)\(error)"
+      return "effect=\(result.effect.rawValue)\(route)\(delivery)\(error)"
     case .ok(.observation(let observation)):
       let problems = (observation.problems ?? []).map(\.rawValue).joined(separator: ",")
       return "elements=\(observation.elements.count) texts=\(observation.text?.count ?? 0)"

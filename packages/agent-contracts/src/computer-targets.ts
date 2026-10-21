@@ -129,10 +129,14 @@ export type ComputerLocateKind = Static<typeof ComputerLocateKindSchema>;
 
 /**
  * What one target supports for one step kind right now, as the host resolved it: the locator
- * kinds and deliveries it accepts (empty `delivery`: unavailable on this target), the background
- * routes the host can take for it here (`routes`; absent when the host does not say) and whether
- * that combination was `verified` on this target. The usable set is the intersection of the
- * engine profile, these capabilities and what the run allows.
+ * kinds and deliveries it accepts, the background routes the host can take for it here (`routes`;
+ * absent when the host does not say) and whether that combination was `verified` on this target.
+ * `delivery` lists `background` when a background route is open for the step, and `foreground`
+ * when the host could complete it in the foreground instead, which it lists only in answer to a
+ * request that allows the foreground (`ExecutionEnvelope.foregroundAllowed`); empty: unavailable
+ * on this target. The usable set is the intersection of the engine profile, these capabilities
+ * and what the run allows, so a step listed only with `foreground` is usable only where the
+ * request allows the foreground.
  */
 export const TargetCapabilitySchema = Type.Object(
   {
@@ -192,9 +196,12 @@ export type TargetRef = Static<typeof TargetRefSchema>;
 
 /**
  * What one engine of the connected host can do at most, published by the host in
- * `computer.hello`; the model never claims support itself. `delivery` lists how it delivers
- * (only `background` exists); `affectsSystemInput` says whether that delivery can still move the
- * shared pointer or keyboard focus. Targets narrow this per action (`TargetRef.capabilities`).
+ * `computer.hello`; the model never claims support itself. `delivery` lists how it can deliver:
+ * always `background`, which every action relies on, and `foreground` when its host can fall back
+ * to it for requests that allow it. `affectsSystemInput` says whether background delivery can
+ * still move the shared pointer or keyboard focus; the foreground always takes the keyboard focus
+ * (never the pointer), and no unattended request allows it. Targets narrow this per action and
+ * request (`TargetRef.capabilities`).
  * Only a `qualified` profile may serve unattended runs; `evidence` names the qualification it
  * rests on (test suite and version).
  */

@@ -50,7 +50,7 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
   // Automations: the `automation` harness tool's saves, deletes and Run now (always asked).
   Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
-  // Computer use: one effect on one revision of one registered target, always in the background.
+  // Computer use: one effect on one revision of one registered target. The scope names no delivery.
   Type.Object(
     {
       tool: Type.Literal('computer'),

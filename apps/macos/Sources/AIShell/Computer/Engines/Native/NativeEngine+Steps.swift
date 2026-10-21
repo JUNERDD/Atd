@@ -5,9 +5,10 @@ import Foundation
 /// Performing one native step on the surface the action names. Every step but `wait` first lists
 /// the target's surfaces again and is refused `modalBlocked` while a modal surface covers the one
 /// it writes to, then reads where its window sits (a minimized one is refused; on another Space
-/// or in a full-screen Space only the accessibility rungs run) and climbs its route ladder;
-/// nothing is ever escalated to the foreground. A driver's receipt never makes a step verified; only a read-back
-/// does.
+/// or in a full-screen Space only the accessibility rungs run) and climbs its route ladder. The
+/// engine never takes the foreground itself: once every rung refused, the coordinator may ask it to
+/// do the step in the foreground instead (``foreground(_:on:observation:refusal:context:run:)``).
+/// A driver's receipt never makes a step verified; only a read-back does.
 extension NativeEngine {
   /// How often `wait` checks its condition.
   static let waitInterval: Duration = .milliseconds(250)

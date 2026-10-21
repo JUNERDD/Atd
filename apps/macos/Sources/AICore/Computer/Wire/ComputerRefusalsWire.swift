@@ -1,9 +1,10 @@
 import Foundation
 
 /// `ComputerRefusalReasonSchema` (`packages/agent-contracts/src/computer-refusals.ts`): which
-/// background limit stopped a request (``ComputerErrorWire/reason``), mostly with
-/// ``ComputerErrorCode/noBackgroundRoute``. The host refuses rather than take the foreground, so a
-/// person can do that step themselves.
+/// limit stopped a request (``ComputerErrorWire/reason``), mostly with
+/// ``ComputerErrorCode/noBackgroundRoute``: a background limit, or, once the foreground fallback
+/// took the step, why the target could not be put in front of the person (``covered``,
+/// ``notActivated``). What no route gets past is a step the person does themselves.
 public enum ComputerRefusalReason: String, Codable, CaseIterable, Sendable {
   /// A native drag-and-drop session; only drags inside the target's content have a route.
   case dragAndDrop
@@ -36,6 +37,12 @@ public enum ComputerRefusalReason: String, Codable, CaseIterable, Sendable {
   /// The Mac is locked or its session is not on the console: macOS hides app windows from
   /// accessibility and drops posted input until the person unlocks it (browser targets keep working).
   case screenLocked
+  /// The foreground fallback brought the target forward, but another window (Atd's own panel
+  /// included) covers where the step acts, so it sent nothing and put the person's screen back.
+  case covered
+  /// The foreground fallback could not make the target app active with the step's window in front
+  /// and ready for input, so it sent nothing and put the person's screen back.
+  case notActivated
 }
 
 /// `ComputerDisturbanceSchema`: one disturbance the host's guard measured around an action, in the

@@ -43,6 +43,7 @@ extension NativeEngine {
     }
     facts.placement = NativeWindowPlacement(
       onActiveSpace: placement.onActiveSpace, fullScreen: placement.fullScreen)
+    facts.spaceKnown = placement.spaceKnown == true
     return facts
   }
 

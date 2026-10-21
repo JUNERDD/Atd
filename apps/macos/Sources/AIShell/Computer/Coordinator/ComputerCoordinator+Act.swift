@@ -6,8 +6,9 @@ import Foundation
 /// target, its observation and the person checked again once claimed
 /// (``revalidate(_:engine:execution:)``), the intent journaled, the steps dispatched under the
 /// disturbance guard (``runSteps(_:request:engine:entry:observation:execution:subject:deadline:watch:)``),
-/// the result journaled, and the claim released only once the effect converged. Every route is
-/// background: an action never claims the shared input, and is never held while the model thinks.
+/// the result journaled, and the claim released only once the effect converged. An action claims
+/// the shared input only for a step it does in the foreground, for that step alone
+/// (``ForegroundExecutor``), and is never held while the model thinks.
 extension ComputerCoordinator {
   func act(_ request: HostRequestWire, action: ComputerActionWire) async -> HostReplyWire {
     let envelope = request.envelope
@@ -143,7 +144,7 @@ extension ComputerCoordinator {
   }
 
   /// The processes a person would use `ref` through, which the guard watches.
-  private static func processes(of ref: TargetRefWire, _ engine: any ComputerEngine) -> Set<pid_t> {
+  static func processes(of ref: TargetRefWire, _ engine: any ComputerEngine) -> Set<pid_t> {
     engine.foregroundProcess(of: ref).map { [$0] } ?? []
   }
 }

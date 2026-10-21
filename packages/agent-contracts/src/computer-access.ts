@@ -19,8 +19,9 @@ export const ComputerAccessTargetSchema = Type.Union([
 export type ComputerAccessTarget = Static<typeof ComputerAccessTargetSchema>;
 
 /**
- * Approval is scoped to the identity the host resolved and how long it lasts. Access is always
- * background access (`ComputerDelivery`), so the scope carries no delivery of its own.
+ * Approval is scoped to the identity the host resolved and how long it lasts. The scope carries no
+ * delivery: opening a target never brings it forward, and how each later step is delivered is the
+ * host's own choice within what the run allows (`ComputerDelivery`).
  */
 export const ComputerAccessScopeSchema = Type.Object(
   {

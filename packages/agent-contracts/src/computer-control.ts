@@ -43,10 +43,12 @@ import {
 /**
  * The computer protocol this service speaks (`computer.hello` `host.protocol`). The service binds
  * only a host that speaks exactly this one; any other is recorded busy and computer requests fail
- * `hostUnavailable`. Protocol 8 is background-only: no run mode, no foreground takeover, and
- * refusals and disturbances as facts (`computer-refusals.ts`).
+ * `hostUnavailable`. Protocol 8 retired the run mode and the foreground takeover and made
+ * refusals and disturbances facts (`computer-refusals.ts`). Protocol 9 adds the host's foreground
+ * fallback within one `act` (`ExecutionEnvelope.foregroundAllowed`, `ComputerDelivery`
+ * `foreground`, refusal reasons `covered` and `notActivated`).
  */
-export const COMPUTER_PROTOCOL = 8;
+export const COMPUTER_PROTOCOL = 9;
 
 /** Action ids a `status` request or a `computer.hello` names. */
 export const COMPUTER_MAX_STATUS_IDS = 100;
@@ -63,6 +65,12 @@ const hostIdentity = {
  * Who an execution is for, injected by the service on every request and never supplied by the
  * model. Read per call from the live run, so a session that outlives a run never reuses its
  * identity. `unattended` runs carry `grantRef`; `deadlineAt` bounds the whole request.
+ * `foregroundAllowed` lets the host complete an `act` step in the foreground when no background
+ * route can (`ComputerDelivery`), and list `foreground` in the target capabilities a `targets`
+ * request resolves. The service sets it only on an `act` or `targets` request of a free run (no
+ * recipe: not a trial, not a grant) that is attended, from the run's root execution, about a
+ * native target; every other request, the service's own included, carries `false`. The host also
+ * requires `unattended` to be `false` before it uses the foreground.
  */
 export const ExecutionEnvelopeSchema = Type.Object(
   {
@@ -73,6 +81,7 @@ export const ExecutionEnvelopeSchema = Type.Object(
     operationId: Type.String({ minLength: 1, maxLength: 128 }),
     grantRef: Type.Optional(ComputerGrantRefSchema),
     unattended: Type.Boolean(),
+    foregroundAllowed: Type.Boolean(),
     deadlineAt: Type.String(),
   },
   { additionalProperties: false },

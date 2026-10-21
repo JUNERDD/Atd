@@ -3,12 +3,13 @@ import { Type, type Static } from 'typebox';
 /**
  * The closed vocabulary of the `computer` tool (docs/plans/2026-10-16-background-computer-use.md
  * §5, §8; docs/plans/2026-10-17-general-computer-use.md §4–§5;
- * docs/plans/2026-10-19-imperceptible-computer-use.md §3, §5): ids, the effects a step can have,
- * the registered step kinds, how an action is delivered and the routes it can take. Locators and
- * conditions live in `computer-locators.ts`, steps and actions in `computer-steps.ts`. There is
- * still no raw script, `evaluate` or free-form keystroke: a step outside these files cannot be
- * expressed, so the hard scope check and the host's engine profile can both reason about every
- * step by its `kind`.
+ * docs/plans/2026-10-19-imperceptible-computer-use.md §3, §5;
+ * docs/plans/2026-10-21-foreground-fallback.md): ids, the effects a step can have, the registered
+ * step kinds, how an action is delivered and the routes it can take. Locators and conditions live
+ * in `computer-locators.ts`, steps and actions in `computer-steps.ts`. There is still no raw
+ * script, `evaluate` or free-form keystroke: a step outside these files cannot be expressed, so
+ * the hard scope check and the host's engine profile can both reason about every step by its
+ * `kind`.
  */
 
 /** Steps one `act` may carry; each write step still checks cancellation and conditions on its own. */
@@ -98,7 +99,8 @@ export function isBusinessEffect(effect: ComputerEffect): boolean {
  * The registered step kinds (`COMPUTER_STEP_KINDS_FOR_KIND` says which a target kind takes).
  * `press` is a semantic accessibility press; `click` acts on a point or element as a pointer
  * would; `select` chooses a list option and `upload` sets task files on a file input (browser
- * only). There is no hover step: hovering and tooltips have no background route.
+ * only). There is no hover step: hovering and tooltips have no background route, and the
+ * foreground fallback never hovers.
  */
 export const ComputerStepKindSchema = Type.Union([
   Type.Literal('navigate'),
@@ -119,15 +121,28 @@ export const ComputerStepKindSchema = Type.Union([
 export type ComputerStepKind = Static<typeof ComputerStepKindSchema>;
 
 /**
- * How an action reaches its target. `background` is the only delivery: the imperceptible contract
- * (docs/plans/2026-10-19-imperceptible-computer-use.md §3) under which the host never moves the
- * person's pointer, never activates, raises or minimizes a window, hands back any key focus it
- * borrows before that input ends, opens no visible menu, and leaves the Space and the clipboard
- * alone. A step without such a route is refused (`noBackgroundRoute`), never escalated. Neither
- * the model nor a run chooses it; it stays a reported fact (results, capability profiles) so
- * another delivery could be added later without reshaping them.
+ * How the host completed an action's steps. `background` is the imperceptible contract
+ * (docs/plans/2026-10-19-imperceptible-computer-use.md §3): the host never moves the person's
+ * pointer, never activates, raises or minimizes a window, hands back any key focus it borrows
+ * before that input ends, opens no visible menu, and leaves the Space and the clipboard alone.
+ * `foreground` is the host's own fallback within the same `act`
+ * (docs/plans/2026-10-21-foreground-fallback.md), taken only when the request allows it
+ * (`ExecutionEnvelope.foregroundAllowed`) and no background route can do a left `click`, a `key`,
+ * a `type` or a `drag` with both ends on the step's window: after a pause in the person's input it
+ * brings the target app and window to the front, posts the step's clicks, keys and text to that
+ * app's process as the background event route does (never HID events, never the clipboard, so the
+ * person's pointer never moves), then restores the person's front app and key window. Never done
+ * in the foreground: a right click (no context menu is ever opened), keys and text for an app of
+ * the Chromium family (it takes no posted keys, in front or not), an area drawn without
+ * accessibility, and a step that needs the real pointer (hover, a drag that leaves the window, an
+ * app that follows only the real cursor). A step that no delivery the request allows can take is
+ * refused (`noBackgroundRoute`). Neither the model nor a run chooses a delivery; it is a reported
+ * fact (results, details, target capabilities, capability profiles).
  */
-export const ComputerDeliverySchema = Type.Literal('background');
+export const ComputerDeliverySchema = Type.Union([
+  Type.Literal('background'),
+  Type.Literal('foreground'),
+]);
 export type ComputerDelivery = Static<typeof ComputerDeliverySchema>;
 
 /**

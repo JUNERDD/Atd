@@ -1,6 +1,29 @@
 import { useTranslation } from 'react-i18next';
 import type { ActionResult, ComputerDisturbance, ComputerError } from '@atd/agent-contracts';
+import { Badge } from '@atd/ui/components/badge';
 import { outcomeTone, type ComputerOutcome } from './computer-call';
+
+/**
+ * The tag on the row of an action the host completed in the foreground (`ComputerDetails.delivery`,
+ * set by `useComputerRow`): it briefly brought the app forward, sent the step's clicks and keys
+ * straight to it without moving the pointer, then switched back to the app and window the person
+ * was using. The hint says so in a native tooltip, like the Temporary badge of a task agent; what
+ * the host brought forward and restored reads in the card's evidence and in "What changed for
+ * you". Its text takes the row's muted face, as every other part of a row does, so a run of
+ * foreground steps stays quiet while the outline sets it apart.
+ */
+export function ComputerForegroundTag() {
+  const { t } = useTranslation('tasks');
+  return (
+    <Badge
+      variant="outline"
+      className="text-muted-foreground"
+      title={t('computer.delivery.foregroundHint')}
+    >
+      {t('computer.delivery.foreground')}
+    </Badge>
+  );
+}
 
 /**
  * Why a call stopped or was refused, as plain detail text: what happened, the background limit it

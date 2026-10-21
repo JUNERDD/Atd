@@ -276,8 +276,8 @@ public enum NativeRoutePlan {
   }
 
   /// How an element is focused before keys or text: through accessibility, else by a click at
-  /// its centre; nil when it can be neither.
-  private static func focusing(_ target: Element) -> [DriverPrimitive]? {
+  /// its centre; nil when it can be neither. The foreground fallback focuses the same way.
+  public static func focusing(_ target: Element) -> [DriverPrimitive]? {
     if target.element.settable("AXFocused") { return [.axFocus(element: target.token)] }
     return target.point.map { [.pointer(point: $0, clickCount: 1)] }
   }

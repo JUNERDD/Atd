@@ -3,12 +3,13 @@
  * prepare targets (a managed browser profile or an application), reopen a profile for signing in,
  * confirm an automation's computer scope in a native dialog the page cannot forge, show or hide
  * the live pointer, and prepare screen capture so macOS never asks for it in the middle of a run.
- * The shell reports its computer host state. Computer use only ever acts in the background: no
- * call lets the page bring a target forward or hand it the person's pointer. Binding content and
- * grants reach the service only from the shell (shell-only routes), never from the page. Like the
- * rest of the contract, the export script loads this file with Node's type stripping, so it
- * imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
- * erasable TypeScript syntax.
+ * The shell reports its computer host state. No call lets the page bring a target forward or hand
+ * it the person's pointer: whether a step of a task the person runs needs the foreground is the
+ * host's own decision inside the action (`ComputerDelivery`). Binding content and grants reach
+ * the service only from the shell (shell-only routes), never from the page. Like the rest of the
+ * contract, the export script loads this file with Node's type stripping, so it imports nothing
+ * but TypeBox and its sibling contract files (by their `.ts` names) and uses only erasable
+ * TypeScript syntax.
  */
 import { Type } from 'typebox';
 import { ComputerPreviewSourceSchema } from './computer-preview-calls.ts';

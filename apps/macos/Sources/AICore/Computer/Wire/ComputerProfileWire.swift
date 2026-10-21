@@ -1,9 +1,11 @@
 import Foundation
 
 /// `CapabilityProfileSchema`: what one engine of this host can actually do, published in
-/// `computer.hello`. `delivery` lists the ways the engine delivers input (only `background`
-/// exists); `affectsSystemInput` whether that delivery can still move the shared pointer or
-/// keyboard focus.
+/// `computer.hello`. `delivery` lists the ways the engine can deliver input: always `background`,
+/// and `foreground` where the engine has the foreground fallback for requests that allow it;
+/// `affectsSystemInput` whether the engine's input can still move the shared pointer or keyboard
+/// focus. The foreground fallback brings the target app forward for a step, which no unattended
+/// request allows, but its input is posted to the target's process like the background's.
 public struct CapabilityProfileWire: Codable, Equatable, Sendable {
   public enum Arch: String, Codable, Sendable {
     case arm64
@@ -71,9 +73,11 @@ public struct CapabilityProfileWire: Codable, Equatable, Sendable {
 }
 
 /// `TargetCapabilitySchema`: what one target supports for one step kind, as the host found it.
-/// An empty `delivery` means the action is unavailable on this target; `routes` lists the
-/// background routes the host can take for it here (nil when the host does not say); `verified`
-/// says the host confirmed it works here rather than inferring it from the engine.
+/// `delivery` lists `background` when a background route is open for the step, and `foreground`
+/// when the foreground fallback could do it instead, which the host lists only in answer to a
+/// request that allows the foreground; empty, the action is unavailable on this target. `routes`
+/// lists the background routes the host can take for it here (nil when the host does not say);
+/// `verified` says the host confirmed it works here rather than inferring it from the engine.
 public struct TargetCapabilityWire: Codable, Equatable, Sendable {
   /// How the step may name what it acts on: an element ref, a semantic locator, an image point.
   public enum Locate: String, Codable, CaseIterable, Sendable {

@@ -169,7 +169,8 @@
     "allowAccess": "Allow access",
     "accessSaved": "Allow access to {{target}} and save it in Computer use settings for later tasks. Remove it there at any time.",
     "accessRun": "Allow access to {{target}} for this run only. Access ends when the run finishes or stops.",
-    "accessBackground": "Atd will operate this target in the background, without bringing it forward or using your pointer and keyboard."
+    "accessBackground": "Atd will operate this target in the background, without bringing it forward or using your pointer and keyboard.",
+    "accessApplication": "Atd will operate this app in the background. When the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app and window you were using."
   },
   "question": {
     "skip": "Skip",
@@ -649,6 +650,10 @@
       "stopped": "Stopped here",
       "notReached": "Not reached"
     },
+    "delivery": {
+      "foreground": "Foreground",
+      "foregroundHint": "Atd briefly brought the app forward for this step without moving your pointer, then switched back."
+    },
     "error": {
       "notQualified": "This target isn’t set up for this kind of action yet.",
       "targetUnavailable": "The target wasn’t available.",
@@ -656,7 +661,7 @@
       "staleObservation": "The page changed since Atd last looked at it.",
       "ambiguous": "More than one control matched, so Atd didn’t guess.",
       "notFound": "The control wasn’t found.",
-      "noBackgroundRoute": "Atd can’t do this step in the background, so it left it to you.",
+      "noBackgroundRoute": "Atd couldn’t do this step itself, so it left it to you.",
       "needsPermission": "Atd needs a system permission for this. Check Settings › Computer use.",
       "needsConsent": "Screen access isn’t prepared yet, so Atd didn’t capture the screen.",
       "locked": "Another copy of Atd is using computer use.",
@@ -683,9 +688,11 @@
       "minimized": "The window is minimized, and Atd doesn’t restore windows.",
       "offSpace": "This step needs input sent to the window, which only reaches the Space you’re on, and Atd doesn’t switch Spaces.",
       "fullScreen": "This step needs input sent to the window, which doesn’t reach a full-screen window, and Atd doesn’t switch to it.",
-      "noRoute": "None of the ways Atd works in the background fit this step.",
+      "noRoute": "None of the ways Atd can work here fit this step.",
       "openBrowser": "Atd couldn’t start the browser in the background.",
-      "screenLocked": "Your Mac was locked, and macOS hides app windows while it’s locked."
+      "screenLocked": "Your Mac was locked, and macOS hides app windows while it’s locked.",
+      "covered": "Atd brought the app forward, but another window (possibly Atd’s own panel) still covered the spot, so Atd sent nothing and put things back.",
+      "notActivated": "macOS wouldn’t let Atd bring the app to the front, so Atd sent nothing and put back anything it had changed."
     },
     "retry": {
       "never": "Atd won’t repeat this on its own.",
@@ -759,7 +766,9 @@
         "fullScreen": "Take {{target}} out of full screen, then tell Atd to continue.",
         "noRoute": "Do this step yourself in {{target}}, then tell Atd to continue.",
         "openBrowser": "Open the browser for {{target}}, then tell Atd to continue.",
-        "screenLocked": "Once your Mac is unlocked, tell Atd to continue."
+        "screenLocked": "Once your Mac is unlocked, tell Atd to continue.",
+        "covered": "Move the window covering {{target}}, or do this step yourself, then tell Atd to continue.",
+        "notActivated": "Do this step yourself in {{target}}, then tell Atd to continue."
       },
       "inUse": "When you’re done in {{target}}, tell Atd to continue.",
       "consent": "Prepare screen access in Settings, then tell Atd to continue.",

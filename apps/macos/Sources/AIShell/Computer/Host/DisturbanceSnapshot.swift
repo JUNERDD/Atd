@@ -3,13 +3,18 @@ import CoreGraphics
 
 /// What the person sees at one moment, as the disturbance guard reads it before and after a write
 /// step (plan §4.3): the frontmost app, whether a window of the target covers the person's front
-/// window, how many windows the frontmost app shows, the pointer and the pasteboard's change count.
-/// Read from WindowServer and AppKit only, never with accessibility calls into other apps, and
-/// without window titles, so it needs no Screen Recording grant.
+/// window, how many windows the frontmost app shows, the pointer and the pasteboard's change count,
+/// and Atd's own window that holds the keyboard while another app is active. Read from
+/// WindowServer and AppKit only, never with accessibility calls into other apps, and without window
+/// titles, so it needs no Screen Recording grant. The reading before a step is also what the
+/// foreground fallback puts back (``ForegroundScene``).
 struct DisturbanceSnapshot {
   let frontmost: pid_t?
   /// The person's front window: the frontmost app's topmost window, by window number.
   let personWindow: Int?
+  /// Atd's window that holds the keyboard while another app is active (the task panel never
+  /// activates Atd), by window number; nil otherwise.
+  let panel: Int?
   /// Whether a window of the target is above ``personWindow`` in the on-screen order and overlaps
   /// it. The order is global across displays, so a target window brought up on another display
   /// precedes the person's window without covering anything of it.
@@ -42,7 +47,7 @@ struct DisturbanceSnapshot {
     }
     return DisturbanceSnapshot(
       frontmost: frontmost, personWindow: reference.map { windows[$0].number },
-      targetAbove: above ?? false,
+      panel: NSApp.isActive ? nil : NSApp.keyWindow?.windowNumber, targetAbove: above ?? false,
       personWindows: frontmost.map { pid in windows.count(where: { $0.pid == pid }) },
       pointer: CGEvent(source: nil)?.location, pasteboard: NSPasteboard.general.changeCount)
   }

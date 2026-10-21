@@ -26,10 +26,11 @@ import { ToolCard } from './tool-card';
 import { useTaskTurns } from './turn-context';
 
 /**
- * A step the host left to the person rather than take the foreground: one with no background
- * route (by the limit it hit, `noRoute` when the host named none, also for a window it would not
- * restore, move or switch to), a target the person is using, screen capture nobody prepared, or an
- * action that disturbed the person and stopped.
+ * A step the host left to the person because no route it may use could take it, the foreground
+ * included where the task allows it: one with no route (by the limit it hit, `noRoute` when the
+ * host named none, also for a window it would not restore, move or switch to, and for the
+ * foreground it tried and undid: `covered`, `notActivated`), a target the person is using, screen
+ * capture nobody prepared, or an action that disturbed the person and stopped.
  */
 type Handoff =
   | { kind: 'route'; reason: ComputerRefusalReason }
@@ -60,8 +61,8 @@ function handoffOf(error: ComputerError | undefined): Handoff | null {
  * Prepare screen access opens Settings › Computer use, where the person prepares capture (the
  * guidance turns to ready once the shell reports it), and Open browser opens a browser
  * environment the host could not start in the background. Each answer reads as a short note in
- * place of the guidance and its buttons. Nothing here acts on the target: computer use never
- * takes the foreground for a step.
+ * place of the guidance and its buttons. Nothing here acts on the target: the foreground, where a
+ * step needs it, is the host's own fallback inside the action, never something this card starts.
  */
 export function ComputerFollowUp({
   block,

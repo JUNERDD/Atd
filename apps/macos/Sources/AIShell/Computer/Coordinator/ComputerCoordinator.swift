@@ -12,10 +12,13 @@ import OSLog
 /// disturbances (``disturbance``); journal the result; release the claim only once the effect
 /// converged.
 ///
-/// Engines plug in through ``engines``; targets the model may name live in ``targets``. Every
-/// route is background: nothing here activates an app, claims the shared input or asks the
-/// person mid-run. The coordinator never prompts for a permission in an unattended request,
-/// never dispatches an action it could not journal, and never runs an action id twice.
+/// Engines plug in through ``engines``; targets the model may name live in ``targets``. Routes
+/// are background; the one exception is the foreground fallback of an attended request that
+/// allows it, which activates the target and claims the shared input for a single step every
+/// background route refused, sends that step's input to the target's process without moving the
+/// person's pointer, and puts the person's screen back (``ForegroundExecutor``). Nothing
+/// here asks the person mid-run. The coordinator never prompts for a permission in an unattended
+/// request, never dispatches an action it could not journal, and never runs an action id twice.
 final class ComputerCoordinator: ComputerRequestHandling {
   static let hostIdKey = "computer.hostId"
   static let pointerVisibleKey = "computer.pointerVisible"

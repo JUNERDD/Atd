@@ -65,8 +65,24 @@ final class DeviceArbiter {
   func claim(
     _ resources: Set<DeviceResource>, owner: ClaimOwner, deadline: ContinuousClock.Instant?
   ) async throws(ClaimRefusal) -> ResourceClaim {
+    try await claim(ClaimEntry(owner: owner, resources: resources), deadline: deadline)
+  }
+
+  /// Adds global input to what the computer operation `owner` holds, for one foreground step:
+  /// granted once no other owner holds anything it conflicts with or waits ahead for it, while the
+  /// owner keeps its own claims; refused at once while another owner's escalation waits
+  /// (``ResourceClaimPlan``). Its owner releases it as soon as the step ends, keeping the rest.
+  func escalate(owner: ClaimOwner, deadline: ContinuousClock.Instant) async throws(ClaimRefusal)
+    -> ResourceClaim
+  {
+    try await claim(
+      ClaimEntry(owner: owner, resources: [.globalInput], escalation: true), deadline: deadline)
+  }
+
+  private func claim(_ entry: ClaimEntry, deadline: ContinuousClock.Instant?)
+    async throws(ClaimRefusal) -> ResourceClaim
+  {
     guard !Task.isCancelled else { throw .cancelled }
-    let entry = ClaimEntry(owner: owner, resources: resources)
     switch decide(entry, ahead: waiters.map(\.entry)) {
     case .grant:
       defer { onChange?() }
@@ -119,7 +135,7 @@ final class DeviceArbiter {
   private func decide(_ entry: ClaimEntry, ahead: [ClaimEntry]) -> ClaimDecision {
     ResourceClaimPlan.decide(
       entry.resources, for: entry.owner, held: held.map(\.entry), queuedAhead: ahead,
-      admission: backgroundAdmission)
+      admission: backgroundAdmission, escalation: entry.escalation)
   }
 
   /// Records the claim as held; callers tell ``onChange`` once their state is consistent.

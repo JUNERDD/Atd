@@ -81,10 +81,15 @@ public enum ClaimRefusal: Error, Equatable, Sendable {
 public struct ClaimEntry: Equatable, Sendable {
   public var owner: ClaimOwner
   public var resources: Set<DeviceResource>
+  /// Whether a computer operation adds this claim to the ones it holds: global input alone, for
+  /// one foreground step of an action that keeps its target claimed
+  /// (``ResourceClaimPlan/decide(_:for:held:queuedAhead:admission:escalation:)``).
+  public var escalation: Bool
 
-  public init(owner: ClaimOwner, resources: Set<DeviceResource>) {
+  public init(owner: ClaimOwner, resources: Set<DeviceResource>, escalation: Bool = false) {
     self.owner = owner
     self.resources = resources
+    self.escalation = escalation
   }
 }
 
@@ -97,27 +102,43 @@ public enum ClaimDecision: Equatable, Sendable {
 
 /// The arbiter's rules (D6, plan §6.2), decided from what is held and what waits, so the
 /// arbiter only applies the answer. A claim is all of its resources at once or nothing, which
-/// together with the acquisition order keeps owners from deadlocking.
+/// together with the acquisition order keeps owners from deadlocking. The one exception is an
+/// escalation (the foreground fallback): an operation that holds its target asks for global input
+/// on top, ignoring its own claims and the order. It is the only claim that waits while its owner
+/// holds others, only one escalation may wait at a time (a second is refused at once), and it does
+/// not queue behind earlier waiters that wait on its owner's own claims, so it waits only on
+/// owners that wait for nothing it holds.
 public enum ResourceClaimPlan {
   /// The decision for `owner` asking for `resources` while `held` claims are granted and
-  /// `queuedAhead` wait before it, in arrival order.
+  /// `queuedAhead` wait before it, in arrival order; `escalation` for global input added to what
+  /// a computer operation holds.
   ///
-  /// Refusals come first: closed background admission, a user claim against a user holder,
-  /// a background claim against the user's interactive screen, an owner conflicting with
-  /// itself, then an owner asking out of order. Otherwise the claim waits on a conflicting
-  /// holder, or on a conflicting earlier waiter of at least its own priority (FIFO per resource,
-  /// with user waiters ahead of background ones), and is granted when nothing blocks it.
+  /// Refusals come first: closed background admission, a malformed escalation or one while
+  /// another owner's escalation waits, a user claim against a user holder, a background claim
+  /// against the user's interactive screen, an owner conflicting with itself, then an owner asking
+  /// out of order. Otherwise the claim waits on a conflicting holder, or on a conflicting earlier
+  /// waiter of at least its own priority (FIFO per resource, with user waiters ahead of background
+  /// ones), and is granted when nothing blocks it.
   public static func decide(
     _ resources: Set<DeviceResource>, for owner: ClaimOwner, held: [ClaimEntry],
-    queuedAhead: [ClaimEntry], admission: BackgroundAdmission
+    queuedAhead: [ClaimEntry], admission: BackgroundAdmission, escalation: Bool = false
   ) -> ClaimDecision {
     if !owner.isUser, case .closed(let reason) = admission {
       return .refuse(.admissionClosed(reason))
     }
+    if escalation {
+      guard !owner.isUser, resources == [.globalInput] else {
+        return .refuse(.outOfOrder(.globalInput))
+      }
+      if queuedAhead.contains(where: { $0.escalation && $0.owner != owner }) {
+        return .refuse(.busy(.globalInput))
+      }
+    }
     let ordered = DeviceResource.acquisitionOrder(resources)
     var blocker: DeviceResource?
     for resource in ordered {
-      for entry in held {
+      // An escalating owner keeps what it holds; its own claims never block it.
+      for entry in held where !(escalation && entry.owner == owner) {
         for heldResource in entry.resources where resource.conflicts(with: heldResource) {
           switch interaction(resource, by: owner, held: heldResource, by: entry.owner) {
           case .refuse(let refusal): return .refuse(refusal)
@@ -127,17 +148,20 @@ public enum ResourceClaimPlan {
         }
       }
     }
-    if let first = ordered.first,
+    if !escalation, let first = ordered.first,
       let ownLast = held.filter({ $0.owner == owner }).flatMap(\.resources).max(),
       first.acquisitionRank < ownLast.acquisitionRank
     {
       return .refuse(.outOfOrder(first))
     }
     if let blocker { return .wait(blocker) }
+    // An earlier waiter that waits on the escalating owner's own claims cannot go first anyway.
+    let own = escalation ? held.filter { $0.owner == owner }.flatMap(\.resources) : []
     for resource in ordered {
       for entry in queuedAhead
       where entry.owner != owner && (entry.owner.isUser || !owner.isUser)
         && entry.resources.contains(where: resource.conflicts(with:))
+        && !entry.resources.contains(where: { waited in own.contains(where: waited.conflicts) })
       {
         return .wait(resource)
       }

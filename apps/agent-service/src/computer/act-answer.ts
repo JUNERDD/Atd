@@ -1,22 +1,27 @@
 import type { ComputerFact } from '@atd/agent-contracts';
 import { holdGuidance, holdsBusiness, personCheck } from './policy.js';
-import { refusalGuidance } from './refusals.js';
+import { refusalGuidance, restoredGuidance } from './refusals.js';
 import type { ImportedDownload } from './transfers.js';
 
 /*
  * What the model reads in answer to an `act` (act.ts): the action's fact, the earlier actions its
  * check resolved or left unresolved, the downloads it imported as task files (or could not) and
- * what to do next. Besides a background refusal (refusals.ts), a stale observation or the
- * observation read after an unconfirmed action, `next` explains the hold of a free run
- * (policy.ts) when the action's own outcome sets it and when a check leaves actions it named
- * unresolved, so the model neither repeats an effect that may have run nor stops without the
- * person's check that ends the hold.
+ * what to do next. Besides a refusal or a disturbance the host repaired without stopping the
+ * action (refusals.ts), a stale observation or the observation read after an unconfirmed action,
+ * `next` explains the hold of a free run (policy.ts) when the action's own outcome sets it and
+ * when a check leaves actions it named unresolved, so the model neither repeats an effect that may
+ * have run nor stops without the person's check that ends the hold.
  */
 
 /** What an answer reports besides the action's own fact. */
 export interface ActAnswer {
   /** Whether the run acts freely, where the hold and `resolves` apply (policy.ts). */
   free: boolean;
+  /**
+   * Whether the request let the host fall back to the foreground (foreground.ts), where a
+   * disturbance it repaired without stopping the action does not stop the task either.
+   */
+  foreground: boolean;
   /** Whether the call repeated an action id of this run, so nothing was sent again. */
   repeated?: boolean;
   /** Earlier actions the action's verified check resolved. */
@@ -44,12 +49,17 @@ function unconfirmedGuidance(fact: ComputerFact): string {
  */
 const UNRESOLVED_GUIDANCE = `The actions in unresolved stay unconfirmed: this check did not verify their original postcondition now. Never repeat a submit or invoke among them. If the check could not run, run it again once its cause is gone; if their condition does not hold although the target visibly shows the intended outcome, ${personCheck("that action's step")}; otherwise tell the person what happened.`;
 
-/** The answer's text; a background refusal's guidance comes first in `next`. */
+/**
+ * The answer's text; a refusal's guidance, or what to do after a disturbance the host repaired
+ * without stopping the action, comes first in `next`.
+ */
 export function answerText(fact: ComputerFact, answer: ActAnswer): string {
   const { resolved = [], unresolved = [], files, observation = {} } = answer;
   const { next: recovery, ...observed } = observation;
+  const { result } = fact;
   const next = [
-    fact.result?.error ? refusalGuidance(fact.result.error) : null,
+    result?.error ? refusalGuidance(result.error) : null,
+    result && answer.foreground ? restoredGuidance(result) : null,
     recovery,
     answer.free && holdsBusiness(fact) ? unconfirmedGuidance(fact) : null,
     unresolved.length ? UNRESOLVED_GUIDANCE : null,
@@ -66,7 +76,7 @@ export function answerText(fact: ComputerFact, answer: ActAnswer): string {
     ...(files?.notImported.length ? { downloadsNotImported: files.notImported } : {}),
     ...(answer.repeated ? { repeated: true } : {}),
   };
-  if (fact.result) return JSON.stringify({ ...base, result: fact.result });
+  if (result) return JSON.stringify({ ...base, result });
   return JSON.stringify({
     ...base,
     outcome: 'unknown',

@@ -2,21 +2,17 @@ import { currentComputerErrorCode } from '@atd/agent-contracts';
 
 /*
  * Read-side tolerance for computer data written before computer protocol 8
- * (docs/plans/2026-10-19-imperceptible-computer-use.md §10.2). Protocol 8 is background only: it
- * retired the run's computer `mode`, foreground delivery (on results, details and grant scopes)
- * and the takeover error codes. Readers of stored data pass a value through these before their own
- * schema check, so a record written then still loads with the meaning it has today; nothing here
- * rewrites a file, writes stay strict, and anything else is left for that schema check to judge.
+ * (docs/plans/2026-10-19-imperceptible-computer-use.md §10.2). Protocol 8 retired the run's
+ * computer `mode`, the `delivery` of grant scopes and the takeover error codes; those stay
+ * retired. A `foreground` delivery on an action result or transcript details is current again
+ * since protocol 9 (docs/plans/2026-10-21-foreground-fallback.md R9), so it reads as written.
+ * Readers of stored data pass a value through these before their own schema check, so a record
+ * written then still loads with the meaning it has today; nothing here rewrites a file, writes
+ * stay strict, and anything else is left for that schema check to judge.
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** A value without a `delivery` of `foreground`, the only delivery protocol 8 retired. */
-function withoutForeground(value: Record<string, unknown>): Record<string, unknown> {
-  const { delivery, ...rest } = value;
-  return delivery === 'foreground' ? rest : value;
 }
 
 /** A stored error whose retired code maps to its replacement (`currentComputerErrorCode`). */
@@ -28,13 +24,11 @@ function currentError(error: unknown): unknown {
 
 /**
  * A stored action result as it reads today: a retired error code maps to its replacement, so an
- * unresolved action stays unresolved instead of failing to load, and a `foreground` delivery is
- * dropped.
+ * unresolved action stays unresolved instead of failing to load.
  */
 function currentActionResult(value: unknown): unknown {
   if (!isRecord(value)) return value;
-  const result = withoutForeground(value);
-  return 'error' in result ? { ...result, error: currentError(result.error) } : result;
+  return 'error' in value ? { ...value, error: currentError(value.error) } : value;
 }
 
 /** A stored computer fact (`computer/records/<runId>.jsonl`) as it reads today. */
@@ -51,11 +45,10 @@ export function currentFact(value: unknown): unknown {
  */
 export function currentComputerDetails(value: unknown): unknown {
   if (!isRecord(value)) return value;
-  const details = withoutForeground(value);
   return {
-    ...details,
-    ...('result' in details ? { result: currentActionResult(details.result) } : {}),
-    ...('error' in details ? { error: currentError(details.error) } : {}),
+    ...value,
+    ...('result' in value ? { result: currentActionResult(value.result) } : {}),
+    ...('error' in value ? { error: currentError(value.error) } : {}),
   };
 }
 

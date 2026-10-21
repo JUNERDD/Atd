@@ -34,8 +34,8 @@ extension NativeEngine {
     guard button == .left else {
       throw .noBackgroundRoute(
         .noRoute,
-        "A right click opens a context menu, which the background never shows; press the element "
-          + "or use the app's menu instead. Nothing was sent.")
+        "A right click opens a context menu, which Atd never opens, in the background or in the "
+          + "foreground. Nothing was sent.")
     }
     let aim = try await aim(
       locator, ref: write.ref, in: write.observation, context: write.context, uses: true)
@@ -221,7 +221,8 @@ extension NativeEngine {
     return Self.outcome(delivered, "Dragged")
   }
 
-  private func dragPoint(_ locator: ComputerPointLocatorWire, _ write: Write)
+  /// Where one end of a drag lands: an element's visible centre, or text or a capture point.
+  func dragPoint(_ locator: ComputerPointLocatorWire, _ write: Write)
     async throws(ComputerFailure) -> DriverPoint
   {
     switch try await aim(

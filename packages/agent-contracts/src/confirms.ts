@@ -44,9 +44,9 @@ export const GrantScopeSchema = Type.Union([
   // Automations: the `automation` harness tool's saves, deletes and Run now. Always asked
   // (`askAlways`): a saved automation acts later without anyone present.
   Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
-  // Computer use: one effect on one revision of one registered target, always in the background,
-  // so approving a page once never becomes a session grant over the whole computer or an edited
-  // binding.
+  // Computer use: one effect on one revision of one registered target, so approving a page once
+  // never becomes a session grant over the whole computer or an edited binding. The scope names no
+  // delivery: it covers the action however the host delivers it, the foreground included.
   Type.Object(
     {
       tool: Type.Literal('computer'),

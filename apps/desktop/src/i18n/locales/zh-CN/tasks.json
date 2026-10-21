@@ -169,7 +169,8 @@
     "allowAccess": "允许访问",
     "accessSaved": "允许访问 {{target}}，并保存到“电脑操作”设置供后续任务使用。你可以随时在设置中移除授权。",
     "accessRun": "仅在本次运行中允许访问 {{target}}。运行结束或停止后，临时授权失效。",
-    "accessBackground": "Atd 将在后台操作此目标，不会把它切到前台，也不会占用你的指针和键盘。"
+    "accessBackground": "Atd 将在后台操作此目标，不会把它切到前台，也不会占用你的指针和键盘。",
+    "accessApplication": "Atd 将在后台操作此应用。后台无法完成某一步时，Atd 会短暂把应用调到前面，把这一步的点击和按键直接发给它，不会移动你的指针，然后切回你原来的应用和窗口。"
   },
   "question": {
     "skip": "跳过",
@@ -649,6 +650,10 @@
       "stopped": "在此停止",
       "notReached": "未执行到"
     },
+    "delivery": {
+      "foreground": "前台",
+      "foregroundHint": "Atd 短暂把应用调到前面完成这一步，没有移动你的指针，之后已切回原来的应用。"
+    },
     "error": {
       "notQualified": "此目标尚未支持这类操作。",
       "targetUnavailable": "目标不可用。",
@@ -656,7 +661,7 @@
       "staleObservation": "页面在 Atd 上次查看后发生了变化。",
       "ambiguous": "匹配到多个控件，Atd 没有自行猜测。",
       "notFound": "没有找到该控件。",
-      "noBackgroundRoute": "Atd 无法在后台完成这一步，已留给你来完成。",
+      "noBackgroundRoute": "Atd 没能自己完成这一步，已留给你来完成。",
       "needsPermission": "Atd 需要一项系统权限才能执行此操作。请查看“设置 › 电脑操作”。",
       "needsConsent": "屏幕访问尚未准备好，Atd 没有截取屏幕。",
       "locked": "另一个 Atd 正在使用电脑操作。",
@@ -683,9 +688,11 @@
       "minimized": "窗口已最小化，Atd 不会还原窗口。",
       "offSpace": "这一步需要向窗口发送输入，只能送达你当前所在的空间，Atd 不会切换空间。",
       "fullScreen": "这一步需要向窗口发送输入，全屏窗口收不到，Atd 也不会切换过去。",
-      "noRoute": "Atd 在后台的各种操作方式都不适用于这一步。",
+      "noRoute": "Atd 在这里的各种操作方式都不适用于这一步。",
       "openBrowser": "Atd 无法在后台启动浏览器。",
-      "screenLocked": "你的 Mac 当时已锁定，锁定期间 macOS 会隐藏应用窗口。"
+      "screenLocked": "你的 Mac 当时已锁定，锁定期间 macOS 会隐藏应用窗口。",
+      "covered": "Atd 已把应用调到前面，但要操作的位置仍被其他窗口（可能是 Atd 自己的面板）遮住，所以没有发送任何操作，并已还原现场。",
+      "notActivated": "macOS 没有允许 Atd 把应用调到前面，所以没有发送任何操作，Atd 改动过的地方也已还原。"
     },
     "retry": {
       "never": "Atd 不会自动重复此操作。",
@@ -759,7 +766,9 @@
         "fullScreen": "请让“{{target}}”退出全屏，然后告诉 Atd 继续。",
         "noRoute": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
         "openBrowser": "请打开“{{target}}”的浏览器，然后告诉 Atd 继续。",
-        "screenLocked": "Mac 解锁后，告诉 Atd 继续即可。"
+        "screenLocked": "Mac 解锁后，告诉 Atd 继续即可。",
+        "covered": "请移开遮住“{{target}}”的窗口，或自行完成这一步，然后告诉 Atd 继续。",
+        "notActivated": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。"
       },
       "inUse": "你在“{{target}}”中操作完后，告诉 Atd 继续即可。",
       "consent": "请先在设置中准备屏幕访问，然后告诉 Atd 继续。",

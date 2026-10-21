@@ -81,14 +81,19 @@ public struct DriverHello: Codable, Equatable, Sendable {
 public struct DriverWindowPlacement: Codable, Equatable, Sendable {
   public var minimized: Bool
   /// The window is on a Space one of the displays is showing: with separate Spaces per display,
-  /// the active Space of whichever display holds it, not only the focused display's.
+  /// the active Space of whichever display holds it, not only the focused display's. True when
+  /// the driver cannot tell (``spaceKnown``), so a background read is not refused on a guess.
   public var onActiveSpace: Bool
   public var fullScreen: Bool
+  /// Whether the window server told the window's Spaces and the ones on screen; absent or false
+  /// when it did not, and ``onActiveSpace`` is then an assumption.
+  public var spaceKnown: Bool?
 
-  public init(minimized: Bool, onActiveSpace: Bool, fullScreen: Bool) {
+  public init(minimized: Bool, onActiveSpace: Bool, fullScreen: Bool, spaceKnown: Bool? = nil) {
     self.minimized = minimized
     self.onActiveSpace = onActiveSpace
     self.fullScreen = fullScreen
+    self.spaceKnown = spaceKnown
   }
 }
 

@@ -7,8 +7,8 @@ import { visualState } from './visual-qualifications.js';
 
 /**
  * Shared model facts, task resource and actionable capture registration for a fresh read. `visual`
- * tells the model whether it may take capture-point steps; every action runs in the background,
- * so there is one state for the run's model.
+ * tells the model whether it may take capture-point steps; those run only in the background, so
+ * there is one state for the run's model.
  */
 export async function observationOutput(
   ctx: CallContext,

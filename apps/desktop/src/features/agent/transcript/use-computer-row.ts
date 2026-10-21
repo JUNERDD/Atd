@@ -10,13 +10,17 @@ export interface ComputerRow {
   title: string;
   /** The target's label once the call names it. */
   target: string | null;
+  /** Whether the host completed the action in the foreground (`ComputerDetails.delivery`). */
+  foreground: boolean;
 }
 
 /**
  * The row of a `computer` call, null for every other tool. While it runs, the title follows the
  * host's live phase for this run and says Stopping… from the moment the run is stopping until the
  * call settles; once settled it names what the call did. Like every tool row it carries no outcome
- * mark: how an action turned out reads in its detail (computer-body.tsx).
+ * mark: how an action turned out reads in its detail (computer-body.tsx). The one fact the row
+ * does flag is an action the host completed in the foreground, which `foreground` tells
+ * `ToolBlock` to tag (`ComputerForegroundTag`).
  */
 export function useComputerRow(block: BlockOf<'tool'>): ComputerRow | null {
   const { t } = useTranslation('tasks');
@@ -32,5 +36,6 @@ export function useComputerRow(block: BlockOf<'tool'>): ComputerRow | null {
   return {
     title: live ? t(computerLiveKey(block, progress, stopping)) : t(computerStepKey(block)),
     target: details?.target ?? null,
+    foreground: details?.delivery === 'foreground',
   };
 }

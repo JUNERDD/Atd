@@ -41,21 +41,22 @@ export const COMPUTER_SCREENSHOT_MAX_BASE64 = 11184812;
  * Why a host refused or could not finish a request (closed). `notQualified`: the engine profile
  * cannot serve this run; `targetUnavailable`: the target cannot be reached or read right now;
  * `targetChanged` / `staleObservation`: the ref no longer names what the model saw; `ambiguous` /
- * `notFound`: a locator matched several elements or none; `noBackgroundRoute`: the step has no
- * imperceptible route on this target, so the host refused it instead of taking the foreground
- * (`reason` says which limit; a person can do the step); `needsPermission`: a privacy grant is
- * missing; `needsConsent`: screen capture was never prepared in Settings, and an unattended run
- * never prompts for it; `locked` / `busy`: another host holds the session lock or the resource;
+ * `notFound`: a locator matched several elements or none; `noBackgroundRoute`: no background route
+ * on this target can take the step, nor the foreground where the request allows it (`reason` says
+ * which limit; a person can do the step); `needsPermission`: a privacy grant is missing;
+ * `needsConsent`: screen capture was never prepared in Settings, and an unattended run never
+ * prompts for it; `locked` / `busy`: another host holds the session lock or the resource;
  * `targetInUse`: the person is using the target (it is in front of them and they typed, clicked
  * or scrolled in the last few seconds), so the host yields; `inputInUse`: the person is using the
- * keyboard or pointer right now, in any app, so the host sent nothing rather than open a key
- * scope under their input, and the step can be tried again in a few seconds; `hostUnavailable`:
- * no bound host answered (or it speaks another computer protocol);
+ * keyboard or pointer right now, in any app, so the host sent nothing under their input or stopped
+ * a foreground step at their first input, and the step can be tried again in a few seconds;
+ * `hostUnavailable`: no bound host answered (or it speaks another computer protocol);
  * `modalBlocked`: the step wrote to a surface while a modal child of it was open; `disturbed`:
- * the action disturbed the person (`ActionResult.disturbances` attributes it to the agent), so the
- * host repaired what it could and ended the action; on an app it keeps that route off until the
- * person replies, and until the host restarts once the route disturbed them twice. Records written
- * before protocol 8 may hold retired codes; readers map them (`currentComputerErrorCode`).
+ * the action disturbed the person (`ActionResult.disturbances` attributes it to the agent;
+ * `ComputerDisturbance` says when that does not end it), so the host repaired what it could and
+ * ended the action; a background route that caused it stays off on that app until the person
+ * replies, and until the host restarts once it disturbed them twice. Records written before
+ * protocol 8 may hold retired codes; readers map them (`currentComputerErrorCode`).
  */
 export const ComputerErrorCodeSchema = Type.Union([
   Type.Literal('notQualified'),
@@ -222,10 +223,12 @@ export type ComputerDownload = Static<typeof ComputerDownloadSchema>;
  * the action. `retry`: `safe` when no write reached the target, `never` when a business step did
  * or may have, and `after_review` when only non-business writes reached it. `invalidated` names
  * what the action made stale (an observation, a target ref).
- * `delivery` and `route` say how it was actually delivered, when the host knows. `disturbances`
- * lists what the host's guard saw change for the person while the action ran, whoever caused it;
- * one the guard attributes to the agent ends the action `disturbed`. `downloads` lists the
- * completed downloads the action caused (host → service only).
+ * `delivery` and `route` say how it was delivered, when the host knows (`foreground` once any step
+ * ran in the foreground; `evidence` then says what the host brought forward and restored).
+ * `disturbances` lists what the host's guard saw change for the person while the action ran,
+ * whoever caused it; one it attributes to the agent ends the action `disturbed` unless
+ * `ComputerDisturbance` says otherwise. `downloads` lists the completed downloads the action
+ * caused (host → service only).
  */
 export const ActionResultSchema = Type.Object(
   {

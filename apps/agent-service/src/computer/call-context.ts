@@ -4,6 +4,7 @@ import {
   COMPUTER_TOOL,
   type ComputerDetails,
   type ComputerError,
+  type ComputerTargetKind,
   type ExecutionEnvelope,
   type RunComputer,
   type PermissionTier,
@@ -13,6 +14,7 @@ import type { Gate } from '../harness/gate.js';
 import type { Logger } from '../logging.js';
 import type { ResourceStore } from '../resources.js';
 import { auditUnattended } from '../unattended.js';
+import { foregroundAllowed } from './foreground.js';
 import type { RunScope } from './policy.js';
 import type { ComputerRuntime } from './runtime.js';
 import type { ComputerSnapshot } from './snapshots.js';
@@ -122,9 +124,15 @@ export function refuse(
 /**
  * The execution envelope of one host request, from the current run and never from the model.
  * Each request is its own operation, and an unattended run's carries its grant reference. No run
- * chooses how the host delivers: every request is background only.
+ * chooses how the host delivers: `kinds` names the kinds of the targets whose steps the request
+ * acts on or describes (`act`, `targets`), which with the run decide whether the host may fall
+ * back to the foreground (foreground.ts); any other request names none and stays background only.
  */
-export function envelopeFor(ctx: CallContext, timeoutMs: number): ExecutionEnvelope {
+export function envelopeFor(
+  ctx: CallContext,
+  timeoutMs: number,
+  kinds: readonly ComputerTargetKind[] = [],
+): ExecutionEnvelope {
   const grantRef = ctx.scope.mode === 'grant' ? ctx.scope.grantRef : undefined;
   return {
     taskId: ctx.taskId,
@@ -134,6 +142,7 @@ export function envelopeFor(ctx: CallContext, timeoutMs: number): ExecutionEnvel
     operationId: randomUUID(),
     ...(grantRef ? { grantRef } : {}),
     unattended: ctx.unattended,
+    foregroundAllowed: foregroundAllowed(ctx, kinds),
     deadlineAt: new Date(Date.now() + timeoutMs).toISOString(),
   };
 }

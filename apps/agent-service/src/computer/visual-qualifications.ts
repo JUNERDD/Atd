@@ -9,9 +9,10 @@ import {
  * Visual qualification of the run's model (plan §5.3, contract spec §8): whether it may take
  * visual steps (`isVisualStep`, a capture point as a locator). Image input, a driver that can act
  * and a model that locates correctly are separate facts, so a model's advertised image support
- * alone never qualifies it; only a record in the code-owned table below does. Every action runs in
- * the background (docs/plans/2026-10-19-imperceptible-computer-use.md §3), so only a background
- * qualification counts.
+ * alone never qualifies it; only a record in the code-owned table below does. Capture-point steps
+ * run only in the background (docs/plans/2026-10-19-imperceptible-computer-use.md §3; the host's
+ * foreground fallback never takes them, docs/plans/2026-10-21-foreground-fallback.md R12), so only
+ * a background qualification counts.
  */
 
 /**

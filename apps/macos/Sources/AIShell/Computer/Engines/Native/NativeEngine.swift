@@ -10,9 +10,13 @@ import OSLog
 /// observes a surface's accessibility tree and pixels, and sends each step down the route ladder
 /// (``NativeRoutePlan``): accessibility first, wherever the window is (another Space and a
 /// full-screen Space included), window-routed events only on the active Space and where the
-/// toolkit takes them, never the foreground. A step with no such route is refused
-/// `noBackgroundRoute` with its reason. The one app it starts is an application target that is not running, without
-/// activating it (``launchInBackground(_:_:until:)``).
+/// toolkit takes them. A step with no such route is refused `noBackgroundRoute` with its reason;
+/// in a request that allows it, the coordinator then asks the engine to do the step in the
+/// foreground (``foreground(_:on:observation:refusal:context:run:)``): the shell brings the target
+/// forward and puts the person's screen back, while each piece still goes out as the driver's
+/// window-routed events, never through the person's pointer. The one app it starts is an
+/// application target that is not running, without activating it
+/// (``launchInBackground(_:_:until:)``).
 ///
 /// Lifecycle: the driver starts on demand. It stops after ``Configuration/idleGrace`` without
 /// calls only once every ref it resolved has been released (``releaseTarget(_:)``), so a person
@@ -83,9 +87,11 @@ final class NativeEngine: ComputerEngine {
   /// No add-on carries this engine.
   func install(_ binaries: EngineBinaries) -> Bool { false }
 
-  /// What the engine offers: background delivery only, input that never touches the system's
-  /// shared pointer or keyboard, and native targets; each target's capabilities list the routes
-  /// its toolkit takes. Unattended runs need a qualified profile, which this is not yet.
+  /// What the engine offers: background delivery, and for the attended requests that allow it the
+  /// foreground fallback, which brings the target app forward for a step; either way the input is
+  /// posted to the target's process and never touches the system's shared pointer or keyboard
+  /// (`affectsSystemInput` false). Native targets, whose capabilities list the routes their
+  /// toolkit takes. Unattended runs need a qualified profile, which this is not yet.
   static func makeProfile() -> CapabilityProfileWire {
     let system = ProcessInfo.processInfo.operatingSystemVersion
     let version =
@@ -100,7 +106,7 @@ final class NativeEngine: ComputerEngine {
       os: "macOS \(system.majorVersion).\(system.minorVersion).\(system.patchVersion)",
       arch: arch, targetKinds: [.native],
       actions: [.setValue, .press, .wait, .click, .key, .type, .clear, .menu, .scroll, .drag],
-      effects: [.read, .input, .click, .invoke, .submit], delivery: [.background],
+      effects: [.read, .input, .click, .invoke, .submit], delivery: [.background, .foreground],
       affectsSystemInput: false, qualification: .unqualified, evidence: unqualifiedEvidence)
   }
 

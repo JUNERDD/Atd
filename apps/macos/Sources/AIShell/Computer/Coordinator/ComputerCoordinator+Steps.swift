@@ -5,7 +5,10 @@ import Foundation
 /// write step the host yields to the person (``interruption(_:engine:)``), and each write step runs
 /// under the disturbance guard: what it changed for the person goes on the result, and a change
 /// the guard attributes to the agent, made by a step that reached the target, ends the action
-/// `disturbed` (``endDisturbed(_:step:route:engine:ref:run:fold:)``).
+/// `disturbed` (``endDisturbed(_:step:route:foreground:request:engine:ref:run:fold:)``). A step
+/// every background route refused may be done again in the foreground within the same guarded
+/// step (``foreground(after:step:request:engine:ref:observation:context:execution:)``), and the
+/// postcondition is then checked once the person's screen is back.
 extension ComputerCoordinator {
   /// Returns the step still running when one did not stop in time.
   func runSteps(
@@ -45,9 +48,27 @@ extension ComputerCoordinator {
         phases: execution.phases)
       let guarded = step.effect == .read ? nil : watch
       if let guarded { disturbance.begin(guarded) }
-      let end = await execution.perform(
+      var end = await execution.perform(
         step, engine: engine, ref: ref, observation: observation.ref, context: context)
-      let found = guarded.map { disturbance.end($0, receipt: Self.receipt(of: end)) } ?? []
+      var receipt = Self.receipt(of: end)
+      // What the person had in front when the step began, before its background attempt: what
+      // the foreground fallback and the R7 repair put back.
+      let before = guarded.flatMap(disturbance.before)
+      let fallback = await foreground(
+        after: end, step: step, request: request, engine: engine, ref: ref,
+        observation: observation.ref, context: context, execution: execution, before: before)
+      if let fallback { (end, receipt) = fallback }
+      // Whether the fallback brought the target forward, which its restore's receipt records; one
+      // that stopped before, at the person's input or a refusal, changed nothing of theirs.
+      let broughtForward = fallback?.receipt != nil
+      var found = guarded.map { disturbance.end($0, receipt: receipt) } ?? []
+      // What the background attempt changed is put back once it ended (R7): a step that did not
+      // stop in time may still be acting.
+      if !broughtForward, case .finished = end {
+        found = await repairFront(
+          found, before: before, target: Self.processes(of: ref, engine), request: request,
+          deadline: deadline, execution: execution)
+      }
       fold.disturbed(found)
       switch end {
       case .finished(.success(let outcome)):
@@ -55,7 +76,7 @@ extension ComputerCoordinator {
         if outcome.outcome != .notDispatched { markDispatched() }
         fold.complete(outcome.outcome, evidence: outcome.evidence)
         fold.downloaded(outcome.downloads)
-        if let delivery = outcome.delivery { fold.delivery = delivery }
+        if let delivery = outcome.delivery { fold.delivered(delivery) }
         // The channel of the latest step that sent input.
         let route = outcome.route ?? outcome.receipt?.route
         if let route { fold.route = route }
@@ -65,19 +86,27 @@ extension ComputerCoordinator {
         }
         if found.anyByAgent, outcome.outcome != .notDispatched || outcome.receipt != nil {
           endDisturbed(
-            found, step: step, route: route, engine: engine, ref: ref, run: subject.runId,
-            fold: &fold)
+            found, step: step, route: route, foreground: outcome.delivery == .foreground,
+            request: request, engine: engine, ref: ref, run: subject.runId, fold: &fold)
         }
       case .finished(.failure(let failure)):
-        if failure.mayHaveDispatched { markDispatched() }
+        if failure.mayHaveDispatched {
+          markDispatched()
+          // A foreground step that may have sent input went to the foreground, finished or not.
+          if broughtForward { fold.delivered(.foreground) }
+        }
         invalidate(after: failure, refId: ref.id)
-        // Only a step that may have reached the target can have disturbed the person.
-        let stop =
-          found.anyByAgent && failure.mayHaveDispatched
-          ? Self.disturbed(found, after: failure) : failure
+        // Only a step that may have reached the target can have disturbed the person, and a
+        // foreground step that could not put the person's screen back; what the host put back
+        // after a background step (R7) is no reason to end it.
+        let disturbed =
+          found.anyByAgent && (failure.mayHaveDispatched || broughtForward)
+          && !Self.putBack(found, foreground: broughtForward, request: request)
+        let stop = disturbed ? Self.disturbed(found, after: failure) : failure
         fold.stop(stop.wire, mayHaveDispatched: failure.mayHaveDispatched)
       case .unconverged(let remaining):
         markDispatched()
+        if fallback != nil { fold.delivered(.foreground) }
         let stop = execution.stop ?? ComputerFailure(.cancelled, "The step was cancelled.")
         fold.stop(
           ComputerErrorWire(

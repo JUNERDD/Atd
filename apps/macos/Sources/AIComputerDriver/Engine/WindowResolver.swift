@@ -40,16 +40,19 @@ enum WindowResolver {
       || (!onScreen(target) && !WindowList.appIsHidden(pid: pid_t(target.pid))
         && offScreenNoSpace(target))
     let onActive: Bool
+    let known: Bool
     if let spaces = WindowServerQueries.spaces(forWindow: CGWindowID(target.windowId)),
       let shown = WindowServerQueries.shownSpaces()
     {
-      onActive = !shown.isDisjoint(with: spaces)
+      (onActive, known) = (!shown.isDisjoint(with: spaces), true)
     } else {
-      onActive = true  // cannot tell; do not falsely refuse as off-Space
+      // Cannot tell: a read is not refused as off-Space on a guess, and the host's foreground,
+      // which activates the app, refuses instead (`spaceKnown`).
+      (onActive, known) = (true, false)
     }
     let fullScreen = AXBindings.copyBool(window, "AXFullScreen") == true
     return DriverWindowPlacement(
-      minimized: minimized, onActiveSpace: onActive, fullScreen: fullScreen)
+      minimized: minimized, onActiveSpace: onActive, fullScreen: fullScreen, spaceKnown: known)
   }
 
   private static func onScreen(_ target: DriverTarget) -> Bool {

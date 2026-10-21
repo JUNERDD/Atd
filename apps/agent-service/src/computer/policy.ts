@@ -16,14 +16,12 @@ import {
   type ComputerVisualState,
   type RunComputer,
   type TargetBinding,
-  type TargetRef,
 } from '@atd/agent-contracts';
 import type { ComputerBindingStore } from './bindings.js';
-import type { KnownCapture } from './captures.js';
 import type { ComputerGrantCheck } from './grant-check.js';
 import { recipeAction, type Refusal } from './recipe-step.js';
 import { regionalConditionsProblem } from './regional-conditions.js';
-import { stepsAllowed } from './step-checks.js';
+import { stepsAllowed, type StepScope } from './step-checks.js';
 import { resolutionProblem } from './resolve.js';
 
 /*
@@ -114,11 +112,10 @@ export interface AllowedAction {
   visualOverride?: true;
 }
 
-export interface ActCheck {
+/** What one `act` is checked against: its step scope, whose profile may be missing, and the run. */
+export interface ActCheck extends Omit<StepScope, 'profile'> {
   scope: RunScope;
   unattended: boolean;
-  binding: TargetBinding;
-  targetRef: TargetRef;
   /** The bound host's profile for the binding's engine; absent when it published none. */
   profile: CapabilityProfile | undefined;
   /** The run's facts so far, latest per action. */
@@ -128,8 +125,6 @@ export interface ActCheck {
   /** The run model's visual state, and whether the development override holds. */
   visual: ComputerVisualState;
   visualOverride: boolean;
-  /** A capture the run observed of this target ref. */
-  capture: (captureId: string) => KnownCapture | undefined;
 }
 
 /**
@@ -138,18 +133,19 @@ export interface ActCheck {
  * service, not the model, fills in its locator, condition, effect and postcondition; such a run
  * never takes visual steps or carries `invoke`. In a free run a new business action (`invoke`,
  * `submit`) waits until every unresolved business action of the task on the binding was resolved,
- * and its refusal names them (`blockedBy`); reads and other writes stay allowed. Every action runs
- * in the background: the host picks each step's route and refuses a step that has none
- * (`noBackgroundRoute`), so nothing here chooses a delivery. Visual steps (capture points) need
- * the run's model qualified for them, which no recorded qualification is yet
- * (visual-qualifications.ts), unless the development override holds.
+ * and its refusal names them (`blockedBy`); reads and other writes stay allowed. Nothing here
+ * chooses a delivery: the host picks each step's route, falls back to the foreground only where
+ * the check's `foregroundAllowed` lets it (foreground.ts) and refuses a step it finds no way for
+ * (`noBackgroundRoute`). Visual steps (capture points) need the run's model qualified for them,
+ * which no recorded qualification is yet (visual-qualifications.ts), unless the development
+ * override holds.
  */
 export function checkAct(
   check: ActCheck,
   input: ComputerActionInput,
   actionId: string,
 ): AllowedAction | ActRefusal {
-  const { scope, binding, profile } = check;
+  const { scope, profile } = check;
   const inputRegionProblem = regionalConditionsProblem(input, check);
   if (inputRegionProblem) return refuse(inputRegionProblem);
   if (!profile) return refuse('The computer host offers no engine for this target.');
@@ -167,12 +163,7 @@ export function checkAct(
   const overridden = action.steps.some(isVisualStep) && check.visual !== 'qualified';
   if (overridden && (!check.visualOverride || check.visual !== 'unverified'))
     return refuse(visualRefusal(check.visual));
-  const steps = stepsAllowed(action, {
-    binding,
-    profile,
-    targetRef: check.targetRef,
-    capture: check.capture,
-  });
+  const steps = stepsAllowed(action, { ...check, profile });
   if (!steps.ok) return steps;
   return { ...built, ...(overridden ? { visualOverride: true } : {}) };
 }

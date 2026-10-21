@@ -45,8 +45,9 @@ public struct ActionResultFold: Sendable {
   public var postcondition: Postcondition = .absent
   public private(set) var evidence: [ComputerEvidenceWire] = []
   public var invalidated: String?
-  /// How the engine delivered the input and through which route, reported as is.
-  public var delivery: ComputerDelivery?
+  /// How the engine delivered the input (``delivered(_:)``) and through which route, reported as
+  /// is.
+  public private(set) var delivery: ComputerDelivery?
   public var route: ActionResultWire.Route?
   /// What the guard saw change for the person, the first ``ComputerWireLimits/maxDisturbances``
   /// kept. Recording one does not stop the action; the caller stops it `disturbed` when the guard
@@ -75,6 +76,12 @@ public struct ActionResultFold: Sendable {
     guard !isFinished else { return }
     outcomes.append(outcome)
     evidence.append(contentsOf: more)
+  }
+
+  /// Records how a step delivered its input: `foreground` once any step went to the foreground,
+  /// since the person saw it, otherwise the latest step's delivery.
+  public mutating func delivered(_ delivery: ComputerDelivery) {
+    if self.delivery != .foreground { self.delivery = delivery }
   }
 
   /// Records files a step downloaded, also after the action stopped: they exist either way.

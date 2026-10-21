@@ -4,13 +4,14 @@ import Foundation
 /// ends (``summary``). The coordinator times the resource claim; the engine adds the phases it
 /// went through: listing surfaces, the driver's probe and prepare, the accessibility snapshot, the
 /// capture, text recognition and the menu read, the typing guard, the driver's perform (as
-/// ``Phase/keyScope`` when it opened a key scope), and the reads of a `wait` step and of the
+/// ``Phase/keyScope`` when it opened a key scope), a step done in the foreground (from the wait
+/// for the person's pause to the restore), and the reads of a `wait` step and of the
 /// postcondition, which count reads rather than entries. Only phase names, durations, counts and
 /// outcome words go in, never anything read from the screen.
 final class OperationPhases {
   enum Phase: String, CaseIterable {
     case claim, surfaces, probe, prepare, snapshot, capture, ocr, menu
-    case typingGuard, keyScope, perform, wait, check
+    case typingGuard, keyScope, perform, foreground, wait, check
   }
 
   private let started = ContinuousClock.now

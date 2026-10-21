@@ -7,6 +7,7 @@ import type { ConfirmationRequest } from '../../../client/agent/permission-schem
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { NestedConfirmation } from './codemode-call';
+import { ComputerForegroundTag } from './computer-outcome';
 import { mcpProxy } from './mcp-proxy';
 import { outcomeKey } from './permission-copy';
 import { PermissionNote, ToolBody } from './tool-body';
@@ -35,6 +36,7 @@ const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep'
  * the row shows only a decline, since rows carry no failure mark and it says why nothing ran.
  * A completed row adds a compact trailing summary of what the call did (`toolSummary`), so rows
  * of different tools read differently at a glance; commands and patterns read in the code face.
+ * A computer action the host completed in the foreground adds a Foreground tag at the same edge.
  */
 export function ToolBlock({
   block,
@@ -92,6 +94,9 @@ export function ToolBlock({
         {declined}
       </ActivityRow.Meta>
     ) : null;
+  // An action the host completed in the foreground carries a tag at the row's trailing edge, where
+  // the decline mark and the summary sit; the tag keeps its width and the target truncates first.
+  const delivery = computer?.foreground ? <ComputerForegroundTag /> : null;
   // The plain target, presented for its kind: code face, readable URL, full value in the tooltip.
   const shown = target !== null && meta === target ? presentTarget(block, target) : null;
   const metaText = shown?.text ?? meta;
@@ -131,6 +136,7 @@ export function ToolBlock({
           {metaText}
         </ActivityRow.Meta>
         {summary && <ToolRowSummary summary={summary} />}
+        {delivery}
         {mark}
       </>
     );

@@ -180,7 +180,10 @@ export class PendingRequests {
   }
 }
 
-/** The envelope of a request the service makes on its own behalf for a run (release, status). */
+/**
+ * The envelope of a request the service makes on its own behalf for a run (release, status,
+ * screen reads): it sends no input, so it never lets the host use the foreground.
+ */
 export function serviceEnvelope(taskId: string, runId: string, purpose: string): ExecutionEnvelope {
   return {
     taskId,
@@ -189,6 +192,7 @@ export function serviceEnvelope(taskId: string, runId: string, purpose: string):
     toolCallId: `service:${purpose}`,
     operationId: randomUUID(),
     unattended: false,
+    foregroundAllowed: false,
     deadlineAt: new Date(Date.now() + 30_000).toISOString(),
   };
 }

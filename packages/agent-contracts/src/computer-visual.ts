@@ -5,7 +5,8 @@ import { ComputerDeliverySchema } from './computer-actions.js';
  * Whether the run's model may take visual steps (`isVisualStep`): image input, a driver that can
  * act and a model that locates correctly are separate facts. Qualification is recorded per
  * provider, model, tool schema version, image pipeline version and delivery mode (only
- * `background` exists); a model's advertised image support alone never qualifies it.
+ * `background` counts: capture-point steps never run in the foreground); a model's advertised
+ * image support alone never qualifies it.
  */
 
 /**

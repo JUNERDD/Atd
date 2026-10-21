@@ -111,11 +111,15 @@ public struct NativeRouteFacts: Equatable, Sendable {
   public var demoted: [DriverRoute: RouteDemotion]
   public var policy: NativeRoutePolicy
   public var placement: NativeWindowPlacement
+  /// Whether the driver could tell the window's Space. When it cannot, ``placement`` reads the
+  /// active Space, so the background does not refuse a window it may well reach; the foreground,
+  /// which activates the app, requires a Space it can tell.
+  public var spaceKnown: Bool
 
   public init(
     toolkit: DriverToolkit, capabilities: Set<String>, postsEvents: Bool,
     demoted: [DriverRoute: RouteDemotion] = [:], policy: NativeRoutePolicy = .standard,
-    placement: NativeWindowPlacement = .activeSpace
+    placement: NativeWindowPlacement = .activeSpace, spaceKnown: Bool = true
   ) {
     self.toolkit = toolkit
     self.capabilities = capabilities
@@ -123,6 +127,7 @@ public struct NativeRouteFacts: Equatable, Sendable {
     self.demoted = demoted
     self.policy = policy
     self.placement = placement
+    self.spaceKnown = spaceKnown
   }
 
   /// Why `route` is ruled out before anything is sent; nil when it may be tried.

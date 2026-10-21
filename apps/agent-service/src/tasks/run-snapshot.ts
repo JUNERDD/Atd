@@ -101,7 +101,8 @@ export function freezeRunSnapshot(
  * the automation passed (its grant or trial, `InternalSubmitOptions.computer`), and no other run
  * it starts may act on the computer. A person's run takes the bindings the request names, else
  * those of the task's last run; a follow-up copies only the binding ids, never a grant or a trial.
- * Every run acts in the background only, so nothing here selects a delivery.
+ * Nothing here selects a delivery: the host picks one per step, and only a person's run lets it
+ * fall back to the foreground on an app (computer/foreground.ts).
  */
 function runComputer(
   request: SubmitTaskRequest,

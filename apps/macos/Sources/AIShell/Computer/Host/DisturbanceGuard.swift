@@ -14,7 +14,9 @@ import OSLog
 /// The person's input is told from the engines' by process identity and Atd's marker: an event
 /// Atd synthesized (``KeyPress/isSynthesized(_:)``) or one whose source process
 /// (`kCGEventSourceUnixProcessID`) posts an engine's input (``engineProcesses``) is never theirs.
-/// Nothing is masked by time, so the person's real input during a step always counts.
+/// Nothing is masked by time, so the person's real input during a step always counts. The HID
+/// system's event state is theirs alone: the engines post their input, the foreground fallback's
+/// included, from a private source to the target's process, never through the HID system (R13).
 final class DisturbanceGuard {
   /// One write action under watch, and the step it is in.
   final class Watch {
@@ -43,6 +45,12 @@ final class DisturbanceGuard {
   private var observers: [any NSObjectProtocol] = []
   /// The person's latest key press, click or scroll the monitors saw.
   private var lastSeenInput: ContinuousClock.Instant?
+  /// The person's latest input of any kind the monitors saw, pointer movement included.
+  private var lastSeenActivity: ContinuousClock.Instant?
+  /// The person's latest key press (not a modifier or system key on its own) the monitors saw.
+  private var lastSeenKeyDown: ContinuousClock.Instant?
+  /// `kCGAnyInputEventType`: an event of any input type, for the HID system's event state.
+  private static let anyInput = CGEventType(rawValue: ~0)
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "computer-input")
 
   /// Watches a write action on `target`'s processes until ``stop(_:)``.
@@ -60,6 +68,25 @@ final class DisturbanceGuard {
   func stop(_ watch: Watch) {
     watches.removeAll { $0 === watch }
     if watches.isEmpty { stopMonitors() }
+  }
+
+  /// What the person had in front when `watch`'s current step began; nil outside a step.
+  func before(_ watch: Watch) -> DisturbanceSnapshot? { watch.step?.before }
+
+  /// Whether the person used any input at or after `start`: one the monitors saw (keys, modifier
+  /// and system keys, clicks, scrolls, pointer movement, trackpad gestures), or any event the HID
+  /// system took from the hardware since, which also covers what a monitor never sees, such as a
+  /// shortcut the system consumes. What stops a foreground step at once (R5).
+  func personActed(since start: ContinuousClock.Instant) -> Bool {
+    lastPersonActivity().map { $0 >= start } ?? false
+  }
+
+  /// Whether the person pressed a key at or after `start`, by the monitors or the HID system:
+  /// typing that reached whatever app was in front then.
+  func personTyped(since start: ContinuousClock.Instant) -> Bool {
+    [lastSeenKeyDown, Self.hardwareEvent(.keyDown, now: .now)].contains {
+      $0.map { $0 >= start } ?? false
+    }
   }
 
   /// A write step of `watch` starts.
@@ -80,7 +107,7 @@ final class DisturbanceGuard {
       DisturbanceReading.Receipt(
         keyScopeUsed: $0.keyScopeUsed, keyScopeReturned: $0.keyScopeReturned,
         personWindowRestored: $0.personWindowRestored, frontmostChanged: $0.frontmostChanged,
-        repaired: $0.repaired)
+        repaired: $0.repaired, foreground: $0.foreground)
     }
     reading.personInput = step.input.union(Self.hardwareInput(since: step.started))
     reading.target = watch.target
@@ -113,13 +140,8 @@ final class DisturbanceGuard {
     let types: [CGEventType] = [
       .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
     ]
-    let seconds = types.map {
-      CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: $0)
-    }.min()
-    let hardware = seconds.flatMap { value -> ContinuousClock.Instant? in
-      guard value.isFinite, value >= 0, value < 3600 else { return nil }
-      return ContinuousClock.now - .seconds(value)
-    }
+    let now = ContinuousClock.now
+    let hardware = types.compactMap { Self.hardwareEvent($0, now: now) }.max()
     switch (hardware, lastSeenInput) {
     case (let hardware?, let seen?): return max(hardware, seen)
     case (let hardware?, nil): return hardware
@@ -127,12 +149,22 @@ final class DisturbanceGuard {
     }
   }
 
+  /// When the person last used any input, by the HID system's event state for every input type
+  /// or the monitors' latest sighting, whichever is later: what a foreground step waits to have
+  /// been quiet for before it brings the target forward (R4.1). Nil when there was none in the
+  /// last hour.
+  func lastPersonActivity() -> ContinuousClock.Instant? {
+    let hardware = Self.anyInput.flatMap { Self.hardwareEvent($0, now: .now) }
+    return [hardware, lastSeenActivity].compactMap { $0 }.max()
+  }
+
   // MARK: Monitors
 
   private func startMonitors() {
     let events: NSEvent.EventTypeMask = [
-      .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel, .mouseMoved,
-      .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
+      .keyDown, .flagsChanged, .systemDefined, .leftMouseDown, .rightMouseDown, .otherMouseDown,
+      .scrollWheel, .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
+      .gesture, .magnify, .swipe, .rotate, .smartMagnify, .beginGesture, .endGesture, .pressure,
     ]
     if let global = NSEvent.addGlobalMonitorForEvents(
       matching: events, handler: { [weak self] event in self?.received(event) })
@@ -186,9 +218,12 @@ final class DisturbanceGuard {
     let source = event.cgEvent?.getIntegerValueField(.eventSourceUnixProcessID) ?? 0
     let synthesized = KeyPress.isSynthesized(event)
     let input = Self.input(of: event.type)
+    let keyDown = event.type == .keyDown
     MainActor.assumeIsolated {
       guard !synthesized, !isEngine(source) else { return }
       if input != .motion { lastSeenInput = .now }
+      if keyDown { lastSeenKeyDown = .now }
+      lastSeenActivity = .now
       for watch in watches { watch.step?.input.insert(input) }
     }
   }
@@ -201,8 +236,9 @@ final class DisturbanceGuard {
     -> DisturbanceReading.PersonInput
   {
     switch type {
-    case .keyDown: .keys
+    case .keyDown, .flagsChanged, .systemDefined: .keys
     case .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged: .motion
+    // Buttons, scrolling and trackpad gestures.
     default: .clicks
     }
   }
@@ -213,20 +249,25 @@ final class DisturbanceGuard {
   private static func hardwareInput(since start: ContinuousClock.Instant)
     -> DisturbanceReading.PersonInput
   {
-    let elapsed = ContinuousClock.now - start
-    let window =
-      Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+    let now = ContinuousClock.now
     let seen = { (types: [CGEventType]) in
-      types.contains {
-        CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: $0) < window
-      }
+      types.contains { hardwareEvent($0, now: now).map { $0 > start } ?? false }
     }
     var input: DisturbanceReading.PersonInput = []
-    if seen([.keyDown]) { input.insert(.keys) }
+    if seen([.keyDown, .flagsChanged]) { input.insert(.keys) }
     if seen([.leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel]) {
       input.insert(.clicks)
     }
     if seen([.mouseMoved, .leftMouseDragged, .rightMouseDragged]) { input.insert(.motion) }
     return input
+  }
+
+  /// When the HID system last saw an event of `type` from the hardware, within the last hour.
+  private static func hardwareEvent(_ type: CGEventType, now: ContinuousClock.Instant)
+    -> ContinuousClock.Instant?
+  {
+    let seconds = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: type)
+    guard seconds.isFinite, seconds >= 0, seconds < 3600 else { return nil }
+    return now - .seconds(seconds)
   }
 }

@@ -20,6 +20,7 @@ import {
 } from './call-context.js';
 import type { HostOutcome } from './coordinator.js';
 import { computerDetails, stepSummary } from './details.js';
+import { foregroundAllowed } from './foreground.js';
 import { checkAct, runBinding, type AllowedAction } from './policy.js';
 import { readRunFacts } from './records.js';
 import { resolveVerified } from './resolve.js';
@@ -115,8 +116,10 @@ function settledFact(intent: ComputerFact, outcome: HostOutcome): ComputerFact {
 
 /**
  * `act`: checks the action against the run's scope, asks the gate in attended runs, records the
- * intent durably, sends it to the host and records what came back. Repeating an action id of
- * this run answers its recorded fact without sending anything again.
+ * intent durably, sends it to the host and records what came back. Whether the host may complete
+ * a step in the foreground is decided once from the run and the binding (foreground.ts), for the
+ * step check, the envelope and the answer alike. Repeating an action id of this run answers its
+ * recorded fact without sending anything again.
  */
 export async function runAct(ctx: CallContext, input: ComputerActionInput): Promise<ToolAnswer> {
   const { runtime } = ctx;
@@ -126,8 +129,10 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
   const existing = facts.find((fact) => fact.actionId === actionId);
   if (existing) {
     auditComputer(ctx, 'repeated', { actionId });
+    const kind = runtime.bindings.get(existing.bindingId)?.kind;
+    const foreground = foregroundAllowed(ctx, kind ? [kind] : []);
     return {
-      text: answerText(existing, { free, repeated: true }),
+      text: answerText(existing, { free, foreground, repeated: true }),
       details: computerDetails({
         op: 'act',
         bindingId: existing.bindingId,
@@ -153,6 +158,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
   if (binding.revision !== targetRef.bindingRevision)
     refuse(ctx, 'The target changed since it was resolved: call targets again.', known);
   const { coordinator } = runtime;
+  const foreground = foregroundAllowed(ctx, [binding.kind]);
   const checked = checkAct(
     {
       scope: ctx.scope,
@@ -167,6 +173,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
       visual: visualState(ctx.model),
       visualOverride: runtime.visualOverride,
       capture: (captureId) => coordinator.capture(ctx.runId, targetRef.id, captureId),
+      foregroundAllowed: foreground,
     },
     input,
     actionId,
@@ -220,7 +227,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
   await runtime.records.append(intent);
   const timeoutMs = actTimeout(action);
   const outcome = await runtime.coordinator.request(
-    envelopeFor(ctx, timeoutMs),
+    envelopeFor(ctx, timeoutMs, [binding.kind]),
     { kind: 'act', action },
     { signal: ctx.signal, timeoutMs, bindingId: binding.bindingId },
   );
@@ -241,6 +248,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
     actionId,
     bindingId: binding.bindingId,
     effect,
+    ...(fact.result?.delivery ? { delivery: fact.result.delivery } : {}),
     ...(fact.result?.route ? { route: fact.result.route } : {}),
     ...(resolved.length ? { resolved } : {}),
     ...(recipeStepId ? { recipeStepId } : {}),
@@ -251,7 +259,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
   const next = await nextObservation(ctx, action, targetRef, fact);
   const { image, resourceId, snapshot, ...extra } = next ?? {};
   return {
-    text: answerText(fact, { free, resolved, unresolved, files, observation: extra }),
+    text: answerText(fact, { free, foreground, resolved, unresolved, files, observation: extra }),
     ...(image ? { image } : {}),
     ...(snapshot ? { snapshot } : {}),
     details: computerDetails({
@@ -272,8 +280,9 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
 /**
  * The approval gate on the action's highest effect for one revision of the binding
  * (`computer:<binding>@<revision>:<effect>`) in attended runs, trial runs included, so an approval
- * never covers an edited target. Every action runs in the background, so the scope names no
- * delivery. An unattended run acts only under its live grant, which the scope check already
+ * never covers an edited target. The scope names no delivery: approving an action approves it
+ * however the host delivers it, and a step the host completes in the foreground asks nothing more
+ * (foreground.ts). An unattended run acts only under its live grant, which the scope check already
  * verified; it never reaches the gate, whose tier would not apply to it.
  */
 async function authorize(

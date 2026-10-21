@@ -135,7 +135,15 @@ export function ApprovalControls({
               target: access.target.label,
             })}
           </p>
-          <p>{t('permission.accessBackground')}</p>
+          {/* A website stays in the background; an app may be brought forward for a step that
+              nothing in the background can do. */}
+          <p>
+            {t(
+              access.target.kind === 'browser'
+                ? 'permission.accessBackground'
+                : 'permission.accessApplication',
+            )}
+          </p>
           {access.target.kind === 'browser' && (
             <p className="wrap-anywhere">{access.target.allowedOrigins.join(', ')}</p>
           )}

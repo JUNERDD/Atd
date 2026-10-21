@@ -27,8 +27,8 @@ struct ComputerFailure: Error, Equatable, Sendable {
     self.reason = reason
   }
 
-  /// No imperceptible route exists for the step: the host refuses instead of taking the
-  /// foreground, and the person does that step themselves (plan I5).
+  /// No background route exists for the step: the host refuses it, unless the foreground fallback
+  /// takes it in a request that allows it (``ForegroundPolicy``); the person does what is left.
   static func noBackgroundRoute(_ reason: ComputerRefusalReason, _ message: String) -> Self {
     Self(.noBackgroundRoute, message, reason: reason)
   }
@@ -55,6 +55,9 @@ struct EngineResolveContext {
   let unattended: Bool
   let deadline: ContinuousClock.Instant
   var isStopping: () -> Bool = { false }
+  /// Whether the request may use the foreground fallback (``ForegroundPolicy/allows(_:)``), so a
+  /// resolved target's capabilities list `foreground` where a step kind has a foreground route.
+  var foreground = false
 
   func check() throws(ComputerFailure) {
     if Task.isCancelled || isStopping() {
@@ -102,7 +105,8 @@ struct EngineCheckContext {
 }
 
 /// The context of one step: who it is for, when it must end, and the coordinator's callbacks.
-/// Delivery is always background, and the engine (not the model) picks the route.
+/// The engine (not the model) picks the background route; only the coordinator takes a step every
+/// background route refused to the foreground, through the engine's foreground hook.
 struct EngineStepContext {
   let taskId: String
   let runId: String
@@ -145,6 +149,8 @@ struct EngineInputReceipt: Sendable, Equatable {
   var frontmostChanged = false
   /// Whether the driver posted repair records (focus or ordering) after the primitive.
   var repaired = false
+  /// What a foreground step put back for the person (R6); nil for a background step.
+  var foreground: ForegroundRestoration?
 }
 
 /// How one step ended.
@@ -154,8 +160,9 @@ struct EngineStepOutcome: Sendable {
   /// What the step made stale, such as the observation after a navigation; the host then
   /// requires a new observation before the next action on the target.
   var invalidated: String?
-  /// How the input was delivered (always background) and the channel it took, as the engine's
-  /// driver reported them; nil when the step sent nothing or the driver did not say.
+  /// How the input was delivered (background, or foreground for the fallback) and the channel it
+  /// took, as the engine or the foreground executor reported them; nil when the step sent nothing
+  /// or the driver did not say.
   var delivery: ComputerDelivery?
   var route: ActionResultWire.Route?
   /// The driver's receipt for the step's input; nil when the step sent none (reads, waits) or the
@@ -183,7 +190,11 @@ struct EngineStepOutcome: Sendable {
 /// resources, journal, cancellation, progress and the disturbance guard; an engine only resolves,
 /// observes, performs and checks. Every route is imperceptible: an engine never activates or
 /// raises an app, moves the pointer, touches the pasteboard or switches Spaces, and never retries
-/// a submit. A step with no such route throws `noBackgroundRoute` with a reason instead.
+/// a submit. A step with no such route throws `noBackgroundRoute` with a reason instead; the
+/// coordinator may then ask the engine to do the step in the foreground
+/// (``foreground(_:on:observation:refusal:context:run:)``), which the shell's
+/// ``ForegroundExecutor`` brings forward and puts back, while the input still goes out through
+/// the engine's own route, never the person's pointer.
 ///
 /// Every engine method runs on the main actor and may suspend; long work belongs off-main in the
 /// engine's own process or actor. A step that cannot be confirmed either way throws with
@@ -229,6 +240,18 @@ protocol ComputerEngine: AnyObject {
     _ step: ComputerStepWire, on ref: TargetRefWire, observation: ObservationRefWire,
     context: EngineStepContext
   ) async throws(ComputerFailure) -> EngineStepOutcome
+  /// Does `step` in the foreground after every background route refused it with `refusal` (the
+  /// foreground fallback, R1–R4, R13): resolves, from `observation` as
+  /// ``perform(_:on:observation:context:)`` resolves it and sending nothing, the window the step
+  /// acts in and its input in order, each piece going out through the engine's own process-
+  /// targeted route, never the person's pointer, and hands that plan to `run`, which brings the
+  /// target forward and sends it. Throws `refusal`, with why, when the step has no foreground
+  /// route either.
+  func foreground(
+    _ step: ComputerStepWire, on ref: TargetRefWire, observation: ObservationRefWire,
+    refusal: ComputerFailure, context: EngineStepContext,
+    run: (ForegroundPlan) async throws(ComputerFailure) -> EngineStepOutcome
+  ) async throws(ComputerFailure) -> EngineStepOutcome
   /// Checks a postcondition after the steps; `baseline` is the observation the action started
   /// from (`newText`). An engine may keep reading a condition that can show a moment after the
   /// input, within `context`.
@@ -272,6 +295,15 @@ extension ComputerEngine {
 
   func foregroundProcess(of ref: TargetRefWire) -> pid_t? {
     ref.native.map { pid_t($0.pid) }
+  }
+
+  /// By default an engine has no foreground route.
+  func foreground(
+    _ step: ComputerStepWire, on ref: TargetRefWire, observation: ObservationRefWire,
+    refusal: ComputerFailure, context: EngineStepContext,
+    run: (ForegroundPlan) async throws(ComputerFailure) -> EngineStepOutcome
+  ) async throws(ComputerFailure) -> EngineStepOutcome {
+    throw refusal
   }
 
   /// By default a target is in front of the person while its process is the frontmost app.
