@@ -1,7 +1,12 @@
-import type { AssistantMessage, AssistantMessageEvent } from '@earendil-works/pi-ai';
-import type { AgentSession } from '@earendil-works/pi-coding-agent';
+import type { AssistantMessage } from '@earendil-works/pi-ai';
 import { Type, type Static } from 'typebox';
 import { Compile } from 'typebox/compile';
+import {
+  APP_INFERENCE,
+  InferenceClock,
+  type InferenceRecord,
+  type InferenceTimingEvent,
+} from './inference-timing.js';
 
 /**
  * Generation timing of assistant messages, which Pi does not keep. A clock reads a session's
@@ -61,7 +66,8 @@ export function thinkingBlockId(timestamp: number, index: number): string {
 /** A session entry a clock hands its owner to record. */
 export type GenerationEntry =
   | { customType: typeof APP_GENERATION; data: GenerationRecord }
-  | { customType: typeof APP_THINKING; data: ThinkingRecord };
+  | { customType: typeof APP_THINKING; data: ThinkingRecord }
+  | { customType: typeof APP_INFERENCE; data: InferenceRecord };
 
 /**
  * The shortest stream a rate can be read from. Output that arrives at once (a provider sending a
@@ -70,16 +76,8 @@ export type GenerationEntry =
  */
 const MIN_STREAM_MS = 250;
 
-type AgentMessage = AgentSession['messages'][number];
-
 /** The session events a clock reads; Pi delivers them alike to listeners and extensions. */
-export type GenerationEvent =
-  | { type: 'message_start' | 'message_end'; message: AgentMessage }
-  | {
-      type: 'message_update';
-      message: AgentMessage;
-      assistantMessageEvent: AssistantMessageEvent;
-    };
+export type GenerationEvent = InferenceTimingEvent;
 
 interface OpenMessage {
   /** Pi's `message_start`: the provider's response began. */
@@ -94,14 +92,20 @@ interface OpenMessage {
 /** Times the assistant messages of one session and their thoughts; keyed by message `timestamp`. */
 export class GenerationClock {
   private readonly open = new Map<number, OpenMessage>();
+  private readonly inference = new InferenceClock();
 
   /**
    * Reads one session event and returns what to record now: an `app-thinking` entry for each
    * thought it ended and, at an assistant message's end, its `app-generation` entry when timed.
    */
   observe(event: GenerationEvent): GenerationEntry[] {
+    const timings: GenerationEntry[] = this.inference.observe(event).map((data) => ({
+      customType: APP_INFERENCE,
+      data,
+    }));
+    if (!('message' in event)) return timings;
     const { message } = event;
-    if (message.role !== 'assistant') return [];
+    if (message.role !== 'assistant') return timings;
     const now = Date.now();
     if (event.type === 'message_start') {
       this.open.set(message.timestamp, {
@@ -110,14 +114,14 @@ export class GenerationClock {
         thoughtFirst: false,
         thoughts: new Map(),
       });
-      return [];
+      return timings;
     }
     const entry = this.open.get(message.timestamp);
-    if (!entry) return [];
+    if (!entry) return timings;
     if (event.type === 'message_update') {
       // Pi raises updates only for text, thinking and tool call parts, from their `*_start`.
       const part = event.assistantMessageEvent;
-      if (!('contentIndex' in part)) return [];
+      if (!('contentIndex' in part)) return timings;
       if (entry.firstOutputAt === null) {
         entry.firstOutputAt = now;
         entry.thoughtFirst = part.type.startsWith('thinking');
@@ -127,13 +131,15 @@ export class GenerationClock {
       const last = part.type === 'thinking_end' ? part.contentIndex : part.contentIndex - 1;
       const ended = endThoughts(message.timestamp, entry, last, now);
       if (part.type === 'thinking_start') entry.thoughts.set(part.contentIndex, now);
-      return ended;
+      return [...timings, ...ended];
     }
     this.open.delete(message.timestamp);
     // A thought still open here was cut off with its message, which failed or was stopped.
     const ended = endThoughts(message.timestamp, entry, Number.POSITIVE_INFINITY, now);
     const record = settle(entry, message, now);
-    return record ? [...ended, { customType: APP_GENERATION, data: record }] : ended;
+    return record
+      ? [...timings, ...ended, { customType: APP_GENERATION, data: record }]
+      : [...timings, ...ended];
   }
 
   /** When the streaming message `timestamp` showed its first output; undefined until it did. */

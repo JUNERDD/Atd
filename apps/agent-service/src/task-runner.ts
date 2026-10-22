@@ -40,6 +40,13 @@ import {
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
 import { TaskQueue } from './tasks/task-queue.js';
+import {
+  finishRunPreparation,
+  promptWithPreparation,
+  recordPreparationQueue,
+  timePreparation,
+  withRunPreparation,
+} from './run-preparation-timing.js';
 
 export interface RunnerContext {
   ledger: Ledger;
@@ -184,7 +191,11 @@ export class TaskRunner {
       run.snapshot.background ??
       (run.snapshot.trigger !== undefined ||
         (task.origin?.kind === 'app' && task.runs[0]?.id === run.id));
-    return withInferencePurpose(background, () => this.executeRun(run, attachments, folders));
+    return withInferencePurpose(background, () =>
+      withRunPreparation(this.taskId, run.id, this.session.audit, () =>
+        this.executeRun(run, attachments, folders),
+      ),
+    );
   }
 
   private async executeRun(
@@ -200,15 +211,21 @@ export class TaskRunner {
       path.join(this.ctx.paths.auditDir, `${run.id}.jsonl`),
       this.ctx.log,
     );
+    recordPreparationQueue(run.createdAt);
     try {
-      await this.setStatus(run.id, 'running', '');
+      await timePreparation('running_status', () => this.setStatus(run.id, 'running', ''));
       // Load the session and tool graph only for an executing run; failures settle this run below.
-      const { openRunSession, prepareRun } = await import('./run-prepare.js');
+      const { openRunSession, prepareRun } = await timePreparation(
+        'session_modules',
+        () => import('./run-prepare.js'),
+      );
       if (this.isStopping(run.id)) {
         await this.setStatus(run.id, 'stopped', '');
         return;
       }
-      const prepared = await prepareRun(this.session, run, attachments, folders);
+      const prepared = await timePreparation('prepare_run', () =>
+        prepareRun(this.session, run, attachments, folders),
+      );
       if (prepared.blocked !== null) {
         await this.setStatus(run.id, 'failed', prepared.blocked);
         return;
@@ -223,7 +240,9 @@ export class TaskRunner {
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
-      await live.session.prompt(runPromptText(run), runPromptOptions(attachments));
+      await promptWithPreparation(live.session, () =>
+        live.session.prompt(runPromptText(run), runPromptOptions(attachments)),
+      );
       const last = lastAssistant(live.manager.getBranch());
       const error = last ? (inferenceError(last) ?? '') : '';
       if (!error && !this.isStopping(run.id)) await this.beforeCompleted(run.id);
@@ -239,6 +258,7 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
+      finishRunPreparation(this.isStopping(run.id) ? 'stopped' : 'error');
       // Only the catalog, the memory sections and the view level outlive the run: a prompt the idle
       // session sends keeps its system prompt sections (skills/session-catalog.ts,
       // memory/session-memory.ts, views/tools.ts); attachment and skill text are let go.

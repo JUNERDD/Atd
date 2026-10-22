@@ -37,6 +37,7 @@ import type { RuntimeAgent } from './subagents/agents.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
+import { timePreparation } from './run-preparation-timing.js';
 
 /** What a freeze needs from the task runner: its context, task and run audit. */
 export interface RunFreezeDeps {
@@ -77,12 +78,12 @@ export async function freezeRunSelections(
   // The plugin catalog freezes first (D4): skills, agents and MCP below all read the run's
   // snapshot, so a plugin or item toggled later never changes what this run may use. Skills, MCP
   // and the agent harness do not read each other, so they freeze together.
-  const plugins = await freezePlugins(deps, run);
+  const plugins = await timePreparation('freeze_plugins', () => freezePlugins(deps, run));
   // Decided once here, so the catalog's skills and the session's tools agree (run-binding.ts).
   const computer = computerToolFor(run.snapshot, deps.ctx.computer);
   const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
-    freezeSkills(deps, run, plugins.skills, computer),
-    freezeMcp(deps, run),
+    timePreparation('freeze_skills', () => freezeSkills(deps, run, plugins.skills, computer)),
+    timePreparation('freeze_mcp', () => freezeMcp(deps, run)),
     // Agents turned off in Settings stay off for this run even if they are turned on during it,
     // and a permission change made during the run applies from the next one.
     readAgentHarness(deps.ctx.paths.root),

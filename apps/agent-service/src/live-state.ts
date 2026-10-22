@@ -5,6 +5,7 @@ import type { CompactionObserver } from './compaction/observer.js';
 import { LiveTranscript } from './live-transcript.js';
 import type { RunModel } from './run-model.js';
 import type { RunnerContext } from './task-runner.js';
+import { timePreparation } from './run-preparation-timing.js';
 
 /** A task's live Pi session and what follows it. */
 export interface LiveState {
@@ -103,6 +104,7 @@ export async function bindLiveState(input: BindLiveInput): Promise<LiveState> {
   state.context.attach();
   // A manual compaction shows once prepared, which no session event marks (compaction/observer.ts).
   compaction.onChange(() => state.transcript.reproject(false));
-  if (state.sessionFile) await recordSessionFile(state.sessionFile);
+  if (state.sessionFile)
+    await timePreparation('record_session_file', () => recordSessionFile(state.sessionFile));
   return state;
 }

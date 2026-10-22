@@ -29,6 +29,7 @@ import { createGate, prepareHarness } from './harness/index.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
+import { timePreparation } from './run-preparation-timing.js';
 
 export {
   NO_RUN_MATERIAL,
@@ -79,9 +80,11 @@ export async function createLiveState(
   binding: RunBinding,
 ): Promise<LiveState> {
   const { ctx, taskId } = deps;
-  const base = await openSessionBase(deps, run);
+  const base = await timePreparation('session_base', () => openSessionBase(deps, run));
   const { cwd, manager, runModel } = base;
-  const subagentsFactory = await prepareSubagentsParent(deps, binding, runModel.childRuntime);
+  const subagentsFactory = await timePreparation('subagents_parent', () =>
+    prepareSubagentsParent(deps, binding, runModel.childRuntime),
+  );
   const resources = new ResourceStore(ctx.ledger, ctx.paths);
   const host: ServiceToolHost = {
     taskId,
@@ -118,21 +121,23 @@ export async function createLiveState(
   // Set once the session is followed; the full reprojection that ends its build covers before.
   let state: LiveState | null = null;
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
-  const harness = await prepareHarness({
-    runner: deps,
-    run,
-    binding,
-    cwd,
-    sessions: manager,
-    gate: createGate(host),
-    reproject: () => state?.transcript.reproject(false),
-    source: () =>
-      session && {
-        models: runModel.models,
-        model: session.model ?? runModel.model,
-        branch: () => manager.getBranch(),
-      },
-  });
+  const harness = await timePreparation('harness', () =>
+    prepareHarness({
+      runner: deps,
+      run,
+      binding,
+      cwd,
+      sessions: manager,
+      gate: createGate(host),
+      reproject: () => state?.transcript.reproject(false),
+      source: () =>
+        session && {
+          models: runModel.models,
+          model: session.model ?? runModel.model,
+          branch: () => manager.getBranch(),
+        },
+    }),
+  );
   state = await buildRunSession(deps, run, base, {
     systemPrompt: [
       SERVICE_SYSTEM_PROMPT,

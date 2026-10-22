@@ -66,6 +66,8 @@ class LiveChildTranscript {
   attach(): void {
     this.unsubscribe = this.source.subscribe((event) => {
       if (
+        event.type === 'turn_start' ||
+        event.type === 'agent_end' ||
         event.type === 'message_start' ||
         event.type === 'message_update' ||
         event.type === 'message_end'

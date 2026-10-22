@@ -21,6 +21,8 @@ export default function serviceChildBridge(pi: ExtensionAPI): void {
   const timeMessage = (event: GenerationEvent): void => {
     for (const { customType, data } of generation.observe(event)) pi.appendEntry(customType, data);
   };
+  pi.on('turn_start', timeMessage);
+  pi.on('agent_end', timeMessage);
   pi.on('message_start', timeMessage);
   pi.on('message_update', timeMessage);
   pi.on('message_end', timeMessage);

@@ -18,6 +18,7 @@ import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 import { freezeViewInitiative } from './views/initiative.js';
+import { timePreparation } from './run-preparation-timing.js';
 
 /**
  * What a run executes with before it prompts (task-runner.ts): its material and the session it
@@ -61,20 +62,22 @@ export async function prepareRun(
   }
   // T3/T4: skill, role, MCP and reference selections freeze once at
   // accept; the run's material and session binding come from them.
-  const frozen = await freezeRunSelections(deps, run);
+  const frozen = await timePreparation('freeze_selections', () => freezeRunSelections(deps, run));
   const blocked = runSkillsError(run, frozen.skills.loaded, frozen.catalog);
   if (blocked) return { blocked };
   const material: RunMaterial = {
     instructions,
     attachments,
-    folders: await folders(),
+    folders: await timePreparation('folders', folders),
     references: frozen.references.material,
     skills: frozen.skills.loaded,
     catalog: frozen.catalog,
     memory: frozen.memory,
     computer: frozen.computer,
     // As the run starts, so a change in Settings applies from the next run; a lite run keeps null.
-    viewInitiative: await freezeViewInitiative(deps.ctx.paths),
+    viewInitiative: await timePreparation('view_initiative', () =>
+      freezeViewInitiative(deps.ctx.paths),
+    ),
   };
   return { blocked: null, material, agents: frozen.agents };
 }
@@ -97,18 +100,25 @@ export async function openRunSession(
   run: TaskRun,
   agents: RuntimeAgent[],
 ): Promise<LiveState> {
-  const binding = run.snapshot.lite ? null : await prepareRunBinding(deps.session, run, agents);
+  const binding = run.snapshot.lite
+    ? null
+    : await timePreparation('session_binding', () => prepareRunBinding(deps.session, run, agents));
   // An idle or tier-change release still shutting the session down ends before it reopens. A
   // run stopped while it waited ends here, leaving the session untouched.
-  await deps.slot.settled();
+  await timePreparation('session_settled', () => deps.slot.settled());
   if (deps.stopped()) throw new Error('The run stopped before its session opened.');
   const live = deps.slot.live;
-  if (live && binding && (await applyRunToSession(live, run, binding))) return live;
+  if (
+    live &&
+    binding &&
+    (await timePreparation('session_reuse', () => applyRunToSession(live, run, binding)))
+  )
+    return live;
   // A changed run binding or another connection needs a new session;
   // reopen it from the same session file.
-  await deps.slot.close('new');
-  const opened = binding
-    ? await createLiveState(deps.session, run, binding)
-    : await createLiteState(deps.session, run);
+  await timePreparation('session_close', () => deps.slot.close('new'));
+  const opened = await timePreparation('session_create', () =>
+    binding ? createLiveState(deps.session, run, binding) : createLiteState(deps.session, run),
+  );
   return deps.slot.hold(opened);
 }
