@@ -78,7 +78,7 @@ struct MiniPanelMotionTests {
     #expect(Choreography.flyoutCloseDelay > 0)
   }
 
-  @Test("Touch, the snap and the drop keep motion-v2's values; the label hover-label-v3's")
+  @Test("Touch, snap and drop keep their timing; label glides use critical damping")
   func fixedMoments() {
     #expect(Choreography.bodyPressScale == 0.96)
     #expect(Choreography.bodyPress == .easeOut(0.08))
@@ -96,7 +96,7 @@ struct MiniPanelMotionTests {
     #expect(Choreography.labelAppear == MiniPanelSpring(0.30, 0.25))
     #expect(Choreography.labelText.delay == 0.04 && Choreography.labelText.exit == 0.1)
     #expect(Choreography.labelText.hiddenBlur == 3)
-    #expect(Choreography.labelGlide == MiniPanelSpring(0.35, 0.30))
+    #expect(Choreography.labelGlide == MiniPanelSpring(0.20, 0))
     // The bubble leaves with its text, without overshoot.
     #expect(Choreography.labelLeave == MiniPanelSpring(0.2, 0))
   }

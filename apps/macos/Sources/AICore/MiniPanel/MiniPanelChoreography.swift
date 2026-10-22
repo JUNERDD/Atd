@@ -262,9 +262,10 @@ public enum MiniPanelChoreography {
   public static let labelAppear = MiniPanelSpring(0.30, 0.25)
   /// …its text arrives just after, growing with it…
   public static let labelText = MiniPanelContentMotion(delay: 0.04, exit: 0.1, hiddenBlur: 3)
-  /// …it glides from control to control while warm, its text riding along and swapping through a
-  /// blur…
-  public static let labelGlide = MiniPanelSpring(0.35, 0.30)
+  /// …it glides while warm, its text cross-fading on the same critically damped response.
+  /// With ω = 2π / 0.20, the remaining distance (1 + ωt)exp(-ωt) is 5% at 151 ms and
+  /// 1% at 211 ms from rest; critical damping removes the width's oscillating tail.
+  public static let labelGlide = MiniPanelSpring(0.20, 0)
   /// …and leaves into that anchor without overshoot: its text fades as it draws a little toward
   /// the anchor, then it draws in to nothing there, fill and glass together
   /// (``MiniPanelLabelPath/scale(fade:)``), never over the capsule, whose fill it would darken

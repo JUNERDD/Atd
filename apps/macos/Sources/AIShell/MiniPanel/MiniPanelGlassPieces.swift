@@ -34,7 +34,7 @@ struct MiniPanelCard: View {
 /// control, and leaves into that anchor, its fill with its glass, so it never shows as bare glass
 /// (``MiniPanelLabelPath``). Its text rides
 /// inside it on the same animated values (``MiniPanelLabelFollowEffect``): it grows with the
-/// label, glides with it, swapping through a blur, and shows only through its own presence.
+/// label, glides with it, cross-fades between names, and shows only through its own presence.
 /// Visual only: VoiceOver reads the controls' own labels.
 ///
 /// It is drawn in a fixed lane beside the shape it belongs to, so its frames lay nothing out
@@ -50,28 +50,30 @@ struct MiniPanelLabelView: View {
     let rest = label.rest.offsetBy(dx: -lane.minX, dy: -lane.minY)
     let outline = MiniPanelLabelOutline(fade: label.fade, rest: rest, edge: model.edge)
     let follow = MiniPanelLabelFollowEffect(
-      fade: label.fade, rest: rest, edge: model.edge, layout: rest, scales: !model.reduceMotion)
-    // A text swapped by a plain write would drop the leaving one at once: one text interpolates
-    // into the next instead, through a blur, on the glide's animation.
-    Text(verbatim: label.text)
-      .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
-      .lineLimit(1)
-      .truncationMode(.tail)
-      .foregroundStyle(.primary)
-      .contentTransition(.interpolate)
-      .animation(label.drawn ? swap : nil, value: label.text)
-      .padding(.horizontal, MiniPanelMetrics.labelPadding)
-      .animation(nil) { $0.frame(width: rest.width, height: rest.height) }
-      .animation(label.animation) { $0.modifier(follow) }
-      .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
-      .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
-      .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      // Leaving, its outline takes it, fill and glass, into its anchor, rather than shrinking
-      // into the capsule, whose fill its own would darken.
-      .glassSurface(in: outline, animation: label.animation)
-      .offset(x: lane.minX, y: lane.minY)
-      .allowsHitTesting(false)
-      .accessibilityHidden(true)
+      fade: label.fade, rest: rest, edge: model.edge, scales: !model.reduceMotion)
+    ZStack {
+      // Preserve each name's own layout during the cross-fade. Text.contentTransition
+      // reuses the new width for the old glyphs, shifting/clipping a long name on a short one.
+      Text(verbatim: label.text)
+        .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
+        .lineLimit(1)
+        .truncationMode(.tail)
+        .foregroundStyle(.primary)
+        .padding(.horizontal, MiniPanelMetrics.labelPadding)
+        .frame(width: rest.width, height: rest.height)
+        .id(label.text)
+        .transition(.opacity)
+    }
+    .animation(label.drawn ? swap : nil, value: label.text)
+    // A fixed layout center is essential: changing this frame to the new text width would
+    // move the outgoing text's origin before its geometry animation has caught up.
+    .frame(width: lane.width, height: lane.height)
+    .animation(label.animation) { $0.modifier(follow) }
+    .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
+    .glassSurface(in: outline, animation: label.animation)
+    .offset(x: lane.minX, y: lane.minY)
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
   }
 }
 
