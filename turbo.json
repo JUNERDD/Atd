@@ -1,6 +1,9 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "agentGuidance": false,
+  "futureFlags": {
+    "watchUsingTaskInputs": true
+  },
   "globalDependencies": [".node-version", ".oxlintrc.json", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
     "AI_AGENT_DATA_DIR",
@@ -26,17 +29,41 @@
     "@atd/file-index#build": {
       "inputs": [
         "$TURBO_DEFAULT$",
+        "!index.js",
+        "!index.d.ts",
         "$TURBO_ROOT$/Cargo.toml",
         "$TURBO_ROOT$/Cargo.lock",
         "$TURBO_ROOT$/rust-toolchain.toml",
+        "$TURBO_ROOT$/.cargo/**",
         "$TURBO_ROOT$/crates/**"
       ],
-      "cache": false
+      "cache": false,
+      "outputs": ["*.node", "index.js", "index.d.ts"]
     },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
+    },
+    "@atd/agent-service#dev": {
+      "dependsOn": ["build"],
+      "inputs": [
+        "src/**",
+        "view-kit/**",
+        "product-skills/**",
+        "package.json",
+        "tsconfig.json",
+        "scripts/dev.mjs"
+      ],
+      "cache": false,
+      "persistent": true,
+      "interruptible": true,
+      "passThroughEnv": ["NODE_COMPILE_CACHE", "NODE_DISABLE_COMPILE_CACHE"]
+    },
+    "@atd/agent-service#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "package.json", "tsconfig.json"],
+      "outputs": ["dist/**"]
     },
     "dev:renderer": {
       "cache": false,

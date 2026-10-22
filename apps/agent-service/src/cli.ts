@@ -81,6 +81,7 @@ function usage(): string {
 }
 
 async function serve(flags: Flags): Promise<void> {
+  const initializeStarted = performance.now();
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
   const systemProxy = await createSystemProxy(log);
   if (flags.port === RENDERER_PORT)
@@ -131,6 +132,12 @@ async function serve(flags: Flags): Promise<void> {
   });
   const { url, port } = await handle.start();
   log.info('Agent service ready.', {
+    ...(flags.development
+      ? {
+          startupMs: Math.round(performance.now()),
+          initializeMs: Math.round(performance.now() - initializeStarted),
+        }
+      : {}),
     serviceId: config.serviceId,
     epoch: config.epoch,
     port,
