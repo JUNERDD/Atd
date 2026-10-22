@@ -164,7 +164,7 @@ final class ShellBridge {
       shell.commandProgress.hide(target: params.target)
       return try Self.encode(NativeEmpty())
     case .clipboardWrite(let params):
-      guard shell.deviceArbiter.writeClipboard(params.text) else {
+      guard await shell.deviceArbiter.copyToClipboard(params.text) else {
         throw BridgeError("The clipboard is in use; try again.")
       }
       return try Self.encode(NativeEmpty())

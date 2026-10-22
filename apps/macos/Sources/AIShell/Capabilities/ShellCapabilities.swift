@@ -29,7 +29,7 @@ final class ShellCapabilities: CapabilityHandling {
     case .fileSave: try await saveFile(request.input)
     case .selectionRead: try await readSelection()
     case .clipboardRead: try readClipboard()
-    case .clipboardWrite: try writeClipboard(request.input)
+    case .clipboardWrite: try await writeClipboard(request.input)
     }
   }
 
@@ -91,11 +91,11 @@ final class ShellCapabilities: CapabilityHandling {
     return try Self.value(TextCapture.clipboard(text, at: .now, panelVisible: visible))
   }
 
-  private func writeClipboard(_ input: JSONValue) throws -> JSONValue {
+  private func writeClipboard(_ input: JSONValue) async throws -> JSONValue {
     switch CapabilityInputs.clipboardWrite(input) {
     case .success(let text):
       // A paste or copy transaction in progress would put back the user's items over it.
-      guard arbiter.writeClipboard(text) else {
+      guard await arbiter.copyToClipboard(text) else {
         throw CapabilityFailure("The clipboard is in use; try again.")
       }
       return .object(["ok": .bool(true)])

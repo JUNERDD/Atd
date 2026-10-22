@@ -24,8 +24,8 @@ final class DeviceArbiter {
     let expiry: Task<Void, Never>?
   }
 
-  /// How long a user feature's asynchronous claim waits behind background claims; it never waits
-  /// behind another user feature (``ResourceClaimPlan``).
+  /// How long a user feature's asynchronous claim waits behind background claims. One-shot
+  /// clipboard copies use their own bound and may also wait behind another user feature.
   static let userWait: Duration = .seconds(1)
 
   private var held: [(id: UInt64, entry: ClaimEntry)] = []

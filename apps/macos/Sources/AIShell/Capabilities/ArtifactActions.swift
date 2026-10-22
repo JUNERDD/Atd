@@ -51,7 +51,7 @@ final class ArtifactActions {
     case .reveal:
       NSWorkspace.shared.activateFileViewerSelecting([downloaded.fileURL])
     case .copyPath:
-      guard arbiter.writeClipboard(downloaded.fileURL.path(percentEncoded: false)) else {
+      guard await arbiter.copyToClipboard(downloaded.fileURL.path(percentEncoded: false)) else {
         throw BridgeError("The clipboard is in use; try again.")
       }
     }

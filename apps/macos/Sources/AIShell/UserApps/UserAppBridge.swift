@@ -97,7 +97,7 @@ final class UserAppBridge {
       host.setDragRegions(params.rects)
       return NSNull()
     case .call(.clipboardWrite(let params)):
-      guard arbiter.writeClipboard(params.text) else {
+      guard await arbiter.copyToClipboard(params.text) else {
         throw BridgeError("The clipboard is in use; try again.")
       }
       return try Self.encode(UserAppClipboardWriteResult())

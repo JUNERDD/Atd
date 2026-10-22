@@ -2,11 +2,12 @@ import Foundation
 
 /// Who holds or asks for a set of ``DeviceResource``s.
 public enum ClaimOwner: Hashable, Sendable {
-  /// A feature the user started in the shell. User claims come first: one never queues behind
-  /// another user claim (it is refused, as the busy flags it replaces refused), and a user's
-  /// interactive screen is admitted over running background writes, which may not start again
-  /// until it is released.
-  case user(UserFeature)
+  /// A feature the user started in the shell. User claims come first. One-shot clipboard writes
+  /// may wait for another user's clipboard transaction; other conflicting user claims refuse.
+  /// A user's interactive screen is admitted over running background writes, which may not
+  /// start again until it is released. Independent asynchronous copies supply a `requestId`
+  /// so queued copies are separate owners; other features retain their single-owner identity.
+  case user(UserFeature, requestId: UUID? = nil)
   /// One computer operation of a run. Its claims are background claims: they queue behind
   /// conflicting claims in arrival order, and are refused while background admission is closed or
   /// the user holds the interactive screen.
@@ -114,9 +115,9 @@ public enum ResourceClaimPlan {
   /// a computer operation holds.
   ///
   /// Refusals come first: closed background admission, a malformed escalation or one while
-  /// another owner's escalation waits, a user claim against a user holder, a background claim
-  /// against the user's interactive screen, an owner conflicting with itself, then an owner asking
-  /// out of order. Otherwise the claim waits on a conflicting holder, or on a conflicting earlier
+  /// another owner's escalation waits, conflicting user claims except one-shot clipboard writes,
+  /// a background claim against the user's interactive screen, an owner conflicting with itself,
+  /// then an owner asking out of order. Otherwise the claim waits on a conflicting holder or earlier
   /// waiter of at least its own priority (FIFO per resource, with user waiters ahead of background
   /// ones), and is granted when nothing blocks it.
   public static func decide(
@@ -182,6 +183,7 @@ public enum ResourceClaimPlan {
     if owner == holder { return .refuse(.reentrant(requested)) }
     switch (owner.isUser, holder.isUser) {
     case (true, true):
+      if requested == .clipboard, case .user(.clipboardWrite, _) = owner { return .wait }
       return .refuse(.busy(requested))
     case (true, false):
       // The user takes the screen over background targets; their writes stop at the next claim.

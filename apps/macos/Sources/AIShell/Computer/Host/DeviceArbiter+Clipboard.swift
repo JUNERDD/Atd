@@ -2,6 +2,22 @@ import AICore
 import AppKit
 
 extension DeviceArbiter {
+  /// A copy requested through an asynchronous bridge waits for pasteboard restoration before
+  /// replacing it. The bound covers selection capture's late restore and an ordinary animated
+  /// paste, without leaving an unresponsive transaction's copy pending indefinitely.
+  @discardableResult
+  func copyToClipboard(_ text: String) async -> Bool {
+    guard
+      let claim = try? await claim(
+        [.clipboard], owner: .user(.clipboardWrite, requestId: UUID()),
+        deadline: .now + .seconds(5))
+    else { return false }
+    defer { claim.release() }
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    return pasteboard.setString(text, forType: .string)
+  }
+
   /// Runs a one-shot write of the general pasteboard under a clipboard claim of `feature`,
   /// released as soon as `write` returns. False, with the pasteboard untouched, while another
   /// owner's clipboard transaction holds it (a paste's write and restore, a copy and its late
