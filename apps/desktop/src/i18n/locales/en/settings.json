@@ -879,7 +879,6 @@
     "versionUnavailable": "Version unavailable",
     "developmentVersion": "{{version}} · Development build",
     "updatesTitle": "Check for updates",
-    "checkForUpdates": "Check for updates…",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",
     "links": {

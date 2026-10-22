@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { showErrorToast } from '../../components/toast-store';
@@ -11,9 +12,10 @@ const NO_BREAK_SPACE = String.fromCharCode(0xa0);
 
 /**
  * Settings › About, laid out like a Mac app's About window: the app icon, name and running version
- * centered over the one action, Check for Updates, then three plain text links. The check opens
- * the shell's own update windows; development builds never update, so there the button stays
- * visible but disabled. Links open in the default browser.
+ * centered over the one action, Check for Updates, and three plain text links at the page's
+ * bottom. The check opens the shell's own update windows; development builds never update, so
+ * there the button stays visible but disabled. Links open in the default browser, which their
+ * up-right arrows announce.
  */
 export function AboutSettings() {
   const { t } = useTranslation('settings');
@@ -56,7 +58,7 @@ export function AboutSettings() {
           aria-describedby={about && !about.updates ? 'about-update-note' : undefined}
           onClick={() => window.desktop?.about?.checkForUpdates()}
         >
-          {t('about.checkForUpdates')}
+          {t('about.updatesTitle')}
         </Button>
         <span id="about-update-note" className="sr-only">
           {t('about.updatesUnavailable')}
@@ -75,6 +77,7 @@ export function AboutSettings() {
               }}
             >
               {t(`about.links.${id}`)}
+              <ArrowUpRight data-icon="inline-end" aria-hidden />
             </a>
           </Button>
         ))}

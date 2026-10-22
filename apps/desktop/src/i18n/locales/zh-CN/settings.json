@@ -877,7 +877,6 @@
     "versionUnavailable": "无法获取版本",
     "developmentVersion": "{{version}} · 开发版",
     "updatesTitle": "检查更新",
-    "checkForUpdates": "检查更新…",
     "updatesNote": "更新会在后台下载，并在退出 Atd 时安装。",
     "updatesUnavailable": "开发版不会自动更新。请从官网安装正式版以获取更新。",
     "links": {
