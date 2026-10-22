@@ -146,24 +146,6 @@ final class IslandController: NSObject, NSWindowDelegate {
     finish()
   }
 
-  /// Lets the window take the keyboard, and takes it, or no longer lets it and gives it up; the
-  /// owner then focuses the field the keyboard goes back to.
-  ///
-  /// A key window stays key after it can no longer become key, and this one never activated Atd:
-  /// the app in front is already active, so activating it again moves nothing, and every key
-  /// press, a write's ⌘V included, would keep reaching the island. Ordering the window out and
-  /// straight back in, within one turn of the run loop, hands the keyboard back to that app's
-  /// key window with no visible change.
-  func setKeyCapable(_ capable: Bool) {
-    window.keyCapable = capable
-    if capable, window.isVisible {
-      window.makeKey()
-    } else if !capable, window.isKeyWindow, window.isVisible {
-      window.orderOut(nil)
-      window.orderFrontRegardless()
-    }
-  }
-
   /// The text field typing into the card, while it has the keyboard.
   var editingField: NSTextView? { window.editingField }
 

@@ -229,8 +229,12 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
 }
 
 /// A panel that can become key although it never activates the app, so the page gets the
-/// keyboard while the other app keeps the menu bar (spike S7).
+/// keyboard while the other app keeps the menu bar (spike S7). Hidden, it stays ordered in
+/// for WebKit's timers but must not inherit the keyboard when the command island resigns it:
+/// the next summon would otherwise read this invisible panel instead of the original selection.
 final class ShellPanel: NSPanel {
-  override var canBecomeKey: Bool { true }
+  override var canBecomeKey: Bool {
+    alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized
+  }
   override var canBecomeMain: Bool { false }
 }
