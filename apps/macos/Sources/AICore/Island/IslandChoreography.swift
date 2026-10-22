@@ -81,8 +81,9 @@ public enum IslandMetrics {
 
   /// The largest shape the island takes: the widest notice or card, the tallest card.
   public static let maxShape = WindowSize(width: 640, height: 400)
-  /// Transparent room around the shape at rest, for its glass shadow and its overshoot.
-  public static let inset = 24.0
+  /// Transparent room for the full Liquid Glass shadow and entrance overshoot. Its lower tail
+  /// must fade out before reaching the window boundary, which clips everything drawn inside it.
+  public static let inset = 64.0
 
   /// The fixed canvas every shape is drawn in: the largest shape at its overshoot
   /// (``MiniPanelChoreography/followLimit``) with ``inset`` around it.
