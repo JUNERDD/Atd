@@ -125,6 +125,12 @@ final class DisturbanceGuard {
       reading.personWindowsAfter = after.personWindows
     }
     let found = DisturbanceRules.disturbances(in: reading)
+    if found.contains(where: { $0.kind == .raise && $0.attribution == .agent }),
+      let metadata = DisturbanceSnapshot.raiseMetadata(
+        before: step.before, after: after, reading: reading)
+    {
+      Self.log.notice("Raise detection metadata: \(metadata, privacy: .public)")
+    }
     for disturbance in found {
       Self.log.notice(
         "Disturbance: kind=\(disturbance.kind.rawValue, privacy: .public) attribution=\(disturbance.attribution.rawValue, privacy: .public) repaired=\(disturbance.repaired)"

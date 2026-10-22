@@ -78,7 +78,8 @@ extension ForegroundExecutor {
       try await settle(plan.pid, name: name)
       sent.focusMoved = false
     }
-    let problem = await readiness(plan, [piece], name: name)
+    let problem = await readiness(
+      plan, [piece], name: name, diagnostics: context.diagnostics, stage: "beforeSend")
     // The person's input comes first: it is what the step stops at, and likely what moved the
     // target when it is no longer ready.
     try check(since: start, sent: sent.any, context)

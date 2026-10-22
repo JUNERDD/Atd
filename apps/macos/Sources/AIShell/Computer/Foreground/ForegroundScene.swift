@@ -41,39 +41,71 @@ struct ForegroundScene {
   /// front app comes back, their window comes up over the target's where one covers it, and Atd's
   /// panel gets the keyboard back. `shown`, a target that was hidden and that Atd showed for the
   /// step, is hidden again unless it stays in front.
-  func restore(target: Set<pid_t>, shown: NSRunningApplication?) async -> ForegroundRestoration {
-    let now = NSWorkspace.shared.frontmostApplication?.processIdentifier
+  func restore(
+    target: Set<pid_t>, shown: NSRunningApplication?,
+    diagnostics: ForegroundRestorationDiagnostics? = nil
+  ) async -> ForegroundRestoration {
     let front: ForegroundRestoration.Front
-    if let now, now != self.front, !target.contains(now) {
+    if personSwitched(target: target) {
       front = .personSwitched
     } else {
-      front = await bringBack(target: target)
+      front = await bringBack(target: target, diagnostics: diagnostics)
     }
     return ForegroundRestoration(front: front, hidden: await hideAgain(shown))
   }
 
-  private func bringBack(target: Set<pid_t>) async -> ForegroundRestoration.Front {
+  private func bringBack(
+    target: Set<pid_t>, diagnostics: ForegroundRestorationDiagnostics?
+  ) async -> ForegroundRestoration.Front {
     guard let front else { return .noneRecorded }
     guard let app = NSRunningApplication(processIdentifier: front), !app.isTerminated else {
       return .appQuit
     }
     let own = target.contains(front)
     if !own {
-      _ = await ForegroundActivation.activate(app, before: .now + ForegroundActivation.limit)
+      let activated = await ForegroundActivation.activate(
+        app, before: .now + ForegroundActivation.limit)
+      diagnostics?.activationSucceeded = activated
     }
+    if personSwitched(target: target) { return .personSwitched }
     // Their window back over the target's where one covers it, also within the target itself,
     // when they had it in front and the step used another of its windows.
-    if let window, DisturbanceSnapshot.read(target: target, personWindow: window).targetAbove {
-      _ = await ForegroundActivation.raise(pid: front, windowId: window)
+    if let window {
+      let beforeRaise = DisturbanceSnapshot.read(target: target, personWindow: window)
+      diagnostics?.sample(beforeRaise, stage: "beforeRaise")
+      if beforeRaise.targetAbove {
+        _ = await ForegroundActivation.raise(
+          pid: front, windowId: window, restoration: diagnostics)
+      }
     }
+    if personSwitched(target: target) { return .personSwitched }
     if let panel, let owned = NSApp.window(withWindowNumber: panel), owned.isVisible,
       owned.canBecomeKey, !NSApp.isActive
     {
       owned.makeKey()
     }
-    let after = DisturbanceSnapshot.read(target: target, personWindow: window)
-    guard after.frontmost == front, !after.targetAbove else { return .notRestored }
-    return own ? .unchanged : .restored
+    // AX completion does not mean WindowServer has published the new order. Observe the full
+    // restoration predicate without repeating activation, raise, or the original input.
+    let end = ContinuousClock.now + .milliseconds(400)
+    while true {
+      if app.isTerminated { return .appQuit }
+      let after = DisturbanceSnapshot.read(target: target, personWindow: window)
+      diagnostics?.sample(after, stage: "restorationCheck")
+      if let now = after.frontmost, now != front, !target.contains(now) { return .personSwitched }
+      if after.frontmost == front, !after.targetAbove { return own ? .unchanged : .restored }
+      guard ContinuousClock.now < end else { return .notRestored }
+      do {
+        try await Task.sleep(for: min(.milliseconds(20), ContinuousClock.now.duration(to: end)))
+      } catch {
+        diagnostics?.waitCancelled = true
+        return .notRestored
+      }
+    }
+  }
+
+  private func personSwitched(target: Set<pid_t>) -> Bool {
+    guard let now = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return false }
+    return now != front && !target.contains(now)
   }
 
   /// Hides `shown` again, unless it is the front app now: hiding the front app would bring some

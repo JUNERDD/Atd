@@ -70,9 +70,14 @@ extension ComputerCoordinator {
         owner: owner, deadline: min(.now + ForegroundExecutor.claimWait, deadline))
     else { return found }
     defer { claim.release() }
-    let restored = await ForegroundScene(before).restore(target: target, shown: nil)
+    let diagnostics = ForegroundRestorationDiagnostics(
+      operation: ComputerOperation(runId: execution.runId, operationId: execution.operationId),
+      before: before, target: target)
+    let restored = await ForegroundScene(before).restore(
+      target: target, shown: nil, diagnostics: diagnostics)
+    diagnostics.finished(restored)
     Self.log.notice(
-      "Repaired a background disturbance: front=\(restored.front.rawValue, privacy: .public)")
+      "Background restoration attempt: front=\(restored.front.rawValue, privacy: .public)")
     return restored.putBack ? found.repairing() : found
   }
 

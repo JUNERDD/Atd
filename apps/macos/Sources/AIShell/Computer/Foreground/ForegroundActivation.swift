@@ -59,8 +59,21 @@ enum ForegroundActivation {
 
   /// Makes window `windowId` of `pid` its app's main window and raises it, through accessibility;
   /// false when the window is not found or refuses.
-  static func raise(pid: pid_t, windowId: Int) async -> Bool {
-    await NativeTargetProbe.detached { ForegroundAX.raise(pid: pid, windowId: windowId) }
+  static func raise(
+    pid: pid_t, windowId: Int, diagnostics: ForegroundDiagnostics? = nil, stage: String = "restore",
+    restoration: ForegroundRestorationDiagnostics? = nil
+  ) async -> Bool {
+    let before = diagnostics.map { _ in ForegroundWindowSnapshot.read().summary(target: pid) }
+    let result = await NativeTargetProbe.detached {
+      ForegroundAX.raise(pid: pid, windowId: windowId)
+    }
+    restoration?.raise = result
+    if let diagnostics, let before {
+      diagnostics.raised(
+        stage: stage, windowId: windowId, succeeded: result.succeeded, before: before,
+        after: ForegroundWindowSnapshot.read().summary(target: pid))
+    }
+    return result.succeeded
   }
 
   /// Whether `pid`'s focused window (`AXFocusedWindow`), where its keys go while it is the active
@@ -69,18 +82,28 @@ enum ForegroundActivation {
     await NativeTargetProbe.detached { NativeSurfaceProbe.focusedWindowId(pid: pid) } == windowId
   }
 
-  /// Where input at `point` for window `windowId` of `pid` lands now (``ForegroundHitTest``),
-  /// with Atd's own windows that let clicks through set aside.
-  static func hit(_ point: CGPoint, windowId: Int, pid: pid_t) -> ForegroundHitTest.Verdict {
-    let passThrough = Set(
-      NSApp.windows.filter { $0.isVisible && $0.ignoresMouseEvents }.map(\.windowNumber))
-    return ForegroundHitTest.verdict(
-      point, target: windowId, pid: pid, windows: onScreenWindows(), passThrough: passThrough)
+  /// Uses macOS mouse-down hit-testing, including its per-point transparency and mouse-event
+  /// handling. No window is excluded by owner or layer; unresolved hits fail closed.
+  static func hit(
+    _ point: CGPoint, windowId: Int, pid: pid_t, diagnostics: ForegroundDiagnostics
+  ) -> ForegroundHitTest.Verdict {
+    let hitWindowId = NSScreen.screens.first.map { screen in
+      NSWindow.windowNumber(
+        at: CaptureCoordinates.flip(point, primaryHeight: screen.frame.height),
+        belowWindowWithWindowNumber: 0)
+    }
+    let scene = ForegroundWindowSnapshot.read()
+    let assessment = ForegroundHitTest.assess(
+      point, target: windowId, pid: pid, windows: scene.windows.map(\.hitWindow),
+      hitWindowId: hitWindowId)
+    diagnostics.assessed(
+      assessment, point: point, target: windowId, scene: scene, hitWindowId: hitWindowId)
+    return assessment.verdict
   }
 
   /// Whether window `windowId` is on screen, so on a Space one of the displays shows.
   static func isOnScreen(_ windowId: Int) -> Bool {
-    onScreenWindows().contains { $0.number == windowId }
+    ForegroundWindowSnapshot.read().windows.contains { $0.number == windowId }
   }
 
   /// Asks the target app to take in what was sent before the person's app comes back, or before
@@ -118,21 +141,6 @@ enum ForegroundActivation {
     return true
   }
 
-  /// The windows on screen front to back, every layer, as the window server lists them.
-  private static func onScreenWindows() -> [ForegroundHitTest.Window] {
-    let list =
-      CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-      as? [[String: Any]] ?? []
-    return list.compactMap { info in
-      guard let number = info[kCGWindowNumber as String] as? Int,
-        let pid = info[kCGWindowOwnerPID as String] as? pid_t,
-        let frame = info[kCGWindowBounds as String] as? NSDictionary,
-        let bounds = CGRect(dictionaryRepresentation: frame as CFDictionary)
-      else { return nil }
-      let alpha = info[kCGWindowAlpha as String] as? Double ?? 1
-      return ForegroundHitTest.Window(number: number, pid: pid, bounds: bounds, visible: alpha > 0)
-    }
-  }
 }
 
 /// An app's front window and main window, by window number, before and after a foreground step.
@@ -152,6 +160,16 @@ struct ForegroundWindowOrder: Equatable {
 nonisolated enum ForegroundAX {
   static let timeout: Float = 0.25
 
+  enum RaiseResult: Encodable, Sendable {
+    case windowUnavailable
+    case attempted(mainError: Int32, raiseError: Int32)
+
+    var succeeded: Bool {
+      if case .attempted(_, let error) = self { return error == AXError.success.rawValue }
+      return false
+    }
+  }
+
   /// Asks app `pid` to become the active app (`AXFrontmost`).
   static func setFrontmost(pid: pid_t) -> Bool {
     let app = AXUIElementCreateApplication(pid)
@@ -161,11 +179,12 @@ nonisolated enum ForegroundAX {
   }
 
   /// Makes window `windowId` of `pid` the app's main window and raises it.
-  static func raise(pid: pid_t, windowId: Int) -> Bool {
+  static func raise(pid: pid_t, windowId: Int) -> RaiseResult {
     guard let window = NativeSurfaceProbe.axWindow(pid: pid, windowId: windowId, timeout: timeout)
-    else { return false }
-    _ = AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
-    return AXUIElementPerformAction(window, kAXRaiseAction as CFString) == .success
+    else { return .windowUnavailable }
+    let main = AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
+    let raised = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    return .attempted(mainError: main.rawValue, raiseError: raised.rawValue)
   }
 
   /// A read of app `pid` that returns once its main thread answered, or the timeout passed.

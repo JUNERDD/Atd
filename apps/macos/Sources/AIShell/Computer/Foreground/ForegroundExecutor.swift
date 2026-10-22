@@ -8,7 +8,7 @@ import Carbon.HIToolbox
 ///    nothing down, or refuses `inputInUse` with nothing sent;
 /// 2. adds global input to the action's claim, so one foreground step runs at a time;
 /// 3. shows a hidden target, brings it and the step's window to the front and checks it: the app
-///    frontmost, the step's window holding its focus, every point on that window and uncovered
+///    frontmost, the step's window holding its focus, every point hit-testing to that exact window
 ///    (Atd's own panel counts); a check that fails refuses `notActivated` or `covered`, or asks
 ///    for a new observation when a point is off its window, with nothing sent;
 /// 4. sends the input piece by piece (``ForegroundPlan/send``), posted to the target's process as
@@ -31,6 +31,7 @@ struct ForegroundExecutor {
     let isStopping: () -> Bool
     let report: (EngineStepEvent) -> Void
     let phases: OperationPhases
+    let diagnostics = ForegroundDiagnostics()
   }
 
   /// What a step sent so far.
@@ -111,8 +112,10 @@ struct ForegroundExecutor {
         target.contains(front.processIdentifier) ? nil : front.localizedName
       })
     if let failure {
+      context.diagnostics.failed(failure, plan: plan, owner: context.owner, sent: sent.any)
       throw Self.ended(failure, ForegroundEvidence.restoreNote(restoration, apps: apps), sent.any)
     }
+    context.diagnostics.completed(owner: context.owner)
     let sentence = ForegroundEvidence.sentence(
       did: plan.gestures, apps: apps, restoration: restoration, orderChanged: moved)
     return EngineStepOutcome(
@@ -142,16 +145,22 @@ struct ForegroundExecutor {
     _ plan: ForegroundPlan, app: NSRunningApplication, name: String,
     since start: ContinuousClock.Instant, _ context: Context
   ) async throws(ComputerFailure) {
-    _ = await ForegroundActivation.raise(pid: plan.pid, windowId: plan.windowId)
+    _ = await ForegroundActivation.raise(
+      pid: plan.pid, windowId: plan.windowId, diagnostics: context.diagnostics,
+      stage: "beforeActivation")
     guard await ForegroundActivation.activate(app, before: context.deadline) else {
       // The person's input first: it may be what kept the target back.
       try check(since: start, sent: false, context)
       throw .noBackgroundRoute(
         .notActivated, "Atd could not bring \(name) to the front for this step; nothing was sent.")
     }
-    _ = await ForegroundActivation.raise(pid: plan.pid, windowId: plan.windowId)
+    _ = await ForegroundActivation.raise(
+      pid: plan.pid, windowId: plan.windowId, diagnostics: context.diagnostics,
+      stage: "afterActivation")
     let end = min(.now + Self.settleLimit, context.deadline)
-    while let problem = await readiness(plan, plan.gestures, name: name) {
+    while let problem = await readiness(
+      plan, plan.gestures, name: name, diagnostics: context.diagnostics, stage: "bringForward")
+    {
       try check(since: start, sent: false, context)
       guard ContinuousClock.now < end else { throw problem }
       try? await Task.sleep(for: .milliseconds(30))
@@ -162,12 +171,14 @@ struct ForegroundExecutor {
   }
 
   /// Why the target is not ready for `gestures` yet; nil once it is: the app frontmost, the step's
-  /// window on screen and holding its focus, and every point on that window with no other app's
-  /// window over it. Each refuses as if nothing was sent; the caller says otherwise once
+  /// window on screen and holding its focus, and every point hit-testing to that exact window.
+  /// Each refuses as if nothing was sent; the caller says otherwise once
   /// something was.
-  func readiness(_ plan: ForegroundPlan, _ gestures: [ForegroundGesture], name: String) async
-    -> ComputerFailure?
-  {
+  func readiness(
+    _ plan: ForegroundPlan, _ gestures: [ForegroundGesture], name: String,
+    diagnostics: ForegroundDiagnostics, stage: String
+  ) async -> ComputerFailure? {
+    diagnostics.checking(stage)
     guard NSWorkspace.shared.frontmostApplication?.processIdentifier == plan.pid else {
       return .noBackgroundRoute(
         .notActivated, "\(name) did not stay in front for this step; nothing was sent.")
@@ -184,13 +195,15 @@ struct ForegroundExecutor {
     }
     for gesture in gestures {
       for point in gesture.points {
-        switch ForegroundActivation.hit(point, windowId: plan.windowId, pid: plan.pid) {
+        switch ForegroundActivation.hit(
+          point, windowId: plan.windowId, pid: plan.pid, diagnostics: diagnostics)
+        {
         case .reaches: continue
         case .covered:
           return .noBackgroundRoute(
             .covered,
-            "Another window covers where this step acts in \(name) (Atd's own panel counts); "
-              + "nothing was sent.")
+            "macOS did not confirm that this point receives mouse input in the step's exact "
+              + "window in \(name); nothing was sent.")
         case .offWindow:
           if case .drag = gesture {
             return .noBackgroundRoute(

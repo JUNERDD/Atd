@@ -23,7 +23,7 @@ struct ForegroundPlan {
   /// app declined an element's focus before anything went out; any other refusal throws.
   let send: @MainActor (ForegroundGesture) async throws(ComputerFailure) -> Bool
 
-  /// Every point the input lands on, each of which must be on the step's window and uncovered.
+  /// Every input point, each of which must hit-test to the step's exact window.
   var points: [CGPoint] { gestures.flatMap(\.points) }
   /// Whether an input method could compose the step's keys into text of its own.
   var composes: Bool { gestures.contains(where: \.composes) }
