@@ -9,6 +9,7 @@ import {
   type ComputerVisualState,
   type Observation,
 } from '@atd/agent-contracts';
+import { ocrTextRef } from './ocr-locators.js';
 
 /** Characters of one step summary (`ComputerDetails.steps[].summary`). */
 const SUMMARY_CHARS = 200;
@@ -130,13 +131,33 @@ export function observationFacts(observation: Observation): Record<string, unkno
     version: ref.version,
     capturedAt: ref.capturedAt,
     ...(surfaceRefId ? { surfaceRefId } : {}),
-    ...(surfaces?.length ? { surfaces } : {}),
+    ...(surfaces?.length
+      ? {
+          surfaces: surfaces.map(({ id, parentId, kind, title, modal, basis }) => ({
+            id,
+            ...(parentId ? { parentId } : {}),
+            kind,
+            ...(title === undefined ? {} : { title }),
+            modal,
+            basis,
+          })),
+        }
+      : {}),
     ...(url ? { url } : {}),
     ...(title ? { title } : {}),
     ...(treeCapturedAt ? { treeCapturedAt } : {}),
     capabilities,
     elements,
-    ...(observation.menuItems ? { menuItems: observation.menuItems } : {}),
+    ...(observation.menuItems
+      ? {
+          menuItems: {
+            enabled: observation.menuItems.filter((item) => item.enabled).map((item) => item.path),
+            disabled: observation.menuItems
+              .filter((item) => !item.enabled)
+              .map((item) => item.path),
+          },
+        }
+      : {}),
     ...(capture
       ? {
           capture: {
@@ -150,20 +171,20 @@ export function observationFacts(observation: Observation): Record<string, unkno
       : {}),
     ...(text?.length
       ? {
-          // Capture points use integer pixels. Keep the complete OCR boxes without sending
-          // floating-point noise; the host retains the original geometry and verification text.
-          text: text.map(({ text, rect, confidence }) => ({
-            text,
-            rect: {
-              x: Math.round(rect.x * 100) / 100,
-              y: Math.round(rect.y * 100) / 100,
-              width: Math.round(rect.width * 100) / 100,
-              height: Math.round(rect.height * 100) / 100,
-            },
-            ...(confidence === undefined
-              ? {}
-              : { confidence: Math.round(confidence * 1000) / 1000 }),
-          })),
+          // Every row keeps its complete ref and box; duplicate labels remain distinct. Null
+          // confidence means the host supplied none. Geometry retains the prior display precision.
+          text: {
+            columns: ['ref', 'text', 'x', 'y', 'width', 'height', 'confidence'],
+            rows: text.map(({ text, rect, confidence }, index) => [
+              ocrTextRef(ref.id, index),
+              text,
+              Math.round(rect.x * 100) / 100,
+              Math.round(rect.y * 100) / 100,
+              Math.round(rect.width * 100) / 100,
+              Math.round(rect.height * 100) / 100,
+              confidence === undefined ? null : Math.round(confidence * 1000) / 1000,
+            ]),
+          },
         }
       : {}),
     ...(problems?.length ? { problems } : {}),

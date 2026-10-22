@@ -12,12 +12,24 @@ import {
   ComputerModelStepSchema,
   ComputerStepIdSchema,
   ScreenCursorSchema,
+  isBusinessEffect,
   parse,
+  stepEffect,
 } from '@atd/agent-contracts';
+import { computerActRequirements, computerModelSteps } from './model-schema.js';
+import { visualState, type VisualSubject } from './visual-qualifications.js';
 
 const ActionIds = Type.Array(ComputerActionIdSchema, { maxItems: COMPUTER_MAX_STATUS_IDS });
 const ReasonSchema = Type.String({ minLength: 1, maxLength: 1000 });
 const ResolvesSchema = Type.Array(ComputerActionIdSchema, { minItems: 1, maxItems: 20 });
+const AccessWaitSchema = Type.Object(
+  {
+    text: Type.String({ minLength: 1, maxLength: 200 }),
+    timeoutMs: Type.Optional(Type.Integer({ minimum: 0, maximum: 10_000 })),
+  },
+  { additionalProperties: false },
+);
+const CompletionSchema = Type.String({ minLength: 1, maxLength: 1000 });
 
 /** The validated call: one variant per action, each with exactly its own fields. */
 const ComputerCallSchema = Type.Union([
@@ -44,6 +56,7 @@ const ComputerCallSchema = Type.Union([
       action: Type.Literal('requestAccess'),
       target: ComputerAccessTargetSchema,
       reason: ReasonSchema,
+      waitFor: Type.Optional(AccessWaitSchema),
     },
     { additionalProperties: false },
   ),
@@ -66,6 +79,7 @@ const ComputerCallSchema = Type.Union([
       action: Type.Literal('act'),
       ...ComputerActionInputSchema.properties,
       reason: Type.Optional(ReasonSchema),
+      completion: Type.Optional(CompletionSchema),
     },
     { additionalProperties: false },
   ),
@@ -81,13 +95,13 @@ const ComputerCallSchema = Type.Union([
 
 export type ComputerCall = Static<typeof ComputerCallSchema>;
 
-/** What the model sees; providers need an object root, so the union above is flattened here. */
-export const ComputerToolParametersSchema = Type.Object(
+/** Shared model fields; providers need an object root, with action constraints added below. */
+const ComputerToolParametersBase = Type.Object(
   {
     action: Type.Union(
       [
-        Type.Literal('targets'),
         Type.Literal('requestAccess'),
+        Type.Literal('targets'),
         Type.Literal('observe'),
         Type.Literal('act'),
         Type.Literal('status'),
@@ -98,10 +112,19 @@ export const ComputerToolParametersSchema = Type.Object(
       ],
       {
         description:
-          'shareScreen: requires reason and adds a macOS picker source for read-only sharing during this run, up to four sources. watchScreen: optional timeoutMs (default 10000, maximum 30000), waits for a changed source or sharing status. stopSharing: optional sourceId stops one selection; absent stops all system shares. These need no target or observation refs. requestAccess: request access to a specific target and open it in the background; requires target {kind: application, application: installed app name or bundle id} or {kind: website, url: http(s) URL}, and reason. Approval follows the task mode, then continues this run. targets: discover this run’s targets when the intended app or website is unknown. For a known requested target, start directly with requestAccess; it returns a first nextObservation when ready. observe requires targetRefId; optional surfaceRefId, tree, screenshot, text, region, afterMs. EVERY act requires targetRefId, observationRefId and steps, including read-only wait actions, and a postcondition when any step is an invoke or submit (see steps); optional surfaceRefId, resolves, actionId, recipeStepId, reason. No act field picks a route or the foreground: the host decides how each step is delivered. status accepts actionIds. release requires targetRefId.',
+          'requestAccess: resolve and open an app by name/bundle ID or a website by URL with approval; requires target and reason, optional waitFor. Returns current targets and nextObservation. targets: refresh references for targets already authorized in this run; never discovers installed apps. observe: read targetRefId, optionally surfaceRefId/tree/screenshot/text/region/afterMs. act: targetRefId + observationRefId + steps, postcondition for invoke/submit; optional resolves, actionId, recipeStepId, reason. Every call requires completion: null or the final answer to publish IF this act verifies the remaining goal. Host chooses delivery. status: optional actionIds. release: targetRefId. shareScreen: reason; macOS picker, read-only, up to four shares. watchScreen: timeoutMs. stopSharing: sourceId or all shares when omitted.',
       },
     ),
     target: Type.Optional(ComputerAccessTargetSchema),
+    waitFor: Type.Optional({
+      ...AccessWaitSchema,
+      description:
+        'requestAccess: wait for a known entry/control text before returning the first observation, useful when opening an app that may still load. Choose text from the requested destination or a known control, not a guessed page title. Default timeout 5000 ms, maximum 10000. Returns the latest observation and readiness even on timeout; sends no input.',
+    }),
+    completion: Type.Union([CompletionSchema, Type.Null()], {
+      description:
+        'Required decision before input. When current content identifies the requested target and this act will prove the remaining result, include the brief conditional answer on this SAME act with its absolute postcondition. The result is expected after input; the host publishes only after verification. Use null for non-act, intermediate actions, uncertainty or further work. Never use completion for newText, enabled or facts unsupported by current content and the declared postcondition. An already verified goal needs no extra wait or observe.',
+    }),
     sourceId: Type.Optional({
       ...ScreenCursorSchema.properties.sourceId,
       description:
@@ -160,24 +183,25 @@ export const ComputerToolParametersSchema = Type.Object(
     observationRefId: Type.Optional({
       ...ComputerRefIdSchema,
       description:
-        'For act only; omit this field from observe. REQUIRED for EVERY act, even wait or capture-point clicks: observationRefId from the latest observe, requestAccess.nextObservation or act.nextObservation. Inspect the returned inline nextObservation image and use it directly; no extra preparatory observe is needed. Never omit it or reuse one from another run.',
+        'For act only; omit this field from observe. REQUIRED for EVERY act, even wait or capture-point clicks: observationRefId from the latest observe, requestAccess.nextObservation or act.nextObservation. Inspect and use a ready nextObservation directly; refresh with observe when it is missing, still loading, incomplete for the next action or contradictory. Never omit it or reuse one from another run.',
     }),
     actionId: Type.Optional({
       ...ComputerActionIdSchema,
-      description: 'act: a UUID for the action; repeating it returns the first result.',
+      description:
+        'act: omit for a new action; the service generates a fresh UUID. Reuse an existing actionId only to retrieve that same action’s recorded result; the service does not dispatch its steps again.',
     }),
     steps: Type.Optional(
       Type.Array(ComputerModelStepSchema, {
         minItems: 1,
         maxItems: COMPUTER_MAX_STEPS,
         description:
-          'act: the steps, carried out in order, each in the background or, when no background route can and the task allows it, in the foreground; the host decides. A step’s kind sets its effect: every click (any locator), menu, drag and upload, a key other than plain typing or navigation keys and typed text with a line break are invoke; press takes its own effect, where submit is a submit and click is not; the other kinds are input, navigate or read. An act with any invoke or submit step needs a postcondition.',
+          'act: ordered steps; host chooses background/foreground delivery. Prefer observed element refs; native OCR entries expose ocr: refs usable only by click/drag, matched to the same observed text box in fresh pixels; stale geometry is refused. Never invent or extend text. press requires an accessibility element. Every click/menu/drag/upload, shortcut or invoke key, and typed line break needs a postcondition; press effect submit also needs one. Other kinds retain their declared effects.',
       }),
     ),
     postcondition: Type.Optional({
       ...ComputerConditionSchema,
       description:
-        'Required when any step is an invoke or submit: a click (element ref, semantic locator, {text} or capture point), menu, drag, upload, key other than plain typing or navigation keys, typed line break, or press with effect submit. Proves this act’s immediate change, not the entire user request: navigation checks the destination opened, then later input is chosen from nextObservation. For navigation, name text the destination is sure to show, preferring a control it always offers over its title; never a label recalled from another app version or a variant of a title already on screen. Expected result text/menu labels may be absent from the baseline; only input targets must already be observed. Native textAppears is a visible-text substring check ignoring case and spacing; on an app, a submit/invoke textAppears whose text this act’s observation already shows anywhere (an element name or value, or recognized text) is refused. menuItemAvailable checks an exact resulting menu path is present and enabled without invoking it. Use newText only for a new value whose text is unknown, with no locator for OCR. Its optional region {capture,rect} uses this act’s full capture; available in interactive tasks, not automation runs. On an app, a submit/invoke newText needs a locator, pattern or region; one with none is refused. Existing labels, enabled controls and unrelated changes are not proof. A locator names an accessibility element, never an OCR box.',
+        'Required for invoke/submit. Prove this action’s immediate change: menuItemAvailable for exact resulting app state, valueEquals/urlMatches where applicable, textAppears only for reliable destination text absent from the baseline. Never guess future titles or variants. When navigation wording is unknown, use newText.region without a pattern over the destination content area; never add a literal pattern already present in the baseline. The host already polls native text changes for about 3 seconds and menu state for about 8 seconds; an extra same-condition wait is only for a known longer transition. Inspect nextObservation before later input. Region changes cannot finish the task. Native textAppears ignores case/spacing; already visible text or an already enabled menu item is refused. Playback: when baseline Play becomes Pause, verify the exact Pause menu path, not a title or OCR icon. newText uses this act’s full capture region, an element locator or pattern; bare native newText is refused. OCR refs are not condition locators. A failed newText cannot be rebased. Expected result text/menu labels may be absent; input targets must be observed.',
     }),
     resolves: Type.Optional({
       ...ResolvesSchema,
@@ -193,12 +217,84 @@ export const ComputerToolParametersSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** Access changes keep this declaration stable; parsing and live policy enforce authorization. */
+export function computerToolParameters(
+  subject: VisualSubject | undefined,
+  visualOverride: boolean,
+  recipeBound = false,
+) {
+  const visual = subject ? visualState(subject) : 'unavailable';
+  const capturePoints = visual === 'qualified' || (visual === 'unverified' && visualOverride);
+  const properties = ComputerToolParametersBase.properties;
+  const { action } = properties;
+  return Type.Object(
+    {
+      ...properties,
+      action,
+      steps: Type.Optional({ ...properties.steps, items: computerModelSteps(capturePoints) }),
+    },
+    {
+      additionalProperties: false,
+      // A recipe supplies its own postcondition in policy; free acts must declare theirs.
+      ...(recipeBound
+        ? {}
+        : {
+            anyOf: computerActRequirements(Type.Exclude(action, Type.Literal('act'))),
+          }),
+    },
+  );
+}
+
+/** Before the session model is known, never advertise capture-point input. */
+export const ComputerToolParametersSchema = computerToolParameters(undefined, false);
+
+/** Pi validates prepared arguments against the model schema before execution. */
+export function prepareComputerCall(
+  value: unknown,
+  recipeBound = false,
+): Static<typeof ComputerToolParametersSchema> {
+  const call = parseComputerCall(value);
+  // Explain the failed requirement before Pi reports unrelated action constants from anyOf.
+  // Recipe policy supplies its own condition; only free acts must declare one here.
+  if (call.action === 'act' && !recipeBound && !call.postcondition) {
+    const businessKinds = [
+      ...new Set(
+        call.steps.filter((step) => isBusinessEffect(stepEffect(step))).map((step) => step.kind),
+      ),
+    ];
+    if (businessKinds.length > 0)
+      throw new TypeError(
+        `Missing required field postcondition for computer act with ${businessKinds.join('/')} steps (invoke/submit). The action:"act" value is valid. Nothing was sent. Add a postcondition that verifies the intended result; observe first if current evidence is insufficient. Never invent a condition.`,
+      );
+  }
+  // Internal dispatch omits null; the model schema requires the explicit decision. Legacy
+  // omissions normalize to null without making that field optional in model declarations.
+  return { ...call, completion: call.action === 'act' ? (call.completion ?? null) : null };
+}
+
 /** Validate the selected action, so another union branch cannot hide its missing fields. */
 export function parseComputerCall(value: unknown): ComputerCall {
-  const head = parse(
-    Type.Object({ action: ComputerToolParametersSchema.properties.action }),
-    value,
-  );
+  // A quoted null is also non-final: treating that sentinel as an answer could end a run.
+  // Other summaries still belong only to act and are rejected on every other action.
+  if (
+    value &&
+    typeof value === 'object' &&
+    'completion' in value &&
+    (value.completion === null ||
+      (typeof value.completion === 'string' && value.completion.trim() === 'null'))
+  ) {
+    const { completion: _completion, ...parameters } = value;
+    void _completion;
+    value = parameters;
+  }
+  const header = Type.Object({ action: ComputerToolParametersSchema.properties.action });
+  if (!Value.Check(header, value)) {
+    const actions = ComputerCallSchema.anyOf.map((schema) => schema.properties.action.const);
+    throw new TypeError(
+      `Invalid computer action. Use one literal action name: ${actions.join(', ')}. Put the other call fields alongside action. Do not encode a JSON call inside action. Nothing was sent.`,
+    );
+  }
+  const head = parse(header, value);
   const schema = ComputerCallSchema.anyOf.find(
     (candidate) => candidate.properties.action.const === head.action,
   );

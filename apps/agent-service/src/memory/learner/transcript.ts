@@ -1,13 +1,16 @@
 import type { MemoryUnit } from '@atd/agent-contracts';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import { INVOCATION_ENTRY } from '../../invocation-marker.js';
+import { readVerifiedCompletion } from '../../computer/completion-message.js';
+import { invocationRunId } from '../../transcript.js';
 import { escapeTags } from './prompts.js';
 
 /**
  * What a memory review reads (decision R5). The conversation is the branch's `message` entries
- * with role user or assistant, text parts only, so hidden run material (attachments, command
- * templates, references, skills: `custom_message` entries), tool calls and results (recalled
- * memory included), reasoning and compaction summaries never reach it. Three kinds of run are left
+ * with role user or assistant, text parts only, plus validated visible computer completions.
+ * Hidden run material (attachments, command templates, references, skills: `custom_message`
+ * entries), tool calls and results (recalled memory included), reasoning and compaction summaries
+ * never reach it. Three kinds of run are left
  * out too, each up to the next run's invocation marker (invocation-marker.ts): a command run
  * (`source: 'command'`) and an automation's run (`source: 'automation'`), whose messages are saved
  * material and trigger data rather than the user's own words, and a run with memory off
@@ -62,12 +65,20 @@ export function messageText(content: string | readonly { type: string; text?: st
 export function learningMessages(branch: readonly SessionEntry[]): LearningMessage[] {
   const messages: LearningMessage[] = [];
   let learnable = true;
+  let runId: string | undefined;
   for (const entry of branch) {
     if (entry.type === 'custom' && entry.customType === INVOCATION_ENTRY) {
       learnable = opensLearnableRun(entry.data);
+      runId = invocationRunId(entry.data);
       continue;
     }
-    if (!learnable || entry.type !== 'message') continue;
+    if (!learnable) continue;
+    if (entry.type === 'custom_message') {
+      const completion = readVerifiedCompletion(entry, runId);
+      if (completion) messages.push({ role: 'assistant', text: completion.text.trim() });
+      continue;
+    }
+    if (entry.type !== 'message') continue;
     const { message } = entry;
     if (message.role !== 'user' && message.role !== 'assistant') continue;
     const text = messageText(message.content).trim();

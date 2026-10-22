@@ -84,7 +84,8 @@ export function wrongKind(ctx: CallBase, op: string, bindingId?: string): never 
  * capabilities list `foreground` for a step only when the run may let the host fall back to it
  * (foreground.ts), so the envelope names the kinds of the bindings asked for.
  */
-export async function resolveTargets(ctx: CallContext) {
+export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEOUT_MS) {
+  const deadline = performance.now() + timeoutMs;
   const { bindings, coordinator } = ctx.runtime;
   const found: TargetBinding[] = [];
   const missing: { bindingId: string; reason: string }[] = [];
@@ -100,15 +101,17 @@ export async function resolveTargets(ctx: CallContext) {
     else found.push(binding);
   }
   if (!found.length) return { targets: [], unavailable: missing };
+  checkTargetDeadline(ctx, deadline);
   const outcome = await coordinator.request(
     envelopeFor(
       ctx,
-      TARGETS_TIMEOUT_MS,
+      timeoutMs,
       found.map((binding) => binding.kind),
     ),
     { kind: 'targets', bindings: found },
-    { signal: ctx.signal, timeoutMs: TARGETS_TIMEOUT_MS },
+    { signal: ctx.signal, timeoutMs },
   );
+  checkTargetDeadline(ctx, deadline);
   const value = replyValue(ctx, outcome, 'targets');
   if (value.kind !== 'targets') wrongKind(ctx, 'targets');
   const generation = coordinator.hostGeneration();
@@ -141,6 +144,16 @@ export async function resolveTargets(ctx: CallContext) {
       ...missing,
     ],
   };
+}
+
+function checkTargetDeadline(ctx: CallContext, deadline: number): void {
+  ctx.signal?.throwIfAborted();
+  if (performance.now() < deadline) return;
+  const error: ComputerError = {
+    code: 'timeout',
+    message: 'The computer target lookup exceeded its time limit.',
+  };
+  refuse(ctx, error.message, { op: 'targets' }, error);
 }
 
 /** `targets` and access approval expose the same structured target facts. */

@@ -231,7 +231,28 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // unknown disturbances are only reported, and a raised window or an activated app a background
   // route caused and the host repaired no longer stops the task. Websites, capture points,
   // automation runs and trials stay in the background.
-  skill('computer-use', 21, []),
+  // Version 22 puts the routine decision order first, refreshes incomplete initial observations,
+  // uses text clicks directly when OCR has no element, and distinguishes observed input targets
+  // from expected result states. Known absolute conditions take priority over relative newText;
+  // an expected menu item can be absent or disabled in the baseline, but cannot already be available.
+  // Version 23 leaves new action ids to the service and reuses an existing id only to retrieve
+  // that action's recorded result; safe retries submit new acts without generating ids.
+  // Version 24 pairs playback clicks with a known menu-state transition; an existing title
+  // identifies content but cannot replace proof that playback started.
+  // Version 25 adds observed OCR refs, scoped navigation waits, requestAccess readiness waits
+  // and a final completion summary gated on a verified absolute result.
+  // Version 27 requires an explicit nullable completion decision and rejects existing literal
+  // newText patterns before input; unknown navigation wording uses a region without a pattern.
+  // Version 29 moves delivery and refusal details into an on-demand reference so the main
+  // skill stays below the load limit while retaining routine execution and safety boundaries.
+  // Version 31 makes conditional completion part of the original final input; extra state
+  // checks are reserved for missing evidence rather than repeated verified conditions.
+  // Version 32 keeps targets as an authorized-reference refresh, with stable tool declarations
+  // across access changes; discovery and new access still start with requestAccess.
+  // Version 33 distinguishes a window reference from an observed click or drag target.
+  // Version 34 explains fresh observations attached to no-input native click locator refusals.
+  // Version 35 attaches a fresh observation after an explicit single native wait times out.
+  skill('computer-use', 35, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

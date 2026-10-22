@@ -12,9 +12,9 @@ import {
   type CallContext,
   type ToolAnswer,
 } from './call-context.js';
-import { readNextObservation } from './next-observation.js';
+import { accessObservation, type AccessWait } from './access-observation.js';
 import { computerDetails } from './details.js';
-import { replyValue, wrongKind, resolveTargets } from './operations.js';
+import { replyValue, wrongKind } from './operations.js';
 
 /** The binding kind each access target resolves to. */
 const KIND_FOR_TARGET: Readonly<Record<ComputerAccessTarget['kind'], ComputerTargetKind>> = {
@@ -32,6 +32,7 @@ export async function requestAccess(
   base: CallBase,
   target: ComputerAccessTarget,
   reason: string,
+  waitFor?: AccessWait,
 ): Promise<ToolAnswer> {
   if (
     base.unattended ||
@@ -128,7 +129,7 @@ export async function requestAccess(
       ...(opened.activated ? { activated: true } : {}),
     });
     const { bindingId } = binding;
-    const { resolved, preview } = await firstObservation(ctx, bindingId);
+    const { resolved, preview, readiness } = await accessObservation(ctx, bindingId, waitFor);
     const { image, resourceId, snapshot, ...observation } = preview;
 
     return {
@@ -142,9 +143,10 @@ export async function requestAccess(
         },
         ...resolved,
         ...observation,
+        ...(readiness ? { readiness } : {}),
         next:
           'nextObservation' in preview
-            ? 'Inspect the returned nextObservation image and continue directly with act using its targetRefId and observationRefId, plus a postcondition when a step is a click or another invoke or submit. No targets or preparatory observe call is needed.'
+            ? 'Inspect the returned nextObservation and image. If ready and sufficient to locate the next input, continue directly with act using its targetRefId and observationRefId, plus a postcondition for any click or other invoke or submit. If still loading, missing needed locator information or contradictory, observe again. No targets call is needed.'
             : resolved.targets.length
               ? 'Access was approved. The first observation is unavailable; observe the target.'
               : NOT_READY,
@@ -170,24 +172,3 @@ export async function requestAccess(
  */
 const NOT_READY =
   'Access was approved, but the target is not ready yet. An app that was not running starts in the background and can take a few seconds to show its window: call requestAccess again to continue. Never open, activate or switch to the target yourself, such as with open or AppleScript in a shell: that would bring it in front of the person while they work. If it is still unavailable, tell the person.';
-
-/** Access succeeded already: target resolution or capture failure must not revoke that fact. */
-async function firstObservation(ctx: CallContext, bindingId: string) {
-  try {
-    const resolved = await resolveTargets({
-      ...ctx,
-      computer: { ...ctx.computer, bindingIds: [bindingId] },
-    });
-    const target = resolved.targets.find((ref) => ref.bindingId === bindingId);
-    const ref = target ? ctx.runtime.coordinator.target(ctx.runId, target.targetRefId) : undefined;
-    const preview = ref
-      ? await readNextObservation(ctx, ref)
-      : { nextObservationUnavailable: true };
-    return { resolved, preview };
-  } catch {
-    return {
-      resolved: { targets: [], unavailable: [{ bindingId, reason: 'targetUnavailable' }] },
-      preview: { nextObservationUnavailable: true },
-    };
-  }
-}

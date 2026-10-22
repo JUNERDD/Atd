@@ -25,7 +25,8 @@ import { checkAct, runBinding, type AllowedAction } from './policy.js';
 import { readRunFacts } from './records.js';
 import { resolveVerified } from './resolve.js';
 import { importDownloads, withUploadPaths } from './transfers.js';
-import { nextObservation } from './next-observation.js';
+import { nextObservation, type NextObservationOptions } from './next-observation.js';
+import { resolveOcrLocators } from './ocr-locators.js';
 import { visualState } from './visual-qualifications.js';
 
 /** The host answers an action within this, plus the time its waits may take. */
@@ -121,7 +122,11 @@ function settledFact(intent: ComputerFact, outcome: HostOutcome): ComputerFact {
  * step check, the envelope and the answer alike. Repeating an action id of this run answers its
  * recorded fact without sending anything again.
  */
-export async function runAct(ctx: CallContext, input: ComputerActionInput): Promise<ToolAnswer> {
+export async function runAct(
+  ctx: CallContext,
+  input: ComputerActionInput,
+  observationOptions: NextObservationOptions = {},
+): Promise<ToolAnswer> {
   const { runtime } = ctx;
   const free = ctx.scope.mode === 'free';
   const actionId = input.actionId ?? randomUUID();
@@ -175,7 +180,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
       capture: (captureId) => coordinator.capture(ctx.runId, targetRef.id, captureId),
       foregroundAllowed: foreground,
     },
-    input,
+    resolveOcrLocators(ctx, input, targetRef),
     actionId,
   );
   if (!checked.ok)
@@ -256,7 +261,7 @@ export async function runAct(ctx: CallContext, input: ComputerActionInput): Prom
     dispatch: fact.result?.dispatch ?? 'unknown',
     result: fact.result?.effect ?? 'unknown',
   });
-  const next = await nextObservation(ctx, action, targetRef, fact);
+  const next = await nextObservation(ctx, action, targetRef, fact, observationOptions);
   const { image, resourceId, snapshot, ...extra } = next ?? {};
   return {
     text: answerText(fact, { free, foreground, resolved, unresolved, files, observation: extra }),

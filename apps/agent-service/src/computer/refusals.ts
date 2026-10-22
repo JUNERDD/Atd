@@ -32,7 +32,7 @@ type Limit = { limit: string; ask?: string; resume?: string } | { limit: string;
 const TYPING: { ask: string; resume: string } = {
   ask: 'ask the person to do just this step themselves, saying exactly what it is; if the message names an input method, ask them instead to switch to a keyboard layout such as ABC so Atd can type, or to do the step themselves',
   resume:
-    'observe again and continue, sending the step again with a new actionId only once they say they switched',
+    'observe again and continue, sending the step in a new act with actionId omitted only once they say they switched',
 };
 
 const LIMITS: Readonly<Record<ComputerRefusalReason, Limit>> = {
@@ -90,7 +90,7 @@ const LIMITS: Readonly<Record<ComputerRefusalReason, Limit>> = {
       "Atd brought the app forward to do it in the foreground, but another window, possibly Atd's own panel, still covered the spot the step acts on, so Atd sent nothing and put back what the person had in front of them",
     ask: 'ask the person to move that window out of the way or to do just this step themselves, saying exactly what it is',
     resume:
-      'observe again and continue, sending the step again with a new actionId only if they moved the window rather than doing the step',
+      'observe again and continue, sending the step in a new act with actionId omitted only if they moved the window rather than doing the step',
   },
   notActivated: {
     limit:
