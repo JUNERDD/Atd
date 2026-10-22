@@ -11,6 +11,7 @@ import { skillProfilePaths } from '../skills/profile.js';
 import { discoverUserAgentSkills } from '../skills/user-agents.js';
 import type { Logger } from '../logging.js';
 import { hostSkillDiagnostics } from './host-skill-diagnostics.js';
+import type { SkillRevisionRecord } from '../skills/versions.js';
 
 /** The plugins the service synthesizes from its own stores. Installed ids never contain `:`. */
 export const CORE_PLUGIN = 'builtin:core';
@@ -37,6 +38,12 @@ export function hostItemKey(pluginId: string, kind: PluginItemKind, name: string
  */
 export interface HostCatalog {
   plugins: HostPlugin[];
+  /** The same discovery used for host items; a run reuses it when freezing its skill catalog. */
+  skills: {
+    atd: SkillRevisionRecord[];
+    shared: SkillRevisionRecord[];
+    disabled: ReadonlySet<string>;
+  };
   descriptions: ReadonlyMap<string, string>;
   /** Display titles of items whose name is not what users read: Personal commands (by id). */
   titles: ReadonlyMap<string, string>;
@@ -151,6 +158,7 @@ export async function loadHostPlugins(
   };
   return {
     plugins: [core, user, sharedPlugin],
+    skills: { atd: atd.skills, shared: shared.skills, disabled: skillsOff },
     descriptions,
     titles,
     diagnostics: hostSkillDiagnostics(atd.diagnostics, shared.diagnostics),

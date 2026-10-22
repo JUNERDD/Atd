@@ -224,7 +224,13 @@ async function freezePlugins(
     });
     deps.audit({ taskId: deps.taskId, runId: run.id, pluginsDegraded: true });
     return {
-      skills: { records: [], items: new Map(), effective: new Set(), sharedEnabled: true },
+      skills: {
+        records: [],
+        items: new Map(),
+        effective: new Set(),
+        sharedEnabled: true,
+        hostSkills: null,
+      },
       agents: new Map(),
     };
   }
