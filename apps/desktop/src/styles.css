@@ -288,6 +288,7 @@ body {
   height: auto;
   align-items: stretch;
   flex-direction: column;
+  gap: 4px;
   padding: 10px 0;
   text-align: left;
 }
@@ -299,12 +300,31 @@ body {
   outline: none;
   box-shadow: none;
 }
-/* The title truncates before a trailing badge (the app that started the task) does. */
+/* Keep the status beside the title; the timestamp owns the trailing edge. */
 .task-row-head {
   display: flex;
   min-width: 0;
   align-items: center;
+  gap: 12px;
+}
+.task-row-heading {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
   gap: 6px;
+}
+.task-row-heading > [data-slot='badge']:not(.task-row-status) {
+  min-width: 0;
+  flex-shrink: 1;
+}
+.task-row-time {
+  flex-shrink: 0;
+  color: var(--ata-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
 }
 .task-row-title {
   min-width: 0;
@@ -315,13 +335,13 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* "Sep 25 · Completed": the parts read as one dot-joined line, like the transcript's activity
-   summary. The dot is decoration only, so assistive technology hears the date and status. */
+/* The model stays secondary; its title exposes the full name and provider. */
 .task-row-meta {
   display: flex;
+  min-width: 0;
+  min-height: 16px;
   align-items: center;
-  gap: 4px;
-  color: var(--muted-foreground);
+  color: var(--ata-text-secondary);
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
@@ -331,12 +351,21 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.task-row-meta > * + *::before {
-  margin-right: 4px;
-  content: '·' / '';
+.task-row-status {
+  max-width: 60%;
+  flex-shrink: 0;
 }
-.task-row-status[data-tone='error'] {
-  color: var(--destructive);
+.task-row-model {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+.task-row-model-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* A conversation match under the meta line while searching: one line of the message around its
    first match, the matches marked. */

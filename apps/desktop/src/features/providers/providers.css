@@ -26,6 +26,23 @@
   mask-position: center;
   mask-image: var(--brand-mask-image);
 }
+/* Inline metadata uses a text-sized mark; monochrome brands follow the surrounding label. */
+.provider-brand-frame[data-variant='inline'] {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand {
+  flex-basis: 12px;
+  width: 12px;
+  height: 12px;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand-ink {
+  color: inherit;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand-mask {
+  background: currentColor;
+}
 .provider-connections {
   gap: 10px;
 }

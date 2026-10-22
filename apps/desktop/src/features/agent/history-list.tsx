@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy, Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { Badge } from '@atd/ui/components/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,9 @@ import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
+import { ProviderBrand } from '../providers/provider-brand';
 import type { HistoryEntry, HistoryRow } from './history-rows';
-import { rowDate, stampOf, type HistoryView } from './history-view';
+import { modelNameOf, rowDate, stampOf, type HistoryView } from './history-view';
 import { TaskOriginBadge } from './task-origin-badge';
 
 /** What the rows' menus do to their task; the history owns the dialogs these open. */
@@ -28,8 +30,8 @@ export type HistoryActions = {
 
 /** Row geometry before measurement (styles.css `.task-row`, `.history-section-title`). */
 const ROW_HEIGHT = 62;
-/** A conversation match's line under the meta line, with the row's 6px gap above it. */
-const SNIPPET_HEIGHT = 22;
+/** A conversation match's line under the meta line, with the row's 4px gap above it. */
+const SNIPPET_HEIGHT = 20;
 const TITLE_HEIGHT = 20;
 const SECTION_GAP = 12;
 /** The 4px between rows; sections add `SECTION_GAP` above their heading. */
@@ -167,6 +169,8 @@ function HistoryTaskRow({
 }) {
   const { t, i18n } = useTranslation('tasks');
   const status = task.runs.at(-1)?.status;
+  const model = task.runs.at(-1)?.snapshot.model;
+  const modelName = modelNameOf(task);
   const progressing = status === 'queued' || status === 'running' || status === 'stopping';
   const stamp = stampOf(task, view.sort);
   const updated = new Date(stamp);
@@ -182,26 +186,38 @@ function HistoryTaskRow({
         )}
         <Button variant="ghost" className="task-row min-w-0" onClick={() => onChoose(task.id)}>
           <span className="task-row-head">
-            <span className="task-row-title" title={task.title}>
-              <HighlightedText text={task.title} ranges={match?.ranges.title} />
+            <span className="task-row-heading">
+              <span className="task-row-title" title={task.title}>
+                <HighlightedText text={task.title} ranges={match?.ranges.title} />
+              </span>
+              {statusLabel && (
+                <Badge
+                  variant={status && ERROR_STATUSES.has(status) ? 'destructive' : 'secondary'}
+                  className="task-row-status border-border"
+                  title={statusLabel}
+                >
+                  <span className="truncate">
+                    {/* Shimmer animates plain text only, so a running status stays unmarked. */}
+                    {progressing ? (
+                      <Shimmer as="span">{statusLabel}</Shimmer>
+                    ) : (
+                      <HighlightedText text={statusLabel} ranges={match?.ranges.status} />
+                    )}
+                  </span>
+                </Badge>
+              )}
+              {task.origin && <TaskOriginBadge origin={task.origin} />}
             </span>
-            {task.origin && <TaskOriginBadge origin={task.origin} />}
-          </span>
-          <span className="task-row-meta">
-            <time dateTime={stamp} title={updated.toLocaleString()}>
+            <time className="task-row-time" dateTime={stamp} title={updated.toLocaleString()}>
               {rowDate(updated, now, i18n.language, view.group === 'date')}
             </time>
-            {statusLabel && (
-              <span
-                className="task-row-status"
-                data-tone={status && ERROR_STATUSES.has(status) ? 'error' : undefined}
-              >
-                {/* Shimmer animates plain text only, so a running status stays unmarked. */}
-                {progressing ? (
-                  <Shimmer as="span">{statusLabel}</Shimmer>
-                ) : (
-                  <HighlightedText text={statusLabel} ranges={match?.ranges.status} />
-                )}
+          </span>
+          <span className="task-row-meta">
+            {model && (
+              <span className="task-row-model" title={`${modelName} · ${model.provider}`}>
+                <ProviderBrand provider={model.provider} variant="inline" />
+                <span className="sr-only">{model.provider} · </span>
+                <span className="task-row-model-name">{modelName}</span>
               </span>
             )}
           </span>

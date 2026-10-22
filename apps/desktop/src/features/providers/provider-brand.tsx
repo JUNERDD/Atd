@@ -34,32 +34,45 @@ const names: Record<string, string> = {
   zai: 'z-ai',
   'zai-coding-cn': 'z-ai',
 };
-export function ProviderBrand({ provider }: { provider: string }) {
+export function ProviderBrand({
+  provider,
+  variant = 'tile',
+}: {
+  provider: string;
+  variant?: 'tile' | 'inline';
+}) {
   const stem =
-    names[provider] ??
-    (provider.startsWith('qwen-') ? 'qwen' : provider.startsWith('xiaomi-') ? 'xiaomi' : provider);
+    variant === 'inline' && (provider === 'opencode' || provider === 'opencode-go')
+      ? 'opencode-symbol'
+      : (names[provider] ??
+        (provider.startsWith('qwen-')
+          ? 'qwen'
+          : provider.startsWith('xiaomi-')
+            ? 'xiaomi'
+            : provider));
   const asset =
     provider === 'openai' || provider === 'openai-codex'
       ? openai
       : Object.entries(assets).find(([path]) => path.endsWith(`/${stem}.svg`))?.[1];
   const masked =
     asset &&
-    [
-      'openai',
-      'openai-codex',
-      'anthropic',
-      'amazon-bedrock',
-      'moonshotai',
-      'moonshotai-cn',
-      'openrouter',
-      'xai',
-      'ollama',
-      'lm-studio',
-      'github-copilot',
-      'vercel-ai-gateway',
-    ].includes(provider);
+    (stem === 'opencode-symbol' ||
+      [
+        'openai',
+        'openai-codex',
+        'anthropic',
+        'amazon-bedrock',
+        'moonshotai',
+        'moonshotai-cn',
+        'openrouter',
+        'xai',
+        'ollama',
+        'lm-studio',
+        'github-copilot',
+        'vercel-ai-gateway',
+      ].includes(provider));
   return (
-    <span aria-hidden="true" className="provider-brand-frame">
+    <span aria-hidden="true" className="provider-brand-frame" data-variant={variant}>
       {masked ? (
         <span
           className="provider-brand provider-brand-mask"
