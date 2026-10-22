@@ -1,5 +1,5 @@
 import type { TaskDetail } from '../../../client/agent/bridge';
-import type { Block } from '../../../client/agent/transcript-schema';
+import { showsAgentOutput } from '../transcript/turns';
 
 /**
  * Where the panel's conversation stands relative to its reply:
@@ -7,16 +7,14 @@ import type { Block } from '../../../client/agent/transcript-schema';
  * - `waiting`: a message is on its way or its run is queued or running with nothing to show yet,
  *   including the time the service spends before the model answers (a session rebuild, MCP tool
  *   listing, a pre-prompt compaction).
- * - `answering`: the run has shown its first output.
+ * - `answering`: the run's first output is on screen. A block that shows nothing yet, such as an
+ *   answer waiting on its first token, still counts as waiting.
  * - `idle`: no run is working on a reply, the run waits on the user (an approval or an answer),
  *   or the conversation has gone past its first run.
  * - `unknown`: the panel shows a conversation whose detail has not loaded yet, as just after a new
  *   task's submit settles; whatever showed before holds until it does.
  */
 export type WaitPhase = 'waiting' | 'answering' | 'idle' | 'unknown';
-
-/** Blocks that put something of the reply on screen. */
-const OUTPUT_KINDS = new Set<Block['kind']>(['assistant', 'thinking', 'tool', 'question']);
 
 /**
  * The phase of a new chat's first reply (`useNewChat`): `submitting` while the send that
@@ -39,7 +37,7 @@ export function waitPhase(
   for (let index = detail.blocks.length - 1; index >= 0; index--) {
     const block = detail.blocks[index];
     if (!block || block.runId !== run.id) break;
-    if (OUTPUT_KINDS.has(block.kind)) return 'answering';
+    if (showsAgentOutput(block)) return 'answering';
   }
   return 'waiting';
 }

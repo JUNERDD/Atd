@@ -86,12 +86,34 @@ function isActivityKind(block: Block): boolean {
   return block.kind === 'thinking' || block.kind === 'question';
 }
 
+/**
+ * Whether one of the agent's blocks puts something on screen: prose with text or an error, and
+ * every call, question and thought, whose row shows from its start. A thought's live row reads
+ * "Thinking" before any text; one that settled with none (a provider that keeps its reasoning to
+ * itself) has nothing to show. Prose still waiting on its first token holds its place in the turn
+ * but shows nothing.
+ */
+export function showsAgentOutput(block: Block): boolean {
+  switch (block.kind) {
+    case 'assistant':
+      return block.text.trim() !== '' || block.error !== '';
+    case 'thinking':
+      return block.streaming || block.redacted || block.text.trim() !== '';
+    case 'tool':
+    case 'question':
+      return true;
+    case 'user':
+    case 'system':
+    case 'compaction':
+    case 'retry':
+      return false;
+  }
+}
+
 function isIgnoredBlock(block: Block): boolean {
-  // Empty thoughts never render; redacted ones keep their placeholder. Empty assistant blocks
-  // stay only when they carry an error or are still streaming into view.
-  if (block.kind === 'thinking') return !block.redacted && block.text.trim() === '';
-  if (block.kind === 'assistant')
-    return block.text.trim() === '' && !block.error && !block.streaming;
+  // Settled empty thoughts never render. Empty prose stays while it streams into view.
+  if (block.kind === 'thinking') return !showsAgentOutput(block);
+  if (block.kind === 'assistant') return !block.streaming && !showsAgentOutput(block);
   return false;
 }
 
