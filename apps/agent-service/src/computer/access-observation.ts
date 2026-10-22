@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 import type { Observation, TargetRef } from '@atd/agent-contracts';
 import { runAct } from './act.js';
-import { auditComputer, type CallContext } from './call-context.js';
+import { auditComputer, ComputerRefusal, type CallContext } from './call-context.js';
 import { readNextObservation } from './next-observation.js';
 import { resolveTargets } from './operations.js';
 
@@ -117,7 +117,10 @@ async function firstObservation(
       resolveAgain:
         !ref &&
         resolved.unavailable.some(
-          (item) => item.bindingId === bindingId && item.reason === 'targetUnavailable',
+          (item) =>
+            item.bindingId === bindingId &&
+            item.reason === 'targetUnavailable' &&
+            !item.error?.reason,
         ),
     };
     if (!ref || !currentTarget(scoped, ref)) return current;
@@ -136,8 +139,15 @@ async function firstObservation(
         return { ...current, resolveAgain: false };
       }),
     ]);
-  } catch {
+  } catch (failure) {
     ctx.signal?.throwIfAborted();
+    // Access remains approved, but a host refusal must not become a startup-loading answer.
+    if (failure instanceof ComputerRefusal && failure.error) {
+      current.resolved = {
+        targets: [],
+        unavailable: [{ bindingId, reason: failure.error.code, error: failure.error }],
+      };
+    }
     return { ...current, resolveAgain: false };
   } finally {
     timer.abort();

@@ -252,7 +252,8 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 33 distinguishes a window reference from an observed click or drag target.
   // Version 34 explains fresh observations attached to no-input native click locator refusals.
   // Version 35 attaches a fresh observation after an explicit single native wait times out.
-  skill('computer-use', 35, []),
+  // Version 36 distinguishes target-resolution refusals from startup loading.
+  skill('computer-use', 36, []),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

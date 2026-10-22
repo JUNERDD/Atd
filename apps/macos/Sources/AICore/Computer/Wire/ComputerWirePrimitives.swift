@@ -22,7 +22,8 @@ public enum ComputerWireLimits {
   /// 8's background routes, with refusals and disturbances as facts, and adds the foreground
   /// fallback: in an attended request the service allows (`foregroundAllowed`), a step every
   /// background route refused is done in the foreground instead and reported as such.
-  public static let protocolVersion = 9
+  /// Protocol 10 preserves each unavailable target's full error and refusal reason.
+  public static let protocolVersion = 10
   /// `COMPUTER_MAX_SURFACES`: surfaces one observation lists.
   public static let maxSurfaces = 16
   /// `COMPUTER_MAX_TEXT_BOXES`: recognized text boxes one observation carries.

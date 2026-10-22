@@ -11,7 +11,6 @@ import { ComputerGrantRefSchema } from './computer-grants.js';
 import { ComputerProgressSchema } from './computer-progress.js';
 import {
   ActionResultSchema,
-  ComputerErrorCodeSchema,
   ComputerErrorSchema,
   HostActionRecordSchema,
   ObservationSchema,
@@ -47,8 +46,9 @@ import {
  * refusals and disturbances facts (`computer-refusals.ts`). Protocol 9 adds the host's foreground
  * fallback within one `act` (`ExecutionEnvelope.foregroundAllowed`, `ComputerDelivery`
  * `foreground`, refusal reasons `covered` and `notActivated`).
+ * Protocol 10 preserves the full error for each unavailable target, including the refusal reason.
  */
-export const COMPUTER_PROTOCOL = 9;
+export const COMPUTER_PROTOCOL = 10;
 
 /** Action ids a `status` request or a `computer.hello` names. */
 export const COMPUTER_MAX_STATUS_IDS = 100;
@@ -163,7 +163,7 @@ export const HostReplyValueSchema = Type.Union([
       refs: Type.Array(TargetRefSchema, { maxItems: COMPUTER_MAX_RUN_BINDINGS }),
       unavailable: Type.Array(
         Type.Object(
-          { bindingId: Identifier, reason: ComputerErrorCodeSchema },
+          { bindingId: Identifier, error: ComputerErrorSchema },
           { additionalProperties: false },
         ),
         { maxItems: COMPUTER_MAX_RUN_BINDINGS },

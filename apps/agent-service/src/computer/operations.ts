@@ -88,7 +88,7 @@ export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEO
   const deadline = performance.now() + timeoutMs;
   const { bindings, coordinator } = ctx.runtime;
   const found: TargetBinding[] = [];
-  const missing: { bindingId: string; reason: string }[] = [];
+  const missing: { bindingId: string; reason: string; error?: ComputerError }[] = [];
   for (const bindingId of ctx.computer.bindingIds) {
     const binding = bindings.get(bindingId);
     if (!binding) missing.push({ bindingId, reason: 'removed' });
@@ -136,10 +136,11 @@ export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEO
       };
     }),
     unavailable: [
-      ...value.unavailable.map(({ bindingId, reason }) => ({
+      ...value.unavailable.map(({ bindingId, error }) => ({
         bindingId,
         label: label(bindingId),
-        reason,
+        reason: error.code,
+        error,
       })),
       ...missing,
     ],

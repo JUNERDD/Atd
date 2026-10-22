@@ -2,6 +2,7 @@ import {
   COMPUTER_ENGINE_FOR_KIND,
   COMPUTER_MAX_RUN_BINDINGS,
   type ComputerAccessTarget,
+  type ComputerError,
   type ComputerTargetKind,
 } from '@atd/agent-contracts';
 import {
@@ -131,6 +132,7 @@ export async function requestAccess(
     const { bindingId } = binding;
     const { resolved, preview, readiness } = await accessObservation(ctx, bindingId, waitFor);
     const { image, resourceId, snapshot, ...observation } = preview;
+    const error = resolved.unavailable.find((item) => item.bindingId === bindingId)?.error;
 
     return {
       text: JSON.stringify({
@@ -149,7 +151,7 @@ export async function requestAccess(
             ? 'Inspect the returned nextObservation and image. If ready and sufficient to locate the next input, continue directly with act using its targetRefId and observationRefId, plus a postcondition for any click or other invoke or submit. If still loading, missing needed locator information or contradictory, observe again. No targets call is needed.'
             : resolved.targets.length
               ? 'Access was approved. The first observation is unavailable; observe the target.'
-              : NOT_READY,
+              : unavailableNext(error),
       }),
       ...(image ? { image } : {}),
       ...(snapshot ? { snapshot } : {}),
@@ -157,6 +159,7 @@ export async function requestAccess(
         op: 'requestAccess',
         bindingId: binding.bindingId,
         target: binding.label,
+        error,
         resourceIds: resourceId ? [resourceId] : [],
       }),
     };
@@ -164,6 +167,17 @@ export async function requestAccess(
     // Cancellation may finish while a durable grant write is still pending.
     if (ctx.signal?.aborted) runtime.access.forget(runId);
   }
+}
+
+/** A refusal during resolution is not evidence that the app is still starting. */
+function unavailableNext(error: ComputerError | undefined): string {
+  if (!error || (error.code === 'targetUnavailable' && !error.reason)) return NOT_READY;
+  const reason = error.reason ? `${error.code}: ${error.reason}` : error.code;
+  const next =
+    error.reason === 'screenLocked'
+      ? 'Ask the person to unlock the Mac, not to do the app task themselves.'
+      : 'Explain this limit and wait for its cause to change.';
+  return `Access remains approved, but the target could not be resolved: ${error.message} (${reason}). ${next} This is not startup loading: do not retry it repeatedly or work around it with another tool. No target reference is available yet; resume with requestAccess after the cause is resolved.`;
 }
 
 /**

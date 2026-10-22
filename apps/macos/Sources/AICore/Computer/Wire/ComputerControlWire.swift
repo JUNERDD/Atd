@@ -109,11 +109,11 @@ public struct HostRequestWire: Decodable, Equatable, Sendable {
 public enum HostReplyValueWire: Encodable, Equatable, Sendable {
   public struct Unavailable: Codable, Equatable, Sendable {
     public let bindingId: String
-    public let reason: ComputerErrorCode
+    public let error: ComputerErrorWire
 
-    public init(bindingId: String, reason: ComputerErrorCode) {
+    public init(bindingId: String, error: ComputerErrorWire) {
       self.bindingId = bindingId
-      self.reason = reason
+      self.error = error
     }
   }
 

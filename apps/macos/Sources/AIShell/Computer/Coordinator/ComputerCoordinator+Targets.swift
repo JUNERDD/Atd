@@ -46,7 +46,7 @@ extension ComputerCoordinator {
         Self.log.info(
           "Binding \(binding.bindingId, privacy: .public) unavailable: \(error.message, privacy: .public)"
         )
-        unavailable.append(.init(bindingId: binding.bindingId, reason: error.code))
+        unavailable.append(.init(bindingId: binding.bindingId, error: error.wire))
       }
     }
     return .ok(request, .targets(refs: refs, unavailable: unavailable))
