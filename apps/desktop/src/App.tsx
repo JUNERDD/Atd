@@ -1,4 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type AnimationEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
@@ -25,7 +32,7 @@ import {
 } from './features/agent/transcript/subagent-context';
 import { PanelHeader } from './features/agent/panel-header';
 import { SideChatLayer } from './features/agent/side-chat/side-chat-layer';
-import { useNewChatWait } from './features/agent/waiting-glow/use-new-chat-wait';
+import { useNewChat } from './features/agent/use-new-chat';
 import { WaitingGlow } from './features/agent/waiting-glow/waiting-glow';
 import { SideChatContext, sideChatItems } from './features/agent/side-chat/side-chats';
 import { TaskHistory } from './features/agent/task-history';
@@ -142,15 +149,24 @@ export function App() {
   const submitDraft = () => submit();
   const openSettingsWindow = () => void openSettings();
   const toggleView = (next: 'history') => setView(view === next ? 'new' : next);
-  // The light behind the composer marks a new chat's first reply; a drill-in or a side chat over
-  // the conversation is a different conversation's view.
-  const waitPhase = useNewChatWait({
+  // A new chat moves from the welcome to its conversation, and the light behind the composer marks
+  // its first reply; a drill-in or a side chat over the conversation is a different conversation's
+  // view.
+  const newChat = useNewChat({
     sending: pending,
     view,
     taskId,
     detail: current.detail,
     covered: child.childKey !== null || side.view !== null,
   });
+  // Both stages below are one element across the detail's load, so the entrance runs once. Rows
+  // inside run animations of their own, whose end events bubble to it.
+  const stageEntrance = {
+    'data-entering': newChat.entering ? '' : undefined,
+    onAnimationEnd: (event: AnimationEvent<HTMLDivElement>) => {
+      if (event.target === event.currentTarget) newChat.entered();
+    },
+  };
   const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
@@ -174,7 +190,7 @@ export function App() {
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
-                {(view === 'new' || view === 'task') && <WaitingGlow phase={waitPhase} />}
+                {(view === 'new' || view === 'task') && <WaitingGlow phase={newChat.waitPhase} />}
                 <ServiceBanner onOpenSettings={openSettingsWindow} />
                 {view === 'new' && (
                   <ScrollArea
@@ -184,7 +200,10 @@ export function App() {
                     scrollShadow
                     viewportRef={reserveRef}
                   >
-                    <section className="panel-content-body welcome">
+                    <section
+                      className="panel-content-body welcome"
+                      data-leaving={newChat.leaving ? '' : undefined}
+                    >
                       <h2 className="max-w-full truncate" title={t('welcome.title')}>
                         {t('welcome.title')}
                       </h2>
@@ -223,7 +242,7 @@ export function App() {
                 )}
                 {view === 'task' &&
                   (current.detail ? (
-                    <div className="task-stage">
+                    <div className="task-stage" {...stageEntrance}>
                       <SubagentContext value={subagents}>
                         <Transcript
                           detail={current.detail}
@@ -274,7 +293,7 @@ export function App() {
                       )}
                     </div>
                   ) : (
-                    <div className="task-stage">
+                    <div className="task-stage" {...stageEntrance}>
                       <ConversationPlaceholder label={t('header.loadingConversation')} />
                     </div>
                   ))}

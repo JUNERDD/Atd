@@ -19,7 +19,7 @@ export type WaitPhase = 'waiting' | 'answering' | 'idle' | 'unknown';
 const OUTPUT_KINDS = new Set<Block['kind']>(['assistant', 'thinking', 'tool', 'question']);
 
 /**
- * The phase of a new chat's first reply (`useNewChatWait`): `submitting` while the send that
+ * The phase of a new chat's first reply (`useNewChat`): `submitting` while the send that
  * starts it is in flight, `taskId` for the chat it opened (null when the panel shows anything
  * else), and the latest loaded detail, which may still be another task's. Only the chat's first
  * run counts: a follow-up is a new reply in an existing conversation.
