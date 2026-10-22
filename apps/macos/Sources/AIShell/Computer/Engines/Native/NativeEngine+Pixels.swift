@@ -2,6 +2,7 @@ import AIComputerDriverKit
 import AICore
 import CoreGraphics
 import Foundation
+import OSLog
 
 /// A capture of an observed surface (plan §4.4): ScreenCaptureKit's still of the window, which
 /// keeps capturing it while it is covered or off screen, or, for a window on another Space, the
@@ -52,12 +53,15 @@ extension NativeEngine {
     let whole = await NativeTargetProbe.detached {
       native ? source.image : NativeCaptureImage.bounded(source.image, longEdge: edge)
     }
+    let reusable =
+      crop == nil && whole.width == source.image.width && whole.height == source.image.height
+      ? source.encoded : nil
     let capture = NativeCapture(
       id: id, surfaceRefId: place.surfaceRefId, pid: place.pid, windowId: place.windowId,
-      frame: frame, crop: crop, mime: crop == nil ? source.mime : .png, sourceWidth: whole.width,
+      frame: frame, crop: crop, mime: reusable == nil ? .png : source.mime,
+      sourceWidth: whole.width,
       sourceHeight: whole.height, capturedAt: Date(), useBy: useBy)
     let pixels = capture.sourcePixels
-    let reusable = crop == nil && whole.width == source.image.width ? source.encoded : nil
     let encoded: (image: CGImage, base64: String)? = await NativeTargetProbe.detached {
       if crop != nil { return NativeCaptureImage.crop(whole, to: pixels) }
       if let reusable { return (whole, reusable) }
@@ -77,10 +81,15 @@ extension NativeEngine {
     -> WindowPixels?
   {
     if onActiveSpace {
-      guard
-        let shot = try? await NativeWindowCapture.capture(pid: place.pid, windowId: place.windowId)
-      else { return nil }
-      return WindowPixels(image: shot.image, frame: shot.frame, mime: .png, encoded: nil)
+      do {
+        let shot = try await NativeWindowCapture.capture(pid: place.pid, windowId: place.windowId)
+        return WindowPixels(image: shot.image, frame: shot.frame, mime: .png, encoded: nil)
+      } catch {
+        Self.log.notice(
+          "Window capture unavailable pid=\(place.pid) window=\(place.windowId) code=\(error.code.rawValue, privacy: .public) reason=\(error.message, privacy: .public)"
+        )
+        return nil
+      }
     }
     guard let captured = try? await offSpaceCapture(place, operation: operation),
       let frame = NativeSurfaceProbe.frame(windowId: place.windowId, pid: pid_t(place.pid))

@@ -94,7 +94,7 @@ extension NativeEngine {
     guard var target = targets[ref.id], target.ref == ref else { throw Self.changed }
     target.version = version
     target.observation = observation
-    target.recognizedText = text?.map(\.text)
+    target.recognizedTextBoxes = text
     target.recognizedRegion = region
     target.verificationImage = shot.image.flatMap { $0.width * $0.height <= 16_777_216 ? $0 : nil }
     target.verificationCapture = shot.capture
@@ -125,7 +125,7 @@ extension NativeEngine {
   func invalidateObservation(_ ref: TargetRefWire) {
     guard var target = targets[ref.id], target.ref == ref else { return }
     target.observation = nil
-    target.recognizedText = nil
+    target.recognizedTextBoxes = nil
     target.recognizedRegion = nil
     target.verificationImage = nil
     target.verificationCapture = nil

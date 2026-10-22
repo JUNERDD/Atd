@@ -34,8 +34,10 @@ extension NativeEngine {
     let app: AppIdentity
     var version = 0
     var observation: NativeObservation?
-    /// Text recognized in the latest observation, used as the baseline for visual checks.
-    var recognizedText: [String]?
+    /// Exact OCR order and geometry published by the latest observation, for its text refs.
+    var recognizedTextBoxes: [ComputerTextBoxWire]?
+    /// The same observed text remains the baseline for visual checks.
+    var recognizedText: [String]? { recognizedTextBoxes?.map(\.text) }
     /// The same window-relative crop must be compared when checking new OCR text.
     var recognizedRegion: CGRect?
     /// Only the current observation's pixels, bounded to the accepted screenshot size.

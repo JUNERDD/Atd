@@ -53,7 +53,12 @@ nonisolated enum NativeSurfaceProbe {
       )
     }
     let main = described(element(app, kAXMainWindowAttribute))
+    if let main, !main.minimized { return main.window }
     let focused = described(element(app, kAXFocusedWindowAttribute))
+    if let focused, !focused.minimized {
+      if let main, main.window.windowId == focused.window.windowId { return main.window }
+      return focused.window
+    }
     let standard = axWindows(pid: pid).filter {
       attribute($0, kAXSubroleAttribute) as? String == kAXStandardWindowSubrole
     }.compactMap(described)

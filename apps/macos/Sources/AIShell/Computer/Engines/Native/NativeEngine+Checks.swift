@@ -24,7 +24,8 @@ extension NativeEngine {
           guard locator == nil else {
             throw ComputerFailure(.unsupported, "newText cannot combine locator and region.")
           }
-          try await prepareRegion(region, action: action, baseline: baseline)
+          let texts = try await prepareRegion(region, action: action, baseline: baseline)
+          try Self.validateNewTextLiteral(pattern, baseline: texts)
         }
         if let locator {
           guard let observed = targets[action.targetRefId]?.observation else {
@@ -103,8 +104,8 @@ extension NativeEngine {
   static func checkWindow(_ condition: ComputerConditionWire) -> Duration {
     switch condition {
     case .menuItemAvailable: .seconds(8)
-    case .textAppears: .seconds(3)
-    case .valueEquals, .enabled, .newText, .urlMatches: .zero
+    case .textAppears, .newText: .seconds(3)
+    case .valueEquals, .enabled, .urlMatches: .zero
     }
   }
 
@@ -229,6 +230,23 @@ extension NativeEngine {
     return try await Self.hasNewText(
       screenTexts(ref, region: targets[ref.id]?.recognizedRegion, operation: operation),
       baseline: screenBaseline, pattern: pattern)
+  }
+
+  /// A fixed regex match already in this scope can never become new. Other regex may match
+  /// a different future value, even when they also match the baseline.
+  static func validateNewTextLiteral(_ pattern: String?, baseline: [String])
+    throws(ComputerFailure)
+  {
+    guard let pattern, !pattern.isEmpty,
+      pattern.rangeOfCharacter(from: CharacterSet(charactersIn: "\\.^$*+?()[]{}|")) == nil,
+      baseline.contains(where: { $0.contains(pattern) })
+    else { return }
+    throw ComputerFailure(
+      .unsupported,
+      "The fixed newText pattern already appears in this region's baseline and cannot become new; "
+        + "nothing was sent. For unknown navigation wording, use the destination content region "
+        + "without this pattern, then inspect nextObservation. Otherwise choose reliable "
+        + "destination-control text absent from the baseline.")
   }
 
   static func hasNewText(_ now: [String], baseline: [String], pattern: String?)

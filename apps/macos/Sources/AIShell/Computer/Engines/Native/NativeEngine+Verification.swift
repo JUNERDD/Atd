@@ -13,7 +13,7 @@ struct NativeRegionBaseline {
 extension NativeEngine {
   func prepareRegion(
     _ region: ObserveOperationWire.Region, action: ComputerActionWire, baseline: ObservationWire
-  ) async throws(ComputerFailure) {
+  ) async throws(ComputerFailure) -> [String] {
     guard let target = targets[action.targetRefId], target.observation?.id == baseline.ref.id,
       let capture = target.verificationCapture, capture.id == region.capture,
       baseline.capture?.id == capture.id, capture.surfaceRefId == target.observed?.surfaceRefId,
@@ -22,7 +22,9 @@ extension NativeEngine {
       throw ComputerFailure(
         .staleObservation, "The region needs the action's current observed image.")
     }
-    if target.regionalBaselines.contains(where: { $0.region == region }) { return }
+    if let prepared = target.regionalBaselines.first(where: { $0.region == region }) {
+      return prepared.texts
+    }
     let rect = region.rect.cgRect
     let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
     guard rect.width > 0, rect.height > 0, bounds.contains(rect),
@@ -35,6 +37,7 @@ extension NativeEngine {
     else { throw Self.changed }
     targets[action.targetRefId]?.regionalBaselines.append(
       NativeRegionBaseline(region: region, capture: capture, windowRect: windowRect, texts: texts))
+    return texts
   }
 
   func regionalNewText(

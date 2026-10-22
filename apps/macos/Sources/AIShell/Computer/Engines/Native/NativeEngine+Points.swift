@@ -28,8 +28,17 @@ extension NativeEngine {
   ) async throws(ComputerFailure) -> NativeRoutePlan.Aim {
     switch locator {
     case .element(let locator):
+      if case .ref(let textRef) = locator, textRef.hasPrefix("ocr:") {
+        return try await ocrTextAim(textRef, ref: ref, in: observation, context: context)
+      }
       switch observation.resolve(locator) {
       case .success(let found):
+        guard found.role != "AXWindow" else {
+          throw ComputerFailure(
+            .unsupported,
+            "The window itself is not a click or drag target. Use an observed control or text, "
+              + "or a qualified capture point. Nothing was sent.")
+        }
         guard found.enabled != false else {
           throw ComputerFailure(.unsupported, "The element is disabled.")
         }
