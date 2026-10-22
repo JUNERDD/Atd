@@ -625,17 +625,18 @@
     },
     "outcome": {
       "verified": "Done and checked",
-      "partial": "Partly done",
+      "partial": "Result unconfirmed",
       "unknown": "Result unknown",
       "notDispatched": "Not carried out",
       "none": "Nothing changed"
     },
     "outcomeDetail": {
       "verified": "Atd checked that this took effect.",
-      "partial": "Only some steps took effect ({{completed}} of {{total}}). Check the target before anything is tried again.",
+      "partial": "{{completed}} of {{total}} steps ran. The result is not fully confirmed. Check the target before anything is tried again.",
       "unknown": "Atd couldn’t confirm whether this took effect. Check the target yourself before anything is tried again.",
       "notDispatched": "Nothing was sent to the target.",
-      "none": "The action finished without changing anything."
+      "none": "The action finished without changing anything.",
+      "partialUnverified": "Every step ran, but Atd could not verify the requested result. Check the target before anything is tried again."
     },
     "effect": {
       "read": "Read only",
@@ -661,7 +662,7 @@
       "staleObservation": "The page changed since Atd last looked at it.",
       "ambiguous": "More than one control matched, so Atd didn’t guess.",
       "notFound": "The control wasn’t found.",
-      "noBackgroundRoute": "Atd couldn’t do this step itself, so it left it to you.",
+      "noBackgroundRoute": "Atd couldn’t perform this step under the current conditions.",
       "needsPermission": "Atd needs a system permission for this. Check Settings › Computer use.",
       "needsConsent": "Screen access isn’t prepared yet, so Atd didn’t capture the screen.",
       "locked": "Another copy of Atd is using computer use.",
@@ -806,6 +807,11 @@
       "noSources": "There are no active screens to monitor.",
       "showMonitor_one": "Monitor {{count}} screen",
       "showMonitor_other": "Monitor {{count}} screens"
+    },
+    "review": {
+      "title": "Computer result check",
+      "loading": "Checking whether these results still need review…",
+      "unavailable": "These results were not confirmed. Their current review status is unavailable."
     }
   },
   "view": {

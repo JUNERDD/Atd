@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
-import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import type { ComputerStatusResponse, TargetBinding } from '@atd/agent-contracts';
 import type { ComputerBridge, ComputerShellState } from '../../client/computer-contract';
 import { messageOf } from '../../lib/errors';
@@ -87,21 +87,38 @@ export function useUnresolvedActions(
   revision: string,
   enabled: boolean,
 ): readonly string[] {
+  return useComputerActionReview(taskId, actionIds, revision, enabled).actionIds;
+}
+
+/** A missing or failed read is distinct from a successful read with no unresolved actions. */
+export function useComputerActionReview(
+  taskId: string,
+  actionIds: readonly string[],
+  revision: string,
+  enabled: boolean,
+): {
+  state: 'inactive' | 'loading' | 'unavailable' | 'ready';
+  actionIds: readonly string[];
+} {
   const connected = useServiceStatus().status?.state === 'connected';
   const bridge = computerBridge();
   // One read per task and revision, shared by every row of the task; each row selects its own ids.
-  const { data } = useQuery<readonly string[], Error, readonly string[]>(
+  const { data, isError } = useQuery<readonly string[], Error, readonly string[]>(
     {
       queryKey: [...computerKeys.unresolved, taskId, revision],
       queryFn: bridge && connected && enabled ? () => bridge.unresolvedFacts(taskId) : skipToken,
       select: (unresolved) => actionIds.filter((id) => unresolved.includes(id)),
       meta: { errorToast: false },
-      placeholderData: keepPreviousData,
+      // Coalesce cards mounted together; later remounts still refresh facts changed elsewhere.
+      staleTime: 1000,
       retry: false,
     },
     queryClient,
   );
-  return enabled && data ? data : NO_ACTIONS;
+  if (!enabled) return { state: 'inactive', actionIds: NO_ACTIONS };
+  if (!bridge || !connected || isError) return { state: 'unavailable', actionIds: NO_ACTIONS };
+  if (!data) return { state: 'loading', actionIds: NO_ACTIONS };
+  return { state: 'ready', actionIds: data };
 }
 
 /** Reloads the computer status now, after this window changed it. */

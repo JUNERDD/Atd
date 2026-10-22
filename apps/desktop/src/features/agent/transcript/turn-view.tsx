@@ -6,6 +6,7 @@ import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { ArtifactCards } from './artifact-cards';
 import { BlockView } from './block-view';
+import { ComputerReviewNotices } from './computer-review-notices';
 import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
@@ -125,6 +126,7 @@ export const TurnView = memo(function TurnView({
         );
       })}
       {status}
+      {settled && <ComputerReviewNotices steps={turn.view} runs={runs} />}
       {/* What the turn saved, as cards that open each item, once it settled: the items exist once
           their calls complete, and the cards sit together instead of interrupting the stream. */}
       {settled && <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />}

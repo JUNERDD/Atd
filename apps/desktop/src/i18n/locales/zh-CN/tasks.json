@@ -625,17 +625,18 @@
     },
     "outcome": {
       "verified": "已完成并核实",
-      "partial": "部分完成",
+      "partial": "结果待核对",
       "unknown": "结果不明",
       "notDispatched": "未执行",
       "none": "没有变化"
     },
     "outcomeDetail": {
       "verified": "Atd 已核实此操作生效。",
-      "partial": "只有部分步骤生效（{{completed}}/{{total}}）。再次尝试前，请先检查目标。",
+      "partial": "已执行 {{completed}}/{{total}} 个步骤，结果尚未完全确认。再次尝试前，请先检查目标。",
       "unknown": "Atd 无法确认此操作是否生效。再次尝试前，请自行检查目标。",
       "notDispatched": "没有向目标发送任何操作。",
-      "none": "操作已结束，没有改变任何内容。"
+      "none": "操作已结束，没有改变任何内容。",
+      "partialUnverified": "全部 {{total}} 个步骤已执行，但 Atd 未能验证预期结果。再次尝试前，请先检查目标。"
     },
     "effect": {
       "read": "只读",
@@ -661,7 +662,7 @@
       "staleObservation": "页面在 Atd 上次查看后发生了变化。",
       "ambiguous": "匹配到多个控件，Atd 没有自行猜测。",
       "notFound": "没有找到该控件。",
-      "noBackgroundRoute": "Atd 没能自己完成这一步，已留给你来完成。",
+      "noBackgroundRoute": "当前条件下，Atd 无法执行这一步。",
       "needsPermission": "Atd 需要一项系统权限才能执行此操作。请查看“设置 › 电脑操作”。",
       "needsConsent": "屏幕访问尚未准备好，Atd 没有截取屏幕。",
       "locked": "另一个 Atd 正在使用电脑操作。",
@@ -806,6 +807,11 @@
       "noSources": "当前没有可监看的画面。",
       "showMonitor_one": "监看 {{count}} 个画面",
       "showMonitor_other": "监看 {{count}} 个画面"
+    },
+    "review": {
+      "title": "电脑操作结果核对",
+      "loading": "正在查询这些结果是否仍待核对…",
+      "unavailable": "这些结果此前未获确认，暂时无法读取当前核对状态。"
     }
   },
   "view": {

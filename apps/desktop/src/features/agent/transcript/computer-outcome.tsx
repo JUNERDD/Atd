@@ -58,10 +58,20 @@ export function ComputerSummary({
   total: number;
 }) {
   const { t } = useTranslation('tasks');
+  const unverifiedResult =
+    outcome === 'partial' &&
+    result.dispatch === 'settled' &&
+    total > 0 &&
+    result.completedSteps === total &&
+    !result.error &&
+    result.stoppedAt === undefined;
   return (
     <div className="computer-summary">
       <p className="computer-outcome" data-tone={outcomeTone(outcome) ?? undefined}>
-        {t(`computer.outcomeDetail.${outcome}`, { completed: result.completedSteps, total })}
+        {t(`computer.outcomeDetail.${unverifiedResult ? 'partialUnverified' : outcome}`, {
+          completed: result.completedSteps,
+          total,
+        })}
       </p>
       {result.error && <ComputerErrorLine error={result.error} />}
       {result.retry !== 'safe' && (

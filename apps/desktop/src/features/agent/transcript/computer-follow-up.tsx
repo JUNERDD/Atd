@@ -21,7 +21,7 @@ import {
   useComputerShellState,
   useUnresolvedActions,
 } from '../../computer/use-computer';
-import { computerOutcome } from './computer-call';
+import { computerReviewActions } from './computer-review';
 import { ToolCard } from './tool-card';
 import { useTaskTurns } from './turn-context';
 
@@ -79,16 +79,10 @@ export function ComputerFollowUp({
   const [confirming, setConfirming] = useState(false);
   const bridge = computerBridge();
   const result = data.result;
-  const actionId = result?.actionId ?? data.actionId;
-  const outcome = result ? computerOutcome(result) : null;
   // An action whose reply was lost has no result; the service still lists it while it may have
   // taken effect, so it is as checkable as an unknown one. An act the service held back recorded
   // nothing itself, so only the earlier actions it names can be checked from it.
-  const own =
-    data.op === 'act' &&
-    actionId !== undefined &&
-    (outcome === null || outcome === 'unknown' || outcome === 'partial');
-  const candidates = own ? [actionId] : (data.blockedBy ?? []);
+  const { own, actionIds: candidates } = computerReviewActions(data);
   // Only actions the service still lists can be checked.
   const checkIds = useUnresolvedActions(
     turns?.taskId ?? '',
