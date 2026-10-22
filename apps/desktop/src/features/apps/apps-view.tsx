@@ -133,7 +133,7 @@ export function AppsView({
                         <IconButton
                           label={t('panel.more')}
                           aria-label={t('panel.moreLabel', { name: app.name })}
-                          tooltipDismissOnClick
+                          tooltip={false}
                         >
                           <Ellipsis />
                         </IconButton>

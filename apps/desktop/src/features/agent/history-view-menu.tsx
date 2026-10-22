@@ -24,7 +24,7 @@ export function HistoryViewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <IconButton label={t('history.view.label')} className="shrink-0" tooltipDismissOnClick>
+        <IconButton label={t('history.view.label')} className="shrink-0" tooltip={false}>
           <SlidersHorizontal />
         </IconButton>
       </DropdownMenuTrigger>

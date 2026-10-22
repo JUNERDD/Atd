@@ -104,7 +104,7 @@ export function AddonCard({
         <IconButton
           label={t('actions.more')}
           aria-label={t('actions.moreFor', { name: title })}
-          tooltipDismissOnClick
+          tooltip={false}
         >
           <MoreHorizontal />
         </IconButton>

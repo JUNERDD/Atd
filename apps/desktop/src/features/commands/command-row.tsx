@@ -232,7 +232,7 @@ export function CommandRow({
               <IconButton
                 label={t('list.more')}
                 aria-label={t('list.moreActionsFor', { name: command.name })}
-                tooltipDismissOnClick
+                tooltip={false}
               >
                 <MoreHorizontal />
               </IconButton>

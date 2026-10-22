@@ -113,7 +113,7 @@ function MemoryCardActions({ unit, busy, onOpen, onToggle, onDelete }: CardProps
             label={t('memory.list.more')}
             aria-label={t('memory.list.moreActionsFor', { name })}
             {...busyProps}
-            tooltipDismissOnClick
+            tooltip={false}
           >
             <Ellipsis />
           </IconButton>

@@ -217,7 +217,7 @@ function HistoryTaskRow({
               label={t('history.more')}
               aria-label={t('history.moreActionsFor', { title: task.title })}
               className="history-row-more"
-              tooltipDismissOnClick
+              tooltip={false}
             >
               <Ellipsis />
             </IconButton>

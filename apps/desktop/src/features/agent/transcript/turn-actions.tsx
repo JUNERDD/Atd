@@ -119,7 +119,7 @@ export function TurnActions({
       {more && (
         <DropdownMenu>
           <DropdownMenuTrigger ref={moreButton} asChild>
-            <IconButton label={t('turnActions.more')} tooltipDismissOnClick>
+            <IconButton label={t('turnActions.more')} tooltip={false}>
               <Ellipsis />
             </IconButton>
           </DropdownMenuTrigger>

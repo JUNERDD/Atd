@@ -86,8 +86,7 @@ export function ComposerAttachMenu({
         <IconButton
           label={t('composer.attachContext')}
           className="composer-attach"
-          tooltipSide="top"
-          tooltipDismissOnClick
+          tooltip={false}
           variant="glass-ghost"
         >
           <Plus />

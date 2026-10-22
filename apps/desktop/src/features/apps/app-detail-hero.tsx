@@ -160,7 +160,7 @@ export function AppDetailHero({
                 aria-label={t('panel.moreLabel', { name: shown.name })}
                 variant="outline"
                 size="icon"
-                tooltipDismissOnClick
+                tooltip={false}
               >
                 <Ellipsis />
               </IconButton>

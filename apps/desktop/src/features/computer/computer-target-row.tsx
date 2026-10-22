@@ -89,7 +89,7 @@ export function ComputerTargetRow({
                 <IconButton
                   label={t('computer.targets.more')}
                   aria-label={t('computer.targets.moreFor', { name: binding.label })}
-                  tooltipDismissOnClick
+                  tooltip={false}
                 >
                   <MoreHorizontal />
                 </IconButton>
