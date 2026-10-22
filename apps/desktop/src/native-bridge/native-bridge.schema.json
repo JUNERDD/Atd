@@ -3349,6 +3349,22 @@
                     },
                     "writable": {
                       "type": "boolean"
+                    },
+                    "selectionKind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        {
+                          "type": "string",
+                          "const": "cells"
+                        },
+                        {
+                          "type": "string",
+                          "const": "unknown"
+                        }
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -6233,6 +6249,10 @@
                 {
                   "type": "string",
                   "const": "interrupted"
+                },
+                {
+                  "type": "string",
+                  "const": "unsupportedSelection"
                 }
               ]
             }
@@ -7934,6 +7954,22 @@
             },
             "writable": {
               "type": "boolean"
+            },
+            "selectionKind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "text"
+                },
+                {
+                  "type": "string",
+                  "const": "cells"
+                },
+                {
+                  "type": "string",
+                  "const": "unknown"
+                }
+              ]
             }
           },
           "additionalProperties": false

@@ -108,7 +108,7 @@ final class Summoner {
 
   /// The frontmost app's selection, asking for Accessibility once per launch when needed: read
   /// through Accessibility, else copied where ``CopyFallback`` allows it.
-  private func readSelection() async -> SummonSelection {
+  func readSelection() async -> SummonSelection {
     guard SelectionReader.isTrusted else {
       trust.promptForSummon()
       return .field(nil)

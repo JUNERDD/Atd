@@ -136,7 +136,8 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Electron and CEF apps never run there; websites and automation-started runs stay in the
   // background, and only a step neither way can do, such as one that needs the real pointer or a
   // context menu, goes to the user.
-  skill('create-command', 8, [
+  // Version 9 distinguishes spreadsheet regions from text for selection write-back.
+  skill('create-command', 9, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
     '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1

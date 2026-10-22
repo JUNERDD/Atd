@@ -73,7 +73,7 @@ extension CommandProgressController {
       case .targetChanged: .commandProgressUnwrittenTargetChanged
       case .noSelection: .commandProgressUnwrittenNoSelection
       case .secureInput: .commandProgressUnwrittenSecureInput
-      case .failed, .interrupted: .commandProgressUnwrittenFailed
+      case .failed, .interrupted, .unsupportedSelection: .commandProgressUnwrittenFailed
       }
     return ShellStrings.shared.text(key, app)
   }

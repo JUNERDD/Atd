@@ -16,6 +16,12 @@ nonisolated struct WriteTarget: @unchecked Sendable {
     /// showed none: the field's range does not describe it (the app draws its selection
     /// itself), so the write pastes over the selection as the app still has it, in one paste.
     case copied
+    /// Copy returned text, but neither AX nor its clipboard representation identifies the
+    /// selection as characters. Replacement is a paste; "after" needs a chosen destination.
+    case untyped
+    /// A grid selection; nil when only the copied HTML exposes its tabular nature. There is
+    /// no text caret to follow, and inserting "after" cells has no portable meaning.
+    case cells(CellSelection?)
   }
 
   let pid: pid_t
@@ -34,13 +40,13 @@ enum SummonSelection {
   /// Read through Accessibility, or given with the summon; nil when there was none.
   case field(String?)
   /// Copied by a simulated ⌘C where Accessibility showed none (``CopySelection``).
-  case copied(String)
+  case copied(CopySelection.Content)
 
   var text: String? {
     switch self {
     case .unread: nil
     case .field(let text): text
-    case .copied(let text): text
+    case .copied(let content): content.text
     }
   }
 }
@@ -94,16 +100,29 @@ final class WriteTargets {
     switch selection {
     case .unread: break
     case .field(let text): target.selectedText = text
-    case .copied(let text):
-      target.selectedText = text
-      target.selection = .copied
+    case .copied(let content):
+      target.selectedText = content.text
+      if case .cells = target.selection { break }
+      if content.containsCells {
+        target.selection = .cells(nil)
+      } else {
+        let textSurface = SelectionSurface(target.element)
+        target.selection = content.hasHTML || textSurface.nativeText ? .copied : .untyped
+      }
     }
     let id = UUID().uuidString
     purge()
     entries.append(Entry(id: id, target: target, recordedAt: .now))
     if entries.count > Self.capacity { entries.removeFirst(entries.count - Self.capacity) }
     if read.writable, animatesTyping { geometry.arm(app) }
-    return ShortcutCommandEvent.Target(id: id, app: name, writable: read.writable)
+    let kind: ShortcutCommandEvent.Target.SelectionKind =
+      switch target.selection {
+      case .cells: .cells
+      case .untyped: .unknown
+      case .field, .copied: .text
+      }
+    return ShortcutCommandEvent.Target(
+      id: id, app: name, writable: read.writable, selectionKind: kind)
   }
 
   /// The target recorded under `id`, unless it expired.
@@ -189,11 +208,17 @@ nonisolated struct WriteTargetReader: Sendable {
       guard let focused, AXUIElementGetPid(focused, &pid) == .success else { return nil }
       AXUIElementSetMessagingTimeout(focused, timeout)
       guard try !AXField.isSecure(focused) else { return nil }
-      let range = try AXField.selectedRange(of: focused)
+      let surface = SelectionSurface(focused)
+      // An unadvertised range is not a caret contract. Opaque editors keep their own selection.
+      let range = surface.advertisesTextRange ? try AXField.selectedRange(of: focused) : nil
       let text: String? = readsText ? try AXField.copy(focused, kAXSelectedTextAttribute) : nil
+      let table = surface.selectedCellContainer()
+      let cells = table.flatMap(CellSelection.init)
       let target = WriteTarget(
-        pid: pid, element: focused, selection: .field(range: range), selectedText: text)
-      return Read(target: target, writable: AXWritability.writable(focused))
+        pid: pid, element: focused,
+        selection: table == nil ? .field(range: range) : .cells(cells), selectedText: text)
+      return Read(
+        target: target, writable: (table == nil || cells != nil) && AXWritability.writable(focused))
     } catch {
       return nil
     }

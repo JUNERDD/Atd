@@ -21,12 +21,20 @@ import Carbon.HIToolbox
 /// unmarked), and an app that copies something when nothing is selected hands that over as the
 /// selection (VS Code copies the current line, `editor.emptySelectionClipboard`).
 enum CopySelection {
+  struct Content {
+    let text: String
+    /// The public HTML clipboard representation describes a table. This identifies even a
+    /// single cell from an opaque spreadsheet canvas, independently of vendor clipboard types.
+    let containsCells: Bool
+    /// Plain text alone cannot distinguish a character selection from a single grid cell.
+    let hasHTML: Bool
+  }
   private static let pollInterval: Duration = .milliseconds(10)
 
   /// The text a ⌘C into `pid`, the app the read just found `focus` in, copies; nil when
   /// ``CopyFallback`` rules the copy out or it copied no text.
   static func copy(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter) async
-    -> String?
+    -> Content?
   {
     guard allowed(into: pid, focus: focus),
       await modifiersReleased(within: CopyFallback.releaseLimit),
@@ -52,8 +60,12 @@ enum CopySelection {
     let text = CopyFallback.copiedText(
       string: pasteboard.string(forType: .string),
       hasFiles: pasteboard.types?.contains(.fileURL) ?? false)
+    let html = text == nil ? nil : pasteboard.string(forType: .html)
+    let containsCells =
+      html?.range(of: "<table\\b", options: [.regularExpression, .caseInsensitive])
+      != nil
     saved.restore(to: pasteboard)
-    return text
+    return text.map { Content(text: $0, containsCells: containsCells, hasHTML: html != nil) }
   }
 
   private static func allowed(into pid: pid_t, focus: SelectionFocus) -> Bool {

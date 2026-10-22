@@ -505,6 +505,7 @@
       "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
       "targetChanged": "The field in {{app}} changed, so the answer was copied instead.",
       "noSelection": "Nothing was selected in {{app}}, so the answer was copied instead.",
+      "unsupportedSelection": "Choose where to insert the answer in {{app}}; it was copied to the clipboard.",
       "secureInput": "Secure input is on in {{app}}, so the answer was copied instead.",
       "failed": "Couldn't write into {{app}}, so the answer was copied instead.",
       "interrupted": "Writing into {{app}} stopped partway, so the full answer was copied."
@@ -514,6 +515,7 @@
       "targetGone": "The field in {{app}} is no longer available, so the answer wasn't written.",
       "targetChanged": "The field in {{app}} changed, so the answer wasn't written.",
       "noSelection": "Nothing was selected in {{app}}, so the answer wasn't written.",
+      "unsupportedSelection": "Choose where to insert the answer in {{app}}.",
       "secureInput": "{{app}} has secure input on, so the answer wasn't written.",
       "failed": "The answer couldn't be written into {{app}}."
     },

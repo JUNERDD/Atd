@@ -101,11 +101,13 @@ public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
     public let id: String
     public let app: String
     public let writable: Bool
+    public let selectionKind: SelectionKind?
 
-    public init(id: String, app: String, writable: Bool) {
+    public init(id: String, app: String, writable: Bool, selectionKind: SelectionKind?) {
       self.id = id
       self.app = app
       self.writable = writable
+      self.selectionKind = selectionKind
     }
 
     public init(from decoder: any Decoder) throws {
@@ -113,12 +115,30 @@ public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
       id = try container.string(.id, minLength: 1, maxLength: 128)
       app = try container.string(.app, minLength: 1, maxLength: 255)
       writable = try container.boolean(.writable)
+      selectionKind = try container.optional(.selectionKind) {
+        try container.value($0, SelectionKind.self)
+      }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(id, forKey: .id)
+      try container.encode(app, forKey: .app)
+      try container.encode(writable, forKey: .writable)
+      try container.encodeIfPresent(selectionKind, forKey: .selectionKind)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case id
       case app
       case writable
+      case selectionKind
+    }
+
+    public enum SelectionKind: String, Codable, Equatable, Sendable {
+      case text
+      case cells
+      case unknown
     }
   }
 

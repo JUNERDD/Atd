@@ -5,7 +5,7 @@ import Carbon.HIToolbox
 /// The selection toolbar over text selected in other apps (grill decisions Q4–Q8).
 ///
 /// While it is on (the page's `toolbar.set`) and the app is trusted for Accessibility, a global
-/// monitor watches mouse-ups in other apps. One that may have ended a selection (a drag, a
+/// monitor watches mouse-ups in other apps. One that may have ended a text selection (a drag, a
 /// double or triple click, a shift-click: ``SelectionGesture``) and that the activation admits
 /// (``SelectionActivation``: always, the key combination held at the press or the release, or
 /// while the `toggle` mode listens, ``SelectionToolbarListening``) is checked — unless
@@ -15,6 +15,7 @@ import Carbon.HIToolbox
 /// shift-click is asked at once and, finding nothing, once more after ``debounce`` (web content
 /// updates its selection late); a double click waits ``debounce`` first, so one that becomes a
 /// triple asks once.
+/// A plain click is checked only for a cell selection; it never shows over a text caret.
 ///
 /// While the `toggle` mode listens, ``SelectionToolbarHUD`` says so near the bottom of the
 /// screen (unless the page turned it off).
@@ -167,6 +168,9 @@ final class SelectionToolbarController {
   // MARK: Monitoring
 
   private func install() {
+    if let app = NSWorkspace.shared.frontmostApplication {
+      SelectionPresence.prepare(pid: app.processIdentifier, bundleURL: app.bundleURL)
+    }
     monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) {
       [weak self] event in
       MainActor.assumeIsolated { self?.handle(event) }
@@ -226,7 +230,9 @@ final class SelectionToolbarController {
         heldAtPress: heldAtPress, heldAtRelease: held(in: event), listening: listening.isOn)
       pressedAt = nil
       heldAtPress = false
-      if selected, admitted == true { schedule(at: pointer, immediately: event.clickCount < 2) }
+      if admitted == true {
+        schedule(at: pointer, immediately: event.clickCount < 2, cellsOnly: !selected)
+      }
     default:
       dismiss()
     }
@@ -237,15 +243,19 @@ final class SelectionToolbarController {
     settings?.activation.isHeld(in: event.modifierFlags) ?? false
   }
 
-  private func schedule(at pointer: CGPoint, immediately: Bool) {
+  private func schedule(at pointer: CGPoint, immediately: Bool, cellsOnly: Bool) {
     pending?.cancel()
     watchInterruptions()
     let token = generation
     pending = Task { [weak self] in
-      if immediately, await self?.check(pointer: pointer, token: token) == true { return }
+      if immediately,
+        await self?.check(pointer: pointer, token: token, cellsOnly: cellsOnly) == true
+      {
+        return
+      }
       try? await Task.sleep(for: Self.debounce)
       guard !Task.isCancelled else { return }
-      let shown = await self?.check(pointer: pointer, token: token) == true
+      let shown = await self?.check(pointer: pointer, token: token, cellsOnly: cellsOnly) == true
       if !shown, token == self?.generation { self?.stopWatchingInterruptions() }
     }
   }
@@ -266,7 +276,7 @@ final class SelectionToolbarController {
   /// The rules first, then Accessibility, then the toolbar if nothing newer happened meanwhile.
   /// True when the toolbar showed.
   @discardableResult
-  private func check(pointer: CGPoint, token: Int) async -> Bool {
+  private func check(pointer: CGPoint, token: Int, cellsOnly: Bool) async -> Bool {
     guard token == generation, let settings,
       let app = NSWorkspace.shared.frontmostApplication
     else { return false }
@@ -274,6 +284,7 @@ final class SelectionToolbarController {
     let probe = await SelectionPresence.check(pid: app.processIdentifier)
     guard token == generation, monitor != nil,
       NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+      !cellsOnly || probe == .cells,
       SelectionToolbarRules.shows(probe)
     else { return false }
     var bounds: CGRect?

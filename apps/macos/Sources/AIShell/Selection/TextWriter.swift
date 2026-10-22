@@ -23,6 +23,14 @@ enum TextWriter {
     _ params: TextWriteParams, to target: WriteTarget?, arbiter: DeviceArbiter,
     hidePanel: () -> Void
   ) async -> TextWriteResult {
+    // Do this before activation or clipboard ownership. The renderer offers the result card;
+    // a direct bridge caller must not accidentally move into the next cell with Right Arrow.
+    if params.mode == .afterSelection {
+      switch target?.selection {
+      case .cells, .untyped: return refuse(.unsupportedSelection)
+      default: break
+      }
+    }
     guard
       let claim = try? await arbiter.claim(
         [.globalInput, .clipboard], owner: .user(.textWrite),
@@ -66,7 +74,7 @@ enum TextWriter {
     guard let target else { return false }
     switch target.selection {
     // A copy is recorded only when it copied text.
-    case .copied: return true
+    case .copied, .untyped, .cells: return true
     case .field(let range):
       if let range, range.length > 0 { return true }
       return !(target.selectedText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -129,6 +137,10 @@ nonisolated struct FieldRestore: Sendable {
     // Also the liveness check: a vanished field throws `invalidElement`.
     if try AXField.isSecure(element) { return .refused(.secureInput) }
     try AXField.focus(element, in: app)
+    if case .cells(let cells) = target.selection {
+      if let cells, !cells.isCurrent() { return .refused(.targetChanged) }
+      return .ready(collapseWithArrow: false)
+    }
     guard case .field(let recorded) = target.selection else {
       return .ready(collapseWithArrow: mode == .afterSelection)
     }

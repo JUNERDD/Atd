@@ -26,12 +26,20 @@ const WriteTargetId = Type.String({ minLength: 1, maxLength: 128 });
  * element cannot take text (a read-only text view, web content outside an editable region, an
  * element that is not text at all), so nothing is written there; it is true otherwise, including
  * when the shell cannot tell, and then the write itself says whether the text went in.
+ * `selectionKind` distinguishes a table region from text when the app's selection or copied
+ * HTML exposes it. Cell replacement uses one paste; inserting after cells shows the result
+ * card so the user can choose a destination. Unknown copied selections do the same. Absent
+ * on older hosts, which treated all as text.
  */
 export const NativeWriteTargetSchema = Type.Object(
   {
     id: Type.String({ minLength: 1, maxLength: 128 }),
     app: Type.String({ minLength: 1, maxLength: 255 }),
     writable: Type.Boolean(),
+    /** Cells and unknown selections support replacement; "after" needs a destination. */
+    selectionKind: Type.Optional(
+      Type.Union([Type.Literal('text'), Type.Literal('cells'), Type.Literal('unknown')]),
+    ),
   },
   { additionalProperties: false },
 );
@@ -74,7 +82,9 @@ export const NativeTextCalls = {
    * changes nothing: `notTrusted` (no Accessibility), `targetGone` (unknown or expired target, or
    * the app quit), `targetChanged` (the field or its selection can no longer be restored),
    * `noSelection` (a selection action on a target that recorded none), `secureInput` (a password
-   * field or secure input is on), `failed` (anything else). `interrupted` is not a refusal: the
+   * field or secure input is on), `unsupportedSelection` (inserting after a cell region has no
+   * text insertion point), `failed` (anything else). Cell regions use one paste and never a
+   * Right Arrow to collapse the selection. `interrupted` is not a refusal: the
    * user pressed a key, clicked, or switched apps while the text was arriving, so only its
    * beginning was written.
    */
@@ -106,6 +116,7 @@ export const NativeTextCalls = {
             Type.Literal('secureInput'),
             Type.Literal('failed'),
             Type.Literal('interrupted'),
+            Type.Literal('unsupportedSelection'),
           ]),
         },
         { additionalProperties: false },
