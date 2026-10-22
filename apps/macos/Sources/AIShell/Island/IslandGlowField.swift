@@ -39,11 +39,7 @@ import SwiftUI
 /// The fixed outer ring covers the capsule while its internal shapes and color regions flow.
 struct IslandGlowField: View {
   let state: IslandGlowFieldState
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorScheme) private var colorScheme
-
-  // A fresh loading HUD starts visible; the window owns its entrance, so the light never trails it.
-  private var revealed: Bool { state.active }
 
   var body: some View {
     GeometryReader { geometry in
@@ -68,14 +64,6 @@ struct IslandGlowField: View {
       }
     }
     .clipped()
-    .animation(
-      .easeInOut(
-        duration: reduceMotion
-          ? IslandGlowStyle.reducedMotionDuration
-          : (revealed ? IslandGlowStyle.entryDuration : IslandGlowStyle.exitDuration))
-    ) {
-      $0.opacity(revealed ? 1 : 0)
-    }
     .allowsHitTesting(false)
     .accessibilityHidden(true)
   }

@@ -11,8 +11,17 @@ struct IslandLoadingGlow: View {
     let rest = shape.frame
     let kind = model.layers.last?.content.kind
     let loading = kind == .working || kind == .writing
+    let fadeDuration =
+      model.reduceMotion
+      ? IslandGlowStyle.reducedMotionDuration
+      : (loading ? IslandGlowStyle.entryDuration : IslandGlowStyle.exitDuration)
     IslandWorkingGlow(active: loading)
       .frame(width: rest.width, height: rest.height)
+      .animation(.easeInOut(duration: fadeDuration)) {
+        // Keep the fade with the island's morph. The nested AppKit host can resize and
+        // reparent as a capsule opens into an answer card without resetting this opacity.
+        $0.opacity(loading ? 1 : 0)
+      }
       .animation(.easeInOut(duration: IslandGlowStyle.hueDuration)) {
         // A cyan shift marks insertion without interrupting the same flowing field.
         $0.hueRotation(.degrees(kind == .writing || kind == .done ? IslandGlowStyle.writingHue : 0))
