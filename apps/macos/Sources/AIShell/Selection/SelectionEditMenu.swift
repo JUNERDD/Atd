@@ -4,8 +4,20 @@ import Synchronization
 
 /// Standard editing commands, located by their shortcuts rather than app names or translated
 /// labels. Availability is only a hint for an opaque editor: callers must first rule out a
-/// native empty text selection and non-editor controls. No text or clipboard data is read.
+/// native empty text selection and non-editor controls. Discovery reads no text or clipboard;
+/// only an explicit selection capture may invoke the Copy command.
 nonisolated struct SelectionEditMenu {
+  struct CopyCommand: @unchecked Sendable {
+    fileprivate let item: AXUIElement
+
+    /// Invoke the command without keyboard events, so held shortcut modifiers cannot alter it.
+    /// A timeout may still have dispatched the action; do not post a second copy in that case.
+    func perform() -> Bool {
+      let result = AXUIElementPerformAction(item, kAXPressAction as CFString)
+      return result == .success || result == .cannotComplete
+    }
+  }
+
   private struct Menu: @unchecked Sendable {
     let pid: pid_t
     // AX handles are immutable and support reads from any thread. Only handles are cached;
@@ -40,14 +52,31 @@ nonisolated struct SelectionEditMenu {
     enabled("x") == true || enabled("v") == true
   }
 
-  private func enabled(_ key: String) -> Bool? {
+  private func item(_ key: String) -> AXUIElement? {
     let cached = Self.menu.withLock { $0 }
     let items =
       if let cached, cached.pid == pid, .now < cached.expires { cached.items } else { findItems() }
-    guard let item = items?[key] else { return nil }
+    return items?[key]
+  }
+
+  private func enabled(_ key: String) -> Bool? {
+    guard let item = item(key) else { return nil }
     let enabled = attribute(item, kAXEnabledAttribute) as? Bool
     if enabled == nil { Self.menu.withLock { if $0?.pid == pid { $0 = nil } } }
     return enabled
+  }
+
+  /// Resolve off the main thread before claiming input. The caller must recheck the foreground
+  /// app before invoking it, and own the clipboard snapshot for the entire copy transaction.
+  static func copyCommand(pid: pid_t) -> CopyCommand? {
+    let menu = SelectionEditMenu(pid: pid, limit: .milliseconds(200))
+    guard let item = menu.item("c"), menu.attribute(item, kAXEnabledAttribute) as? Bool == true
+    else { return nil }
+    var actions: CFArray?
+    guard AXUIElementCopyActionNames(item, &actions) == .success,
+      (actions as? [String])?.contains(kAXPressAction) == true
+    else { return nil }
+    return CopyCommand(item: item)
   }
 
   /// Locates the three standard Edit commands once. A selection check then costs a single

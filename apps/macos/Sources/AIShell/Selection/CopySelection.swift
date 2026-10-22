@@ -2,13 +2,15 @@ import AICore
 import AppKit
 import Carbon.HIToolbox
 
-/// Reads the selection by a simulated ⌘C where the summon's Accessibility read
+/// Reads the selection by Copy where the summon's Accessibility read
 /// (``SelectionReader``) found none it could tell from: apps that draw their own selection, such
 /// as VS Code's editor outside its screen-reader mode, show none to Accessibility but copy it.
 /// ``CopyFallback`` holds the rules.
 ///
-/// The copy waits for the summoning shortcut's modifiers to come up, so the app receives ⌘C
-/// rather than, say, ⌘⌥⇧C, and posts it with only ⌘ (``KeyPress``). The general pasteboard is
+/// Prefer the standard Copy menu action: it works while a command shortcut is still held, so
+/// the hold can open its options with the selection intact. Without an actionable menu item,
+/// wait for the shortcut's modifiers to come up before posting ⌘C (``KeyPress``), so an app that
+/// reads physical key state does not receive, say, ⌘⌥⇧C. The general pasteboard is
 /// snapshotted first and put back exactly as it was right after the copy; only a copy that
 /// changed the pasteboard counts, so the user's own clipboard is never taken for the selection.
 /// A copy that lands after ``CopyFallback/copyLimit`` still gets the pasteboard put back.
@@ -31,15 +33,18 @@ enum CopySelection {
   }
   private static let pollInterval: Duration = .milliseconds(10)
 
-  /// The text a ⌘C into `pid`, the app the read just found `focus` in, copies; nil when
+  /// The text Copy in `pid`, the app the read just found `focus` in, copies; nil when
   /// ``CopyFallback`` rules the copy out or it copied no text.
   static func copy(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter) async
     -> Content?
   {
+    guard allowed(into: pid, focus: focus) else { return nil }
+    let command = await Task.detached { SelectionEditMenu.copyCommand(pid: pid) }.value
+    if command == nil {
+      guard await modifiersReleased(within: CopyFallback.releaseLimit) else { return nil }
+    }
+    // The user may have switched apps, or Atd taken the keyboard, during menu lookup or release.
     guard allowed(into: pid, focus: focus),
-      await modifiersReleased(within: CopyFallback.releaseLimit),
-      // The user may have switched apps, or Atd taken the keyboard, while the keys came up.
-      allowed(into: pid, focus: focus),
       let input = try? arbiter.tryClaim([.globalInput], owner: .user(.copySelection))
     else { return nil }
     defer { input.release() }
@@ -48,7 +53,15 @@ enum CopySelection {
     let pasteboard = NSPasteboard.general
     let saved = PasteboardSnapshot(of: pasteboard)
     let before = pasteboard.changeCount
-    KeyPress.post(KeyPress.copyKeyCode(), flags: .maskCommand)
+    if command?.perform() != true {
+      guard await modifiersReleased(within: CopyFallback.releaseLimit),
+        allowed(into: pid, focus: focus)
+      else {
+        clipboard.release()
+        return nil
+      }
+      KeyPress.post(KeyPress.copyKeyCode(), flags: .maskCommand)
+    }
     guard await copyLanded(on: pasteboard, since: before, within: CopyFallback.copyLimit) else {
       Task {
         await restoreLateCopy(saved, to: pasteboard, since: before)
