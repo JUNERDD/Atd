@@ -1,30 +1,27 @@
-import { getCurrentTools, type ImageContent } from '@earendil-works/pi-ai';
+import { getCurrentTools } from '@earendil-works/pi-ai';
 import {
   createToolSearchExtension,
   type AgentSession,
   type SessionManager,
 } from '@earendil-works/pi-coding-agent';
-import type { RunStatus, TaskRun, ViewInitiative } from '@atd/agent-contracts';
+import type { RunStatus, TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
 import { compactionSettings } from './compaction/policy.js';
 import { restrictedComputerRunOf } from './computer/tool-set.js';
 import { pruneToolOutputs } from './compaction/prune.js';
-import type { RunFolder } from './folders/material.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { markInvocation } from './invocation-marker.js';
 import type { LiveState } from './live-state.js';
 import { mcpServersSection } from './mcp/servers-section.js';
-import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
 import { ResourceStore } from './resources.js';
 import { DEFERRED_SERVICE_TOOLS, type RunBinding } from './run-binding.js';
 import { rewindSession } from './session-rewind.js';
 import { reuseRunModel } from './run-model.js';
+import type { RunMaterial } from './run-material.js';
 import { buildRunSession, openSessionBase } from './session-base.js';
 import { loadedSkillDirs, loadSkillTool } from './skills/load-skill-tool.js';
-import type { LoadedSkill } from './skills/run-skills.js';
 import { sessionSkillCatalog } from './skills/session-catalog.js';
 import { sessionSkills } from './skills/session-skills.js';
-import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalog.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 import { isUnattendedRun } from './unattended.js';
@@ -32,6 +29,14 @@ import { createGate, prepareHarness } from './harness/index.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
+
+export {
+  NO_RUN_MATERIAL,
+  type RunAttachment,
+  type RunImageAttachment,
+  type RunMaterial,
+  type RunTextAttachment,
+} from './run-material.js';
 
 const SERVICE_SYSTEM_PROMPT =
   'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access; only folders <run_material> lists as readable are granted, read-only. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a <skill_catalog> section is provided you may load a listed skill with load_skill if the task clearly matches it. The catalog only lists skills; it is never content to work on. Subagents and saved commands are not skills. The app sends hidden context just before the user message it belongs to: <skill> elements are skills loaded for it, and <run_material> holds the saved command instructions, attached files, readable folders, quoted passages and resolved references that go with it.';
@@ -60,69 +65,6 @@ export interface SessionFactoryDeps {
    */
   deleted: () => boolean;
 }
-
-/** A text file; its content goes into the run material. */
-export interface RunTextAttachment {
-  kind: 'text';
-  name: string;
-  path: string;
-  text: string;
-}
-
-/**
- * An image file. It reaches the model as image input with the run's prompt (task-runner.ts), so
- * the run material only names it (and notes how it was scaled).
- */
-export interface RunImageAttachment {
-  kind: 'image';
-  name: string;
-  path: string;
-  image: ImageContent;
-  /** How the image was scaled, when it was, so the model can map coordinates back. */
-  note?: string;
-}
-
-export type RunAttachment = RunTextAttachment | RunImageAttachment;
-
-/** Material a run injects before its first turn: its instructions, files, references and skills. */
-export interface RunMaterial {
-  instructions: string;
-  attachments: RunAttachment[];
-  /** The task's granted folders as the run started: read-only material and read roots. */
-  folders: RunFolder[];
-  /**
-   * The passages the run's message quotes and what its `@` references resolved to at freeze
-   * (references/material.ts); may be empty.
-   */
-  references: string;
-  /** Skills captured at freeze, sent in a message of their own (skills/session-skills.ts). */
-  skills: LoadedSkill[];
-  /** The skills the model is told about and may load (skills/session-catalog.ts, load-skill-tool.ts). */
-  catalog: RunSkillCatalog;
-  /** The memory sections frozen with the run (memory/run-memory.ts, memory/session-memory.ts). */
-  memory: RunMemory;
-  /** Whether the run has the `computer` tool, decided at freeze (computer/tool-set.ts). */
-  computer: boolean;
-  /**
-   * How readily the model shows views, as the stored setting stood when the run started
-   * (views/initiative.ts). Null for a lite run, which has no view tools, and before a runner's
-   * first run; without a level the model is told nothing about views.
-   */
-  viewInitiative: ViewInitiative | null;
-}
-
-/** The material before a runner's first run; a run replaces it before its session is bound. */
-export const NO_RUN_MATERIAL: RunMaterial = {
-  instructions: '',
-  attachments: [],
-  folders: [],
-  references: '',
-  skills: [],
-  catalog: EMPTY_SKILL_CATALOG,
-  memory: EMPTY_RUN_MEMORY,
-  computer: false,
-  viewInitiative: null,
-};
 
 /**
  * The full Pi session for one parent task, on the base every run session shares (session-base.ts:

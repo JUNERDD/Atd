@@ -27,15 +27,10 @@ import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
 import type { RunFolders } from './folders/material.js';
 import { createReviewer } from './harness/auto-review.js';
-import {
-  NO_RUN_MATERIAL,
-  type RunAttachment,
-  type RunMaterial,
-  type SessionFactoryDeps,
-} from './pi-session.js';
+import type { SessionFactoryDeps } from './pi-session.js';
+import { NO_RUN_MATERIAL, type RunAttachment, type RunMaterial } from './run-material.js';
 import { runPromptOptions, runPromptText } from './run-prompt.js';
 import { releaseRunSelections } from './run-freeze.js';
-import { openRunSession, prepareRun } from './run-prepare.js';
 import type { LiveState } from './live-state.js';
 import { lastAssistant } from './task-view.js';
 import {
@@ -205,8 +200,14 @@ export class TaskRunner {
       path.join(this.ctx.paths.auditDir, `${run.id}.jsonl`),
       this.ctx.log,
     );
-    await this.setStatus(run.id, 'running', '');
     try {
+      await this.setStatus(run.id, 'running', '');
+      // Load the session and tool graph only for an executing run; failures settle this run below.
+      const { openRunSession, prepareRun } = await import('./run-prepare.js');
+      if (this.isStopping(run.id)) {
+        await this.setStatus(run.id, 'stopped', '');
+        return;
+      }
       const prepared = await prepareRun(this.session, run, attachments, folders);
       if (prepared.blocked !== null) {
         await this.setStatus(run.id, 'failed', prepared.blocked);

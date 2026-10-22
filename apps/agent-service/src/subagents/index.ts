@@ -2,7 +2,20 @@
  * T5 subagent authority barrel. TaskRunner and pi-session import from this
  * module only; all delegation logic lives in `subagents/*` (each ≤350).
  */
-export { prepareSubagentsParent } from './delegator.js';
+import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import type { SessionFactoryDeps } from '../pi-session.js';
+import type { RunBinding } from '../run-binding.js';
+import type { ChildModelRuntime } from './registry.js';
+
+/** Lifecycle and transcript readers need no delegator until a parent session opens. */
+export async function prepareSubagentsParent(
+  deps: SessionFactoryDeps,
+  binding: Pick<RunBinding, 'agents' | 'mcp'>,
+  childRuntime: ChildModelRuntime,
+): Promise<ExtensionFactory> {
+  const { prepareSubagentsParent: prepare } = await import('./delegator.js');
+  return prepare(deps, binding, childRuntime);
+}
 export {
   abortSubagentsForTask,
   disposeSubagentsForTask,
