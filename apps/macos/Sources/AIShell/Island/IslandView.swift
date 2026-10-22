@@ -22,6 +22,7 @@ struct IslandView: View {
     let shape = model.shape
     let outline = MiniPanelGlassOutline(shape: shape.glass)
     ZStack(alignment: .topLeading) {
+      IslandLoadingGlow(model: model)
       ForEach(model.layers) { layer in
         IslandLayerView(model: model, layer: layer)
       }
