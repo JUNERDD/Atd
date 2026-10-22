@@ -25,6 +25,8 @@ import {
 } from './features/agent/transcript/subagent-context';
 import { PanelHeader } from './features/agent/panel-header';
 import { SideChatLayer } from './features/agent/side-chat/side-chat-layer';
+import { useNewChatWait } from './features/agent/waiting-glow/use-new-chat-wait';
+import { WaitingGlow } from './features/agent/waiting-glow/waiting-glow';
 import { SideChatContext, sideChatItems } from './features/agent/side-chat/side-chats';
 import { TaskHistory } from './features/agent/task-history';
 import { AppEntries } from './features/apps/app-entries';
@@ -140,6 +142,15 @@ export function App() {
   const submitDraft = () => submit();
   const openSettingsWindow = () => void openSettings();
   const toggleView = (next: 'history') => setView(view === next ? 'new' : next);
+  // The light behind the composer marks a new chat's first reply; a drill-in or a side chat over
+  // the conversation is a different conversation's view.
+  const waitPhase = useNewChatWait({
+    sending: pending,
+    view,
+    taskId,
+    detail: current.detail,
+    covered: child.childKey !== null || side.view !== null,
+  });
   const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
@@ -163,6 +174,7 @@ export function App() {
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
+                {(view === 'new' || view === 'task') && <WaitingGlow phase={waitPhase} />}
                 <ServiceBanner onOpenSettings={openSettingsWindow} />
                 {view === 'new' && (
                   <ScrollArea
