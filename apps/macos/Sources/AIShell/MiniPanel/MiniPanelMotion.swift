@@ -16,6 +16,13 @@ enum MiniPanelMotion {
 
   /// How long `spring` takes to come to rest, as SwiftUI runs it.
   static func settling(_ spring: MiniPanelSpring) -> Double { spring.spring.settlingDuration }
+
+  /// Applied outside a surface's glass container so its material fades with its content.
+  static func popoverOpacity(_ presented: Bool) -> Animation {
+    presented
+      ? MiniPanelChoreography.contentOpacity.animation
+      : .easeIn(duration: MiniPanelChoreography.labelText.exit)
+  }
 }
 
 nonisolated extension MiniPanelSpring {

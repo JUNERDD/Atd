@@ -231,11 +231,12 @@ extension MiniPanelController {
 
   /// Takes `control`'s label, if it is out, for the card that grows out of it: the card takes the
   /// bubble's place in the same frame and grows around it while the label's text fades out over
-  /// it; then the bubble goes at once, held inside the card by then, so its glass, merged with the
-  /// card's, leaves nothing to see. Otherwise the label goes as a press takes it. Returns where
+  /// it. The card takes sole ownership of the glass immediately, keeping the handoff opaque
+  /// without overlapping rims. Otherwise the label goes as a press takes it. Returns where
   /// the bubble rests, in the glass container.
   func takeLabelBubble(of control: MiniPanelControl) -> CGRect? {
-    guard model.label.drawn, model.label.fade == 0, model.label.rest == labelShape(control)?.rest
+    guard model.label.drawn, !model.label.bubbleTaken, model.label.fade == 0,
+      model.label.rest == labelShape(control)?.rest
     else {
       dropLabel()
       return nil
@@ -244,6 +245,7 @@ extension MiniPanelController {
     labelToken += 1
     let token = labelToken
     let text = MiniPanelChoreography.labelText
+    model.label.bubbleTaken = true
     conceal(.labelText, text)
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(text.exit))

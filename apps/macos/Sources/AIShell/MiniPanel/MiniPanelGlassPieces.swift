@@ -23,6 +23,11 @@ struct MiniPanelCard: View {
       .animation(nil) { $0.offset(x: rows.minX, y: rows.minY) }
       .frame(width: lane.width, height: lane.height, alignment: .topLeading)
       .glassSurface(in: outline, animation: card.animation)
+      .backport.glassEffectContainer(spacing: MiniPanelView.glassSpacing)
+      .animation(
+        card.isLabelHandoff && model.flyoutOpen
+          ? nil : MiniPanelMotion.popoverOpacity(model.flyoutOpen)
+      ) { $0.opacity(model.flyoutOpen ? 1 : 0) }
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(model.flyoutOpen)
       .accessibilityHidden(!model.flyoutOpen)
@@ -49,31 +54,43 @@ struct MiniPanelLabelView: View {
     let swap = MiniPanelChoreography.labelGlide.reduced(model.reduceMotion).animation
     let rest = label.rest.offsetBy(dx: -lane.minX, dy: -lane.minY)
     let outline = MiniPanelLabelOutline(fade: label.fade, rest: rest, edge: model.edge)
+    let bubble = MiniPanelLabelOutline(
+      fade: label.bubbleTaken ? 1 : label.fade, rest: rest, edge: model.edge)
+    let presented = label.drawn && label.fade == 0
     let follow = MiniPanelLabelFollowEffect(
       fade: label.fade, rest: rest, edge: model.edge, scales: !model.reduceMotion)
-    ZStack {
-      // Preserve each name's own layout during the cross-fade. Text.contentTransition
-      // reuses the new width for the old glyphs, shifting/clipping a long name on a short one.
-      Text(verbatim: label.text)
-        .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
-        .lineLimit(1)
-        .truncationMode(.tail)
-        .foregroundStyle(.primary)
-        .padding(.horizontal, MiniPanelMetrics.labelPadding)
-        .frame(width: rest.width, height: rest.height)
-        .id(label.text)
-        .transition(.opacity)
-    }
-    .animation(label.drawn ? swap : nil, value: label.text)
-    // A fixed layout center is essential: changing this frame to the new text width would
-    // move the outgoing text's origin before its geometry animation has caught up.
-    .frame(width: lane.width, height: lane.height)
-    .animation(label.animation) { $0.modifier(follow) }
-    .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
-    .glassSurface(in: outline, animation: label.animation)
-    .offset(x: lane.minX, y: lane.minY)
-    .allowsHitTesting(false)
-    .accessibilityHidden(true)
+    Color.clear
+      .frame(width: lane.width, height: lane.height)
+      .glassSurface(in: bubble, animation: label.bubbleTaken ? nil : label.animation)
+      .backport.glassEffectContainer(spacing: MiniPanelView.glassSpacing)
+      .overlay(alignment: .topLeading) {
+        ZStack {
+          // Preserve each name's own layout during the cross-fade. Text.contentTransition
+          // reuses the new width for the old glyphs, shifting/clipping a long name on a short one.
+          Text(verbatim: label.text)
+            .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, MiniPanelMetrics.labelPadding)
+            .frame(width: rest.width, height: rest.height)
+            .id(label.text)
+            .transition(.opacity)
+        }
+        .animation(label.drawn ? swap : nil, value: label.text)
+        // A fixed layout center is essential: changing this frame to the new text width would
+        // move the outgoing text's origin before its geometry animation has caught up.
+        .frame(width: lane.width, height: lane.height)
+        .animation(label.animation) { $0.modifier(follow) }
+        .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
+        .animation(label.animation) { $0.clipShape(AnyShape(outline)) }
+      }
+      // Scope the fade to opacity: an inherited animation also retimes the glass container,
+      // separating its material outline from the surface fill during entrance.
+      .animation(MiniPanelMotion.popoverOpacity(presented)) { $0.opacity(presented ? 1 : 0) }
+      .offset(x: lane.minX, y: lane.minY)
+      .allowsHitTesting(false)
+      .accessibilityHidden(true)
   }
 }
 

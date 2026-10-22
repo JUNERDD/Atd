@@ -146,9 +146,10 @@ extension MiniPanelController {
     flyoutToken += 1
     model.flyoutOpen = true
     let open = MiniPanelChoreography.flyoutOpen.reduced(model.reduceMotion)
-    let shape = MiniPanelCardShape(frame: local(card), animation: open.animation)
+    let shape = MiniPanelCardShape(
+      frame: local(card), animation: open.animation, isLabelHandoff: bubble != nil)
     if let bubble {
-      model.card = MiniPanelCardShape(frame: bubble)
+      model.card = MiniPanelCardShape(frame: bubble, isLabelHandoff: true)
       let token = flyoutToken
       // The card is drawn where the bubble was before it grows.
       Task { [weak self] in

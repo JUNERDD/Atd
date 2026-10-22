@@ -120,6 +120,8 @@ struct MiniPanelBodyFactors: Equatable {
 struct MiniPanelCardShape: Equatable {
   var frame = CGRect.zero
   var animation: Animation?
+  /// Takes an already visible tooltip surface, so opening must not fade it in again.
+  var isLabelHandoff = false
 }
 
 /// The hover label (hover-label-v4), in the glass container: where it rests and how far out of
@@ -134,6 +136,8 @@ struct MiniPanelLabelShape: Equatable {
   var fade = 1.0
   /// Out, or still leaving: a label for another control glides from it, never grows anew.
   var drawn = false
+  /// The command card owns the glass; only this label's departing text remains.
+  var bubbleTaken = false
   var animation: Animation?
 }
 

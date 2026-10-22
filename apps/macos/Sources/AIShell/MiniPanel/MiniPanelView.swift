@@ -2,13 +2,15 @@ import AICore
 import AppKit
 import SwiftUI
 
-/// The mini panel as drawn (spec v1 Material, surface-v2, motion-v3, perf-v1): every piece in one
-/// `GlassEffectContainer` on the same regular Liquid Glass, so the pieces read as one material
-/// and merge as they emerge from one another. Like the main panel, each piece takes the app's
+/// The mini panel as drawn (spec v1 Material, surface-v2, motion-v3, perf-v1): each surface has its
+/// own `GlassEffectContainer`, so the body's collapse cannot revive a departed label's glass as
+/// a horizontal streak. Tooltips and the card fade outside their containers, where opacity also
+/// affects glass. A label-to-card handoff transfers the opaque surface. All pieces take the app's
 /// scheme whatever the window behind it: its glass carries the panel's base fill and its content
 /// keeps the app's scheme (``View/glassSurface(in:animation:)``), so a piece looks the
-/// same from its first frame rather than turning with the backdrop as the glass adapts. The container covers only where glass can be (``MiniPanelLayout/glassRegion``), never
-/// the whole transparent canvas.
+/// same from its first frame rather than turning with the backdrop as the glass adapts. The
+/// containers cover only where glass can be (``MiniPanelLayout/glassRegion``), never the whole
+/// transparent canvas.
 ///
 /// Nothing here is written while it moves: every value carries its own animation and the views
 /// apply them as scoped animations, so SwiftUI interpolates them and each axis, factor and look
@@ -20,15 +22,12 @@ import SwiftUI
 /// never glass on glass; a state shows through shape and content alone.
 ///
 /// No piece carries a `glassEffectID`: none is ever inserted or removed, so no glass transition
-/// has anything to match; the container blends the pieces by their distance alone. macOS 15 has
-/// no container (``Backport``): each piece stands on its own material
-/// (``View/clippedGlass(in:)``), and the pieces never merge.
+/// has anything to match. macOS 15 has no container (``Backport``): each piece stands on its
+/// own material (``View/clippedGlass(in:)``).
 struct MiniPanelView: View {
   let model: MiniPanelModel
 
-  /// Below the 8 pt gaps between the capsule and the anchors the card and the label grow out of
-  /// and leave into, so they always stand apart from the capsule and never merge with it, where
-  /// their base fills would stack.
+  /// Each container holds one glass surface; kept below the 8 pt gaps between surfaces.
   static let glassSpacing = 6.0
 
   var body: some View {
@@ -56,11 +55,16 @@ struct MiniPanelView: View {
       if model.phase != .hidden {
         MiniPanelBody(model: model)
       }
-      MiniPanelCard(model: model)
-      MiniPanelLabelView(model: model)
     }
     .frame(width: region.width, height: region.height, alignment: .topLeading)
     .backport.glassEffectContainer(spacing: Self.glassSpacing)
+    .overlay(alignment: .topLeading) {
+      ZStack(alignment: .topLeading) {
+        MiniPanelCard(model: model)
+        MiniPanelLabelView(model: model)
+      }
+      .frame(width: region.width, height: region.height, alignment: .topLeading)
+    }
     .offset(x: region.minX, y: region.minY)
     .frame(width: model.canvas.width, height: model.canvas.height, alignment: .topLeading)
     // The glass draws its first frame in the app's scheme, and follows it when it changes.
