@@ -129,6 +129,13 @@ body {
   flex: 1;
   min-height: 0;
 }
+/* The welcome's frame (`WelcomePresence`), which sizes like the scroll area it holds. */
+.panel-page {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
 .panel-content-body {
   padding: 64px 16px 16px;
 }
@@ -160,19 +167,6 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  transition:
-    opacity 280ms ease-out,
-    translate 280ms ease-out;
-}
-/* A new chat's first send steps the welcome back while the message is on its way; the
-   conversation then rises into place (`.task-stage[data-entering]`). A failed send brings the
-   welcome back. */
-.welcome[data-leaving] {
-  opacity: 0;
-  translate: 0 -8px;
-  pointer-events: none;
-  transition-duration: 260ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 .welcome p {
   color: var(--muted-foreground);

@@ -25,6 +25,7 @@ import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel
 import { IconButton } from './icon-button';
 import { ComposerAttachMenu } from './composer-attach-menu';
 import { ComposerConfiguration } from './composer-configuration';
+import { useComposerDispatch, type ComposerDispatch } from './composer-dispatch';
 import { ComposerPopover } from './composer-popover';
 import { useComposerAttach } from './use-composer-attach';
 import { useOverlayFooter } from './use-overlay-footer';
@@ -73,6 +74,8 @@ export interface ComposerProps {
    * covers the task: the draft, the open popover state and the focus-return target survive.
    */
   hidden?: boolean;
+  /** A new chat's send under way: the sent draft has lifted out as a copy that flies to its turn. */
+  dispatch?: ComposerDispatch | null;
 }
 
 const NO_BLOCKS: readonly Block[] = [];
@@ -126,6 +129,7 @@ export function Composer({
   tasks,
   overlayBoundary,
   hidden = false,
+  dispatch = null,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -235,6 +239,7 @@ export function Composer({
     aria,
   });
   const { room, attach } = useComposerAttach(draft, commands);
+  const surface = useComposerDispatch(dispatch, expanded);
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
       <ComputerLiveView taskId={taskId} hidden={hidden} />
@@ -288,7 +293,7 @@ export function Composer({
             tasks={tasks}
             boundary={overlayBoundary}
           >
-            <div className="composer-surface glass-control surface-glass" data-expanded={expanded}>
+            <div className="composer-surface glass-control surface-glass" {...surface}>
               <ScrollArea
                 className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"

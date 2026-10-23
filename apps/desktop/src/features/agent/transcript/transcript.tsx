@@ -12,7 +12,7 @@ import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generativ
 import { adaptTranscript, type AdaptedTurn } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
-import { PendingTurn } from './pending-turn';
+import { pendingTurn } from './pending-turn';
 import { PromptRail } from './prompt-rail';
 import { ScrollJump } from './scroll-jump';
 import { pendingPromptRun } from './run-prompt';
@@ -21,6 +21,7 @@ import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
 import { TurnView } from './turn-view';
+import type { TurnWaitingKind } from './turn-header';
 import { useEarlierTurns } from './use-earlier-turns';
 import type { CommandOpener } from './use-offered-commands';
 import { usePromptNav } from './use-prompt-nav';
@@ -34,6 +35,8 @@ function TurnList({
   requests,
   live,
   status,
+  pending,
+  waiting,
   firstVisible,
   sentinel,
   loadEarlier,
@@ -46,6 +49,8 @@ function TurnList({
   requests: RequestIndex;
   live: boolean;
   status: ReactNode;
+  pending: TaskRun | undefined;
+  waiting: TurnWaitingKind;
   /** The window `useEarlierTurns` keeps: the first turn shown, and its load-earlier control. */
   firstVisible: number;
   sentinel: (element: HTMLElement | null) => void;
@@ -53,7 +58,8 @@ function TurnList({
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
-  const visibleTurns = turns.slice(firstVisible);
+  const listed = pending ? [...turns, pendingTurn(pending, waiting)] : turns;
+  const visibleTurns = listed.slice(firstVisible);
   return (
     <>
       {/* Scrolling near it loads the batch; the button stays for keyboard and assistive use. */}
@@ -68,15 +74,16 @@ function TurnList({
       )}
       {visibleTurns.map((turn, index) => (
         <TurnView
-          key={turn.id}
+          key={turn.user?.prompt ? `prompt:${turn.user.runId}` : turn.id}
           turn={turn}
           runs={runs}
           artifacts={artifacts}
           anchors={anchors}
           requests={requests}
           live={live}
-          last={firstVisible + index === turns.length - 1}
-          status={firstVisible + index === turns.length - 1 ? status : null}
+          last={firstVisible + index === listed.length - 1}
+          pending={Boolean(pending && firstVisible + index === turns.length)}
+          status={firstVisible + index === listed.length - 1 ? status : null}
           onAttach={onAttach}
         />
       ))}
@@ -164,7 +171,6 @@ export function Transcript({
   // The latest run before its prompt reaches the transcript: it closes the conversation as its
   // own turn, so the turns above stay settled instead of borrowing its live header and note.
   const pending = pendingPromptRun(task.runs, blocks);
-  const pendingFiles = pending ? artifacts.filter((file) => file.runId === pending.id) : [];
   const headRequest = requests[0];
   const { compact, pending: compacting } = useCompactTask();
   const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
@@ -229,8 +235,12 @@ export function Transcript({
                   artifacts={artifacts}
                   anchors={anchors}
                   requests={requestIndex}
-                  live={live && !pending}
-                  status={pending ? null : <StatusBar run={run} />}
+                  live={live}
+                  status={<StatusBar run={run} />}
+                  pending={pending}
+                  waiting={
+                    headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null
+                  }
                   firstVisible={firstVisible}
                   sentinel={sentinel}
                   loadEarlier={loadEarlier}
@@ -239,15 +249,6 @@ export function Transcript({
               </TaskViewsContext>
             </TaskTurnsContext>
           </CompactionRetryContext>
-          {pending && (
-            <PendingTurn
-              run={pending}
-              live={live}
-              waiting={headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null}
-              files={pendingFiles}
-              onAttach={onAttach}
-            />
-          )}
           {onNewTask && (
             <NewTaskHint
               key={task.id}

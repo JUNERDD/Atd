@@ -49,6 +49,7 @@ export const TurnView = memo(function TurnView({
   requests,
   live,
   last,
+  pending = false,
   copyable = true,
   modelName,
   status,
@@ -61,6 +62,8 @@ export const TurnView = memo(function TurnView({
   requests: RequestIndex;
   live: boolean;
   last: boolean;
+  /** The run is accepted but its prompt has not reached the transcript yet. */
+  pending?: boolean;
   /**
    * Offer the message and turn actions (copy, edit, regenerate, exports); a subagent's drill-in
    * view leaves them to its parent.
@@ -80,6 +83,7 @@ export const TurnView = memo(function TurnView({
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
+  const pendingFiles = pending ? artifacts.filter((file) => file.runId === run?.id) : [];
   return (
     <section className={sectionClass} data-turn-id={turn.id}>
       {turn.user && <UserMessage user={turn.user} run={run} last={last} copyable={copyable} />}
@@ -125,17 +129,20 @@ export const TurnView = memo(function TurnView({
           </div>
         );
       })}
+      {pendingFiles.length > 0 && <TaskFiles files={pendingFiles} onAttach={onAttach} />}
       {status}
-      {settled && <ComputerReviewNotices steps={turn.view} runs={runs} />}
+      {settled && !pending && <ComputerReviewNotices steps={turn.view} runs={runs} />}
       {/* What the turn saved, as cards that open each item, once it settled: the items exist once
           their calls complete, and the cards sit together instead of interrupting the stream. */}
-      {settled && <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />}
+      {settled && !pending && (
+        <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />
+      )}
       {/* Collected from every activity group and held until the turn settles, so the banners sit
           together above the actions instead of interrupting the stream; the approval only
           applies from the next message anyway. */}
-      {settled && <McpApprovalBanners steps={activitySteps(turn.items)} />}
+      {settled && !pending && <McpApprovalBanners steps={activitySteps(turn.items)} />}
       {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
-      {settled && copyable && (
+      {settled && !pending && copyable && (
         <TurnActions
           turn={turn}
           run={run}

@@ -155,6 +155,18 @@
   white-space: nowrap;
   pointer-events: none;
 }
+/* A new chat's send (`useComposerDispatch`): the sent message lifts out as a still copy
+   (`MessageFlight`), so the editor's own text hides under it at once, caret and all, and the empty
+   editor's placeholder waits until the copy has landed in its turn, fading in after it. */
+.composer-surface[data-dispatching] .composer-input-scroll {
+  opacity: 0;
+}
+.composer-input .cm-editor.cm-composer-empty::before {
+  transition: opacity 200ms ease-out;
+}
+.composer-surface[data-settling] .composer-input .cm-editor.cm-composer-empty::before {
+  opacity: 0;
+}
 /* Stopping or queued: the text stays visible but locked, like the disabled textarea. */
 .composer-input .cm-editor:has(.cm-content[contenteditable='false']) {
   cursor: not-allowed;
@@ -171,11 +183,14 @@
 .composer-surface[data-expanded='true'] .composer-input-scroll {
   max-height: 120px;
 }
-.composer-surface[data-expanded='true'] .composer-input .cm-editor,
-.composer-surface[data-expanded='true'] .composer-input .cm-editor .cm-scroller {
+:is(.composer-surface, .message-flight)[data-expanded='true'] .composer-input .cm-editor,
+:is(.composer-surface, .message-flight)[data-expanded='true']
+  .composer-input
+  .cm-editor
+  .cm-scroller {
   line-height: 24px;
 }
-.composer-surface[data-expanded='true'] .composer-input .composer-chip {
+:is(.composer-surface, .message-flight)[data-expanded='true'] .composer-input .composer-chip {
   margin-block: 2px;
 }
 
