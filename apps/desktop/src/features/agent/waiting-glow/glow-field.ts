@@ -40,16 +40,16 @@ import type { ColorScheme } from '../../../theme/color-scheme';
  */
 
 /**
- * The light's transition timing, in seconds (`waiting-glow.css` holds the same values). The exit,
- * quick fade and cyan shift are the shell's; the entry is the panel's own, a bloom out of the
- * composer, where the shell's 0.4 fade relies on the HUD window's own entrance.
+ * The light's bloom, exit and cyan-shift timing, in seconds. The exit, quick fade and cyan shift
+ * match `waiting-glow.css` and the shell. The panel's entry blooms out of the composer, with a
+ * shorter opacity fade; the shell's 0.4 fade relies on the HUD window's own entrance.
  */
 export const GLOW_TIMING = {
   /**
-   * The bloom has all but settled by this (99.4% of the spring), and the light's opacity follows
-   * the same spring over it (a `linear()` curve in CSS).
+   * The bloom has all but settled by this (99.4% of the spring). Opacity rises in 200 ms so the
+   * light is already visible while the welcome and submitted draft leave.
    */
-  entry: 1.6,
+  entry: 0.8,
   /** The fade however the wait ends: after the reply's first output, or stopped or failed. */
   exit: 0.85,
   /** Every fade under Reduce Motion. */
@@ -131,7 +131,7 @@ out vec4 fragColor;
 const float PI = 3.14159265;
 const float FIELD_SCALE = 2.2;
 // The bloom's spring, per second: critically damped, so it starts at rest and never overshoots.
-const float ENTRY_SPRING = 4.5;
+const float ENTRY_SPRING = 9.0;
 // The bloom spreads this much wider than it rises.
 const float BLOOM_ASPECT = 1.6;
 // The bloom's soft rim and the radius it settles at, in units of the box's width.

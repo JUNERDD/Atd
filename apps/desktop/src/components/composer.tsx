@@ -74,7 +74,7 @@ export interface ComposerProps {
    * covers the task: the draft, the open popover state and the focus-return target survive.
    */
   hidden?: boolean;
-  /** A new chat's send under way: the sent draft has lifted out as a copy that flies to its turn. */
+  /** A new chat's send under way: a captured draft fades while the live draft awaits the result. */
   dispatch?: ComposerDispatch | null;
 }
 

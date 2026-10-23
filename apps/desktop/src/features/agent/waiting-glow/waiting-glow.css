@@ -13,10 +13,10 @@
  *
  * The entry is the panel's own, where the HUD's window carries its light in: the light blooms out
  * of the composer. The shader draws the bloom (`glow-field.ts`) on a critically damped spring; the
- * light's opacity here follows that same spring, sampled into a `linear()` curve, so the fade and
- * the bloom are one motion. Under Reduce Motion the light is in from the start and every fade is
- * short. The shader also draws the light's top, a falloff with no visible boundary, so the band
- * needs no mask here.
+ * opacity rises over the welcome's 200 ms departure, so submission gives visible feedback before
+ * the page arrives. The bloom continues to expand for 800 ms. Under Reduce Motion the light is in
+ * from the start and every fade is short. The shader also draws the light's top, a falloff with no
+ * visible boundary, so the band needs no mask here.
  */
 .waiting-glow {
   position: absolute;
@@ -37,28 +37,9 @@
 .waiting-glow[data-writing] {
   filter: hue-rotate(-28deg);
 }
-/* 1 - (1 + 4.5t)e^(-4.5t) over 1.6s, the bloom's spring (`ENTRY_SPRING`), sampled 16 times. */
 .waiting-glow[data-fade='entry'] {
-  --waiting-glow-fade: 1.6s;
-  --waiting-glow-ease: linear(
-    0,
-    0.075,
-    0.228,
-    0.391,
-    0.537,
-    0.657,
-    0.751,
-    0.822,
-    0.874,
-    0.912,
-    0.939,
-    0.958,
-    0.971,
-    0.98,
-    0.987,
-    0.991,
-    1
-  );
+  --waiting-glow-fade: 0.2s;
+  --waiting-glow-ease: ease-out;
 }
 .waiting-glow[data-fade='exit'] {
   --waiting-glow-fade: 0.85s;

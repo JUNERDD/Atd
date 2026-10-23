@@ -13,7 +13,7 @@ const FRAME_MS = 1000 / 30;
 
 /**
  * The entry moves quickly at first, so the field draws every display frame until the bloom has
- * settled, matching the opacity fade around it, and only then drops to `FRAME_MS`.
+ * settled, and only then drops to `FRAME_MS`.
  */
 const ENTRY_FULL_RATE_MS = (GLOW_TIMING.entry + 0.2) * 1000;
 

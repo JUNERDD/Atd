@@ -135,6 +135,13 @@ body {
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  opacity: 1;
+  transition: opacity 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+/* Keep the same opacity target when the pending send becomes an exiting page. */
+.panel-page[data-leaving] {
+  opacity: 0;
+  transition-duration: 200ms;
 }
 .panel-content-body {
   padding: 64px 16px 16px;

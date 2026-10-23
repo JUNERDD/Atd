@@ -15,8 +15,6 @@ export interface ComposerContent {
   box: Box;
   scrollTop: number;
   scrollLeft: number;
-  /** The first visible line, which a sent message lines up with its bubble's first line. */
-  line: Box;
   /** The surface's height and corner radius, which it eases from as it takes the pill's shape. */
   surface: { height: number; radius: number };
 }
@@ -36,9 +34,9 @@ export function drawnRadius(element: Element, height: number): number {
 }
 
 /**
- * Copies the draft the composer under `root` (the panel body) shows, with the geometry a sent
- * message leaves from, before the send changes the composer. The copy is inert DOM: the caret and
- * selection layers stay behind, and nothing in it is wired to the editor.
+ * Copies the visible draft under `root` (the panel body), before the send changes the composer.
+ * The copy is inert DOM: the caret and selection layers stay behind, and nothing in it is wired
+ * to the editor.
  */
 export function captureComposerContent(root: HTMLElement | null): ComposerContent | null {
   const surface = root?.querySelector('.composer-surface');
@@ -52,8 +50,6 @@ export function captureComposerContent(root: HTMLElement | null): ComposerConten
   for (const layer of copy.querySelectorAll('.cm-cursorLayer, .cm-selectionLayer')) layer.remove();
   const origin = root.getBoundingClientRect();
   const view = viewport.getBoundingClientRect();
-  const lines = [...input.querySelectorAll('.cm-line')].map((line) => line.getBoundingClientRect());
-  const line = lines.find((rect) => rect.bottom > view.top) ?? view;
   const height = surface.getBoundingClientRect().height;
   return {
     node: copy,
@@ -61,7 +57,6 @@ export function captureComposerContent(root: HTMLElement | null): ComposerConten
     box: relative(view, origin),
     scrollTop: viewport.scrollTop,
     scrollLeft: input.querySelector('.cm-scroller')?.scrollLeft ?? 0,
-    line: relative(line, origin),
     surface: { height, radius: drawnRadius(surface, height) },
   };
 }

@@ -5,9 +5,9 @@ import { drawnRadius } from './composer-content';
 
 /**
  * A new chat's send as the composer shows it (`useNewChat`). While the send is out, a still copy
- * (`MessageFlight`) covers the editor's `hidden` text inside the unchanged surface. Once accepted,
- * the copy fades in place. Only after it disappears does the surface ease from the captured
- * shape (`from`) to the empty pill.
+ * (`MessageFlight`) fades over the editor's `hidden` text inside the unchanged surface from the
+ * moment Send is pressed. Once accepted and the copy has disappeared, the surface eases from
+ * the captured shape (`from`) to the empty pill.
  */
 export interface ComposerDispatch {
   hidden: boolean;
@@ -16,7 +16,7 @@ export interface ComposerDispatch {
   from: { height: number; radius: number };
 }
 
-/** The glass changes shape on the smooth spring, a little quicker than the message's flight. */
+/** The glass changes shape on a smooth spring after the captured draft disappears. */
 const MORPH = smoothSpring(0.35);
 
 /**
