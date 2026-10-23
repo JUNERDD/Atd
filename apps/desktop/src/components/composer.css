@@ -155,17 +155,20 @@
   white-space: nowrap;
   pointer-events: none;
 }
-/* A new chat's send (`useComposerDispatch`): the sent message lifts out as a still copy
-   (`MessageFlight`), so the editor's own text hides under it at once, caret and all, and the empty
-   editor's placeholder waits until the copy has landed in its turn, fading in after it. */
+/* The captured draft takes over immediately. Hold the placeholder through both send phases and
+   the surface's actual morph, before the editor becomes empty. Hiding must never transition:
+   otherwise WebKit can paint the new placeholder and then fade it out before fading it back in. */
 .composer-surface[data-dispatching] .composer-input-scroll {
   opacity: 0;
 }
 .composer-input .cm-editor.cm-composer-empty::before {
-  transition: opacity 200ms ease-out;
+  transition: opacity 150ms ease-out;
 }
-.composer-surface[data-settling] .composer-input .cm-editor.cm-composer-empty::before {
+.composer-surface:is([data-dispatching], [data-settling], [data-morphing])
+  .composer-input
+  .cm-editor::before {
   opacity: 0;
+  transition: none;
 }
 /* Stopping or queued: the text stays visible but locked, like the disabled textarea. */
 .composer-input .cm-editor:has(.cm-content[contenteditable='false']) {
@@ -272,7 +275,8 @@
   transition: stroke-dasharray 200ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .context-usage-value {
+  .context-usage-value,
+  .composer-input .cm-editor.cm-composer-empty::before {
     transition: none;
   }
 }

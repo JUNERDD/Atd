@@ -12,22 +12,17 @@ export interface Flight {
 /** The moment's one primary motion: the message travelling to its bubble. */
 const FLIGHT = smoothSpring(0.4);
 /**
- * The copy hands over to the bubble early in the flight, so it reads as one message changing form:
- * the copy dissolves first, quickly, and the bubble then fades in and grows from `BUBBLE_SCALE` to
- * its size on the flight's spring. Their text differs in size while the bubble grows, so the two
- * barely overlap.
+ * The copy dissolves before the new conversation starts appearing. The destination bubble
+ * inherits that page's opacity while growing from `BUBBLE_SCALE` on the flight's spring; it
+ * must never appear ahead of the page it belongs to.
  */
 const HANDOVER_OUT = { duration: 160, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
-const HANDOVER_IN = { delay: 40, duration: 280, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
 const BUBBLE_SCALE = 0.86;
 /** Under Reduce Motion nothing travels: the copy and the bubble cross-fade where they are. */
 const CROSS_FADE = { duration: 200, easing: 'ease-out' };
-const BUBBLE = '.task-stage > .conversation .user-message .message-bubble-frame';
-const ARRIVAL = { delay: 180, duration: 220, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
-const SUPPORT = [
-  '.transcript-turn > :not(.user-message, .message-actions)',
-  '.user-message > :not(.message-bubble-frame, .message-actions)',
-].join(', ');
+const CONVERSATION = '.task-stage > .conversation';
+const BUBBLE = '.user-message .message-bubble-frame';
+const PAGE_ARRIVAL = { delay: 180, duration: 220, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
 
 /** A bubble's first line as a point: its text's left edge, halfway down its first row. */
 function bubbleLine(frame: HTMLElement) {
@@ -42,7 +37,7 @@ function bubbleLine(frame: HTMLElement) {
 }
 
 /**
- * Runs `keyframes` on `element` from the shared start, so the copy and the bubble move as one,
+ * Runs `keyframes` on `element` from the shared start, so the handoff stays synchronized,
  * holding the first frame through any delay and the last until the flight is over.
  */
 function run(
@@ -57,13 +52,10 @@ function run(
 }
 
 /**
- * Animates the bubble into place from where the copy is, along the copy's path, fading in and
- * growing to its size around its first line's start (`origin`), which stays on the copy's first
- * line the whole way.
+ * Moves and scales the bubble from the captured draft's first line around its start (`origin`).
+ * Opacity belongs to the conversation, so the bubble appears only as its page appears.
  */
-function receive(bubble: HTMLElement, dx: number, dy: number, reduced: boolean, start: number) {
-  const fade = run(bubble, { opacity: [0, 1] }, reduced ? CROSS_FADE : HANDOVER_IN, start);
-  if (reduced) return [fade];
+function receive(bubble: HTMLElement, dx: number, dy: number, start: number) {
   const line = bubbleLine(bubble);
   const frame = bubble.getBoundingClientRect();
   const origin = `${line.x - frame.left}px ${line.y - frame.top}px`;
@@ -71,7 +63,7 @@ function receive(bubble: HTMLElement, dx: number, dy: number, reduced: boolean, 
     transform: [`translate(${-dx}px, ${-dy}px) scale(${BUBBLE_SCALE})`, 'none'],
     transformOrigin: [origin, origin],
   };
-  return [fade, run(bubble, path, FLIGHT, start)];
+  return run(bubble, path, FLIGHT, start);
 }
 
 /**
@@ -79,20 +71,23 @@ function receive(bubble: HTMLElement, dx: number, dy: number, reduced: boolean, 
  * of the draft, taken where it showed, over the panel body (`root`) and above the composer, which
  * hides its own text under it in the same commit.
  *
- * It stays inside the unchanged composer while the send is out. Once the conversation opens it
- * flies to the turn's bubble, which travels the same path, so the copy fades into the bubble on
- * the way: one message changes form instead of one vanishing and another appearing. A real turn
- * that replaces the pending one mid-flight picks up the same motion. A refused send drops the copy
+ * It stays inside the unchanged composer while the send is out, then fades in place before the
+ * surface can shrink. The destination bubble travels from that position and appears with the
+ * new page as a whole. A real turn that replaces the pending one mid-flight picks up the same
+ * motion. A refused send drops the copy
  * out immediately as the composer shows its unchanged draft again. Under Reduce Motion the copy
- * and the bubble cross-fade in place. `onDone` runs once the copy has gone.
+ * and the bubble cross-fade in place. `onSourceHidden` releases the composer after the draft fades;
+ * `onDone` ends the handoff once the bubble has landed.
  */
 export function MessageFlight({
   flight,
   root,
+  onSourceHidden,
   onDone,
 }: {
   flight: Flight;
   root: HTMLElement | null;
+  onSourceHidden: () => void;
   onDone: () => void;
 }) {
   const reduced = useReducedMotion() ?? false;
@@ -124,43 +119,35 @@ export function MessageFlight({
       return;
     }
     const animations: Animation[] = [];
-    const sourceAnimations: Animation[] = [];
-    const supported = new WeakSet<Element>();
+    let source: Animation | null = null;
     let start: number | null = null;
     let current: HTMLElement | null = null;
+    let currentPage: HTMLElement | null = null;
     let dx = 0;
     let dy = 0;
     let stopped = false;
     const synchronize = () => {
-      const bubble = root.querySelector<HTMLElement>(BUBBLE);
-      if (!bubble) return; // A loading placeholder has no destination yet.
+      const page = root.querySelector<HTMLElement>(CONVERSATION);
+      const bubble = page?.querySelector<HTMLElement>(BUBBLE);
+      if (!page || !bubble) return; // A loading placeholder has no destination yet.
       if (start === null) {
         const origin = root.getBoundingClientRect();
         const target = bubbleLine(bubble);
         dx = target.x - (origin.left + content.line.left);
         dy = target.y - (origin.top + content.line.top + content.line.height / 2);
         start = Number(document.timeline.currentTime ?? 0);
-        sourceAnimations.push(
-          run(copy, { opacity: [1, 0] }, reduced ? CROSS_FADE : HANDOVER_OUT, start),
-        );
-        if (!reduced) {
-          sourceAnimations.push(
-            run(copy, { transform: ['none', `translate(${dx}px, ${dy}px)`] }, FLIGHT, start),
-          );
-        }
-        animations.push(...sourceAnimations);
+        source = run(copy, { opacity: [1, 0] }, reduced ? CROSS_FADE : HANDOVER_OUT, start);
+        animations.push(source);
       }
       if (bubble !== current) {
         current = bubble;
-        animations.push(...receive(bubble, dx, dy, reduced, start));
+        if (!reduced) animations.push(receive(bubble, dx, dy, start));
       }
-      const turn = bubble.closest('.transcript-turn');
-      for (const element of turn?.querySelectorAll(SUPPORT) ?? []) {
-        if (supported.has(element)) continue;
-        supported.add(element);
-        // New stream content joins the current phase, never a new delayed entrance. In
-        // particular, replacing a pending turn cannot hide an already visible status line.
-        animations.push(run(element, { opacity: [0, 1] }, reduced ? CROSS_FADE : ARRIVAL, start));
+      if (page !== currentPage) {
+        currentPage = page;
+        // The bubble, status line and streamed children all inherit one page entrance. Even
+        // a replaced page joins the current phase instead of restarting its fade.
+        animations.push(run(page, { opacity: [0, 1] }, reduced ? CROSS_FADE : PAGE_ARRIVAL, start));
       }
     };
     const observer = new MutationObserver(() => {
@@ -169,14 +156,27 @@ export function MessageFlight({
       if (waiting && start !== null) finish();
     });
     const finish = () => {
-      // Destination nodes can disappear as stream content changes. Only the persistent copy
-      // owns completion; a cancelled destination must not leave the stage hidden indefinitely.
-      void Promise.all(sourceAnimations.map((animation) => animation.finished)).then(
-        () => {
+      if (!source || start === null) return;
+      const departure = start;
+      void source.finished
+        .then(async () => {
+          if (stopped) return;
+          onSourceHidden();
+          if (!reduced) {
+            // Keep the persistent copy invisible until the shared flight settles. Destination
+            // nodes can be replaced mid-flight, so their cancellation cannot own completion.
+            const hold = run(
+              copy,
+              { opacity: [0, 0] },
+              { duration: FLIGHT.duration - HANDOVER_OUT.duration },
+              departure + HANDOVER_OUT.duration,
+            );
+            animations.push(hold);
+            await hold.finished;
+          }
           if (!stopped) onDone();
-        },
-        () => {},
-      );
+        })
+        .catch(() => {});
     };
     // Watch before the first read, including when the task detail has yet to mount.
     observer.observe(root, { childList: true, subtree: true });

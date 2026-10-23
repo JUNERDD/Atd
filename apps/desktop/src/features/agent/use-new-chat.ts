@@ -13,7 +13,7 @@ const TURN_ARRIVE = 'turn-arrive';
  * A new chat started from the main screen: a send from the new-chat view, and the conversation
  * that send opens. Follow-ups, other conversations, and runs opened from the task history are not
  * new chats. One motion carries it: the message is captured as the send starts (`depart`,
- * `MessageFlight`) and flies into its bubble once the conversation shows, while the
+ * `MessageFlight`) and hands over to its arriving bubble once the conversation shows, while the
  * welcome steps back and the rest of the first turn arrives around the message.
  *
  * - `welcome`: the welcome steps back while the send is out (`leaving`) and gives way to the
@@ -51,6 +51,7 @@ export function useNewChat({
   /** The task the latest new chat opened, while its first turn arrives. */
   const [entering, setEntering] = useState<string | null>(null);
   const [flight, setFlight] = useState<Flight | null>(null);
+  const [sourceHidden, setSourceHidden] = useState(false);
   if (sending && view === 'new' && !sendingNewChat) setSendingNewChat(true);
   if (sendingNewChat && !sending) {
     const opened = view === 'task' ? taskId : null;
@@ -68,7 +69,11 @@ export function useNewChat({
   const followed = !covered && view === 'task' && taskId !== null && taskId === chat;
   const dispatch: ComposerDispatch | null =
     flight && flight.outcome !== 'refused'
-      ? { hidden: flight.outcome === 'sending', from: flight.content.surface }
+      ? {
+          hidden: flight.outcome === 'sending',
+          holding: !sourceHidden,
+          from: flight.content.surface,
+        }
       : null;
   return {
     welcome: { leaving: sendingNewChat, toChat: entering !== null },
@@ -81,6 +86,7 @@ export function useNewChat({
     },
     flight: flight && {
       flight,
+      onSourceHidden: () => setSourceHidden(true),
       onDone: () => {
         setFlight(null);
         setEntering(null);
@@ -89,8 +95,10 @@ export function useNewChat({
     dispatch,
     composerKey: (draftKey: string) => (draftKey === chat ? 'new' : draftKey),
     /** Captures the draft where it appears as its send starts (`captureComposerContent`). */
-    depart: (content: ComposerContent | null) =>
-      setFlight(content && { content, outcome: 'sending' }),
+    depart: (content: ComposerContent | null) => {
+      setSourceHidden(false);
+      setFlight(content && { content, outcome: 'sending' });
+    },
     waitPhase: waitPhase(sendingNewChat, followed ? taskId : null, detail),
   };
 }

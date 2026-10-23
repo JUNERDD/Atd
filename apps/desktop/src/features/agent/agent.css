@@ -151,15 +151,14 @@
   min-height: 0;
   flex-direction: column;
 }
-/* Without a captured draft, fade the stable conversation once. A flight owns its bubble and
-   supporting content on one WAAPI timeline; child mounts must never restart a CSS entrance. */
+/* Without a captured draft, fade the stable conversation once. With a flight, the whole page
+   shares one WAAPI entrance; its bubble must not become visible ahead of the conversation. */
 .task-stage[data-entering]:not([data-message-flight]) > .conversation {
   animation: turn-arrive 250ms cubic-bezier(0, 0, 0.2, 1) both;
 }
-/* Hold new content before the flight's observer puts it at the shared timeline's current time.
-   Message actions keep their own hover/focus opacity instead of flashing visible on arrival. */
-.task-stage[data-message-flight] .transcript-turn > :not(.user-message, .message-actions),
-.task-stage[data-message-flight] .user-message > :not(.message-actions) {
+/* Hold the page until the flight puts it at the shared timeline's current time. Descendants
+   retain their own opacity, including the message actions' hover/focus visibility. */
+.task-stage[data-message-flight] > .conversation {
   opacity: 0;
 }
 @keyframes turn-arrive {
@@ -169,7 +168,7 @@
 }
 /* The sent message in flight: a still copy of the draft over the panel body and above the
    composer (whose footer is the body's top layer at z-index 1), clipped to the input's visible
-   rows. The script places it and moves it; it takes no input and is hidden from assistive
+   rows. It fades where it was captured; it takes no input and is hidden from assistive
    technology, which hears the message in the transcript. */
 .message-flight {
   position: absolute;
