@@ -47,14 +47,29 @@ export function MorphViewport({
       outer.style.setProperty('--morph-viewport-width', `${width}px`);
       outer.style.setProperty('--morph-viewport-height', `${height}px`);
     };
-    apply(inner.offsetWidth, inner.offsetHeight);
+    let width = inner.offsetWidth;
+    let height = inner.offsetHeight;
+    let frame = 0;
+    apply(width, height);
     // The border box ignores the overlay's open zoom, which a bounding rect would include.
     const observer = new ResizeObserver(([entry]) => {
       const box = entry?.borderBoxSize[0];
-      if (box) apply(box.inlineSize, box.blockSize);
+      if (!box || (box.inlineSize === width && box.blockSize === height)) return;
+      width = box.inlineSize;
+      height = box.blockSize;
+      // Resizing the parent also wakes the popover's positioning and scroll observers. Keep
+      // that write outside observer delivery, coalescing changes without delaying first paint.
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        apply(width, height);
+      });
     });
     observer.observe(inner);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   const shownView = useRef(view);

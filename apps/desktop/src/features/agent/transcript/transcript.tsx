@@ -1,18 +1,16 @@
-import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import type { QuoteSource } from '@atd/agent-contracts';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { TaskDetail } from '../../../client/agent/bridge';
-import { isActive, type FileRef, type TaskRun } from '../../../client/agent/task-schema';
+import { isActive, type FileRef } from '../../../client/agent/task-schema';
 import { compactBlock } from '../compaction/compact-availability';
 import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
 import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
-import { adaptTranscript, type AdaptedTurn } from './adapter';
+import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
-import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
-import { pendingTurn } from './pending-turn';
+import { artifactAnchorIds, indexRequests, sameIds } from './turns';
 import { PromptRail } from './prompt-rail';
 import { ScrollJump } from './scroll-jump';
 import { pendingPromptRun } from './run-prompt';
@@ -20,76 +18,11 @@ import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
-import { TurnView } from './turn-view';
-import type { TurnWaitingKind } from './turn-header';
+import { TurnList } from './turn-list';
 import { useEarlierTurns } from './use-earlier-turns';
 import type { CommandOpener } from './use-offered-commands';
 import { usePromptNav } from './use-prompt-nav';
 import { useTranscriptScroll } from './use-transcript-scroll';
-
-function TurnList({
-  turns,
-  runs,
-  artifacts,
-  anchors,
-  requests,
-  live,
-  status,
-  pending,
-  waiting,
-  firstVisible,
-  sentinel,
-  loadEarlier,
-  onAttach,
-}: {
-  turns: AdaptedTurn[];
-  runs: TaskRun[];
-  artifacts: TaskDetail['artifacts'];
-  anchors: Set<string>;
-  requests: RequestIndex;
-  live: boolean;
-  status: ReactNode;
-  pending: TaskRun | undefined;
-  waiting: TurnWaitingKind;
-  /** The window `useEarlierTurns` keeps: the first turn shown, and its load-earlier control. */
-  firstVisible: number;
-  sentinel: (element: HTMLElement | null) => void;
-  loadEarlier: () => void;
-  onAttach: (file: FileRef) => void;
-}) {
-  const { t } = useTranslation('tasks');
-  const listed = pending ? [...turns, pendingTurn(pending, waiting)] : turns;
-  const visibleTurns = listed.slice(firstVisible);
-  return (
-    <>
-      {/* Scrolling near it loads the batch; the button stays for keyboard and assistive use. */}
-      {firstVisible > 0 && (
-        <div ref={sentinel} className="load-earlier">
-          <Button variant="outline" size="sm" onClick={loadEarlier}>
-            {firstVisible === 1
-              ? t('transcript.loadEarlier.action')
-              : t('transcript.loadEarlier.actionWithCount', { count: firstVisible })}
-          </Button>
-        </div>
-      )}
-      {visibleTurns.map((turn, index) => (
-        <TurnView
-          key={turn.user?.prompt ? `prompt:${turn.user.runId}` : turn.id}
-          turn={turn}
-          runs={runs}
-          artifacts={artifacts}
-          anchors={anchors}
-          requests={requests}
-          live={live}
-          last={firstVisible + index === listed.length - 1}
-          pending={Boolean(pending && firstVisible + index === turns.length)}
-          status={firstVisible + index === listed.length - 1 ? status : null}
-          onAttach={onAttach}
-        />
-      ))}
-    </>
-  );
-}
 
 /**
  * The task's conversation. `covered` keeps it laid out but invisible and inert while a subagent's

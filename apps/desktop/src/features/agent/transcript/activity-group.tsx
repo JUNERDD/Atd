@@ -102,6 +102,7 @@ function ActivityPhaseView({
         setOverride(next);
       }}
       status={active ? 'running' : 'completed'}
+      statusFeedback={false}
       className="phase-group"
     >
       <PhaseHeader show={grouped} animated={header}>
@@ -148,7 +149,11 @@ export const ActivityGroup = memo(function ActivityGroup({
     ? artifacts.filter((file) => file.runId === item.anchorRunId)
     : [];
   return (
-    <div className="activity-group" data-activity={item.live ? 'live' : 'settled'}>
+    <div
+      className="activity-group"
+      data-activity-id={item.id}
+      data-activity={item.live ? 'live' : 'settled'}
+    >
       <ActivityPhaseView phase={item.phase} active={active} requests={requests} />
       {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
     </div>

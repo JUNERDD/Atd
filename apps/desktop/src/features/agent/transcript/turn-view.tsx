@@ -10,6 +10,7 @@ import { ComputerReviewNotices } from './computer-review-notices';
 import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
+import { useTurnArrival, type TurnArrivalHistory } from './turn-arrival';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
@@ -42,6 +43,9 @@ function openActivityId(items: AdaptedTurn['items']): string | null {
  * a patch touched renders again while the answer streams.
  */
 export const TurnView = memo(function TurnView({
+  arrivalHistory,
+  arrivalId,
+  promptArrives,
   turn,
   runs,
   artifacts,
@@ -55,6 +59,9 @@ export const TurnView = memo(function TurnView({
   status,
   onAttach,
 }: {
+  arrivalHistory: TurnArrivalHistory;
+  arrivalId: string;
+  promptArrives: boolean;
   turn: AdaptedTurn;
   runs: TaskRun[];
   artifacts: Artifact[];
@@ -84,8 +91,15 @@ export const TurnView = memo(function TurnView({
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
   const pendingFiles = pending ? artifacts.filter((file) => file.runId === run?.id) : [];
+  const section = useTurnArrival({
+    history: arrivalHistory,
+    id: arrivalId,
+    promptArrives,
+    live: liveFooter,
+    items: turn.items,
+  });
   return (
-    <section className={sectionClass} data-turn-id={turn.id}>
+    <section ref={section} className={sectionClass} data-turn-id={turn.id}>
       {turn.user && <UserMessage user={turn.user} run={run} last={last} copyable={copyable} />}
       {(liveFooter || settled) && (
         <TurnHeader
@@ -123,6 +137,15 @@ export const TurnView = memo(function TurnView({
             key={item.block.id}
             className={assistant ? 'assistant-message' : undefined}
             aria-label={assistant ? t('conversation.assistantResponse') : undefined}
+            data-turn-content={
+              item.block.kind !== 'assistant' ||
+              item.block.text.trim() ||
+              item.block.error ||
+              item.block.stopReason === 'aborted' ||
+              files.length
+                ? 'ready'
+                : 'pending'
+            }
           >
             <BlockView block={item.block} requests={requests} />
             {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}

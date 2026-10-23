@@ -1,0 +1,9 @@
+/* One stable row: a state change fades its contents without moving the rule or resizing text.
+   Opacity is also the reduced-motion treatment; clock updates never remount this content. */
+.turn-header-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}

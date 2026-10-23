@@ -1,4 +1,4 @@
-import { forwardRef, useLayoutEffect, type ReactNode } from 'react';
+import { forwardRef, useEffect, type ReactNode } from 'react';
 import { AnimatePresence, usePresence, usePresenceData } from 'motion/react';
 
 /** MessageFlight owns both pages' opacity and releases this page when their dissolve ends. */
@@ -7,14 +7,19 @@ const WelcomePage = forwardRef<HTMLDivElement, { pending: boolean; children: Rea
     const [present, safeToRemove] = usePresence();
     const toChat = usePresenceData() === true;
 
-    useLayoutEffect(() => {
-      // Keep the actual page, including its layout and scroll position, until the arriving page
-      // has participated in the shared dissolve. Other navigation still replaces it immediately.
+    useEffect(() => {
+      // AnimatePresence registers exiting keys in its parent layout effect. Release after that
+      // registration; a child layout effect can report completion too early and strand the page.
       if (!present && !toChat) safeToRemove();
     }, [present, safeToRemove, toChat]);
 
     return (
-      <div ref={ref} className="panel-page" inert={pending || !present}>
+      <div
+        ref={ref}
+        className="panel-page"
+        hidden={!present && !toChat}
+        inert={pending || !present}
+      >
         {children}
       </div>
     );

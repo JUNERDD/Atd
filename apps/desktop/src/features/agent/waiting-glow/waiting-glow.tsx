@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ShaderMount, type PaperShaderElement } from '@paper-design/shaders-react';
 import { useReducedMotion } from 'motion/react';
 import { useShaderClock } from '../../../components/use-shader-clock';
 import { useColorScheme } from '../../../theme/color-scheme';
-import { GLOW_PALETTES, GLOW_SHADER, GLOW_TIMING } from './glow-field';
+import { GLOW_SHADER, GLOW_TIMING } from './glow-field';
+import { glowColors } from './glow-colors';
 import { useGlowLevel } from './glow-level';
+import { useGlowViewport } from './glow-viewport';
+import { useGlowRetreat } from './glow-retreat';
 import type { WaitPhase } from './wait-phase';
 import './waiting-glow.css';
 
@@ -119,7 +122,7 @@ export function WaitingGlow({ phase }: { phase: WaitPhase }) {
       data-writing={look.writing || undefined}
       data-fade={reduced ? 'quick' : look.fade}
     >
-      {WEBGL2 && <GlowField run={flowing && !reduced} entry={!reduced} onPainted={markReady} />}
+      {WEBGL2 && <GlowField active={flowing} on={look.on} entry={!reduced} onPainted={markReady} />}
     </div>
   );
 }
@@ -141,7 +144,7 @@ function composerCentre(light: HTMLElement): [number, number] {
 }
 
 /**
- * The field itself, from the start of its time each time `run` turns on; still while it is off.
+ * The field itself, from the start of its time each time `active` turns on; still while it is off.
  * `entry` has the shader bloom the light out of the composer and gather the field over the first
  * `GLOW_TIMING.entry` seconds; the composer's centre is read as each run starts, since the panel
  * may have resized or the composer grown since the last. `onPainted` runs once its first frame is
@@ -150,39 +153,83 @@ function composerCentre(light: HTMLElement): [number, number] {
  * painted it.
  */
 function GlowField({
-  run,
+  active,
+  on,
   entry,
   onPainted,
 }: {
-  run: boolean;
+  active: boolean;
+  on: boolean;
   entry: boolean;
   onPainted: () => void;
 }) {
   const scheme = useColorScheme();
   const level = useGlowLevel();
   const ref = useRef<PaperShaderElement>(null);
+  const bandRatio = useGlowViewport(ref, active, MAX_PIXELS);
+  const retreat = useGlowRetreat(active, on);
+  const clock = useRef(0);
+  const bloom = useRef(0);
   const [origin, setOrigin] = useState<[number, number]>(BOTTOM_CENTRE);
+  const [retreatTarget, setRetreatTarget] = useState(0);
   useLayoutEffect(() => {
-    if (run && ref.current) setOrigin(composerCentre(ref.current));
-  }, [run]);
-  const uniforms = useMemo(
-    () => ({
-      u_palette: GLOW_PALETTES[scheme].map((rgb) => [...rgb]),
-      u_entry: entry ? 1 : 0,
-      u_origin: origin,
-      u_level: level,
-    }),
-    [scheme, entry, origin, level],
+    if (active && ref.current?.parentElement) setOrigin(composerCentre(ref.current.parentElement));
+    if (!active) bloom.current = 0;
+  }, [active]);
+  useLayoutEffect(() => {
+    if (active && !on && ref.current?.parentElement) {
+      setRetreatTarget(composerCentre(ref.current.parentElement)[1]);
+    }
+  }, [active, on]);
+  // Paper discovers uniform locations at construction. Subsequent frames and appearance updates
+  // have one imperative writer, so a React prop effect cannot reset the clock during a morph.
+  const [uniforms] = useState(() => ({
+    ...glowFrame(0, entry, scheme),
+    u_bandRatio: 1,
+    u_retreat: 0,
+    u_retreatTarget: 0,
+    u_entry: entry ? 1 : 0,
+    u_origin: BOTTOM_CENTRE,
+    u_level: level,
+  }));
+  const draw = useCallback(
+    (element: PaperShaderElement, milliseconds: number) => {
+      // Enabling Reduce Motion during an exit freezes the visible coverage for its short fade.
+      // Stopping the clock must not repaint a full-height field while that fade is still visible.
+      if (active && !on && !entry) return false;
+      // An early stop freezes the unfinished bloom, while color and drift keep moving. A wait
+      // that resumes during retreat continues from that coverage instead of expanding abruptly.
+      if (on) bloom.current += Math.max(0, milliseconds - clock.current);
+      clock.current = milliseconds;
+      const edge = retreat();
+      // setUniforms draws once; following it with setFrame would render the same field twice.
+      element.paperShaderMount?.setUniforms({
+        ...glowFrame(milliseconds, entry, scheme),
+        u_elapsed: bloom.current / 1000,
+        u_entry: entry ? 1 : 0,
+        u_origin: origin,
+        u_level: level,
+        u_bandRatio: bandRatio.current,
+        u_retreat: entry ? edge.value : 0,
+        u_retreatTarget: retreatTarget,
+      });
+      return edge.moving || (on && entry && bloom.current < ENTRY_FULL_RATE_MS);
+    },
+    [active, on, entry, scheme, origin, level, bandRatio, retreat, retreatTarget],
   );
-  useShaderClock(ref, 0, run, FRAME_MS, ENTRY_FULL_RATE_MS);
+  useShaderClock(ref, 0, active && entry, FRAME_MS, ENTRY_FULL_RATE_MS, draw);
+  useEffect(() => {
+    if (ref.current) draw(ref.current, clock.current);
+  }, [draw]);
   useEffect(() => {
     let frame = requestAnimationFrame(function waitForMount() {
-      frame = ref.current?.paperShaderMount
-        ? requestAnimationFrame(onPainted)
-        : requestAnimationFrame(waitForMount);
+      if (ref.current?.paperShaderMount) {
+        draw(ref.current, clock.current);
+        frame = requestAnimationFrame(onPainted);
+      } else frame = requestAnimationFrame(waitForMount);
     });
     return () => cancelAnimationFrame(frame);
-  }, [onPainted]);
+  }, [onPainted, draw]);
   return (
     <ShaderMount
       ref={ref}
@@ -195,4 +242,10 @@ function GlowField({
       maxPixelCount={MAX_PIXELS}
     />
   );
+}
+
+function glowFrame(milliseconds: number, entry: boolean, scheme: 'light' | 'dark') {
+  const elapsed = milliseconds / 1000;
+  const phase = entry ? elapsed + 1.6 * (1 - Math.exp(-2.5 * elapsed)) : elapsed;
+  return { u_elapsed: elapsed, u_phase: phase, u_colors: glowColors(phase, scheme) };
 }

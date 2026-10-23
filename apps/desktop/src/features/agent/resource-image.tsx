@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
 import { FileImage } from 'lucide-react';
 import { Spinner } from '@atd/ui/components/spinner';
 import { cn } from '@atd/ui/lib/utils';
 import type { FileRef } from '../../client/agent/task-schema';
+import { fadeConversationContent } from './content-feedback';
 
 type Loaded = { resourceId: string; url: string } | { resourceId: string; failed: true };
 
@@ -25,10 +27,24 @@ export function ResourceImage({
   onLoad?: ((image: HTMLImageElement) => void) | undefined;
 }) {
   const loaded = useResourceUrl(file.id);
+  const reduced = useReducedMotion() ?? false;
+  const reveal = useRef<Animation | null>(null);
+  useEffect(() => () => reveal.current?.cancel(), [file.id]);
+  // The resource URL arrives before the browser has loaded its pixels. Reveal only from the
+  // image's load event, keeping the thumbnail's fixed box and the lightbox's existing callback.
+  function revealImage(image: HTMLImageElement) {
+    reveal.current?.cancel();
+    reveal.current = fadeConversationContent(image, reduced);
+  }
   const url = loaded && 'url' in loaded ? loaded.url : null;
   if (variant === 'icon')
     return url ? (
-      <img src={url} alt="" className="size-4 shrink-0 rounded-sm object-cover" />
+      <img
+        src={url}
+        alt=""
+        className="size-4 shrink-0 rounded-sm object-cover"
+        onLoad={(event) => revealImage(event.currentTarget)}
+      />
     ) : (
       <FileImage size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
     );
@@ -39,7 +55,10 @@ export function ResourceImage({
         alt={file.name}
         title={file.name}
         className={cn('rounded-lg border object-cover', THUMBNAIL_BOX[variant])}
-        onLoad={(event) => onLoad?.(event.currentTarget)}
+        onLoad={(event) => {
+          revealImage(event.currentTarget);
+          onLoad?.(event.currentTarget);
+        }}
       />
     ) : (
       <ThumbnailPlaceholder file={file} loading={!loaded} variant={variant} />
@@ -51,6 +70,7 @@ export function ResourceImage({
         alt={file.name}
         title={file.name}
         className="max-h-48 max-w-full self-start rounded-xl border object-contain"
+        onLoad={(event) => revealImage(event.currentTarget)}
       />
     );
   return (

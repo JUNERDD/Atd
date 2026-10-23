@@ -3,6 +3,7 @@ import { AppConsentControls } from '../features/apps/app-consent-controls';
 import { ApprovalControls } from '../features/agent/transcript/approval-controls';
 import { ViewRequestControls } from '../features/agent/generative-views/view-request-controls';
 import { QuestionControls } from '../features/agent/transcript/question-block';
+import { useContentChangeFade } from '../features/agent/content-feedback';
 import type { HitlRequest } from './hitl-request';
 
 /**
@@ -23,13 +24,14 @@ export function HitlRegion({
   hideApprovalTitle?: boolean;
 }) {
   const { t } = useTranslation('tasks');
+  const feedbackRef = useContentChangeFade<HTMLElement>(request.id);
   const label =
     request.kind === 'input' || request.kind === 'view'
       ? t('permission.waitingAnswer')
       : t('permission.waitingApproval');
   return (
     // A named section carries the implicit region role; no explicit role needed.
-    <section aria-live="polite" aria-label={label} className="hitl-region">
+    <section ref={feedbackRef} aria-live="polite" aria-label={label} className="hitl-region">
       {request.kind === 'confirmation' ? (
         <ApprovalControls
           key={request.id}
