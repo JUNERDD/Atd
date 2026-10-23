@@ -38,10 +38,23 @@ export function useComposerDispatch(dispatch: ComposerDispatch | null, expanded:
   const from = dispatch && !dispatch.hidden ? dispatch.from : null;
   const active = from !== null;
   const holding = active && dispatch?.holding;
+  const expandedLayout = expanded && !active;
   useLayoutEffect(() => {
     const element = surface.current;
     if (!element) return;
-    // A dispatch ending while the glass is still shrinking resumes from its current shape.
+    // Page arrival does not change an empty composer's destination. Let its existing spring
+    // finish instead of starting another full spring for the last few pixels.
+    if (
+      !from &&
+      !expandedLayout &&
+      pill.current &&
+      morph.current?.playState === 'running' &&
+      !reduced
+    ) {
+      pill.current = null;
+      return;
+    }
+    // A changed destination, such as a newly expanded draft, resumes from the current shape.
     let current: { height: number; radius: number } | null = null;
     if (held.current || morph.current?.playState === 'running') {
       const height = element.getBoundingClientRect().height;
@@ -52,7 +65,6 @@ export function useComposerDispatch(dispatch: ComposerDispatch | null, expanded:
     held.current = false;
     element.style.height = '';
     element.style.borderRadius = '';
-    delete element.dataset.morphing;
     element.style.alignContent = '';
     element.style.overflow = '';
     const height = element.getBoundingClientRect().height;
@@ -80,8 +92,6 @@ export function useComposerDispatch(dispatch: ComposerDispatch | null, expanded:
     // discrete properties.
     element.style.alignContent = 'end';
     element.style.overflow = 'hidden';
-    // The placeholder cannot return while a resumed/interrupted morph still moves its surface.
-    element.dataset.morphing = '';
     const animation = element.animate(
       [
         { height: `${start.height}px`, borderRadius: `${start.radius}px` },
@@ -93,16 +103,15 @@ export function useComposerDispatch(dispatch: ComposerDispatch | null, expanded:
     const release = () => {
       if (morph.current !== animation) return;
       morph.current = null;
-      delete element.dataset.morphing;
       element.style.alignContent = '';
       element.style.overflow = '';
     };
     void animation.finished.then(release, release);
-  }, [from, holding, reduced]);
+  }, [from, holding, reduced, expandedLayout]);
   return {
     ref: surface,
-    'data-expanded': expanded && !active,
+    'data-expanded': expandedLayout,
     'data-dispatching': (dispatch?.hidden ?? false) || undefined,
-    'data-settling': (active && !dispatch?.hidden) || undefined,
+    'data-placeholder-held': dispatch?.hidden || dispatch?.holding || undefined,
   };
 }
