@@ -14,10 +14,10 @@ const TURN_ARRIVE = 'turn-arrive';
  * that send opens. Follow-ups, other conversations, and runs opened from the task history are not
  * new chats. One motion carries it: the message is captured as the send starts (`depart`,
  * `MessageFlight`) and hands over to its arriving bubble once the conversation shows, while the
- * welcome steps back and the rest of the first turn arrives around the message.
+ * welcome dissolves into the whole conversation on one timeline.
  *
- * - `welcome`: the welcome steps back while the send is out (`leaving`) and gives way to the
- *   conversation it opened (`toChat`); it returns if the send fails.
+ * - `welcome`: the welcome stays visible but inert while the send is out (`pending`), then stays
+ *   mounted through the shared dissolve into the conversation it opened (`toChat`).
  * - `stage`: the conversation's first turn is arriving (`data-entering`) until its fade has run.
  * - `flight` and `dispatch`: the sent message on its way, and the composer under it, until the
  *   message has landed or, refused, dropped back into the composer.
@@ -76,7 +76,7 @@ export function useNewChat({
         }
       : null;
   return {
-    welcome: { leaving: sendingNewChat, toChat: entering !== null },
+    welcome: { pending: sendingNewChat, toChat: flight?.outcome === 'opened' && entering !== null },
     stage: {
       'data-entering': entering !== null ? '' : undefined,
       'data-message-flight': flight?.outcome === 'opened' ? '' : undefined,

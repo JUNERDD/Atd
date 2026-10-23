@@ -1,40 +1,20 @@
-import { forwardRef, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { AnimatePresence, useComposedRefs, usePresence, usePresenceData } from 'motion/react';
+import { forwardRef, useLayoutEffect, type ReactNode } from 'react';
+import { AnimatePresence, usePresence, usePresenceData } from 'motion/react';
 
-/** One CSS fade owns both the pending send and its page handoff. */
-const WelcomePage = forwardRef<HTMLDivElement, { leaving: boolean; children: ReactNode }>(
-  function WelcomePage({ leaving, children }, ref) {
-    const host = useRef<HTMLDivElement>(null);
-    const combinedRef = useComposedRefs(ref, host);
+/** MessageFlight owns both pages' opacity and releases this page when their dissolve ends. */
+const WelcomePage = forwardRef<HTMLDivElement, { pending: boolean; children: ReactNode }>(
+  function WelcomePage({ pending, children }, ref) {
     const [present, safeToRemove] = usePresence();
     const toChat = usePresenceData() === true;
 
     useLayoutEffect(() => {
-      if (present) return;
-      const element = host.current;
-      // History/apps still replace the welcome immediately. A chat keeps the existing fade,
-      // including its current opacity and remaining time, instead of starting an exit animation.
-      if (!toChat || !element || typeof element.getAnimations !== 'function') {
-        safeToRemove();
-        return;
-      }
-      let stopped = false;
-      const pending = element.getAnimations().map((animation) => animation.finished);
-      void Promise.allSettled(pending).then(() => {
-        if (!stopped) safeToRemove();
-      });
-      return () => {
-        stopped = true;
-      };
+      // Keep the actual page, including its layout and scroll position, until the arriving page
+      // has participated in the shared dissolve. Other navigation still replaces it immediately.
+      if (!present && !toChat) safeToRemove();
     }, [present, safeToRemove, toChat]);
 
     return (
-      <div
-        ref={combinedRef}
-        className="panel-page"
-        data-leaving={leaving || !present ? '' : undefined}
-        inert={leaving || !present}
-      >
+      <div ref={ref} className="panel-page" inert={pending || !present}>
         {children}
       </div>
     );
@@ -42,18 +22,18 @@ const WelcomePage = forwardRef<HTMLDivElement, { leaving: boolean; children: Rea
 );
 
 /**
- * The welcome fades when Send is pressed and returns only if submission fails. Once the chat
- * opens, presence moves it out of layout and removes it after that same fade finishes.
+ * Keep the welcome visible while submission is pending. Once the chat opens, presence moves it
+ * out of layout so both pages overlap. MessageFlight removes it after their shared dissolve.
  */
 export function WelcomePresence({
   shown,
-  leaving,
+  pending,
   toChat,
   children,
 }: {
   shown: boolean;
   /** A new chat's first send is in flight. */
-  leaving: boolean;
+  pending: boolean;
   /** The welcome gave way to the conversation a new chat opened. */
   toChat: boolean;
   children: ReactNode;
@@ -61,7 +41,7 @@ export function WelcomePresence({
   return (
     <AnimatePresence initial={false} mode="popLayout" custom={toChat}>
       {shown && (
-        <WelcomePage key="welcome" leaving={leaving}>
+        <WelcomePage key="welcome" pending={pending}>
           {children}
         </WelcomePage>
       )}

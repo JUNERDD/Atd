@@ -14,7 +14,7 @@ const HANDOVER_OUT = { duration: 160, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
 /** Reduce Motion cross-fades the draft and conversation in place. */
 const CROSS_FADE = { duration: 200, easing: 'ease-out' };
 const CONVERSATION = '.task-stage > .conversation';
-const PAGE_ARRIVAL = { delay: 180, duration: 220, easing: 'cubic-bezier(0, 0, 0.2, 1)' };
+const PAGE_DISSOLVE = { duration: 280, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' };
 
 /**
  * Runs `keyframes` on `element` from the shared start, so the handoff stays synchronized,
@@ -37,9 +37,10 @@ function run(
  * hides its own text under it in the same commit.
  *
  * It fades in place as soon as the send starts, before the surface can shrink. The unchanged live
- * draft stays hidden until acceptance or refusal. The conversation fades in as a whole, with its
- * bubble already at its final size and position. A replacement page joins the same fade. A refused
- * send drops the copy immediately as the composer shows its unchanged draft again. `onSourceHidden`
+ * draft stays hidden until acceptance or refusal. Once the conversation mounts, the welcome and
+ * conversation dissolve together, with the bubble already at its final size and position. A
+ * replacement page joins the same fade. A refused send drops the copy immediately as the composer
+ * shows its unchanged draft again. `onSourceHidden`
  * releases the composer after the draft fades; `onDone` ends the handoff once the page has appeared.
  */
 export function MessageFlight({
@@ -118,12 +119,32 @@ export function MessageFlight({
       if (!page) return;
       if (start === null) {
         start = Number(document.timeline.currentTime ?? 0);
+        const welcome = root.querySelector('.panel-page');
+        if (welcome) {
+          animations.push(
+            run(
+              welcome,
+              reduced
+                ? { opacity: [1, 0] }
+                : { opacity: [1, 0], filter: ['blur(0px)', 'blur(2px)'] },
+              reduced ? CROSS_FADE : PAGE_DISSOLVE,
+              start,
+            ),
+          );
+        }
       }
       if (page !== currentPage) {
         currentPage = page;
         // The bubble, status line and streamed children all inherit one page entrance. Even
         // a replaced page joins the current phase instead of restarting its fade.
-        animations.push(run(page, { opacity: [0, 1] }, reduced ? CROSS_FADE : PAGE_ARRIVAL, start));
+        animations.push(
+          run(
+            page,
+            reduced ? { opacity: [0, 1] } : { opacity: [0, 1], filter: ['blur(2px)', 'blur(0px)'] },
+            reduced ? CROSS_FADE : PAGE_DISSOLVE,
+            start,
+          ),
+        );
       }
     };
     const observer = new MutationObserver(() => {
@@ -143,7 +164,7 @@ export function MessageFlight({
             copy,
             { opacity: [0, 0] },
             {
-              duration: reduced ? CROSS_FADE.duration : PAGE_ARRIVAL.delay + PAGE_ARRIVAL.duration,
+              duration: reduced ? CROSS_FADE.duration : PAGE_DISSOLVE.duration,
             },
             arrival,
           );
