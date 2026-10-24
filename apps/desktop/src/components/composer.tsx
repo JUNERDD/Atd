@@ -15,6 +15,7 @@ import { EMPTY_QUEUE, type Block, type QueueState } from '../client/agent/transc
 import type { Connection, ModelReference } from '../client/providers/schema';
 import type { RunPolicy } from '../client/agent/run-policy';
 import { normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
+import { restoreQueue } from '../features/composer-editor/restore-queue';
 import { draftFiles } from '../features/composer-editor/draft-attachments';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
@@ -206,8 +207,8 @@ export function Composer({
       // Restore what the service withdrew, not the last queue shown: Pi may have delivered an
       // item in the meantime, and a pending steer ("send now") is withdrawn too.
       const unsent = await onStop();
-      const restored = [...unsent.steering, ...unsent.followUp];
-      if (restored.length) setText(joinDraft(draft.text, restored.join('\n')));
+      const restored = restoreQueue(draft, unsent);
+      if (restored !== draft) onChange(restored);
     } catch (error) {
       showErrorToast(error);
     }

@@ -24,7 +24,7 @@ import { setReducedTransparency, setWindowActive, setWindowVisible } from '../wi
 import { publishDragRegions } from './drag-regions';
 import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
-import { nativeAutomations, nativeTaskOpen } from './native-automations';
+import { nativeAutomations } from './native-automations';
 import { nativeCommandOptions } from './native-command-options';
 import { nativeComputer } from './native-computer';
 import { NativeCommands } from './native-commands';
@@ -38,6 +38,7 @@ import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
 import { nativeShellPreferences } from './native-shell-preferences';
 import { nativeHeldRequest } from './native-held-request';
+import { nativeTaskEvents } from './native-task-events';
 import { nativeLightCommand, type PageHolder } from './native-light-command';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
@@ -76,9 +77,8 @@ export async function installNativeHost(
   const onSelectionAsk =
     surface === 'panel' ? nativeHeldRequest(native, 'selection.ask') : undefined;
   const onNewTask = surface === 'panel' ? nativeHeldRequest(native, 'task.new') : undefined;
-  // The shell sends an opened notification's `task.open` once the panel's page is ready, which
-  // can be before the panel subscribes; the host holds it until then.
-  const onTaskOpen = surface === 'panel' ? nativeTaskOpen(native) : undefined;
+  // Native task navigation and withdrawn queues wait for the panel's view to subscribe.
+  const taskEvents = surface === 'panel' ? nativeTaskEvents(native) : {};
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -339,7 +339,7 @@ export async function installNativeHost(
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(onNewTask ? { onNewTask } : {}),
-    ...(onTaskOpen ? { onTaskOpen } : {}),
+    ...taskEvents,
     ...(surface === 'onboarding'
       ? { onboarding: nativeOnboarding(native, messages, connection) }
       : {}),

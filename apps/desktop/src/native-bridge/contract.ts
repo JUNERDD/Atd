@@ -23,6 +23,7 @@ import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from 
 import { NativeNotificationPosts } from './notification-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
+import { NativeTaskEvents } from './task-events.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
@@ -289,14 +290,7 @@ export const NativeEvents = {
     { pins: Type.Array(DesktopPinSchema, { maxItems: MAX_DESKTOP_PINS }) },
     { additionalProperties: false },
   ),
-  /**
-   * Show this task in the panel: the person opened an automation's notification. Sent to the
-   * panel once it is shown, and queued until its page is ready.
-   */
-  'task.open': Type.Object(
-    { taskId: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }) },
-    { additionalProperties: false },
-  ),
+  ...NativeTaskEvents,
   ...NativeTextEvents,
   ...NativeCommandOptionsEvents,
 } satisfies Record<string, TSchema>;

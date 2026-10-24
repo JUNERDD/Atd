@@ -3,6 +3,7 @@ import type {
   FileSearchReply,
   FolderRef,
   OnboardingProgress,
+  QueueState,
 } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
 import type { AddonsBridge } from './addons-contract';
@@ -17,6 +18,13 @@ import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
 export type EditCommand = 'undo' | 'redo';
+
+/** Messages an exact native run cancellation withdrew, destined for that task's draft. */
+export interface TaskQueueWithdrawn {
+  taskId: string;
+  runId: string;
+  unsent: QueueState;
+}
 
 export interface ContextFile {
   name: string;
@@ -244,6 +252,8 @@ export interface DesktopBridge {
    * that arrived before anything subscribed reaches the first subscriber.
    */
   onTaskOpen?: (listener: (taskId: string) => void) => () => void;
+  /** Native Stop's withdrawn messages; panel only, held until its draft owner subscribes. */
+  onTaskQueueWithdrawn?: (listener: (event: TaskQueueWithdrawn) => void) => () => void;
   /** The welcome guide window's own controls; present only in that window. */
   readonly onboarding?: OnboardingBridge;
 }

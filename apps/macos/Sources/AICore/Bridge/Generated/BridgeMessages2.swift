@@ -212,6 +212,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case userAppState(UserAppStateEvent)
   case userAppPins(UserAppPinsEvent)
   case taskOpen(TaskOpenEvent)
+  case taskQueueWithdrawn(TaskQueueWithdrawnEvent)
   case commandProgressAction(CommandProgressActionEvent)
   case commandOptionsPicked(CommandOptionsPickedEvent)
 
@@ -238,6 +239,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppState: "userApp.state"
     case .userAppPins: "userApp.pins"
     case .taskOpen: "task.open"
+    case .taskQueueWithdrawn: "task.queueWithdrawn"
     case .commandProgressAction: "commandProgress.action"
     case .commandOptionsPicked: "commandOptions.picked"
     }
@@ -265,6 +267,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .userAppState(let payload): try payload.encode(to: encoder)
     case .userAppPins(let payload): try payload.encode(to: encoder)
     case .taskOpen(let payload): try payload.encode(to: encoder)
+    case .taskQueueWithdrawn(let payload): try payload.encode(to: encoder)
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
     }

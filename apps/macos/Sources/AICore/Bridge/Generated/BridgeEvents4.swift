@@ -81,6 +81,54 @@ public struct TaskOpenEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `task.queueWithdrawn` event.
+public struct TaskQueueWithdrawnEvent: Codable, Equatable, Sendable {
+  public let taskId: String
+  public let runId: String
+  public let unsent: Unsent
+
+  public init(taskId: String, runId: String, unsent: Unsent) {
+    self.taskId = taskId
+    self.runId = runId
+    self.unsent = unsent
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    taskId = try container.string(
+      .taskId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    runId = try container.string(.runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    unsent = try container.value(.unsent, Unsent.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case taskId
+    case runId
+    case unsent
+  }
+
+  public struct Unsent: Codable, Equatable, Sendable {
+    public let steering: [String]
+    public let followUp: [String]
+
+    public init(steering: [String], followUp: [String]) {
+      self.steering = steering
+      self.followUp = followUp
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      steering = try container.array(.steering, of: String.self)
+      followUp = try container.array(.followUp, of: String.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case steering
+      case followUp
+    }
+  }
+}
+
 /// Payload of the `commandProgress.action` event.
 public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
   public let target: String

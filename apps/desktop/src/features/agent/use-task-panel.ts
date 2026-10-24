@@ -29,6 +29,7 @@ import { useAgentNotices } from './use-notices';
 import { focusPanelInput, usePanelWindow } from './use-panel-window';
 import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
 import { useTaskShown } from './use-task-shown';
+import { useWithdrawnQueue } from './use-withdrawn-queue';
 
 export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
@@ -54,6 +55,7 @@ export function useTaskPanel() {
   const [prepared, setPrepared] = useState<PreparedCommand | null>(null);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState(readDrafts);
+  useWithdrawnQueue(setDrafts);
   const [choices, setChoices] = useState(readChoices);
   useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);

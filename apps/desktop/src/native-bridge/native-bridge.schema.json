@@ -110,6 +110,7 @@
       "userApp.state",
       "userApp.pins",
       "task.open",
+      "task.queueWithdrawn",
       "commandProgress.action",
       "commandOptions.picked"
     ]
@@ -4263,6 +4264,59 @@
                   "minLength": 1,
                   "maxLength": 128,
                   "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "task.queueWithdrawn"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["taskId", "runId", "unsent"],
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "runId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "unsent": {
+                  "type": "object",
+                  "required": ["steering", "followUp"],
+                  "properties": {
+                    "steering": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "followUp": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8628,6 +8682,44 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TaskQueueWithdrawnEvent": {
+      "type": "object",
+      "required": ["taskId", "runId", "unsent"],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "unsent": {
+          "type": "object",
+          "required": ["steering", "followUp"],
+          "properties": {
+            "steering": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "followUp": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
