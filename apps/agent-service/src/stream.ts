@@ -11,6 +11,8 @@ import {
   type InvalidateFrame,
   type StatusFrame,
   type SummariesFrame,
+  type TaskActivityFrame,
+  type TaskActivitySnapshot,
   type TaskSnapshot,
 } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
@@ -20,6 +22,7 @@ import type { EventLog } from './event-log.js';
 import type { Logger } from './logging.js';
 import type { TaskStatusCounts } from './task-status.js';
 import type { SystemProxy } from './network/system-proxy.js';
+import type { TaskActivityProjection } from './task-activity/projection.js';
 
 export interface StreamDeps {
   systemProxy: SystemProxy;
@@ -27,6 +30,7 @@ export interface StreamDeps {
   capabilities: CapabilityRegistry;
   /** Computer host frames in and out (computer/coordinator.ts) and its live progress. */
   computer: ComputerCoordinator;
+  activity: TaskActivityProjection;
   snapshot: (taskId: string) => Promise<TaskSnapshot>;
   /** Every task's summary as of one stream position; must not await (see `subscribe`). */
   summaries: () => Omit<SummariesFrame, 'type'>;
@@ -56,6 +60,7 @@ interface Connection {
   backloggedSince: number | null;
   /** The counts last sent in a `status` frame; null while its subscription did not ask for them. */
   status: TaskStatusCounts | null;
+  taskActivity: boolean;
 }
 
 /**
@@ -79,6 +84,7 @@ export class StreamHub {
       ),
     );
     deps.onStatusInputs(() => this.statusChanged());
+    deps.activity.onChanged((snapshot) => this.activityChanged(snapshot));
   }
 
   handle(socket: WebSocket): void {
@@ -93,6 +99,7 @@ export class StreamHub {
       },
       backloggedSince: null,
       status: null,
+      taskActivity: false,
     };
     this.connections.add(connection);
     socket.on('message', (raw: unknown) => {
@@ -188,6 +195,14 @@ export class StreamHub {
     this.send(connection.socket, { type: 'status', ...counts } satisfies StatusFrame);
   }
 
+  private activityChanged(snapshot: TaskActivitySnapshot): void {
+    const frame: TaskActivityFrame = { type: 'task.activity', snapshot };
+    const text = JSON.stringify(frame);
+    for (const connection of this.connections)
+      if (connection.taskActivity && this.writable(connection))
+        this.sendText(connection.socket, text);
+  }
+
   private deliver(request: CapabilityRequest): void {
     for (const connection of this.connections) {
       if (!connection.clientId) continue;
@@ -243,6 +258,12 @@ export class StreamHub {
     // Every subscribe replaces the last: one asking for status gets the current counts at once.
     connection.status = null;
     if (subscription.status) this.sendStatus(connection, this.deps.status());
+    connection.taskActivity = subscription.taskActivity === true;
+    if (connection.taskActivity)
+      this.send(connection.socket, {
+        type: 'task.activity',
+        snapshot: this.deps.activity.current(),
+      } satisfies TaskActivityFrame);
     const replay = this.deps.events.replay(subscription);
     if (replay.kind === 'events') {
       for (const event of replay.events) {

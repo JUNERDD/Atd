@@ -77,6 +77,8 @@ export * from './computer-facts.js';
 export * from './computer-recipes.js';
 export * from './computer-grants.js';
 export * from './computer-progress.js';
+export * from './computer-activity.js';
+export * from './task-activity.js';
 export * from './computer-control.js';
 export * from './computer-screen.js';
 export * from './computer-http.js';

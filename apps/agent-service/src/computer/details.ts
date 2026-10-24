@@ -4,6 +4,7 @@ import {
   type ActionResult,
   type ComputerDetails,
   type ComputerError,
+  type ComputerModelStep,
   type ComputerPointLocator,
   type ComputerStep,
   type ComputerVisualState,
@@ -34,7 +35,7 @@ function within(locator: ComputerPointLocator | undefined, word: string): string
  * One step in a few words for the transcript, audit and confirm. Text a step types is never
  * included, only its length, since it may be a password or private content.
  */
-export function stepSummary(step: ComputerStep): string {
+export function stepSummary(step: ComputerModelStep): string {
   switch (step.kind) {
     case 'navigate':
       return clip(`Open ${step.url}`);

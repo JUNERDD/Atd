@@ -1,4 +1,4 @@
-import websocketPlugin, { type WebSocket } from '@fastify/websocket';
+import websocketPlugin from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import {
   CapabilityReplyRequestSchema,
@@ -23,12 +23,11 @@ import type { EventLog } from './event-log.js';
 import { registerFileRoutes } from './file-routes.js';
 import { registerFolderRoutes } from './folders/routes.js';
 import type { FolderStore } from './folders/store.js';
-import { announceInvalidation, registerInvalidation } from './invalidate.js';
+import { announceInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
-import { registerStoreInvalidation } from './store-invalidation.js';
 import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
@@ -39,9 +38,8 @@ import { registerPluginRoutes } from './plugins/routes.js';
 import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes.js';
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
-import { StreamHub } from './stream.js';
+import { registerStream } from './stream-mount.js';
 import { registerTaskNotices } from './task-notices/routes.js';
-import { taskStatusCounts } from './task-status.js';
 import { registerDevelopmentRoutes } from './development/routes.js';
 import type { SyncProfile } from './development/plan.js';
 import type { SystemProxy } from './network/system-proxy.js';
@@ -159,19 +157,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     fail(reply, 404, 'not_found', 'Unknown route.');
   });
 
-  const hub = new StreamHub({
-    systemProxy: deps.systemProxy,
-    events: deps.events,
-    capabilities: deps.capabilities,
-    computer: deps.computer.coordinator,
-    snapshot: (taskId) => deps.manager.snapshot(taskId),
-    summaries: () => deps.manager.summaries(),
-    status: () => taskStatusCounts(deps.ledger.data),
-    onStatusInputs: (listener) => deps.ledger.onChanged(listener),
-    log: deps.log,
-  });
-  registerInvalidation(app, (frame) => hub.invalidate(frame));
-  registerStoreInvalidation(app, deps.config.paths, (frame) => hub.invalidate(frame));
+  registerStream(app, deps);
   if (deps.development) registerDevelopmentRoutes(app, deps, deps.development);
 
   app.get('/v1/status', RENDERER_ROUTE, async () => ({
@@ -316,14 +302,6 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
   // share one load.
   registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
-
-  // Shell, never renderer: the relay's scheme handler cannot upgrade a WebSocket, so the WebView
-  // reaches the stream only through the native virtual-socket pipe, and that pipe's upstream
-  // frame-type whitelist (subscribe, ping) is what guards it. The manifest must not suggest that
-  // the relay may forward it.
-  app.get('/v1/stream', { websocket: true, ...SHELL_ROUTE }, (socket: WebSocket) => {
-    hub.handle(socket);
-  });
 
   return app;
 }

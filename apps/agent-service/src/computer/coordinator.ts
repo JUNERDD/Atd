@@ -73,6 +73,7 @@ export class ComputerCoordinator {
   private readonly activeRuns = new Map<string, string>();
   private readonly closedRuns = new Set<string>();
   private readonly targets = new Map<string, KnownTarget>();
+  private readonly hostListeners = new Set<() => void>();
 
   constructor(
     private readonly records: ComputerRecords,
@@ -91,6 +92,7 @@ export class ComputerCoordinator {
     switch (message.type) {
       case 'computer.hello':
         this.hello(link, message.host);
+        this.hostChanged();
         return;
       case 'computer.reply':
         this.requests.reply(link.id, message.reply);
@@ -110,8 +112,18 @@ export class ComputerCoordinator {
   disconnected(linkId: string): void {
     this.lockedLinks.delete(linkId);
     this.otherProtocolLinks.delete(linkId);
-    if (this.host?.link.id !== linkId) return;
-    this.unbind();
+    if (this.host?.link.id === linkId) this.unbind();
+    this.hostChanged();
+  }
+
+  /** Display projections observe availability without owning the host lifecycle. */
+  onHostChanged(listener: () => void): () => void {
+    this.hostListeners.add(listener);
+    return () => this.hostListeners.delete(listener);
+  }
+
+  private hostChanged(): void {
+    for (const listener of this.hostListeners) listener();
   }
 
   /** The host as `GET /v1/computer` reports it. */

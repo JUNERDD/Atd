@@ -16,6 +16,7 @@ import {
 import { accessObservation, type AccessWait } from './access-observation.js';
 import { computerDetails } from './details.js';
 import { replyValue, wrongKind } from './operations.js';
+import { activityTarget } from './activity-call.js';
 
 /** The binding kind each access target resolves to. */
 const KIND_FOR_TARGET: Readonly<Record<ComputerAccessTarget['kind'], ComputerTargetKind>> = {
@@ -63,6 +64,7 @@ export async function requestAccess(
   if (candidate.kind !== 'accessCandidate') wrongKind(ctx, 'requestAccess');
   const { content } = candidate;
   if (content.kind !== kind) refuse(ctx, 'The host resolved a different target kind.');
+  runtime.activity.target(base, activityTarget(content));
   let binding = runtime.access.matching(content, runId);
   if (
     (!binding || !computer.bindingIds.includes(binding.bindingId)) &&
@@ -99,6 +101,7 @@ export async function requestAccess(
     ctx.signal?.throwIfAborted();
     if (!runtime.bindings.matches(binding.bindingId, binding.hash))
       refuse(ctx, 'The target was removed or changed while access was being approved.');
+    runtime.activity.target(base, activityTarget(binding, binding.bindingId));
     await runtime.access.allow(runId, binding, persistent);
     ctx.signal?.throwIfAborted();
     if (

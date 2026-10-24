@@ -8,6 +8,7 @@ import {
 import type { AddonRegistry } from '../addons/index.js';
 import type { Logger } from '../logging.js';
 import { ComputerAccess } from './access.js';
+import { ComputerActivityBoard } from './activity.js';
 import { ComputerBindingStore } from './bindings.js';
 import { ComputerCoordinator } from './coordinator.js';
 import { REFUSE_ALL_GRANTS, type ComputerGrantCheck } from './grant-check.js';
@@ -35,6 +36,7 @@ const IN_USE =
  * composition root says whether the service runs for development.
  */
 export class ComputerRuntime {
+  readonly activity = new ComputerActivityBoard();
   private grantCheck: ComputerGrantCheck = REFUSE_ALL_GRANTS;
 
   private constructor(

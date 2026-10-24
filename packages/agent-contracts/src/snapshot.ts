@@ -306,6 +306,8 @@ export const SubscribeSchema = Type.Object(
     seq: Type.Integer({ minimum: 0 }),
     taskIds: Type.Optional(Type.Array(Identifier, { maxItems: 100 })),
     status: Type.Optional(Type.Literal(true)),
+    /** Full current/recent task activity on every subscribe, then whenever it changes. */
+    taskActivity: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

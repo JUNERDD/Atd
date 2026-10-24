@@ -21,6 +21,11 @@ import { runScope } from './policy.js';
 import { runScreenSharing } from './screen-sharing.js';
 import { screenContextExtension } from './screen-context.js';
 import { computerCompletion } from './completion.js';
+import {
+  beginComputerActivity,
+  failComputerActivity,
+  finishComputerActivity,
+} from './activity-call.js';
 
 /** Whether any string in `value` holds an unpaired UTF-16 surrogate (`\p{Cs}` matches only those). */
 function hasLoneSurrogate(value: unknown): boolean {
@@ -108,10 +113,13 @@ export function computerExtension(deps: HarnessDeps): ExtensionFactory {
           if (hasLoneSurrogate(params))
             refuse(base, 'The call contains invalid Unicode; nothing was sent.');
           const blockImages = () => pi.getSettings().images?.blockImages === true;
+          beginComputerActivity(base, call);
           try {
             const answer = await operate(base, call, blockImages);
+            finishComputerActivity(base, answer.details);
             return complete(base, call, answer, toolContext);
           } catch (error) {
+            failComputerActivity(base, error);
             return refusalResult(base, call.action, error);
           }
         },
