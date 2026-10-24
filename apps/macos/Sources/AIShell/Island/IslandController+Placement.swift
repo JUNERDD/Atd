@@ -80,24 +80,14 @@ extension IslandController {
     }
   }
 
-  /// Takes the keyboard for a card, or returns it when the card gives it up.
-  /// A non-activating panel must be ordered out to release its keyboard grab. AppKit can then
-  /// make another ordered Atd window key, even a task panel behind the source app. When another
-  /// app still owns the menu bar, deactivate Atd too so that app regains the keyboard; activating
-  /// an already-frontmost app alone leaves the grab with Atd. Ordering the island back in within
-  /// the same run-loop turn keeps its exit or replacement visible without taking the keyboard.
+  /// Takes the keyboard for a card, or returns it when the card gives it up
+  /// (``NSPanel/returnKeyboard()``), keeping the island's exit or replacement visible.
   func setKeyCapable(_ capable: Bool) {
     window.keyCapable = capable
     if capable, window.isVisible {
       window.makeKey()
-    } else if !capable, window.isKeyWindow, window.isVisible {
-      window.orderOut(nil)
-      window.orderFrontRegardless()
-      if let frontmost = NSWorkspace.shared.frontmostApplication,
-        frontmost != NSRunningApplication.current
-      {
-        NSApp.deactivate()
-      }
+    } else if !capable {
+      window.returnKeyboard()
     }
   }
 
