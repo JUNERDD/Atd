@@ -1,0 +1,105 @@
+/* The message dial's popover (`message-entry.tsx`): as wide as the composer surface it rests on,
+ * one 4px inset around the dial and the key hints, which keeps the 18px surface concentric with the
+ * dial's 14px shape. It is a size container, so a narrow panel drops the drag hint. */
+.message-dial-popover[data-slot='popover-content'] {
+  width: var(--radix-popover-trigger-width);
+  min-width: 0;
+  gap: 0;
+  padding: 4px;
+  border-radius: var(--radius-2xl);
+  container-type: inline-size;
+  /* It spans the composer surface, so it grows out of the middle of the surface's top edge
+     rather than the start corner Radix derives from its start alignment. */
+  transform-origin: 50% 100%;
+}
+
+/* The dial (`message-dial.tsx`): ticks hang inward from a wide arc under a fixed notch. It turns
+ * under the pointer, so it takes no text selection or touch scrolling. It is the popover's only
+ * control and takes focus as the popover opens, so it draws no focus ring: the centred tick under
+ * the notch already marks it as the one the keys turn. */
+.message-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 2px;
+  border-radius: var(--radius-xl);
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.message-dial[data-dragging] {
+  cursor: grabbing;
+}
+.message-dial-svg {
+  display: block;
+  width: 100%;
+  height: 88px;
+  overflow: visible;
+}
+/* The arc fades out toward both ends (its gradient's stops); the ticks fade with it. */
+.message-dial-arc {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.message-dial-stop {
+  stop-color: var(--muted-foreground);
+}
+.message-dial-notch {
+  fill: var(--foreground);
+}
+.message-dial-ticks line {
+  stroke: var(--muted-foreground);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.message-dial-ticks line[data-selected] {
+  stroke: var(--foreground);
+  stroke-width: 2.5;
+}
+/* The selected message: its place (tabular, so the line does not shift as the dial turns) and
+ * its first line, cut short to the popover's width. */
+.message-dial-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 12px 6px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.message-dial-count {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.message-dial-total {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.message-dial-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.message-dial-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+@container (max-width: 419px) {
+  .message-dial-drag-hint {
+    display: none;
+  }
+}

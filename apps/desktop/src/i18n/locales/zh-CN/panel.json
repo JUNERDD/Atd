@@ -3,11 +3,22 @@
     "panelLabel": "Atd 任务面板",
     "newChat": "新建对话",
     "controlsLabel": "面板控件",
+    "find": "在对话中查找",
     "tasks": "任务",
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
     "loadingConversation": "正在加载对话…"
+  },
+  "find": {
+    "label": "在对话中查找",
+    "count": "{{index}} / {{total}}",
+    "none": "无结果",
+    "previous": "上一处",
+    "next": "下一处",
+    "close": "关闭查找",
+    "ruler": "匹配位置",
+    "match": "第 {{index}} 处，共 {{total}} 处"
   },
   "welcome": {
     "title": "有什么可以帮你？",

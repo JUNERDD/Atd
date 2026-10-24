@@ -3,11 +3,22 @@
     "panelLabel": "Atd task panel",
     "newChat": "New chat",
     "controlsLabel": "Panel controls",
+    "find": "Find in conversation",
     "tasks": "Tasks",
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
     "loadingConversation": "Loading conversation…"
+  },
+  "find": {
+    "label": "Find in conversation",
+    "count": "{{index}} / {{total}}",
+    "none": "No results",
+    "previous": "Previous",
+    "next": "Next",
+    "close": "Close",
+    "ruler": "Match positions",
+    "match": "Match {{index}} of {{total}}"
   },
   "welcome": {
     "title": "What can I help with?",

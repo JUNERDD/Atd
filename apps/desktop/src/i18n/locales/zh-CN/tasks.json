@@ -343,9 +343,13 @@
     "prompts": {
       "label": "你的消息（{{count}} 条）",
       "listLabel": "你的消息",
-      "filter": "筛选消息",
-      "empty": "没有匹配的消息",
-      "step": "上一条 / 下一条"
+      "valueText": "第 {{current}} 条，共 {{total}} 条：{{label}}",
+      "hint": {
+        "drag": "拖动转动",
+        "step": "逐条",
+        "keep": "停在这里",
+        "back": "回到原处"
+      }
     },
     "code": {
       "copy": "复制代码",

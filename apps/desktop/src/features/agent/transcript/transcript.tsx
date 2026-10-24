@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import type { QuoteSource } from '@atd/agent-contracts';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
@@ -10,8 +10,13 @@ import { useCompactTask } from '../compaction/use-compact-task';
 import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
 import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
+import {
+  publishConversationControls,
+  withdrawConversationControls,
+  type ConversationControls,
+} from './conversation-controls';
+import { ConversationFind } from './conversation-find';
 import { artifactAnchorIds, indexRequests, sameIds } from './turns';
-import { PromptRail } from './prompt-rail';
 import { ScrollJump } from './scroll-jump';
 import { pendingPromptRun } from './run-prompt';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
@@ -22,6 +27,7 @@ import { TurnList } from './turn-list';
 import { useEarlierTurns } from './use-earlier-turns';
 import type { CommandOpener } from './use-offered-commands';
 import { usePromptNav } from './use-prompt-nav';
+import { usePromptStepKeys } from './use-prompt-step-keys';
 import { useTranscriptScroll } from './use-transcript-scroll';
 
 /**
@@ -32,8 +38,9 @@ import { useTranscriptScroll } from './use-transcript-scroll';
  * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
  * starting a memory session) go through the panel's `onOpenTask` and `onRemember`; text selected in
  * an answer can be quoted into the reply through `onQuote`. The commands offered on an answer, or
- * on text selected in one, open through `onCommand`. With two or more user messages, a rail in the
- * leading gutter lists all of them, mounted or not, and moves the view to any one (`PromptRail`).
+ * on text selected in one, open through `onCommand`. While shown and not covered it publishes its
+ * controls (`conversation-controls.ts`): the composer's message entry steps through its user
+ * messages, mounted or not, and the header opens its find bar (`ConversationFind`).
  */
 export function Transcript({
   detail,
@@ -97,6 +104,29 @@ export function Transcript({
     pin,
     atBottom: !showJump,
   });
+  usePromptStepKeys(!covered && nav.prompts.length > 1, nav.step);
+  // The find bar's state, started over for another task.
+  const [find, setFind] = useState({ taskId: task.id, open: false, request: 0 });
+  if (find.taskId !== task.id) setFind({ taskId: task.id, open: false, request: 0 });
+  const openFind = useCallback(
+    () => setFind((state) => ({ ...state, open: true, request: state.request + 1 })),
+    [],
+  );
+  const closeFind = () => setFind((state) => ({ ...state, open: false }));
+  useEffect(() => {
+    if (covered) return;
+    const controls: ConversationControls = {
+      taskId: task.id,
+      prompts: nav.prompts,
+      active: nav.active,
+      show: nav.show,
+      step: nav.step,
+      viewport: viewportRef.current,
+      openFind,
+    };
+    publishConversationControls(controls);
+    return () => withdrawConversationControls(controls);
+  }, [covered, task.id, nav.prompts, nav.active, nav.show, nav.step, viewportRef, openFind]);
   const [messages, setMessages] = useState<HTMLDivElement | null>(null);
   // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
   const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
@@ -200,16 +230,17 @@ export function Transcript({
           <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
-      {nav.prompts.length > 1 && (
-        <PromptRail
-          prompts={nav.prompts}
-          active={nav.active}
-          covered={covered}
-          viewportRef={viewportRef}
-          onShow={nav.show}
-          onStep={nav.step}
-        />
-      )}
+      <ConversationFind
+        open={find.open}
+        focusRequest={find.request}
+        onOpen={openFind}
+        onClose={closeFind}
+        viewportRef={viewportRef}
+        root={messages}
+        turnCount={turns.length}
+        include={include}
+        covered={covered}
+      />
       <ScrollJump show={showJump} onJump={pin} />
       <SelectionToolbar
         root={messages}

@@ -1,0 +1,129 @@
+/*
+ * Find in the conversation (`conversation-find.tsx`): the match colors, the capsule bar floating
+ * under the panel header, and the ruler of match marks along the transcript's trailing edge.
+ * Every match is a soft yellow behind text that keeps its own color; the current one is a strong
+ * orange with dark text, readable in both themes.
+ */
+:root {
+  --find-match: color-mix(in srgb, #facc15 38%, transparent);
+  --find-current: #fb923c;
+  --find-current-foreground: #1c1917;
+  --find-mark: color-mix(in srgb, #eab308 85%, transparent);
+  --find-mark-current: #f97316;
+}
+/* On the dark surface the wash stays faint enough for light text to read through it. */
+.dark {
+  --find-match: color-mix(in srgb, #facc15 30%, transparent);
+  --find-mark: color-mix(in srgb, #facc15 80%, transparent);
+}
+
+::highlight(conversation-find) {
+  background-color: var(--find-match);
+}
+::highlight(conversation-find-current) {
+  background-color: var(--find-current);
+  color: var(--find-current-foreground);
+}
+
+/* The bar: the shared glass capsule; its material, fill and edge come from `surface-glass`. */
+.conversation-find {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: min(340px, calc(100% - 32px));
+  height: 36px;
+  padding: 0 6px 0 12px;
+  border-radius: 9999px;
+  animation: conversation-find-in 150ms ease-out;
+}
+@keyframes conversation-find-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+.conversation-find-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  outline: none;
+  color: var(--foreground);
+  font-size: 14px;
+}
+.conversation-find-input::placeholder {
+  color: var(--muted-foreground);
+}
+.conversation-find-count {
+  flex: none;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Empty until a query is searched; the live region stays in place to announce the first count. */
+.conversation-find-count:not(:empty) {
+  padding: 0 4px;
+}
+
+/*
+ * The ruler: a track standing for the whole conversation, from just under the header to just
+ * above the composer, over the scrollbar's lane at the trailing edge. The band is the part in view.
+ */
+.conversation-find-ruler {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 3px;
+  bottom: calc(var(--overlay-footer-height, 0px) + 8px);
+  width: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.conversation-find-band {
+  position: absolute;
+  top: var(--find-band-top, 0%);
+  right: 0;
+  left: 0;
+  height: var(--find-band-height, 0%);
+  min-height: 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  pointer-events: none;
+}
+.conversation-find-mark {
+  position: absolute;
+  top: var(--find-mark-top, 0%);
+  right: 1px;
+  left: 1px;
+  height: 4px;
+  margin-top: -2px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--find-mark);
+  cursor: pointer;
+}
+.conversation-find-mark[data-mine] {
+  background: color-mix(in srgb, var(--foreground) 55%, transparent);
+}
+.conversation-find-mark[data-current] {
+  z-index: 1;
+  right: -2px;
+  left: -2px;
+  height: 6px;
+  margin-top: -3px;
+  background: var(--find-mark-current);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conversation-find {
+    animation: none;
+  }
+}

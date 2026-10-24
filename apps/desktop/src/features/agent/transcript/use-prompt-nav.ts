@@ -59,7 +59,7 @@ function useReadingTurn(
 }
 
 /**
- * The prompt rail's model over a transcript's turns and scrolling: the conversation's user
+ * The message dial's model over a transcript's turns and scrolling: the conversation's user
  * messages, the one being read (`active`), and moving between them.
  *
  * The list is held by value, so a streamed patch that adds no message keeps it, and with it `show`

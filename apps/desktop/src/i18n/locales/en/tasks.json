@@ -343,9 +343,13 @@
     "prompts": {
       "label": "Your messages ({{count}})",
       "listLabel": "Your messages",
-      "filter": "Filter messages",
-      "empty": "No matching messages",
-      "step": "Previous / next message"
+      "valueText": "Message {{current}} of {{total}}: {{label}}",
+      "hint": {
+        "drag": "Drag to turn",
+        "step": "Step",
+        "keep": "Stay here",
+        "back": "Go back"
+      }
     },
     "code": {
       "copy": "Copy code",
