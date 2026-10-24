@@ -48,6 +48,8 @@ export function useNewChat({
   const [sendingNewChat, setSendingNewChat] = useState(false);
   /** The task the latest new chat opened. */
   const [chat, setChat] = useState<string | null>(null);
+  /** The latest new chat whose first output has already appeared. */
+  const [responded, setResponded] = useState<string | null>(null);
   /** The task the latest new chat opened, while its first turn arrives. */
   const [entering, setEntering] = useState<string | null>(null);
   const [flight, setFlight] = useState<Flight | null>(null);
@@ -67,6 +69,10 @@ export function useNewChat({
   // Leaving the conversation mid-flight leaves nowhere to land.
   if (flight?.outcome === 'opened' && (view !== 'task' || taskId !== chat)) setFlight(null);
   const followed = !covered && view === 'task' && taskId !== null && taskId === chat;
+  const phase = waitPhase(sendingNewChat, followed ? taskId : null, detail);
+  // A live thought can disappear when it settles without text, before prose's first token.
+  // That ends the row, not the first output's arrival: this chat's waiting light must stay out.
+  if (phase === 'answering' && responded !== chat) setResponded(chat);
   const dispatch: ComposerDispatch | null =
     flight && flight.outcome !== 'refused'
       ? {
@@ -99,6 +105,6 @@ export function useNewChat({
       setSourceHidden(false);
       setFlight(content && { content, outcome: 'sending' });
     },
-    waitPhase: waitPhase(sendingNewChat, followed ? taskId : null, detail),
+    waitPhase: phase === 'waiting' && followed && responded === chat ? 'answering' : phase,
   };
 }
