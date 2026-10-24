@@ -324,14 +324,18 @@ export class TaskRunner {
     // The run's audit is complete before anyone hears it ended (audit.ts): the automation engine
     // reads its unattended declines and writes then (unattended.ts).
     if (isTerminalStatus(status)) await this.audit?.flush();
-    await this.ctx.ledger.change((data) => {
+    const applied = await this.ctx.ledger.change((data) => {
       const task = data.tasks.find((item) => item.id === this.taskId);
       const run = task?.runs.find((item) => item.id === runId);
-      if (!task || !run) return;
+      if (!task || !run || isTerminalStatus(run.status)) return false;
+      // Cleanup from a cancelled tool must not revive its run.
+      if (run.status === 'stopping' && !isTerminalStatus(status)) return false;
       run.status = status;
       run.error = error;
       task.updatedAt = new Date().toISOString();
+      return true;
     });
+    if (!applied) return;
     this.ctx.events.publish({
       taskId: this.taskId,
       runId,
