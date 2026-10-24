@@ -54,6 +54,7 @@ final class ShellBridge {
       guard host === shell?.panelHost else { return }
       shell?.notifications?.taskShown(post.taskId)
       shell?.shownComputerTaskId = post.taskId
+      shell?.taskActivity.readShownConversation()
     }
   }
 

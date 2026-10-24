@@ -33,6 +33,10 @@ final class ShellStrings {
     table.localizedString(forKey: key.rawValue, value: nil, table: nil)
   }
 
+  func text(_ key: TaskActivityStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
   func text(_ key: ComputerMonitorStringKey) -> String {
     table.localizedString(forKey: key.rawValue, value: nil, table: nil)
   }

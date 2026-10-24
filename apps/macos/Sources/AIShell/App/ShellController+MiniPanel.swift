@@ -9,6 +9,8 @@ extension ShellController {
   /// Connects the mini panel to the shell. Runs from the initializer; the panel itself shows
   /// from ``start(revealPanel:)``.
   func wireMiniPanel() {
+    control.onTaskActivity = { [weak self] in self?.taskActivity.receive($0) }
+    _ = taskActivity
     miniPanel.actions = MiniPanelController.Actions(
       toggle: { [weak self] in self?.summon(.toggle) },
       newTask: { [weak self] in self?.startNewTask() },

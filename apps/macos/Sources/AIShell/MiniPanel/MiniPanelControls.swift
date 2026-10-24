@@ -132,9 +132,8 @@ struct MiniPanelButton: View {
 /// ``MiniPanelModel/flyoutScrollTarget``.
 struct MiniPanelFlyout: View {
   let model: MiniPanelModel
-  let card: MiniPanelGlassRect
-  let rest: CGRect
-  let animation: Animation?
+  let presentation: MiniPanelPopoverContent
+  private var rest: CGRect { presentation.rest }
   @State private var scroll = MiniPanelScrollMetrics()
   @State private var position = ScrollPosition(edge: .top)
 
@@ -168,17 +167,12 @@ struct MiniPanelFlyout: View {
     .overlay {
       if scrolls {
         MiniPanelScrollThumb(model: model, metrics: scroll, size: rest.size)
-          .animation(animation) { $0.modifier(follow(middleY: nil)) }
-          .modifier(MiniPanelPresenceEffect(presence: model.presence(.rows)))
+          .modifier(presentation.effect())
       }
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text(verbatim: model.labels.commands))
     .accessibilityIdentifier("miniPanel.flyout")
-  }
-
-  private func follow(middleY: Double?) -> MiniPanelFollowEffect {
-    MiniPanelFollowEffect(shape: card, rest: rest, scales: !model.reduceMotion, middleY: middleY)
   }
 
   private func rows(middleY: Double?) -> some View {
@@ -189,8 +183,7 @@ struct MiniPanelFlyout: View {
         MiniPanelRow(index: index, name: command.name, model: model)
       }
     }
-    .animation(animation) { $0.modifier(follow(middleY: middleY)) }
-    .modifier(MiniPanelPresenceEffect(presence: model.presence(.rows)))
+    .modifier(presentation.effect(middleY: middleY))
   }
 }
 

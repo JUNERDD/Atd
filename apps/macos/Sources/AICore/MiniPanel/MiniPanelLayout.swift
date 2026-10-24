@@ -48,7 +48,7 @@ public struct MiniPanelLayout: Equatable, Sendable {
   ///     (``MiniPanelMetrics/pillWidth(backingScale:)``); Retina's unless given.
   public init(
     placement: MiniPanelPlacement, workArea: ScreenRect, displayFrame: ScreenRect,
-    commands: Int, flyoutWidth: Double, backingScale: Double = 2
+    commands: Int, flyoutWidth: Double, backingScale: Double = 2, activityAttached: Bool = false
   ) {
     typealias Metrics = MiniPanelMetrics
     let right = placement.edge == .right
@@ -94,7 +94,7 @@ public struct MiniPanelLayout: Equatable, Sendable {
       height: pill.height + Metrics.hotZoneSlop * 2)
     canvas = Self.canvas(
       columnCenter: column + Metrics.capsuleWidth / 2, pillCenter: pillCenter,
-      workArea: workArea, displayFrame: displayFrame)
+      workArea: workArea, displayFrame: displayFrame, activityAttached: activityAttached)
     // The tallest capsule and the largest card, so the region holds whatever the list becomes.
     let full = Metrics.capsuleHeight(hasCommands: true)
     let tallest = ScreenRect(
@@ -110,6 +110,13 @@ public struct MiniPanelLayout: Equatable, Sendable {
       canvas: canvas)
     bodyRegion = ScreenRect.bounds(of: [pill, swell, tallest, self.invite, self.target])
       .outset(by: Metrics.overshootRoom)
+  }
+
+  /// Activity adds transparent vertical room while leaving every original shape unchanged.
+  public static func canvasSize(displayHeight: Double, activityAttached: Bool) -> WindowSize {
+    let original = MiniPanelMetrics.canvasSize
+    return WindowSize(
+      width: original.width, height: activityAttached ? min(800, displayHeight) : original.height)
   }
 
   // MARK: The body
@@ -268,9 +275,10 @@ public struct MiniPanelLayout: Equatable, Sendable {
   /// ``MiniPanelMetrics/canvasSize`` centered on the anchor, moved along each axis to stay on
   /// the display when the display is large enough on that axis.
   private static func canvas(
-    columnCenter: Double, pillCenter: Double, workArea: ScreenRect, displayFrame: ScreenRect
+    columnCenter: Double, pillCenter: Double, workArea: ScreenRect, displayFrame: ScreenRect,
+    activityAttached: Bool
   ) -> ScreenRect {
-    let size = MiniPanelMetrics.canvasSize
+    let size = canvasSize(displayHeight: displayFrame.height, activityAttached: activityAttached)
     let full = MiniPanelMetrics.capsuleHeight(hasCommands: true)
     let anchor = origin(centeredOn: pillCenter, length: full, in: workArea) + full / 2
     var x = columnCenter - size.width / 2

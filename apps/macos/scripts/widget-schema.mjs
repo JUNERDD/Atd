@@ -2,34 +2,11 @@
 // payload (`widget-sync.ts`) of packages/agent-contracts, loaded as TypeScript through Node's type
 // stripping. Those files import their siblings by `.js` names (they are compiled with tsc), so a
 // resolve hook maps such an import to the `.ts` file beside it when one exists.
-import { existsSync } from 'node:fs';
-import { registerHooks } from 'node:module';
-import { fileURLToPath } from 'node:url';
 import { createEmitter } from './bridge-emitter.mjs';
-
-const contracts = new URL('../../../packages/agent-contracts/src/', import.meta.url);
+import { loadContract } from './contract-schema.mjs';
 
 /** A plain JSON copy: drops TypeBox's non-enumerable bookkeeping and fixes key order. */
 const json = (schema) => JSON.parse(JSON.stringify(schema));
-
-let hooked = false;
-function hookTypeScriptSiblings() {
-  if (hooked) return;
-  hooked = true;
-  registerHooks({
-    resolve(specifier, context, next) {
-      if (
-        specifier.startsWith('.') &&
-        specifier.endsWith('.js') &&
-        context.parentURL?.endsWith('.ts')
-      ) {
-        const sibling = new URL(specifier.replace(/\.js$/, '.ts'), context.parentURL);
-        if (existsSync(fileURLToPath(sibling))) return next(sibling.href, context);
-      }
-      return next(specifier, context);
-    },
-  });
-}
 
 /** Definitions, in the order they are emitted; each later one refers to the earlier by name. */
 const shared = [
@@ -51,9 +28,8 @@ const shared = [
 ];
 
 export async function widgetSchema() {
-  hookTypeScriptSiblings();
-  const widgets = await import(new URL('widgets.ts', contracts).href);
-  const sync = await import(new URL('widget-sync.ts', contracts).href);
+  const widgets = await loadContract('widgets.ts');
+  const sync = await loadContract('widget-sync.ts');
   const node = json(widgets.WidgetNodeSchema);
   if (node.$ref !== 'WidgetNode' || !node.$defs?.WidgetNode)
     throw new Error('WidgetNodeSchema is no longer Type.Cyclic over WidgetNode.');

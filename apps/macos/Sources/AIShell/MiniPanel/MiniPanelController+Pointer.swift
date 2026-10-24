@@ -25,6 +25,7 @@ extension MiniPanelController {
     var shapes = [ScreenRect(drawnBody)]
     if model.flyoutOpen { shapes.append(ScreenRect(global(model.card.frame))) }
     return layout.isNear(point, shapes: shapes)
+      || activityContains(point, MiniPanelMetrics.nearMargin)
   }
 
   /// One display frame, drawn at `now` (the display link's target time), `elapsed` seconds after
@@ -72,7 +73,9 @@ extension MiniPanelController {
   /// The open capsule: it closes once the pointer has stayed away from it for the delay.
   private func hoverExpanded(_ point: CGPoint, at time: Double) {
     guard let layout else { return }
-    let near = layout.keepsOpen(point, flyoutOpen: model.flyoutOpen)
+    let near =
+      layout.keepsOpen(point, flyoutOpen: model.flyoutOpen)
+      || activityContains(point, MiniPanelMetrics.collapseMargin)
     guard hover.expanded(near: near, held: isHeld, at: time) == .collapse else { return }
     respond("close", at: CACurrentMediaTime(), settling: settling(.collapse, from: .capsule))
     collapse(trigger: "pointer left")
@@ -81,7 +84,7 @@ extension MiniPanelController {
   /// The tucked pill and the hot zone: swell at once, open after the dwell (or, opening on click,
   /// wait swollen for the click), relax on leaving.
   private func hoverTucked(_ point: CGPoint, at time: Double) {
-    guard let layout else { return }
+    guard let layout, !isHeld else { return }
     let reduce = model.reduceMotion
     switch hover.tucked(inHotZone: layout.isInHotZone(point), at: time) {
     case .swell?:
@@ -202,7 +205,7 @@ extension MiniPanelController {
       }
     case .expanded where snap == nil:
       hovered = control(at: pointer)
-      if hovered != nil {
+      if hovered != nil || activityEntryContains(pointer) {
         cursor = .pointingHand
       } else if drawnBody.contains(pointer) {
         cursor = .openHand
@@ -213,6 +216,7 @@ extension MiniPanelController {
       break
     }
     if hovered != model.hovered { model.hovered = hovered }
+    model.activity?.entryHovered = activityEntryContains(pointer)
     setCursor(cursor)
     trackScrollbar(pointer)
   }
@@ -230,6 +234,7 @@ extension MiniPanelController {
   func pressTarget(at point: CGPoint) -> MiniPanelPress {
     switch model.phase {
     case .tucked, .expanded:
+      if activityEntryContains(point) { return .activityEntry }
       if model.flyoutOpen, snap == nil, global(model.card.frame).contains(point) {
         return isOnScrollbar(point) ? .scroller : .card(control(at: point))
       }
@@ -250,6 +255,7 @@ extension MiniPanelController {
     if snap != nil {
       snap = nil
       snapInterrupted = true
+      if lifted { setLifted(false) }
     }
     showPress(target)
     pointer.wake()
@@ -266,6 +272,10 @@ extension MiniPanelController {
   /// A click the panel takes itself rather than replaying it to SwiftUI: on the tucked pill, or
   /// anywhere a click opens it from while it opens on click, it opens. The controls take theirs.
   func click(_ target: MiniPanelPress) -> Bool {
+    if target == .activityEntry {
+      model.activity?.toggle()
+      return true
+    }
     guard target == .body(nil), model.phase == .tucked else { return false }
     expand(trigger: "click")
     return true
@@ -302,35 +312,4 @@ extension MiniPanelController {
     pointer.wake()
   }
 
-  // MARK: Context menu
-
-  /// Move to the other edge, Open on Click (checked while it does), Hide Mini Panel, then
-  /// Settings… (Settings › General).
-  func makeMenu() -> NSMenu {
-    let strings = ShellStrings.shared
-    let menu = NSMenu()
-    let other = placement.edge.opposite
-    let move: ShellStringKey = other == .left ? .miniPanelMoveLeft : .miniPanelMoveRight
-    menu.addItem(ActionMenuItem(strings.text(move)) { [weak self] in self?.move(to: other) })
-    menu.addItem(
-      ActionMenuItem(
-        strings.text(.miniPanelOpenOnClick), isOn: { [weak self] in self?.openOn == .click }
-      ) { [weak self] in
-        guard let self else { return }
-        setOpenOn(openOn == .click ? .hover : .click)
-      })
-    menu.addItem(
-      ActionMenuItem(strings.text(.miniPanelHide)) { [weak self] in self?.setShown(false) })
-    menu.addItem(.separator())
-    menu.addItem(
-      ActionMenuItem(strings.text(.menuSettings)) { [weak self] in self?.actions.openSettings() })
-    return menu
-  }
-
-  func menuChanged(_ open: Bool) {
-    menuOpen = open
-    if open { dropLabel() }
-    endPress()
-    pointer.wake()
-  }
 }

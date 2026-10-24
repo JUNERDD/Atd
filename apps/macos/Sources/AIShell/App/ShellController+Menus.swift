@@ -48,6 +48,7 @@ extension ShellController {
   }
 
   func applyLanguage() {
+    taskActivity.refresh()
     NSApp.mainMenu = AppMenus.mainMenu(menuActions)
     panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
     settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))

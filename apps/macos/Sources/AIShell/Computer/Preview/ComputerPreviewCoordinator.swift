@@ -8,12 +8,24 @@ final class ComputerPreviewCoordinator {
   private var sources: [ComputerPreviewSession] = []
   private var cleanup: Task<Void, Never>?
   private var cleanupGeneration = 0
-  private var presentedTaskId: String?
+  private var selection: Selection?
   private lazy var monitor = ComputerMonitorWindow { [weak self] active in
     self?.presentationChanged(active)
   }
 
   var metadata: [ComputerStateEvent.Preview] { sources.map(\.metadata) }
+
+  private struct Selection {
+    let taskId: String
+    let runId: String?
+    let sourceIds: Set<String>?
+
+    func includes(_ source: ComputerPreviewSession) -> Bool {
+      source.metadata.taskId == taskId
+        && (runId == nil || source.metadata.runId == runId)
+        && (sourceIds == nil || sourceIds?.contains(source.metadata.sourceId) == true)
+    }
+  }
 
   func register(
     ref: TargetRefWire, taskId: String, runId: String, label: String,
@@ -74,8 +86,27 @@ final class ComputerPreviewCoordinator {
   }
 
   func show(taskId: String) -> Bool {
-    guard sources.contains(where: { $0.metadata.taskId == taskId }) else { return false }
-    presentedTaskId = taskId
+    present(Selection(taskId: taskId, runId: nil, sourceIds: nil))
+  }
+
+  /// The activity row names an exact run; another run's sources never satisfy this request.
+  func show(taskId: String, runId: String, sourceIds: Set<String>? = nil) -> Bool {
+    let requested = Selection(taskId: taskId, runId: runId, sourceIds: sourceIds)
+    guard sources.contains(where: { requested.includes($0) && $0.refusal() == nil }) else {
+      return false
+    }
+    return present(requested)
+  }
+
+  /// Availability is an authorized source, not whether its first captured frame has arrived.
+  func contains(taskId: String, runId: String) -> Bool {
+    let requested = Selection(taskId: taskId, runId: runId, sourceIds: nil)
+    return sources.contains { requested.includes($0) && $0.refusal() == nil }
+  }
+
+  private func present(_ requested: Selection) -> Bool {
+    guard sources.contains(where: requested.includes) else { return false }
+    selection = requested
     updatePresentation()
     monitor.show()
     presentationChanged(true)
@@ -138,16 +169,16 @@ final class ComputerPreviewCoordinator {
 
   private func presentationChanged(_ active: Bool) {
     for source in sources {
-      source.setPresentation(active && source.metadata.taskId == presentedTaskId)
+      source.setPresentation(active && selection?.includes(source) == true)
     }
-    if !active, !monitor.isOpen { presentedTaskId = nil }
+    if !active, !monitor.isOpen { selection = nil }
   }
 
   private func updatePresentation() {
-    let selected = sources.filter { $0.metadata.taskId == presentedTaskId }
+    let selected = sources.filter { selection?.includes($0) == true }
     monitor.update(selected.map(\.display))
     for source in sources {
-      source.setPresentation(monitor.isPresenting && source.metadata.taskId == presentedTaskId)
+      source.setPresentation(monitor.isPresenting && selection?.includes(source) == true)
     }
   }
 }

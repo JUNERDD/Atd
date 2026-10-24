@@ -57,6 +57,7 @@ public final class ShellController {
   lazy var shortcutHolds = makeShortcutHolds()
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
   let miniPanel: MiniPanelController
+  lazy var taskActivity = ShellTaskActivity(shell: self)
   /// Generated apps' windows (`userApp.*`).
   let userApps: UserAppWindows
   /// Generative views' windows (`view.open`).
@@ -181,6 +182,7 @@ public final class ShellController {
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
       // A command the page took to the panel ends its shortcut's press capsule.
       if visible { self?.commandProgress.panelShown() }
+      if visible { self?.taskActivity.readShownConversation() }
       self?.notificationsPanelVisibility(visible)
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
@@ -229,7 +231,10 @@ public final class ShellController {
         self?.notifications?.pull()
       }
     }
-    control.onStatus = { [weak self] _ in self?.refreshStatus() }
+    control.onStatus = { [weak self] _ in
+      self?.refreshStatus()
+      self?.taskActivity.refresh()
+    }
     refreshStatus()
     services.start()
     startWidgets()

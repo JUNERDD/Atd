@@ -50,6 +50,7 @@ struct ShellLocalizationTests {
     let keys =
       ShellStringKey.allCases.map(\.rawValue)
       + ComputerMonitorStringKey.allCases.map(\.rawValue)
+      + TaskActivityStringKey.allCases.map(\.rawValue)
     #expect(Set(catalog.strings.keys) == Set(keys))
     for (key, entry) in catalog.strings {
       for language in ShellLanguage.allCases {

@@ -6,6 +6,7 @@
 // - the desktop widgets' view tree and sync payload, read straight from
 //   packages/agent-contracts (widget-schema.mjs → Sources/AIWidgetModel/Generated), which the
 //   shell and the WidgetKit extension share.
+// - the service's task activity snapshot (task-activity-schema.mjs → AICore).
 // `--check` regenerates into memory and fails when the checked-in files differ.
 //
 //   node scripts/generate-bridge-types.mjs          write the Generated/*.swift files
@@ -26,6 +27,7 @@ import { emitEnvelopes } from './bridge-envelopes.mjs';
 import { createEmitter } from './bridge-emitter.mjs';
 import { emitUserAppEnvelopes } from './user-app-envelopes.mjs';
 import { widgetSchema, widgetSections } from './widget-schema.mjs';
+import { taskActivitySchema, taskActivitySections } from './task-activity-schema.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const schemaDir = path.resolve(root, '../desktop/src/native-bridge');
@@ -143,6 +145,14 @@ function userAppSections(schema) {
 }
 
 const targets = [
+  {
+    schema: taskActivitySchema,
+    source: 'packages/agent-contracts/src/task-activity.ts and computer-activity.ts',
+    rerun: '`pnpm --filter @atd/macos codegen` after changing them',
+    outputDir: path.join(root, 'Sources/AICore/TaskActivity/Generated'),
+    filePrefix: 'TaskActivity',
+    sections: taskActivitySections,
+  },
   {
     schema: () => readSchema('native-bridge.schema.json'),
     source: 'apps/desktop/src/native-bridge/native-bridge.schema.json',

@@ -67,8 +67,14 @@ struct MiniPanelView: View {
     }
     .offset(x: region.minX, y: region.minY)
     .frame(width: model.canvas.width, height: model.canvas.height, alignment: .topLeading)
+    .overlay(alignment: .topLeading) {
+      if let activity = model.activity {
+        TaskActivityLayer(mini: model, activity: activity)
+      }
+    }
     // The glass draws its first frame in the app's scheme, and follows it when it changes.
     .environment(\.colorScheme, GlassSurface.colorScheme)
+    .transaction(value: model.coordinateRevision) { $0.disablesAnimations = true }
   }
 }
 
@@ -108,7 +114,7 @@ private struct MiniPanelBody: View {
       }
       .glassSurface(in: outline, animation: shape.animation)
       .offset(x: lane.minX, y: lane.minY)
-      .animation(factors.shiftAnimation) { $0.offset(factors.shift) }
+      .animation(nil) { $0.offset(factors.shift) }
   }
 }
 
@@ -121,6 +127,7 @@ private struct MiniPanelBodyContent: View {
     ZStack(alignment: .topLeading) {
       MiniPanelPillFill(model: model)
         .frame(width: model.bodyLane.width, height: model.bodyLane.height)
+      MiniPanelBusyGlow(model: model)
       layer(.capsule) { MiniPanelCapsule(model: model) }
       layer(.invite) { MiniPanelInvite(model: model) }
       layer(.card) { MiniPanelDropCard(model: model) }

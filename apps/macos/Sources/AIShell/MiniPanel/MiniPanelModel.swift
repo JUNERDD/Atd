@@ -65,8 +65,6 @@ nonisolated enum MiniPanelContent: Hashable, Sendable, CaseIterable {
   case invite
   /// The drop card's glyph and call to action.
   case card
-  /// The commands card's rows.
-  case rows
   /// The hover label's text.
   case labelText
 }
@@ -104,12 +102,11 @@ struct MiniPanelBodyShape: Equatable {
 /// glass only (`deform`), both drawn into the shape on the animation of their last change
 /// (``MiniPanelBodyShape/animation``), and the snap's shift, glass and content together, from
 /// where the body was drawn as it was released to where its shape rests in the new canvas
-/// (`shift`), on its own.
+/// (`shift`), sampled by the same native snap owner as the window.
 struct MiniPanelBodyFactors: Equatable {
   var scale = 1.0
   var deform = CGSize(width: 1, height: 1)
   var shift = CGSize.zero
-  var shiftAnimation: Animation?
 }
 
 /// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule,
@@ -185,8 +182,13 @@ struct MiniPanelLabels: Equatable {
 /// ``MiniPanelLayout``, so what is drawn and what the pointer tracking hits agree.
 @Observable
 final class MiniPanelModel {
+  var activity: TaskActivityModel?
+  /// The resting pill's light: running tasks, or tasks waiting for the person, which win.
+  var ongoingWork: IslandGlowPalette?
   var phase = MiniPanelPhase.hidden
   var canvas = CGSize.zero
+  /// A coordinate rebase must never inherit a shape or press animation.
+  var coordinateRevision = 0
   var edge = MiniPanelEdge.right
   /// The glass container in the canvas: only where glass can be, never the whole canvas.
   var glassFrame = CGRect.zero
@@ -200,12 +202,13 @@ final class MiniPanelModel {
   private var capsulePresence = MiniPanelPresence()
   private var invitePresence = MiniPanelPresence()
   private var cardPresence = MiniPanelPresence()
-  private var rowsPresence = MiniPanelPresence()
   private var labelTextPresence = MiniPanelPresence()
   /// The body content the phase shows: the only one clicks reach and VoiceOver reads.
   var activeContent: MiniPanelContent?
-  var flyoutOpen = false
-  var card = MiniPanelCardShape()
+  var flyoutFrame = CGRect.zero
+  let popover = MiniPanelPopoverState()
+  var flyoutOpen: Bool { popover.isOpen }
+  var card: MiniPanelCardShape { popover.shape }
   /// Where the card is drawn: its open frame and every body shape it closes into.
   var cardLane = CGRect.zero
   var commands: [MiniPanelSetCommandsParams.Command] = []
@@ -245,7 +248,6 @@ final class MiniPanelModel {
     case .capsule: capsulePresence
     case .invite: invitePresence
     case .card: cardPresence
-    case .rows: rowsPresence
     case .labelText: labelTextPresence
     }
   }
@@ -255,7 +257,6 @@ final class MiniPanelModel {
     case .capsule: capsulePresence = presence
     case .invite: invitePresence = presence
     case .card: cardPresence = presence
-    case .rows: rowsPresence = presence
     case .labelText: labelTextPresence = presence
     }
   }

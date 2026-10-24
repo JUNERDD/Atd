@@ -51,6 +51,7 @@ export const codegenSchemas = [
   '../desktop/src/native-bridge/user-app-bridge.schema.json',
 ];
 export const codegenGeneratedDirectories = [
+  'Sources/AICore/TaskActivity/Generated',
   'Sources/AICore/Bridge/Generated',
   'Sources/AICore/UserApps/Generated',
   'Sources/AIWidgetModel/Generated',
@@ -61,7 +62,7 @@ export const codegenDependencyParents = [
 ];
 
 export function isCodegenScript(name) {
-  return /^(generate-bridge-types|bridge-.+|user-app-envelopes|widget-schema)\.mjs$/.test(
+  return /^(generate-bridge-types|bridge-.+|user-app-envelopes|widget-schema|contract-schema|task-activity-schema)\.mjs$/.test(
     path.basename(name),
   );
 }

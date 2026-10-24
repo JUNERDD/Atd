@@ -13,24 +13,9 @@ struct MiniPanelCard: View {
   let model: MiniPanelModel
 
   var body: some View {
-    let card = model.card
-    let lane = model.cardLane
-    let rows = model.frame(.rows).offsetBy(dx: -lane.minX, dy: -lane.minY)
-    let shape = MiniPanelGlassRect(card.frame, corner: MiniPanelMetrics.cardRadius, in: lane)
-    let outline = MiniPanelGlassOutline(shape: shape)
-    MiniPanelFlyout(model: model, card: shape, rest: rows, animation: card.animation)
-      .frame(width: rows.width, height: rows.height)
-      .animation(nil) { $0.offset(x: rows.minX, y: rows.minY) }
-      .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      .glassSurface(in: outline, animation: card.animation)
-      .backport.glassEffectContainer(spacing: MiniPanelView.glassSpacing)
-      .animation(
-        card.isLabelHandoff && model.flyoutOpen
-          ? nil : MiniPanelMotion.popoverOpacity(model.flyoutOpen)
-      ) { $0.opacity(model.flyoutOpen ? 1 : 0) }
-      .offset(x: lane.minX, y: lane.minY)
-      .allowsHitTesting(model.flyoutOpen)
-      .accessibilityHidden(!model.flyoutOpen)
+    MiniPanelPopover(state: model.popover, lane: model.cardLane) { presentation in
+      MiniPanelFlyout(model: model, presentation: presentation)
+    }
   }
 }
 

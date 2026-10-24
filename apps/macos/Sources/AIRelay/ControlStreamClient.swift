@@ -27,7 +27,7 @@ public protocol ComputerRequestHandling: AnyObject {
 }
 
 /// The shell's own stream connection (decisions Q4-4', Q5-A1/A2): the only connection Swift
-/// reconnects itself. On every open it subscribes with no tasks and `status: true`, registers
+/// reconnects itself. On every open it subscribes with no tasks, status and task activity, registers
 /// the five desktop capabilities, and pings inside the capability lease. It decodes only the
 /// control frames (``ControlFrame``), including the `widgets`, `automations`, `taskNotices` and
 /// `addons` invalidations, and drops everything else.
@@ -54,6 +54,8 @@ public final class ControlStreamClient {
   public private(set) var status: Status?
   public var onConnectionState: (@MainActor (ConnectionState) -> Void)?
   public var onStatus: (@MainActor (Status) -> Void)?
+  /// A complete authoritative board; each reconnect receives a fresh snapshot, even when empty.
+  public var onTaskActivity: (@MainActor (TaskActivitySnapshotWire) -> Void)?
   /// The service's widget catalog or snapshots changed (`invalidate` scope `widgets`).
   public var onWidgetsInvalidated: (@MainActor () -> Void)?
   /// An automation, its runs or the pending notices changed (`invalidate` scope `automations`).
@@ -203,6 +205,8 @@ public final class ControlStreamClient {
       let status = Status(running: running, attention: attention)
       self.status = status
       onStatus?(status)
+    case .frame(.taskActivity(let snapshot)):
+      onTaskActivity?(snapshot)
     case .frame(.capabilityRequest(let request)):
       serve(request)
     case .frame(.capabilityRegistered(let clientId)):

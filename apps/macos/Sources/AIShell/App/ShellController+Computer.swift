@@ -38,6 +38,7 @@ extension ShellController {
 
   func broadcastComputerState() {
     broadcast(.computerState(computer.stateEvent()))
+    taskActivity.refresh()
   }
 
   /// A page opened later learns the state too.

@@ -10,15 +10,24 @@ enum MiniPanelPress: Equatable {
   case body(MiniPanelControl?)
   /// The commands card: a press there is a click on its row or nothing, never a drag.
   case card(MiniPanelControl?)
+  /// The activity entry opens its card on click and drags the panel when the press travels.
+  case activityEntry
   /// A scrolling card's scrollbar: a press there drags its thumb, or jumps it to the press.
   case scroller
   /// The invite or the drop card, which a drag session owns.
   case dropShape
 
+  var dragsPanel: Bool {
+    switch self {
+    case .body, .activityEntry: true
+    case .none, .card, .scroller, .dropShape: false
+    }
+  }
+
   var control: MiniPanelControl? {
     switch self {
     case .body(let control), .card(let control): control
-    case .none, .scroller, .dropShape: nil
+    case .none, .activityEntry, .scroller, .dropShape: nil
     }
   }
 }
@@ -110,7 +119,15 @@ final class MiniPanelWindow: ActiveGlassPanel {
     contentView = content
   }
 
-  override var canBecomeKey: Bool { false }
+  /// The activity card's reply field may take the keyboard while the card is open. The panel
+  /// becomes key only when that field is clicked (`becomesKeyOnlyIfNeeded`), so presses on the
+  /// panel's controls never take the keyboard from the app in front, and it gives the keyboard
+  /// back as the card closes.
+  var keyCapable = false {
+    didSet { if !keyCapable { returnKeyboard() } }
+  }
+
+  override var canBecomeKey: Bool { keyCapable }
   override var canBecomeMain: Bool { false }
 
   /// Where the owner puts it: a borderless window is otherwise kept below the menu bar, and the
@@ -193,7 +210,7 @@ final class MiniPanelWindow: ActiveGlassPanel {
     let (dx, dy) = (mouse.x - press.start.x, mouse.y - press.start.y)
     let threshold = MiniPanelMetrics.moveThreshold
     if !press.moving, !press.cancelled, dx * dx + dy * dy > threshold * threshold {
-      if case .body = press.target {
+      if press.target.dragsPanel {
         press.moving = true
         onDragBegan?()
       } else {

@@ -4,6 +4,7 @@ import AIRelay
 extension ShellController {
   func computerConnectionChanged(_ state: ControlStreamClient.ConnectionState) {
     systemActivityConnectionChanged(state)
+    taskActivity.connectionChanged()
     computer.previewConnected = state == .connected
     if state != .connected { computer.previews.removeAll() }
   }
