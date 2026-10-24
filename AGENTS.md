@@ -37,6 +37,7 @@ These rules define project constraints and completion criteria. The [OpenAI prom
 
 - For formal requirements or architecture planning, resolve the shared models, ownership, data flows, lifecycle and failure behavior, and extension boundaries required by the agreed scope. Phased implementation must not defer these foundational decisions or omit agreed capabilities. Keep genuine unresolved decisions explicit and avoid speculative features outside that scope.
 - Before expanding a product flow, map agreed capabilities to usable entry points, inputs and available options, primary actions, and relevant outcomes or error states. Keep this proportional to the task: a local visual correction does not require a new planning document or approval phase.
+- For high-fidelity prototype work, consider [high-fidelity-prototype](.agents/skills/high-fidelity-prototype/SKILL.md) for choosing the runtime, reusing product surfaces, modeling interactive scenarios, and delivering verified artifacts. Combine it with the applicable design and runtime skills; the prototype's format and fidelity remain governed by the user's request.
 
 ### Tools And Delegation
 
