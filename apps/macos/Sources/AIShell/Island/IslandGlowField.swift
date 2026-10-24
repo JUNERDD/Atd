@@ -39,6 +39,7 @@ import SwiftUI
 /// The fixed outer ring covers the capsule while its internal shapes and color regions flow.
 struct IslandGlowField: View {
   let state: IslandGlowFieldState
+  let palette: IslandGlowPalette
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
@@ -112,11 +113,7 @@ struct IslandGlowField: View {
       return values[index] + (neighborhood / count - values[index]) * softness
     }
     let mean = softened.reduce(0, +) / Double(softened.count)
-    // Both appearances share the field and interpolation; only the palette changes.
-    let light = colorScheme == .light
-    let deep = light ? SIMD3(0.06, 0.86, 0.70) : SIMD3(0.035, 0.11, 0.17)
-    let steel = light ? SIMD3(0.08, 0.64, 1.0) : SIMD3(0.28, 0.51, 0.68)
-    let mist = light ? SIMD3(0.96, 1.0, 1.0) : SIMD3(0.68, 0.79, 0.88)
+    let (deep, steel, mist) = palette.tones(dark: colorScheme != .light)
     return softened.map { value in
       let tone = 0.5 + 0.47 * tanh(1.7 * (value - mean))
       let color =

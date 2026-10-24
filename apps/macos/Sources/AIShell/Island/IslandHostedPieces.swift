@@ -11,8 +11,10 @@ import SwiftUI
 /// with the content that holds it, so nothing turns while the island shows anything else or is
 /// gone.
 struct IslandSpinner: NSViewRepresentable {
+  var side = IslandSpinnerStyle.side
+
   func makeNSView(context: Context) -> IslandPlainHost<IslandSpinnerView> {
-    let host = IslandPlainHost(IslandSpinnerView())
+    let host = IslandPlainHost(IslandSpinnerView(side: side))
     host.setAccessibilityElement(false)
     return host
   }
@@ -22,7 +24,7 @@ struct IslandSpinner: NSViewRepresentable {
   func sizeThatFits(
     _ proposal: ProposedViewSize, nsView: IslandPlainHost<IslandSpinnerView>, context: Context
   ) -> CGSize? {
-    CGSize(width: IslandSpinnerStyle.side, height: IslandSpinnerStyle.side)
+    CGSize(width: side, height: side)
   }
 }
 

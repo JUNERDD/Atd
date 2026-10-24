@@ -4,16 +4,20 @@ import SwiftUI
 /// A continuous color field throughout the command, inside its existing glass and clip.
 struct IslandWorkingGlow: NSViewRepresentable {
   let active: Bool
+  var motionEnabled = true
+  /// Fixed for the view's life; ``IslandPaletteGlow`` cross-fades two fields instead.
+  var palette = IslandGlowPalette.working
 
   func makeNSView(context: Context) -> IslandPlainHost<IslandWorkingGlowView> {
-    let host = IslandPlainHost(IslandWorkingGlowView(active: active))
+    let host = IslandPlainHost(
+      IslandWorkingGlowView(active: active, motionEnabled: motionEnabled, palette: palette))
     host.setAccessibilityElement(false)
-    host.content.update(active: active)
+    host.content.update(active: active, motionEnabled: motionEnabled)
     return host
   }
 
   func updateNSView(_ host: IslandPlainHost<IslandWorkingGlowView>, context: Context) {
-    host.content.update(active: active)
+    host.content.update(active: active, motionEnabled: motionEnabled)
   }
 
   static func dismantleNSView(
@@ -33,17 +37,21 @@ struct IslandWorkingGlow: NSViewRepresentable {
 /// No frame tick changes the island's model, layout, foreground controls, or outer hosting view.
 final class IslandWorkingGlowView: NSView {
   private let field: IslandGlowFieldState
+  private let palette: IslandGlowPalette
   private let hostingView: IslandGlowHostingView
   private var active: Bool
+  private var motionEnabled: Bool
   private var retreating = false
   private var retreat: Task<Void, Never>?
   private var observers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
-  init(active: Bool) {
+  init(active: Bool, motionEnabled: Bool, palette: IslandGlowPalette) {
     self.active = active
+    self.motionEnabled = motionEnabled
     let field = IslandGlowFieldState(active: active)
     self.field = field
-    hostingView = IslandGlowHostingView(rootView: IslandGlowField(state: field))
+    self.palette = palette
+    hostingView = IslandGlowHostingView(rootView: IslandGlowField(state: field, palette: palette))
     super.init(frame: .zero)
     addSubview(hostingView)
     setAccessibilityElement(false)
@@ -55,8 +63,9 @@ final class IslandWorkingGlowView: NSView {
   override var allowsVibrancy: Bool { false }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-  func update(active: Bool) {
+  func update(active: Bool, motionEnabled: Bool) {
     self.active = active
+    self.motionEnabled = motionEnabled
     syncField()
   }
 
@@ -138,9 +147,9 @@ final class IslandWorkingGlowView: NSView {
     let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     let contrast = workspace.accessibilityDisplayShouldIncreaseContrast ? 0.4 : 1.0
     let transparency = workspace.accessibilityDisplayShouldReduceTransparency ? 0.6 : 1.0
-    let strength = (dark ? 0.34 : 0.15) * contrast * transparency
+    let strength = (dark ? 0.34 : 0.15) * palette.emphasis(dark: dark) * contrast * transparency
     let running =
-      (active || retreating)
+      (active || retreating) && motionEnabled
       && window?.occlusionState.contains(.visible) == true
       && !isHiddenOrHasHiddenAncestor && bounds.width > 0 && bounds.height > 0
       && !workspace.accessibilityDisplayShouldReduceMotion
