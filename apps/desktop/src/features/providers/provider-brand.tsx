@@ -23,11 +23,12 @@ export function ProviderBrand({
   provider: string;
   variant?: 'tile' | 'inline';
 }) {
+  const brand = provider;
   const stem =
-    (variant === 'inline' ? brands.inline[provider] : undefined) ??
-    brands.providers[provider] ??
-    Object.entries(brands.prefixes).find(([prefix]) => provider.startsWith(prefix))?.[1] ??
-    provider;
+    (variant === 'inline' ? brands.inline[brand] : undefined) ??
+    brands.providers[brand] ??
+    Object.entries(brands.prefixes).find(([prefix]) => brand.startsWith(prefix))?.[1] ??
+    brand;
   const asset =
     stem === 'openai'
       ? openai

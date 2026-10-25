@@ -95,6 +95,7 @@ export const AuthTypeSchema = Type.Union([
 export const ConnectionConfigSchema = Type.Object(
   {
     provider: id,
+    presetId: Type.Optional(id),
     name: Type.String({ minLength: 1, maxLength: 120 }),
     baseUrl: text,
     authType: AuthTypeSchema,

@@ -1,24 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
-import { Input } from '@atd/ui/components/input';
-import { Label } from '@atd/ui/components/label';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@atd/ui/components/select';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
-import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
-import { CustomModels } from './custom-models';
+import { ProviderConnectionFields } from './provider-connection-fields';
 import { ProviderSignIn } from './provider-login';
 import { draftFrom } from './provider-draft';
 import { useProviderDraft } from './use-provider-draft';
@@ -29,33 +18,33 @@ import { ChatGPTSettings } from './chatgpt-settings';
 export function ProviderForm({
   provider,
   connection,
+  serviceName,
+  presetId,
+  planChoice,
   onSaved,
   onBack,
 }: {
   provider: ProviderCatalogEntry;
   connection: Connection | null;
+  serviceName: string;
+  presetId?: string | undefined;
+  planChoice: ReactNode;
   onSaved: (connection: Connection) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
-  const { draft, dirty, change, load } = useProviderDraft(provider, connection);
+  const { draft, dirty, change, load } = useProviderDraft(provider, connection, presetId);
   const login = useProviderLogin();
   const [pending, setPending] = useState('');
   const footerRef = useOverlayFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
   const disabled = Boolean(pending) || login.waiting || !bridge;
-  const custom = isCustom(draft.provider);
-  const cloud = isAmbient(draft.provider);
   const saved = connection && connection.connectionId === draft.connectionId ? connection : null;
   const accountLogin = draft.authType === 'oauth';
   const needsSignIn = accountLogin && !saved?.connected;
   const chatgpt = accountLogin && draft.provider === 'openai';
   const noticeMissing = chatgpt && !draft.chatgptConsent;
   const planDisabled = chatgpt && saved?.connected && !saved.chatgptPlanEnabled;
-  const options =
-    provider.auth.length && cloud && !provider.auth.some((auth) => auth.type === 'api_key')
-      ? [...provider.auth, { type: 'api_key' as const, label: t('form.authFallback') }]
-      : provider.auth;
   const refreshBlocked = disabled || dirty || !saved?.connected || planDisabled || noticeMissing;
   const verifyBlocked = refreshBlocked || !saved?.defaultModel;
   async function perform(label: string, operation: () => Promise<void>) {
@@ -71,7 +60,13 @@ export function ProviderForm({
     if (!bridge) return;
     const signingIn = needsSignIn || forceSignIn;
     await perform(signingIn ? 'signingIn' : 'saving', async () => {
-      const result = dirty || !saved ? await bridge.save(draft) : saved;
+      const result =
+        dirty || !saved
+          ? await bridge.save({
+              ...draft,
+              ...(presetId ? { presetId: draft.presetId ?? presetId } : {}),
+            })
+          : saved;
       load(draftFrom(result));
       // Leaves through `replace`, which never asks about unsaved changes.
       onSaved(result);
@@ -82,11 +77,7 @@ export function ProviderForm({
   return (
     <section className="provider-form settings-editor" aria-label={t('form.sectionLabel')}>
       <SettingsHeading
-        title={
-          saved
-            ? draft.name
-            : t(accountLogin ? 'form.signIn' : 'form.connect', { name: provider.name })
-        }
+        title={saved ? draft.name : t('form.connect', { name: serviceName })}
         subpage
         backLabel={t('form.back')}
       />
@@ -97,6 +88,7 @@ export function ProviderForm({
         scrollShadow
       >
         <div className="settings-editor-inner settings-fields">
+          {planChoice && <fieldset disabled={disabled}>{planChoice}</fieldset>}
           {saved && saved.revision !== draft.expectedRevision && (
             <output className="settings-field-note">
               {t('form.conflict')}{' '}
@@ -107,120 +99,16 @@ export function ProviderForm({
           )}
           {saved?.authNotice && <output className="settings-field-note">{saved.authNotice}</output>}
           <ChatGPTPlan connection={saved} showAccount />
-          <fieldset disabled={disabled} className="settings-fields">
-            <div className="settings-field">
-              <Label htmlFor="provider-name">{t('form.name')}</Label>
-              <Input
-                id="provider-name"
-                value={draft.name}
-                maxLength={120}
-                onChange={(event) => change({ name: event.target.value })}
-              />
-            </div>
-            {options.length > 1 && (
-              <div className="settings-field">
-                <Label htmlFor="provider-auth">{t('form.auth')}</Label>
-                <Select
-                  value={draft.authType}
-                  disabled={Boolean(saved)}
-                  onValueChange={(value) => {
-                    const method = options.find((auth) => auth.type === value);
-                    if (method) change({ authType: method.type, apiKey: undefined });
-                  }}
-                >
-                  <SelectTrigger id="provider-auth">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {options.map((method) => (
-                        <SelectItem key={method.type} value={method.type}>
-                          {method.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {draft.authType === 'api_key' && (
-              <div className="settings-field">
-                <div className="settings-field-label">
-                  <Label htmlFor="provider-api-key">{t('form.apiKey')}</Label>
-                  {saved?.hasCredential && (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => change({ apiKey: draft.apiKey === '' ? undefined : '' })}
-                    >
-                      {draft.apiKey === '' ? t('form.keepKey') : t('form.removeKey')}
-                    </Button>
-                  )}
-                </div>
-                <Input
-                  id="provider-api-key"
-                  type="password"
-                  value={draft.apiKey ?? ''}
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  placeholder={
-                    saved?.hasCredential
-                      ? t('form.keepKeyPlaceholder')
-                      : t('form.apiKeyPlaceholder')
-                  }
-                  onChange={(event) => change({ apiKey: event.target.value })}
-                />
-                <p className="settings-field-note">
-                  {draft.apiKey === '' && saved?.hasCredential
-                    ? t('form.keyRemovedNote')
-                    : t('form.encryptedNote')}
-                </p>
-              </div>
-            )}
-            {!accountLogin && (custom || draft.provider === 'azure' || draft.baseUrl) && (
-              <div className="settings-field">
-                <Label htmlFor="provider-endpoint">
-                  {draft.provider === 'azure' ? t('form.resourceEndpoint') : t('form.baseUrl')}
-                </Label>
-                <Input
-                  id="provider-endpoint"
-                  type="url"
-                  value={draft.baseUrl}
-                  readOnly={!custom && draft.provider !== 'azure'}
-                  onChange={(event) => change({ baseUrl: event.target.value })}
-                  placeholder="https://your-provider.example/v1"
-                />
-              </div>
-            )}
-            {(CLOUD_FIELDS[draft.provider] ?? []).map((field) => (
-              <div className="settings-field" key={field.key}>
-                <Label htmlFor={field.key}>{field.label}</Label>
-                <Input
-                  id={field.key}
-                  value={draft.options[field.key] ?? ''}
-                  placeholder={field.placeholder}
-                  onChange={(event) =>
-                    change({ options: { ...draft.options, [field.key]: event.target.value } })
-                  }
-                />
-              </div>
-            ))}
-            {draft.authType === 'ambient' && (
-              <p className="settings-field-note">{t('form.ambientNote')}</p>
-            )}
-            {custom && (
-              <CustomModels
-                discovered={saved?.catalog ?? []}
-                models={draft.customModels}
-                baseUrl={draft.baseUrl}
-                onChange={(customModels) => change({ customModels })}
-              />
-            )}
-          </fieldset>
+          <ProviderConnectionFields
+            provider={provider}
+            draft={draft}
+            saved={saved}
+            disabled={disabled}
+            change={change}
+          />
           {accountLogin && (
             <>
-              {!login.state && needsSignIn && (
+              {!chatgpt && !login.state && needsSignIn && (
                 <p className="settings-field-note">{t('form.signInNote')}</p>
               )}
               <ProviderSignIn state={login.state} disabled={Boolean(pending) || !bridge} />
@@ -329,7 +217,7 @@ export function ProviderForm({
               : pending === 'saving'
                 ? t('form.saving')
                 : needsSignIn
-                  ? t(draft.provider === 'openai' ? 'chatgpt.continue' : 'login.signIn')
+                  ? t(chatgpt ? 'chatgpt.signIn' : 'login.signIn')
                   : saved
                     ? t('form.saveChanges')
                     : t('form.saveConnection')}

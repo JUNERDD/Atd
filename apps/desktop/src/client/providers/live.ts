@@ -21,6 +21,7 @@ export function toDesktopConnection(connection: ServiceConnection): Connection {
   return {
     connectionId: connection.connectionId,
     provider: connection.provider,
+    ...(connection.presetId ? { presetId: connection.presetId } : {}),
     name: connection.name,
     baseUrl: connection.baseUrl,
     authType: connection.authType,
@@ -137,6 +138,7 @@ export async function saveLive(
   validateConfig(draft);
   const configuration = {
     name: draft.name,
+    ...(draft.presetId ? { presetId: draft.presetId } : {}),
     baseUrl: draft.baseUrl,
     defaultModel: draft.defaultModel,
     ...(draft.defaultThinkingLevel ? { defaultThinkingLevel: draft.defaultThinkingLevel } : {}),

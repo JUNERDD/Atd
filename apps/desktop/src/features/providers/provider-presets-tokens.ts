@@ -1,0 +1,98 @@
+import type { ProviderServiceDefinition } from './provider-service-definition';
+
+/** Reuse each regional runtime's own model catalog; a shared brand never merges model IDs. */
+export const TOKEN_PROVIDER_SERVICES: readonly ProviderServiceDefinition[] = [
+  {
+    id: 'xiaomi',
+    brand: 'xiaomi',
+    nameKey: 'xiaomi.name',
+    descriptionKey: 'xiaomi.description',
+    aliases: 'Xiaomi MiMo 小米 Token Plan 编程 套餐',
+    plans: [
+      {
+        id: 'xiaomi-token-plan-cn',
+        providerId: 'xiaomi-token-plan-cn',
+        kind: 'builtin',
+        aliases: 'Token Plan CN China 国内 中国 套餐',
+        nameKey: 'xiaomi.china.name',
+        descriptionKey: 'xiaomi.china.description',
+        defaults: { nameKey: 'xiaomi.china.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'xiaomi-token-plan-sgp',
+        providerId: 'xiaomi-token-plan-sgp',
+        kind: 'builtin',
+        aliases: 'Token Plan SGP Singapore 新加坡 套餐',
+        nameKey: 'xiaomi.singapore.name',
+        descriptionKey: 'xiaomi.singapore.description',
+        defaults: { nameKey: 'xiaomi.singapore.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'xiaomi-token-plan-ams',
+        providerId: 'xiaomi-token-plan-ams',
+        kind: 'builtin',
+        aliases: 'Token Plan AMS Amsterdam Europe 欧洲 阿姆斯特丹 套餐',
+        nameKey: 'xiaomi.europe.name',
+        descriptionKey: 'xiaomi.europe.description',
+        defaults: { nameKey: 'xiaomi.europe.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'xiaomi-api',
+        providerId: 'xiaomi',
+        kind: 'builtin',
+        aliases: 'API Pay as you go 按量 余额',
+        nameKey: 'plans.apiName',
+        descriptionKey: 'plans.apiDescription',
+        defaults: { nameKey: 'xiaomi.apiConnection', authTypes: ['api_key'] },
+      },
+    ],
+  },
+  {
+    id: 'alibaba-model-studio',
+    brand: 'qwen-token-plan',
+    nameKey: 'alibaba.name',
+    descriptionKey: 'alibaba.description',
+    aliases:
+      'Qwen Alibaba Aliyun Model Studio DashScope 百炼 阿里云 通义 千问 Coding Plan Token Plan',
+    plans: [
+      {
+        id: 'qwen-token-plan-cn',
+        providerId: 'qwen-token-plan-cn',
+        kind: 'builtin',
+        aliases: 'Qwen Token Plan CN China Beijing 中国 国内 北京 套餐',
+        nameKey: 'alibaba.china.name',
+        descriptionKey: 'alibaba.china.description',
+        defaults: { nameKey: 'alibaba.china.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'qwen-token-plan',
+        providerId: 'qwen-token-plan',
+        kind: 'builtin',
+        aliases: 'Qwen Token Plan International Singapore 国际 新加坡 套餐',
+        nameKey: 'alibaba.international.name',
+        descriptionKey: 'alibaba.international.description',
+        defaults: { nameKey: 'alibaba.international.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'qwen-token-plan-individual',
+        providerId: 'qwen-token-plan-individual',
+        kind: 'builtin',
+        aliases: 'Qwen Token Plan Individual Personal International Singapore 个人 国际 新加坡',
+        nameKey: 'alibaba.individual.name',
+        descriptionKey: 'alibaba.individual.description',
+        defaults: { nameKey: 'alibaba.individual.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'alibaba-api',
+        providerId: 'openai-compatible',
+        kind: 'preset',
+        baseUrl: '',
+        category: 'api',
+        aliases: 'Qwen Alibaba DashScope API Pay as you go 按量 百炼 工作空间',
+        nameKey: 'plans.apiName',
+        descriptionKey: 'alibaba.api.description',
+        defaults: { nameKey: 'alibaba.api.connectionName', authTypes: ['api_key'] },
+      },
+    ],
+  },
+];

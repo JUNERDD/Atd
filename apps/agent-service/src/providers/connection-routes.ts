@@ -274,6 +274,8 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   });
   const configurationChanged = configurationId !== current.configurationId;
   current.name = body.name;
+  // Older clients omit this UI metadata; keep the stored identity in that case.
+  if (body.presetId !== undefined) current.presetId = body.presetId;
   current.baseUrl = body.baseUrl;
   current.defaultModel = body.defaultModel;
   if (body.defaultThinkingLevel) current.defaultThinkingLevel = body.defaultThinkingLevel;

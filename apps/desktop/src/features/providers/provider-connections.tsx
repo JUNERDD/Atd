@@ -1,5 +1,7 @@
 import { Check, Ellipsis, RefreshCw, Settings2, Trash2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@atd/ui/components/badge';
+import { providerPresentation } from './provider-services';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
   Item,
@@ -58,6 +60,7 @@ export function ProviderConnections({
   return (
     <ItemGroup className="provider-connections">
       {rows.map(({ connection, nameRanges }) => {
+        const presentation = providerPresentation(connection);
         const isDefault = defaultConnectionId === connection.connectionId;
         const model = connection.defaultModel
           ? { connectionId: connection.connectionId, modelId: connection.defaultModel }
@@ -147,7 +150,7 @@ export function ProviderConnections({
                   onClick={() => onManage(connection)}
                 />
                 <div className="provider-identity">
-                  <ProviderBrand provider={connection.provider} />
+                  <ProviderBrand provider={presentation?.service.brand ?? connection.provider} />
                   <ItemContent>
                     <div className="provider-name-track">
                       <ItemTitle className="min-w-0" title={connection.name}>
@@ -159,7 +162,12 @@ export function ProviderConnections({
                         </span>
                       )}
                     </div>
-                    <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {presentation && (
+                        <Badge variant="secondary">{t(presentation.plan.nameKey)}</Badge>
+                      )}
+                      <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+                    </div>
                   </ItemContent>
                 </div>
                 <ItemActions className="provider-model-controls">

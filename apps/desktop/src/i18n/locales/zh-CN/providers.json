@@ -42,6 +42,32 @@
     "noMatchesDescription": "试试其他名称或类别。",
     "clearSearch": "清除搜索"
   },
+  "zhipu": {
+    "internationalCoding": {
+      "name": "Z.AI",
+      "description": "国际 · 编程套餐 · 按量 API",
+      "planName": "编程套餐",
+      "planDescription": "使用 Z.AI 国际版套餐额度。",
+      "connectionName": "Z.AI · 编程套餐"
+    },
+    "chinaCoding": {
+      "planName": "编程套餐",
+      "planDescription": "使用 GLM Coding Plan 套餐额度。",
+      "connectionName": "智谱 · 编程套餐"
+    },
+    "chinaApi": {
+      "connectionName": "智谱 · 按量 API",
+      "planName": "按量 API",
+      "planDescription": "使用余额或资源包，按量计费。"
+    },
+    "china": {
+      "name": "智谱 BigModel",
+      "description": "编程套餐 · 按量 API"
+    },
+    "internationalApi": {
+      "connectionName": "Z.AI · 按量 API"
+    }
+  },
   "form": {
     "sectionLabel": "提供商连接",
     "connect": "连接 {{name}}",
@@ -76,7 +102,8 @@
     "cancel": "取消",
     "saving": "正在保存…",
     "saveChanges": "保存更改",
-    "saveConnection": "保存连接"
+    "saveConnection": "保存连接",
+    "advanced": "高级设置"
   },
   "login": {
     "openBrowser": "打开浏览器",
@@ -124,7 +151,7 @@
   "customModels": {
     "title": "自定义模型",
     "add": "添加模型",
-    "description": "对于没有模型目录的服务，请输入确切的模型 ID 和能力。自动发现的兼容模型会采用服务器报告的上下文窗口、输出上限、推理和图片输入能力；对已知模型 ID，则采用模型厂商公布的数值。仍无法确定的部分初始为文本输入、32,768 token 上下文和 16,384 token 输出上限。请根据服务器实际情况配置模型，或在模型菜单中设置它的上下文窗口。",
+    "description": "填写服务商提供的模型 ID，并设置对应能力。",
     "configure": "配置 {{name}}",
     "modelId": "模型 ID",
     "remove": "移除",
@@ -206,7 +233,109 @@
     "errorDetails": "错误详情",
     "privacySummary": "Atd 会获取账号信息，并将任务内容发送给 OpenAI。登录凭据仅保存在本机。",
     "privacyDetails": "隐私详情",
-    "backgroundSummary": "允许自动化、记忆整理和应用在你离开时使用订阅额度。",
-    "backgroundBeforeConsent": "先同意连接，即可允许自动化、记忆整理和应用在你离开时使用订阅额度。"
+    "backgroundSummary": "允许自动化、记忆整理等后台任务使用订阅额度。",
+    "backgroundBeforeConsent": "先同意连接，即可允许后台任务使用订阅额度。",
+    "signIn": "登录 ChatGPT"
+  },
+  "plans": {
+    "title": "接入方式",
+    "existing": "如需更换接入方式，请新增连接。",
+    "matches": "匹配方式：{{plans}}",
+    "apiName": "按量 API",
+    "apiDescription": "使用普通 API 密钥，按量计费。"
+  },
+  "openai": {
+    "name": "OpenAI",
+    "description": "ChatGPT 订阅 · API",
+    "chatgpt": {
+      "planName": "ChatGPT 订阅",
+      "planDescription": "登录账号，使用订阅额度。",
+      "connectionName": "OpenAI · ChatGPT"
+    },
+    "api": {
+      "planName": "API",
+      "planDescription": "使用 API 密钥，按量计费。",
+      "connectionName": "OpenAI · API"
+    }
+  },
+  "minimax": {
+    "international": {
+      "name": "MiniMax（国际）",
+      "description": "M Plan · 按量 API",
+      "subscriptionConnection": "MiniMax 国际 · M Plan",
+      "apiConnection": "MiniMax 国际 · API"
+    },
+    "china": {
+      "name": "MiniMax（国内）",
+      "description": "M Plan · 按量 API",
+      "subscriptionConnection": "MiniMax 国内 · M Plan",
+      "apiConnection": "MiniMax 国内 · API"
+    },
+    "subscription": {
+      "name": "M Plan",
+      "description": "使用订阅密钥，消耗套餐额度。"
+    }
+  },
+  "kimi": {
+    "name": "Kimi",
+    "description": "Kimi Code · Moonshot API",
+    "coding": {
+      "name": "Kimi Code（国内）",
+      "description": "使用 Kimi Code 专用密钥，仅限交互式任务。",
+      "connectionName": "Kimi Code · 国内"
+    },
+    "chinaApi": {
+      "name": "API（国内）",
+      "description": "使用 Moonshot 国内开放平台密钥。",
+      "connectionName": "Moonshot · 国内 API"
+    },
+    "internationalApi": {
+      "name": "API（国际）",
+      "description": "使用 Moonshot 国际开放平台密钥。",
+      "connectionName": "Moonshot · 国际 API"
+    }
+  },
+  "xiaomi": {
+    "name": "Xiaomi MiMo",
+    "description": "Token Plan · 按量 API",
+    "apiConnection": "MiMo · 按量 API",
+    "china": {
+      "name": "Token Plan（国内）",
+      "description": "使用国内集群的套餐专用密钥。",
+      "connectionName": "MiMo · 国内套餐"
+    },
+    "singapore": {
+      "name": "Token Plan（新加坡）",
+      "description": "使用新加坡集群的套餐专用密钥。",
+      "connectionName": "MiMo · 新加坡套餐"
+    },
+    "europe": {
+      "name": "Token Plan（欧洲）",
+      "description": "使用欧洲集群的套餐专用密钥。",
+      "connectionName": "MiMo · 欧洲套餐"
+    }
+  },
+  "alibaba": {
+    "name": "阿里云百炼",
+    "description": "Token Plan · 按量 API",
+    "china": {
+      "name": "Token Plan（国内）",
+      "description": "使用北京地域的 Token Plan 专用密钥。",
+      "connectionName": "百炼 · 国内 Token Plan"
+    },
+    "international": {
+      "name": "Token Plan（国际）",
+      "description": "使用新加坡地域的 Token Plan 专用密钥。",
+      "connectionName": "百炼 · 国际 Token Plan"
+    },
+    "individual": {
+      "name": "个人版（国际）",
+      "description": "使用新加坡个人版套餐密钥，仅限交互式任务。",
+      "connectionName": "百炼 · 国际个人版"
+    },
+    "api": {
+      "description": "填写百炼控制台提供的 Base URL 和普通 API 密钥。",
+      "connectionName": "百炼 · 按量 API"
+    }
   }
 }

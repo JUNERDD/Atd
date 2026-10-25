@@ -42,6 +42,32 @@
     "noMatchesDescription": "Try another name or category.",
     "clearSearch": "Clear search"
   },
+  "zhipu": {
+    "internationalCoding": {
+      "name": "Z.AI",
+      "description": "International · Coding Plan · API",
+      "planName": "Coding Plan",
+      "planDescription": "Use your international Z.AI Coding Plan allowance.",
+      "connectionName": "Z.AI · Coding Plan"
+    },
+    "chinaCoding": {
+      "planName": "Coding Plan",
+      "planDescription": "Use your GLM Coding Plan allowance.",
+      "connectionName": "Zhipu · Coding Plan"
+    },
+    "chinaApi": {
+      "connectionName": "Zhipu · Pay-as-you-go API",
+      "planName": "Pay-as-you-go API",
+      "planDescription": "Pay per use with your balance or resource package."
+    },
+    "china": {
+      "name": "Zhipu BigModel",
+      "description": "Coding Plan · Pay-as-you-go API"
+    },
+    "internationalApi": {
+      "connectionName": "Z.AI · Pay-as-you-go API"
+    }
+  },
   "form": {
     "sectionLabel": "Provider connection",
     "connect": "Connect {{name}}",
@@ -76,7 +102,8 @@
     "cancel": "Cancel",
     "saving": "Saving…",
     "saveChanges": "Save changes",
-    "saveConnection": "Save connection"
+    "saveConnection": "Save connection",
+    "advanced": "Advanced settings"
   },
   "login": {
     "openBrowser": "Open browser",
@@ -124,7 +151,7 @@
   "customModels": {
     "title": "Custom models",
     "add": "Add model",
-    "description": "For services without a model directory, enter the exact model ID and capabilities. Discovered compatible models use the context window, output limit, reasoning and image input the server reports, or the model maker's published values for a known model ID; anything still unknown starts at text input, a 32,768-token context and a 16,384-token output limit. Configure a model to match your server, or set its context window from the model menu.",
+    "description": "Enter the provider’s model ID and set its capabilities.",
     "configure": "Configure {{name}}",
     "modelId": "Model ID",
     "remove": "Remove",
@@ -206,7 +233,109 @@
     "errorDetails": "Error details",
     "privacySummary": "Atd receives your account details and sends task content to OpenAI. Sign-in credentials stay on this Mac.",
     "privacyDetails": "Privacy details",
-    "backgroundSummary": "Let automations, memory reviews, and apps use your plan while you’re away.",
-    "backgroundBeforeConsent": "Agree to connect first, then allow automations, memory reviews, and apps to use your plan while you’re away."
+    "backgroundSummary": "Allow automations, memory maintenance, and other background tasks to use your plan.",
+    "backgroundBeforeConsent": "Agree to connect before allowing background tasks to use your plan.",
+    "signIn": "Sign in to ChatGPT"
+  },
+  "plans": {
+    "title": "Connection method",
+    "existing": "To switch methods, add a new connection.",
+    "matches": "Matching methods: {{plans}}",
+    "apiName": "Pay-as-you-go API",
+    "apiDescription": "Use a standard API key, billed by usage."
+  },
+  "openai": {
+    "name": "OpenAI",
+    "description": "ChatGPT plan · API",
+    "chatgpt": {
+      "planName": "ChatGPT plan",
+      "planDescription": "Sign in to use your plan allowance.",
+      "connectionName": "OpenAI · ChatGPT"
+    },
+    "api": {
+      "planName": "API",
+      "planDescription": "Use an API key, billed by usage.",
+      "connectionName": "OpenAI · API"
+    }
+  },
+  "minimax": {
+    "international": {
+      "name": "MiniMax (International)",
+      "description": "M Plan · Pay-as-you-go API",
+      "subscriptionConnection": "MiniMax International · M Plan",
+      "apiConnection": "MiniMax International · API"
+    },
+    "china": {
+      "name": "MiniMax (China)",
+      "description": "M Plan · Pay-as-you-go API",
+      "subscriptionConnection": "MiniMax China · M Plan",
+      "apiConnection": "MiniMax China · API"
+    },
+    "subscription": {
+      "name": "M Plan",
+      "description": "Use a subscription key and your plan allowance."
+    }
+  },
+  "kimi": {
+    "name": "Kimi",
+    "description": "Kimi Code · Moonshot API",
+    "coding": {
+      "name": "Kimi Code (China)",
+      "description": "Use a Kimi Code key for interactive tasks only.",
+      "connectionName": "Kimi Code · China"
+    },
+    "chinaApi": {
+      "name": "API (China)",
+      "description": "Use a key from the Moonshot China platform.",
+      "connectionName": "Moonshot · China API"
+    },
+    "internationalApi": {
+      "name": "API (International)",
+      "description": "Use a key from the Moonshot international platform.",
+      "connectionName": "Moonshot · International API"
+    }
+  },
+  "xiaomi": {
+    "name": "Xiaomi MiMo",
+    "description": "Token Plan · Pay-as-you-go API",
+    "apiConnection": "MiMo · Pay-as-you-go API",
+    "china": {
+      "name": "Token Plan (China)",
+      "description": "Use a Token Plan key for the China cluster.",
+      "connectionName": "MiMo · China Token Plan"
+    },
+    "singapore": {
+      "name": "Token Plan (Singapore)",
+      "description": "Use a Token Plan key for the Singapore cluster.",
+      "connectionName": "MiMo · Singapore Token Plan"
+    },
+    "europe": {
+      "name": "Token Plan (Europe)",
+      "description": "Use a Token Plan key for the Europe cluster.",
+      "connectionName": "MiMo · Europe Token Plan"
+    }
+  },
+  "alibaba": {
+    "name": "Alibaba Cloud Model Studio",
+    "description": "Token Plan · Pay-as-you-go API",
+    "china": {
+      "name": "Token Plan (China)",
+      "description": "Use a Token Plan key for the Beijing region.",
+      "connectionName": "Model Studio · China Token Plan"
+    },
+    "international": {
+      "name": "Token Plan (International)",
+      "description": "Use a Token Plan key for the Singapore region.",
+      "connectionName": "Model Studio · International Token Plan"
+    },
+    "individual": {
+      "name": "Personal (International)",
+      "description": "Use a Singapore Personal Edition key for interactive tasks only.",
+      "connectionName": "Model Studio · International Personal"
+    },
+    "api": {
+      "description": "Enter the Base URL and standard API key from the Model Studio console.",
+      "connectionName": "Model Studio · Pay-as-you-go API"
+    }
   }
 }

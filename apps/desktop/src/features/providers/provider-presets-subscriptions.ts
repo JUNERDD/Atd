@@ -1,0 +1,100 @@
+import type { ProviderServiceDefinition } from './provider-service-definition';
+
+/** Billing credentials and regions remain explicit even when their API protocol is shared. */
+export const SUBSCRIPTION_PROVIDER_SERVICES: readonly ProviderServiceDefinition[] = [
+  {
+    id: 'minimax',
+    brand: 'minimax',
+    nameKey: 'minimax.international.name',
+    descriptionKey: 'minimax.international.description',
+    aliases: 'MiniMax 海螺 国际 Global International Coding Plan Token Plan M Plan',
+    plans: [
+      {
+        id: 'minimax-subscription',
+        providerId: 'minimax',
+        kind: 'builtin',
+        aliases: 'M Plan Coding Plan Token Plan Subscription 订阅 编程 套餐',
+        nameKey: 'minimax.subscription.name',
+        descriptionKey: 'minimax.subscription.description',
+        defaults: {
+          nameKey: 'minimax.international.subscriptionConnection',
+          authTypes: ['api_key'],
+        },
+      },
+      {
+        id: 'minimax-api',
+        providerId: 'minimax',
+        kind: 'builtin',
+        aliases: 'API Pay as you go 按量 余额',
+        nameKey: 'plans.apiName',
+        descriptionKey: 'plans.apiDescription',
+        defaults: { nameKey: 'minimax.international.apiConnection', authTypes: ['api_key'] },
+      },
+    ],
+  },
+  {
+    id: 'minimax-cn',
+    brand: 'minimax-cn',
+    nameKey: 'minimax.china.name',
+    descriptionKey: 'minimax.china.description',
+    aliases: 'MiniMax CN China 海螺 国内 中国 Coding Plan Token Plan M Plan',
+    plans: [
+      {
+        id: 'minimax-cn-subscription',
+        providerId: 'minimax-cn',
+        kind: 'builtin',
+        baseUrl: 'https://api.minimax.cn/anthropic',
+        aliases: 'M Plan Coding Plan Token Plan Subscription 订阅 编程 套餐',
+        nameKey: 'minimax.subscription.name',
+        descriptionKey: 'minimax.subscription.description',
+        defaults: { nameKey: 'minimax.china.subscriptionConnection', authTypes: ['api_key'] },
+      },
+      {
+        id: 'minimax-cn-api',
+        providerId: 'minimax-cn',
+        kind: 'builtin',
+        baseUrl: 'https://api.minimax.cn/anthropic',
+        aliases: 'API Pay as you go 按量 余额',
+        nameKey: 'plans.apiName',
+        descriptionKey: 'plans.apiDescription',
+        defaults: { nameKey: 'minimax.china.apiConnection', authTypes: ['api_key'] },
+      },
+    ],
+  },
+  {
+    id: 'kimi',
+    brand: 'kimi-coding',
+    nameKey: 'kimi.name',
+    descriptionKey: 'kimi.description',
+    aliases: 'Kimi Moonshot 月之暗面 月之暗面科技 Kimi Code Coding Plan',
+    plans: [
+      {
+        id: 'kimi-coding',
+        providerId: 'kimi-coding',
+        kind: 'builtin',
+        aliases: 'Kimi Code Coding CN China 编程 套餐 国内',
+        nameKey: 'kimi.coding.name',
+        descriptionKey: 'kimi.coding.description',
+        defaults: { nameKey: 'kimi.coding.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'moonshotai-cn',
+        providerId: 'moonshotai-cn',
+        kind: 'builtin',
+        aliases: 'Moonshot API CN China 国内 按量 开放平台',
+        nameKey: 'kimi.chinaApi.name',
+        descriptionKey: 'kimi.chinaApi.description',
+        defaults: { nameKey: 'kimi.chinaApi.connectionName', authTypes: ['api_key'] },
+      },
+      {
+        id: 'moonshotai',
+        providerId: 'moonshotai',
+        kind: 'builtin',
+        aliases: 'Moonshot API International Global 国际 按量 开放平台',
+        nameKey: 'kimi.internationalApi.name',
+        descriptionKey: 'kimi.internationalApi.description',
+        defaults: { nameKey: 'kimi.internationalApi.connectionName', authTypes: ['api_key'] },
+      },
+    ],
+  },
+];

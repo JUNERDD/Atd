@@ -47,6 +47,8 @@ export const ServiceConnectionSchema = Type.Object(
   {
     connectionId: Identifier,
     provider: Type.String({ minLength: 1, maxLength: 256 }),
+    /** Optional UI plan identity; does not affect runtime, credentials, or configurationId. */
+    presetId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
     name: Type.String({ minLength: 1, maxLength: 120 }),
     baseUrl: Type.String({ maxLength: 2048 }),
     authType: Type.Union([
