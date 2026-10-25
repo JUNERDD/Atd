@@ -3,7 +3,7 @@
  * target architecture, the add-on lock is there and pins this architecture's add-ons while the
  * parts those add-ons ship (the computer-use browser worker and its own dependencies) are gone,
  * every native binary meets the Mach-O rules, the Node that runs the pack actually loads the
- * native addons, esbuild runs, and the generated-app toolchain still works offline from inside the
+ * native addons, any retained esbuild runs, and the app toolchain still works offline from inside the
  * pack. The add-on archives themselves are checked by addon-checks.mjs. Each check throws with the
  * file and rule it found broken.
  */
@@ -33,7 +33,7 @@ const exists = (file) =>
     () => false,
   );
 
-/** Returns the pi-tui addons and esbuild copies to exercise; throws listing what is missing. */
+/** Returns the pi-tui addons and any esbuild copies; throws listing missing runtime modules. */
 async function checkRequiredModules(packRoot, arch) {
   const modules = path.join(packRoot, 'node_modules');
   const pi = path.join(modules, '@earendil-works', 'pi-coding-agent', 'dist', 'index.js');
@@ -58,7 +58,7 @@ async function checkRequiredModules(packRoot, arch) {
   for (const file of required) if (!(await exists(file))) missing.push(file);
   if (keyrings.length === 0) missing.push(`@napi-rs/keyring-darwin-${arch} in the virtual store`);
   if (piTuiAddons.length === 0) missing.push(`${PI_TUI} in the virtual store`);
-  if (esbuilds.length === 0) missing.push(`${ESBUILD} in the virtual store`);
+  // Vite's unused optional esbuild peer is pruned; only copies another runtime needs remain.
   if (missing.length > 0)
     throw new Error(`The pack lacks required modules for ${arch}:\n${missing.join('\n')}`);
   const resolved = await realpath(pi);
