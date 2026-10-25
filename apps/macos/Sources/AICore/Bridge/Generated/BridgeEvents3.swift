@@ -200,6 +200,9 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `shortcuts.changed` event.
+public typealias ShortcutsChangedEvent = NativeEmpty
+
 /// Payload of the `socket.frames` event.
 public struct SocketFramesEvent: Codable, Equatable, Sendable {
   public let frames: [SocketFrame]

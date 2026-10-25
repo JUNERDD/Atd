@@ -1,56 +1,88 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useRecordHotkeys } from 'react-hotkeys-hook';
-import { isComposingKey } from '@atd/ui/lib/ime';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useHotkeyRecorder, type ReactHotkeyRecorder } from '@tanstack/react-hotkeys';
+import { recordedHotkeyToAccelerator } from '../../lib/shortcuts';
 import { modifierDoubleTap } from './modifier-double-tap';
+import { useRecordingBoundaries } from './use-recording-boundaries';
+import { useRecordingSession } from './use-recording-session';
 
 /**
- * The existing recorder owns key collection; this adapter handles native focus and IME boundaries.
- * With `doubleTap` (only for shortcuts the shell registers globally), two quick taps of one lone
- * modifier also record, as `doubleTap` (`DoubleTap+Command`); the keys stay as they were.
+ * Records one physical chord with the modifiers held when its key goes down. The library owns
+ * chord capture; this adapter keeps the native grammar, focus/IME boundaries and modifier taps.
+ * Completion delivers null for a key the native grammar cannot express, so callers can reject it.
  */
-export function useShortcutCapture({ doubleTap: allowDoubleTap = false } = {}) {
-  const [keys, recorder] = useRecordHotkeys(false, ['tab', 'escape']);
-  const { start: startRecorder, stop, resetKeys: resetRecorder, isRecording } = recorder;
-  const [doubleTap, setDoubleTap] = useState<string | null>(null);
-  const resetKeys = useCallback(() => {
-    resetRecorder();
-    setDoubleTap(null);
-  }, [resetRecorder]);
-  const start = useCallback(() => {
-    setDoubleTap(null);
-    startRecorder();
-  }, [startRecorder]);
-  const cancel = useCallback(() => {
-    stop();
-    resetKeys();
-  }, [stop, resetKeys]);
+export function useShortcutCapture({
+  doubleTap: allowDoubleTap = false,
+  onRecorded,
+  onStart,
+  onCancel,
+}: {
+  doubleTap?: boolean;
+  onRecorded: (shortcut: string | null) => void;
+  onStart?: () => void;
+  onCancel?: () => void;
+}) {
+  const platform = window.desktop?.platform ?? 'web';
+  const callbacks = useRef({ onRecorded, onStart, onCancel });
+  const controls = useRef<ReactHotkeyRecorder | null>(null);
+  const recorder = useHotkeyRecorder({
+    maxSteps: 1,
+    recordBy: 'code',
+    platform: platform === 'darwin' ? 'mac' : 'windows',
+    ignoreInputs: false,
+    onRecord: (hotkey) => complete(recordedHotkeyToAccelerator(hotkey, platform)),
+    onReject: () => complete(null),
+    onCancel: () => cancel(),
+  });
+  useLayoutEffect(() => {
+    callbacks.current = { onRecorded, onStart, onCancel };
+    controls.current = recorder;
+  }, [onRecorded, onStart, onCancel, recorder]);
+  const { start, stop, cancel, isActive, isPending, preparing } = useRecordingSession({
+    start: () => {
+      callbacks.current.onStart?.();
+      controls.current?.startRecording();
+    },
+    stop: () => controls.current?.stopRecording(),
+    onCancel: () => callbacks.current.onCancel?.(),
+  });
+  const complete = useCallback(
+    (shortcut: string | null) => {
+      if (!isActive()) return;
+      stop();
+      callbacks.current.onRecorded(shortcut);
+    },
+    [isActive, stop],
+  );
+  const { isRecording } = recorder;
+  useRecordingBoundaries(isRecording || preparing, cancel, isPending);
+
   useEffect(() => {
     if (!isRecording) return;
-    function guard(event: KeyboardEvent) {
-      if (event.key === 'Tab' || event.key === 'Escape') {
-        cancel();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        }
-      } else if (event.repeat || isComposingKey(event)) {
+    function deletionKey(event: KeyboardEvent) {
+      if (!isActive()) return;
+      if (
+        (event.code === 'Backspace' || event.code === 'Delete') &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        // The library treats these as Clear; the app allows either as Send or New line.
         event.preventDefault();
         event.stopImmediatePropagation();
+        complete(event.code);
       }
     }
-    window.addEventListener('keydown', guard, true);
-    window.addEventListener('blur', cancel);
-    return () => {
-      window.removeEventListener('keydown', guard, true);
-      window.removeEventListener('blur', cancel);
-    };
-  }, [cancel, isRecording]);
+    window.addEventListener('keydown', deletionKey, true);
+    return () => window.removeEventListener('keydown', deletionKey, true);
+  }, [complete, isActive, isRecording]);
   useEffect(() => {
     if (!isRecording || !allowDoubleTap) return;
     const follow = modifierDoubleTap();
     function tap(event: KeyboardEvent) {
+      if (!isActive()) return;
       const modifier = follow(event);
-      if (modifier) setDoubleTap(`DoubleTap+${modifier}`);
+      if (modifier) complete(`DoubleTap+${modifier}`);
     }
     window.addEventListener('keydown', tap, true);
     window.addEventListener('keyup', tap, true);
@@ -58,6 +90,6 @@ export function useShortcutCapture({ doubleTap: allowDoubleTap = false } = {}) {
       window.removeEventListener('keydown', tap, true);
       window.removeEventListener('keyup', tap, true);
     };
-  }, [allowDoubleTap, isRecording]);
-  return { keys, ...recorder, start, resetKeys, cancel, doubleTap };
+  }, [allowDoubleTap, complete, isActive, isRecording]);
+  return { isRecording, start, stop, cancel };
 }

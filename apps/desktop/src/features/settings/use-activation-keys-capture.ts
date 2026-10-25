@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { useRecordHotkeys } from 'react-hotkeys-hook';
 import { SELECTION_TOOLBAR_KEYS, type SelectionToolbarKey } from '../../client/settings-contract';
-import { useShortcutCapture } from './use-shortcut-capture';
+import { useRecordingBoundaries } from './use-recording-boundaries';
+import { useRecordingSession } from './use-recording-session';
 
 /** The recorder's modifier tokens (`useRecordHotkeys`) that name an activation key. */
 const TOKEN_KEYS: Readonly<Record<string, SelectionToolbarKey>> = {
@@ -15,20 +17,29 @@ const isKeyToken = (token: string) => Object.hasOwn(TOKEN_KEYS, token);
 export type ActivationCapture = { keys: SelectionToolbarKey[] } | { invalid: true };
 
 /**
- * Records the selection toolbar's activation key combination with the shared recorder
- * (`useShortcutCapture`, which also cancels on Tab, Escape and window blur). Unlike an app
- * shortcut it has no final key: the recording ends once every key is released, with each key that
- * was down meanwhile. Any key but Option, Command and Shift ends it at once as invalid: a letter
- * would type while held, and Control turns a click into a secondary click.
+ * Records the selection toolbar's activation keys. Unlike an app shortcut it has no final key:
+ * the recording ends once every key is released, with each key that was down meanwhile, so this
+ * recorder intentionally collects keys across the gesture. Any key but Option, Command and Shift
+ * ends it at once as invalid: a letter would type while held, and Control turns a click into a
+ * secondary click.
  */
 export function useActivationKeysCapture(onCapture: (capture: ActivationCapture) => void) {
-  const { keys, start, stop, resetKeys, isRecording, cancel } = useShortcutCapture();
+  const [keys, { start: startRecorder, stop: stopRecorder, resetKeys, isRecording }] =
+    useRecordHotkeys(false, ['tab', 'escape']);
+  const { start, stop, cancel, isActive, isPending, preparing } = useRecordingSession({
+    start: startRecorder,
+    stop: () => {
+      stopRecorder();
+      resetKeys();
+    },
+  });
+  useRecordingBoundaries(isRecording || preparing, cancel, isPending);
   useEffect(() => {
     if (!isRecording || keys.size === 0) return;
     const pressed = [...keys];
     const finish = () => {
+      if (!isActive()) return;
       stop();
-      resetKeys();
       onCapture(
         pressed.every(isKeyToken)
           ? {
@@ -48,6 +59,6 @@ export function useActivationKeysCapture(onCapture: (capture: ActivationCapture)
     };
     window.addEventListener('keyup', onKeyUp, true);
     return () => window.removeEventListener('keyup', onKeyUp, true);
-  }, [isRecording, keys, onCapture, resetKeys, stop]);
+  }, [isActive, isRecording, keys, onCapture, stop]);
   return { recording: isRecording, start, cancel };
 }

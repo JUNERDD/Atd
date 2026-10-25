@@ -150,6 +150,8 @@ export interface ViewsBridge {
 export interface DesktopBridge {
   /** The OS as a Node platform name. */
   readonly platform: string;
+  /** Pauses native shortcuts until the returned release runs. Absent in renderer-only tests. */
+  beginShortcutRecording?: () => Promise<() => void>;
   readonly settings: SettingsBridge;
   readonly agent: AgentBridge;
   /** T6 narrow service channel: status/skills/roles/MCP. No token crosses. Optional for test compat. */

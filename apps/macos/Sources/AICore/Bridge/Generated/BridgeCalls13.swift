@@ -210,3 +210,28 @@ public struct AppsPickResult: Codable, Equatable, Sendable {
     }
   }
 }
+
+/// Params of the `shortcuts.recording` call.
+public struct ShortcutsRecordingParams: Codable, Equatable, Sendable {
+  public let session: Int
+  public let active: Bool
+
+  public init(session: Int, active: Bool) {
+    self.session = session
+    self.active = active
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    session = try container.integer(.session, minimum: 1)
+    active = try container.boolean(.active)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case session
+    case active
+  }
+}
+
+/// Result of the `shortcuts.recording` call.
+public typealias ShortcutsRecordingResult = NativeEmpty

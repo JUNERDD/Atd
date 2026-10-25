@@ -23,6 +23,7 @@ import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from 
 import { NativeNotificationPosts } from './notification-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
+import { NativeShortcutRecordingEvents } from './shortcut-recording.ts';
 import { NativeTaskEvents } from './task-events.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
@@ -264,6 +265,7 @@ export const NativeEvents = {
   ),
   ...NativeUpdateEvents,
   ...NativeComputerEvents,
+  ...NativeShortcutRecordingEvents,
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

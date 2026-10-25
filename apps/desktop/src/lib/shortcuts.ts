@@ -1,4 +1,5 @@
 import { doubleTapModifier } from '@atd/agent-contracts';
+import { parseHotkey, type HotkeyChord } from '@tanstack/react-hotkeys';
 
 const recordedKeyNames = new Map([
   ['comma', ','],
@@ -29,7 +30,6 @@ const recordedKeyNames = new Map([
 const hotkeyKeyNames = new Map(
   Array.from(recordedKeyNames, ([recorded, accelerator]) => [accelerator, recorded]),
 );
-const recordedModifiers = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
 /**
  * Converts validated Electron accelerators for useHotkeys with physical keys and delimiter "|".
@@ -73,15 +73,11 @@ export function matchesAccelerator(
   );
 }
 
-/** Converts useRecordHotkeys(false) tokens to the single-key subset supported by native settings. */
-export function recordedKeysToAccelerator(
-  keys: ReadonlySet<string>,
-  platform: string,
-): string | null {
-  const nonModifiers = Array.from(keys).filter((key) => !recordedModifiers.has(key));
-  if (nonModifiers.length !== 1) return null;
-  const recorded = nonModifiers[0];
-  if (!recorded) return null;
+/** Converts a recorded physical chord to the single-key subset the native shell supports. */
+export function recordedHotkeyToAccelerator(hotkey: HotkeyChord, platform: string): string | null {
+  const chord = parseHotkey(hotkey, platform === 'darwin' ? 'mac' : 'windows');
+  if (!chord.code) return null;
+  const recorded = chord.code.toLowerCase().replace(/^(?:key|digit|numpad)/, '');
   const key =
     recordedKeyNames.get(recorded) ??
     (/^(?:[a-z0-9]|f(?:[1-9]|1\d|2[0-4]))$/.test(recorded) ? recorded.toUpperCase() : null);
@@ -89,14 +85,14 @@ export function recordedKeysToAccelerator(
 
   const modifiers: string[] = [];
   if (platform === 'darwin') {
-    if (keys.has('meta')) modifiers.push('CommandOrControl');
-    if (keys.has('ctrl')) modifiers.push('Control');
+    if (chord.meta) modifiers.push('CommandOrControl');
+    if (chord.ctrl) modifiers.push('Control');
   } else {
-    if (keys.has('ctrl')) modifiers.push('CommandOrControl');
-    if (keys.has('meta')) modifiers.push('Super');
+    if (chord.ctrl) modifiers.push('CommandOrControl');
+    if (chord.meta) modifiers.push('Super');
   }
-  if (keys.has('alt')) modifiers.push('Alt');
-  if (keys.has('shift')) modifiers.push('Shift');
+  if (chord.alt) modifiers.push('Alt');
+  if (chord.shift) modifiers.push('Shift');
   return [...modifiers, key].join('+');
 }
 

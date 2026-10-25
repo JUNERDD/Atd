@@ -71,7 +71,8 @@
       "toolbar.set",
       "accessibility.request",
       "screenRecording.request",
-      "apps.pick"
+      "apps.pick",
+      "shortcuts.recording"
     ],
     "posts": [
       "bridge.ready",
@@ -106,6 +107,7 @@
       "screenRecording.trust",
       "update.state",
       "computer.state",
+      "shortcuts.changed",
       "socket.frames",
       "userApp.state",
       "userApp.pins",
@@ -2719,6 +2721,39 @@
         },
         {
           "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "shortcuts.recording"
+            },
+            "params": {
+              "type": "object",
+              "required": ["session", "active"],
+              "properties": {
+                "session": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["type", "method", "params"],
           "properties": {
             "type": {
@@ -4044,6 +4079,26 @@
                   "type": "boolean"
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "shortcuts.changed"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -7681,6 +7736,25 @@
       },
       "additionalProperties": false
     },
+    "ShortcutsRecordingParams": {
+      "type": "object",
+      "required": ["session", "active"],
+      "properties": {
+        "session": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortcutsRecordingResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "BridgeReadyPost": {
       "type": "object",
       "properties": {},
@@ -8522,6 +8596,11 @@
           "type": "boolean"
         }
       },
+      "additionalProperties": false
+    },
+    "ShortcutsChangedEvent": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "SocketFramesEvent": {

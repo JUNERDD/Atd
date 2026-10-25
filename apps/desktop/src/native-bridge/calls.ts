@@ -13,6 +13,7 @@ import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
+import { NativeShortcutRecordingCalls } from './shortcut-recording.ts';
 import { NativeTextCalls } from './text-calls.ts';
 import { NativeUpdateCalls } from './update-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
@@ -345,4 +346,5 @@ export const NativeCalls = {
       { additionalProperties: false },
     ),
   },
+  ...NativeShortcutRecordingCalls,
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

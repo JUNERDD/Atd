@@ -70,7 +70,7 @@ public final class ShellController {
   let systemActivity: SystemActivityReporter
   /// The menu bar item and what it shows, kept current by ``refreshStatus()``.
   var statusItem: StatusItemController?
-  private var registrar: HotKeyRegistrar?
+  private(set) var registrar: HotKeyRegistrar?
   var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
   /// The first `toolbar.set` of this launch has arrived.
   private var toolbarConfigured = false
@@ -295,13 +295,6 @@ public final class ShellController {
   }
 
   // MARK: Entry points for the bridge
-
-  func applyShortcuts(_ registrations: [ShortcutRegistration], selectionWanted: Bool)
-    -> [ShortcutResult]
-  {
-    summoner.setSelectionWanted(selectionWanted)
-    return registrar?.apply(registrations) ?? []
-  }
 
   /// `toolbar.set`. The first one of a launch with the toolbar on is when a first launch asks
   /// for Accessibility (once ever).

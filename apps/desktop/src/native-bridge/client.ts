@@ -92,6 +92,7 @@ export class NativeBridge {
     'commandProgress.action': new Set(),
     'commandOptions.picked': new Set(),
     'computer.state': new Set(),
+    'shortcuts.changed': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

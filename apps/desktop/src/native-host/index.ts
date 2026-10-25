@@ -36,6 +36,7 @@ import { nativeNotifications } from './native-notifications';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
+import { nativeShortcutRecording } from './native-shortcut-recording';
 import { nativeShellPreferences } from './native-shell-preferences';
 import { nativeHeldRequest } from './native-held-request';
 import { nativeTaskEvents } from './native-task-events';
@@ -265,6 +266,7 @@ export async function installNativeHost(
   const openLink = async (url: string) => void (await native.call('link.open', { url }));
   const bridge: DesktopBridge = {
     platform: 'darwin',
+    beginShortcutRecording: nativeShortcutRecording(native),
     settings: settings.bridge,
     ...(surface === 'panel'
       ? { files: nativeFiles(connection), folders: nativeFolders(connection, native) }

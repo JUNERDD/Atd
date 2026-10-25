@@ -108,6 +108,7 @@ export function nativeShortcuts(
   let again = false;
   /** The set the shell last took; an identical set is not pushed again. */
   let pushed = '';
+  let revision = 0;
   /** What each command shortcut the shell last took launches, by registration id. */
   let routes = new Map<string, { commandId: string; shortcutId: string }>();
   /** The shell's answer to that set, shared with settings windows; null before the first. */
@@ -136,8 +137,9 @@ export function nativeShortcuts(
     };
     const signature = JSON.stringify(params);
     if (signature === pushed) return;
+    const pushedRevision = revision;
     const { results } = await bridge.call('shortcuts.set', params);
-    pushed = signature;
+    pushed = pushedRevision === revision ? signature : '';
     routes = new Map(
       registered.map(({ command, shortcut }) => [
         shortcut.id,
@@ -187,15 +189,21 @@ export function nativeShortcuts(
     }
   }
 
+  function refresh() {
+    revision += 1;
+    pushed = '';
+    void run();
+  }
+
   // A double-tap registers only with Accessibility access, which the shell re-applies as it
   // changes; pushing again learns the new answer for the settings and the command errors.
   bridge.on('accessibility.trust', ({ trusted: now }) => {
     if (trusted !== null && trusted !== now) {
-      pushed = '';
-      void run();
+      refresh();
     }
     trusted = now;
   });
+  bridge.on('shortcuts.changed', refresh);
 
   // The target is the field the summon found focused in another app; a write-back output writes
   // the answer there once the run completes.
@@ -226,8 +234,8 @@ export function nativeShortcuts(
 
   return {
     sync: (force = false) => {
-      if (force) pushed = '';
-      void run();
+      if (force) refresh();
+      else void run();
     },
   };
 }

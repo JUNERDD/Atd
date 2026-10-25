@@ -71,6 +71,7 @@ final class WebViewHost: NSObject {
 
   /// Takes the current web view down: its stream connections and its bridge handler.
   private func tearDown() {
+    bridge.shell?.cancelShortcutRecording(from: self)
     onDocumentUnload?()
     pipe?.invalidate()
     pipe = nil
@@ -82,6 +83,9 @@ final class WebViewHost: NSObject {
 
   /// A state event (window activity, visibility): the latest value reaches every ready page.
   func setState(_ event: NativeEvent) {
+    if case .windowActive(let state) = event, !state.active {
+      bridge.shell?.cancelShortcutRecording(from: self)
+    }
     act(outbox.setState(event))
   }
 
@@ -145,6 +149,7 @@ final class WebViewHost: NSObject {
         var delivered = true
         if case .failure(let error) = result {
           delivered = false
+          self.bridge.shell?.cancelShortcutRecording(from: self)
           Self.log.error("The \(self.role.rawValue) page did not take a message: \(error)")
         }
         self.act(self.outbox.completed(delivered: delivered))
@@ -200,6 +205,7 @@ final class WebViewHost: NSObject {
 
   /// The page went away: its sockets close, and results and frames meant for it are dropped.
   private func pageDidUnload() {
+    bridge.shell?.cancelShortcutRecording(from: self)
     onDocumentUnload?()
     document += 1
     pipe?.resetForNewDocument()

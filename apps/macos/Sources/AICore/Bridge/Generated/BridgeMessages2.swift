@@ -131,6 +131,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .screenRecordingRequest(
           container.value(.params, ScreenRecordingRequestParams.self))
       case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
+      case "shortcuts.recording":
+        call = try .shortcutsRecording(container.value(.params, ShortcutsRecordingParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -208,6 +210,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
   case computerState(ComputerStateEvent)
+  case shortcutsChanged(ShortcutsChangedEvent)
   case socketFrames(SocketFramesEvent)
   case userAppState(UserAppStateEvent)
   case userAppPins(UserAppPinsEvent)
@@ -235,6 +238,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
     case .computerState: "computer.state"
+    case .shortcutsChanged: "shortcuts.changed"
     case .socketFrames: "socket.frames"
     case .userAppState: "userApp.state"
     case .userAppPins: "userApp.pins"
@@ -263,6 +267,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
     case .computerState(let payload): try payload.encode(to: encoder)
+    case .shortcutsChanged(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     case .userAppState(let payload): try payload.encode(to: encoder)
     case .userAppPins(let payload): try payload.encode(to: encoder)

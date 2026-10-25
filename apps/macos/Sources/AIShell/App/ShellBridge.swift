@@ -138,9 +138,12 @@ final class ShellBridge {
       shell.closeOnboarding(summon: params.summon)
       return try Self.encode(NativeEmpty())
     case .shortcutsSet(let params):
-      let results = shell.applyShortcuts(
+      let results = await shell.applyShortcuts(
         params.registrations, selectionWanted: params.selectionWanted)
       return try Self.encode(ShortcutsSetResult(results: results))
+    case .shortcutsRecording(let params):
+      try shell.setShortcutRecording(params, from: host, document: document)
+      return try Self.encode(NativeEmpty())
     case .capture:
       return try Self.encode(shell.captureSelection())
     case .clipboardRead:

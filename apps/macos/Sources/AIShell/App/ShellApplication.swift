@@ -84,6 +84,10 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     controller?.quitGuard.shouldTerminate() ?? .terminateNow
   }
 
+  func applicationDidResignActive(_ notification: Notification) {
+    controller?.cancelShortcutRecordings()
+  }
+
   /// A Dock click or Finder reopen returns to the welcome guide while it is open.
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
   {
