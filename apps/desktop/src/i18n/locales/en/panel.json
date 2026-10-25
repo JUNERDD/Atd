@@ -197,7 +197,7 @@
     "selectionPrefix": "Selection:",
     "clipboardPrefix": "Clipboard:",
     "errors": {
-      "notTrusted": "Enable Accessibility: System Settings → Privacy & Security → Accessibility.",
+      "notTrusted": "Allow Atd in System Settings → Privacy & Security → Device Control and Data Access (Accessibility on earlier macOS versions).",
       "noSelection": "No selected text — select text in another app, then use the command shortcut.",
       "selectionTooLong": "Selected text exceeds the input limit — select a smaller passage.",
       "commandDeleted": "This command was deleted. Use its saved version from task history.",

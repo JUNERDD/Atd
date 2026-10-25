@@ -197,7 +197,7 @@
     "selectionPrefix": "选区：",
     "clipboardPrefix": "剪贴板：",
     "errors": {
-      "notTrusted": "请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 Atd。",
+      "notTrusted": "请在“系统设置 → 隐私与安全性 → 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）中允许 Atd。",
       "noSelection": "未选中文本。请在其他应用中选择文本，再使用命令快捷键。",
       "selectionTooLong": "选中的文本超出输入长度限制，请缩小选择范围。",
       "commandDeleted": "此命令已删除，请使用任务历史中保存的版本。",

@@ -225,7 +225,7 @@
     "registration": {
       "unavailable": "这个全局快捷键不可用，请换一个组合。",
       "invalid": "这个快捷键无法在这台 Mac 上注册，请换一个组合。",
-      "doubleTapAccessibility": "双击快捷键需要辅助功能权限。请在“系统设置 › 隐私与安全性 › 辅助功能”中允许 Atd。",
+      "doubleTapAccessibility": "双击快捷键需要控制应用的权限。请在“系统设置 › 隐私与安全性 › 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）中允许 Atd。",
       "tooMany": "命令快捷键太多，无法全部注册。请移除不再使用的快捷键。"
     },
     "follow": "跟随命令（当前：{{value}}）",

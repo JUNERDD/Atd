@@ -55,14 +55,14 @@
     "descriptionHold": "Hold {{key}} while selecting text to bring up the toolbar.",
     "descriptionToggle": "Press {{key}} twice to turn on the toolbar, then select text.",
     "toggle": "Show the toolbar when I select text",
-    "waiting": "Waiting for Accessibility access…",
+    "waiting": "Waiting for permission…",
     "success": "Access granted. Select some of the practice text to try it.",
     "accessibility": {
-      "title": "Accessibility access",
-      "description": "Lets Atd read only the text you select.",
+      "title": "Device Control and Data Access",
+      "description": "Used to read your selected text. Called Accessibility on earlier macOS versions.",
       "open": "Open System Settings",
-      "granted": "Accessibility access granted",
-      "error": "System Settings couldn't be opened. Open Privacy & Security › Accessibility yourself."
+      "granted": "Permission granted",
+      "error": "System Settings couldn't be opened. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
     },
     "practice": {
       "label": "Practice text",
@@ -70,7 +70,7 @@
       "caption": "Select some of this text.",
       "captionHold": "Hold {{key}} and select some of this text.",
       "captionToggle": "Press {{key}} twice, then select some of this text.",
-      "needsAccess": "Grant Accessibility access to see the toolbar here.",
+      "needsAccess": "Grant the permission above to see the toolbar here.",
       "needsToolbar": "Turn on the toolbar to see it here."
     }
   },

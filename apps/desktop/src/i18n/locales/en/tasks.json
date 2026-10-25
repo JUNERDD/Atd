@@ -505,7 +505,7 @@
     "replaceIn": "Replace in {{app}}",
     "insertIn": "Insert in {{app}}",
     "refused": {
-      "notTrusted": "Accessibility access is off, so the answer was copied instead.",
+      "notTrusted": "App control access is off, so the answer was copied instead.",
       "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
       "targetChanged": "The field in {{app}} changed, so the answer was copied instead.",
       "noSelection": "Nothing was selected in {{app}}, so the answer was copied instead.",

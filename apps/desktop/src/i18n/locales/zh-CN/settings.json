@@ -83,7 +83,7 @@
       "skills": "技能 创建 指令 AI",
       "subagents": "子代理 智能体 角色 委派 专家",
       "mcp": "MCP 服务器 工具 协议 连接 认证",
-      "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 辅助功能 selection toolbar",
+      "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 设备控制 数据访问 辅助功能 selection toolbar",
       "selectionToolbarActivation": "按住 按键 连按 两次 开关 切换 修饰键 呼出 触发 方式 工具栏 选择 hold option command shift",
       "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
@@ -230,8 +230,8 @@
       "description": "工具栏开启时，屏幕底部会显示一个小浮窗提示。可拖到任意位置，也可隐藏到下次开启。"
     },
     "accessibility": {
-      "title": "需要辅助功能权限",
-      "description": "Atd 需要辅助功能权限才能识别选中的文字。授权后工具栏会立即生效。",
+      "title": "需要控制应用的权限",
+      "description": "在“设备控制和数据访问”（旧版 macOS 中为“辅助功能”）中允许 Atd，即可使用划词工具栏。",
       "open": "打开系统设置"
     },
     "excluded": {
@@ -246,7 +246,7 @@
       "save": "无法保存选择文字工具栏设置，请重试。",
       "pick": "无法打开 App 选择器，请重试。",
       "limit": "最多排除 {{max}} 个 App。",
-      "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 辅助功能”。"
+      "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）。"
     }
   },
   "notifications": {
@@ -943,8 +943,8 @@
     "engineVersion": "版本 {{version}}",
     "permission": {
       "accessibility": {
-        "title": "辅助功能未开启",
-        "description": "Atd 需要辅助功能权限，才能读取和操作应用中的控件。"
+        "title": "未允许控制应用",
+        "description": "在“设备控制和数据访问”（旧版 macOS 中为“辅助功能”）中允许 Atd，才能读取和操作应用中的控件。"
       },
       "screenRecording": {
         "title": "屏幕录制未开启",
@@ -1050,7 +1050,7 @@
         "windows_other": "{{count}} 个已打开的窗口",
         "noWindows": "没有已打开的窗口。打开一个窗口后 Atd 即可操作。",
         "tree": "Atd 可以读取它的控件。",
-        "noTree": "Atd 暂时无法读取它的控件。请在“状态”中检查辅助功能权限。",
+        "noTree": "Atd 暂时无法读取它的控件。请在“状态”中检查控制应用的权限。",
         "screenshot": "Atd 可以拍摄它的窗口画面。",
         "noScreenshot": "Atd 暂时无法拍摄它的窗口画面。请在“状态”中检查屏幕录制权限。",
         "done": "完成"

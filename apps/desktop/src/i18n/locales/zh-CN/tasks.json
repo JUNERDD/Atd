@@ -505,7 +505,7 @@
     "replaceIn": "在 {{app}} 中替换",
     "insertIn": "插入到 {{app}}",
     "refused": {
-      "notTrusted": "辅助功能权限未开启，回答已改为复制到剪贴板。",
+      "notTrusted": "未获得控制应用的权限，回答已改为复制到剪贴板。",
       "targetGone": "已无法访问 {{app}} 中的输入框，回答已改为复制到剪贴板。",
       "targetChanged": "{{app}} 中的输入框已变化，回答已改为复制到剪贴板。",
       "noSelection": "{{app}} 中没有选中文本，回答已改为复制到剪贴板。",
@@ -515,7 +515,7 @@
       "interrupted": "写入 {{app}} 中途停止，完整回答已复制到剪贴板。"
     },
     "unwritten": {
-      "notTrusted": "辅助功能权限未开启，回答未写入 {{app}}。",
+      "notTrusted": "未获得控制应用的权限，回答未写入 {{app}}。",
       "targetGone": "已无法访问 {{app}} 中的输入框，回答未写入。",
       "targetChanged": "{{app}} 中的输入框已变化，回答未写入。",
       "noSelection": "{{app}} 中没有选中文本，回答未写入。",

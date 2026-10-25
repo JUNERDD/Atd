@@ -35,7 +35,7 @@ public enum CaptureFailure: String, Error, Equatable, Sendable {
   public var message: String {
     switch self {
     case .accessibilityNotTrusted:
-      "Enable Accessibility: System Settings → Privacy & Security → Accessibility."
+      "Allow Atd in System Settings → Privacy & Security → Device Control and Data Access (Accessibility on earlier macOS versions)."
     case .noSelection:
       "No selected text — select text in another app, then use the command shortcut."
     case .selectionTooLong: "Selected text exceeds the input limit — select a smaller passage."

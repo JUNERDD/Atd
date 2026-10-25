@@ -225,7 +225,7 @@
     "registration": {
       "unavailable": "This global shortcut is unavailable. Choose another combination.",
       "invalid": "This shortcut cannot be registered on this Mac. Choose another combination.",
-      "doubleTapAccessibility": "Double-tap shortcuts need Accessibility access. Allow Atd in System Settings › Privacy & Security › Accessibility.",
+      "doubleTapAccessibility": "Double-tap shortcuts need app control access. Allow Atd in System Settings › Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions).",
       "tooMany": "Too many command shortcuts are set to register them all. Remove a shortcut you no longer use."
     },
     "follow": "Follow command (now: {{value}})",

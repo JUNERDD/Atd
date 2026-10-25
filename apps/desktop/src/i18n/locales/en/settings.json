@@ -83,7 +83,7 @@
       "skills": "skill skills create with ai instructions",
       "subagents": "subagent subagents agent roles delegate specialist",
       "mcp": "mcp server servers tools model context protocol stdio http oauth",
-      "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility",
+      "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility device control data access",
       "selectionToolbarActivation": "hold key option command shift press twice toggle switch modifier activation trigger toolbar selection",
       "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
@@ -230,8 +230,8 @@
       "description": "While the toolbar is on, a small HUD near the bottom of the screen says so. Drag it anywhere, or hide it until the next time you turn the toolbar on."
     },
     "accessibility": {
-      "title": "Accessibility access needed",
-      "description": "Atd needs Accessibility access to notice selected text. The toolbar starts working as soon as you allow it.",
+      "title": "App control access needed",
+      "description": "Allow Atd in Device Control and Data Access (Accessibility on earlier macOS versions) to use the selection toolbar.",
       "open": "Open System Settings"
     },
     "excluded": {
@@ -246,7 +246,7 @@
       "save": "The selection toolbar setting couldn't be saved. Try again.",
       "pick": "The app picker couldn't open. Try again.",
       "limit": "Exclude at most {{max}} apps.",
-      "accessibility": "System Settings couldn't open. Open Privacy & Security › Accessibility yourself."
+      "accessibility": "System Settings couldn't open. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
     }
   },
   "notifications": {
@@ -946,8 +946,8 @@
     "engineVersion": "Version {{version}}",
     "permission": {
       "accessibility": {
-        "title": "Accessibility is off",
-        "description": "Atd needs Accessibility to read and operate the controls in apps."
+        "title": "App control access is off",
+        "description": "Allow Atd in Device Control and Data Access (Accessibility on earlier macOS versions) to read and operate app controls."
       },
       "screenRecording": {
         "title": "Screen Recording is off",
@@ -1056,7 +1056,7 @@
         "windows_other": "{{count}} open windows",
         "noWindows": "No open windows. Atd can work once one is open.",
         "tree": "Atd can read its controls.",
-        "noTree": "Atd can’t read its controls yet. Check Accessibility under Status.",
+        "noTree": "Atd can’t read its controls yet. Check app control access under Status.",
         "screenshot": "Atd can take pictures of its windows.",
         "noScreenshot": "Atd can’t take pictures of its windows yet. Check Screen Recording under Status.",
         "done": "Done"

@@ -422,13 +422,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allow Accessibility to detect interface elements"
+            "value" : "Allow app control access to detect interface elements"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "允许辅助功能以识别界面元素"
+            "value" : "允许控制应用以识别界面元素"
           }
         }
       }
@@ -1898,13 +1898,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accessibility is off, so the answer wasn't written into %@."
+            "value" : "App control access is off, so the answer wasn't written into %@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "辅助功能权限未开启，回答未写入 %@。"
+            "value" : "未获得控制应用的权限，回答未写入 %@。"
           }
         }
       }
@@ -4270,19 +4270,19 @@
       }
     },
     "permissionGuide.accessibility" : {
-      "comment" : "The Accessibility permission's name in System Settings",
+      "comment" : "The app-control permission name in System Settings, including its earlier name",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accessibility"
+            "value" : "Device Control and Data Access (Accessibility on earlier macOS versions)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "辅助功能"
+            "value" : "设备控制和数据访问（旧版 macOS 中为“辅助功能”）"
           }
         }
       }

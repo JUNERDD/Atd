@@ -55,14 +55,14 @@
     "descriptionHold": "按住 {{key}} 选中文字，即可呼出工具栏。",
     "descriptionToggle": "连按两次 {{key}} 开启工具栏，再选中文字。",
     "toggle": "选中文字时显示工具栏",
-    "waiting": "等待辅助功能权限…",
+    "waiting": "等待授权…",
     "success": "已获得权限。选中一段练习文字试试吧。",
     "accessibility": {
-      "title": "辅助功能权限",
-      "description": "仅用于读取你选中的文字。",
+      "title": "设备控制和数据访问",
+      "description": "用于读取你选中的文字。旧版 macOS 中，此权限名为“辅助功能”。",
       "open": "打开系统设置",
-      "granted": "已获得辅助功能权限",
-      "error": "无法打开系统设置，请手动前往“隐私与安全性 › 辅助功能”。"
+      "granted": "已获得权限",
+      "error": "无法打开系统设置，请手动前往“隐私与安全性 › 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）。"
     },
     "practice": {
       "label": "练习文字",
@@ -70,7 +70,7 @@
       "caption": "选中这段文字的一部分试试。",
       "captionHold": "按住 {{key}}，选中这段文字的一部分试试。",
       "captionToggle": "先连按两次 {{key}}，再选中这段文字的一部分试试。",
-      "needsAccess": "授予辅助功能权限后，工具栏才会在这里出现。",
+      "needsAccess": "授予上方权限后，工具栏才会在这里出现。",
       "needsToolbar": "打开工具栏开关后，它才会在这里出现。"
     }
   },
