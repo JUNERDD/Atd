@@ -33,6 +33,7 @@ function renderQuestion() {
         queue={detail.queue}
         taskId="task-1"
         onEditQueued={vi.fn()}
+        boundary={null}
       >
         <div data-testid="composer-surface" />
       </ComposerPopover>

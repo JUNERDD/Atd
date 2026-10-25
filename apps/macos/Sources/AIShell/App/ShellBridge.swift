@@ -23,7 +23,7 @@ final class ShellBridge {
       Task {
         let reply: SwiftMessage
         do throws(BridgeError) {
-          reply = .result(id: id, value: try await handle(call, from: host))
+          reply = .result(id: id, value: try await handle(call, from: host, document: document))
         } catch {
           reply = .error(id: id, message: String(error.message.prefix(2000)))
         }
@@ -53,10 +53,13 @@ final class ShellBridge {
     case .taskShown(let post):
       guard host === shell?.panelHost else { return }
       shell?.notifications?.taskShown(post.taskId)
+      shell?.shownComputerTaskId = post.taskId
+      shell?.taskActivity.readShownConversation()
     }
   }
 
-  private func handle(_ call: NativeCall, from host: WebViewHost) async throws(BridgeError)
+  private func handle(_ call: NativeCall, from host: WebViewHost, document: Int)
+    async throws(BridgeError)
     -> JSONValue
   {
     guard let shell else { throw BridgeError("The app is shutting down.") }
@@ -65,6 +68,14 @@ final class ShellBridge {
       switch call {
       case .approvalRequest:
         return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
+      case .computerAuthorizeAutomation:
+        return try Self.encode(ComputerAuthorizeAutomationResult.notApproved(.init(reason: .busy)))
+      case .computerPrepareBrowser:
+        return try Self.encode(ComputerPrepareBrowserResult.notOk(.init(reason: .busy)))
+      case .computerPrepareApplication:
+        return try Self.encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
+      case .computerPrimeCaptureConsent:
+        return try Self.encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
       case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick:
         throw BridgeError("Finish the screenshot first.")
       default:
@@ -127,9 +138,12 @@ final class ShellBridge {
       shell.closeOnboarding(summon: params.summon)
       return try Self.encode(NativeEmpty())
     case .shortcutsSet(let params):
-      let results = shell.applyShortcuts(
+      let results = await shell.applyShortcuts(
         params.registrations, selectionWanted: params.selectionWanted)
       return try Self.encode(ShortcutsSetResult(results: results))
+    case .shortcutsRecording(let params):
+      try shell.setShortcutRecording(params, from: host, document: document)
+      return try Self.encode(NativeEmpty())
     case .capture:
       return try Self.encode(shell.captureSelection())
     case .clipboardRead:
@@ -154,8 +168,9 @@ final class ShellBridge {
       shell.commandProgress.hide(target: params.target)
       return try Self.encode(NativeEmpty())
     case .clipboardWrite(let params):
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(params.text, forType: .string)
+      guard await shell.deviceArbiter.copyToClipboard(params.text) else {
+        throw BridgeError("The clipboard is in use; try again.")
+      }
       return try Self.encode(NativeEmpty())
     case .shareText(let params):
       try ShareSheet.show(text: params.text, anchor: params.anchor, in: host.webView)
@@ -201,6 +216,13 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .appsPick:
       return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
+    case .computerListApplications:
+      return try Self.encode(await InstalledApplications.list())
+    case .computerApplicationIcon(let params):
+      return try Self.encode(
+        ComputerApplicationIconResult(
+          pngBase64: InstalledApplicationIcon.png(bundleId: params.bundleId)?.base64EncodedString())
+      )
     case .userAppWidgetPreview(let params):
       return try Self.encode(
         UserAppWidgetPreviewResult(pngBase64: try shell.widgets.preview(params)))
@@ -221,6 +243,9 @@ final class ShellBridge {
     case .userAppUnpin(let params):
       shell.pins.unpin(appId: params.appId)
       return try Self.encode(NativeEmpty())
+    case .viewOpen(let params):
+      try shell.openView(params)
+      return try Self.encode(NativeEmpty())
     case .notificationsState:
       return try Self.encode(await Self.notifications(of: shell).state())
     case .notificationsSet(let params):
@@ -228,6 +253,29 @@ final class ShellBridge {
     case .notificationsOpenSystemSettings:
       try Self.notifications(of: shell).openSystemSettings()
       return try Self.encode(NativeEmpty())
+    case .computerPreviewShow(let params):
+      return try Self.encode(shell.showComputerPreview(params, from: host, document: document))
+    case .computerPrepareBrowser(let params):
+      return try Self.encode(await shell.prepareComputerBrowser(params))
+    case .computerOpenProfile(let params):
+      try await shell.openComputerProfile(bindingId: params.bindingId)
+      return try Self.encode(NativeEmpty())
+    case .computerAuthorizeAutomation(let params):
+      return try Self.encode(await shell.authorizeComputerAutomation(params))
+    case .computerAcknowledgeUnsettled(let params):
+      shell.acknowledgeComputerUnsettled(params)
+      return try Self.encode(NativeEmpty())
+    case .computerSetTyping(let params):
+      shell.computer.typing.set(params)
+      shell.computer.onStateChange?()
+      return try Self.encode(NativeEmpty())
+    case .computerSetPointerVisible(let params):
+      shell.computer.setPointerVisible(params.visible)
+      return try Self.encode(NativeEmpty())
+    case .computerPrepareApplication(let params):
+      return try Self.encode(await shell.prepareComputerApplication(params))
+    case .computerPrimeCaptureConsent:
+      return try Self.encode(await shell.primeComputerCaptureConsent())
     }
   }
 

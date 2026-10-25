@@ -1,0 +1,59 @@
+/*
+ * The panel's waiting light (`waiting-glow.tsx`): a band of the command HUD's light field rising
+ * from the bottom of the panel body, behind the conversation and the floating composer. Its
+ * negative z-index keeps it above the panel's content fill (`.task-panel` isolates its stacking
+ * context) and under everything in the body, so the transcript and the composer's glass draw over
+ * it. It never reaches the window's edge material, which stays the shell's.
+ *
+ * Its strength (`GLOW_STRENGTH`) is drawn by the shader, which dithers the light at its final
+ * values; an opacity here would scale that dither down and band the light, so the layer's opacity
+ * carries only its fades, from 0 to 1 and back. On exit the shader first draws the upper edge back
+ * toward the composer; 350 ms later this layer dims the remaining base over 500 ms. The total
+ * 850 ms exit and the cyan shift keep the HUD's timings (`GLOW_TIMING`).
+ *
+ * The entry is the panel's own, where the HUD's window carries its light in: the light blooms out
+ * of the composer. The shader draws the bloom (`glow-field.ts`) on a critically damped spring; the
+ * opacity rises over 200 ms as the draft leaves, so submission gives visible feedback before
+ * the page arrives. The bloom continues to expand for 800 ms. Under Reduce Motion the light is in
+ * from the start and every fade is short. The shader also draws the light's top, a falloff with no
+ * visible boundary, so the band needs no mask here.
+ */
+.waiting-glow {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  /* The composer's footer and room above it for the light's long, soft top (`glow-field.ts`). */
+  height: calc(var(--overlay-footer-height, 0px) + 200px);
+  pointer-events: none;
+  opacity: 0;
+  filter: hue-rotate(0deg);
+  transition:
+    opacity var(--waiting-glow-fade) var(--waiting-glow-ease) var(--waiting-glow-delay, 0s),
+    filter 0.45s ease-in-out;
+}
+.waiting-glow[data-on] {
+  opacity: 1;
+}
+.waiting-glow[data-writing] {
+  filter: hue-rotate(-28deg);
+}
+.waiting-glow[data-fade='entry'] {
+  --waiting-glow-fade: 0.2s;
+  --waiting-glow-delay: 0s;
+  --waiting-glow-ease: ease-out;
+}
+.waiting-glow[data-fade='exit'] {
+  --waiting-glow-fade: 0.5s;
+  --waiting-glow-delay: 0.35s;
+  --waiting-glow-ease: ease-in-out;
+}
+.waiting-glow[data-fade='quick'] {
+  --waiting-glow-fade: 0.2s;
+  --waiting-glow-delay: 0s;
+  --waiting-glow-ease: ease-in-out;
+}
+.waiting-glow-canvas {
+  position: absolute;
+  inset: auto 0 0;
+  height: 100%;
+}

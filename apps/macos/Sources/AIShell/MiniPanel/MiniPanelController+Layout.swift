@@ -20,7 +20,7 @@ extension MiniPanelController {
     return MiniPanelLayout(
       placement: placement, workArea: ScreenRect(screen.visibleFrame),
       displayFrame: ScreenRect(screen.frame), commands: commands.count, flyoutWidth: flyoutWidth,
-      backingScale: Double(screen.backingScaleFactor))
+      backingScale: Double(screen.backingScaleFactor), activityAttached: model.activity != nil)
   }
 
   /// Lays the panel out on its display at once: the window, the glass container, the body in the
@@ -31,10 +31,11 @@ extension MiniPanelController {
     self.layout = layout
     snap = nil
     snapInterrupted = false
+    model.coordinateRevision += 1
+    model.canvas = CGSize(width: layout.canvas.width, height: layout.canvas.height)
     window.setFrame(NSRect(layout.canvas), display: false)
     model.glassFrame = Self.glassFrame(of: layout)
     model.bodyFactors.shift = .zero
-    model.bodyFactors.shiftAnimation = nil
     if let shape = bodyShape ?? Self.shape(for: model.phase) { placeBody(shape) }
     applyLayout()
   }
@@ -56,13 +57,12 @@ extension MiniPanelController {
     if bodyLane != model.bodyLane { model.bodyLane = bodyLane }
     model.contentFrames = [
       .capsule: local(layout.capsule), .invite: local(layout.invite),
-      .card: local(layout.target), .rows: layout.flyout.map { local($0) } ?? .zero,
+      .card: local(layout.target),
     ]
-    // The card takes its new place at once.
-    let card = model.flyoutOpen ? layout.flyout.map { local($0) } : closedFlyoutFrame
-    if let card, card != model.card.frame {
-      model.card = MiniPanelCardShape(frame: card, opacity: model.flyoutOpen ? 1 : 0)
-    }
+    model.flyoutFrame = layout.flyout.map { local($0) } ?? .zero
+    model.popover.place(
+      rest: model.flyoutFrame, anchor: closedFlyoutFrame ?? .zero,
+      reducedMotion: model.reduceMotion)
     // The card's lane holds its frame and every body shape it closes into, with room for its
     // springs' overshoot: its base fill is drawn across the lane only, so glass sprung past the
     // lane would show without it.
@@ -73,6 +73,7 @@ extension MiniPanelController {
     if lane != model.cardLane { model.cardLane = lane }
     updateClickZone()
     updateDropZone()
+    activityLayoutChanged()
   }
 
   /// Opening on click, the hot zone takes the click that opens the tucked pill, out to the screen
@@ -101,8 +102,16 @@ extension MiniPanelController {
   }
 
   /// Where the body is on screen now, as its shape rests.
-  var drawnBody: NSRect { global(model.body.frame) }
+  var drawnBody: NSRect {
+    global(
+      model.body.frame.offsetBy(
+        dx: model.bodyFactors.shift.width, dy: model.bodyFactors.shift.height))
+  }
 
   /// Where `content` is on screen now.
-  func drawn(_ content: MiniPanelContent) -> NSRect { global(model.frame(content)) }
+  func drawn(_ content: MiniPanelContent) -> NSRect {
+    global(
+      model.frame(content).offsetBy(
+        dx: model.bodyFactors.shift.width, dy: model.bodyFactors.shift.height))
+  }
 }

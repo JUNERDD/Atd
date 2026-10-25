@@ -1,14 +1,16 @@
 /* HITL view of the composer popover: the HITL region (top, urgent) and the queue region
    (bottom). It spans the composer surface it anchors to, so the form reads as one surface with the
-   input below, within the width Radix reports as available. The container owns sizing and
-   scrolling so neither region can push the composer surface around; each region hides when empty
-   and both empty closes the view. */
+   input below, within the width Radix reports as available. Its height stays within the height
+   Radix reports too, which caps the surface itself (as for the quick panel): where a tall draft or
+   a short window leaves less room than the cap, the view yields instead of overflowing a surface
+   that clips it, decisions included. The container owns sizing and scrolling so neither region can
+   push the composer surface around; each region hides when empty and both empty closes the view. */
 .hitl-queue-popover {
   display: flex;
   flex-direction: column;
   width: var(--radix-popover-trigger-width);
   max-width: var(--radix-popover-content-available-width);
-  max-height: min(22rem, calc(100dvh - 14rem));
+  max-height: min(22rem, calc(100dvh - 14rem), var(--radix-popover-content-available-height));
   min-height: 0;
 }
 
@@ -50,20 +52,46 @@
   text-align: center;
 }
 
-/* Regions keep their natural height and the body (a ScrollArea, so its bar matches the detail's
-   inside it) scrolls once they outgrow the popover cap. Compressing the approval instead cannot
-   stop at the detail's floor: a flex minimum ignores a descendant's floor, so the form collapsed
-   and its buttons slid under the detail. The regions stack in the viewport's block content, so
-   none of them shrinks; the detail caps itself so the approval and a few queued rows still fit
-   without the outer scroll. */
+/* The request and the queue each scroll in their own ScrollArea (so their bars match the detail's
+   inside), between the fixed header, the request's decisions and each other: once the view
+   outgrows its cap, both yield height in proportion to their content and scroll, while the
+   decisions keep theirs. Inside its scroller the request keeps its natural height. Compressing the
+   approval instead cannot stop at the detail's floor: a flex minimum ignores a descendant's floor,
+   so the form collapsed and its buttons slid under the detail. The detail caps itself so the
+   approval and a few queued rows still fit without scrolling. */
 .approval-detail {
   display: flex;
   flex-direction: column;
 }
 
+/* The request's and the queue's scrollers can be a few rows tall, so their scrolled edges fade
+   over 16px rather than the shared 40px, which would veil most of a short request. */
+.hitl-queue-popover > [data-slot='scroll-area'] > [data-slot='scroll-area-viewport'] {
+  --scroll-shadow-size: calc(var(--spacing) * 4);
+}
+
 /* The detail box caps itself at 160px (`size="sm"`); a short detail still keeps a usable floor. */
 .approval-detail .tool-card-body {
   min-height: 96px;
+}
+
+/* A request's decisions and the error a decision returned (`HitlActions`). */
+.hitl-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The footer under the request keeps its decisions in reach however far the request scrolls. It
+   takes the region's 16px inset, which keeps the bottom-right actions clear of the popover's 22px
+   corner; a request that answers in its own form (a question) leaves it empty and without
+   height. */
+.hitl-queue-footer {
+  flex-shrink: 0;
+}
+
+.hitl-queue-footer .hitl-actions {
+  padding: 8px 16px 16px;
 }
 
 /* Form inset matches the popover primitive's 16px so the bottom-right actions clear its 22px
@@ -76,6 +104,12 @@
   padding: 8px 16px 16px;
 }
 
+/* A request whose decisions moved to the footer (an approval, an app consent) ends at its own
+   content, so the footer's top inset keeps the form's 8px between the request and its decisions. */
+.hitl-region:has(> .approval-controls) {
+  padding-bottom: 0;
+}
+
 /* Compact rows need little frame: the row highlight sits 6px from the popover edge. */
 .queue-region {
   display: flex;
@@ -84,8 +118,9 @@
   padding: 6px;
 }
 
-/* The divider belongs to the queue region so a lone HITL region reads without a stray rule. */
-.hitl-region + .queue-region {
+/* The divider belongs to the queue so a lone request reads without a stray rule; it follows the
+   request's footer, which is there whenever a request is. */
+.hitl-queue-footer + .hitl-queue-list {
   border-top: 1px solid var(--border);
 }
 

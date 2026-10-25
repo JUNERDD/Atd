@@ -13,6 +13,8 @@ import {
   Library,
   Link,
   ListTodo,
+  MousePointerClick,
+  PanelsTopLeft,
   SquareCode,
   SquareTerminal,
   Terminal,
@@ -24,8 +26,10 @@ import {
 import {
   AUTOMATION_TOOL,
   CODEMODE_TOOL,
+  COMPUTER_TOOL,
   LOAD_SKILL_TOOL,
   TODO_TOOL,
+  UPDATE_UI_TOOL,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   type AppBuildDetails,
@@ -34,6 +38,7 @@ import {
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { automationStepKey, automationTarget, type AutomationStepKey } from './automation-call';
 import { codemodeTarget } from './codemode-call';
+import { computerHasDetail } from './computer-call';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
 export type StepKey =
@@ -64,6 +69,7 @@ export type StepKey =
   | 'activity.step.readMcpResource'
   | 'activity.step.app'
   | 'activity.step.appBuild'
+  | 'activity.step.updateView'
   | AutomationStepKey
   | SubagentStepKey;
 
@@ -99,6 +105,7 @@ const STEP_KEYS: Record<string, StepKey> = {
   [LIST_MCP_RESOURCES]: 'activity.step.listMcpResources',
   [LIST_MCP_RESOURCE_TEMPLATES]: 'activity.step.listMcpResourceTemplates',
   [READ_MCP_RESOURCE]: 'activity.step.readMcpResource',
+  [UPDATE_UI_TOOL]: 'activity.step.updateView',
 };
 
 const ICONS: Record<string, LucideIcon> = {
@@ -128,6 +135,9 @@ const ICONS: Record<string, LucideIcon> = {
   app: AppWindow,
   // Same mark as Settings › Automations and an automation's task origin badge.
   [AUTOMATION_TOOL]: Zap,
+  [COMPUTER_TOOL]: MousePointerClick,
+  // Same mark as the card of the view it updates (view-card.tsx).
+  [UPDATE_UI_TOOL]: PanelsTopLeft,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -258,7 +268,9 @@ export type RowDetails = Exclude<
  * (artifact-cards.tsx); none renders in the row. A `codemode` call's steps render in its row while
  * it runs too. A `subagent` define call's definitions render in its row and also name what its
  * children ran as (task-agents/task-agents.ts); a define that recorded none (each name already
- * held that definition) reads like any call, by its arguments and result.
+ * held that definition) reads like any call, by its arguments and result. A settled `computer`
+ * call renders its outcome or refusal, steps, evidence and latest view (computer-body.tsx); one
+ * that recorded none of them reads like any call rather than as an empty card.
  */
 export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   const data = block.details.data;
@@ -271,6 +283,8 @@ export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
       return null;
     case 'subagentDefine':
       return data.agents.length ? data : null;
+    case 'computer':
+      return computerHasDetail(data) ? data : null;
     case 'codemode':
     case 'diff':
     case 'webFetch':

@@ -191,6 +191,7 @@ export const ProviderCreateRequestSchema = Type.Object(
     chatgptConsent: Type.Optional(ChatGPTConsentRequestSchema),
     provider: ServiceConnectionSchema.properties.provider,
     name: ServiceConnectionSchema.properties.name,
+    presetId: ServiceConnectionSchema.properties.presetId,
     baseUrl: ServiceConnectionSchema.properties.baseUrl,
     authType: ServiceConnectionSchema.properties.authType,
     defaultModel: ServiceConnectionSchema.properties.defaultModel,

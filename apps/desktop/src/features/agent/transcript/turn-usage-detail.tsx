@@ -36,7 +36,7 @@ export function TurnUsageDetail({ usage }: { usage: TurnUsage }) {
           label={t('transcript.usage.label')}
           size="icon-xs"
           className="-my-1"
-          tooltipDismissOnClick
+          tooltip={false}
         >
           <Info />
         </IconButton>

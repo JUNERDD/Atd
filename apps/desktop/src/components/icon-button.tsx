@@ -8,18 +8,18 @@ export function IconButton({
   tooltip = true,
   tooltipSide = 'bottom',
   tooltipPinned,
-  tooltipDismissOnClick = false,
   ...props
 }: ComponentProps<typeof Button> & {
   /** Short tooltip text; use aria-label when the accessible name needs more context. */
   label: string;
-  /** Set false to render a bare labeled button with no tooltip. Defaults to true. */
+  /**
+   * Set false to render a bare labeled button with no tooltip. Defaults to true. Triggers that
+   * open a menu, popover, or sheet set it false: the overlay they open already names its content.
+   */
   tooltip?: boolean;
   tooltipSide?: ComponentProps<typeof TooltipContent>['side'];
   /** Pins the tooltip open while true so a label change can act as feedback; hover, focus, and dismissal behavior resume once it clears. */
   tooltipPinned?: boolean;
-  /** Dismiss the tooltip on click for triggers that open a menu or overlay so it does not linger over it. Defaults to false: the tooltip stays open while hovered or focused. */
-  tooltipDismissOnClick?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Default dismissal is pointer leave only: while the pointer hovers the trigger, click,
@@ -36,7 +36,7 @@ export function IconButton({
     );
   }
   function handleOpenChange(next: boolean) {
-    if (next || tooltipDismissOnClick) {
+    if (next) {
       setOpen(next);
       return;
     }
@@ -54,7 +54,6 @@ export function IconButton({
     hoverRef.current = false;
   }
   function keepOnClick() {
-    if (tooltipDismissOnClick) return;
     keepOnClickRef.current = true;
     // The Radix close runs synchronously later in the same event; clear after it so a
     // later blur or Escape close without hover is still honored.

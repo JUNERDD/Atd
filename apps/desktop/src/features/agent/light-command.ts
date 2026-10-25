@@ -245,7 +245,13 @@ async function endLightRun(
     );
   if (!answer) return notice(run, text('empty', run));
   const { target, output } = run.launch;
-  if (!target.writable) return offer(run, answer);
+  if (
+    !target.writable ||
+    (target.selectionKind !== undefined &&
+      target.selectionKind !== 'text' &&
+      output.action === 'insertAfterSelection')
+  )
+    return offer(run, answer);
   await hide(run);
   const reason = await writeInto(runId, target, output.action, answer);
   if (!reason) return;

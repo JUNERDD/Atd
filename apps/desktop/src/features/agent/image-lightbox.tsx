@@ -18,7 +18,14 @@ interface Loaded {
  * final size in its first frame instead of growing around a late image; until the thumbnail has
  * loaded (or when it cannot) there is nothing to open.
  */
-export function ImageLightbox({ file }: { file: FileRef }) {
+export function ImageLightbox({
+  file,
+  variant = 'thumbnail',
+}: {
+  file: FileRef;
+  /** The thumbnail's crop (`LazyResourceImage`): a square by default, `wide` for a screen. */
+  variant?: 'thumbnail' | 'wide';
+}) {
   const { t } = useTranslation('tasks');
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   return (
@@ -32,6 +39,7 @@ export function ImageLightbox({ file }: { file: FileRef }) {
         >
           <LazyResourceImage
             file={file}
+            variant={variant}
             onLoad={(image) =>
               setLoaded({
                 src: image.currentSrc,

@@ -36,7 +36,8 @@ export function useHitlSummary(
   );
   const queueCount = queue.steering.length + queue.followUp.length;
   const hasQueue = taskId !== null && queueCount > 0;
-  const approval = requests.some((request) => request.kind !== 'input');
+  // A waiting view asks for an answer like a question does.
+  const approval = requests.some((request) => request.kind !== 'input' && request.kind !== 'view');
   const label =
     requests.length === 0
       ? tp('composer.queuedCount', { count: queueCount })

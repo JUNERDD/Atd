@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useMemo, useRef } from 'react';
 import { ShaderMount, type PaperShaderElement } from '@paper-design/shaders-react';
 import { useReducedMotion } from 'motion/react';
 import { cn } from '@atd/ui/lib/utils';
+import { useShaderClock } from '../../components/use-shader-clock';
 import { LIGHT_COLORS, LIGHT_RIM, lightShader, type LightDesign } from './lights/light-design';
 import './guide-light.css';
 
@@ -10,9 +11,6 @@ import './guide-light.css';
  * ProMotion display's 120 and cost half.
  */
 const FRAME_MS = 1000 / 60;
-
-/** The longest step the clock takes, so the light resumes where it paused after a hidden spell. */
-const MAX_STEP_MS = 50;
 
 /** Each design's whole shader, built once. */
 const shaders = new WeakMap<LightDesign, string>();
@@ -26,35 +24,10 @@ function shaderOf(design: LightDesign) {
 }
 
 /**
- * Advances the paused shader at most 60 times a second, from `start` ms of the light's time.
- * WebKit stops animation frames while the window is hidden, and each step is at most
- * `MAX_STEP_MS`, so the light pauses with the window instead of jumping when it returns.
- */
-function useCappedClock(ref: RefObject<PaperShaderElement | null>, start: number, run: boolean) {
-  useEffect(() => {
-    if (!run) return;
-    let frame = 0;
-    let clock = start;
-    let last = performance.now();
-    function tick(now: number) {
-      frame = requestAnimationFrame(tick);
-      // Two milliseconds of slack, so a 60 Hz display's own frames are never skipped.
-      if (now - last < FRAME_MS - 2) return;
-      clock += Math.min(now - last, MAX_STEP_MS);
-      last = now;
-      // Paper sets the mount up once it has processed the uniforms, just after the first render.
-      ref.current?.paperShaderMount?.setFrame(clock);
-    }
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [ref, start, run]);
-}
-
-/**
  * One of the guide's lights (`lights/`) filling its box, with film grain masked onto it: the
  * opening page's full-screen light or a step's art panel backdrop. It is transparent where it is
  * dark; the host decides what shows through. `entrance` is the length of the design's entrance in
- * seconds (none by default). Paper's own loop stays paused and `useCappedClock` drives it from the
+ * seconds (none by default). Paper's own loop stays paused and `useShaderClock` drives it from the
  * design's `start`; under Reduce Motion the light is a still frame there, past its entrance.
  */
 export function GuideLight({
@@ -79,7 +52,7 @@ export function GuideLight({
     [design, entrance],
   );
   const start = (design.start ?? 0) + (reduced ? entrance * 1000 : 0);
-  useCappedClock(ref, start, !reduced);
+  useShaderClock(ref, start, !reduced, FRAME_MS);
   return (
     <div aria-hidden className={cn('guide-light', className)}>
       <ShaderMount

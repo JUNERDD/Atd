@@ -84,10 +84,14 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     controller?.quitGuard.shouldTerminate() ?? .terminateNow
   }
 
-  /// A click on the Dock icon (when shown) or a reopen from Finder shows the panel.
+  func applicationDidResignActive(_ notification: Notification) {
+    controller?.cancelShortcutRecordings()
+  }
+
+  /// A Dock click or Finder reopen returns to the welcome guide while it is open.
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
   {
-    controller?.showPanel()
+    controller?.reopen()
     return false
   }
 

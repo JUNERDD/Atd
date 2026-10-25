@@ -38,7 +38,16 @@ export async function loadRunAttachments(
 }
 
 /**
- * Fits the image to Pi's inline limits here, so the coordinate note for a scaled image goes into
+ * The size an attached image enters the session at. Pi re-sends every history image on every
+ * request, so each one is kept near the models' native resolution: 1568px is what the standard
+ * vision tier sees anyway, and staying under 2000px keeps Anthropic's stricter many-image rule
+ * from applying. The byte cap counts base64 and leaves JPEG at a quality where screenshot text
+ * stays legible; an image already inside both limits passes untouched.
+ */
+const INGEST_IMAGE = { maxWidth: 1568, maxHeight: 1568, maxBytes: 1024 * 1024, jpegQuality: 85 };
+
+/**
+ * Fits the image to the ingest size here, so the coordinate note for a scaled image goes into
  * the hidden run material instead of Pi appending it to the visible message. Pi still applies the
  * model's own limits to the prompt's images. When the image cannot be scaled it is passed as it
  * is, and Pi reports what it cannot send.
@@ -49,7 +58,7 @@ async function imageAttachment(
   mime: string,
   bytes: Uint8Array,
 ): Promise<RunAttachment> {
-  const resized = await resizeImage(bytes, mime);
+  const resized = await resizeImage(bytes, mime, INGEST_IMAGE);
   const note = resized ? formatDimensionNote(resized) : undefined;
   return {
     kind: 'image',

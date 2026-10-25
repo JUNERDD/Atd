@@ -134,9 +134,9 @@ public struct TaskNoticesResponse: Decodable, Equatable, Sendable {
   }
 }
 
-/// `POST /v1/confirms` (`ConfirmReplyRequestSchema`), as a notification action answers a pending
-/// request: a typed reply or a chosen suggested answer to a question, or a refusal of an action. A notification never
-/// approves; approving stays in the panel, where the action is shown in full.
+/// `POST /v1/confirms` (`ConfirmReplyRequestSchema`): an answer to a pending request
+/// (`PermissionAnswerSchema`). A notification answers a question or refuses an action, and never
+/// approves; the activity card, which shows the request in full, also approves and skips.
 public struct ConfirmReply: Encodable, Equatable, Sendable {
   public enum Answer: Equatable, Sendable {
     /// `{ answer }`: the text typed into a question's Reply field, or the full text of the
@@ -144,6 +144,12 @@ public struct ConfirmReply: Encodable, Equatable, Sendable {
     case text(String)
     /// `{ decision: 'declined' }`.
     case declined
+    /// `{ decision: 'once' }`: allows this call only.
+    case once
+    /// `{ decision: 'session' }`: allows the tool for the rest of the task's session.
+    case session
+    /// `{ skipped: true }`: leaves a question unanswered.
+    case skipped
   }
 
   public let requestId: String
@@ -164,6 +170,9 @@ public struct ConfirmReply: Encodable, Equatable, Sendable {
     switch self.answer {
     case .text(let text): try answer.encode(text, forKey: .answer)
     case .declined: try answer.encode("declined", forKey: .decision)
+    case .once: try answer.encode("once", forKey: .decision)
+    case .session: try answer.encode("session", forKey: .decision)
+    case .skipped: try answer.encode(true, forKey: .skipped)
     }
   }
 
@@ -176,5 +185,6 @@ public struct ConfirmReply: Encodable, Equatable, Sendable {
   private enum AnswerKeys: String, CodingKey {
     case answer
     case decision
+    case skipped
   }
 }

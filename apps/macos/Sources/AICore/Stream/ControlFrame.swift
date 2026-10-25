@@ -40,11 +40,13 @@ public struct CapabilityRequest: Codable, Equatable, Sendable {
 }
 
 /// The only service frames the shell's control stream acts on. Task events, `summaries`,
-/// `resumed`, `invalidate` of any scope but `widgets`, `automations` and `taskNotices`, and
-/// anything newer are dropped: the shell holds no task state.
+/// `resumed`, `invalidate` of any scope but `widgets`, `automations`, `taskNotices` and `addons`,
+/// and anything newer are dropped: the shell holds the activity projection, not a task cache.
 public enum ControlFrame: Equatable, Sendable {
   /// Menu bar counts: root tasks running (queued, running, stopping) and needing attention.
   case status(running: Int, attention: Int)
+  /// The service's complete current/recent task activity, independent of task replay.
+  case taskActivity(TaskActivitySnapshotWire)
   case capabilityRequest(CapabilityRequest)
   /// Registration accepted; the id is the service's name for this connection.
   case capabilityRegistered(clientId: String)
@@ -62,6 +64,13 @@ public enum ControlFrame: Equatable, Sendable {
   /// `invalidate` with scope `taskNotices`: the service queued a task notice, so the shell pulls
   /// `GET /v1/task-notices` for notifications to post.
   case taskNoticesInvalidated
+  /// `invalidate` with scope `addons`: an add-on's install state changed, so the shell pulls
+  /// `GET /v1/addons` for the engine paths it runs.
+  case addonsInvalidated
+  /// `computer.request`: one request to this shell as the bound computer host.
+  case computerRequest(HostRequestWire)
+  /// `computer.cancel`: stop a run's computer work, or one operation's.
+  case computerCancel(ComputerCancelWire)
 }
 
 public enum ControlFrameDecoding: Equatable, Sendable {
@@ -87,6 +96,10 @@ public enum ControlFrameDecoder {
         status.running >= 0 && status.attention >= 0
           ? .status(running: status.running, attention: status.attention) : nil
       }
+    case "task.activity":
+      frame = (try? decoder.decode(TaskActivity.self, from: data)).map {
+        .taskActivity($0.snapshot)
+      }
     case "capability.request":
       frame = (try? decoder.decode(Request.self, from: data)).map { .capabilityRequest($0.request) }
     case "capability.registered":
@@ -97,6 +110,14 @@ public enum ControlFrameDecoder {
       frame = (try? decoder.decode(Ack.self, from: data)).map {
         .capabilityAck(requestId: $0.requestId, ok: $0.ok, error: $0.error)
       }
+    case "computer.request":
+      frame = (try? decoder.decode(ComputerServiceFrames.Request.self, from: data)).map {
+        .computerRequest($0.request)
+      }
+    case "computer.cancel":
+      frame = (try? decoder.decode(ComputerServiceFrames.Cancel.self, from: data)).map {
+        .computerCancel($0.cancel)
+      }
     case "pong":
       frame = .pong
     case "error":
@@ -106,6 +127,7 @@ public enum ControlFrameDecoder {
       case "widgets": frame = .widgetsInvalidated
       case "automations": frame = .automationsInvalidated
       case "taskNotices": frame = .taskNoticesInvalidated
+      case "addons": frame = .addonsInvalidated
       // Other scopes concern the renderer's data, which the shell does not hold.
       default: return .ignored(type: envelope.type)
       }
@@ -116,6 +138,7 @@ public enum ControlFrameDecoder {
   }
 
   private struct Envelope: Decodable { let type: String }
+  private struct TaskActivity: Decodable { let snapshot: TaskActivitySnapshotWire }
   private struct Status: Decodable {
     let running: Int
     let attention: Int

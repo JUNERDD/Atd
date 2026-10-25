@@ -151,6 +151,31 @@
   min-height: 0;
   flex-direction: column;
 }
+/* Without a captured draft, fade the stable conversation once. With a flight, the whole page
+   shares one WAAPI entrance; its bubble must not become visible ahead of the conversation. */
+.task-stage[data-entering]:not([data-message-flight]) > .conversation {
+  animation: turn-arrive 250ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+/* Hold the page until the flight puts it at the shared timeline's current time. Descendants
+   retain their own opacity, including the message actions' hover/focus visibility. */
+.task-stage[data-message-flight] > .conversation {
+  opacity: 0;
+}
+@keyframes turn-arrive {
+  from {
+    opacity: 0;
+  }
+}
+/* The sent message in flight: a still copy of the draft over the panel body and above the
+   composer (whose footer is the body's top layer at z-index 1), clipped to the input's visible
+   rows. It fades where it was captured; it takes no input and is hidden from assistive
+   technology, which hears the message in the transcript. */
+.message-flight {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
 /* Covered, a layer keeps its layout and scroll offset; it is only unseen and inert. `opacity`
    hides the subtree as one group from the first frame: `visibility` is inherited element by
    element, so a descendant that transitions it (every Button, through `transition-all`) would
@@ -222,7 +247,7 @@
   min-width: 0;
   content-visibility: auto;
   contain-intrinsic-block-size: auto 240px;
-  /* A turn the prompt rail shows lands below the top edge's fade (`revealTop`). */
+  /* A turn the message dial shows lands below the top edge's fade (`revealTop`). */
   scroll-margin-top: var(--scroll-shadow-size, 0px);
 }
 /*
@@ -245,86 +270,6 @@
  * view a second time for the same change; where it does not, there is nothing to switch off. */
 .transcript-viewport {
   overflow-anchor: none;
-}
-/* The prompt rail (`prompt-rail.tsx`): a tick per user message in the conversation's leading
- * gutter, centred in the height the composer leaves. Every tick keeps one length and the current
- * one only darkens, so the rail never reaches toward the messages; a stretch cut from a longer
- * conversation fades out at the end that continues. */
-.prompt-rail-region {
-  position: absolute;
-  top: 0;
-  bottom: var(--overlay-footer-height, 0px);
-  left: 0;
-  z-index: 1;
-  display: flex;
-  width: 16px;
-  align-items: center;
-  pointer-events: none;
-}
-.prompt-rail {
-  display: flex;
-  max-height: calc(100% - 32px);
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 5px 8px 4px;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  cursor: pointer;
-  pointer-events: auto;
-}
-.prompt-rail:focus-visible {
-  outline: 1px solid var(--ring);
-  outline-offset: -1px;
-}
-.prompt-rail[data-more-above] {
-  mask-image: linear-gradient(to bottom, transparent, #000 24px);
-}
-.prompt-rail[data-more-below] {
-  mask-image: linear-gradient(to top, transparent, #000 24px);
-}
-.prompt-rail[data-more-above][data-more-below] {
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    #000 24px,
-    #000 calc(100% - 24px),
-    transparent
-  );
-}
-.prompt-rail-tick {
-  flex: none;
-  width: 7px;
-  height: 2px;
-  border-radius: 1px;
-  background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
-  transition: background-color 150ms ease-out;
-}
-.prompt-rail:hover .prompt-rail-tick,
-.prompt-rail[aria-expanded='true'] .prompt-rail-tick {
-  background: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
-}
-.prompt-rail .prompt-rail-tick[data-current] {
-  background: var(--foreground);
-}
-/* The list's numbers are tabular, so the messages line up past 9. */
-.prompt-list-index {
-  min-width: 1.25rem;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.prompt-list-keys {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 6px 8px 4px;
-  border-top: 1px solid var(--border);
-  color: var(--muted-foreground);
-  font-size: 12px;
 }
 .legacy-note {
   display: flex;
@@ -1183,7 +1128,8 @@
   max-width: 100%;
   justify-content: flex-end;
 }
-.user-message .image-lightbox-trigger:focus-visible {
+/* Wherever an image opens in the lightbox (a message's attachments, a computer call's views). */
+.image-lightbox-trigger:focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }

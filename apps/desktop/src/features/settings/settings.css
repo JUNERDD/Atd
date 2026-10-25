@@ -1146,8 +1146,9 @@
 .settings-card > [data-slot='item-group'] {
   gap: 0;
 }
-/* Only inside a card: a row standing alone keeps the Item's own rounded corners. */
-.settings-card .settings-card-row[data-slot='item'] {
+/* Only inside a card: a row standing alone keeps the Item's own rounded corners. Matched by class
+   rather than `data-slot`, which a row's context-menu trigger replaces with its own. */
+.settings-card .settings-card-row {
   border-radius: 0;
 }
 /* Only inside a card too: standalone rows keep their rounded corners, which a hairline would bend. */

@@ -110,7 +110,9 @@ export async function confined(
  * (`<dataDir>/plugins`, installed plugin code and its state), the user apps
  * (`<dataDir>/apps`: published versions and app data, apps/paths.ts), the automations
  * (`<dataDir>/automations`: saved automations act later with nobody present, so only confirmed
- * saves may change them, automations/files.ts) and Pi's agent dir (`<dataDir>/agent`,
+ * saves may change them, automations/files.ts), the computer targets, action facts and trials
+ * (`<dataDir>/computer`: what an action did and which targets may be used, computer/) and Pi's
+ * agent dir (`<dataDir>/agent`,
  * storage.ts). The agent dir is protected whole because it holds the memory store
  * (`agent/memory`: the memory files with their search index, the learning settings and the
  * pending suggestions, memory/unit-store.ts). A direct edit would skip the memory content scan,
@@ -124,24 +126,29 @@ export function protectedWriteRoots(dataDir: string): string[] {
     path.join(dataDir, 'plugins'),
     path.join(dataDir, 'apps'),
     path.join(dataDir, 'automations'),
+    path.join(dataDir, 'computer'),
     path.join(dataDir, 'agent'),
   ];
 }
 
 /**
  * `confined` for a write or edit: additionally refuses a path under `protectedWriteRoots`,
- * compared as `realInside` compares.
+ * compared as `realInside` compares. `insideOnly` also refuses anything outside the task output
+ * directory (an unattended computer run, computer/tool-set.ts).
  */
 export async function confinedWrite(
   cwd: string,
   dataDir: string,
   rawPath: string,
+  insideOnly = false,
 ): Promise<ConfinedPath> {
   const target = await confined(cwd, dataDir, rawPath);
+  if (insideOnly && target.location !== 'inside')
+    throw new Error('This automation run may only write inside its task output folder.');
   for (const root of protectedWriteRoots(dataDir)) {
     if (await realInside(root, target.real))
       throw new Error(
-        'Writing the service security state, the plugin store, the published apps, the automations or the memory and session store is blocked.',
+        'Writing the service security state, the plugin store, the published apps, the automations, the computer records or the memory and session store is blocked.',
       );
   }
   return target;

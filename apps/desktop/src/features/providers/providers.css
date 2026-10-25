@@ -26,6 +26,23 @@
   mask-position: center;
   mask-image: var(--brand-mask-image);
 }
+/* Inline metadata uses a text-sized mark; monochrome brands follow the surrounding label. */
+.provider-brand-frame[data-variant='inline'] {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand {
+  flex-basis: 12px;
+  width: 12px;
+  height: 12px;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand-ink {
+  color: inherit;
+}
+.provider-brand-frame[data-variant='inline'] .provider-brand-mask {
+  background: currentColor;
+}
 .provider-connections {
   gap: 10px;
 }
@@ -354,4 +371,43 @@ button.model-config-row-nav:disabled:hover {
   .provider-model-controls > :first-child {
     flex: 1;
   }
+}
+
+/* Compact method selection uses shared buttons; native radios own keyboard behavior. */
+.provider-plan-choice {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.provider-plan-options {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-2xl);
+  background: var(--ata-surface-ghost-hover);
+}
+.provider-plan-option {
+  position: relative;
+  cursor: pointer;
+}
+.provider-plan-option:has(input:checked) {
+  background: var(--ata-material-selected);
+  color: var(--foreground);
+}
+.provider-plan-option:has(input:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.provider-plan-option:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+.provider-plan-hint {
+  margin-top: 8px;
+}
+.provider-advanced-trigger[data-state='open'] svg {
+  transform: rotate(180deg);
 }

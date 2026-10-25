@@ -1,6 +1,8 @@
 import { Type, type Static } from 'typebox';
+import { ApplicationReferenceSchema } from './application-reference.js';
 import { AppIdSchema } from './app-identity.js';
 import type { CommandTool } from './commands.js';
+import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { MAX_FOLDERS } from './folders.js';
@@ -72,6 +74,7 @@ export const MAX_INPUT_CHIPS = 64;
  * quoted Markdown itself, which the run reads into its material and a resend restores.
  */
 export const InputChipSchema = Type.Union([
+  ApplicationReferenceSchema,
   Type.Object(
     { kind: Type.Literal('file'), fileId: Identifier, name: Type.String({ maxLength: 255 }) },
     { additionalProperties: false },
@@ -264,6 +267,12 @@ export const RunSnapshotSchema = Type.Object(
      * command's first run in a new task that needs none of those; follow-ups never carry it.
      */
     lite: Type.Optional(Type.Literal(true)),
+    /**
+     * Computer use the run may perform (`RunComputerSchema`): absent means no `computer` tool.
+     * Frozen at acceptance from the submit or command launch; an unattended run's also carries
+     * the grant it was enqueued under, which a follow-up never inherits.
+     */
+    computer: Type.Optional(RunComputerSchema),
   },
   { additionalProperties: false },
 );

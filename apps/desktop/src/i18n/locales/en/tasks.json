@@ -99,7 +99,8 @@
       "automationDelete": "Delete automation",
       "automationEnable": "Turn on automation",
       "automationDisable": "Turn off automation",
-      "automationRun": "Run automation"
+      "automationRun": "Run automation",
+      "updateView": "Update view"
     },
     "target": {
       "user": "User",
@@ -126,7 +127,9 @@
       "mcp": "Use an MCP tool or save an MCP server",
       "web": "Access the web",
       "app": "Build or run this task's app",
-      "automation": "Save, delete or run an automation"
+      "automation": "Save, delete or run an automation",
+      "computer": "Act on a registered website or app",
+      "computerAccess": "Allow computer access"
     },
     "outcome": {
       "once": "Allowed once",
@@ -162,7 +165,12 @@
       "flagged": "Auto review flagged this: {{reason}}",
       "flaggedNoReason": "Auto review flagged this action.",
       "unavailable": "Auto review is unavailable; decide this one yourself."
-    }
+    },
+    "allowAccess": "Allow access",
+    "accessSaved": "Allow access to {{target}} and save it in Computer use settings for later tasks. Remove it there at any time.",
+    "accessRun": "Allow access to {{target}} for this run only. Access ends when the run finishes or stops.",
+    "accessBackground": "Atd will operate this target in the background, without bringing it forward or using your pointer and keyboard.",
+    "accessApplication": "Atd will operate this app in the background. When the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app and window you were using."
   },
   "question": {
     "skip": "Skip",
@@ -191,6 +199,10 @@
   },
   "retry": {
     "running": "Request failed · Retrying ({{attempt}}/{{max}})…"
+  },
+  "requestTooLarge": {
+    "message": "The model provider refused this request as too large, most likely because of the images in this conversation. Older images are now left out of what the model sees. Send your message again; if it still fails, compact the context or start a new task.",
+    "details": "Error details"
   },
   "files": {
     "open": "Open",
@@ -331,9 +343,13 @@
     "prompts": {
       "label": "Your messages ({{count}})",
       "listLabel": "Your messages",
-      "filter": "Filter messages",
-      "empty": "No matching messages",
-      "step": "Previous / next message"
+      "valueText": "Message {{current}} of {{total}}: {{label}}",
+      "hint": {
+        "drag": "Drag to turn",
+        "step": "Step",
+        "keep": "Stay here",
+        "back": "Go back"
+      }
     },
     "code": {
       "copy": "Copy code",
@@ -489,10 +505,11 @@
     "replaceIn": "Replace in {{app}}",
     "insertIn": "Insert in {{app}}",
     "refused": {
-      "notTrusted": "Accessibility access is off, so the answer was copied instead.",
+      "notTrusted": "App control access is off, so the answer was copied instead.",
       "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
       "targetChanged": "The field in {{app}} changed, so the answer was copied instead.",
       "noSelection": "Nothing was selected in {{app}}, so the answer was copied instead.",
+      "unsupportedSelection": "Choose where to insert the answer in {{app}}; it was copied to the clipboard.",
       "secureInput": "Secure input is on in {{app}}, so the answer was copied instead.",
       "failed": "Couldn't write into {{app}}, so the answer was copied instead.",
       "interrupted": "Writing into {{app}} stopped partway, so the full answer was copied."
@@ -502,6 +519,7 @@
       "targetGone": "The field in {{app}} is no longer available, so the answer wasn't written.",
       "targetChanged": "The field in {{app}} changed, so the answer wasn't written.",
       "noSelection": "Nothing was selected in {{app}}, so the answer wasn't written.",
+      "unsupportedSelection": "Choose where to insert the answer in {{app}}.",
       "secureInput": "{{app}} has secure input on, so the answer wasn't written.",
       "failed": "The answer couldn't be written into {{app}}."
     },
@@ -560,5 +578,272 @@
     "page_other": "{{count}} pages",
     "query_one": "{{count}} query",
     "query_other": "{{count}} queries"
+  },
+  "computer": {
+    "step": {
+      "targets": "Find targets",
+      "observe": "View target",
+      "act": "Act on target",
+      "fill": "Fill in",
+      "click": "Click",
+      "submit": "Submit",
+      "navigate": "Open page",
+      "scroll": "Scroll",
+      "wait": "Wait for completion",
+      "status": "Check earlier actions",
+      "release": "Release target",
+      "type": "Type text",
+      "clear": "Clear field",
+      "key": "Press key",
+      "menu": "Choose menu command",
+      "drag": "Drag",
+      "select": "Choose option",
+      "upload": "Upload file",
+      "requestAccess": "Requested computer access",
+      "shareScreen": "Requested screen sharing",
+      "watchScreen": "Viewed shared screen",
+      "stopSharing": "Stopped screen sharing"
+    },
+    "live": {
+      "finding": "Finding targets",
+      "viewing": "Viewing",
+      "filling": "Filling in",
+      "clicking": "Clicking",
+      "submitting": "Submitting",
+      "opening": "Opening",
+      "waitingCompletion": "Waiting for completion",
+      "verifying": "Checking the result",
+      "waitingTarget": "Waiting for the target to be free",
+      "checking": "Checking earlier actions",
+      "releasing": "Releasing target",
+      "stopping": "Stopping…",
+      "typing": "Typing",
+      "clearing": "Clearing a field",
+      "pressingKey": "Pressing a key",
+      "choosingMenu": "Choosing a menu command",
+      "dragging": "Dragging",
+      "selecting": "Choosing option",
+      "uploading": "Uploading file",
+      "requestingAccess": "Requesting computer access",
+      "sharingScreen": "Waiting for screen selection",
+      "watchingScreen": "Watching shared screen",
+      "stoppingShare": "Stopping screen sharing"
+    },
+    "outcome": {
+      "verified": "Done and checked",
+      "partial": "Result unconfirmed",
+      "unknown": "Result unknown",
+      "notDispatched": "Not carried out",
+      "none": "Nothing changed"
+    },
+    "outcomeDetail": {
+      "verified": "Atd checked that this took effect.",
+      "partial": "{{completed}} of {{total}} steps ran. The result is not fully confirmed. Check the target before anything is tried again.",
+      "unknown": "Atd couldn’t confirm whether this took effect. Check the target yourself before anything is tried again.",
+      "notDispatched": "Nothing was sent to the target.",
+      "none": "The action finished without changing anything.",
+      "partialUnverified": "Every step ran, but Atd could not verify the requested result. Check the target before anything is tried again."
+    },
+    "effect": {
+      "read": "Read only",
+      "navigate": "Navigates",
+      "input": "Enters text",
+      "click": "Clicks",
+      "submit": "Submits",
+      "invoke": "Runs an app action"
+    },
+    "stepState": {
+      "done": "Done",
+      "stopped": "Stopped here",
+      "notReached": "Not reached"
+    },
+    "delivery": {
+      "foreground": "Foreground",
+      "foregroundHint": "Atd briefly brought the app forward for this step without moving your pointer, then switched back."
+    },
+    "error": {
+      "notQualified": "This target isn’t set up for this kind of action yet.",
+      "targetUnavailable": "The target wasn’t available.",
+      "targetChanged": "The target changed since Atd last looked at it.",
+      "staleObservation": "The page changed since Atd last looked at it.",
+      "ambiguous": "More than one control matched, so Atd didn’t guess.",
+      "notFound": "The control wasn’t found.",
+      "noBackgroundRoute": "Atd couldn’t perform this step under the current conditions.",
+      "needsPermission": "Atd needs a system permission for this. Check Settings › Computer use.",
+      "needsConsent": "Screen access isn’t prepared yet, so Atd didn’t capture the screen.",
+      "locked": "Another copy of Atd is using computer use.",
+      "busy": "The target was busy with another task.",
+      "targetInUse": "You were using this target, so Atd held off.",
+      "inputInUse": "You were typing, clicking or scrolling at that moment, so Atd held this step back.",
+      "cancelled": "The action was stopped.",
+      "timeout": "The target didn’t answer in time.",
+      "unsupported": "This target doesn’t support that step.",
+      "engineFailed": "Atd’s browser or app engine failed.",
+      "hostUnavailable": "Atd couldn’t reach its background host.",
+      "modalBlocked": "A dialog is open in front of this window, so Atd didn’t act behind it.",
+      "disturbed": "This action got in the way of what you were doing, so Atd put back what it could and stopped."
+    },
+    "refusal": {
+      "dragAndDrop": "It needs a drag and drop, which only your own pointer can do.",
+      "hover": "It needs the pointer to rest over something.",
+      "opaqueSurface": "The app draws this area itself, with no controls Atd can reach.",
+      "pointerToolkit": "This app follows the real pointer, so clicks sent in the background miss.",
+      "secureInput": "A password field is active, and it only takes your own typing.",
+      "menuUnavailable": "That menu command isn’t available while the app is in the background.",
+      "textUnavailable": "There’s no way to enter that text in the background here.",
+      "keyUnavailable": "There’s no way to press that key in the background here.",
+      "minimized": "The window is minimized, and Atd doesn’t restore windows.",
+      "offSpace": "This step needs input sent to the window, which only reaches the Space you’re on, and Atd doesn’t switch Spaces.",
+      "fullScreen": "This step needs input sent to the window, which doesn’t reach a full-screen window, and Atd doesn’t switch to it.",
+      "noRoute": "None of the ways Atd can work here fit this step.",
+      "openBrowser": "Atd couldn’t start the browser in the background.",
+      "screenLocked": "Your Mac was locked, and macOS hides app windows while it’s locked.",
+      "covered": "Atd brought the app forward, but another window (possibly Atd’s own panel) still covered the spot, so Atd sent nothing and put things back.",
+      "notActivated": "macOS wouldn’t let Atd bring the app to the front, so Atd sent nothing and put back anything it had changed."
+    },
+    "retry": {
+      "never": "Atd won’t repeat this on its own.",
+      "after_review": "Check the result before this is tried again."
+    },
+    "evidenceKind": {
+      "value": "Field value",
+      "text": "Text on page",
+      "url": "Page address",
+      "file": "File",
+      "screenshot": "Picture"
+    },
+    "progress_one": "{{completed}}/{{count}} step",
+    "progress_other": "{{completed}}/{{count}} steps",
+    "steps": "Steps",
+    "evidence": "Evidence",
+    "latestView": "Latest view of the target",
+    "viewCaption": "Saved at {{time}} · not live",
+    "unnamedTarget": "Target",
+    "disturbance": {
+      "title": "What changed for you",
+      "kind": {
+        "keyFocus": "Your active window lost focus",
+        "raise": "A window came in front of yours",
+        "pointer": "Your pointer moved",
+        "clipboard": "The clipboard changed",
+        "space": "The Space you were on changed",
+        "dialog": "A dialog opened in your app",
+        "activation": "Your active app changed",
+        "input": "Some of your typing or clicks went elsewhere"
+      },
+      "byAtd": "caused by Atd",
+      "byUnknown": "cause unclear",
+      "repaired": "put back",
+      "notRepaired": "not put back"
+    },
+    "visual": {
+      "unverified": "Visual steps are off: this model isn’t checked yet for acting on pictures of the screen, so Atd acts only through controls it can read and text it recognizes.",
+      "unavailable": "Visual steps are off: this model can’t read pictures, so Atd acts only through controls it can read and text it recognizes."
+    },
+    "check": {
+      "action": "Mark as checked",
+      "title": "Mark this action as checked?",
+      "description": "Confirm that you looked at {{target}} yourself and it is as it should be, or that you fixed it. Atd records the result as checked by you, and it no longer holds back later actions on this target.",
+      "confirm": "I checked it",
+      "done": "You marked this action as checked.",
+      "nothing": "Nothing left to check: this action was already settled.",
+      "cancel": "Cancel",
+      "blocked_one": "An earlier action in {{target}} has an unconfirmed outcome, so Atd held this step back. Look at {{target}} yourself; if it is as it should be, mark that action as checked so Atd can continue.",
+      "blocked_other": "{{count}} earlier actions in {{target}} have an unconfirmed outcome, so Atd held this step back. Look at {{target}} yourself; if it is as it should be, mark them as checked so Atd can continue.",
+      "blockedTitle_one": "Mark the earlier action as checked?",
+      "blockedTitle_other": "Mark the {{count}} earlier actions as checked?",
+      "blockedDescription_one": "Confirm that you looked at {{target}} yourself and it is as it should be, or that you fixed it. Atd records the earlier action as checked by you, and it no longer holds back later actions on this target.",
+      "blockedDescription_other": "Confirm that you looked at {{target}} yourself and it is as it should be, or that you fixed it. Atd records the {{count}} earlier actions as checked by you, and they no longer hold back later actions on this target.",
+      "blockedDone_one": "You marked the earlier action as checked. Tell Atd to continue.",
+      "blockedDone_other": "You marked the {{count}} earlier actions as checked. Tell Atd to continue.",
+      "blockedNothing": "Nothing left to check: the earlier actions were already settled."
+    },
+    "handoff": {
+      "route": {
+        "dragAndDrop": "Do the drag yourself in {{target}}, then tell Atd to continue.",
+        "hover": "Do this step yourself in {{target}}, then tell Atd to continue.",
+        "opaqueSurface": "Do this step yourself in {{target}}, then tell Atd to continue.",
+        "pointerToolkit": "Do this step yourself in {{target}}, then tell Atd to continue.",
+        "secureInput": "Type it yourself in {{target}}, then tell Atd to continue.",
+        "menuUnavailable": "Choose the menu command yourself in {{target}}, then tell Atd to continue.",
+        "textUnavailable": "Enter the text yourself in {{target}}, then tell Atd to continue.",
+        "keyUnavailable": "Press the key yourself in {{target}}, then tell Atd to continue.",
+        "minimized": "Restore the window of {{target}}, then tell Atd to continue.",
+        "offSpace": "Bring the window of {{target}} to the Space you’re on, then tell Atd to continue.",
+        "fullScreen": "Take {{target}} out of full screen, then tell Atd to continue.",
+        "noRoute": "Do this step yourself in {{target}}, then tell Atd to continue.",
+        "openBrowser": "Open the browser for {{target}}, then tell Atd to continue.",
+        "screenLocked": "Once your Mac is unlocked, tell Atd to continue.",
+        "covered": "Move the window covering {{target}}, or do this step yourself, then tell Atd to continue.",
+        "notActivated": "Do this step yourself in {{target}}, then tell Atd to continue."
+      },
+      "inUse": "When you’re done in {{target}}, tell Atd to continue.",
+      "consent": "Prepare screen access in Settings, then tell Atd to continue.",
+      "consentReady": "Screen access is prepared now. Tell Atd to continue.",
+      "disturbed": "Check that {{target}} and your own work are as you left them, then tell Atd to continue.",
+      "prepareConsent": "Prepare screen access",
+      "openBrowser": "Open browser",
+      "settingsOpened": "Once screen access is prepared, tell Atd to continue.",
+      "browserOpened": "The browser is open. Tell Atd to continue."
+    },
+    "preview": {
+      "image": "Live view of {{target}}",
+      "connecting": "Connecting…",
+      "live": "Live preview",
+      "unavailable": "Preview unavailable",
+      "ended": "Preview ended",
+      "collapsed": "Preview collapsed",
+      "waiting": "Waiting for the next step",
+      "captured": "Captured at {{time}}",
+      "enlarge": "Enlarge preview",
+      "close": "Close preview",
+      "collapse": "Collapse preview",
+      "expand": "Show preview",
+      "retry": "Reconnect",
+      "reason": {
+        "starting": "Preparing preview…",
+        "targetUnavailable": "Window temporarily unavailable",
+        "permission": "Screen capture permission is required",
+        "locked": "Preview unavailable while the screen is locked",
+        "unsupported": "Update the computer use component to preview this target",
+        "disconnected": "Preview disconnected",
+        "failed": "Could not start the preview"
+      },
+      "showMonitor": "Monitor {{count}} screens",
+      "noSources": "There are no active screens to monitor.",
+      "showMonitor_one": "Monitor {{count}} screen",
+      "showMonitor_other": "Monitor {{count}} screens"
+    },
+    "review": {
+      "title": "Computer result check",
+      "loading": "Checking whether these results still need review…",
+      "unavailable": "These results were not confirmed. Their current review status is unavailable."
+    }
+  },
+  "view": {
+    "untitled": "Interactive view",
+    "preparing": "Preparing the view…",
+    "loading": "Loading the view…",
+    "responded": "Responded",
+    "response": "Your response: {{response}}",
+    "unavailable": "Unavailable",
+    "unavailableNote": "This view couldn’t be shown.",
+    "widgetLost": "The widget couldn’t be shown.",
+    "retry": "Try again",
+    "scriptError_one": "This view hit an error.",
+    "scriptError_other": "This view hit {{count}} errors.",
+    "scriptErrorDetail_one": "This view hit an error: {{message}}",
+    "scriptErrorDetail_other": "This view hit {{count}} errors. The first: {{message}}",
+    "openWindow": "Open “{{title}}” in a window",
+    "respondInWindow": "Respond in the view’s window.",
+    "open": "Open view",
+    "refused": {
+      "empty": "Enter a message to send.",
+      "engage": "Interact with the view first.",
+      "tooSoon": "Wait a moment, then try again.",
+      "tooMany": "This view made too many requests. Try again in a minute.",
+      "link": "Only web links can be opened.",
+      "widget": "Open the view’s window to do this."
+    }
   }
 }

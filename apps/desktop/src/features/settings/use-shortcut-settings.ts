@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useSettingsSectionExit } from './settings-navigation';
@@ -17,9 +17,6 @@ import {
   type ShortcutAction,
   type ShortcutBindings,
 } from '../../client/settings-contract';
-import { recordedKeysToAccelerator } from '../../lib/shortcuts';
-
-const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
 /** The actions the shell registers globally, which alone may be a modifier's double-tap. */
 const GLOBAL_ACTIONS: readonly ShortcutAction[] = ['togglePanel', 'captureScreenshot'];
@@ -77,11 +74,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const miniPanelShown = setMiniPanelShown ? (snapshot?.miniPanelShown ?? null) : null;
   const miniPanelOpenOn = setMiniPanelOpenOn ? (snapshot?.miniPanelOpenOn ?? null) : null;
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
-  const { keys, start, stop, resetKeys, isRecording, doubleTap } = useShortcutCapture({
-    doubleTap:
-      platform === 'darwin' && recordingAction !== null && GLOBAL_ACTIONS.includes(recordingAction),
-  });
-  // `all` while Restore defaults runs; an action while its Reset runs.
+  // `all` while Restore defaults runs; an action while its shortcut saves or resets.
   const [mutation, setMutation] = useState<ShortcutAction | 'all' | null>(null);
   const [preferencePending, setPreferencePending] = useState<
     Partial<Record<WindowPreference, boolean>>
@@ -90,27 +83,18 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const [errors, setErrors] = useState<Partial<Record<ErrorOwner, string | undefined>>>({});
   // macOS keeps a new login item off until the user approves it in System Settings.
   const [loginApproval, setLoginApproval] = useState(false);
-  // Errors answer the last attempt, so leaving the section clears them. The section can't be left
-  // while a row records; dropping the row also drops a rejected capture's error, and the next
-  // `start()` clears its leftover keys. The login-item note describes current state and stays.
+  // Errors answer the last attempt, so leaving the section clears them. The login-item note
+  // describes current state and stays.
   useSettingsSectionExit(() => {
     setRecordingAction(null);
     setErrors({});
   });
   const unavailable = !snapshot || !bridge;
-  const hasRecordedKey = doubleTap !== null || [...keys].some((key) => !MODIFIER_KEYS.has(key));
-  const capturedShortcut = doubleTap ?? recordedKeysToAccelerator(keys, platform);
   const toolbarTap = selectionToolbarDoubleTap(
     snapshot?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR,
   );
-  const captureError =
-    recordingAction && hasRecordedKey
-      ? shortcutError(t, recordingAction, capturedShortcut, toolbarTap)
-      : '';
-  const capturePending = recordingAction !== null && hasRecordedKey && !captureError;
   /** The shortcut change in flight: the action whose row is saving, or `all` for every row. */
-  const shortcutBusy = capturePending ? recordingAction : mutation;
-  const recording = isRecording && !hasRecordedKey ? recordingAction : null;
+  const shortcutBusy = mutation;
   /** Whether `action` presses its default keys; a spelling that differs but collides counts. */
   const isDefault = (action: ShortcutAction) =>
     effectiveAccelerator(bindings[action], platform) ===
@@ -121,47 +105,31 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     setErrors((current) => ({ ...current, [owner]: text }));
   }, []);
 
-  const endRecording = useCallback(() => {
-    stop();
-    resetKeys();
-    setRecordingAction(null);
-  }, [resetKeys, stop]);
-
-  useEffect(() => {
-    if (!isRecording || !recordingAction || !hasRecordedKey) return;
-    stop();
-    // Stopping alone ends a rejected attempt: `recording`, `shortcutBusy` and the row's error
-    // derive from the stopped recorder, and the next `start()` clears the leftover keys.
-    if (captureError) return;
-    if (!bridge || !capturedShortcut) return;
-    const action = recordingAction;
-    void bridge.saveShortcuts({ ...bindings, [action]: capturedShortcut }).then(
-      () => {
-        resetKeys();
-        setRecordingAction(null);
-      },
-      (reason: unknown) => {
-        resetKeys();
-        setRecordingAction(null);
-        setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
-      },
-    );
-  }, [
-    bindings,
-    bridge,
-    captureError,
-    capturedShortcut,
-    hasRecordedKey,
-    isRecording,
-    recordingAction,
-    resetKeys,
-    setError,
-    stop,
-    t,
-  ]);
-  // A rejected combination stays the row's error until the next attempt clears its keys.
-  const rowErrors =
-    recordingAction && captureError ? { ...errors, [recordingAction]: captureError } : errors;
+  const { start, cancel, isRecording } = useShortcutCapture({
+    doubleTap:
+      platform === 'darwin' && recordingAction !== null && GLOBAL_ACTIONS.includes(recordingAction),
+    onCancel: () => setRecordingAction(null),
+    onRecorded: (shortcut) => {
+      if (!recordingAction) return;
+      const action = recordingAction;
+      setRecordingAction(null);
+      const error = shortcutError(t, action, shortcut, toolbarTap);
+      if (error) {
+        setError(action, error);
+        return;
+      }
+      if (!bridge || !shortcut) return;
+      setMutation(action);
+      void bridge.saveShortcuts({ ...bindings, [action]: shortcut }).then(
+        () => setMutation(null),
+        (reason: unknown) => {
+          setMutation(null);
+          setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
+        },
+      );
+    },
+  });
+  const recording = isRecording ? recordingAction : null;
 
   function startRecording(action: ShortcutAction) {
     if (unavailable || shortcutBusy) return;
@@ -172,7 +140,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
 
   function restoreDefaults() {
     if (!bridge || unavailable || shortcutBusy || recording || allDefault) return;
-    endRecording();
+    cancel();
     // Every shortcut row starts over; the window preferences keep their own errors.
     setErrors(({ pin, dock, login, miniPanel, miniPanelOpenOn }) => ({
       pin,
@@ -197,7 +165,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   /** Puts one action back on its default keys, keeping every other binding. Resolves true once saved. */
   function resetShortcut(action: ShortcutAction): Promise<boolean> {
     if (!bridge || unavailable || shortcutBusy || recording) return Promise.resolve(false);
-    endRecording();
+    cancel();
     setError(action, undefined);
     setMutation(action);
     return bridge.saveShortcuts({ ...bindings, [action]: DEFAULT_SHORTCUTS[action] }).then(
@@ -222,7 +190,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     save: (desktop: NonNullable<typeof window.desktop>) => Promise<Value>,
   ) {
     if (!desktop || unavailable || preferencePending[kind]) return;
-    if (recordingAction) endRecording();
+    if (recordingAction) cancel();
     setError(kind, undefined);
     if (kind === 'login') setLoginApproval(false);
     setPreferencePending((current) => ({ ...current, [kind]: true }));
@@ -246,7 +214,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     recording,
     shortcutBusy,
     preferencePending,
-    errors: rowErrors,
+    errors,
     /** The login item waits for approval in System Settings while it is still off. */
     loginApprovalNeeded: loginApproval && openAtLogin === false,
     unavailable,
@@ -256,7 +224,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     isDefault,
     allDefault,
     startRecording,
-    cancelRecording: endRecording,
+    cancelRecording: cancel,
     restoreDefaults,
     resetShortcut,
     changePinned: (value: boolean) =>

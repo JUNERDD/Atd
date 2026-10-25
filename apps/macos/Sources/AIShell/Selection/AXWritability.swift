@@ -8,12 +8,21 @@ import ApplicationServices
 /// counts as no answer and ends the questions, so a busy app costs at most one more timeout and
 /// reads as writable.
 ///
+/// An opaque editor or cell selection may have no editable AX text element; an enabled
+/// Cut/Paste command supplies positive evidence there (``SelectionEditMenu``).
+///
 /// Blocking; call it off the main thread.
 nonisolated enum AXWritability {
   /// WebKit's and Chromium's: the nearest editable element that contains the focus.
   private static let editableAncestor = "AXEditableAncestor"
 
   static func writable(_ element: AXUIElement) -> Bool {
+    let surface = SelectionSurface(element)
+    if surface.opaqueEditor || surface.selectedCellContainer() != nil,
+      SelectionEditMenu(element)?.writable == true
+    {
+      return true
+    }
     let ancestor = editableAncestor(of: element)
     guard !WriteTargetWritability.decided(by: ancestor) else { return true }
     let role = role(of: element)

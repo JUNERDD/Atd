@@ -7,6 +7,7 @@ import {
   type LedgerData,
   type TaskRun,
 } from '@atd/agent-contracts';
+import { currentRunSnapshot, withCurrentScope } from './computer/retired.js';
 import { atomicWrite } from './config.js';
 import type { ServicePaths } from './storage.js';
 
@@ -123,10 +124,11 @@ const RETIRED_REQUEST_KINDS: ReadonlySet<unknown> = new Set(['plan']);
 
 /**
  * Read-side tolerance for a ledger written by a build with since-removed features: a retired
- * top-level task field (the planning flag) and pending requests of a retired kind would make
- * the strict parse refuse the whole ledger. Both are dropped before it; recovery then ends a run
- * that waited on a dropped request. Anything else is left for the parse to judge, and writes
- * stay strict.
+ * top-level task field (the planning flag), pending requests of a retired kind and the computer
+ * fields protocol 8 retired (a run snapshot's computer `mode`, a pending computer scope's
+ * `delivery`; computer/retired.ts) would make the strict parse refuse the whole ledger. All are
+ * dropped before it; recovery then ends a run that waited on a dropped request. Anything else is
+ * left for the parse to judge, and writes stay strict.
  */
 function dropRetiredData(raw: unknown): unknown {
   if (!isRecord(raw)) return raw;
@@ -136,15 +138,33 @@ function dropRetiredData(raw: unknown): unknown {
     tasks: Array.isArray(tasks)
       ? tasks.map((task: unknown) =>
           isRecord(task)
-            ? Object.fromEntries(Object.entries(task).filter(([key]) => TASK_KEYS.has(key)))
+            ? currentRuns(
+                Object.fromEntries(Object.entries(task).filter(([key]) => TASK_KEYS.has(key))),
+              )
             : task,
         )
       : tasks,
     pendingConfirms: Array.isArray(pendingConfirms)
-      ? pendingConfirms.filter(
-          (request: unknown) => !isRecord(request) || !RETIRED_REQUEST_KINDS.has(request.kind),
-        )
+      ? pendingConfirms
+          .filter(
+            (request: unknown) => !isRecord(request) || !RETIRED_REQUEST_KINDS.has(request.kind),
+          )
+          .map(withCurrentScope)
       : pendingConfirms,
+  };
+}
+
+/** A task with every run's snapshot as it reads today. */
+function currentRuns(task: Record<string, unknown>): Record<string, unknown> {
+  const { runs } = task;
+  if (!Array.isArray(runs)) return task;
+  return {
+    ...task,
+    runs: runs.map((run: unknown) =>
+      isRecord(run) && 'snapshot' in run
+        ? { ...run, snapshot: currentRunSnapshot(run.snapshot) }
+        : run,
+    ),
   };
 }
 

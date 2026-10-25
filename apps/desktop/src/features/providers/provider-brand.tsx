@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'lucide-react';
 // `no-inline` keeps each mark a separate file: inlined base64 would load every brand with the shared chunk.
 import openai from '@atd/ui/assets/brands/openai.svg?url&no-inline';
+import providerBrands from '@atd/ui/assets/brands/providers.json';
 const assets = import.meta.glob<string>(
   [
     '../../../../../packages/ui/src/assets/brands/lndev/*.svg',
@@ -9,57 +10,32 @@ const assets = import.meta.glob<string>(
   ],
   { eager: true, query: '?url&no-inline', import: 'default' },
 );
-const names: Record<string, string> = {
-  anthropic: 'anthropic',
-  google: 'google-gemini-symbol',
-  'google-vertex': 'google-cloud',
-  'amazon-bedrock': 'amazon-aws',
-  azure: 'microsoft-azure',
-  xai: 'x-ai',
-  nvidia: 'nvidia-symbol',
-  mistral: 'mistral-ai',
-  moonshotai: 'moonshot-ai',
-  'moonshotai-cn': 'moonshot-ai',
-  'kimi-coding': 'kimi',
-  'github-copilot': 'github-copilot',
-  huggingface: 'hugging-face',
-  together: 'together-ai',
-  'vercel-ai-gateway': 'vercel',
-  'cloudflare-workers-ai': 'cloudflare',
-  'cloudflare-ai-gateway': 'cloudflare',
-  'minimax-cn': 'minimax',
-  'opencode-go': 'opencode',
-  meta: 'meta',
-  vllm: 'vllm',
-  zai: 'z-ai',
-  'zai-coding-cn': 'z-ai',
-};
-export function ProviderBrand({ provider }: { provider: string }) {
+const brands: {
+  providers: Record<string, string>;
+  prefixes: Record<string, string>;
+  inline: Record<string, string>;
+  monochrome: string[];
+} = providerBrands;
+export function ProviderBrand({
+  provider,
+  variant = 'tile',
+}: {
+  provider: string;
+  variant?: 'tile' | 'inline';
+}) {
+  const brand = provider;
   const stem =
-    names[provider] ??
-    (provider.startsWith('qwen-') ? 'qwen' : provider.startsWith('xiaomi-') ? 'xiaomi' : provider);
+    (variant === 'inline' ? brands.inline[brand] : undefined) ??
+    brands.providers[brand] ??
+    Object.entries(brands.prefixes).find(([prefix]) => brand.startsWith(prefix))?.[1] ??
+    brand;
   const asset =
-    provider === 'openai' || provider === 'openai-codex'
+    stem === 'openai'
       ? openai
       : Object.entries(assets).find(([path]) => path.endsWith(`/${stem}.svg`))?.[1];
-  const masked =
-    asset &&
-    [
-      'openai',
-      'openai-codex',
-      'anthropic',
-      'amazon-bedrock',
-      'moonshotai',
-      'moonshotai-cn',
-      'openrouter',
-      'xai',
-      'ollama',
-      'lm-studio',
-      'github-copilot',
-      'vercel-ai-gateway',
-    ].includes(provider);
+  const masked = asset && brands.monochrome.includes(stem);
   return (
-    <span aria-hidden="true" className="provider-brand-frame">
+    <span aria-hidden="true" className="provider-brand-frame" data-variant={variant}>
       {masked ? (
         <span
           className="provider-brand provider-brand-mask"

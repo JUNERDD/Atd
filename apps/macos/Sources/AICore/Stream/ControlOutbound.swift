@@ -35,9 +35,12 @@ public enum ControlStream {
 
   /// Sent first on every connection. Before a subscribe the service sends the connection
   /// every task event; an empty `taskIds` receives none, and `status` asks for the menu bar
-  /// counts. The shell tracks no epoch or seq, so it always subscribes from zero.
+  /// counts. `taskActivity` opts into a full activity snapshot independently of task events.
+  /// The shell tracks no epoch or seq, so it always subscribes from zero.
   public static func subscribe() -> String {
-    fixed(Subscribe(type: "subscribe", epoch: 0, seq: 0, taskIds: [], status: true))
+    fixed(
+      Subscribe(
+        type: "subscribe", epoch: 0, seq: 0, taskIds: [], status: true, taskActivity: true))
   }
 
   public static func register(_ capabilities: [DesktopCapability]) -> String {
@@ -63,6 +66,7 @@ public enum ControlStream {
     let seq: Int
     let taskIds: [String]
     let status: Bool
+    let taskActivity: Bool
   }
   private struct Register: Encodable {
     let type: String

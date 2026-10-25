@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { AppIdSchema } from './app-identity.js';
+import { ComputerDetailsSchema } from './computer-results.js';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './confirms.js';
 import { McpServerIdSchema } from './mcp.js';
 import { TASK_AGENTS_PER_DEFINE, TaskAgentDefinitionSchema } from './subagents.js';
@@ -316,5 +317,6 @@ export const ToolBlockDetailsSchema = Type.Union([
   McpApprovalDetailsSchema,
   CodemodeDetailsSchema,
   AppBuildDetailsSchema,
+  ComputerDetailsSchema,
 ]);
 export type ToolBlockDetails = Static<typeof ToolBlockDetailsSchema>;

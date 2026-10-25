@@ -67,6 +67,9 @@ nonisolated struct SelectionReader: Sendable {
     }
     guard let focused, !read.aborted else { return .none(read.aborted ? .unresponsive : .unknown) }
     if read.isSecure(focused) { return .none(.secureField) }
+    // Copy preserves the app's row/column serialization. Never substitute the active cell's
+    // value or a surrounding text view for an entire selected region.
+    if SelectionSurface(focused).selectedCellContainer() != nil { return .none(.unknown) }
 
     var candidates = [focused]
     if let children: [AXUIElement] = read.copy(focused, kAXChildrenAttribute) {
@@ -130,10 +133,14 @@ nonisolated struct SelectionReader: Sendable {
     }
 
     /// What `element`, the focus, shows when no selected text was found: an empty native
-    /// selection only for a selected range of length 0 on an element that lists none of the
-    /// web content attributes.
+    /// selection only for a native text role that advertises its selected range and lists none
+    /// of the web content attributes. Custom editors such as WPS answer an unadvertised empty
+    /// range on their container even while text is selected; that is still unknown.
     mutating func focus(of element: AXUIElement) -> SelectionFocus {
-      guard let value: AXValue = copy(element, kAXSelectedTextRangeAttribute) else {
+      guard let role: String = copy(element, kAXRoleAttribute),
+        WriteTargetWritability.textRoles.contains(role),
+        let value: AXValue = copy(element, kAXSelectedTextRangeAttribute)
+      else {
         return .unknown
       }
       var range = CFRange()
@@ -141,7 +148,9 @@ nonisolated struct SelectionReader: Sendable {
       var names: CFArray?
       let error = AXUIElementCopyAttributeNames(element, &names)
       if error == .cannotComplete { aborted = true }
-      guard error == .success, let names = names as? [String] else { return .unknown }
+      guard error == .success, let names = names as? [String],
+        names.contains(kAXSelectedTextRangeAttribute)
+      else { return .unknown }
       return names.contains(where: SelectionReader.webAttributes.contains)
         ? .unknown : .emptyNativeText
     }

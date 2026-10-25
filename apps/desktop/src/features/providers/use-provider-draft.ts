@@ -39,7 +39,11 @@ function patchDraft(draft: ConnectionDraft, patch: ConnectionDraftPatch): Connec
  * A provider form's draft and whether it holds unsaved changes, which the settings window asks
  * about before leaving the form. The baseline is the draft as last loaded or saved.
  */
-export function useProviderDraft(provider: ProviderCatalogEntry, connection: Connection | null) {
+export function useProviderDraft(
+  provider: ProviderCatalogEntry,
+  connection: Connection | null,
+  presetId?: string,
+) {
   const [baseline, setBaseline] = useState<ConnectionDraft>(() =>
     connection
       ? draftFrom(connection)
@@ -47,6 +51,7 @@ export function useProviderDraft(provider: ProviderCatalogEntry, connection: Con
           connectionId: null,
           expectedRevision: null,
           provider: provider.id,
+          ...(presetId ? { presetId } : {}),
           name: provider.name,
           baseUrl: provider.baseUrl,
           authType: provider.auth[0]?.type ?? 'api_key',

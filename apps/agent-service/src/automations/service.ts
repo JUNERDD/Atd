@@ -8,6 +8,7 @@ import {
   type AutomationNotice,
   type AppLanguage,
   type AutomationRun,
+  type ComputerTrialState,
   type PreviewAutomationTriggerRequest,
   type PreviewAutomationTriggerResponse,
 } from '@atd/agent-contracts';
@@ -21,6 +22,12 @@ import type { ServicePaths } from '../storage.js';
 import type { SystemActivity } from '../system-activity.js';
 import { TrailingFlush } from '../trailing-flush.js';
 import { firingProblem, lookups, triggerProblem, type CheckContext } from './checks.js';
+import type { ApprovalContext } from './computer-approval.js';
+import type { AutomationComputer } from './computer-deps.js';
+import { invalidateBinding } from './computer-edits.js';
+import { trialRunsFor, type TrialRuns } from './computer-trial-run.js';
+import { definitionHash, recipeHash } from './computer-grant.js';
+import { ComputerTrials } from './computer-trials.js';
 import { seedDefaultAutomations } from './defaults.js';
 import type { EditContext } from './edits.js';
 import type { AutomationRuns } from './engine-deps.js';
@@ -54,6 +61,11 @@ export interface AutomationServiceDeps {
   now?: () => number;
   /** How watched folders are read; tests pass a slow one. */
   scanner?: FolderScanner;
+  /**
+   * Computer use (computer-deps.ts); without it no automation may request a computer scope, and
+   * the computer routes answer 409.
+   */
+  computer?: AutomationComputer;
 }
 
 /**
@@ -91,7 +103,8 @@ export class AutomationService {
         });
       },
     );
-    const service = new AutomationService(deps, store);
+    const trials = deps.computer ? await ComputerTrials.load(deps.paths.root) : undefined;
+    const service = new AutomationService(deps, store, trials);
     // Never fatal at boot: records left `running` settle at the next start instead.
     await service.engine.reconcile().catch((error: unknown) => {
       deps.log.warn('Automation runs from before the restart could not be settled.', {
@@ -103,13 +116,17 @@ export class AutomationService {
   }
 
   readonly engine: AutomationEngine;
+  /** Attended trials of computer recipes; absent without computer use. */
+  readonly trialRuns: TrialRuns | undefined;
   private readonly listeners = new Set<() => void>();
   private readonly announcer: TrailingFlush;
   private readonly now: () => number;
+  private stopBindings: (() => void) | undefined;
 
   private constructor(
     private readonly deps: AutomationServiceDeps,
     readonly store: AutomationStore,
+    private readonly trials: ComputerTrials | undefined,
   ) {
     this.now = deps.now ?? Date.now;
     this.announcer = new TrailingFlush(() => this.announce(), ANNOUNCE_MS);
@@ -130,16 +147,41 @@ export class AutomationService {
       now: this.now,
       changed: () => this.announcer.schedule(),
       ...(deps.scanner ? { scanner: deps.scanner } : {}),
+      ...(deps.computer ? { computer: deps.computer } : {}),
     });
+    this.trialRuns =
+      deps.computer && trials
+        ? trialRunsFor(deps, deps.computer, store, trials, this.now, () =>
+            this.announcer.schedule(),
+          )
+        : undefined;
   }
 
+  /**
+   * Starts the tick, judges trials that ended while the service was down, and revokes the grants
+   * a binding change or deletion voids from now on (answering their automations' ids, which the
+   * delete route reports).
+   */
   start(): void {
     this.engine.start();
+    this.trialRuns?.listen();
+    this.stopBindings ??= this.deps.computer?.bindings.onChange((bindingId) =>
+      invalidateBinding(this.edits(), bindingId).catch((error: unknown) => {
+        this.deps.log.warn('Grants naming a changed computer target could not be revoked.', {
+          bindingId,
+          error: errorMessage(error),
+        });
+        return [];
+      }),
+    );
   }
 
   /** Stops the engine and lets the store settle; runs in flight belong to the manager's drain. */
   async stop(): Promise<void> {
+    this.stopBindings?.();
+    this.trialRuns?.close();
     await this.engine.stop();
+    await this.trialRuns?.idle();
     this.announcer.cancel();
     if (AutomationService.instances.get(this.deps.paths.root) === this)
       AutomationService.instances.delete(this.deps.paths.root);
@@ -160,7 +202,17 @@ export class AutomationService {
       engine: this.engine,
       check: () => this.checkContext(),
       now: this.now,
+      cancelRun: (taskId, runId) => this.deps.manager.cancel(taskId, runId),
+      ...(this.deps.computer ? { computer: this.deps.computer } : {}),
+      ...(this.trials ? { trials: this.trials } : {}),
     };
+  }
+
+  /** What the computer approval routes and the tool's grant work with; null without computer use. */
+  approvals(): ApprovalContext | null {
+    const { computer } = this.deps;
+    if (!computer || !this.trials) return null;
+    return { computer, trials: this.trials, lookups: lookups(this.deps.paths.root) };
   }
 
   /** The shell's latest report of system idle time. */
@@ -179,6 +231,8 @@ export class AutomationService {
       automations: this.store.data.definitions.automations,
       lookups: lookups(this.deps.paths.root),
       now: this.now(),
+      hold: (id) => this.store.data.state.automations[id]?.computerHold,
+      ...(this.deps.computer ? { computer: this.deps.computer } : {}),
     };
   }
 
@@ -239,8 +293,18 @@ export class AutomationService {
         running: runs.some((run) => run.outcome === 'running'),
         ...(!automation.enabled && state?.pausedReason ? { pausedReason: state.pausedReason } : {}),
         ...(problem ? { problem } : {}),
+        ...(state?.computerHold ? { computerHold: state.computerHold } : {}),
+        ...this.trialOf(automation),
       },
     };
+  }
+
+  /** Where the newest trial of the saved computer scope stands, for the editor. */
+  private trialOf(automation: Automation): { computerTrial?: ComputerTrialState } {
+    const recipe = automation.policy.computer?.recipe;
+    if (!this.trials || !recipe) return {};
+    const state = this.trials.state(automation.id, definitionHash(automation), recipeHash(recipe));
+    return state ? { computerTrial: state } : {};
   }
 
   /**

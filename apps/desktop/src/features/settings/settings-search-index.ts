@@ -1,5 +1,7 @@
 import type { ParseKeys } from 'i18next';
 import { Languages, type LucideIcon } from 'lucide-react';
+import { computerSearchEntries } from './computer-search-entries';
+import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
 import type { SettingsSectionId } from './settings-sections';
 
@@ -30,6 +32,7 @@ export const SECTION_DESCRIPTIONS = {
   general: 'general.description',
   providers: 'providers.overview.description',
   permissions: 'permissions.description',
+  computer: 'computer.description',
   commands: 'commands:list.description',
   automations: 'automations:list.description',
   memory: 'memory:memory.description',
@@ -42,6 +45,7 @@ export const SECTION_KEYWORDS = {
   general: 'search.keywords.sectionGeneral',
   providers: 'search.keywords.sectionProviders',
   permissions: 'search.keywords.sectionPermissions',
+  computer: 'search.keywords.computer',
   commands: 'search.keywords.sectionCommands',
   automations: 'search.keywords.sectionAutomations',
   memory: 'search.keywords.sectionMemory',
@@ -93,6 +97,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: 'shortcuts.appearance.description',
     keywords: 'search.keywords.appearance',
   },
+  ...conversationSearchEntries,
   {
     id: 'window-open-at-login',
     section: 'general',
@@ -232,6 +237,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: 'permissions.shellAllowlist.description',
     keywords: 'search.keywords.allowlist',
   },
+  ...computerSearchEntries,
   {
     id: 'commands-new',
     section: 'commands',

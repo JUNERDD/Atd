@@ -171,6 +171,9 @@ const stats = {
   cacheRead: 0,
   cost: 0,
   stops: {},
+  inferences: 0,
+  firstOutputMs: 0,
+  withoutOutput: 0,
 };
 if (entries.length) {
   const childCount = {};
@@ -200,7 +203,20 @@ if (entries.length) {
     else if (e.type === 'branch_summary')
       say(`[${at}] BRANCH SUMMARY from ${e.fromId}: ${clip(e.summary)}`);
     else if (e.type === 'custom' && e.customType === 'app-permission') continue; // merged via audit below
-    else if (e.type === 'custom')
+    else if (e.type === 'custom' && e.customType === 'app-inference') {
+      const timing = e.data ?? {};
+      const hasOutput = Number.isFinite(timing.firstOutputMs);
+      const wait = hasOutput ? `${(timing.firstOutputMs / 1000).toFixed(3)}s` : 'none';
+      const total = Number.isFinite(timing.durationMs)
+        ? `${(timing.durationMs / 1000).toFixed(3)}s`
+        : '?';
+      stats.inferences++;
+      if (hasOutput) stats.firstOutputMs += timing.firstOutputMs;
+      else stats.withoutOutput++;
+      say(
+        `[${at}] inference: first output ${wait} · total ${total} · ${timing.outcome ?? '?'} · message ${timing.timestamp ?? '(not started)'}`,
+      );
+    } else if (e.type === 'custom')
       say(`[${at}] custom:${e.customType} ${oneLine(JSON.stringify(e.data), 200)}`);
     else if (e.type === 'custom_message')
       say(`[${at}] custom_message:${e.customType} ${clip(textOf(e.content))}`);
@@ -252,6 +268,11 @@ if (entries.length) {
     `- wall time ${first && last ? Math.round((Date.parse(last) - Date.parse(first)) / 1000) : '?'}s · assistant turns ${stats.turns} · stop reasons ${JSON.stringify(stats.stops)}`,
   );
   say(`- tool calls ${JSON.stringify(stats.tools)} · tool errors ${stats.toolErrors}`);
+  if (stats.inferences)
+    say(
+      `- inference timing: ${stats.inferences} recorded · first-output wait ${(stats.firstOutputMs / 1000).toFixed(3)}s total · ${stats.withoutOutput} without output (excluded from wait total)`,
+      '- First-output wait includes per-turn request/context preparation and provider waiting; it excludes tools and between-turn preparation such as compaction. It is separate from streaming generation time, not provider-only latency.',
+    );
   say(
     `- tokens in ${stats.input} out ${stats.output} cacheRead ${stats.cacheRead} · cost $${stats.cost.toFixed(4)}`,
   );

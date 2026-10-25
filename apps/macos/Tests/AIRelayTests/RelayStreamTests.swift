@@ -70,7 +70,8 @@ struct RelayStreamTests {
     #expect(await Task.until { control.status == .init(running: 2, attention: 1) })
     #expect(states.first == .connecting)
     #expect(control.state == .connected)
-    let subscribe = #"{"epoch":0,"seq":0,"status":true,"taskIds":[],"type":"subscribe"}"#
+    let subscribe =
+      #"{"epoch":0,"seq":0,"status":true,"taskActivity":true,"taskIds":[],"type":"subscribe"}"#
     #expect(h.stub.frames.first == subscribe)
     let register = h.stub.frames.dropFirst().first ?? ""
     #expect(register.contains(#""type":"capability.register""#))

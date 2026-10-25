@@ -13,7 +13,6 @@ import {
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import {
   Select,
@@ -26,27 +25,39 @@ import type { ProviderCatalogEntry } from '../../client/providers/schema';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { ProviderBrand } from './provider-brand';
+import {
+  providerServices,
+  providerForPlan,
+  matchProviderService,
+  planName,
+  type ProviderService,
+} from './provider-services';
 
 export function ProviderCatalog({
   catalog,
   onChoose,
 }: {
   catalog: ProviderCatalogEntry[];
-  onChoose: (provider: ProviderCatalogEntry) => void;
+  onChoose: (service: ProviderService) => void;
 }) {
   const { t } = useTranslation('providers');
   const search = useCompositionQuery();
   const searchInput = useRef<HTMLInputElement>(null);
   const [category, setCategory] = useState('all');
-  // Directory order stays; the search matches and marks the provider name the row shows.
-  const visible = catalog.flatMap((provider) => {
+  const entries = providerServices(catalog);
+  const visible = entries.flatMap((service) => {
     const inCategory =
       category === 'all' ||
-      provider.category === category ||
-      (category === 'api' && provider.auth.some((auth) => auth.type === 'api_key'));
+      service.plans.some((plan) => {
+        const provider = providerForPlan(plan, t);
+        return (
+          provider.category === category ||
+          (category === 'api' && provider.auth.some((auth) => auth.type === 'api_key'))
+        );
+      });
     if (!inCategory) return [];
-    const match = matchFields(search.query, { name: provider.name });
-    return match || !search.query.trim() ? [{ provider, match }] : [];
+    const match = matchProviderService(service, search.query, t);
+    return match ? [{ service, ...match }] : [];
   });
   return (
     <section className="provider-catalog settings-editor">
@@ -121,24 +132,32 @@ export function ProviderCatalog({
               </Empty>
             ))}
           <ul className="provider-directory">
-            {visible.map(({ provider, match }) => {
-              const methods = provider.auth.map((method) => method.label).join(' · ');
+            {visible.map(({ service, name, description, match, matchingPlans }) => {
               return (
-                <li key={provider.id} className="provider-directory-cell">
+                <li key={service.id} className="provider-directory-cell">
                   <Item variant="outline" size="sm" asChild>
                     <button
                       type="button"
                       className="provider-directory-card"
-                      onClick={() => onChoose(provider)}
+                      onClick={() => onChoose(service)}
                     >
                       <ItemMedia>
-                        <ProviderBrand provider={provider.id} />
+                        <ProviderBrand provider={service.brand} />
                       </ItemMedia>
                       <ItemContent className="gap-0.5">
-                        <ItemTitle title={provider.name}>
-                          <HighlightedText text={provider.name} ranges={match?.ranges.name} />
+                        <ItemTitle title={name}>
+                          <HighlightedText text={name} ranges={match?.ranges.name} />
                         </ItemTitle>
-                        <ItemDescription className="text-xs">{methods}</ItemDescription>
+                        <ItemDescription className="text-xs" title={description}>
+                          <HighlightedText text={description} ranges={match?.ranges.description} />
+                        </ItemDescription>
+                        {matchingPlans.length > 0 && service.plans.length > 1 && (
+                          <ItemDescription className="text-xs whitespace-normal">
+                            {t('plans.matches', {
+                              plans: matchingPlans.map((plan) => planName(plan, t)).join(' · '),
+                            })}
+                          </ItemDescription>
+                        )}
                       </ItemContent>
                     </button>
                   </Item>

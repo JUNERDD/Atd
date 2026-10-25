@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppCapabilityConsent } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
+import { HitlActions } from '../../components/hitl-actions';
 import { isTextEntryFocused } from '../../lib/text-entry';
 import { ShortcutHint } from '../agent/transcript/approval-controls';
 import { AppIcon } from './app-icon';
@@ -76,7 +77,7 @@ export function AppConsentControls({
         </div>
       )}
       <p className="text-xs text-muted-foreground">{t('consent.remembered')}</p>
-      <div className="approval-actions justify-end">
+      <HitlActions>
         <Button
           ref={allowRef}
           variant="outline"
@@ -96,7 +97,7 @@ export function AppConsentControls({
           {t('consent.deny')}
           <ShortcutHint accelerator="Escape" />
         </Button>
-      </div>
+      </HitlActions>
     </div>
   );
 }

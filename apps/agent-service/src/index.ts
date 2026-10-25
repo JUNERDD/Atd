@@ -1,7 +1,11 @@
 import { DEFAULT_PERMISSION_TIER, errorMessage, type PermissionTier } from '@atd/agent-contracts';
+import { AddonRegistry } from './addons/index.js';
 import { AutomationService } from './automations/service.js';
 import { CapabilityRegistry } from './capabilities.js';
 import { launchCommand } from './commands/launch.js';
+import { automationComputer } from './automations/computer-deps.js';
+import { createComputerGrantCheck } from './computer/grants-live.js';
+import { ComputerRuntime } from './computer/runtime.js';
 import { syncStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
@@ -37,6 +41,7 @@ export { ConfirmStore } from './confirms.js';
 export { CapabilityRegistry } from './capabilities.js';
 export { RunnerManager } from './runner-manager.js';
 export { TaskRunner } from './task-runner.js';
+export { ComputerRuntime } from './computer/runtime.js';
 
 export interface ServiceHandle {
   config: ServiceConfig;
@@ -45,6 +50,7 @@ export interface ServiceHandle {
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
   resources: ResourceStore;
+  computer: ComputerRuntime;
   manager: RunnerManager;
   automations: AutomationService;
   log: Logger;
@@ -85,11 +91,26 @@ export async function createService(
   const confirms = new ConfirmStore(ledger, events, log);
   const capabilities = new CapabilityRegistry(ledger, events, log);
   const resources = new ResourceStore(ledger, config.paths);
+  // Grants and trials are checked by the automations module; until it injects its check through
+  // `computer.setGrantCheck`, every recipe-bound computer action is refused (grant-check.ts).
+  // Optional components the user downloads (design: add-ons); computer use runs on two of them.
+  const addons = await AddonRegistry.create({
+    dataDir: config.paths.root,
+    development: options.development !== undefined,
+    log,
+  });
+  const computer = await ComputerRuntime.create({
+    dataDir: config.paths.root,
+    log,
+    addons,
+    development: options.development !== undefined,
+  });
   const runnerContext: RunnerContext = {
     ledger,
     events,
     confirms,
     capabilities,
+    computer,
     paths: config.paths,
     log,
     tier: options.tier ?? DEFAULT_PERMISSION_TIER,
@@ -132,7 +153,9 @@ export async function createService(
     activity: new SystemActivity(),
     language: () => settings.current().settings.language,
     log,
+    computer: automationComputer(computer),
   });
+  computer.setGrantCheck(createComputerGrantCheck(automations.store, computer.bindings));
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
@@ -144,6 +167,8 @@ export async function createService(
     confirms,
     capabilities,
     resources,
+    computer,
+    addons,
     manager,
     settings,
     folders,
@@ -170,6 +195,10 @@ export async function createService(
   const stopService = async () => {
     // No automation fires once draining begins; the runs it started stop with the manager.
     await automations.stop();
+    // Running add-on installs stop before anything else writes under the dataDir for the last time.
+    await addons.stop();
+    // The host stops every computer action first; the runs then drain with the manager.
+    await computer.stopAll('shuttingDown');
     await manager.shutdown();
     await app.close();
     await McpAuthority.closeFor(config.paths.root);
@@ -189,6 +218,7 @@ export async function createService(
     confirms,
     capabilities,
     resources,
+    computer,
     manager,
     automations,
     log,
@@ -215,6 +245,8 @@ export async function createService(
       manager.dispatch();
       // After the recovered queue: their runs go first, then missed occurrences after a grace.
       automations.start();
+      // Outdated add-ons are replaced in the background once the routes that show it answer.
+      addons.start();
       // The MCP authority is not loaded here: the desktop calls no MCP route on connect, and the
       // load reads the server records, launch approvals and saved sign-ins. The first MCP request
       // or run loads it, cached per dataDir (mcp/authority.ts).

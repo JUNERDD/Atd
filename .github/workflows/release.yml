@@ -8,6 +8,12 @@ name: Release
 # opened once from Privacy & Security. A macos-15 and a macos-15-intel job check each dmg with
 # verify-app.mjs before anything is signed for Sparkle or published.
 #
+# Each build also packs that architecture's add-ons (the computer-use browser worker the app installs
+# on demand; apps/macos/scripts/addons) and embeds the lock that pins them in the app. The archives
+# (Atd-addon-<id>-<version>-<arch>.tar.gz) and each lock (addons-<arch>.lock.json, byte for byte
+# the app's) ride the same draft as the dmgs, and the mirror uploads the archives to the
+# content-addressed URL every lock names first (ops/release-downloads/README.md: Add-ons).
+#
 # Installed copies update themselves with Sparkle (AppUpdater). Each release carries one feed per
 # architecture, `appcast.xml` (arm64) and `appcast-x64.xml`, whose enclosures carry the dmg's
 # EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY` secret (the private half of
@@ -281,8 +287,10 @@ jobs:
           fi
           # project.yml signs with AI_CODE_SIGN_IDENTITY; the hash names an untrusted identity.
           echo "AI_CODE_SIGN_IDENTITY=$RELEASE_SIGNING_SHA1" >> "$GITHUB_ENV"
-      - name: Bundle the service and the renderer
-        run: pnpm --filter @atd/macos bundle
+      # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
+      # add-on lock it embeds names this version's GitHub release assets.
+      - name: Bundle the service, the renderer and the add-ons
+        run: pnpm --filter @atd/macos bundle --marketing-version "$VERSION"
       # build.mjs maps the architecture, sets the x64 feed URL and overrides the versions. The
       # build version is passed only when it differs from the marketing version, as a prerelease's
       # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
@@ -323,6 +331,15 @@ jobs:
             echo "::error::The app's designated requirement is '$requirement', not '$expected'."
             exit 1
           fi
+      # The lock inside the signed app must be the one the archives were packed with; the archives
+      # are then checked against it with the app's own Node.
+      - name: Check the add-ons against the app's lock
+        run: |
+          lock="$APP/Contents/Resources/agent-service/addons.lock.json"
+          node="$APP/Contents/Resources/node/bin/node"
+          cmp "$lock" tmp/addons-release/addons.lock.json
+          "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
+            --dir tmp/addons-release --arch "$RELEASE_ARCH"
       # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon positions
       # and the Applications link, written straight into the image's .DS_Store without driving
       # Finder. build.py corrects its background bookmark before compression; dmgbuild is pinned
@@ -344,6 +361,11 @@ jobs:
             exit 1
           fi
           (cd dist && shasum -a 256 "$dmg" > "$dmg.sha256" && cat "$dmg.sha256")
+      # The lock pins each archive's digest, so the archives need no .sha256 files of their own.
+      - name: Stage the add-ons beside the dmg
+        run: |
+          cp tmp/addons-release/Atd-addon-*.tar.gz dist/
+          cp tmp/addons-release/addons.lock.json "dist/addons-$RELEASE_ARCH.lock.json"
           ls -l dist
       - uses: actions/upload-artifact@v7.0.1
         with:
@@ -426,6 +448,17 @@ jobs:
             --feed-url "$FEED_URL" \
             --arm64-feed-url https://downloads.atd.best/appcast.xml \
             --public-ed-key "$key"
+      # The archives the app will download, checked on the oldest supported system against the
+      # lock the installed app carries: the app's Node runs the worker.
+      - name: Verify the add-ons
+        env:
+          ADDON_ARCH: ${{ matrix.arch }}
+        run: |
+          lock="$APP/Contents/Resources/agent-service/addons.lock.json"
+          node="$APP/Contents/Resources/node/bin/node"
+          cmp "$lock" "dmg/addons-$ADDON_ARCH.lock.json"
+          "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
+            --dir dmg --arch "$ADDON_ARCH"
       # Reuse the verified x64 Release bundle. Only the test driver is compiled here; the app
       # and its embedded service are neither rebuilt nor re-signed. A failure gates collect.
       - name: Compile the Intel Release smoke driver
@@ -489,8 +522,9 @@ jobs:
           for arch in arm64 x64; do
             dmg="Atd-$VERSION-$arch.dmg"
             (cd dmg && shasum -a 256 -c "$dmg.sha256")
-            mv "dmg/$dmg" dist/
+            mv "dmg/$dmg" "dmg/addons-$arch.lock.json" dist/
           done
+          mv dmg/Atd-addon-*.tar.gz dist/
           ls -l dist
       - name: Download Sparkle's sign_update
         env:
@@ -581,6 +615,28 @@ jobs:
             # The README and the website link the unversioned names.
             cp "dist/$dmg" "dist/Atd-$arch.dmg"
           done
+          # Every add-on archive is one an architecture's lock pins, with its digest, and the lock's
+          # GitHub URL names this version's release asset (a rehearsal's throwaway tag aside).
+          pinned=0
+          for arch in arm64 x64; do
+            while IFS=$'\t' read -r id addon_version addon_arch sha size url; do
+              name="Atd-addon-$id-$addon_version-$addon_arch.tar.gz"
+              if [ "$addon_arch" != "$arch" ] || [ "$url" != "https://github.com/JUNERDD/Atd/releases/download/v$VERSION/$name" ]; then
+                echo "::error::addons-$arch.lock.json pins $name at $url."
+                exit 1
+              fi
+              if [ "$(sha256sum "dist/$name" | cut -d ' ' -f 1)" != "$sha" ] || [ "$(stat -c %s "dist/$name")" != "$size" ]; then
+                echo "::error::$name differs from addons-$arch.lock.json."
+                exit 1
+              fi
+              pinned=$((pinned + 1))
+            done < <(jq -r '.addons[] | [.id, .version, .arch, .sha256, .size, .urls[1]] | @tsv' "dist/addons-$arch.lock.json")
+          done
+          shipped=$(find dist -maxdepth 1 -name 'Atd-addon-*.tar.gz' | wc -l)
+          if [ "$shipped" -ne "$pinned" ]; then
+            echo "::error::dist holds $shipped add-on archives; the locks pin $pinned."
+            exit 1
+          fi
           if [ "$MODE" = rehearsal ]; then tag="v$VERSION-rehearsal.$GITHUB_RUN_ID"; else tag="v$VERSION"; fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
           ls -l dist
@@ -616,7 +672,7 @@ jobs:
       - name: Upload the assets
         run: |
           upload_url=$(jq -r '.upload_url | sub("\\{.*$"; "")' "$RUNNER_TEMP/draft.json")
-          for file in dist/*.dmg dist/appcast.xml dist/appcast-x64.xml; do
+          for file in dist/*.dmg dist/appcast.xml dist/appcast-x64.xml dist/Atd-addon-*.tar.gz dist/addons-*.lock.json; do
             printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" \
               | curl --config - --fail-with-body --silent --show-error \
                 -H 'Accept: application/vnd.github+json' \
@@ -636,8 +692,11 @@ jobs:
             echo "::error::Draft $DRAFT_ID is not an unpublished $TAG at $GITHUB_SHA."
             exit 1
           }
-          expected=$(printf '%s\n' "Atd-$VERSION-arm64.dmg" "Atd-$VERSION-x64.dmg" Atd-arm64.dmg \
-            Atd-x64.dmg appcast.xml appcast-x64.xml | sort)
+          expected=$({
+            printf '%s\n' "Atd-$VERSION-arm64.dmg" "Atd-$VERSION-x64.dmg" Atd-arm64.dmg \
+              Atd-x64.dmg appcast.xml appcast-x64.xml addons-arm64.lock.json addons-x64.lock.json
+            (cd dist && ls Atd-addon-*.tar.gz)
+          } | sort)
           actual=$(jq -r '.assets[].name' "$release" | sort)
           if [ "$expected" != "$actual" ]; then
             echo "::error::The draft holds [${actual//$'\n'/ }], not [${expected//$'\n'/ }]."

@@ -29,11 +29,15 @@
  * - Indexing happens asynchronously in linkd and failure is silent (the widget just never
  *   configures), so linkd's log is polled briefly and a missing index is reported.
  */
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
+
+const readLog = promisify(execFile);
 
 const LSREGISTER =
   '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister';
@@ -51,11 +55,12 @@ const WIDGET_METADATA = 'Contents/Resources/Metadata.appintents/extract.actionsd
 /**
  * Replaces `installedApp` with `builtApp`, puts its widget extension in place and registers it.
  * Returns `{ installed, indexed, widgetMetadata, problem }`: `problem` says why nothing was
- * installed, `indexed` is null when linkd's log could not be read, and `widgetMetadata` is false
+ * installed, `indexed` resolves to null when linkd's log could not be read, and `widgetMetadata` is false
  * when the build lacks the widget extension's App Intents metadata. The caller makes sure no
  * instance of the app is running, since its bundle is replaced.
  */
-export async function installDevCopy({ builtApp, installedApp, bundleId }) {
+export async function installDevCopy({ builtApp, installedApp, bundleId, signal }) {
+  if (signal?.aborted) return { installed: false, problem: 'Development session stopped.' };
   const widgetMetadata = existsSync(path.join(builtApp, STAGED_WIDGET_EXTENSION, WIDGET_METADATA));
   const since = logTimestamp(new Date(Date.now() - 1000));
   spawnSync(LSREGISTER, ['-u', builtApp], { stdio: 'ignore' });
@@ -75,7 +80,13 @@ export async function installDevCopy({ builtApp, installedApp, bundleId }) {
     return { installed: false, indexed: false, widgetMetadata, problem };
   }
   spawnSync(LSREGISTER, ['-f', '-R', '-trusted', installedApp], { stdio: 'ignore' });
-  return { installed: true, indexed: await waitForIndex(bundleId, since), widgetMetadata, problem };
+  // App Intents indexing need not hold up the interactive app. The supervisor observes this promise.
+  return {
+    installed: true,
+    indexed: waitForIndex(bundleId, since, signal),
+    widgetMetadata,
+    problem,
+  };
 }
 
 /**
@@ -135,20 +146,23 @@ function signingIdentity(app) {
 }
 
 /** Polls linkd's log for a completed indexing of `bundleId` since `since`. */
-async function waitForIndex(bundleId, since) {
+async function waitForIndex(bundleId, since, signal) {
   const predicate =
     `process == "linkd" AND eventMessage CONTAINS "${bundleId}" ` +
     `AND eventMessage CONTAINS[c] "indexing" AND eventMessage CONTAINS[c] "completed"`;
   const deadline = Date.now() + INDEX_WAIT_MS;
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const result = spawnSync(
-      'log',
-      ['show', '--start', since, '--info', '--style', 'compact', '--predicate', predicate],
-      { encoding: 'utf8' },
-    );
-    if (result.error || result.status !== 0) return null;
-    if (result.stdout.split('\n').some((line) => line.includes(bundleId))) return true;
+  while (!signal?.aborted && Date.now() < deadline) {
+    try {
+      const { stdout } = await readLog(
+        'log',
+        ['show', '--start', since, '--info', '--style', 'compact', '--predicate', predicate],
+        { encoding: 'utf8', signal, timeout: INDEX_WAIT_MS },
+      );
+      if (stdout.split('\n').some((line) => line.includes(bundleId))) return true;
+    } catch {
+      return null;
+    }
+    await delay(1000, undefined, { signal }).catch(() => {});
   }
   return false;
 }

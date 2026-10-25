@@ -8,6 +8,7 @@ export type SentSegment = string | InputChip;
 /** The name a chip shows, in the composer and in the sent message. */
 export function sentChipName(chip: InputChip): string {
   switch (chip.kind) {
+    case 'application':
     case 'file':
     case 'folder':
     case 'agent':

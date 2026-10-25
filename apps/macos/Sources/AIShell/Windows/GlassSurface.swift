@@ -4,7 +4,7 @@ import SwiftUI
 /// The surface the shell's floating glass shares with the main panel: the selection toolbar, its
 /// menus, the glass HUD, the capture toolbars, the mini panel and the command island. This is its
 /// one owner: AppKit glass takes it through ``attach(_:content:)`` and ``shape(_:content:cornerRadius:)``,
-/// SwiftUI glass through ``SwiftUI/View/glassSurface(in:animation:opacity:)``, so a new surface
+/// SwiftUI glass through ``SwiftUI/View/glassSurface(in:animation:)``, so a new surface
 /// cannot end up with the glass but without its fill and scheme. Like the panel's, it takes the
 /// app's light or dark scheme (``AppAppearance``, the user's Theme setting or the system's), and
 /// the glass carries the panel's base fill, `--ata-surface-panel` in `packages/ui/src/styles.css`,
@@ -15,10 +15,11 @@ import SwiftUI
 /// switches after its first luminance reading, 200–650 ms later, then animates for about 750 ms,
 /// so over a white window every appearance of a dark surface went from black to white. So the
 /// glass is pinned to the app's scheme before its first frame and its adaptation is off
-/// (``disableAdaptation(_:)``): it looks the same from its first frame over any backdrop, and the
-/// fill keeps its labels readable over a contrasting one. When the app's scheme changes, the live
-/// AppKit glass is pinned again and refilled (``schemeDidChange()``); SwiftUI glass reads the
-/// scheme through observation.
+/// (``pin(_:to:)``): it looks the same from its first frame over any backdrop, and the fill keeps
+/// its labels readable over a contrasting one. When the app's scheme changes, the live AppKit glass
+/// is pinned again and refilled (``schemeDidChange()``); SwiftUI glass reads the scheme through
+/// observation. ``pin(_:to:)`` is also the one way to pin AppKit glass whose scheme has another
+/// owner: a glass user app's window, pinned to its page's scheme (``UserAppGlass``).
 ///
 /// On macOS 15 the material is `NSVisualEffectView` (``NativeMaterialView``), which does not adapt:
 /// it takes the pinned appearance directly. Its blur shows only through a thinner fill
@@ -57,9 +58,10 @@ enum GlassSurface {
     Color(nsColor: fill(reduceTransparency: reduceTransparency))
   }
 
-  /// Pins `material` to the current ``appearance`` and, on Liquid Glass, stops it adapting to the
-  /// backdrop's brightness. macOS 15's material has no such adaptation and takes the appearance
-  /// alone.
+  /// Pins `material` to `appearance` and, on Liquid Glass, stops it adapting to the backdrop's
+  /// brightness. macOS 15's material has no such adaptation and takes the appearance alone. The
+  /// appearance reaches the material's content too, as any view's does; content that must keep
+  /// another scheme sets its own (``UserAppGlass``).
   ///
   /// Adaptation has no public switch (`NSGlassEffectView` has `style` and `tintColor` only, and
   /// SwiftUI's `Glass` none at all); the private `_adaptiveAppearance` is 0 for automatic, 1 for
@@ -68,7 +70,7 @@ enum GlassSurface {
   /// cannot be reached this way; its surfaces cover the adaptation with the fill instead, and pin
   /// ``colorScheme`` one container inside the glass content's root, since the glass writes its
   /// adapted scheme into that root's children (``GlassSurfaceFace``).
-  static func disableAdaptation(_ material: NativeMaterialView) {
+  static func pin(_ material: NativeMaterialView, to appearance: NSAppearance?) {
     // On macOS 26 the view is the glass itself; on macOS 15 the effect view or its shadow host.
     material.view.appearance = appearance
     guard #available(macOS 26, *), let glass = material.glass,
@@ -86,7 +88,7 @@ enum GlassSurface {
   static func attach(_ material: NativeMaterialView, content: NSView) {
     content.wantsLayer = true
     material.contentView = content
-    disableAdaptation(material)
+    pin(material, to: appearance)
     live.setObject(content, forKey: material.view)
   }
 
@@ -117,14 +119,11 @@ extension View {
   /// This content on the shell's glass surface (``GlassSurfaceFace``), clipped to `outline` and
   /// on regular Liquid Glass of the same outline, which moves on `animation`, so the glass, its
   /// base and its content are one shape on every frame and only the outline changes from frame to
-  /// frame. `opacity` fades the surface and the content under the glass; a glass container drops
-  /// an opacity (as it drops a transform) set on the glass itself, so a piece's glass goes only
-  /// by its outline.
-  func glassSurface(in outline: some Shape, animation: Animation?, opacity: Double = 1)
-    -> some View
-  {
+  /// frame. A glass container drops an opacity (as it drops a transform) set on the glass itself,
+  /// so a piece's glass goes only by its outline, its fill and content with it.
+  func glassSurface(in outline: some Shape, animation: Animation?) -> some View {
     modifier(GlassSurfaceFace())
-      .animation(animation) { $0.opacity(opacity).clippedGlass(in: outline) }
+      .animation(animation) { $0.clippedGlass(in: outline) }
   }
 
   /// This content clipped to `outline` and on regular Liquid Glass of the same outline, the two
@@ -133,7 +132,7 @@ extension View {
   /// the clip, and the surface fill and content inside it, never part from the glass's rim. A
   /// clip given the shape itself would move per axis instead, and a fill inside it would slide
   /// off the glass. Set inside the piece's scoped animation; bare, it is glass without the
-  /// surface, so pieces take it through ``glassSurface(in:animation:opacity:)``.
+  /// surface, so pieces take it through ``glassSurface(in:animation:)``.
   ///
   /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
   /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows

@@ -47,7 +47,11 @@ struct ShellLocalizationTests {
   func catalogComplete() throws {
     let catalog = try Self.catalog()
     #expect(catalog.sourceLanguage == "en")
-    #expect(Set(catalog.strings.keys) == Set(ShellStringKey.allCases.map(\.rawValue)))
+    let keys =
+      ShellStringKey.allCases.map(\.rawValue)
+      + ComputerMonitorStringKey.allCases.map(\.rawValue)
+      + TaskActivityStringKey.allCases.map(\.rawValue)
+    #expect(Set(catalog.strings.keys) == Set(keys))
     for (key, entry) in catalog.strings {
       for language in ShellLanguage.allCases {
         let unit = entry.localizations[language.rawValue]?.stringUnit

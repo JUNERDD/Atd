@@ -4,6 +4,7 @@ import type { RunPolicy } from '../client/agent/run-policy';
 import type { AgentTask } from '../client/agent/task-schema';
 import type { Connection, ModelReference } from '../client/providers/schema';
 import { ContextUsageRing } from '../features/agent/compaction/context-usage-ring';
+import { MessageEntry } from '../features/agent/message-dial/message-entry';
 import { PermissionTierControl } from '../features/agent/permission-tier-control';
 import { ModelConfigPopover } from '../features/providers/model-config-popover';
 import '../features/providers/providers.css';
@@ -36,6 +37,7 @@ export function ComposerConfiguration({
     <div className="composer-configuration" aria-label={t('configuration.label')}>
       <div className="composer-policy-group">
         <PermissionTierControl taskId={taskId} task={task} />
+        <MessageEntry taskId={taskId} />
       </div>
       <div className="composer-model-group">
         {taskId && context && <ContextUsageRing taskId={taskId} context={context} />}

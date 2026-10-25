@@ -17,10 +17,24 @@ function DropdownMenuPortal({
   return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
 
+/**
+ * A modal menu sets `pointer-events: none` on the body while open, which takes the hover from its
+ * trigger and the row around it; pressing the trigger to close it then drops the open highlight
+ * before WebKit recomputes `:hover` on the next pointer move, so the hover fill blinks. The open
+ * trigger stays hit-testable, so it and its ancestors keep `:hover` and pressing it closes the
+ * menu through its own toggle.
+ */
 function DropdownMenuTrigger({
+  className,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+  return (
+    <DropdownMenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      className={cn('data-[state=open]:pointer-events-auto', className)}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuContent({

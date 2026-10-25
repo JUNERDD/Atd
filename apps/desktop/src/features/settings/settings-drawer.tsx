@@ -39,7 +39,7 @@ export function SettingsDrawer({
           label={t('drawer.menu')}
           aria-label={t('drawer.menuLabel')}
           disabled={disabled}
-          tooltipDismissOnClick
+          tooltip={false}
         >
           <Menu />
         </IconButton>

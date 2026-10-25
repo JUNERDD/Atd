@@ -192,12 +192,7 @@ export function SelectionToolbar({
             >
               <ToolbarButton asChild>
                 <DropdownMenuTrigger asChild>
-                  <IconButton
-                    label={t('turnActions.more')}
-                    variant="glass-ghost"
-                    tooltipSide={side}
-                    tooltipDismissOnClick
-                  >
+                  <IconButton label={t('turnActions.more')} variant="glass-ghost" tooltip={false}>
                     <Ellipsis />
                   </IconButton>
                 </DropdownMenuTrigger>

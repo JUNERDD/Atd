@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
 import { FileImage } from 'lucide-react';
 import { Spinner } from '@atd/ui/components/spinner';
+import { cn } from '@atd/ui/lib/utils';
 import type { FileRef } from '../../client/agent/task-schema';
+import { fadeConversationContent } from './content-feedback';
 
 type Loaded = { resourceId: string; url: string } | { resourceId: string; failed: true };
 
@@ -9,7 +12,8 @@ type Loaded = { resourceId: string; url: string } | { resourceId: string; failed
  * An attached image drawn from its stored resource. The bytes come through the relay
  * (`window.desktop.resource`) and show from a blob URL, revoked when the file changes or the
  * image unmounts. `icon` stands in for a file row's 16px icon; `thumbnail` is a 64px square crop
- * named by its file; `preview` shows the whole image within the content width. The larger two
+ * named by its file; `wide` is a 160px 16:9 crop anchored at the top, for pictures of a screen or
+ * window, whose title bar stays in view; `preview` shows the whole image within the content width. The larger two
  * hold a placeholder while the bytes load or when they cannot be read. `onLoad` reports the loaded
  * thumbnail, whose blob URL and natural size the lightbox reuses.
  */
@@ -19,28 +23,45 @@ export function ResourceImage({
   onLoad,
 }: {
   file: FileRef;
-  variant: 'icon' | 'thumbnail' | 'preview';
+  variant: 'icon' | 'thumbnail' | 'wide' | 'preview';
   onLoad?: ((image: HTMLImageElement) => void) | undefined;
 }) {
   const loaded = useResourceUrl(file.id);
+  const reduced = useReducedMotion() ?? false;
+  const reveal = useRef<Animation | null>(null);
+  useEffect(() => () => reveal.current?.cancel(), [file.id]);
+  // The resource URL arrives before the browser has loaded its pixels. Reveal only from the
+  // image's load event, keeping the thumbnail's fixed box and the lightbox's existing callback.
+  function revealImage(image: HTMLImageElement) {
+    reveal.current?.cancel();
+    reveal.current = fadeConversationContent(image, reduced);
+  }
   const url = loaded && 'url' in loaded ? loaded.url : null;
   if (variant === 'icon')
     return url ? (
-      <img src={url} alt="" className="size-4 shrink-0 rounded-sm object-cover" />
+      <img
+        src={url}
+        alt=""
+        className="size-4 shrink-0 rounded-sm object-cover"
+        onLoad={(event) => revealImage(event.currentTarget)}
+      />
     ) : (
       <FileImage size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
     );
-  if (variant === 'thumbnail')
+  if (variant === 'thumbnail' || variant === 'wide')
     return url ? (
       <img
         src={url}
         alt={file.name}
         title={file.name}
-        className="size-16 rounded-lg border object-cover"
-        onLoad={(event) => onLoad?.(event.currentTarget)}
+        className={cn('rounded-lg border object-cover', THUMBNAIL_BOX[variant])}
+        onLoad={(event) => {
+          revealImage(event.currentTarget);
+          onLoad?.(event.currentTarget);
+        }}
       />
     ) : (
-      <ThumbnailPlaceholder file={file} loading={!loaded} />
+      <ThumbnailPlaceholder file={file} loading={!loaded} variant={variant} />
     );
   if (url)
     return (
@@ -49,6 +70,7 @@ export function ResourceImage({
         alt={file.name}
         title={file.name}
         className="max-h-48 max-w-full self-start rounded-xl border object-contain"
+        onLoad={(event) => revealImage(event.currentTarget)}
       />
     );
   return (
@@ -58,11 +80,26 @@ export function ResourceImage({
   );
 }
 
-function ThumbnailPlaceholder({ file, loading }: { file: FileRef; loading: boolean }) {
+/** The box of each cropped thumbnail; the image and its placeholder share it. */
+const THUMBNAIL_BOX = { thumbnail: 'size-16', wide: 'aspect-video w-40 object-top' } as const;
+type ThumbnailVariant = keyof typeof THUMBNAIL_BOX;
+
+function ThumbnailPlaceholder({
+  file,
+  loading,
+  variant,
+}: {
+  file: FileRef;
+  loading: boolean;
+  variant: ThumbnailVariant;
+}) {
   return (
     <div
       title={file.name}
-      className="flex size-16 items-center justify-center rounded-lg border bg-muted/40 text-muted-foreground"
+      className={cn(
+        'flex items-center justify-center rounded-lg border bg-muted/40 text-muted-foreground',
+        THUMBNAIL_BOX[variant],
+      )}
     >
       {loading ? <Spinner /> : <FileImage size={16} aria-label={file.name} />}
     </div>
@@ -75,9 +112,11 @@ function ThumbnailPlaceholder({ file, loading }: { file: FileRef; loading: boole
  */
 export function LazyResourceImage({
   file,
+  variant = 'thumbnail',
   onLoad,
 }: {
   file: FileRef;
+  variant?: ThumbnailVariant;
   onLoad?: (image: HTMLImageElement) => void;
 }) {
   const placeholder = useRef<HTMLDivElement>(null);
@@ -96,10 +135,10 @@ export function LazyResourceImage({
     observer.observe(element);
     return () => observer.disconnect();
   }, [visible]);
-  if (visible) return <ResourceImage file={file} variant="thumbnail" onLoad={onLoad} />;
+  if (visible) return <ResourceImage file={file} variant={variant} onLoad={onLoad} />;
   return (
     <div ref={placeholder}>
-      <ThumbnailPlaceholder file={file} loading={false} />
+      <ThumbnailPlaceholder file={file} loading={false} variant={variant} />
     </div>
   );
 }

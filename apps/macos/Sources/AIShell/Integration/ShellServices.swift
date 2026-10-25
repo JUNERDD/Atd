@@ -8,6 +8,8 @@ public enum WebViewRole: String, Sendable {
   case panel
   case settings
   case onboarding
+  /// A generative view's window (`view.open`).
+  case view
 }
 
 /// Where the shell's renderer and service come from (decision Q10), chosen once per build:
@@ -29,6 +31,8 @@ public final class ShellServices {
   private let logDirectory: URL?
   /// One handler serves every window's web view and every rebuild of them.
   private(set) lazy var schemeHandler = RendererSchemeHandler(renderer: renderer, link: link)
+  /// Generative views' documents, for the same web views.
+  private(set) lazy var viewSchemeHandler = ViewSchemeHandler(link: link)
 
   private init(
     source: any ServiceEndpointSource, renderer: RendererSource, dataDirectory: URL,

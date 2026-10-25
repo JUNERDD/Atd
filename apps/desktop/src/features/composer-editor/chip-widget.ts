@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Transaction } from '@codemirror/state';
 import { WidgetType, type EditorView } from '@codemirror/view';
 import { revealQuote } from '../agent/transcript/selection-toolbar/quote-reveal';
-import { ChipContent } from './chip-content';
+import { ChipContent, type ChipLabel } from './chip-content';
 import { editImageChip, isEditableImage } from './chip-image-edit';
 import { chipName, type Chip } from './draft';
 
@@ -49,10 +49,13 @@ export class ChipWidget extends WidgetType {
       dom.addEventListener('click', () => void editImageChip(view, id, chip));
     }
     const root = createRoot(dom);
-    const detail = chip.kind === 'folder' ? chip.path : undefined;
-    root.render(
-      createElement(ChipContent, { kind: chip.kind, name: chipName(chip), image, detail }),
-    );
+    const detail =
+      chip.kind === 'folder' ? chip.path : chip.kind === 'application' ? chip.bundleId : undefined;
+    const label: ChipLabel =
+      chip.kind === 'application'
+        ? { kind: chip.kind, bundleId: chip.bundleId, name: chip.name }
+        : { kind: chip.kind, name: chipName(chip) };
+    root.render(createElement(ChipContent, { ...label, image, detail }));
     const resize = new ResizeObserver(() => {
       if (view.composing) return;
       view.dispatch({

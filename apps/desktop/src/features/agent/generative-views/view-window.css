@@ -1,0 +1,34 @@
+/*
+ * A view's window (view-window.tsx). The shell draws its glass and the panel's translucent fill
+ * natively under the whole page, so nothing here paints a surface: `html`, `body` and `#root`
+ * stay transparent, and so does every layer below.
+ */
+.view-window {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/*
+ * The native 52pt title bar (`VIEW_WINDOW_TITLE_BAR_HEIGHT`, the shell's unified bar), whose
+ * traffic lights center on this height; macOS paints them over the leading edge, so the title
+ * clears that zone as the panel header's does. No divider or material under it: the view's
+ * document starts on the same surface. The shell drags the window by it (drag-regions.ts).
+ */
+.view-window-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 8px 12px 8px 88px;
+  user-select: none;
+}
+/* Everything below the title bar: the view's frame and its warnings, or the line in its place. */
+.view-window-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}

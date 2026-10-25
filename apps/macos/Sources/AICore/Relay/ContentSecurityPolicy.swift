@@ -8,6 +8,8 @@ import Foundation
 /// Spike S2 established what a header CSP does for `ai-app://`: `script-src`, `connect-src` and
 /// `frame-src` are enforced; `frame-ancestors` is not (navigation lockdown, R6, covers framing).
 /// `frame-ancestors 'none'` is still sent: harmless, and correct should WebKit start honoring it.
+/// `frame-src` admits only the view origin (`ai-view:`, ``ViewOrigin``), whose documents the page
+/// frames for generative views and the navigation lock also confines subframes to.
 public enum ContentSecurityPolicy {
   /// The React Fast Refresh preamble `@vitejs/plugin-react` injects inline into the development
   /// `index.html` (plugin 6.1.1, `preambleCode` with base `/`). Vite serializes a tag's string
@@ -27,8 +29,8 @@ public enum ContentSecurityPolicy {
     return "'sha256-\(Data(digest).base64EncodedString())'"
   }
 
-  /// Release: everything from the bundle, no inline or evaluated script, no frames, and fetches
-  /// only to the page's own origin (the relay).
+  /// Release: everything from the bundle, no inline or evaluated script, frames only from the view
+  /// origin, and fetches only to the page's own origin (the relay).
   public static let production = build(scriptExtra: [], connectExtra: [])
 
   /// Development against the Vite dev server: additionally allows the React refresh preamble by
@@ -52,7 +54,7 @@ public enum ContentSecurityPolicy {
       ("object-src", ["'none'"]),
       ("base-uri", ["'self'"]),
       ("form-action", ["'self'"]),
-      ("frame-src", ["'none'"]),
+      ("frame-src", ["\(ViewOrigin.scheme):"]),
       ("frame-ancestors", ["'none'"]),
     ]
     return directives.map { "\($0.0) \($0.1.joined(separator: " "))" }.joined(separator: "; ")

@@ -173,7 +173,7 @@ export function ExtensionRowActions({
             <IconButton
               label={t('extensions.more')}
               aria-label={t('extensions.moreActionsFor', { name })}
-              tooltipDismissOnClick
+              tooltip={false}
             >
               <Ellipsis />
             </IconButton>

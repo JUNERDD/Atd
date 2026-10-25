@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 /// The command island as drawn: one glass shape on the shell's glass surface, as the mini panel's
-/// body is (``View/glassSurface(in:animation:opacity:)``: the panel's base fill on regular
+/// body is (``View/glassSurface(in:animation:)``: the panel's base fill on regular
 /// Liquid Glass, the content kept in the app's scheme), with its contents riding inside it. The
 /// glass, its clip and every content take the same animated shape value (``IslandShape``), the
 /// clip erased as the glass's shape is so the two move as one, so the content can
@@ -22,6 +22,7 @@ struct IslandView: View {
     let shape = model.shape
     let outline = MiniPanelGlassOutline(shape: shape.glass)
     ZStack(alignment: .topLeading) {
+      IslandLoadingGlow(model: model)
       ForEach(model.layers) { layer in
         IslandLayerView(model: model, layer: layer)
       }

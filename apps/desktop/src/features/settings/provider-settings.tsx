@@ -14,14 +14,19 @@ import {
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { SettingsSnapshot } from '../../client/settings-contract';
-import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
+import type { Connection } from '../../client/providers/schema';
+import {
+  providerSearchAliases,
+  serviceForConnection,
+  type ProviderService,
+} from '../providers/provider-services';
 import {
   ConnectionConfirmDialog,
   type ConnectionConfirm,
 } from '../providers/connection-confirm-dialog';
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
-import { ProviderForm } from '../providers/provider-form';
+import { ProviderServiceForm } from '../providers/provider-service-form';
 import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { queryClient } from '../../lib/query-client';
@@ -40,11 +45,12 @@ import '../providers/providers.css';
 type ProviderRoute =
   | { page: 'overview' }
   | { page: 'catalog' }
-  | { page: 'form'; provider: ProviderCatalogEntry; connectionId: string | null };
+  | { page: 'form'; service: ProviderService; connectionId: string | null };
 const OVERVIEW: ProviderRoute = { page: 'overview' };
 
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
+  const { t: tp } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   const connected = useServiceStatus().status?.state === 'connected';
   // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
@@ -112,31 +118,35 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     return operation.mutateAsync(run).catch(() => {});
   }
   async function manage(connection: Connection) {
+    let available = catalog;
     let provider = catalog.find((item) => item.id === connection.provider);
     if (!provider) {
       // Only a fresh, successful catalog can establish that a provider was removed.
       const refreshed = await catalogQuery.refetch({ cancelRefetch: false });
       if (refreshed.isError) return;
-      provider = refreshed.data?.find((item) => item.id === connection.provider);
+      available = refreshed.data ?? [];
+      provider = available.find((item) => item.id === connection.provider);
     }
     if (!provider) {
       showErrorToast(t('providers.overview.disconnect.missingProvider'));
       return;
     }
-    history.replace({ page: 'form', provider, connectionId: connection.connectionId }, view);
+    const service = serviceForConnection(available, connection);
+    if (service)
+      history.replace({ page: 'form', service, connectionId: connection.connectionId }, view);
   }
   if (view.page === 'catalog')
     return (
       <ProviderCatalog
         catalog={catalog}
-        onChoose={(provider) => history.open({ page: 'form', provider, connectionId: null })}
+        onChoose={(service) => history.open({ page: 'form', service, connectionId: null })}
       />
     );
   if (view.page === 'form')
     return (
-      <ProviderForm
-        key={view.provider.id}
-        provider={view.provider}
+      <ProviderServiceForm
+        key={view.service.id}
+        service={view.service}
         connection={connections.find((item) => item.connectionId === view.connectionId) ?? null}
         onBack={history.back}
         // A new connection's page becomes the saved connection's, which Forward then reopens.
@@ -145,11 +155,14 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         }
       />
     );
-  // Rows keep their order. The search marks the connection name and also matches the provider's
-  // name, which the row shows as its logo; the no-match hint suggests both.
+  // Match provider identity even after the user renames a connection; highlight only visible text.
   const visible = connections.flatMap((connection) => {
     const provider = catalog.find((item) => item.id === connection.provider)?.name;
-    const match = matchFields(search.query, { name: connection.name, provider });
+    const match = matchFields(search.query, {
+      name: connection.name,
+      provider,
+      aliases: providerSearchAliases(connection, tp),
+    });
     return match || !search.query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
   });
   const emptyTitle = connections.length

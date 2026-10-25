@@ -75,7 +75,7 @@ it('localizes selection failures while preserving the missing-selection error ty
   const { commands, answer } = harness();
   await changeAppLanguage('zh-CN');
   answer({ ok: false, reason: 'notTrusted' });
-  await expect(commands.capture('selection')).rejects.toThrow('辅助功能”中允许 Atd');
+  await expect(commands.capture('selection')).rejects.toThrow('设备控制和数据访问');
   answer({ ok: false, reason: 'noSelection' });
   await expect(commands.capture('selection')).rejects.toBeInstanceOf(SelectionMissingError);
   await expect(commands.capture('selection')).rejects.toThrow('未选中文本');

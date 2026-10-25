@@ -1,9 +1,9 @@
 import Foundation
 
 /// The scripts the shell adds to a glass app's page (``UserAppRuntime/Surface/glass``) besides
-/// ``UserAppErrorCapture``: the window state the page's styles key off, and the drag regions of
-/// the title bar strip. Both belong to the shell, so a page needs no code of its own for its window
-/// to look and move like Atd's.
+/// ``UserAppErrorCapture``: the window state the page's styles key off, the page's color scheme,
+/// which the window's glass takes, and the drag regions of the title bar strip. All belong to the
+/// shell, so a page needs no code of its own for its window to look and move like Atd's.
 public enum UserAppPageScripts {
   /// The unified title bar's height (`UnifiedTitleBar`) in points, which is the page's CSS pixels:
   /// the strip at the top of the page that moves the window, `--ata-titlebar-height` in the page's
@@ -41,6 +41,62 @@ public enum UserAppPageScripts {
     })();
     """
   }
+
+  /// The message handler ``colorScheme`` reports to. The shell registers it in the isolated
+  /// `.defaultClient` world only, so the page's own scripts never see it.
+  public static let colorSchemeHandler = "atdColorScheme"
+
+  /// The document-start script, in the isolated `.defaultClient` world, that tells the shell the
+  /// page's color scheme, `"dark"` or `"light"`, through ``colorSchemeHandler``. The scheme is the
+  /// computed `color-scheme` of the root element, which `@atd/ui` sets to `light` on `:root` and
+  /// `dark` on `.dark`: dark when it offers dark alone, the system's when it offers both, light
+  /// otherwise. It reports at `DOMContentLoaded`, at `load` and after every change that can move
+  /// the scheme (the root's `class`, `style` or `data-*` attributes, the system's
+  /// `prefers-color-scheme`, a page shown again from the back-forward cache), only when the scheme
+  /// changed, and never while the document still parses, before its styles may apply.
+  public static let colorScheme = """
+    (() => {
+      const handler = window.webkit?.messageHandlers?.[\(jsonString(colorSchemeHandler))];
+      if (!handler) return;
+      const system = window.matchMedia('(prefers-color-scheme: dark)');
+      let sent = null;
+      const report = () => {
+        const root = document.documentElement;
+        if (!root || document.readyState === 'loading') return;
+        const offered = getComputedStyle(root).getPropertyValue('color-scheme').split(' ');
+        const dark = offered.includes('dark') && (!offered.includes('light') || system.matches);
+        const scheme = dark ? 'dark' : 'light';
+        if (scheme === sent) return;
+        sent = scheme;
+        try {
+          handler.postMessage(scheme);
+        } catch {}
+      };
+      const relevant = ({ attributeName: name }) =>
+        name === 'class' || name === 'style' || name.startsWith('data-');
+      const watch = (root) =>
+        new MutationObserver((records) => {
+          if (records.some(relevant)) report();
+        }).observe(root, { attributes: true });
+      if (document.documentElement) {
+        watch(document.documentElement);
+      } else {
+        new MutationObserver((_, observer) => {
+          if (!document.documentElement) return;
+          observer.disconnect();
+          watch(document.documentElement);
+        }).observe(document, { childList: true });
+      }
+      system.addEventListener('change', report);
+      window.addEventListener('DOMContentLoaded', report);
+      window.addEventListener('load', report);
+      window.addEventListener('pageshow', (event) => {
+        if (!event.persisted) return;
+        sent = null;
+        report();
+      });
+    })();
+    """
 
   /// The document-start script, in the page's world where the `atdApp` handler is, that reports
   /// the window drag regions (`window.dragRegions`): the top ``titleBarHeight`` pixels of the page,

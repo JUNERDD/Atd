@@ -22,19 +22,15 @@ import { Ledger } from './ledger.js';
 import type { Logger } from './logging.js';
 import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
+import type { ComputerRuntime } from './computer/runtime.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
 import type { RunFolders } from './folders/material.js';
 import { createReviewer } from './harness/auto-review.js';
-import {
-  NO_RUN_MATERIAL,
-  type RunAttachment,
-  type RunMaterial,
-  type SessionFactoryDeps,
-} from './pi-session.js';
+import type { SessionFactoryDeps } from './pi-session.js';
+import { NO_RUN_MATERIAL, type RunAttachment, type RunMaterial } from './run-material.js';
 import { runPromptOptions, runPromptText } from './run-prompt.js';
 import { releaseRunSelections } from './run-freeze.js';
-import { openRunSession, prepareRun } from './run-prepare.js';
 import type { LiveState } from './live-state.js';
 import { lastAssistant } from './task-view.js';
 import {
@@ -44,12 +40,21 @@ import {
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
 import { TaskQueue } from './tasks/task-queue.js';
+import {
+  finishRunPreparation,
+  promptWithPreparation,
+  recordPreparationQueue,
+  timePreparation,
+  withRunPreparation,
+} from './run-preparation-timing.js';
 
 export interface RunnerContext {
   ledger: Ledger;
   events: EventLog;
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
+  /** Computer use: targets, action facts and the host coordinator (computer/runtime.ts). */
+  computer: ComputerRuntime;
   paths: ServicePaths;
   log: Logger;
   tier: PermissionTier;
@@ -186,7 +191,11 @@ export class TaskRunner {
       run.snapshot.background ??
       (run.snapshot.trigger !== undefined ||
         (task.origin?.kind === 'app' && task.runs[0]?.id === run.id));
-    return withInferencePurpose(background, () => this.executeRun(run, attachments, folders));
+    return withInferencePurpose(background, () =>
+      withRunPreparation(this.taskId, run.id, this.session.audit, () =>
+        this.executeRun(run, attachments, folders),
+      ),
+    );
   }
 
   private async executeRun(
@@ -202,9 +211,21 @@ export class TaskRunner {
       path.join(this.ctx.paths.auditDir, `${run.id}.jsonl`),
       this.ctx.log,
     );
-    await this.setStatus(run.id, 'running', '');
+    recordPreparationQueue(run.createdAt);
     try {
-      const prepared = await prepareRun(this.session, run, attachments, folders);
+      await timePreparation('running_status', () => this.setStatus(run.id, 'running', ''));
+      // Load the session and tool graph only for an executing run; failures settle this run below.
+      const { openRunSession, prepareRun } = await timePreparation(
+        'session_modules',
+        () => import('./run-prepare.js'),
+      );
+      if (this.isStopping(run.id)) {
+        await this.setStatus(run.id, 'stopped', '');
+        return;
+      }
+      const prepared = await timePreparation('prepare_run', () =>
+        prepareRun(this.session, run, attachments, folders),
+      );
       if (prepared.blocked !== null) {
         await this.setStatus(run.id, 'failed', prepared.blocked);
         return;
@@ -219,7 +240,9 @@ export class TaskRunner {
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
-      await live.session.prompt(runPromptText(run), runPromptOptions(attachments));
+      await promptWithPreparation(live.session, () =>
+        live.session.prompt(runPromptText(run), runPromptOptions(attachments)),
+      );
       const last = lastAssistant(live.manager.getBranch());
       const error = last ? (inferenceError(last) ?? '') : '';
       if (!error && !this.isStopping(run.id)) await this.beforeCompleted(run.id);
@@ -235,13 +258,19 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
-      // Only the catalog and the memory sections outlive the run: a prompt the idle session sends
-      // keeps its system prompt sections (skills/session-catalog.ts, memory/session-memory.ts);
-      // attachment and skill text are let go.
-      const { catalog, memory } = this.material;
-      this.material = { ...NO_RUN_MATERIAL, catalog, memory };
+      finishRunPreparation(this.isStopping(run.id) ? 'stopped' : 'error');
+      // Only the catalog, the memory sections and the view level outlive the run: a prompt the idle
+      // session sends keeps its system prompt sections (skills/session-catalog.ts,
+      // memory/session-memory.ts, views/tools.ts); attachment and skill text are let go.
+      const { catalog, memory, viewInitiative } = this.material;
+      this.material = { ...NO_RUN_MATERIAL, catalog, memory, viewInitiative };
       // A lite run froze nothing (run-prepare.ts).
       if (!run.snapshot.lite) await releaseRunSelections(this.session, run.id);
+      // The host keeps per-run state (screen shares, previews, run-scoped browser profiles, target
+      // preparation such as occlusion keep-alive) until it hears the run ended normally
+      // (`finished`); an aborted run already told it through `abort`.
+      if (!this.aborted)
+        await this.ctx.computer.cancelRun(this.taskId, run.id, 'finished').catch(() => undefined);
       await this.audit?.flush();
     }
   }
@@ -253,6 +282,9 @@ export class TaskRunner {
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.ctx.capabilities.cancelRun(this.taskId, runId, 'Task stopped.');
+    // Before the session's abort: the host is told to stop first, so the computer call that the
+    // abort unblocks waits for the host's terminal reply instead of guessing.
+    await this.ctx.computer.cancelRun(this.taskId, runId, 'stopped');
     await this.slot.live?.session.abort();
     return unsent;
   }
@@ -292,14 +324,18 @@ export class TaskRunner {
     // The run's audit is complete before anyone hears it ended (audit.ts): the automation engine
     // reads its unattended declines and writes then (unattended.ts).
     if (isTerminalStatus(status)) await this.audit?.flush();
-    await this.ctx.ledger.change((data) => {
+    const applied = await this.ctx.ledger.change((data) => {
       const task = data.tasks.find((item) => item.id === this.taskId);
       const run = task?.runs.find((item) => item.id === runId);
-      if (!task || !run) return;
+      if (!task || !run || isTerminalStatus(run.status)) return false;
+      // Cleanup from a cancelled tool must not revive its run.
+      if (run.status === 'stopping' && !isTerminalStatus(status)) return false;
       run.status = status;
       run.error = error;
       task.updatedAt = new Date().toISOString();
+      return true;
     });
+    if (!applied) return;
     this.ctx.events.publish({
       taskId: this.taskId,
       runId,

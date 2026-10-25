@@ -65,7 +65,9 @@
     "chainLoop": "Automations can’t follow each other in a loop.",
     "commandUnavailable": "Its command was deleted, turned off, or needs input an automation can’t give.",
     "folderUnavailable": "A folder it uses is no longer available.",
-    "modelUnavailable": "Its model isn’t available. Choose another model or connect its provider."
+    "modelUnavailable": "Its model isn’t available. Choose another model or connect its provider.",
+    "computerNeedsAuthorization": "Its computer actions aren’t authorized for this version. Run a trial and authorize it.",
+    "computerHold": "An earlier run left computer actions unresolved. Review that run to continue."
   },
   "summary": {
     "once": "Once, {{when}}",
@@ -381,7 +383,12 @@
     "folderUnavailable": "A folder it uses wasn’t available.",
     "submitFailed": "Atd couldn’t start the run.",
     "agentReported": "The agent reported that it couldn’t finish.",
-    "runFailed": "The run failed."
+    "runFailed": "The run failed.",
+    "computerGrantInvalid": "Its computer actions are no longer authorized. Run a trial and authorize it again.",
+    "computerHold": "An earlier run left computer actions unresolved. Review that run first.",
+    "computerTargetUnavailable": "A website or app it works on wasn’t available.",
+    "computerUnknownEffect": "Atd couldn’t confirm whether a computer action took effect. Check the result yourself.",
+    "computerNeedsHuman": "A computer action needs you to look before anything continues."
   },
   "source": {
     "schedule": "Scheduled",
@@ -389,5 +396,114 @@
     "idle": "Mac idle",
     "automation": "After another automation",
     "manual": "Run now"
+  },
+  "computer": {
+    "title": "Computer use",
+    "description": "What its runs may do on registered websites and apps, in the background. Only the steps below run, within the targets and limits you set.",
+    "notApplicable": "Consolidating memory never acts on websites or apps.",
+    "noScope": "Atd can repeat work it did with you on a website or in an app. Do it once in a task, then ask Atd to turn that task into an automation; its steps show here for you to check, try and authorize.",
+    "targets": "Targets",
+    "targetGone": "Disconnected target",
+    "targetGoneDescription": "Register it again in Settings › Computer use, or turn it off here.",
+    "targetsNote": "An automation needs at least one target, so the last one can’t be turned off.",
+    "steps": "Steps",
+    "stepsNote": "Steps come from the task they were recorded in and can’t be rearranged here. Ask Atd to change them.",
+    "stepTitle": "{{number}}. {{label}}",
+    "submits": "Submits",
+    "stepTargetUnpicked": "This step’s target isn’t picked above.",
+    "maxLength": "Max characters",
+    "maxLengthInvalid": "Enter a whole number from 1 to {{max}}.",
+    "textPattern": "must match {{pattern}}",
+    "textOneOf": "one of: {{values}}",
+    "stepKind": {
+      "navigate": "Open {{url}}",
+      "fill": "Fill in {{control}}",
+      "click": "Click {{control}}",
+      "submit": "Submit with {{control}}",
+      "scroll": "Scroll the page",
+      "wait": "Wait until {{condition}}"
+    },
+    "condition": {
+      "enabled": "{{control}} becomes available",
+      "valueEquals": "{{control}} shows “{{text}}”",
+      "textAppears": "“{{text}}” appears",
+      "urlMatches": "the page address starts with {{url}}",
+      "newText": "a new confirmation appears",
+      "newTextMatching": "a new confirmation matching {{pattern}} appears",
+      "someControl": "the control",
+      "menuItemAvailable": "the application menu item “{{path}}” is available"
+    },
+    "maxSubmits": "Most submits per run",
+    "submitsValue_one": "{{count}} time",
+    "submitsValue_other": "{{count}} times",
+    "maxSubmitsNote": "A run stops before going over this. Atd never retries a submit on its own.",
+    "completion": "Done when",
+    "completionNote": "Only this counts a run as done. If Atd can’t confirm it, the run needs your attention.",
+    "authorization": {
+      "needed": {
+        "title": "Needs authorization",
+        "description": "Runs can’t act on websites or apps until a trial passes and you authorize exactly these steps."
+      },
+      "authorized": {
+        "title": "Authorized",
+        "description": "Runs may act within this scope. Changing the steps, targets, trigger or action needs a new authorization."
+      },
+      "changed": {
+        "title": "Authorization no longer matches",
+        "description": "Something it relies on changed after you authorized it. Run a trial and authorize it again."
+      }
+    },
+    "trial": {
+      "note": "A trial runs the saved steps now, for real: it fills in and submits as written, with you there to approve each action.",
+      "saveFirst": "Save your changes first. A trial runs the saved steps.",
+      "run": "Run trial",
+      "open": "Open trial",
+      "running": "Trial running…",
+      "finished": "The trial finished. If it did what you expected, authorize it.",
+      "incomplete": "The trial didn’t finish. Open it to see what happened.",
+      "passed": "The trial passed: every step was checked. You can authorize it now.",
+      "failed": "The trial did not pass: a step was not verified. Open the trial to see what happened, then run it again."
+    },
+    "saveAndAuthorize": "Save and authorize",
+    "authorize": {
+      "approved": "Authorized. Runs may now act within this scope.",
+      "refused": {
+        "changed": "The automation changed while you were authorizing it. Check it and try again.",
+        "notQualified": "Run a trial that passes first. Authorization covers exactly what a trial did.",
+        "unavailable": "Computer use isn’t available right now.",
+        "busy": "Another confirmation is open. Finish it first."
+      }
+    },
+    "hold": {
+      "title": "Waiting for your review",
+      "reason": {
+        "unknownEffect": "A run on {{since}} left computer actions whose effect Atd couldn’t confirm (unresolved: {{count}}).",
+        "partialEffect": "A run on {{since}} left computer actions that only partly took effect (unresolved: {{count}}).",
+        "needsHuman": "A run on {{since}} stopped at something you need to look at (unresolved: {{count}})."
+      },
+      "markReadNote": "Its computer actions won’t run again, scheduled or by Run now, until you resolve this. Marking runs as read doesn’t resolve it.",
+      "review": "Review and resolve",
+      "dialogTitle": "Resolve unconfirmed computer actions",
+      "dialogDescription": "Open the run, check the website or app yourself, and fix anything that went wrong. Resolving lets the automation act again; it doesn’t undo anything.",
+      "openRun": "Open the run",
+      "acknowledge": "I checked the target and know what these actions did.",
+      "resolve": "Resolve",
+      "resolved": "Resolved. The automation can act again.",
+      "conflict": "Another run is waiting for review now. Review that one instead."
+    },
+    "facts": {
+      "verified_one": "{{count}} checked",
+      "verified_other": "{{count}} checked",
+      "partial_one": "{{count}} partly done",
+      "partial_other": "{{count}} partly done",
+      "unknown_one": "{{count}} unknown",
+      "unknown_other": "{{count}} unknown",
+      "notDispatched_one": "{{count}} not carried out",
+      "notDispatched_other": "{{count}} not carried out",
+      "unresolved_one": "{{count}} waiting for review",
+      "unresolved_other": "{{count}} waiting for review",
+      "summary": "Computer actions: {{facts}}",
+      "none": "No computer actions"
+    }
   }
 }

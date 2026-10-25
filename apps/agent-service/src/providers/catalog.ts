@@ -24,6 +24,11 @@ const CLOUD_PROVIDERS = new Set([
   'cloudflare-workers-ai',
 ]);
 
+const PROVIDER_NAMES: Partial<Record<string, string>> = {
+  zai: 'Z.AI Coding Plan (International)',
+  'zai-coding-cn': 'Zhipu BigModel Coding Plan (CN)',
+};
+
 /** Local and custom endpoints: the connection supplies the models, not the Pi directory. */
 export function isLocalProvider(providerId: string): boolean {
   return LOCAL_PROVIDERS.some((provider) => provider.id === providerId);
@@ -153,7 +158,7 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
         : 'api_key';
       return {
         id: provider.id,
-        name: provider.name ?? provider.id,
+        name: PROVIDER_NAMES[provider.id] ?? provider.name ?? provider.id,
         category: isCloud(provider.id) ? 'cloud' : oauth ? 'accounts' : 'api',
         auth: [
           ...(oauth

@@ -11,13 +11,16 @@ final class ShellCapabilities: CapabilityHandling {
   private let services: ShellServices
   private let panelVisible: () -> Bool
   private let systemPanels: SystemPanels
+  private let arbiter: DeviceArbiter
 
   init(
-    services: ShellServices, panelVisible: @escaping () -> Bool, systemPanels: SystemPanels
+    services: ShellServices, panelVisible: @escaping () -> Bool, systemPanels: SystemPanels,
+    arbiter: DeviceArbiter
   ) {
     self.services = services
     self.panelVisible = panelVisible
     self.systemPanels = systemPanels
+    self.arbiter = arbiter
   }
 
   func handle(_ request: CapabilityRequest) async throws -> JSONValue {
@@ -26,7 +29,7 @@ final class ShellCapabilities: CapabilityHandling {
     case .fileSave: try await saveFile(request.input)
     case .selectionRead: try await readSelection()
     case .clipboardRead: try readClipboard()
-    case .clipboardWrite: try writeClipboard(request.input)
+    case .clipboardWrite: try await writeClipboard(request.input)
     }
   }
 
@@ -88,11 +91,13 @@ final class ShellCapabilities: CapabilityHandling {
     return try Self.value(TextCapture.clipboard(text, at: .now, panelVisible: visible))
   }
 
-  private func writeClipboard(_ input: JSONValue) throws -> JSONValue {
+  private func writeClipboard(_ input: JSONValue) async throws -> JSONValue {
     switch CapabilityInputs.clipboardWrite(input) {
     case .success(let text):
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(text, forType: .string)
+      // A paste or copy transaction in progress would put back the user's items over it.
+      guard await arbiter.copyToClipboard(text) else {
+        throw CapabilityFailure("The clipboard is in use; try again.")
+      }
       return .object(["ok": .bool(true)])
     case .failure(let error):
       throw CapabilityFailure(error.message)
@@ -116,7 +121,9 @@ struct CapabilityFailure: LocalizedError {
 }
 
 /// Open and save panels. While one is open the panel floats no higher than normal windows
-/// (so the system panel is never hidden behind it) and summons are ignored.
+/// (so the system panel is never hidden behind it) and summons are ignored. A panel holds the
+/// interactive screen (``DeviceArbiter``) while it is open, so it does not open over a capture
+/// session or a write in progress, and background writes stay out meanwhile.
 final class SystemPanels {
   private(set) var isOpen = false {
     didSet { if isOpen != oldValue { onChange?(isOpen) } }
@@ -125,12 +132,15 @@ final class SystemPanels {
   var onChange: ((_ open: Bool) -> Void)?
   private let lowerPanel: () -> NSWindow.Level
   private let restorePanel: (NSWindow.Level) -> Void
+  private let arbiter: DeviceArbiter
 
   init(
-    lowerPanel: @escaping () -> NSWindow.Level, restorePanel: @escaping (NSWindow.Level) -> Void
+    lowerPanel: @escaping () -> NSWindow.Level, restorePanel: @escaping (NSWindow.Level) -> Void,
+    arbiter: DeviceArbiter
   ) {
     self.lowerPanel = lowerPanel
     self.restorePanel = restorePanel
+    self.arbiter = arbiter
   }
 
   /// Attachable files (text and images); nil when cancelled or another system panel is open.
@@ -193,12 +203,15 @@ final class SystemPanels {
   }
 
   private func run(_ panel: NSSavePanel) async -> Bool {
-    guard !isOpen else { return false }
+    guard !isOpen,
+      let screen = try? arbiter.tryClaim([.interactiveScreen], owner: .user(.systemPanel))
+    else { return false }
     isOpen = true
     let level = lowerPanel()
     defer {
       isOpen = false
       restorePanel(level)
+      screen.release()
     }
     NSApp.activate()
     return await panel.begin() == .OK

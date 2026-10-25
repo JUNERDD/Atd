@@ -12,8 +12,10 @@ import type { Ledger } from './ledger.js';
  *
  * - a guarded action its tier would confirm is declined (harness/gate.ts), and so is a guarded MCP
  *   tool call (pi-session-mcp.ts, mcp/approval.ts);
- * - `ask_user` hears that nobody is available (harness/ask-user.ts);
- * - the desktop and `configure_mcp` tools are unavailable (desktop-tool.ts, configure-mcp-tool.ts).
+ * - `ask_user` hears that nobody is available (harness/ask-user.ts), and so does a `show_ui` view
+ *   that waits for the user's response (views/tools.ts);
+ * - the desktop and `configure_mcp` tools are unavailable (desktop-tool.ts, configure-mcp-tool.ts);
+ * - a computer action outside the automation's live grant is refused (computer/call-context.ts).
  *
  * Each file the run's write and edit tools change is recorded too (`decision: 'wrote'`,
  * `auditWrote`), so a folder automation never fires on its own run's output. The audit is complete
@@ -21,8 +23,11 @@ import type { Ledger } from './ledger.js';
  * (`readUnattendedAudit`).
  */
 
-/** What an unattended answer stood in for: a confirm, a question, a desktop ability, an MCP edit. */
-export type UnattendedKind = 'confirm' | 'question' | 'desktop' | 'mcpConfig';
+/**
+ * What an unattended answer stood in for: a confirm, a question, a desktop ability, an MCP edit,
+ * a computer action its grant does not cover, or the response a view waited for.
+ */
+export type UnattendedKind = 'confirm' | 'question' | 'desktop' | 'mcpConfig' | 'computer' | 'view';
 
 /** The longest `title` an unattended audit line keeps. */
 const TITLE_CHARS = 200;

@@ -2,7 +2,7 @@ import type { PluginRunSnapshot, ResolvedItem } from '@atd/plugin-kit';
 import type { SkillRevisionRecord } from '../skills/versions.js';
 import { mapPluginComponents } from './components.js';
 import { PluginHost, type PluginView } from './host.js';
-import { CORE_PLUGIN, SHARED_PLUGIN, USER_PLUGIN } from './host-plugins.js';
+import { CORE_PLUGIN, SHARED_PLUGIN, USER_PLUGIN, type HostCatalog } from './host-plugins.js';
 
 /**
  * What the plugin catalog adds to the skill catalog (skills/versions.ts `loadSkillCatalog`):
@@ -20,6 +20,8 @@ export interface PluginSkillSet {
   items: ReadonlyMap<string, ResolvedItem>;
   effective: ReadonlySet<string>;
   sharedEnabled: boolean;
+  /** Null only when plugin freezing failed and host discovery must be retried separately. */
+  hostSkills: HostCatalog['skills'] | null;
 }
 
 /**
@@ -38,6 +40,7 @@ export async function pluginSkillSet(
     : new Set(owned.filter(({ item }) => item.enabled).map(({ item }) => item.name));
   return {
     records: owned.map(({ value }) => value),
+    hostSkills: view.host.skills,
     items: new Map(owned.map(({ item, value }) => [value.name, item])),
     effective,
     sharedEnabled: view.catalog.plugins.some(

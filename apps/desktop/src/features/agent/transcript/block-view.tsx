@@ -1,4 +1,6 @@
+import { SHOW_UI_TOOL } from '@atd/agent-contracts';
 import type { Block } from '../../../client/agent/transcript-schema';
+import { ViewCard } from '../generative-views/view-card';
 import { AssistantBlock } from './assistant-block';
 import { CompactionBlock } from './compaction-block';
 import { QuestionBlock } from './question-block';
@@ -17,6 +19,9 @@ export function BlockView({ block, requests }: { block: Block; requests: Request
     case 'thinking':
       return <ThinkingBlock block={block} />;
     case 'tool': {
+      // A view stands alone in its turn (`foldTurn`); a waiting one carries its input request.
+      if (block.name === SHOW_UI_TOOL)
+        return <ViewCard block={block} request={request?.kind === 'input' ? request : undefined} />;
       const confirmation = request?.kind === 'confirmation' ? request : undefined;
       return <ToolBlock block={block} confirmation={confirmation} />;
     }

@@ -3,7 +3,8 @@ import AppKit
 import SwiftUI
 
 /// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule;
-/// it grows out of there to the card's frame on its own animation, and its rows, laid out where
+/// it grows out of there to the card's frame on its own animation, its fill with it, so no bare
+/// glass shows on the way in or out, and its rows, laid out where
 /// the open card rests, ride inside it, centered in it and scaled with it (``MiniPanelFlyout``),
 /// so they open out of the anchor with the card. It is drawn in a fixed lane that holds the card
 /// and every body shape it closes into, so its frames lay nothing out again while it opens or
@@ -12,28 +13,18 @@ struct MiniPanelCard: View {
   let model: MiniPanelModel
 
   var body: some View {
-    let card = model.card
-    let lane = model.cardLane
-    let rows = model.frame(.rows).offsetBy(dx: -lane.minX, dy: -lane.minY)
-    let shape = MiniPanelGlassRect(card.frame, corner: MiniPanelMetrics.cardRadius, in: lane)
-    let outline = MiniPanelGlassOutline(shape: shape)
-    MiniPanelFlyout(model: model, card: shape, rest: rows, animation: card.animation)
-      .frame(width: rows.width, height: rows.height)
-      .animation(nil) { $0.offset(x: rows.minX, y: rows.minY) }
-      .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      .glassSurface(in: outline, animation: card.animation, opacity: card.opacity)
-      .offset(x: lane.minX, y: lane.minY)
-      .allowsHitTesting(model.flyoutOpen)
-      .accessibilityHidden(!model.flyoutOpen)
+    MiniPanelPopover(state: model.popover, lane: model.cardLane) { presentation in
+      MiniPanelFlyout(model: model, presentation: presentation)
+    }
   }
 }
 
 /// The hover label (hover-label-v4): a small capsule of the same glass that grows out of an anchor
 /// on its side facing the capsule, level with the hovered control, glides from control to
-/// control, and leaves into that anchor: its glass leads its fill on the way in, and its fill and
-/// text fade before its glass draws in on the way out (``MiniPanelLabelPath``). Its text rides
+/// control, and leaves into that anchor, its fill with its glass, so it never shows as bare glass
+/// (``MiniPanelLabelPath``). Its text rides
 /// inside it on the same animated values (``MiniPanelLabelFollowEffect``): it grows with the
-/// label, glides with it, swapping through a blur, and shows only through its own presence.
+/// label, glides with it, cross-fades between names, and shows only through its own presence.
 /// Visual only: VoiceOver reads the controls' own labels.
 ///
 /// It is drawn in a fixed lane beside the shape it belongs to, so its frames lay nothing out
@@ -48,26 +39,40 @@ struct MiniPanelLabelView: View {
     let swap = MiniPanelChoreography.labelGlide.reduced(model.reduceMotion).animation
     let rest = label.rest.offsetBy(dx: -lane.minX, dy: -lane.minY)
     let outline = MiniPanelLabelOutline(fade: label.fade, rest: rest, edge: model.edge)
+    let bubble = MiniPanelLabelOutline(
+      fade: label.bubbleTaken ? 1 : label.fade, rest: rest, edge: model.edge)
+    let presented = label.drawn && label.fade == 0
     let follow = MiniPanelLabelFollowEffect(
-      fade: label.fade, rest: rest, edge: model.edge, layout: rest, scales: !model.reduceMotion)
-    // A text swapped by a plain write would drop the leaving one at once: one text interpolates
-    // into the next instead, through a blur, on the glide's animation.
-    Text(verbatim: label.text)
-      .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
-      .lineLimit(1)
-      .truncationMode(.tail)
-      .foregroundStyle(.primary)
-      .contentTransition(.interpolate)
-      .animation(label.drawn ? swap : nil, value: label.text)
-      .padding(.horizontal, MiniPanelMetrics.labelPadding)
-      .animation(nil) { $0.frame(width: rest.width, height: rest.height) }
-      .animation(label.animation) { $0.modifier(follow) }
-      .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
-      .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
-      .frame(width: lane.width, height: lane.height, alignment: .topLeading)
-      // Leaving, its fill and text fade where it rests, and its outline takes the bare glass
-      // away there, rather than shrinking into the capsule, whose fill its own would darken.
-      .glassSurface(in: outline, animation: label.animation, opacity: 1 - label.fade)
+      fade: label.fade, rest: rest, edge: model.edge, scales: !model.reduceMotion)
+    Color.clear
+      .frame(width: lane.width, height: lane.height)
+      .glassSurface(in: bubble, animation: label.bubbleTaken ? nil : label.animation)
+      .backport.glassEffectContainer(spacing: MiniPanelView.glassSpacing)
+      .overlay(alignment: .topLeading) {
+        ZStack {
+          // Preserve each name's own layout during the cross-fade. Text.contentTransition
+          // reuses the new width for the old glyphs, shifting/clipping a long name on a short one.
+          Text(verbatim: label.text)
+            .font(.system(size: MiniPanelMetrics.labelTextSize, weight: .medium))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, MiniPanelMetrics.labelPadding)
+            .frame(width: rest.width, height: rest.height)
+            .id(label.text)
+            .transition(.opacity)
+        }
+        .animation(label.drawn ? swap : nil, value: label.text)
+        // A fixed layout center is essential: changing this frame to the new text width would
+        // move the outgoing text's origin before its geometry animation has caught up.
+        .frame(width: lane.width, height: lane.height)
+        .animation(label.animation) { $0.modifier(follow) }
+        .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
+        .animation(label.animation) { $0.clipShape(AnyShape(outline)) }
+      }
+      // Scope the fade to opacity: an inherited animation also retimes the glass container,
+      // separating its material outline from the surface fill during entrance.
+      .animation(MiniPanelMotion.popoverOpacity(presented)) { $0.opacity(presented ? 1 : 0) }
       .offset(x: lane.minX, y: lane.minY)
       .allowsHitTesting(false)
       .accessibilityHidden(true)

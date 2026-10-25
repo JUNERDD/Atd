@@ -28,12 +28,17 @@ export function GenericBody({ block }: { block: BlockOf<'tool'> }) {
   const { t } = useTranslation('tasks');
   const text = block.status === 'running' ? block.partial : block.output;
   const proxy = mcpProxy(block.name);
+  const tool = proxy?.tool ?? block.name;
   const input = Object.keys(block.args).length > 0 ? JSON.stringify(block.args, null, 2) : '';
   return (
     <ToolCard.Root>
       <ToolCard.Header
         icon={createElement(proxy ? Plug : toolIcon(block.name))}
-        label={<span className="font-mono">{proxy?.tool ?? block.name}</span>}
+        label={
+          <span className="font-mono" title={tool}>
+            {tool}
+          </span>
+        }
         meta={proxy?.server}
         copyText={text}
       />

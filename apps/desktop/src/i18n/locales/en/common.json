@@ -12,7 +12,7 @@
     "pressKeysDoubleTap": "Press keys or double‑tap a modifier…",
     "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
     "recordingHintDoubleTap": "Press a shortcut, or quickly tap Command, Option, Control or Shift twice. Escape cancels; Tab moves to the next control.",
-    "doubleTapNeedsAccessibility": "Double-tap shortcuts need Accessibility access. Allow Atd in System Settings › Privacy & Security › Accessibility."
+    "doubleTapNeedsAccessibility": "Double-tap shortcuts need app control access. Allow Atd in System Settings › Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
   },
   "tools": {
     "read": {

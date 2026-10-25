@@ -171,16 +171,25 @@ export async function loadSkillCatalog(
   profile: SkillProfilePaths,
   plugins: PluginSkillSet,
 ): Promise<SkillCatalog> {
-  const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
+  const host = plugins.hostSkills ?? (await discoverHostCatalog(profile));
   // The harness switches host skills only; a plugin skill's switch is its item, even when a
   // standalone skill's bare name is also in the harness file.
   const owned = new Set(plugins.records.map((record) => record.name));
-  const harness = await readDisabledSkillNames(profile);
-  const disabled = new Set([...harness].filter((name) => !owned.has(name)));
+  const disabled = new Set([...host.disabled].filter((name) => !owned.has(name)));
   for (const record of plugins.records)
     if (!plugins.effective.has(record.name)) disabled.add(record.name);
-  const shared = plugins.sharedEnabled ? agents.skills : [];
-  return { all: mergeSkillCatalog(plugins.records, atd.skills, shared), disabled };
+  const shared = plugins.sharedEnabled ? host.shared : [];
+  return { all: mergeSkillCatalog(plugins.records, host.atd, shared), disabled };
+}
+
+/** A degraded plugin freeze still discovers host skills using their existing policy. */
+async function discoverHostCatalog(profile: SkillProfilePaths) {
+  const [atd, shared, disabled] = await Promise.all([
+    discoverAtdSkills(),
+    discoverUserAgentSkills(),
+    readDisabledSkillNames(profile),
+  ]);
+  return { atd: atd.skills, shared: shared.skills, disabled };
 }
 
 /**

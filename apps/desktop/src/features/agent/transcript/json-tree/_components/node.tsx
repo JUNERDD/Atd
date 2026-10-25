@@ -1,5 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@atd/ui/components/collapsible';
 import { cn } from '@atd/ui/lib/utils';
 import { agentApi } from '../../../use-agent';
 import { showErrorToast } from '../../../../../components/toast-store';
@@ -70,38 +75,45 @@ export function Node({ nodeKey, value, depth, defaultExpandedDepth, renderNode }
     : Object.entries(value as Record<string, unknown>);
 
   return (
-    <div className="min-w-0">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={expanded}
-        aria-label={nodeKey === null ? previewFor(value) : String(nodeKey)}
-        className="flex w-full min-w-0 items-center gap-1 py-px"
-      >
-        <ChevronRight
-          className={cn('size-3.5 shrink-0 transition-transform', expanded && 'rotate-90')}
-        />
-        {nodeKey === null ? null : (
-          <span className="shrink-0 truncate text-muted-foreground">{formatKey(nodeKey)}:</span>
-        )}
-        {expanded ? null : (
-          <span className="truncate text-muted-foreground">{previewFor(value)}</span>
-        )}
-      </button>
-      {expanded && (
-        <div className="pl-4">
-          {entries.map(([key, item]) => (
-            <Node
-              key={key}
-              nodeKey={key}
-              value={item}
-              depth={depth + 1}
-              defaultExpandedDepth={defaultExpandedDepth}
-              renderNode={renderNode}
-            />
-          ))}
+    <Collapsible open={expanded} onOpenChange={setExpanded} className="min-w-0">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          aria-label={nodeKey === null ? previewFor(value) : String(nodeKey)}
+          className="flex w-full min-w-0 items-center gap-1 py-px"
+        >
+          <ChevronRight
+            className={cn(
+              'size-3.5 shrink-0 transition-transform motion-reduce:transition-none',
+              expanded && 'rotate-90',
+            )}
+          />
+          {nodeKey === null ? null : (
+            <span className="shrink-0 truncate text-muted-foreground">{formatKey(nodeKey)}:</span>
+          )}
+          {expanded ? null : (
+            <span className="truncate text-muted-foreground">{previewFor(value)}</span>
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {/* The bare grid child clips the inset with the shared unfold; Radix keeps descendants
+            mounted only while open or finishing their close animation. */}
+        <div>
+          <div className="pl-4">
+            {entries.map(([key, item]) => (
+              <Node
+                key={key}
+                nodeKey={key}
+                value={item}
+                depth={depth + 1}
+                defaultExpandedDepth={defaultExpandedDepth}
+                renderNode={renderNode}
+              />
+            ))}
+          </div>
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

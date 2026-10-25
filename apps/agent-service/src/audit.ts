@@ -13,13 +13,11 @@ export class AuditWriter {
   ) {}
 
   append(entry: Record<string, unknown>): void {
+    const record = { ts: new Date().toISOString(), ...entry };
     this.chain = this.chain
       .then(async () => {
         await mkdir(path.dirname(this.file), { recursive: true });
-        await appendFile(
-          this.file,
-          `${JSON.stringify({ ts: new Date().toISOString(), ...entry })}\n`,
-        );
+        await appendFile(this.file, `${JSON.stringify(record)}\n`);
       })
       .catch((error: unknown) => {
         this.log.warn('Audit write failed.', { error: errorMessage(error) });

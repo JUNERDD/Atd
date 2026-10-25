@@ -3,11 +3,22 @@
     "panelLabel": "Atd task panel",
     "newChat": "New chat",
     "controlsLabel": "Panel controls",
+    "find": "Find in conversation",
     "tasks": "Tasks",
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
     "loadingConversation": "Loading conversation…"
+  },
+  "find": {
+    "label": "Find in conversation",
+    "count": "{{index}} / {{total}}",
+    "none": "No results",
+    "previous": "Previous",
+    "next": "Next",
+    "close": "Close",
+    "ruler": "Match positions",
+    "match": "Match {{index}} of {{total}}"
   },
   "welcome": {
     "title": "What can I help with?",
@@ -76,6 +87,7 @@
     "reorderQueued": "Drag to reorder",
     "chipsAfterRun": "Send mentions and skills after this run finishes.",
     "chips": {
+      "application": "Application: {{name}}",
       "file": "File: {{name}}",
       "folder": "Folder: {{name}}",
       "task": "Conversation: {{name}}",
@@ -185,7 +197,7 @@
     "selectionPrefix": "Selection:",
     "clipboardPrefix": "Clipboard:",
     "errors": {
-      "notTrusted": "Enable Accessibility: System Settings → Privacy & Security → Accessibility.",
+      "notTrusted": "Allow Atd in System Settings → Privacy & Security → Device Control and Data Access (Accessibility on earlier macOS versions).",
       "noSelection": "No selected text — select text in another app, then use the command shortcut.",
       "selectionTooLong": "Selected text exceeds the input limit — select a smaller passage.",
       "commandDeleted": "This command was deleted. Use its saved version from task history.",
@@ -258,6 +270,7 @@
     "listLabel": "Suggestions",
     "sectionsLabel": "Groups",
     "groups": {
+      "applications": "Applications",
       "commands": "Quick commands",
       "skills": "Skills",
       "recentAttached": "Recently attached",

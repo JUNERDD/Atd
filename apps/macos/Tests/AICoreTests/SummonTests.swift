@@ -256,7 +256,8 @@ struct SummonTests {
 
   @Test("A held launch hands its intent to the page; a plain run leaves it out")
   func launchIntent() {
-    let target = ShortcutCommandEvent.Target(id: "t", app: "Notes", writable: true)
+    let target = ShortcutCommandEvent.Target(
+      id: "t", app: "Notes", writable: true, selectionKind: nil)
     #expect(CommandLaunch(id: "c").event(target: target).intent == nil)
     #expect(CommandLaunch(id: "c", intent: .choose).event(target: target).intent == .choose)
   }

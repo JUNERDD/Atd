@@ -23,7 +23,7 @@ export function TaskAgentMenu({ definition }: { definition: TaskAgentDefinition 
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton label={t('subagent.more')} className="-mr-1.5" tooltipDismissOnClick>
+          <IconButton label={t('subagent.more')} className="-mr-1.5" tooltip={false}>
             <Ellipsis />
           </IconButton>
         </DropdownMenuTrigger>

@@ -10,7 +10,8 @@ import AppKit
 ///
 /// Around the session it owns the app's state: the panel is withdrawn and later restored as it
 /// was, the app is activated for the overlays (cursor, keyboard, input methods) and hands
-/// activation back to the app that was frontmost before.
+/// activation back to the app that was frontmost before. A session holds the interactive screen
+/// (``DeviceArbiter``) from its claim to its end, and its copy claims the clipboard.
 final class ScreenshotTaker {
   /// How a session ended, for the two calls to answer in their own result types.
   private enum SessionEnd {
@@ -26,6 +27,7 @@ final class ScreenshotTaker {
   /// Where the Screen Recording prompt is asked, once per launch.
   private let access: ScreenRecordingTrust
   private let makeEditor: @MainActor () -> any AnnotationEditing
+  private let arbiter: DeviceArbiter
   /// The running session; a quit or a display change ends it through ``cancel()``.
   private var session: CaptureSession?
   /// One capture or edit at a time: a second call is refused rather than queued, because each
@@ -45,13 +47,15 @@ final class ScreenshotTaker {
 
   init(
     library: CaptureLibrary, panel: PanelWindowController, targeting: any ElementTargeting,
-    access: ScreenRecordingTrust, makeEditor: @escaping @MainActor () -> any AnnotationEditing
+    access: ScreenRecordingTrust, makeEditor: @escaping @MainActor () -> any AnnotationEditing,
+    arbiter: DeviceArbiter
   ) {
     self.library = library
     self.panel = panel
     self.targeting = targeting
     self.access = access
     self.makeEditor = makeEditor
+    self.arbiter = arbiter
   }
 
   /// Ends a running session as if the user pressed Escape; the page's call answers
@@ -59,8 +63,11 @@ final class ScreenshotTaker {
   func cancel() { session?.cancel() }
 
   func capture() async throws(BridgeError) -> ScreenshotCaptureResult {
-    try claim()
-    defer { isCapturing = false }
+    let screen = try claim()
+    defer {
+      isCapturing = false
+      screen.release()
+    }
     switch try await runSession(reopening: nil) {
     case .cancelled:
       return .notOk(.init(reason: .cancelled))
@@ -81,8 +88,11 @@ final class ScreenshotTaker {
   /// Reopens `resourceId` for editing. The base image is ready before anything is shown, so
   /// a download that fails rejects the call without a session.
   func edit(resourceId: String) async throws(BridgeError) -> ScreenshotEditResult {
-    try claim()
-    defer { isCapturing = false }
+    let screen = try claim()
+    defer {
+      isCapturing = false
+      screen.release()
+    }
     guard CGPreflightScreenCaptureAccess() else {
       requestScreenAccess()
       return .notOk(.init(reason: .notPermitted))
@@ -101,9 +111,12 @@ final class ScreenshotTaker {
     }
   }
 
-  private func claim() throws(BridgeError) {
+  private func claim() throws(BridgeError) -> ResourceClaim {
     guard !isCapturing else { throw BridgeError("A screenshot is already being taken.") }
+    guard let screen = try? arbiter.tryClaim([.interactiveScreen], owner: .user(.screenshot))
+    else { throw BridgeError("Another action is using the screen; try again.") }
     isCapturing = true
+    return screen
   }
 
   /// One session from the panel's withdrawal to its return. Detection runs only for a new
@@ -158,19 +171,18 @@ final class ScreenshotTaker {
         regions.remember(
           capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
       }
-      Self.copy(capture)
+      arbiter.writeClipboard(as: .screenshot) { Self.copy(capture, to: $0) }
       return .cancelled
     }
   }
 
   /// Puts the annotated screenshot on the general pasteboard at the display's full pixel size,
   /// as PNG and TIFF (what most apps read), sized in points so it pastes at screen size.
-  private static func copy(_ capture: CaptureConfirmation) {
+  private static func copy(_ capture: CaptureConfirmation, to pasteboard: NSPasteboard) {
     let image = NSBitmapImageRep(cgImage: capture.image)
     image.size = NSSize(
       width: CGFloat(capture.image.width) / capture.pixelScale,
       height: CGFloat(capture.image.height) / capture.pixelScale)
-    let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.declareTypes([.png, .tiff], owner: nil)
     if let png = image.representation(using: .png, properties: [:]) {

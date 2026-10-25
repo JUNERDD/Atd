@@ -19,6 +19,7 @@ import { openRunModel, type RunModel } from './run-model.js';
 import { rewindManager } from './session-rewind.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
+import { timePreparation } from './run-preparation-timing.js';
 
 /**
  * What every run session of a task stands on, whichever path built it (pi-session.ts for the full
@@ -52,7 +53,7 @@ export async function openSessionBase(
   await mkdir(sessionsDir, { recursive: true });
   await mkdir(cwd, { recursive: true });
   await mkdir(loaderCwd, { recursive: true });
-  const runModel = await openRunModel(ctx.paths, run);
+  const runModel = await timePreparation('model_runtime', () => openRunModel(ctx.paths, run));
   const settings = SettingsManager.inMemory(
     {
       ...REQUEST_POLICY,
@@ -114,43 +115,49 @@ export async function buildRunSession(
       extensionFactories: spec.extensionFactories,
     }),
   );
-  await loader.reload();
+  await timePreparation('resource_loader', () => loader.reload());
   if (loader.getExtensions().errors.length)
     throw new Error('An Agent extension could not be loaded.');
-  const created = await createAgentSession({
-    cwd: base.cwd,
-    agentDir: ctx.paths.agentDir,
-    modelRuntime: base.runModel.models,
-    model: base.runModel.model,
-    settingsManager: base.settings,
-    sessionManager: base.manager,
-    resourceLoader: loader,
-    tools: spec.tools,
-    thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
-  });
+  const created = await timePreparation('agent_session', () =>
+    createAgentSession({
+      cwd: base.cwd,
+      agentDir: ctx.paths.agentDir,
+      modelRuntime: base.runModel.models,
+      model: base.runModel.model,
+      settingsManager: base.settings,
+      sessionManager: base.manager,
+      resourceLoader: loader,
+      tools: spec.tools,
+      thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
+    }),
+  );
   spec.created?.(created.session);
-  await created.session.bindExtensions({
-    mode: 'json',
-    onError: (error) => {
-      ctx.log.warn('Extension error.', { taskId, error: error.error });
-    },
-  });
+  await timePreparation('bind_extensions', () =>
+    created.session.bindExtensions({
+      mode: 'json',
+      onError: (error) => {
+        ctx.log.warn('Extension error.', { taskId, error: error.error });
+      },
+    }),
+  );
   // Pi compacts before sending a prompt, before its agent run starts, and a Stop meanwhile aborts
   // only that compaction; the prompt would still be sent. Stop it as soon as its run starts.
   created.session.subscribe((event) => {
     if (event.type === 'agent_start' && deps.stopRequested()) void created.session.abort();
   });
-  const state = await bindLiveState({
-    ctx,
-    taskId,
-    session: created.session,
-    manager: base.manager,
-    runModel: base.runModel,
-    compaction: base.compaction,
-    bindingKey: spec.bindingKey,
-    currentRunId: deps.currentRunId,
-    firstRunId: firstRun.id,
-  });
+  const state = await timePreparation('attach_live_state', () =>
+    bindLiveState({
+      ctx,
+      taskId,
+      session: created.session,
+      manager: base.manager,
+      runModel: base.runModel,
+      compaction: base.compaction,
+      bindingKey: spec.bindingKey,
+      currentRunId: deps.currentRunId,
+      firstRunId: firstRun.id,
+    }),
+  );
   markInvocation(base.manager, run);
   state.transcript.reproject(true);
   state.context.update();

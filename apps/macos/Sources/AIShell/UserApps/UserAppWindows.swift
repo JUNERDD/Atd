@@ -30,12 +30,17 @@ final class UserAppWindows {
     [weak self] webView in self?.host(for: webView)?.session
   }
   private(set) lazy var bridge = UserAppBridge(
-    services: services, windows: self, confirmations: confirmations)
+    services: services, windows: self, confirmations: confirmations, arbiter: arbiter)
+  private let arbiter: DeviceArbiter
 
-  init(services: ShellServices, storage: UserAppStorage, confirmations: ConfirmationPrompter) {
+  init(
+    services: ShellServices, storage: UserAppStorage, confirmations: ConfirmationPrompter,
+    arbiter: DeviceArbiter
+  ) {
     self.services = services
     self.storage = storage
     self.confirmations = confirmations
+    self.arbiter = arbiter
   }
 
   /// The host whose current web view is `webView`; nil for any other web view.

@@ -117,6 +117,18 @@ final class StubService: @unchecked Sendable {
     }
   }
 
+  /// A view document that posts its origin to the page, with the directive that stopped its fetch
+  /// back to this stub, which a network-less view must never make.
+  static func viewDocument(host: String) -> String {
+    """
+    <!doctype html><html><body><script>
+    document.addEventListener('securitypolicyviolation', (event) => parent.postMessage(
+      { origin: self.origin, blocked: event.effectiveDirective }, '*'));
+    fetch('http://\(host)/v1/probe').catch(() => {});
+    </script></body></html>
+    """
+  }
+
   private func respond(to request: StubHTTPRequest) -> (Int, [String: String], Data) {
     let target = request.target.split(separator: "?", maxSplits: 1).first.map(String.init) ?? ""
     if !target.hasPrefix("/v1/") { return respondAsDevServer(target) }
@@ -152,6 +164,15 @@ final class StubService: @unchecked Sendable {
       )
     case ("GET", "/v1/hang"):
       return (-1, [:], Data())
+    case ("GET", "/v1/tasks/t1/views/c1"):
+      // Plain text on purpose: the shell answers a document with its own headers.
+      let host = request.headers["host"] ?? ""
+      return (200, ["Content-Type": "text/plain"], Data(Self.viewDocument(host: host).utf8))
+    case ("GET", let other) where other.hasPrefix("/v1/tasks/t1/views/"):
+      return (
+        404, ["Content-Type": "application/json"],
+        Data(#"{"error":{"code":"not_found","message":"No such view."}}"#.utf8)
+      )
     default:
       let echo: [String: Any] = [
         "method": request.method, "target": request.target, "bodyBytes": request.body.count,

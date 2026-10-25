@@ -105,14 +105,21 @@ extension NSRect {
 /// (``NativeMaterialView``, Liquid Glass on macOS 26) behind a transparent web view, which stays
 /// off the glass's rim (``GlassRimClipView``).
 enum GlassBackground {
+  /// The window's content view.
   static func make(content: NSView) -> NSView {
+    material(content: content).view
+  }
+
+  /// The material itself, for an owner that pins its scheme later (``GlassSurface/pin(_:to:)``);
+  /// its ``NativeMaterialView/view`` is the window's content view.
+  static func material(content: NSView) -> NativeMaterialView {
     let material = NativeMaterialView(.window)
     if #available(macOS 26, *) {
       material.contentView = GlassRimClipView(content: content)
     } else {
       material.contentView = content
     }
-    return material.view
+    return material
   }
 }
 

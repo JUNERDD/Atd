@@ -8,7 +8,7 @@ import type { NativeBridge } from '../native-bridge/client';
  */
 export function nativeNotifications(
   native: NativeBridge,
-  surface: 'panel' | 'settings' | 'onboarding',
+  surface: 'panel' | 'settings' | 'onboarding' | 'view',
 ): NotificationsBridge {
   return {
     state: () => native.call('notifications.state', {}),

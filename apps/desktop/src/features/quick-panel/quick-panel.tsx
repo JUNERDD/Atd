@@ -9,6 +9,7 @@ import type { ComposerEditorCommands } from '../composer-editor/editor-commands'
 import type { QuickCommandActions } from './quick-commands';
 import { QuickPanelSurface } from './quick-panel-surface';
 import type { TriggerState } from './trigger';
+import { useApplicationList } from './use-application-list';
 import { useMentionView } from './use-mention-view';
 import { isQuickPanelOpen, type QuickPanelAria, type QuickPanelHandle } from './use-quick-panel';
 import { useMemoryList } from './use-saved-groups';
@@ -86,6 +87,7 @@ export function QuickPanel({
   });
   const { snapshot } = useAgent();
   const memories = useMemoryList(open && mention !== null);
+  const applications = useApplicationList(open && mention !== null);
   const slashView = useSlashView({
     trigger: slash,
     running,
@@ -110,6 +112,7 @@ export function QuickPanel({
     mcp: lists.mcp,
     commands: snapshot?.commands ?? [],
     memories,
+    applications,
     files: true,
   });
   const view = slash ? slashView : mentionView;

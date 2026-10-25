@@ -30,7 +30,9 @@ public enum UpstreamFrame: Sendable {
 }
 
 /// The upstream frame types a page may send; everything else is the shell's alone
-/// (`capability.register`, `capability.result`) or unknown.
+/// (`capability.register`, `capability.result`, and every `computer.*` frame: `computer.hello`,
+/// `computer.reply`, `computer.progress`, `computer.takeover`) or unknown. The service trusts the
+/// computer frames only from the shell's own host link, so none may ever be added here.
 public enum UpstreamFrameType: String, CaseIterable, Sendable {
   case subscribe
   case ping

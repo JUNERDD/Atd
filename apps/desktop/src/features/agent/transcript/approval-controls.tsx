@@ -8,6 +8,7 @@ import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
+import { HitlActions } from '../../../components/hitl-actions';
 import { DetailBox } from './detail-box';
 import { scopeKey } from './permission-copy';
 
@@ -57,7 +58,8 @@ export function ApprovalControls({
   // one: never for bash or MCP, which it would downgrade to once.
   const bash = request.scope.tool === 'bash';
   const allowlistEntry = bash ? request.allowlistEntry : undefined;
-  const sessionGrant = !bash && request.scope.tool !== 'mcp';
+  const access = request.scope.tool === 'computerAccess' ? request.scope : null;
+  const sessionGrant = !bash && request.scope.tool !== 'mcp' && !access;
   // Why the auto tier's review handed this call to the user. The reason is model-written runtime
   // text in the user's language, so it is shown as-is and wraps inside the card.
   const review = request.review;
@@ -126,13 +128,34 @@ export function ApprovalControls({
       {bash && (
         <p className="text-xs text-muted-foreground">{t('permission.bash.notAllowlisted')}</p>
       )}
+      {access && (
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p>
+            {t(access.persistence === 'saved' ? 'permission.accessSaved' : 'permission.accessRun', {
+              target: access.target.label,
+            })}
+          </p>
+          {/* A website stays in the background; an app may be brought forward for a step that
+              nothing in the background can do. */}
+          <p>
+            {t(
+              access.target.kind === 'browser'
+                ? 'permission.accessBackground'
+                : 'permission.accessApplication',
+            )}
+          </p>
+          {access.target.kind === 'browser' && (
+            <p className="wrap-anywhere">{access.target.allowedOrigins.join(', ')}</p>
+          )}
+        </div>
+      )}
       {review && <p className="text-xs text-muted-foreground">{reviewNote}</p>}
       {detail ? (
         <DetailBox variant="output" size="sm" copyText={detail} className="approval-detail">
           <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{preview}</pre>
         </DetailBox>
       ) : null}
-      <div className="approval-actions">
+      <HitlActions error={error}>
         {/* One variant for every decision: none is the recommended answer, and the focused one
             already shows the Enter target through its focus ring. */}
         <Button
@@ -142,7 +165,11 @@ export function ApprovalControls({
           onClick={() => void respond('once')}
           onKeyDown={onControlsKeyDown}
         >
-          {bash ? t('permission.bash.allowOnce') : t('permission.allowOnce')}
+          {access
+            ? t('permission.allowAccess')
+            : bash
+              ? t('permission.bash.allowOnce')
+              : t('permission.allowOnce')}
           <ShortcutHint accelerator="Enter" />
         </Button>
         {allowlistEntry ? (
@@ -191,12 +218,7 @@ export function ApprovalControls({
           {bash ? t('permission.bash.deny') : t('permission.decline')}
           <ShortcutHint accelerator="Escape" />
         </Button>
-      </div>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
+      </HitlActions>
     </div>
   );
 }

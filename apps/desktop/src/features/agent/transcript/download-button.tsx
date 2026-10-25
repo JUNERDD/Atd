@@ -23,9 +23,9 @@ type SaveRequest = { name: string; content: SaveContent };
 
 /**
  * Saves through the shell's save panel with the same brief feedback as copying: `saved` swaps the
- * button's icon and label and pins its tooltip until the pointer leaves or the feedback ends. A
- * cancelled panel changes nothing; a file that cannot be produced shows `failure`, and a refused
- * or failed save shows the shell's message.
+ * button's icon and label and pins it shown (with its tooltip, where it has one) until the pointer
+ * leaves or the feedback ends. A cancelled panel changes nothing; a file that cannot be produced
+ * shows `failure`, and a refused or failed save shows the shell's message.
  */
 function useSaveFeedback(failure?: string) {
   const [saved, setSaved] = useState(false);
@@ -140,8 +140,7 @@ export function DiagramDownloadMenu({
       <DropdownMenuTrigger asChild>
         <IconButton
           label={saved ? t('transcript.code.saved') : t('transcript.diagram.download')}
-          tooltipPinned={pinned}
-          tooltipDismissOnClick
+          tooltip={false}
           onPointerLeave={unpin}
           // Also shown while its menu is open, which moves focus out of the `group` box.
           className={cn(

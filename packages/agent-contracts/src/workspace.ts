@@ -2,6 +2,8 @@ import { Type, type Static } from 'typebox';
 import { PermissionTierSchema } from './confirms.js';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
+import { ModelSelectionSchema } from './task.js';
+import { ViewInitiativeSchema } from './views.js';
 
 /**
  * Workspace-level contracts every client shares: the user settings the service owns, the browser
@@ -149,6 +151,8 @@ export const UserSettingsSchema = Type.Object(
   {
     language: Type.Union([AppLanguageSchema, Type.Null()]),
     appearance: Type.Union([AppAppearanceSchema, Type.Null()]),
+    /** Null follows the current task model; a selection is only for read-only screen analysis. */
+    computerVisionModel: Type.Union([ModelSelectionSchema, Type.Null()]),
     /** Tier a new task freezes at creation; existing tasks keep their own. */
     permissionTier: PermissionTierSchema,
     /** The user shell allowlist, in the user's order; the operator env list is never included. */
@@ -166,6 +170,8 @@ export const UserSettingsSchema = Type.Object(
      * the typing effect is first turned on and takes the animation with it.
      */
     commandTypingAnimation: Type.Union([Type.Boolean(), Type.Null()]),
+    /** How readily the agent shows interactive views (`VIEW_INITIATIVES`); runs freeze it. */
+    viewInitiative: ViewInitiativeSchema,
     /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
     /** An interrupted guide resumes here; null starts with the intro. */
@@ -194,12 +200,14 @@ export const PatchSettingsRequestSchema = Type.Object(
   {
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
+    computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
     commandTyping: Type.Optional(Type.Boolean()),
     commandTypingAnimation: Type.Optional(Type.Boolean()),
+    viewInitiative: Type.Optional(ViewInitiativeSchema),
     onboardingCompleted: Type.Optional(Type.Boolean()),
     onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */
@@ -239,6 +247,8 @@ export const InvalidateScopeSchema = Type.Union([
   Type.Literal('automations'),
   /** The pending task notices changed (`/v1/task-notices`); only the shell reads them. */
   Type.Literal('taskNotices'),
+  /** An add-on's install state changed (`/v1/addons`): a phase, the active install or an error. */
+  Type.Literal('addons'),
 ]);
 export type InvalidateScope = Static<typeof InvalidateScopeSchema>;
 

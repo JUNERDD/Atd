@@ -46,7 +46,10 @@ extension ShellController {
     guard let front, await TextWriter.bringForward(front, reassert: true) else {
       return refused(.targetGone)
     }
-    guard let target = await summoner.writeTargets.capture(after: .unread) else {
+    // Replace is an explicit selection action too. Opaque editors need the same copy fallback
+    // as a command launch; an AX-only capture would lose both the text and its cell type here.
+    let selection = mode == .selection ? await summoner.readSelection() : .unread
+    guard let target = await summoner.writeTargets.capture(after: selection) else {
       return refused(.targetGone)
     }
     guard target.writable else { return refused(.failed) }

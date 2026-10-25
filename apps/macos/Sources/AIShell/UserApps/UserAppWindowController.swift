@@ -3,11 +3,12 @@ import AppKit
 
 /// One user app's window, titled with the app's name, in the material its version asks for
 /// (``UserAppRuntime/Surface``):
-/// - glass: the settings window's recipe. The glass background (``GlassBackground``) owns the
-///   clipping, edge, shadow and desktop blur; the transparent 52pt unified title bar
-///   (``UnifiedTitleBar``) lies over the page, which paints the fill and lays its first row out on
-///   the bar. The content view is the whole window, so the app's size includes that row. No full
-///   screen: glass over a full-screen Space has nothing behind it.
+/// - glass: the settings window's layout on the computer-use monitor's glass. The window glass,
+///   pinned to the page's color scheme (``UserAppGlass``), owns the clipping, edge, shadow and
+///   desktop blur; the transparent 52pt unified title bar (``UnifiedTitleBar``) lies over the
+///   page, which paints the fill and lays its first row out on the bar. The content view is the
+///   whole window, so the app's size includes that row. No full screen: glass over a full-screen
+///   Space has nothing behind it.
 /// - opaque: a standard titled, resizable, opaque window; the page paints its own surface below
 ///   the native title bar.
 ///
@@ -17,6 +18,8 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
   let host: UserAppHost
   private let window: NSWindow
   private let storage: UserAppStorage
+  /// A glass window's background; nil for an opaque one.
+  private var glassBackground: UserAppGlass?
   /// Runs once the window closed and its web view is down.
   var onClose: ((_ appId: String) -> Void)?
 
@@ -53,7 +56,10 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
       window.backgroundColor = .clear
       window.hasShadow = true
       window.collectionBehavior = [.fullScreenNone]
-      window.contentView = GlassBackground.make(content: host.container)
+      let background = UserAppGlass(content: host.container)
+      host.onColorScheme = { [weak background] dark in background?.pin(dark: dark) }
+      window.contentView = background.view
+      glassBackground = background
     } else {
       window.contentView = host.container
     }

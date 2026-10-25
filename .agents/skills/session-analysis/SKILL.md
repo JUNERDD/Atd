@@ -69,6 +69,15 @@ When the evidence points at the app rather than the model — the agent's tools,
 
 Keep model-side and app-side causes apart. Change code only when the user asks for a fix.
 
+For latency questions, distinguish `app-inference` from `app-generation` and `app-thinking`.
+`app-inference.firstOutputMs` measures from Pi's `turn_start` to the first content delta or complete
+output part, including request/context preparation and provider waiting; its `durationMs` ends with
+that assistant message. It excludes tool execution and between-turn preparation such as compaction.
+An absent `firstOutputMs` means no output arrived, not a zero wait. Failed or aborted messages keep
+their measured wait; an inference ending before an assistant message is marked `interrupted`.
+Streaming generation and thinking overlap and must not be added together. Older sessions lack
+`app-inference`; do not report their unclassified gaps as measured first-output waits.
+
 ## Answer
 
 - Write in the user's language, and lead with the direct answer to the intent.

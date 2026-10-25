@@ -15,6 +15,7 @@ import { EMPTY_QUEUE, type Block, type QueueState } from '../client/agent/transc
 import type { Connection, ModelReference } from '../client/providers/schema';
 import type { RunPolicy } from '../client/agent/run-policy';
 import { normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
+import { restoreQueue } from '../features/composer-editor/restore-queue';
 import { draftFiles } from '../features/composer-editor/draft-attachments';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
@@ -25,6 +26,7 @@ import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel
 import { IconButton } from './icon-button';
 import { ComposerAttachMenu } from './composer-attach-menu';
 import { ComposerConfiguration } from './composer-configuration';
+import { useComposerDispatch, type ComposerDispatch } from './composer-dispatch';
 import { ComposerPopover } from './composer-popover';
 import { useComposerAttach } from './use-composer-attach';
 import { useOverlayFooter } from './use-overlay-footer';
@@ -34,6 +36,7 @@ import { compactBlock } from '../features/agent/compaction/compact-availability'
 import { useCompactTask } from '../features/agent/compaction/use-compact-task';
 import { showErrorToast } from './toast-store';
 import './composer.css';
+import { ComputerLiveView } from '../features/computer/computer-live-view';
 
 export interface ComposerProps {
   policy: RunPolicy;
@@ -65,13 +68,15 @@ export interface ComposerProps {
   quickActions: QuickActions;
   /** Snapshot tasks: `@` conversations and recently attached files. */
   tasks: readonly AgentTask[];
-  /** The panel body below the header, which the quick panel must not leave. */
+  /** The panel body below the header, which the composer's popovers must not leave. */
   overlayBoundary: Element | null;
   /**
    * Hides the composer without unmounting it, while a read-only view (a subagent's transcript)
    * covers the task: the draft, the open popover state and the focus-return target survive.
    */
   hidden?: boolean;
+  /** A new chat's send under way: a captured draft fades while the live draft awaits the result. */
+  dispatch?: ComposerDispatch | null;
 }
 
 const NO_BLOCKS: readonly Block[] = [];
@@ -125,6 +130,7 @@ export function Composer({
   tasks,
   overlayBoundary,
   hidden = false,
+  dispatch = null,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -201,8 +207,8 @@ export function Composer({
       // Restore what the service withdrew, not the last queue shown: Pi may have delivered an
       // item in the meantime, and a pending steer ("send now") is withdrawn too.
       const unsent = await onStop();
-      const restored = [...unsent.steering, ...unsent.followUp];
-      if (restored.length) setText(joinDraft(draft.text, restored.join('\n')));
+      const restored = restoreQueue(draft, unsent);
+      if (restored !== draft) onChange(restored);
     } catch (error) {
       showErrorToast(error);
     }
@@ -234,8 +240,10 @@ export function Composer({
     aria,
   });
   const { room, attach } = useComposerAttach(draft, commands);
+  const surface = useComposerDispatch(dispatch, expanded);
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
+      <ComputerLiveView taskId={taskId} hidden={hidden} />
       <form
         className="composer"
         aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}
@@ -259,6 +267,7 @@ export function Composer({
           live={active && status !== 'queued'}
           compacting={context?.compacting ?? false}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
+          boundary={overlayBoundary}
         >
           <QuickPanel
             trigger={trigger}
@@ -285,7 +294,7 @@ export function Composer({
             tasks={tasks}
             boundary={overlayBoundary}
           >
-            <div className="composer-surface glass-control surface-glass" data-expanded={expanded}>
+            <div className="composer-surface glass-control surface-glass" {...surface}>
               <ScrollArea
                 className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"

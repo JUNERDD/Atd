@@ -1,17 +1,22 @@
-import { History, Settings } from 'lucide-react';
+import { History, Search, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TaskContextState } from '@atd/agent-contracts';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { PanelTitle } from './panel-title';
 import { SessionMenu } from './session-menu';
+import { useConversationControls } from './transcript/conversation-controls';
+import { HintButton } from './transcript/find/hint-button';
+import { FIND_ACCELERATOR } from './transcript/find/use-find-shortcut';
 import { UpdateButton } from './update-button';
 import type { PanelView } from './use-task-panel';
 
 /**
  * The task panel's header on the unified title bar: the brand mark (a new chat), the view's title
  * (a conversation's renames in place), and the controls — updates, the conversation's session
- * menu, Tasks and Settings. Tasks toggles its view against the new chat.
+ * menu, find in the conversation, Tasks and Settings. Find shows while that conversation is the
+ * one on screen and uncovered (it publishes its controls). Tasks toggles its view against the new
+ * chat.
  */
 export function PanelHeader({
   view,
@@ -35,6 +40,8 @@ export function PanelHeader({
   onOpenSettings: () => void;
 }) {
   const { t } = useTranslation('panel');
+  const controls = useConversationControls();
+  const find = task && controls?.taskId === task.id ? controls.openFind : null;
   return (
     <header className="panel-header">
       <IconButton
@@ -50,6 +57,17 @@ export function PanelHeader({
       <nav className="header-controls" aria-label={t('header.controlsLabel')}>
         <UpdateButton />
         {task && <SessionMenu task={task} context={context} />}
+        {find && (
+          <HintButton
+            label={t('header.find')}
+            accelerator={FIND_ACCELERATOR}
+            variant="glass-ghost"
+            className="header-button"
+            onClick={find}
+          >
+            <Search />
+          </HintButton>
+        )}
         <IconButton
           label={t('header.tasks')}
           variant="glass-ghost"

@@ -1,7 +1,6 @@
-# SwiftPM
+# SwiftPM. Package.resolved is checked in: it pins the transitive dependencies.
 .build/
 .swiftpm/
-Package.resolved
 # XcodeGen output; project.yml is the source of truth
 *.xcodeproj/
 App/Info.plist

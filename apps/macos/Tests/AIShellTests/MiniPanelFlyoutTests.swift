@@ -15,12 +15,13 @@ struct MiniPanelFlyoutTests {
       MiniPanelSetCommandsParams.Command(id: "command-\($0)", name: "Command \($0)")
     }
     model.commands = commands
-    model.setPresence(.rows, MiniPanelPresence(shown: true))
     let bounds = CGRect(x: 0, y: 0, width: 240, height: 240)
+    model.popover.place(rest: bounds, anchor: .zero, reducedMotion: true)
+    model.popover.open()
     let view = NSHostingView(
-      rootView: MiniPanelFlyout(
-        model: model, card: MiniPanelGlassRect(bounds, corner: 12, in: bounds),
-        rest: bounds, animation: nil))
+      rootView: MiniPanelPopover(state: model.popover, lane: bounds) { presentation in
+        MiniPanelFlyout(model: model, presentation: presentation)
+      })
     view.frame = bounds
     let window = NSWindow(
       contentRect: bounds, styleMask: .borderless, backing: .buffered, defer: false)

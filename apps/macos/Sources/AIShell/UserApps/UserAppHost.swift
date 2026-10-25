@@ -32,9 +32,10 @@ private struct WindowState: Equatable {
 /// A glass window's page (``UserAppRuntime/Surface/glass``) also gets what the renderer's pages
 /// get on the same window material: the two private WebKit settings (``WebKitPrivate``), so the
 /// page is transparent over the window's glass and its overlays render WebKit's in-page system
-/// glass; the window state on its root element, from the isolated `.defaultClient` world; and the
-/// drag regions of its title bar strip (``UserAppPageScripts``). An opaque window's page gets none
-/// of them.
+/// glass; from the isolated `.defaultClient` world, the window state on its root element and the
+/// report of its color scheme, which the window's glass takes (``UserAppGlass``); and the drag
+/// regions of its title bar strip (``UserAppPageScripts``). An opaque window's page gets none of
+/// them.
 ///
 /// Navigation is locked: the main frame stays on `ai-userapp://<appId>/`, subframes never load,
 /// new windows are never created, and a clicked web link goes to the browser only after the
@@ -55,10 +56,16 @@ final class UserAppHost: NSObject {
   /// Runs once, when the first page can be shown: on its `app.ready`, a second after the main
   /// frame finished loading (a page that never posts it), or when loading failed.
   var onFirstReady: (() -> Void)?
+  /// A glass page's color scheme whenever it reports another: true for dark.
+  var onColorScheme: ((_ dark: Bool) -> Void)? {
+    get { colorScheme.onChange }
+    set { colorScheme.onChange = newValue }
+  }
 
   private let schemeHandler: UserAppSchemeHandler
   private let rules: WKContentRuleList
   private let bridge: UserAppBridge
+  private let colorScheme: UserAppColorSchemeHandler
   private var crashes: [ContinuousClock.Instant] = []
   /// A glass page's window state; inactive until the window first becomes key.
   private var state: WindowState
@@ -76,10 +83,11 @@ final class UserAppHost: NSObject {
     self.schemeHandler = schemeHandler
     self.rules = rules
     self.bridge = bridge
+    colorScheme = UserAppColorSchemeHandler(appId: runtime.appId)
     state = WindowState(active: false, reduceTransparency: ReduceTransparencyObserver.isReduced)
     webView = Self.makeWebView(
       surface: runtime.surface, state: state, dataStore: dataStore, rules: rules,
-      schemeHandler: schemeHandler, bridge: bridge)
+      schemeHandler: schemeHandler, bridge: bridge, colorScheme: colorScheme)
     super.init()
     install(webView)
     if surface == .glass {
@@ -165,7 +173,8 @@ final class UserAppHost: NSObject {
 
   private static func makeWebView(
     surface: UserAppRuntime.Surface, state: WindowState, dataStore: UUID,
-    rules: WKContentRuleList, schemeHandler: UserAppSchemeHandler, bridge: UserAppBridge
+    rules: WKContentRuleList, schemeHandler: UserAppSchemeHandler, bridge: UserAppBridge,
+    colorScheme: UserAppColorSchemeHandler
   ) -> UserAppWebView {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: dataStore)
@@ -176,6 +185,11 @@ final class UserAppHost: NSObject {
       UserAppMessageHandler(bridge: bridge), contentWorld: .page,
       name: UserAppBridge.messageHandler)
     addUserScripts(to: controller, surface: surface, state: state)
+    if surface == .glass {
+      // Only the shell's isolated world, where its script runs, has this handler.
+      controller.add(
+        colorScheme, contentWorld: .defaultClient, name: UserAppPageScripts.colorSchemeHandler)
+    }
     configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
     // A glass page: in-page Liquid Glass for its overlays (set before the view exists), and a
     // transparent page over the window's glass, as the renderer's (spike S5, decision R5).
@@ -199,7 +213,7 @@ final class UserAppHost: NSObject {
     messageHandler: UserAppBridge.messageHandler)
 
   /// The document-start scripts: the error capture on every page; on a glass page also the drag
-  /// regions of its title bar strip and its window's `state`.
+  /// regions of its title bar strip, its window's `state` and the report of its color scheme.
   private static func addUserScripts(
     to controller: WKUserContentController, surface: UserAppRuntime.Surface, state: WindowState
   ) {
@@ -214,6 +228,7 @@ final class UserAppHost: NSObject {
     atStart(
       UserAppPageScripts.windowState(
         active: state.active, reduceTransparency: state.reduceTransparency), .defaultClient)
+    atStart(UserAppPageScripts.colorScheme, .defaultClient)
   }
 
   private func install(_ webView: UserAppWebView) {
@@ -238,7 +253,7 @@ final class UserAppHost: NSObject {
     tearDown()
     let replacement = Self.makeWebView(
       surface: surface, state: state, dataStore: dataStore, rules: rules,
-      schemeHandler: schemeHandler, bridge: bridge)
+      schemeHandler: schemeHandler, bridge: bridge, colorScheme: colorScheme)
     replacement.dragRegions = old.dragRegions
     webView = replacement
     install(replacement)

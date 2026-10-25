@@ -93,6 +93,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
     const connection: ServiceConnection = {
       connectionId: randomUUID(),
       provider: body.provider,
+      ...(body.presetId ? { presetId: body.presetId } : {}),
       name: body.name,
       baseUrl: body.baseUrl,
       authType: body.authType,

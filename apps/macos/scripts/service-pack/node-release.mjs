@@ -50,7 +50,7 @@ async function download(url) {
  * read and before a download is cached, so a corrupted or replaced cache fails the pack instead of
  * being shipped.
  */
-async function cached(file, url, verify) {
+export async function cached(file, url, verify) {
   let existing = null;
   try {
     existing = await readFile(file);

@@ -3,12 +3,15 @@ import {
   APP_APPEARANCES,
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
+  VIEW_INITIATIVES,
   type AppAppearance,
   type AppLanguage,
   type ExcludedApp,
+  type ModelSelection,
   type SelectionToolbarActivation,
   type SelectionToolbarKey,
   type SelectionToolbarSettings,
+  type ViewInitiative,
 } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
 import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/session-handoff';
@@ -52,12 +55,15 @@ export type {
   SelectionToolbarActivation,
   SelectionToolbarKey,
   SelectionToolbarSettings,
+  ViewInitiative,
 };
 export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_KEYS,
+  VIEW_INITIATIVES,
 } from '@atd/agent-contracts';
 
 /**
@@ -95,6 +101,10 @@ export function isAppLanguage(value: unknown): value is AppLanguage {
   return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);
 }
 
+export function isViewInitiative(value: unknown): value is ViewInitiative {
+  return typeof value === 'string' && (VIEW_INITIATIVES as readonly string[]).includes(value);
+}
+
 export interface SettingsSnapshot {
   connections: Connection[];
   defaultConnectionId: string | null;
@@ -106,6 +116,8 @@ export interface SettingsSnapshot {
   language: AppLanguage;
   /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
   appearance: AppAppearance | null;
+  /** Null reads screens with the task model; a selection uses a separate image model. */
+  computerVisionModel: ModelSelection | null;
   shortcuts: ShortcutBindings;
   pinned: boolean;
   /** macOS window preference; the web client always reports false. */
@@ -165,6 +177,11 @@ export interface SettingsSnapshot {
    */
   commandTypingAnimation: boolean;
   /**
+   * How readily the agent shows interactive views (`VIEW_INITIATIVES`); each run freezes the level
+   * as it starts. The service's default until it loads.
+   */
+  viewInitiative: ViewInitiative;
+  /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
    */
@@ -208,6 +225,7 @@ export interface SettingsBridge {
   setLanguage: (language: AppLanguage) => Promise<SettingsSnapshot>;
   /** Pins the light or dark scheme; null follows the system. */
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
+  setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;
   setPermissionTier: (tier: PermissionTier) => Promise<SettingsSnapshot>;
@@ -228,6 +246,8 @@ export interface SettingsBridge {
   saveCommandTyping: (value: boolean) => Promise<SettingsSnapshot>;
   /** Sets whether written-back answers leave a trace over the field they land in. */
   saveCommandTypingAnimation: (value: boolean) => Promise<SettingsSnapshot>;
+  /** Sets how readily the agent shows interactive views; runs that start later use the new level. */
+  setViewInitiative: (level: ViewInitiative) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

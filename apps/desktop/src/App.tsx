@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Composer } from './components/composer';
+import { captureComposerContent } from './components/composer-content';
 import { FileDropOverlay } from './components/file-drop-overlay';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
@@ -25,6 +26,10 @@ import {
 } from './features/agent/transcript/subagent-context';
 import { PanelHeader } from './features/agent/panel-header';
 import { SideChatLayer } from './features/agent/side-chat/side-chat-layer';
+import { useNewChat } from './features/agent/use-new-chat';
+import { WaitingGlow } from './features/agent/waiting-glow/waiting-glow';
+import { WelcomePresence } from './features/agent/welcome-presence';
+import { MessageFlight } from './features/agent/message-flight';
 import { SideChatContext, sideChatItems } from './features/agent/side-chat/side-chats';
 import { TaskHistory } from './features/agent/task-history';
 import { AppEntries } from './features/apps/app-entries';
@@ -137,9 +142,23 @@ export function App() {
   useNewTaskRequest(newTask);
   // Declared outside the JSX, where the compiler memoizes each on its own inputs: the header and
   // the composer then keep them while streamed patches render the panel again.
-  const submitDraft = () => submit();
   const openSettingsWindow = () => void openSettings();
   const toggleView = (next: 'history') => setView(view === next ? 'new' : next);
+  // A new chat's message travels from the welcome's composer into its conversation, and the light
+  // behind the composer marks its first reply; a drill-in or a side chat over the conversation is a
+  // different conversation's view.
+  const newChat = useNewChat({
+    sending: pending,
+    view,
+    taskId,
+    detail: current.detail,
+    covered: child.childKey !== null || side.view !== null,
+  });
+  // The welcome's draft lifts out of the composer as its send starts.
+  const submitDraft = () => {
+    if (view === 'new') newChat.depart(captureComposerContent(panelBody));
+    return submit();
+  };
   const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
@@ -163,8 +182,9 @@ export function App() {
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
+                {(view === 'new' || view === 'task') && <WaitingGlow phase={newChat.waitPhase} />}
                 <ServiceBanner onOpenSettings={openSettingsWindow} />
-                {view === 'new' && (
+                <WelcomePresence shown={view === 'new'} {...newChat.welcome}>
                   <ScrollArea
                     className="panel-content"
                     viewportClassName="overlay-footer-fade"
@@ -190,7 +210,7 @@ export function App() {
                       {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
                     </section>
                   </ScrollArea>
-                )}
+                </WelcomePresence>
                 {view === 'history' && (
                   <TaskHistory tasks={agent.snapshot?.tasks ?? []} onChoose={openTask} />
                 )}
@@ -211,7 +231,7 @@ export function App() {
                 )}
                 {view === 'task' &&
                   (current.detail ? (
-                    <div className="task-stage">
+                    <div className="task-stage" {...newChat.stage}>
                       <SubagentContext value={subagents}>
                         <Transcript
                           detail={current.detail}
@@ -262,7 +282,7 @@ export function App() {
                       )}
                     </div>
                   ) : (
-                    <div className="task-stage">
+                    <div className="task-stage" {...newChat.stage}>
                       <ConversationPlaceholder label={t('header.loadingConversation')} />
                     </div>
                   ))}
@@ -271,7 +291,7 @@ export function App() {
                   <SubagentContext value={side.taskId ? side.subagents : subagents}>
                     <SideChatContext value={sideChats}>
                       <Composer
-                        key={`composer-${draftKey}-${draftRevision}`}
+                        key={`composer-${newChat.composerKey(draftKey)}-${draftRevision}`}
                         {...bound}
                         draft={draft}
                         policy={policy}
@@ -288,12 +308,14 @@ export function App() {
                         quickActions={quickActions}
                         tasks={agent.snapshot?.tasks ?? []}
                         overlayBoundary={panelBody}
+                        dispatch={newChat.dispatch}
                       />
                     </SideChatContext>
                   </SubagentContext>
                 )}
                 {/* Dropped files land in the draft whichever view is open. */}
                 <FileDropOverlay room={MAX_ATTACHMENTS - draftFiles(draft).length} />
+                {newChat.flight && <MessageFlight {...newChat.flight} root={panelBody} />}
               </div>
             </>
           )}

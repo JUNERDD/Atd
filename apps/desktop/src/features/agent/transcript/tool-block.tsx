@@ -7,6 +7,7 @@ import type { ConfirmationRequest } from '../../../client/agent/permission-schem
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { NestedConfirmation } from './codemode-call';
+import { ComputerForegroundTag } from './computer-outcome';
 import { mcpProxy } from './mcp-proxy';
 import { outcomeKey } from './permission-copy';
 import { PermissionNote, ToolBody } from './tool-body';
@@ -22,6 +23,7 @@ import {
 import { ToolRowSummary } from './tool-row-summary';
 import { toolSummary } from './tool-summary';
 import { presentTarget } from './tool-target';
+import { useComputerRow } from './use-computer-row';
 
 /** Tools whose target is a file or search subject, shown as the read-style chip. */
 const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep', 'find', 'ls']);
@@ -34,6 +36,7 @@ const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep'
  * the row shows only a decline, since rows carry no failure mark and it says why nothing ran.
  * A completed row adds a compact trailing summary of what the call did (`toolSummary`), so rows
  * of different tools read differently at a glance; commands and patterns read in the code face.
+ * A computer action the host completed in the foreground adds a Foreground tag at the same edge.
  */
 export function ToolBlock({
   block,
@@ -51,11 +54,14 @@ export function ToolBlock({
   const proxy = mcpProxy(block.name);
   const Icon = proxy ? Plug : toolIcon(block.name);
   const label = toolStepKey(block.name, block.args);
-  const title = label ? t(label) : (proxy?.tool ?? block.name);
+  // A computer call reads by its operation and the host's live phase (use-computer-row.ts).
+  const computer = useComputerRow(block);
+  const title = computer?.title ?? (label ? t(label) : (proxy?.tool ?? block.name));
   // A published app reads by its name and version (`Daily notes · v3`); its card follows at the
   // turn's end with the turn's other saved items (artifact-cards.tsx).
   const app = appDetails(block);
   const target =
+    (computer ? computer.target : null) ??
     (app ? `${app.name} · v${app.version}` : null) ??
     toolTarget(block.name, block.args) ??
     proxy?.server ??
@@ -79,14 +85,18 @@ export function ToolBlock({
   // A pending approval reads as tool name plus waiting text; the decision lives in the composer
   // popover. Settled calls carry a decline on the row and every outcome in the detail.
   const waiting = confirmation ? t('permission.waitingApproval') : null;
-  const meta =
-    waiting ?? (typeKey ? t(typeKey) : (rawTarget ?? declined ?? t(statusLabelKey(block.status))));
+  // A running computer call's title already says what happens, so it adds no status word.
+  const status = computer && block.status === 'running' ? '' : t(statusLabelKey(block.status));
+  const meta = waiting ?? (typeKey ? t(typeKey) : (rawTarget ?? declined ?? status));
   const mark =
     declined && meta !== declined ? (
       <ActivityRow.Meta className="permission-chip" title={declined}>
         {declined}
       </ActivityRow.Meta>
     ) : null;
+  // An action the host completed in the foreground carries a tag at the row's trailing edge, where
+  // the decline mark and the summary sit; the tag keeps its width and the target truncates first.
+  const delivery = computer?.foreground ? <ComputerForegroundTag /> : null;
   // The plain target, presented for its kind: code face, readable URL, full value in the tooltip.
   const shown = target !== null && meta === target ? presentTarget(block, target) : null;
   const metaText = shown?.text ?? meta;
@@ -126,6 +136,7 @@ export function ToolBlock({
           {metaText}
         </ActivityRow.Meta>
         {summary && <ToolRowSummary summary={summary} />}
+        {delivery}
         {mark}
       </>
     );

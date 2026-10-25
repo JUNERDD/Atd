@@ -1,17 +1,36 @@
 import AppKit
 import ServiceManagement
 
-/// Show in Dock and Open at Login, the two app-level preferences the settings page drives.
-enum AppPresence {
+/// The saved Dock preference and its temporary welcome-guide override, plus Open at Login.
+final class AppPresence {
+  private let defaults: UserDefaults
+  private static let showInDockKey = "app.showInDock"
+
+  init(defaults: UserDefaults) { self.defaults = defaults }
+
+  /// The user's preference, even while the welcome guide keeps the Dock icon visible.
+  var showInDock: Bool { defaults.bool(forKey: Self.showInDockKey) }
+
+  func setShowInDock(_ show: Bool, onboardingOpen: Bool) {
+    defaults.set(show, forKey: Self.showInDockKey)
+    applyDockVisibility(onboardingOpen: onboardingOpen)
+  }
+
+  /// Recomputes from the latest preference when the guide opens or closes; the override is
+  /// never saved. A closing guide disables focus restoration because its window can still be key.
+  func applyDockVisibility(onboardingOpen: Bool, restoreFocus: Bool = true) {
+    Self.applyShowInDock(showInDock || onboardingOpen, restoreFocus: restoreFocus)
+  }
+
   /// Info.plist starts the app as an agent (`LSUIElement`), so a hidden Dock icon never
   /// flashes at launch; showing it turns the app into a regular one at runtime. Becoming an
   /// agent again deactivates the app, so the window the user was in comes back to the front.
-  static func setShowInDock(_ show: Bool) {
+  private static func applyShowInDock(_ show: Bool, restoreFocus: Bool) {
     let policy: NSApplication.ActivationPolicy = show ? .regular : .accessory
     guard NSApp.activationPolicy() != policy else { return }
     let focused = NSApp.keyWindow
     NSApp.setActivationPolicy(policy)
-    if !show, let focused, focused.isVisible {
+    if !show, restoreFocus, let focused, focused.isVisible {
       NSApp.activate()
       focused.makeKeyAndOrderFront(nil)
     }

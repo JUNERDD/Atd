@@ -5,6 +5,15 @@ import {
   AutomationTriggerProblemSchema,
   AutomationTriggerSchema,
 } from './automation-triggers.js';
+import {
+  AutomationComputerFactsSchema,
+  ComputerGrantSchema,
+  ComputerHoldSchema,
+  ComputerTrialStateSchema,
+  ComputerRunReasonSchema,
+  ComputerStatusProblemSchema,
+} from './computer-grants.js';
+import { AutomationComputerPolicySchema } from './computer-recipes.js';
 import { PermissionTierSchema } from './confirms.js';
 import { MAX_FOLDERS } from './folders.js';
 import { Identifier } from './identifiers.js';
@@ -58,6 +67,8 @@ export const AutomationPolicySchema = Type.Object(
     /** A run still going after this long is stopped and counts as failed. */
     maxDurationMinutes: Type.Integer({ minimum: 5, maximum: 240 }),
     missedRuns: AutomationMissedRunsSchema,
+    /** Computer scope the runs request; acting on it needs `Automation.computerGrant`. */
+    computer: Type.Optional(AutomationComputerPolicySchema),
   },
   { additionalProperties: false },
 );
@@ -107,6 +118,8 @@ export const AutomationSchema = Type.Object(
     createdBy: Type.Union([Type.Literal('user'), Type.Literal('agent')]),
     createdAt: Type.String(),
     updatedAt: Type.String(),
+    /** Service-written approval of `policy.computer`; outside the draft, so no save sets it. */
+    computerGrant: Type.Optional(ComputerGrantSchema),
   },
   { additionalProperties: false },
 );
@@ -135,7 +148,8 @@ export type AutomationOutcome = Static<typeof AutomationOutcomeSchema>;
  * Failures before a task started: no usable model, the command is gone, turned off or needs input
  * an automation cannot give, a folder is unregistered or unreadable, or the service refused the
  * run. Failures after: the agent reported it could not finish, or the task run failed (`detail`
- * says how); a consolidation that fails says how in `detail` under `runFailed`.
+ * says how); a consolidation that fails says how in `detail` under `runFailed`. The computer
+ * reasons (`ComputerRunReasonSchema`) say why computer work was refused or left needing a person.
  */
 export const AutomationRunReasonSchema = Type.Union([
   Type.Literal('overlap'),
@@ -150,6 +164,7 @@ export const AutomationRunReasonSchema = Type.Union([
   Type.Literal('submitFailed'),
   Type.Literal('agentReported'),
   Type.Literal('runFailed'),
+  ...ComputerRunReasonSchema.anyOf,
 ]);
 export type AutomationRunReason = Static<typeof AutomationRunReasonSchema>;
 
@@ -178,6 +193,8 @@ export const AutomationRunSchema = Type.Object(
     finishedAt: Type.Optional(Type.String()),
     /** When the person opened the result. Skipped and silent runs are recorded as already read. */
     readAt: Type.Optional(Type.String()),
+    /** The run's durable computer facts; they decide its outcome over the task's status. */
+    computer: Type.Optional(AutomationComputerFactsSchema),
   },
   { additionalProperties: false },
 );
@@ -221,8 +238,12 @@ export const AutomationStatusSchema = Type.Object(
         Type.Literal('commandUnavailable'),
         Type.Literal('folderUnavailable'),
         Type.Literal('modelUnavailable'),
+        ...ComputerStatusProblemSchema.anyOf,
       ]),
     ),
+    /** Unresolved computer side effects block computer runs until a person resolves them. */
+    computerHold: Type.Optional(ComputerHoldSchema),
+    computerTrial: Type.Optional(ComputerTrialStateSchema),
   },
   { additionalProperties: false },
 );

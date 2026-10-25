@@ -16,6 +16,7 @@ import {
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
 import { artifactEntryOf } from './catalog-artifacts.js';
+import { withCurrentScope } from './computer/retired.js';
 import { readGenerationRecord, readThinkingRecord, thinkingBlockId } from './generation.js';
 import type { Logger } from './logging.js';
 import type { StepList } from './transcript-details/codemode.js';
@@ -105,16 +106,14 @@ export interface BlockLookups {
   artifacts: Map<string, ProductArtifact>;
 }
 
-/** The permission outcomes a session branch recorded. */
+/** The permission outcomes a session branch recorded; older records read as current ones. */
 export function collectPermissionLookups(branch: readonly ServiceBranchItem[]): PermissionLookups {
   const permissions: PermissionLookups = new Map();
   for (const item of branch) {
-    if (
-      item.type === 'custom' &&
-      item.customType === 'app-permission' &&
-      PermissionRecordValidator.Check(item.data)
-    )
-      permissions.set(item.data.toolCallId, { scope: item.data.scope, outcome: item.data.outcome });
+    if (item.type !== 'custom' || item.customType !== 'app-permission') continue;
+    const record = withCurrentScope(item.data);
+    if (PermissionRecordValidator.Check(record))
+      permissions.set(record.toolCallId, { scope: record.scope, outcome: record.outcome });
   }
   return permissions;
 }

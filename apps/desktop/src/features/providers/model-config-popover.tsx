@@ -10,6 +10,7 @@ import { ConfigBackHeader, EffortOptions } from './model-config-subviews';
 import { ContextOptions } from './model-context-view';
 import { ModelList } from './model-list';
 import { ProviderBrand } from './provider-brand';
+import { providerPresentation } from './provider-services';
 import { saveModelContext, useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
@@ -159,7 +160,11 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           }
           title={title}
         >
-          {connection && !scoped && <ProviderBrand provider={connection.provider} />}
+          {connection && !scoped && (
+            <ProviderBrand
+              provider={providerPresentation(connection)?.service.brand ?? connection.provider}
+            />
+          )}
           <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
           {model && effortText && (

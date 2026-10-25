@@ -121,15 +121,42 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // to create another one, that fixed values are never remembered, that a save's list replaces the
   // stored one (an id updates a shortcut, an omitted field keeps the list, [] removes it) and that
   // a shortcut's model is the user's to set in Settings.
-  skill('create-command', 3, [
+  // Version 4 says that computer use is no command field or tool: the user picks the registered
+  // targets for a run, editing a command that a computer automation runs voids that automation's
+  // authorization, and targets need the add-on of their engine installed first.
+  // Version 5 discovers the deferred management tool before using it.
+  // Version 7 drops `computer.flow` and foreground routes: a repeated route is described by its
+  // control labels and immediate checks, apps need no engine add-on (websites need the browser
+  // engine), and every step runs in the background, so a step the app offers no other way to do
+  // becomes one the run asks the user to do.
+  // Version 8: steps still run in the background, but when the user runs the command, a left
+  // click, key, typing or drag in an app that no background route can do runs briefly in the
+  // foreground: Atd sends that step's clicks and keys straight to the app without moving the
+  // user's pointer, then puts back the app and window the user had. Keys and typing in Chromium,
+  // Electron and CEF apps never run there; websites and automation-started runs stay in the
+  // background, and only a step neither way can do, such as one that needs the real pointer or a
+  // context menu, goes to the user.
+  // Version 9 distinguishes spreadsheet regions from text for selection write-back.
+  // Version 10 names the app-control permission in both current and earlier macOS settings.
+  skill('create-command', 10, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
+    '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
   ]),
   // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
   // asks through ask_user only when an automation runs, what each run produces and, for work that
   // writes or runs commands, what a run may do, and saves without a draft since the save confirms.
-  skill('create-automation', 2, [
+  // Version 3 lets the agent propose a computer scope (`policy.computer`) but never authorize it:
+  // the user runs a trial and authorizes it in Settings, a new one is saved switched off, and only
+  // the user resolves a hold; a scope's engines are add-ons the user installs, and without them a
+  // trial cannot run and each run fails naming the missing add-on.
+  // Version 4 discovers deferred automation and command management tools when needed.
+  // Version 5 says that app targets need no engine install (their engine is built in) but are not
+  // qualified for unattended runs, so a computer scope uses browser targets, whose engine is the
+  // add-on a trial and each run need.
+  skill('create-automation', 5, [
     'f390806f5e7adad1ce065e0c01c93ce4aaab1422bd7b776ffe6e05e1213f2fc1', // v0.7.0
+    'fedcfc22a10b6877f5deef0aa01cc31d31e6b12ae2b230463aead37f8264a0ea', // v0.8.0
   ]),
   // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
   // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
@@ -141,6 +168,99 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
     'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
   ]),
+  // Teaches the `computer` tool: act only on targets approved for the run, observe
+  // before and after every change, prove completion with an explicit postcondition rather than a
+  // dispatched click, never retry an unknown or partial submit, and propose but never authorize an
+  // automation's computer scope. Version 2 adds live setup diagnosis and screenshot/OCR
+  // verification; attended runs keep the tool even before targets or engines are available.
+  // Version 4 adds on-demand access: Manual lasts for the run; Auto and Always save approved
+  // target access for later attended tasks. Access approval resumes the pending tool call.
+  // Version 5 uses native menu state for playback verification instead of OCR icon guesses.
+  // Version 6 resolves application mentions by bundle id through the existing access flow.
+  // Version 7 uses returned nextObservation images and native regional newText baselines.
+  // Version 8 describes host-owned typing feedback without agent pacing or split tool calls.
+  // Version 9 bundles initial/recovery observations, exposes capture use-by deadlines, and
+  // prefers app-reported playback state over redundant progress checks for start/stop requests.
+  // Version 10 separates observed inputs from expected results and keeps advanced verification
+  // and automation guidance in references loaded only when those conditions apply.
+  // Version 12 adds system-selected screen sharing scoped to the current attended run.
+  // Version 14 is background only: the host picks each step's route and never takes the person's
+  // pointer, keyboard or screen; a step without a route is refused (`noBackgroundRoute` and its
+  // reason) and handed to the person, `targetInUse` waits for them, `needsConsent` points to
+  // preparing screen access in Settings and `disturbed` stops work on the target. Foreground
+  // delivery, takeover and `flow` are gone, capture points need a background visual
+  // qualification, and browser targets list no `click` step.
+  // Version 15 submits a text or search field with Return or a `submit` press, which the host
+  // sends as the field's own confirm action; a `click` press never submits a field. A click or
+  // drag on text no element holds names it with a `text` locator, which the host finds on screen
+  // when the step runs. An app that is still starting is requested again, never opened from a
+  // shell, which would bring it in front of the person. `targetInUse` means the target is in
+  // front of the person and they just typed, clicked or scrolled; Atd keeps working on a target
+  // they only watch. A navigation postcondition names text the destination is sure to show, since
+  // one that never holds leaves the action unconfirmed; app text checks ignore case and spacing
+  // and allow the view a moment to render; `press` needs an element, never recognized text; and
+  // an unconfirmed action whose original condition cannot hold goes to the person's Mark as
+  // checked on its step instead of retries, releases or new access requests.
+  // Version 16 scopes native `newText` for a submit or invoke by a pattern or region: the host
+  // refuses an unscoped one, which any text changing anywhere in the window would satisfy, and an
+  // automation scope whose app step submits with one is refused when saved.
+  // Version 17: after a `disturbed` action, the route it took stays off for that app until the
+  // person replies, and until Atd restarts once that route has disturbed them twice.
+  // Version 18 states the postcondition rule by step kind: every `click` (any locator, including
+  // `text`), `menu`, `drag`, `upload`, non-typing key and typed line break is an `invoke`, so it
+  // needs a postcondition, not only a screenshot click.
+  // Version 19: an app's `menuItemAvailable` postcondition is read for about eight seconds and a
+  // `textAppears` one for three, so a `wait` helps only a longer change; a submit or invoke whose
+  // `textAppears` text its observation already shows is refused before input; navigation names
+  // text the destination is sure to show, preferring a control it always offers over its title
+  // and never a recalled label or a variant of a title already on screen; and an action whose
+  // postcondition did not hold returns the observation read after its steps.
+  // Version 20: a step the host held back because the person is typing, clicking or scrolling
+  // right now is refused `inputInUse`, no longer `noBackgroundRoute`: it passes in a moment, so
+  // the agent waits a few seconds and tries again, never asking the person to stop or to do it.
+  // Version 21 adds the host's foreground fallback: in an interactive task, a left `click`, a
+  // `key`, a `type` or a `drag` with both ends on its window that no background route can do on
+  // an app (a route switched off after a disturbance included) is completed in the foreground
+  // within the same act: the host brings the app forward, sends the step's clicks and keys
+  // straight to it without moving the person's pointer, then puts back their app and window; the
+  // result's `delivery` says so, and the agent never requests it. Right clicks are refused (Atd
+  // never opens a context menu), and keys and text in Chromium, Electron and CEF apps, areas drawn
+  // without accessibility and steps that need the real pointer go to the person:
+  // `noBackgroundRoute` remains for these and the other limits the foreground does not lift, plus
+  // `covered` and `notActivated` when bringing the app forward failed, and a key or text refusal
+  // that names an input method asks the person to switch to a layout such as ABC. A
+  // `staleObservation` after part of a foreground step went out is an uncertain outcome. Person or
+  // unknown disturbances are only reported, and a raised window or an activated app a background
+  // route caused and the host repaired no longer stops the task. Websites, capture points,
+  // automation runs and trials stay in the background.
+  // Version 22 puts the routine decision order first, refreshes incomplete initial observations,
+  // uses text clicks directly when OCR has no element, and distinguishes observed input targets
+  // from expected result states. Known absolute conditions take priority over relative newText;
+  // an expected menu item can be absent or disabled in the baseline, but cannot already be available.
+  // Version 23 leaves new action ids to the service and reuses an existing id only to retrieve
+  // that action's recorded result; safe retries submit new acts without generating ids.
+  // Version 24 pairs playback clicks with a known menu-state transition; an existing title
+  // identifies content but cannot replace proof that playback started.
+  // Version 25 adds observed OCR refs, scoped navigation waits, requestAccess readiness waits
+  // and a final completion summary gated on a verified absolute result.
+  // Version 27 requires an explicit nullable completion decision and rejects existing literal
+  // newText patterns before input; unknown navigation wording uses a region without a pattern.
+  // Version 29 moves delivery and refusal details into an on-demand reference so the main
+  // skill stays below the load limit while retaining routine execution and safety boundaries.
+  // Version 31 makes conditional completion part of the original final input; extra state
+  // checks are reserved for missing evidence rather than repeated verified conditions.
+  // Version 32 keeps targets as an authorized-reference refresh, with stable tool declarations
+  // across access changes; discovery and new access still start with requestAccess.
+  // Version 33 distinguishes a window reference from an observed click or drag target.
+  // Version 34 explains fresh observations attached to no-input native click locator refusals.
+  // Version 35 attaches a fresh observation after an explicit single native wait times out.
+  // Version 36 distinguishes target-resolution refusals from startup loading.
+  skill('computer-use', 36, []),
+  // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
+  // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
+  // write messages that read as the user's own; close every loop with `update_ui`; and build to
+  // the view runtime, the sandbox limits and the apple-design rules for a compact inline view.
+  skill('generative-ui', 1, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

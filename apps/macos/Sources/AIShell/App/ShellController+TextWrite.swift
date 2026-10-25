@@ -17,7 +17,7 @@ extension ShellController {
     commandProgress.showWriting(target: params.target)
     let target = summoner.writeTargets.target(params.target)
     if let target, params.animation { summoner.writeTargets.writing(target) }
-    let result = await TextWriter.write(params, to: target) {
+    let result = await TextWriter.write(params, to: target, arbiter: deviceArbiter) {
       hidePanel()
     }
     if let target { summoner.writeTargets.wrote(target) }

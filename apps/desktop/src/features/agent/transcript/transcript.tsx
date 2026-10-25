@@ -1,87 +1,34 @@
-import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import type { QuoteSource } from '@atd/agent-contracts';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { TaskDetail } from '../../../client/agent/bridge';
-import { isActive, type FileRef, type TaskRun } from '../../../client/agent/task-schema';
+import { isActive, type FileRef } from '../../../client/agent/task-schema';
 import { compactBlock } from '../compaction/compact-availability';
 import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
-import { adaptTranscript, type AdaptedTurn } from './adapter';
+import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
+import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
-import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
-import { PendingTurn } from './pending-turn';
-import { PromptRail } from './prompt-rail';
+import {
+  publishConversationControls,
+  withdrawConversationControls,
+  type ConversationControls,
+} from './conversation-controls';
+import { ConversationFind } from './conversation-find';
+import { artifactAnchorIds, indexRequests, sameIds } from './turns';
 import { ScrollJump } from './scroll-jump';
 import { pendingPromptRun } from './run-prompt';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
-import { TurnView } from './turn-view';
+import { TurnList } from './turn-list';
 import { useEarlierTurns } from './use-earlier-turns';
 import type { CommandOpener } from './use-offered-commands';
 import { usePromptNav } from './use-prompt-nav';
+import { usePromptStepKeys } from './use-prompt-step-keys';
 import { useTranscriptScroll } from './use-transcript-scroll';
-
-function TurnList({
-  turns,
-  runs,
-  artifacts,
-  anchors,
-  requests,
-  live,
-  status,
-  firstVisible,
-  sentinel,
-  loadEarlier,
-  onAttach,
-}: {
-  turns: AdaptedTurn[];
-  runs: TaskRun[];
-  artifacts: TaskDetail['artifacts'];
-  anchors: Set<string>;
-  requests: RequestIndex;
-  live: boolean;
-  status: ReactNode;
-  /** The window `useEarlierTurns` keeps: the first turn shown, and its load-earlier control. */
-  firstVisible: number;
-  sentinel: (element: HTMLElement | null) => void;
-  loadEarlier: () => void;
-  onAttach: (file: FileRef) => void;
-}) {
-  const { t } = useTranslation('tasks');
-  const visibleTurns = turns.slice(firstVisible);
-  return (
-    <>
-      {/* Scrolling near it loads the batch; the button stays for keyboard and assistive use. */}
-      {firstVisible > 0 && (
-        <div ref={sentinel} className="load-earlier">
-          <Button variant="outline" size="sm" onClick={loadEarlier}>
-            {firstVisible === 1
-              ? t('transcript.loadEarlier.action')
-              : t('transcript.loadEarlier.actionWithCount', { count: firstVisible })}
-          </Button>
-        </div>
-      )}
-      {visibleTurns.map((turn, index) => (
-        <TurnView
-          key={turn.id}
-          turn={turn}
-          runs={runs}
-          artifacts={artifacts}
-          anchors={anchors}
-          requests={requests}
-          live={live}
-          last={firstVisible + index === turns.length - 1}
-          status={firstVisible + index === turns.length - 1 ? status : null}
-          onAttach={onAttach}
-        />
-      ))}
-    </>
-  );
-}
 
 /**
  * The task's conversation. `covered` keeps it laid out but invisible and inert while a subagent's
@@ -91,8 +38,9 @@ function TurnList({
  * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
  * starting a memory session) go through the panel's `onOpenTask` and `onRemember`; text selected in
  * an answer can be quoted into the reply through `onQuote`. The commands offered on an answer, or
- * on text selected in one, open through `onCommand`. With two or more user messages, a rail in the
- * leading gutter lists all of them, mounted or not, and moves the view to any one (`PromptRail`).
+ * on text selected in one, open through `onCommand`. While shown and not covered it publishes its
+ * controls (`conversation-controls.ts`): the composer's message entry steps through its user
+ * messages, mounted or not, and the header opens its find bar (`ConversationFind`).
  */
 export function Transcript({
   detail,
@@ -156,6 +104,29 @@ export function Transcript({
     pin,
     atBottom: !showJump,
   });
+  usePromptStepKeys(!covered && nav.prompts.length > 1, nav.step);
+  // The find bar's state, started over for another task.
+  const [find, setFind] = useState({ taskId: task.id, open: false, request: 0 });
+  if (find.taskId !== task.id) setFind({ taskId: task.id, open: false, request: 0 });
+  const openFind = useCallback(
+    () => setFind((state) => ({ ...state, open: true, request: state.request + 1 })),
+    [],
+  );
+  const closeFind = () => setFind((state) => ({ ...state, open: false }));
+  useEffect(() => {
+    if (covered) return;
+    const controls: ConversationControls = {
+      taskId: task.id,
+      prompts: nav.prompts,
+      active: nav.active,
+      show: nav.show,
+      step: nav.step,
+      viewport: viewportRef.current,
+      openFind,
+    };
+    publishConversationControls(controls);
+    return () => withdrawConversationControls(controls);
+  }, [covered, task.id, nav.prompts, nav.active, nav.show, nav.step, viewportRef, openFind]);
   const [messages, setMessages] = useState<HTMLDivElement | null>(null);
   // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
   const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
@@ -163,7 +134,6 @@ export function Transcript({
   // The latest run before its prompt reaches the transcript: it closes the conversation as its
   // own turn, so the turns above stay settled instead of borrowing its live header and note.
   const pending = pendingPromptRun(task.runs, blocks);
-  const pendingFiles = pending ? artifacts.filter((file) => file.runId === pending.id) : [];
   const headRequest = requests[0];
   const { compact, pending: compacting } = useCompactTask();
   const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
@@ -183,6 +153,10 @@ export function Transcript({
     remember: onRemember,
     runCommand: onCommand,
   };
+  // Each view's data, folded from the whole transcript: a later turn's update reaches a view card
+  // in a settled turn, which the adapter keeps as it was.
+  const views = useViewSnapshots(blocks);
+  const taskViews: TaskViews = { taskId: task.id, views };
 
   return (
     <div className="conversation" data-covered={covered || undefined} inert={covered}>
@@ -216,31 +190,28 @@ export function Transcript({
           )}
           <CompactionRetryContext value={retry}>
             <TaskTurnsContext value={turnTask}>
-              <TurnList
-                key={task.id}
-                turns={turns}
-                runs={task.runs}
-                artifacts={artifacts}
-                anchors={anchors}
-                requests={requestIndex}
-                live={live && !pending}
-                status={pending ? null : <StatusBar run={run} />}
-                firstVisible={firstVisible}
-                sentinel={sentinel}
-                loadEarlier={loadEarlier}
-                onAttach={onAttach}
-              />
+              <TaskViewsContext value={taskViews}>
+                <TurnList
+                  key={task.id}
+                  turns={turns}
+                  runs={task.runs}
+                  artifacts={artifacts}
+                  anchors={anchors}
+                  requests={requestIndex}
+                  live={live}
+                  status={<StatusBar run={run} />}
+                  pending={pending}
+                  waiting={
+                    headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null
+                  }
+                  firstVisible={firstVisible}
+                  sentinel={sentinel}
+                  loadEarlier={loadEarlier}
+                  onAttach={onAttach}
+                />
+              </TaskViewsContext>
             </TaskTurnsContext>
           </CompactionRetryContext>
-          {pending && (
-            <PendingTurn
-              run={pending}
-              live={live}
-              waiting={headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null}
-              files={pendingFiles}
-              onAttach={onAttach}
-            />
-          )}
           {onNewTask && (
             <NewTaskHint
               key={task.id}
@@ -259,16 +230,17 @@ export function Transcript({
           <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
-      {nav.prompts.length > 1 && (
-        <PromptRail
-          prompts={nav.prompts}
-          active={nav.active}
-          covered={covered}
-          viewportRef={viewportRef}
-          onShow={nav.show}
-          onStep={nav.step}
-        />
-      )}
+      <ConversationFind
+        open={find.open}
+        focusRequest={find.request}
+        onOpen={openFind}
+        onClose={closeFind}
+        viewportRef={viewportRef}
+        root={messages}
+        turnCount={turns.length}
+        include={include}
+        covered={covered}
+      />
       <ScrollJump show={showJump} onJump={pin} />
       <SelectionToolbar
         root={messages}

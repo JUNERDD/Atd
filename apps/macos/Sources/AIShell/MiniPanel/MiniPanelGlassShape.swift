@@ -128,12 +128,12 @@ struct MiniPanelFollowEffect: GeometryEffect {
 
 /// The hover label's text following its capsule (``MiniPanelLabelPath``) as it grows out of its
 /// anchor, glides from control to control and leaves: the same animated values as the label's
-/// outline, with the text laid out at the label's rest (`layout`).
+/// outline. The text is laid out at the fixed lane's center, independent of either name's width,
+/// so a text swap never changes the coordinate system during a glide.
 struct MiniPanelLabelFollowEffect: GeometryEffect {
   var fade: Double
   var rest: CGRect
   let edge: MiniPanelEdge
-  let layout: CGRect
   let scales: Bool
 
   var animatableData: MiniPanelLabelOutline.AnimatableData {
@@ -143,7 +143,15 @@ struct MiniPanelLabelFollowEffect: GeometryEffect {
 
   func effectValue(size: CGSize) -> ProjectionTransform {
     let shape = MiniPanelLabelPath.rect(fade: fade, rest: rest, edge: edge)
-    return MiniPanelFollowEffect.transform(
-      following: shape, from: layout, size: size, scales: scales)
+    // Scale only with arrival/departure. During a width change the two names cross-fade at
+    // their own sizes, centered together, and the outline reveals/clips them symmetrically.
+    let scale =
+      scales
+      ? min(max(MiniPanelLabelPath.scale(fade: fade), 0.01), MiniPanelChoreography.followLimit)
+      : 1
+    return ProjectionTransform(
+      CGAffineTransform(translationX: shape.midX, y: shape.midY)
+        .scaledBy(x: scale, y: scale)
+        .translatedBy(x: -size.width / 2, y: -size.height / 2))
   }
 }

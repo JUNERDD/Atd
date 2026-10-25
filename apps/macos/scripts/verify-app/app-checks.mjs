@@ -1,15 +1,20 @@
 /**
  * The built app's checks on top of its service pack's: the Info.plist values each architecture's
  * build must carry, the main executable that decides the target architecture, the parts every
- * Release build embeds (widget extension, Sparkle, renderer, service pack and Node), the Mach-O
- * rules across the whole bundle with the app's own `LSMinimumSystemVersion`, and the bundle's
- * signature, checked last so it also proves the other checks left the bundle untouched.
+ * Release build embeds (widget extension, Sparkle, the computer-use driver helper, renderer,
+ * service pack with its add-on lock, and Node) and the one it never does again (the retired Cua
+ * driver), the helper's own checks (helper-check.mjs), the Mach-O rules across the whole bundle
+ * with the app's own `LSMinimumSystemVersion`, and the bundle's signature, checked last so it
+ * also proves the other checks left the bundle untouched. The add-on archives the lock pins are
+ * checked with `verify-app.mjs addons`.
  */
-import { access } from 'node:fs/promises';
+import { access, lstat } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { nodeArchOf } from '../arch.mjs';
+import { DRIVER_HELPER, verifyDriverHelper } from './helper-check.mjs';
 import { sliceArchs } from './macho.mjs';
+import { PACK_ADDONS_LOCK } from './pack-layout.mjs';
 import { verifyPack } from './pack-checks.mjs';
 
 function readPlist(file) {
@@ -58,17 +63,24 @@ export async function verifyApp({ app, feedUrl, arm64FeedUrl, publicEdKey }) {
   const resources = path.join(contents, 'Resources');
   const node = path.join(resources, 'node', 'bin', 'node');
   const pack = path.join(resources, 'agent-service');
+  const helper = path.join(contents, 'MacOS', DRIVER_HELPER);
   const embedded = [
     path.join(contents, 'PlugIns', 'AtdWidgets.appex', 'Contents', 'MacOS', 'AtdWidgets'),
     path.join(contents, 'Frameworks', 'Sparkle.framework', 'Sparkle'),
+    helper,
     path.join(resources, 'renderer', 'index.html'),
     path.join(pack, 'build-info.json'),
+    path.join(pack, PACK_ADDONS_LOCK),
     node,
   ];
   const missing = [];
   for (const file of embedded) await access(file).catch(() => missing.push(file));
   if (missing.length > 0) throw new Error(`The app lacks:\n${missing.join('\n')}`);
 
+  const retired = path.join(resources, 'cua-driver');
+  if (await lstat(retired).catch(() => null))
+    throw new Error(`${retired} must not ship; the Cua driver is retired.`);
+  await verifyDriverHelper({ helper, arch, maxMinos: info.LSMinimumSystemVersion });
   await verifyPack({ node, pack, arch, maxMinos: info.LSMinimumSystemVersion, machORoots: [app] });
 
   const seal = spawnSync('codesign', ['--verify', '--strict', app], { encoding: 'utf8' });

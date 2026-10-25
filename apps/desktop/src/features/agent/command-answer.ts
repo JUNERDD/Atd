@@ -110,7 +110,16 @@ export async function actOnAnswer({ run, answer }: SettledCommandRun): Promise<v
   if (action === 'copy') {
     await agentApi().copy(answer);
     showToast({ kind: 'info', text: i18n.t('tasks:commandOutput.copied') });
-  } else if (writesBack(action) && run.target?.writable && !review)
+  } else if (
+    writesBack(action) &&
+    run.target?.writable &&
+    !(
+      run.target.selectionKind !== undefined &&
+      run.target.selectionKind !== 'text' &&
+      action === 'insertAfterSelection'
+    ) &&
+    !review
+  )
     // A target that cannot take text leaves the answer in the conversation the panel shows.
     await writeAnswer(run.runId, run.target, action, answer);
 }

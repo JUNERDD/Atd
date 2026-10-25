@@ -63,6 +63,7 @@ export function installBridge(extras?: {
     providersLoaded: true,
     language: 'en',
     appearance: null,
+    computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
     showInDock: false,
@@ -81,6 +82,7 @@ export function installBridge(extras?: {
     },
     commandTyping: true,
     commandTypingAnimation: true,
+    viewInitiative: 'proactive',
     accessibilityTrusted: true,
     screenRecordingTrusted: true,
     onboardingCompleted: true,
@@ -300,6 +302,9 @@ export function installBridge(extras?: {
         writeSettings({ appearance }),
       ),
       saveShortcuts: vi.fn(async () => settings),
+      setComputerVisionModel: vi.fn(async (computerVisionModel) =>
+        writeSettings({ computerVisionModel }),
+      ),
       restoreShortcuts: vi.fn(async () => settings),
       setPermissionTier: vi.fn(async (tier) => writeSettings({ permissionTier: tier })),
       saveShellAllowlist: vi.fn(async (entries: string[]) =>
@@ -322,6 +327,7 @@ export function installBridge(extras?: {
       saveCommandTypingAnimation: vi.fn(async (commandTypingAnimation) =>
         writeSettings({ commandTypingAnimation }),
       ),
+      setViewInitiative: vi.fn(async (viewInitiative) => writeSettings({ viewInitiative })),
       requestAccessibility: vi.fn(async () => {}),
       requestScreenRecording: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),

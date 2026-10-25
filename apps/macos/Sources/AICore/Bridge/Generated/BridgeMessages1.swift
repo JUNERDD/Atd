@@ -56,6 +56,7 @@ public enum NativeCall: Equatable, Sendable {
   case userAppClearData(UserAppClearDataParams)
   case userAppPin(UserAppPinParams)
   case userAppUnpin(UserAppUnpinParams)
+  case viewOpen(ViewOpenParams)
   case shortcutsSet(ShortcutsSetParams)
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
@@ -78,11 +79,23 @@ public enum NativeCall: Equatable, Sendable {
   case notificationsState(NotificationsStateParams)
   case notificationsSet(NotificationsSetParams)
   case notificationsOpenSystemSettings(NotificationsOpenSystemSettingsParams)
+  case computerApplicationIcon(ComputerApplicationIconParams)
+  case computerListApplications(ComputerListApplicationsParams)
+  case computerPrepareBrowser(ComputerPrepareBrowserParams)
+  case computerPrepareApplication(ComputerPrepareApplicationParams)
+  case computerOpenProfile(ComputerOpenProfileParams)
+  case computerAuthorizeAutomation(ComputerAuthorizeAutomationParams)
+  case computerAcknowledgeUnsettled(ComputerAcknowledgeUnsettledParams)
+  case computerSetTyping(ComputerSetTypingParams)
+  case computerSetPointerVisible(ComputerSetPointerVisibleParams)
+  case computerPrimeCaptureConsent(ComputerPrimeCaptureConsentParams)
+  case computerPreviewShow(ComputerPreviewShowParams)
   case approvalRequest(ApprovalRequestParams)
   case toolbarSet(ToolbarSetParams)
   case accessibilityRequest(AccessibilityRequestParams)
   case screenRecordingRequest(ScreenRecordingRequestParams)
   case appsPick(AppsPickParams)
+  case shortcutsRecording(ShortcutsRecordingParams)
 
   /// The contract name.
   public var name: String {
@@ -109,6 +122,7 @@ public enum NativeCall: Equatable, Sendable {
     case .userAppClearData: "userApp.clearData"
     case .userAppPin: "userApp.pin"
     case .userAppUnpin: "userApp.unpin"
+    case .viewOpen: "view.open"
     case .shortcutsSet: "shortcuts.set"
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
@@ -131,11 +145,23 @@ public enum NativeCall: Equatable, Sendable {
     case .notificationsState: "notifications.state"
     case .notificationsSet: "notifications.set"
     case .notificationsOpenSystemSettings: "notifications.openSystemSettings"
+    case .computerApplicationIcon: "computer.applicationIcon"
+    case .computerListApplications: "computer.listApplications"
+    case .computerPrepareBrowser: "computer.prepareBrowser"
+    case .computerPrepareApplication: "computer.prepareApplication"
+    case .computerOpenProfile: "computer.openProfile"
+    case .computerAuthorizeAutomation: "computer.authorizeAutomation"
+    case .computerAcknowledgeUnsettled: "computer.acknowledgeUnsettled"
+    case .computerSetTyping: "computer.setTyping"
+    case .computerSetPointerVisible: "computer.setPointerVisible"
+    case .computerPrimeCaptureConsent: "computer.primeCaptureConsent"
+    case .computerPreviewShow: "computer.preview.show"
     case .approvalRequest: "approval.request"
     case .toolbarSet: "toolbar.set"
     case .accessibilityRequest: "accessibility.request"
     case .screenRecordingRequest: "screenRecording.request"
     case .appsPick: "apps.pick"
+    case .shortcutsRecording: "shortcuts.recording"
     }
   }
 }

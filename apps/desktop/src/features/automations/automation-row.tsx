@@ -214,7 +214,7 @@ export function AutomationRow({
                 <IconButton
                   label={t('list.more')}
                   aria-label={t('list.moreActionsFor', { name: automation.name })}
-                  tooltipDismissOnClick
+                  tooltip={false}
                 >
                   <MoreHorizontal />
                 </IconButton>

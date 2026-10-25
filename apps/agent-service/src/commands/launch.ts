@@ -9,6 +9,7 @@ import {
   shortcutRunSettings,
   SubmitTaskRequestSchema,
   type CommandOutput,
+  type ComputerRunRequest,
   type InputChip,
   type InputChipRange,
   type InstructionReference,
@@ -33,6 +34,7 @@ import type { ServicePaths } from '../storage.js';
 import { resolvePreview } from '../tasks/preview.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
+import { commandFingerprint } from './fingerprint.js';
 import { isLiteRun } from './lite.js';
 import { outputInstruction } from './output-instruction.js';
 import { CommandStore } from './store.js';
@@ -54,6 +56,14 @@ export class CommandLaunchError extends Error {
   ) {
     super(message);
     this.name = 'CommandLaunchError';
+  }
+}
+
+/** The command changed since the caller froze its fingerprint; nothing was staged or submitted. */
+export class CommandFingerprintMismatch extends Error {
+  constructor() {
+    super('The command changed after this run was approved.');
+    this.name = 'CommandFingerprintMismatch';
   }
 }
 
@@ -98,6 +108,13 @@ export interface LaunchCommandRequest {
    * or stages anything, and counts against the run's input budget. The panel's route sends none.
    */
   frame?: { before?: string; after?: string };
+  /**
+   * The fingerprint (commands/fingerprint.ts) an automation's computer grant froze; a command that
+   * moved on since is refused (`CommandFingerprintMismatch`) before anything is staged.
+   */
+  expectedFingerprint?: string;
+  /** Registered computer targets an attended run may act on (`SubmitTaskRequest.computer`). */
+  computer?: ComputerRunRequest;
 }
 
 /**
@@ -105,7 +122,8 @@ export interface LaunchCommandRequest {
  *
  * 1. A repeated `operationId` answers its original run before anything is staged again.
  * 2. The command is the user's own, else an installed plugin's (user commands win, as the command
- *    routes serve them); a missing one is `notFound`, a turned-off one `disabled`. A run from one
+ *    routes serve them); a missing one is `notFound`, a turned-off one `disabled`, and one whose
+ *    fingerprint is not the `expectedFingerprint` the caller froze is refused. A run from one
  *    of its shortcuts sees the command with that shortcut's output, model and reasoning level in
  *    place of the command's (`launchedAs`); a shortcut the command no longer has is
  *    `shortcutGone`, so a run never starts with part of a deleted shortcut's settings.
@@ -135,10 +153,11 @@ export async function launchCommand(
 ): Promise<SubmitTaskResponse> {
   const known = deps.ledger.operation(request.operationId);
   if (known) return { taskId: known.taskId, runId: known.runId, duplicate: true };
-  const command = launchedAs(
-    await savedCommand(deps.paths.root, request.commandId),
-    request.shortcutId,
-  );
+  const saved = await savedCommand(deps.paths.root, request.commandId);
+  const expected = request.expectedFingerprint;
+  if (expected !== undefined && commandFingerprint(saved) !== expected)
+    throw new CommandFingerprintMismatch();
+  const command = launchedAs(saved, request.shortcutId);
   const { snapshot } = await preview(deps, command, request);
   const rendered = snapshot.instructions || request.input.text;
   if (!rendered.trim() && !request.input.files.length)
@@ -167,6 +186,7 @@ export async function launchCommand(
     tools: snapshot.tools,
     memory: snapshot.memory,
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
+    ...(request.computer ? { computer: request.computer } : {}),
     fromCommand: true,
   });
   // An unattended run (`trigger`) has no app to write into and never touches the clipboard, so its

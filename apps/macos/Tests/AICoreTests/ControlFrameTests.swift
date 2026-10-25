@@ -123,7 +123,8 @@ struct ControlFrameTests {
   func encodesOutbound() throws {
     #expect(
       ControlStream.subscribe()
-        == #"{"epoch":0,"seq":0,"status":true,"taskIds":[],"type":"subscribe"}"#)
+        == #"{"epoch":0,"seq":0,"status":true,"taskActivity":true,"taskIds":[],"type":"subscribe"}"#
+    )
     #expect(ControlStream.ping() == #"{"type":"ping"}"#)
     #expect(
       ControlStream.register(DesktopCapability.allCases)

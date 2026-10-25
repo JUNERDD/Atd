@@ -17,6 +17,7 @@ import { registerSettingsRoutes } from './settings/routes.js';
 import type { SettingsStore } from './settings/store.js';
 import { registerTaskManageRoutes } from './tasks/manage.js';
 import { registerPreviewRoute } from './tasks/preview.js';
+import { registerViewRoutes } from './views/routes.js';
 
 export interface ManageContext {
   config: ServiceConfig;
@@ -34,7 +35,8 @@ export interface ManageContext {
  * T6b management mounts (service v1.2 candidate): providers, commands,
  * memory, task PATCH/DELETE/fork/queue-replace, read-only preview, resource
  * download, the MCP and reference next-run staging writes, the shared
- * user settings (including the shell allowlist), and user apps with their widgets.
+ * user settings (including the shell allowlist), user apps with their widgets,
+ * and the documents of a task's generative views (shell only).
  */
 export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): void {
   registerProviderRoutes(app, {
@@ -66,4 +68,5 @@ export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): 
     log: ctx.log,
     mcp: ctx.mcp,
   });
+  registerViewRoutes(app, { ledger: ctx.ledger });
 }

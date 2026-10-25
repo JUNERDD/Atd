@@ -5,6 +5,7 @@ import {
   type AgentStreamOptions,
 } from '@atd/agent-client';
 import type {
+  ComputerProgress,
   InvalidateFrame,
   ServiceEvent,
   SummariesFrame,
@@ -36,6 +37,7 @@ export class NativeConnection implements AgentConnection {
   private readonly statusListeners = new Set<(status: ServiceStatusView) => void>();
   private readonly invalidateListeners = new Set<(frame: InvalidateFrame) => void>();
   private readonly connectedListeners = new Set<() => void>();
+  private readonly progressListeners = new Set<(progress: ComputerProgress) => void>();
 
   constructor(private readonly clientOptions: AgentStreamOptions) {
     this.httpClient = new AgentHttpClient(clientOptions);
@@ -55,6 +57,9 @@ export class NativeConnection implements AgentConnection {
       onResumed: () => this.setState('connected'),
       onInvalidate: (frame) => {
         for (const listener of this.invalidateListeners) listener(frame);
+      },
+      onComputerProgress: (progress) => {
+        for (const listener of this.progressListeners) listener(progress);
       },
       // The relay reserves 1013 for a start still in progress; other failures must leave loading.
       onDisconnect: (reason, code) => {
@@ -109,6 +114,12 @@ export class NativeConnection implements AgentConnection {
   onInvalidate(listener: (frame: InvalidateFrame) => void): () => void {
     this.invalidateListeners.add(listener);
     return () => this.invalidateListeners.delete(listener);
+  }
+
+  /** Live computer progress frames, as the stream delivers them. */
+  onComputerProgress(listener: (progress: ComputerProgress) => void): () => void {
+    this.progressListeners.add(listener);
+    return () => this.progressListeners.delete(listener);
   }
 
   /** Every transition to connected: the first stream, and each one after a drop. */

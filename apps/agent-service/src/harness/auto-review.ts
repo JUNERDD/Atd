@@ -33,14 +33,14 @@ export type Reviewer = (request: ReviewRequest, signal?: AbortSignal) => Promise
 /** What a review reads from the task's live session; null while no session is live. */
 export interface ReviewSource {
   models: ModelRuntime;
-  /** The model the task's current run uses; the review runs on it without thinking. */
+  /** The run's model; omitted reasoning leaves the review on its provider's default. */
   model: Model<Api>;
   branch: () => SessionEntry[];
 }
 
 export interface ReviewerDeps {
   source: () => ReviewSource | null;
-  /** The current run; the failure limit counts within one run. */
+  /** The current run; review routing and the failure limit are scoped to it. */
   runId: () => string;
   /** The task folder, named to the reviewer as the agent's own workspace. */
   cwd: string;
@@ -82,6 +82,8 @@ const ACTION_KIND: Record<GrantScope['tool'], string> = {
   web: 'Search the web or fetch web content',
   app: "Build, inspect or call the task's own user app",
   automation: 'Save, delete or run an automation',
+  computerAccess: 'Authorize access to a specific installed application or website',
+  computer: 'Act on a registered browser page or app window',
 };
 
 /**
@@ -93,7 +95,7 @@ const ACTION_KIND: Record<GrantScope['tool'], string> = {
  */
 export function createReviewer(deps: ReviewerDeps): Reviewer {
   let failures = 0;
-  let failuresRun = '';
+  let reviewSession: { runId: string; id: string } | undefined;
   const fail = (reason: string, error?: unknown): ReviewVerdict => {
     failures += 1;
     deps.log.warn('Auto approval review failed; asking the user.', {
@@ -104,8 +106,9 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
   };
 
   return async (request, signal) => {
-    if (failuresRun !== deps.runId()) {
-      failuresRun = deps.runId();
+    const runId = deps.runId();
+    if (!reviewSession || reviewSession.runId !== runId) {
+      reviewSession = { runId, id: randomUUID() };
       failures = 0;
     }
     if (failures >= FAILURE_LIMIT)
@@ -128,9 +131,9 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
         },
         {
           maxTokens: Math.min(2048, source.model.maxTokens),
-          // Each review is its own conversation, apart from the task's. Providers that route by
-          // session (OpenCode rejects requests without `x-opencode-session`) read this id.
-          sessionId: randomUUID(),
+          // A separate, stable route lets providers reuse the review policy's prompt cache.
+          // Each request still contains only its own review input, without prior review results.
+          sessionId: reviewSession.id,
           signal: signal
             ? AbortSignal.any([signal, AbortSignal.timeout(REVIEW_TIMEOUT_MS)])
             : AbortSignal.timeout(REVIEW_TIMEOUT_MS),
@@ -167,6 +170,8 @@ The agent works on a task for the user. Its task folder is ${cwd}; files there a
 ${unattended ? UNATTENDED_POLICY : ''}
 Answer "allow" when the action is a reasonable step toward what the user asked and its effects are read-only, local to the task, or easy to undo. For example: reading, listing or searching files; running builds, tests, linters or formatters; installing dependencies a project declares; read-only git commands; writing or editing files the task is producing.
 
+Computer access requests use the task permission mode. Allow access to a specific application or website needed for the user’s task; the agent works in it in the background, and only when no background route can do a step in an app does Atd briefly bring that app forward and send that step's clicks and keys straight to it, then restore the app and window the user had; the user’s pointer never moves. In automatic mode this target authorization is saved for later attended tasks and can be removed in Settings; saving that specific access is part of the mode, not an unrelated approval-setting change. It does not approve subsequent business actions, which are reviewed individually. Ask if the target or requested scope is unrelated or broader than the user’s task.
+
 Read-only network requests are allowed: HTTP GET or HEAD requests (curl, wget, fetch), DNS or ping lookups, git fetch or clone, and MCP tools that only look information up, including saving what they download into the task folder. Do not ask about them merely because they reach the internet or an unfamiliar host; ask only when an item below applies, for example when the request carries the user's private data or its response is executed.
 
 Answer "ask" when any of these apply:
@@ -187,7 +192,11 @@ Reply with one JSON object and nothing else: {"decision":"allow" or "ask","reaso
 function reviewInput(requests: string, request: ReviewRequest): string {
   const location =
     'location' in request.scope ? ` (${request.scope.location} the task folder)` : '';
-  const detail = clip(request.detail, DETAIL_CHARS, DETAIL_CHARS - 1000);
+  const proposed =
+    request.scope.tool === 'computerAccess'
+      ? JSON.stringify({ ...request.scope, reason: request.detail })
+      : request.detail;
+  const detail = clip(proposed, DETAIL_CHARS, DETAIL_CHARS - 1000);
   return `<user_messages>
 ${fence(requests) || '(none)'}
 </user_messages>

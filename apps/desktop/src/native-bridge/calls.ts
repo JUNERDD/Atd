@@ -9,8 +9,11 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCommandOptionsCalls } from './command-options.ts';
+import { NativeComputerCalls } from './computer-calls.ts';
+import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
+import { NativeShortcutRecordingCalls } from './shortcut-recording.ts';
 import { NativeTextCalls } from './text-calls.ts';
 import { NativeUpdateCalls } from './update-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
@@ -255,6 +258,8 @@ export const NativeCalls = {
   ...NativeCommandOptionsCalls,
   ...NativeUpdateCalls,
   ...NativeNotificationCalls,
+  ...NativeComputerCalls,
+  ...NativeComputerPreviewCalls,
   /**
    * Confirms a launch approval in a native dialog the page cannot forge. Only the server id
    * crosses: Swift reads what would run from the service (`GET /v1/admin/approvals/mcp/:serverId`),
@@ -341,4 +346,5 @@ export const NativeCalls = {
       { additionalProperties: false },
     ),
   },
+  ...NativeShortcutRecordingCalls,
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

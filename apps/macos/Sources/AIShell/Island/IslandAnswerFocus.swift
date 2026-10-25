@@ -165,7 +165,6 @@ nonisolated struct AnswerFocusProbe: Sendable {
     guard (try? AXField.isSecure(focused)) == false, AXWritability.writable(focused) else {
       return nil
     }
-    if case .selected = SelectionPresence(pid: pid).probe() { return true }
-    return false
+    return SelectionToolbarRules.shows(SelectionPresence(pid: pid).probe())
   }
 }

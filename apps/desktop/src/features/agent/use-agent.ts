@@ -54,9 +54,15 @@ function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {
  * The detail of task `taskId`, which the page then holds: its transcript follows the stream. The
  * page holds one task at a time (`TaskClient.detail`), so a view that showed another task over
  * this one (a side chat) takes the hold back by changing `epoch`, which loads the task again; the
- * last detail stays meanwhile, so what shows it keeps its scroll offset and expanded rows.
+ * last detail stays meanwhile, so what shows it keeps its scroll offset and expanded rows. A detail
+ * the caller already has for the task (`initial`, a send's result) shows until the load lands, so
+ * a conversation a send opened shows at once, with its title and message, not a placeholder.
  */
-export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskDetail | null } {
+export function useTaskDetail(
+  taskId: string | null,
+  epoch = 0,
+  initial: TaskDetail | null = null,
+): { detail: TaskDetail | null } {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   // The latest detail across loads: a reload of the same task keeps its unchanged blocks.
   const held = useRef<TaskDetail | null>(null);
@@ -143,5 +149,6 @@ export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskD
       unsubscribe();
     };
   }, [taskId, epoch]);
-  return { detail: detail?.task.id === taskId ? detail : null };
+  if (detail?.task.id === taskId) return { detail };
+  return { detail: initial?.task.id === taskId ? initial : null };
 }

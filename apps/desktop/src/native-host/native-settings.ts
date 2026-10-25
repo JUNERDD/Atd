@@ -3,6 +3,7 @@ import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_SHORTCUTS,
+  DEFAULT_VIEW_INITIATIVE,
   parseShortcutBindings,
   type PatchSettingsRequest,
   type SettingsResponse,
@@ -19,6 +20,7 @@ import {
   DEFAULT_SELECTION_TOOLBAR,
   isAppAppearance,
   isAppLanguage,
+  isViewInitiative,
   resolveLanguage,
   type SettingsBridge,
   type SettingsSnapshot,
@@ -98,6 +100,7 @@ export function nativeSettings(
       providersLoaded: live !== null,
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
+      computerVisionModel: settings?.computerVisionModel ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
       ...shell,
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
@@ -105,6 +108,7 @@ export function nativeSettings(
       selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
       commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
+      viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -214,6 +218,7 @@ export function nativeSettings(
       return write({ appearance });
     },
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
+    setComputerVisionModel: (computerVisionModel) => write({ computerVisionModel }),
     restoreShortcuts: () => write({ shortcuts: { ...DEFAULT_SHORTCUTS } }),
     setPermissionTier: (tier) => write({ permissionTier: tier }),
     saveShellAllowlist: (entries) => write({ shellAllowlist: parseShellAllowlist(entries) }),
@@ -225,6 +230,10 @@ export function nativeSettings(
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
     saveCommandTyping: (value) => write({ commandTyping: value }),
     saveCommandTypingAnimation: (value) => write({ commandTypingAnimation: value }),
+    setViewInitiative: async (viewInitiative) => {
+      if (!isViewInitiative(viewInitiative)) throw new TypeError('Unsupported view initiative.');
+      return write({ viewInitiative });
+    },
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,

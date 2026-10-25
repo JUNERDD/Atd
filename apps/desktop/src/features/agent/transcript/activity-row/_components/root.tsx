@@ -1,6 +1,8 @@
 import { useCallback, useId, useMemo, useState, type ComponentProps } from 'react';
+import { useComposedRefs } from 'motion/react';
 import { Collapsible } from '@atd/ui/components/collapsible';
 import { cn } from '@atd/ui/lib/utils';
+import { useContentChangeFade } from '../../../content-feedback';
 import { ActivityRowContext } from '../_hooks/use-activity-row';
 
 export interface ActivityRowRootProps extends ComponentProps<'div'> {
@@ -11,6 +13,8 @@ export interface ActivityRowRootProps extends ComponentProps<'div'> {
   onOpenChange?: (open: boolean) => void;
   /** Row status, reflected as `data-status` when provided. */
   status?: string | undefined;
+  /** Let leaf rows own feedback when this row only groups their activity. */
+  statusFeedback?: boolean;
 }
 
 /**
@@ -25,11 +29,15 @@ export function Root({
   defaultOpen = false,
   onOpenChange,
   status,
+  statusFeedback = true,
   className,
   style,
   children,
+  ref,
   ...props
 }: ActivityRowRootProps) {
+  const feedbackRef = useContentChangeFade<HTMLDivElement>(statusFeedback ? status : undefined);
+  const rootRef = useComposedRefs(feedbackRef, ref);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = useCallback(
@@ -56,6 +64,7 @@ export function Root({
       <ActivityRowContext value={value}>
         <div
           {...props}
+          ref={rootRef}
           data-slot="activity-row"
           data-state={open ? 'open' : 'closed'}
           data-status={status ?? undefined}

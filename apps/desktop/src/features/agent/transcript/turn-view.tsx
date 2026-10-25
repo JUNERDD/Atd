@@ -6,9 +6,11 @@ import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { ArtifactCards } from './artifact-cards';
 import { BlockView } from './block-view';
+import { ComputerReviewNotices } from './computer-review-notices';
 import { lastAnswerText } from './final-answer';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
+import { useTurnArrival, type TurnArrivalHistory } from './turn-arrival';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
@@ -41,6 +43,9 @@ function openActivityId(items: AdaptedTurn['items']): string | null {
  * a patch touched renders again while the answer streams.
  */
 export const TurnView = memo(function TurnView({
+  arrivalHistory,
+  arrivalId,
+  promptArrives,
   turn,
   runs,
   artifacts,
@@ -48,11 +53,15 @@ export const TurnView = memo(function TurnView({
   requests,
   live,
   last,
+  pending = false,
   copyable = true,
   modelName,
   status,
   onAttach,
 }: {
+  arrivalHistory: TurnArrivalHistory;
+  arrivalId: string;
+  promptArrives: boolean;
   turn: AdaptedTurn;
   runs: TaskRun[];
   artifacts: Artifact[];
@@ -60,6 +69,8 @@ export const TurnView = memo(function TurnView({
   requests: RequestIndex;
   live: boolean;
   last: boolean;
+  /** The run is accepted but its prompt has not reached the transcript yet. */
+  pending?: boolean;
   /**
    * Offer the message and turn actions (copy, edit, regenerate, exports); a subagent's drill-in
    * view leaves them to its parent.
@@ -79,8 +90,16 @@ export const TurnView = memo(function TurnView({
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
+  const pendingFiles = pending ? artifacts.filter((file) => file.runId === run?.id) : [];
+  const section = useTurnArrival({
+    history: arrivalHistory,
+    id: arrivalId,
+    promptArrives,
+    live: liveFooter,
+    items: turn.items,
+  });
   return (
-    <section className={sectionClass} data-turn-id={turn.id}>
+    <section ref={section} className={sectionClass} data-turn-id={turn.id}>
       {turn.user && <UserMessage user={turn.user} run={run} last={last} copyable={copyable} />}
       {(liveFooter || settled) && (
         <TurnHeader
@@ -118,22 +137,35 @@ export const TurnView = memo(function TurnView({
             key={item.block.id}
             className={assistant ? 'assistant-message' : undefined}
             aria-label={assistant ? t('conversation.assistantResponse') : undefined}
+            data-turn-content={
+              item.block.kind !== 'assistant' ||
+              item.block.text.trim() ||
+              item.block.error ||
+              item.block.stopReason === 'aborted' ||
+              files.length
+                ? 'ready'
+                : 'pending'
+            }
           >
             <BlockView block={item.block} requests={requests} />
             {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
           </div>
         );
       })}
+      {pendingFiles.length > 0 && <TaskFiles files={pendingFiles} onAttach={onAttach} />}
       {status}
+      {settled && !pending && <ComputerReviewNotices steps={turn.view} runs={runs} />}
       {/* What the turn saved, as cards that open each item, once it settled: the items exist once
           their calls complete, and the cards sit together instead of interrupting the stream. */}
-      {settled && <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />}
+      {settled && !pending && (
+        <ArtifactCards steps={activitySteps(turn.items)} appear={shownLive} />
+      )}
       {/* Collected from every activity group and held until the turn settles, so the banners sit
           together above the actions instead of interrupting the stream; the approval only
           applies from the next message anyway. */}
-      {settled && <McpApprovalBanners steps={activitySteps(turn.items)} />}
+      {settled && !pending && <McpApprovalBanners steps={activitySteps(turn.items)} />}
       {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
-      {settled && copyable && (
+      {settled && !pending && copyable && (
         <TurnActions
           turn={turn}
           run={run}

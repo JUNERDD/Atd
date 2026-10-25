@@ -65,6 +65,12 @@ final class MiniPanelController {
     case systemPanel
   }
 
+  // Activity shares this window without replacing the original controls or drag routing.
+  var activityContains: (CGPoint, Double) -> Bool = { _, _ in false }
+  var activityEntryContains: (CGPoint) -> Bool = { _ in false }
+  var activityLayoutChanged: () -> Void = {}
+  var activityPhaseChanged: () -> Void = {}
+  var activityEnvironmentChanged: () -> Void = {}
   var actions = Actions.inert
   let model = MiniPanelModel()
   let settings: MiniPanelSettings
@@ -96,8 +102,7 @@ final class MiniPanelController {
   var openStartedAt: Double?
   /// Bumped by every release's stretch and every drop's squash, so a stale relax never lands.
   var deformToken = 0
-  /// Bumped by every open and close of the commands card, so a stale close never lands.
-  var flyoutToken = 0
+  /// The hovered control's delayed label.
   var labelTimer = MiniPanelLabelTimer<MiniPanelControl>()
   /// Bumped by every label change, so a stale fade never takes the glass off a shown label.
   var labelToken = 0
@@ -241,7 +246,9 @@ final class MiniPanelController {
   }
 
   private func makeWindow() -> MiniPanelWindow {
-    let size = MiniPanelMetrics.canvasSize
+    let size = MiniPanelLayout.canvasSize(
+      displayHeight: screen().map { Double($0.frame.height) } ?? MiniPanelMetrics.canvasSize.height,
+      activityAttached: model.activity != nil)
     model.canvas = CGSize(width: size.width, height: size.height)
     let host = MiniPanelHostingView(rootView: MiniPanelView(model: model))
     // The controller sizes the window; SwiftUI adds no size constraints or safe areas of its own.
@@ -304,14 +311,21 @@ final class MiniPanelController {
       center.addObserver(
         forName: NSWindow.didResignKeyNotification, object: nil, queue: .main, using: keys),
       center.addObserver(forName: ShellStrings.didChange, object: nil, queue: .main) {
-        [weak self] _ in MainActor.assumeIsolated { self?.model.labels = .current() }
+        [weak self] _ in
+        MainActor.assumeIsolated {
+          self?.model.labels = .current()
+          self?.activityEnvironmentChanged()
+        }
       },
       workspace.addObserver(
         forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil,
         queue: .main
       ) { [weak self] _ in
         MainActor.assumeIsolated {
-          self?.model.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+          guard let self else { return }
+          self.model.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+          self.applyLayout()
+          self.activityEnvironmentChanged()
         }
       },
     ]

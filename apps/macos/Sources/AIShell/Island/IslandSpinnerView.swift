@@ -18,8 +18,8 @@ final class IslandSpinnerView: NSView {
   private var running: Double?
   private var observers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
-  init() {
-    super.init(frame: NSRect(x: 0, y: 0, width: Style.side, height: Style.side))
+  init(side: Double = IslandSpinnerStyle.side) {
+    super.init(frame: NSRect(x: 0, y: 0, width: side, height: side))
     layer = CALayer()
     wantsLayer = true
     for _ in 0..<Style.spokes {
@@ -78,9 +78,12 @@ final class IslandSpinnerView: NSView {
     guard let layer else { return }
     let flipped = layer.contentsAreFlipped()
     let center = CGPoint(x: bounds.midX, y: bounds.midY)
+    let scale = bounds.width / Style.side
     withoutActions {
       for (index, spoke) in spokes.enumerated() {
-        spoke.bounds = CGRect(x: 0, y: 0, width: Style.spokeWidth, height: Style.spokeLength)
+        spoke.bounds = CGRect(
+          x: 0, y: 0, width: Style.spokeWidth * scale, height: Style.spokeLength * scale)
+        spoke.cornerRadius = Style.spokeWidth * scale / 2
         spoke.anchorPoint = CGPoint(x: 0.5, y: -Style.innerRadius / Style.spokeLength)
         spoke.position = center
         let turn = Double(index) / Double(Style.spokes) * 2 * .pi

@@ -4,7 +4,7 @@ import { promptRun } from './run-prompt';
 import { promptText } from './turn-resend';
 
 /**
- * A user message the prompt rail lists: the turn it opens, that turn's place in the transcript's
+ * A user message the message dial lists: the turn it opens, that turn's place in the transcript's
  * turns (where the window has to reach to mount it), and the line that names it.
  */
 export type PromptEntry = { turnId: string; turnIndex: number; label: string };

@@ -48,6 +48,7 @@ extension ShellController {
   }
 
   func applyLanguage() {
+    taskActivity.refresh()
     NSApp.mainMenu = AppMenus.mainMenu(menuActions)
     panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
     settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))
@@ -56,7 +57,8 @@ extension ShellController {
     notifications?.registerCategories()
   }
 
-  /// Undo and Redo go to the page of the key window, which runs them in its editor.
+  /// Undo and Redo go to the renderer page of the key window (the panel, settings, the welcome
+  /// guide or a view's window), which runs them in its editor.
   func sendEditCommand(_ command: EditCommandEvent.Command) {
     let host: WebViewHost? =
       if panel.isKey {
@@ -66,7 +68,7 @@ extension ShellController {
       } else if onboarding.isKey {
         onboarding.host
       } else {
-        nil
+        viewWindows.keyHost
       }
     guard let host else { return sendUserAppEditCommand(command) }
     host.send(.editCommand(.init(command: command)), scope: .document)

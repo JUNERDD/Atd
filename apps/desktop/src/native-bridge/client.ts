@@ -88,8 +88,11 @@ export class NativeBridge {
     'task.new': new Set(),
     'miniPanel.state': new Set(),
     'task.open': new Set(),
+    'task.queueWithdrawn': new Set(),
     'commandProgress.action': new Set(),
     'commandOptions.picked': new Set(),
+    'computer.state': new Set(),
+    'shortcuts.changed': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

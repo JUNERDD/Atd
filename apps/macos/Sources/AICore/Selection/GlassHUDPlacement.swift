@@ -3,24 +3,24 @@ import Foundation
 
 /// Where a glass status HUD stands (the selection toolbar's listening HUD, a command's progress),
 /// in Cocoa global points (origin bottom-left of the primary display, y up). Its home is the
-/// bottom centre of the work area of the display under the pointer, ``bottomMargin`` above the
-/// work area's bottom edge; wherever it is (home, or where a drag left it), it stays
+/// bottom centre of the work area of the display under the pointer, ``edgeMargin`` above that
+/// edge, which the selection toolbar's HUD and the command island share. Wherever it is (home, or where a drag left it), it stays
 /// ``SelectionToolbarPlacement/margin`` inside the work area of the display that holds most of it.
 public enum GlassHUDPlacement {
   public typealias Display = SelectionToolbarPlacement.Display
 
-  /// Distance from the bottom of the work area at home.
-  public static let bottomMargin = 24.0
+  /// Distance from the bottom edge of the work area at home.
+  public static let edgeMargin = 24.0
 
-  /// The capsule's origin at home for a capsule of `size`. `fallback` (the main display) stands in
-  /// when the pointer is on no display; without either, the origin (a transient state while
-  /// displays rearrange).
+  /// The capsule's origin at home for a capsule of `size`. `fallback` (the main display)
+  /// stands in when the pointer is on no display; without either, the origin (a transient state
+  /// while displays rearrange).
   public static func home(
     size: WindowSize, pointer: CGPoint, displays: [Display], fallback: Display?
   ) -> CGPoint {
     let display = displays.first { $0.frame.contains(x: pointer.x, y: pointer.y) } ?? fallback
     guard let area = display?.workArea else { return .zero }
-    return CGPoint(x: area.x + area.width / 2 - size.width / 2, y: area.y + bottomMargin)
+    return CGPoint(x: area.x + area.width / 2 - size.width / 2, y: area.y + edgeMargin)
   }
 
   /// `frame` kept ``SelectionToolbarPlacement/margin`` inside the work area of the display that

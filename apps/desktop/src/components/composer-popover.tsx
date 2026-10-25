@@ -14,7 +14,7 @@ import { useTaskProgress } from '../features/agent/progress/use-task-progress';
 import { useSideChats } from '../features/agent/side-chat/side-chats';
 import { useSubagents } from '../features/agent/transcript/subagent-context';
 import { HitlPanel } from './hitl-panel';
-import { consentRequest } from './hitl-request';
+import { consentRequest, taskHitlRequests } from './hitl-request';
 import { MorphViewport } from './morph-viewport';
 import { useComposerView } from './use-composer-view';
 import { useHitlSummary } from './use-hitl-summary';
@@ -40,7 +40,8 @@ const NO_CONSENTS: readonly AppCapabilityConsent[] = [];
  * quick panel is open above the same anchor the popover is `suppressed`: it hides without
  * counting as a dismiss and returns unchanged. A `hidden` composer (a subagent's drill-in covers
  * the task) closes it the same way but at once, without the exit animation: the drill-in replaces
- * the view the popover belonged to.
+ * the view the popover belonged to. The panel body below the header bounds every view, so none
+ * covers the header's drag region or the traffic lights.
  */
 export function ComposerPopover({
   requests: taskRequests,
@@ -55,6 +56,7 @@ export function ComposerPopover({
   live = false,
   compacting = false,
   onEditQueued,
+  boundary,
   children,
 }: {
   requests: PermissionRequest[];
@@ -76,6 +78,8 @@ export function ComposerPopover({
   /** The task's context is being compacted (`TaskContextState.compacting`). */
   compacting?: boolean;
   onEditQueued: (text: string) => void;
+  /** The panel body below the header, which bounds every view; null means the viewport. */
+  boundary: Element | null;
   /** The composer surface; the popover anchors to it without adding a visible trigger. */
   children: ReactElement;
 }) {
@@ -83,9 +87,12 @@ export function ComposerPopover({
   const { t: tp } = useTranslation('panel');
   const anchor = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  // A waiting view's request points to the view (`taskHitlRequests`); the list is the task's own
+  // while none waits, so transcript patches leave it alone.
+  const viewAware = taskHitlRequests(taskRequests, blocks);
   const requests = useMemo(
-    () => [...taskRequests, ...consents.map(consentRequest)],
-    [taskRequests, consents],
+    () => [...viewAware, ...consents.map(consentRequest)],
+    [viewAware, consents],
   );
   const hitl = useHitlSummary(requests, queue, taskId);
   const progress = useTaskProgress(blocks);
@@ -203,6 +210,7 @@ export function ComposerPopover({
         align="center"
         sideOffset={8}
         collisionPadding={8}
+        collisionBoundary={boundary}
         className="composer-popover"
         // Radix unmounts closed content at once when it has no exit animation to wait for.
         data-instant-close={hidden || undefined}

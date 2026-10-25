@@ -30,6 +30,7 @@ function chipName(chip: InputChip): string {
     case 'agent':
     case 'skill':
     case 'command':
+    case 'application':
       return chip.name;
     case 'task':
     case 'memory':

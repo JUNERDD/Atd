@@ -41,12 +41,14 @@ export const EMPTY_SKILL_CATALOG: RunSkillCatalog = {
  * (roleAllowedSkills, the capability snapshot's own rule). Revisions are not pinned: a skill
  * removed during the run fails to load with an error instead. The app's product skills come
  * first, then the rest by name, so a catalog over budget, which trims from the end, keeps their
- * descriptions however many other skills are installed.
+ * descriptions however many other skills are installed. `withheld` names product skills that
+ * teach a tool this run does not have; they are left out (a user's `/` selection still loads them).
  */
 export function freezeSkillCatalog(
   catalog: SkillCatalog,
   role: RoleSnapshotRecord,
   revokedSkills: readonly string[],
+  withheld: ReadonlySet<string> = new Set(),
 ): RunSkillCatalog {
   const latest = new Map<string, SkillRevisionRecord>();
   // Installed revisions are listed oldest first, so the last record of a name is its latest.
@@ -55,6 +57,7 @@ export function freezeSkillCatalog(
   const allowed = new Set(roleAllowedSkills(role, revokedSkills, [...latest.keys()]));
   const records = [...latest.values()]
     .filter((record) => allowed.has(record.name))
+    .filter((record) => !(withheld.has(record.name) && isProductSkill(record)))
     .sort(
       (a, b) =>
         Number(isProductSkill(b)) - Number(isProductSkill(a)) || a.name.localeCompare(b.name),

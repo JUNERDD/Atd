@@ -49,9 +49,12 @@ extension CommandProgressController {
       case .ok:
         present(target: target, phase: .done)
       case .notOk(let refusal) where refusal.reason == .interrupted:
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(answer, forType: .string)
+        // Another write holding the clipboard leaves the answer only on the card.
+        guard arbiter.writeClipboard(answer) else {
+          let note = Self.unwritten(refusal.reason, app: outcome.app)
+          present(target: target, phase: .answer(command: command, answer: answer, note: note))
+          return
+        }
         let message = ShellStrings.shared.text(.commandProgressInterrupted, outcome.app)
         present(target: target, phase: .notice(message: message))
       case .notOk(let refusal):
@@ -70,7 +73,7 @@ extension CommandProgressController {
       case .targetChanged: .commandProgressUnwrittenTargetChanged
       case .noSelection: .commandProgressUnwrittenNoSelection
       case .secureInput: .commandProgressUnwrittenSecureInput
-      case .failed, .interrupted: .commandProgressUnwrittenFailed
+      case .failed, .interrupted, .unsupportedSelection: .commandProgressUnwrittenFailed
       }
     return ShellStrings.shared.text(key, app)
   }

@@ -17,37 +17,46 @@ nonisolated enum ScreenText {
   /// `timeout`. The work runs off the main actor; a timed-out request is cancelled and its late
   /// answer dropped.
   static func lines(in image: CGImage, timeout: Duration = timeout) async -> [String] {
+    ScreenContext.readingOrder(await boxes(in: image, timeout: timeout) ?? [])
+  }
+
+  /// The pieces of text in `image` with their boxes (normalized, top-left origin) and
+  /// confidence, at most `limit` of them in the recognizer's order; nil when recognition failed
+  /// or ran past `timeout`, so a caller can tell "no text" from "no answer".
+  static func boxes(in image: CGImage, timeout: Duration = timeout, limit: Int = .max) async
+    -> [ScreenContext.TextBox]?
+  {
     let gate = ResumeGate()
     return await withCheckedContinuation { continuation in
       let work = Task.detached(priority: .userInitiated) {
-        let lines = await recognize(image)
-        if gate.claim() { continuation.resume(returning: lines) }
+        let boxes = await recognize(image).map { Array($0.prefix(limit)) }
+        if gate.claim() { continuation.resume(returning: boxes) }
       }
       Task.detached {
         try? await Task.sleep(for: timeout)
         work.cancel()
-        if gate.claim() { continuation.resume(returning: []) }
+        if gate.claim() { continuation.resume(returning: nil) }
       }
     }
   }
 
   @concurrent
-  private static func recognize(_ image: CGImage) async -> [String] {
+  private static func recognize(_ image: CGImage) async -> [ScreenContext.TextBox]? {
     var request = RecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = true
     request.automaticallyDetectsLanguage = true
     request.recognitionLanguages = languages
-    guard let observations = try? await request.perform(on: image) else { return [] }
-    let boxes = observations.compactMap { observation -> ScreenContext.TextBox? in
-      guard let text = observation.topCandidates(1).first?.string else { return nil }
+    guard let observations = try? await request.perform(on: image) else { return nil }
+    return observations.compactMap { observation -> ScreenContext.TextBox? in
+      guard let candidate = observation.topCandidates(1).first else { return nil }
       // Vision's normalized boxes have their origin at the bottom-left.
       let box = observation.boundingBox.cgRect
       return ScreenContext.TextBox(
-        text: text,
-        box: CGRect(x: box.minX, y: 1 - box.maxY, width: box.width, height: box.height))
+        text: candidate.string,
+        box: CGRect(x: box.minX, y: 1 - box.maxY, width: box.width, height: box.height),
+        confidence: Double(candidate.confidence))
     }
-    return ScreenContext.readingOrder(boxes)
   }
 }
 

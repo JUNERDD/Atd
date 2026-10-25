@@ -21,6 +21,12 @@ export function TurnApplyButton({ run, answer }: { run: TaskRun | undefined; ans
   const action = record?.output.action;
   const target = record?.target;
   if (!record || !target?.writable || !action || !writesBack(action) || !answer) return null;
+  if (
+    target.selectionKind !== undefined &&
+    target.selectionKind !== 'text' &&
+    action === 'insertAfterSelection'
+  )
+    return null;
   const replaces = action === 'replaceSelection';
 
   const apply = async () => {

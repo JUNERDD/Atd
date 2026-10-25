@@ -9,13 +9,27 @@ export function useOverlayFooter<T extends HTMLElement>() {
   return useCallback((footer: T | null) => {
     const surface = footer?.parentElement;
     if (!footer || !surface) return;
-    const sync = () =>
-      surface.style.setProperty('--overlay-footer-height', `${footer.offsetHeight}px`);
-    sync();
-    const observer = new ResizeObserver(sync);
+    let previous = -1;
+    const sync = (height: number) => {
+      const rounded = Math.round(height);
+      if (rounded === previous) return;
+      previous = rounded;
+      surface.style.setProperty('--overlay-footer-height', `${rounded}px`);
+    };
+    sync(footer.offsetHeight);
+    let frame = 0;
+    // Publishing on the ancestor can resize observed descendants. Batch that write into the
+    // next frame, outside ResizeObserver delivery, and reuse the supplied layout measurement.
+    const observer = new ResizeObserver(([entry]) => {
+      const box = entry?.borderBoxSize[0];
+      if (!box) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => sync(box.blockSize));
+    });
     observer.observe(footer);
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(frame);
       surface.style.removeProperty('--overlay-footer-height');
     };
   }, []);
@@ -41,8 +55,9 @@ export function useOverlayReserve<T extends HTMLElement>() {
       const footerH = parseFloat(style.getPropertyValue('--overlay-footer-height')) || 0;
       const padNow = box ? parseFloat(getComputedStyle(box).paddingBottom) || 0 : 0;
       const contentH = (box?.scrollHeight ?? 0) - padNow;
-      if (contentH <= viewport.clientHeight - footerH) viewport.dataset.reserve = 'off';
-      else delete viewport.dataset.reserve;
+      const off = contentH <= viewport.clientHeight - footerH;
+      if (off && viewport.dataset.reserve !== 'off') viewport.dataset.reserve = 'off';
+      else if (!off && viewport.dataset.reserve !== undefined) delete viewport.dataset.reserve;
     };
     sync();
     const observer = new ResizeObserver(sync);

@@ -145,11 +145,15 @@ function consolidationDetail(draft: AutomationDraft | Automation, ctx: CheckCont
   return lines.filter((line): line is string => line !== null).join('\n');
 }
 
-/** The confirm detail of a saved or changed automation. */
+/**
+ * The confirm detail of a saved or changed automation. `computerScope`: its computer scope in
+ * words (computer-describe.ts), for an automation that requests one.
+ */
 export function automationDetail(
   draft: AutomationDraft | Automation,
   ctx: CheckContext,
   commandName: string | null,
+  computerScope: string | null = null,
 ): string {
   if (draft.action.kind === 'consolidateMemory') return consolidationDetail(draft, ctx);
   const { policy } = draft;
@@ -166,7 +170,9 @@ export function automationDetail(
     `Approval tier: ${TIERS[policy.permissionTier]}`,
     `Tools: ${tools}`,
     `Model: ${modelText(draft)}`,
-    `Every run can also search the web and fetch pages, use the person's apps, delegate to subagents and call connected MCP servers, under the same approval tier.`,
+    computerScope
+      ? 'Every run can also search the web and fetch pages; a run that acts on the computer gets no shell, apps, subagents or MCP servers, and writes files only to its own output folder.'
+      : `Every run can also search the web and fetch pages, use the person's apps, delegate to subagents and call connected MCP servers, under the same approval tier.`,
     `Memory: ${policy.memory ? 'searched and read, never changed' : 'not used'}; automation runs never teach memory.`,
     folders.length ? `Readable folders: ${folders.join(', ')}` : null,
     `Stops after ${plural(policy.maxDurationMinutes, 'minute')}.`,
@@ -175,6 +181,7 @@ export function automationDetail(
       : `Missed runs: ${policy.missedRuns === 'runOnce' ? 'the latest runs once, late' : 'skipped'}.`,
     notify(draft),
     draft.delivery.includePreviousResult ? 'Each run sees the previous answer.' : null,
+    computerScope,
     `Enabled: ${draft.enabled ? 'yes' : 'no'}`,
   ];
   return lines.filter((line): line is string => line !== null).join('\n');

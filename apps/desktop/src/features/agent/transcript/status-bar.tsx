@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import { ChatGPTUsageError } from '../../providers/chatgpt-plan';
-import { chatgptUsageError } from '@atd/agent-contracts';
+import { chatgptUsageError, isRequestTooLarge } from '@atd/agent-contracts';
+import { RequestTooLargeError } from './request-too-large';
 
 const NOTES = {
   stopped: { icon: CircleStop, key: 'conversation.stopped' },
@@ -36,7 +37,13 @@ export function StatusBar({ run }: { run: TaskRun | undefined }) {
       <AlertTitle>{t(key)}</AlertTitle>
       {run?.error && (
         <AlertDescription className="wrap-anywhere">
-          {chatgptUsageError(run.error) ? <ChatGPTUsageError error={run.error} /> : run.error}
+          {chatgptUsageError(run.error) ? (
+            <ChatGPTUsageError error={run.error} />
+          ) : isRequestTooLarge(run.error) ? (
+            <RequestTooLargeError error={run.error} />
+          ) : (
+            run.error
+          )}
         </AlertDescription>
       )}
     </Alert>

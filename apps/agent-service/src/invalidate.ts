@@ -24,6 +24,7 @@ const PREFIX_SCOPES: ReadonlyArray<readonly [string, InvalidateScope]> = [
   ['/v1/admin/approvals/mcp', 'extensions'],
   ['/v1/memory', 'memory'],
   ['/v1/plugins', 'extensions'],
+  ['/v1/addons', 'addons'],
 ];
 
 /**

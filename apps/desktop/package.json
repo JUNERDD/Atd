@@ -1,6 +1,6 @@
 {
   "name": "@atd/desktop",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "description": "A quiet desktop task panel, built from Figma.",
   "author": "JUNERDD",
@@ -31,6 +31,7 @@
     "@rolldown/plugin-babel": "0.2.4",
     "@streamdown/mermaid": "1.0.3",
     "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-query": "5.104.1",
     "@tanstack/react-virtual": "3.14.13",
     "@testing-library/dom": "10.4.2",

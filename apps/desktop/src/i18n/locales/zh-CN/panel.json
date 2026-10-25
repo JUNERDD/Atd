@@ -3,11 +3,22 @@
     "panelLabel": "Atd 任务面板",
     "newChat": "新建对话",
     "controlsLabel": "面板控件",
+    "find": "在对话中查找",
     "tasks": "任务",
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
     "loadingConversation": "正在加载对话…"
+  },
+  "find": {
+    "label": "在对话中查找",
+    "count": "{{index}} / {{total}}",
+    "none": "无结果",
+    "previous": "上一处",
+    "next": "下一处",
+    "close": "关闭查找",
+    "ruler": "匹配位置",
+    "match": "第 {{index}} 处，共 {{total}} 处"
   },
   "welcome": {
     "title": "有什么可以帮你？",
@@ -76,6 +87,7 @@
     "reorderQueued": "拖动调整顺序",
     "chipsAfterRun": "请等这次运行结束后再发送提及和技能。",
     "chips": {
+      "application": "应用：{{name}}",
       "file": "文件：{{name}}",
       "folder": "文件夹：{{name}}",
       "task": "对话：{{name}}",
@@ -185,7 +197,7 @@
     "selectionPrefix": "选区：",
     "clipboardPrefix": "剪贴板：",
     "errors": {
-      "notTrusted": "请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 Atd。",
+      "notTrusted": "请在“系统设置 → 隐私与安全性 → 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）中允许 Atd。",
       "noSelection": "未选中文本。请在其他应用中选择文本，再使用命令快捷键。",
       "selectionTooLong": "选中的文本超出输入长度限制，请缩小选择范围。",
       "commandDeleted": "此命令已删除，请使用任务历史中保存的版本。",
@@ -258,6 +270,7 @@
     "listLabel": "建议",
     "sectionsLabel": "分组",
     "groups": {
+      "applications": "应用",
       "commands": "快捷指令",
       "skills": "技能",
       "recentAttached": "最近附加",

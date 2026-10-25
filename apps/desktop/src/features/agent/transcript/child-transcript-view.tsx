@@ -7,15 +7,16 @@ import type { Artifact, TaskRun } from '../../../client/agent/task-schema';
 import { TaskAgentMenu } from '../task-agents/task-agent-menu';
 import { TaskAgentDetails, TemporaryBadge } from '../task-agents/task-agent-role';
 import { agentDisplayName } from '../task-agents/task-agents';
-import { adaptTranscript } from './adapter';
+import { adaptTranscript, type AdaptedTurn } from './adapter';
 import { LayerHeader } from './layer-header';
 import { ScrollJump } from './scroll-jump';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { useSubagents } from './subagent-context';
 import { TranscriptPlaceholder } from './transcript-placeholder';
+import { createTurnArrivalHistory } from './turn-arrival';
 import { TurnView } from './turn-view';
-import { indexRequests } from './turns';
+import { indexRequests, type RequestIndex } from './turns';
 import { useChildTranscript } from './use-child-transcript';
 import type { CommandOpener } from './use-offered-commands';
 import { useTranscriptScroll } from './use-transcript-scroll';
@@ -26,6 +27,40 @@ const NO_ARTIFACTS: Artifact[] = [];
 const noAttach = () => {};
 /** Child blocks carry the parent's run id, so the parent's runs would name the wrong model. */
 const NO_RUNS: TaskRun[] = [];
+
+/** Mount only once the snapshot exists, so fetched history initializes quietly. */
+function ChildTurns({
+  turns,
+  requests,
+  live,
+  model,
+}: {
+  turns: AdaptedTurn[];
+  requests: RequestIndex;
+  live: boolean;
+  model: string;
+}) {
+  const [arrivals] = useState(() => createTurnArrivalHistory(turns.map((turn) => turn.id)));
+  const firstPrompt = turns.find((turn) => turn.user);
+  return turns.map((turn, position) => (
+    <TurnView
+      key={turn.id}
+      arrivalHistory={arrivals}
+      arrivalId={turn.id}
+      promptArrives={turn !== firstPrompt}
+      turn={turn}
+      runs={NO_RUNS}
+      artifacts={NO_ARTIFACTS}
+      anchors={NO_ANCHORS}
+      requests={requests}
+      live={live}
+      last={position === turns.length - 1}
+      copyable={false}
+      modelName={model}
+      onAttach={noAttach}
+    />
+  ));
+}
 
 /**
  * A subagent's full conversation laid over the parent transcript: the same turn, activity and
@@ -102,21 +137,7 @@ export function ChildTranscriptView({
         viewportProps={{ onScroll }}
       >
         <div ref={setMessages} className="conversation-messages">
-          {turns.map((turn, position) => (
-            <TurnView
-              key={turn.id}
-              turn={turn}
-              runs={NO_RUNS}
-              artifacts={NO_ARTIFACTS}
-              anchors={NO_ANCHORS}
-              requests={requestIndex}
-              live={live}
-              last={position === turns.length - 1}
-              copyable={false}
-              modelName={model}
-              onAttach={noAttach}
-            />
-          ))}
+          {detail && <ChildTurns turns={turns} requests={requestIndex} live={live} model={model} />}
           {error ? (
             <p role="alert" className="m-0 text-sm text-destructive">
               {error}

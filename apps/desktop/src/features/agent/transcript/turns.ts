@@ -1,3 +1,4 @@
+import { SHOW_UI_TOOL } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Artifact } from '../../../client/agent/task-schema';
 import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
@@ -78,17 +79,41 @@ export function isLiveBlock(block: Block, request: PermissionRequest | undefined
 
 /** Foldable work: tool calls, questions, and thinking. Pending edits fold like any other
  * step now — the approval diff moved to the composer popover, so the transcript row only needs
- * the tool name plus waiting text. */
+ * the tool name plus waiting text. A view the agent shows (`show_ui`) is part of its answer, not a
+ * step of its work, so it stands alone like prose; updates to it (`update_ui`) are steps. */
 function isActivityKind(block: Block): boolean {
-  return block.kind === 'thinking' || block.kind === 'tool' || block.kind === 'question';
+  if (block.kind === 'tool') return block.name !== SHOW_UI_TOOL;
+  return block.kind === 'thinking' || block.kind === 'question';
+}
+
+/**
+ * Whether one of the agent's blocks puts something on screen: prose with text or an error, and
+ * every call, question and thought, whose row shows from its start. A thought's live row reads
+ * "Thinking" before any text; one that settled with none (a provider that keeps its reasoning to
+ * itself) has nothing to show. Prose still waiting on its first token holds its place in the turn
+ * but shows nothing.
+ */
+export function showsAgentOutput(block: Block): boolean {
+  switch (block.kind) {
+    case 'assistant':
+      return block.text.trim() !== '' || block.error !== '';
+    case 'thinking':
+      return block.streaming || block.redacted || block.text.trim() !== '';
+    case 'tool':
+    case 'question':
+      return true;
+    case 'user':
+    case 'system':
+    case 'compaction':
+    case 'retry':
+      return false;
+  }
 }
 
 function isIgnoredBlock(block: Block): boolean {
-  // Empty thoughts never render; redacted ones keep their placeholder. Empty assistant blocks
-  // stay only when they carry an error or are still streaming into view.
-  if (block.kind === 'thinking') return !block.redacted && block.text.trim() === '';
-  if (block.kind === 'assistant')
-    return block.text.trim() === '' && !block.error && !block.streaming;
+  // Settled empty thoughts never render. Empty prose stays while it streams into view.
+  if (block.kind === 'thinking') return !showsAgentOutput(block);
+  if (block.kind === 'assistant') return !block.streaming && !showsAgentOutput(block);
   return false;
 }
 
@@ -124,8 +149,8 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
     activity = [];
   };
   rest.forEach((block) => {
-    // Assistant prose always renders standalone at full strength; only foldable work enters an
-    // activity group.
+    // Assistant prose and views always render standalone at full strength; only foldable work
+    // enters an activity group.
     if (isActivityKind(block)) {
       activity.push(block);
       return;

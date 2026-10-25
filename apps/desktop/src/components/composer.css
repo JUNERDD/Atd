@@ -155,6 +155,28 @@
   white-space: nowrap;
   pointer-events: none;
 }
+/* The captured draft takes over immediately. Keep the placeholder hidden until the accepted
+   editor is empty and its captured draft is gone. Then fade it in at the final input baseline
+   while the surface and conversation continue moving. Animate only entry: a delayed acceptance
+   creates the pseudo-element, so WebKit has no previous rendered opacity to transition from. */
+.composer-surface[data-dispatching] .composer-input-scroll {
+  opacity: 0;
+}
+.composer-input .cm-editor.cm-composer-empty::before {
+  animation: composer-placeholder-enter 150ms ease-out;
+}
+@keyframes composer-placeholder-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.composer-surface[data-placeholder-held] .composer-input .cm-editor::before {
+  opacity: 0;
+  animation: none;
+}
 /* Stopping or queued: the text stays visible but locked, like the disabled textarea. */
 .composer-input .cm-editor:has(.cm-content[contenteditable='false']) {
   cursor: not-allowed;
@@ -171,11 +193,14 @@
 .composer-surface[data-expanded='true'] .composer-input-scroll {
   max-height: 120px;
 }
-.composer-surface[data-expanded='true'] .composer-input .cm-editor,
-.composer-surface[data-expanded='true'] .composer-input .cm-editor .cm-scroller {
+:is(.composer-surface, .message-flight)[data-expanded='true'] .composer-input .cm-editor,
+:is(.composer-surface, .message-flight)[data-expanded='true']
+  .composer-input
+  .cm-editor
+  .cm-scroller {
   line-height: 24px;
 }
-.composer-surface[data-expanded='true'] .composer-input .composer-chip {
+:is(.composer-surface, .message-flight)[data-expanded='true'] .composer-input .composer-chip {
   margin-block: 2px;
 }
 
@@ -259,6 +284,9 @@
 @media (prefers-reduced-motion: reduce) {
   .context-usage-value {
     transition: none;
+  }
+  .composer-input .cm-editor.cm-composer-empty::before {
+    animation: none;
   }
 }
 

@@ -7,7 +7,9 @@
  *     [--marketing-version <v>] [--build-version <v>] [--dry-run]
  *
  * It regenerates the Xcode project with XcodeGen and runs xcodebuild into
- * DerivedData/Build/Products/<Configuration>/Atd.app.
+ * DerivedData/Build/Products/<Configuration>/Atd.app. The checked-in Package.resolved is copied into
+ * the generated workspace and xcodebuild may use only the versions it pins, so the app builds with
+ * exactly the transitive Swift package versions `swift build` and the tests use.
  *
  * The app is built for the host's native architecture only: the service pack staged beside it
  * (Node, the native addons and the app toolchain) comes from this host's install, so an app for
@@ -23,10 +25,12 @@
  * at a `-`, so a build version must not contain one.
  */
 import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { MACHO_ARCHS, nativeHostArch } from './arch.mjs';
+import { invalidateDevBuild } from './dev-cache.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const X64_FEED_URL = 'https://downloads.atd.best/appcast-x64.xml';
@@ -107,6 +111,7 @@ function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion })
     '-derivedDataPath',
     'DerivedData',
     '-quiet',
+    '-onlyUsePackageVersionsFromResolvedFile',
     // Also covers the AIMac package targets, whose Release builds otherwise include both slices.
     `ARCHS=${xcodeArch}`,
     ...(arch === 'x64' ? [`ATD_SPARKLE_FEED_URL=${X64_FEED_URL}`] : []),
@@ -120,6 +125,19 @@ function run(command, args) {
   const result = spawnSync(command, args, { cwd: packageRoot, stdio: 'inherit' });
   if (result.error) fail(`could not run ${command}: ${result.error.message}`);
   if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+/** Copies Package.resolved to where Xcode reads the workspace's package pins. */
+function pinPackages() {
+  const pins = path.join(
+    packageRoot,
+    'AI.xcodeproj',
+    'project.xcworkspace',
+    'xcshareddata',
+    'swiftpm',
+  );
+  mkdirSync(pins, { recursive: true });
+  copyFileSync(path.join(packageRoot, 'Package.resolved'), path.join(pins, 'Package.resolved'));
 }
 
 const options = readOptions();
@@ -136,5 +154,9 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
+// Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
+// Only the dev supervisor can issue a new receipt after validating and installing that build.
+if (options.configuration === 'Debug') invalidateDevBuild(packageRoot);
 run('xcodegen', ['generate', '--quiet']);
+pinPackages();
 run('xcodebuild', args);

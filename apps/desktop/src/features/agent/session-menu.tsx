@@ -48,7 +48,7 @@ export function SessionMenu({
             aria-label={t('session.menu')}
             variant="glass-ghost"
             className="header-button"
-            tooltipDismissOnClick
+            tooltip={false}
           >
             <Ellipsis />
           </IconButton>

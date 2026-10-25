@@ -65,8 +65,6 @@ nonisolated enum MiniPanelContent: Hashable, Sendable, CaseIterable {
   case invite
   /// The drop card's glyph and call to action.
   case card
-  /// The commands card's rows.
-  case rows
   /// The hover label's text.
   case labelText
 }
@@ -104,24 +102,23 @@ struct MiniPanelBodyShape: Equatable {
 /// glass only (`deform`), both drawn into the shape on the animation of their last change
 /// (``MiniPanelBodyShape/animation``), and the snap's shift, glass and content together, from
 /// where the body was drawn as it was released to where its shape rests in the new canvas
-/// (`shift`), on its own.
+/// (`shift`), sampled by the same native snap owner as the window.
 struct MiniPanelBodyFactors: Equatable {
   var scale = 1.0
   var deform = CGSize(width: 1, height: 1)
   var shift = CGSize.zero
-  var shiftAnimation: Animation?
 }
 
 /// The commands card's glass: closed, it has shrunk to nothing at its anchor beside the capsule,
-/// and it grows out of there to the card. Its glass stays on, shrunk to nothing, since switching a
-/// shape's glass off or on makes the glass container rebuild itself at once (measured: 4 to 12 ms
-/// of main thread, and dropped frames), while an empty shape costs next to nothing.
+/// and it grows out of there to the card, its fill with it. Its glass stays on, shrunk to
+/// nothing, since switching a shape's glass off or on makes the glass container rebuild itself at
+/// once (measured: 4 to 12 ms of main thread, and dropped frames), while an empty shape costs next
+/// to nothing.
 struct MiniPanelCardShape: Equatable {
   var frame = CGRect.zero
-  /// Its fill and rows, under the glass: 0 while closed, trailing the glass on the way in and
-  /// leading it on the way out.
-  var opacity = 1.0
   var animation: Animation?
+  /// Takes an already visible tooltip surface, so opening must not fade it in again.
+  var isLabelHandoff = false
 }
 
 /// The hover label (hover-label-v4), in the glass container: where it rests and how far out of
@@ -136,6 +133,8 @@ struct MiniPanelLabelShape: Equatable {
   var fade = 1.0
   /// Out, or still leaving: a label for another control glides from it, never grows anew.
   var drawn = false
+  /// The command card owns the glass; only this label's departing text remains.
+  var bubbleTaken = false
   var animation: Animation?
 }
 
@@ -183,8 +182,13 @@ struct MiniPanelLabels: Equatable {
 /// ``MiniPanelLayout``, so what is drawn and what the pointer tracking hits agree.
 @Observable
 final class MiniPanelModel {
+  var activity: TaskActivityModel?
+  /// The resting pill's light: running tasks, or tasks waiting for the person, which win.
+  var ongoingWork: IslandGlowPalette?
   var phase = MiniPanelPhase.hidden
   var canvas = CGSize.zero
+  /// A coordinate rebase must never inherit a shape or press animation.
+  var coordinateRevision = 0
   var edge = MiniPanelEdge.right
   /// The glass container in the canvas: only where glass can be, never the whole canvas.
   var glassFrame = CGRect.zero
@@ -198,12 +202,13 @@ final class MiniPanelModel {
   private var capsulePresence = MiniPanelPresence()
   private var invitePresence = MiniPanelPresence()
   private var cardPresence = MiniPanelPresence()
-  private var rowsPresence = MiniPanelPresence()
   private var labelTextPresence = MiniPanelPresence()
   /// The body content the phase shows: the only one clicks reach and VoiceOver reads.
   var activeContent: MiniPanelContent?
-  var flyoutOpen = false
-  var card = MiniPanelCardShape()
+  var flyoutFrame = CGRect.zero
+  let popover = MiniPanelPopoverState()
+  var flyoutOpen: Bool { popover.isOpen }
+  var card: MiniPanelCardShape { popover.shape }
   /// Where the card is drawn: its open frame and every body shape it closes into.
   var cardLane = CGRect.zero
   var commands: [MiniPanelSetCommandsParams.Command] = []
@@ -243,7 +248,6 @@ final class MiniPanelModel {
     case .capsule: capsulePresence
     case .invite: invitePresence
     case .card: cardPresence
-    case .rows: rowsPresence
     case .labelText: labelTextPresence
     }
   }
@@ -253,7 +257,6 @@ final class MiniPanelModel {
     case .capsule: capsulePresence = presence
     case .invite: invitePresence = presence
     case .card: cardPresence = presence
-    case .rows: rowsPresence = presence
     case .labelText: labelTextPresence = presence
     }
   }

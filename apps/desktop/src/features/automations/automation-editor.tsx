@@ -22,6 +22,9 @@ import { FieldError } from '../commands/field-error';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { ActionFields } from './action-fields';
+import { authorizeComputer } from './computer-authorize';
+import { ComputerHoldNotice } from './computer-hold-notice';
+import { ComputerScopeFields } from './computer-scope-fields';
 import { comparable, draftOf, savedDraft, type DraftPatch } from './automation-draft';
 import { failureWords, folderNameOf, runBlockWords } from './automation-words';
 import { DeliveryFields } from './delivery-fields';
@@ -33,6 +36,12 @@ import { TRIGGER_ERROR_ID, TriggerFields } from './trigger-fields';
 import { useAutomationAiSession } from './use-automation-ai-session';
 import { errorId, useAutomationProblems } from './use-automation-problems';
 import { automationsBridge, startRun, useTriggerPreview } from './use-automations';
+
+/**
+ * What follows a save: running the saved automation now, or authorizing its computer scope
+ * (`authorizeAndEnable` switches it back on once authorized, as the draft had it).
+ */
+export type SaveFollowUp = 'run' | 'authorize' | 'authorizeAndEnable';
 
 /**
  * The editor of one automation (`saved`), or of a new one until it is saved: its name, when it
@@ -69,8 +78,8 @@ export function AutomationEditor({
   /** Saved commands, for a command action. */
   commands: readonly CommandDefinition[];
   onCancel: () => void;
-  /** After a save; `thenRun` asks for the saved automation to run now. */
-  onSaved: (item: AutomationItem, thenRun: boolean) => void;
+  /** After a save; `then` asks for the saved automation to run now, or to be authorized. */
+  onSaved: (item: AutomationItem, then?: SaveFollowUp) => void;
 }) {
   const { t } = useTranslation('automations');
   const automationId = saved?.automation.id ?? null;
@@ -117,7 +126,7 @@ export function AutomationEditor({
     setFailure(next);
     requestAnimationFrame(() => failureRef.current?.scrollIntoView({ block: 'nearest' }));
   }
-  async function save(thenRun: boolean) {
+  async function save(then?: SaveFollowUp) {
     // Save stays enabled while a request is in flight (focus stays on it); repeats are ignored.
     if (pending) return;
     setFailure(null);
@@ -128,8 +137,16 @@ export function AutomationEditor({
       return;
     }
     let checked: AutomationDraft;
+    let follow = then;
     try {
-      checked = parse(AutomationDraftSchema, savedDraft(draft, commands));
+      // The service refuses a switched-on computer automation its grant does not cover, so one
+      // saved for authorizing is saved off and switched on after the grant (`authorizeAndEnable`).
+      const off = then === 'authorize' && Boolean(draft.policy.computer);
+      checked = parse(AutomationDraftSchema, {
+        ...savedDraft(draft, commands),
+        ...(off ? { enabled: false } : {}),
+      });
+      if (off && draft.enabled) follow = 'authorizeAndEnable';
     } catch (error) {
       showFailure({ text: messageOf(error), conflict: false });
       return;
@@ -141,7 +158,7 @@ export function AutomationEditor({
         ? await bridge.update(automationId, revision, checked)
         : await bridge.create(checked);
       setPending(false);
-      onSaved(item, thenRun);
+      onSaved(item, follow);
     } catch (error) {
       setPending(false);
       showFailure(
@@ -188,6 +205,7 @@ export function AutomationEditor({
       >
         <div key={generation} className="editor-fields settings-groups min-w-0 p-0.75">
           {saved && <AutomationStatusNotice status={saved.status} />}
+          {saved && <ComputerHoldNotice item={saved} />}
           <div className="settings-field">
             <Label htmlFor="automation-name">{t('editor.name')}</Label>
             <Input
@@ -227,6 +245,17 @@ export function AutomationEditor({
             folderName={folderName}
             onFoldersPicked={learnFolders}
             problems={problems}
+          />
+          <ComputerScopeFields
+            draft={draft}
+            onChange={change}
+            saved={saved}
+            dirty={dirty}
+            pending={pending}
+            // Unsaved edits are saved first: an authorization covers only what is saved.
+            onSaveAndAuthorize={() =>
+              saved && !dirty ? authorizeComputer(saved, t) : void save('authorize')
+            }
           />
           <PolicyFields draft={draft} onChange={change} settings={settings} commands={commands} />
           <DeliveryFields delivery={draft.delivery} onChange={(delivery) => set({ delivery })} />
@@ -275,7 +304,7 @@ export function AutomationEditor({
               label={t('editor.saveAndRun')}
               reason={null}
               busy={pending}
-              onRun={() => void save(true)}
+              onRun={() => void save('run')}
             />
           )}
         </div>
@@ -289,7 +318,7 @@ export function AutomationEditor({
           >
             {t('editor.cancel')}
           </Button>
-          <Button {...busy} aria-busy={pending || undefined} onClick={() => void save(false)}>
+          <Button {...busy} aria-busy={pending || undefined} onClick={() => void save()}>
             {pending ? t('editor.saving') : automationId ? t('editor.save') : t('editor.create')}
           </Button>
         </div>

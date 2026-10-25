@@ -29,6 +29,7 @@ import { useAgentNotices } from './use-notices';
 import { focusPanelInput, usePanelWindow } from './use-panel-window';
 import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
 import { useTaskShown } from './use-task-shown';
+import { useWithdrawnQueue } from './use-withdrawn-queue';
 
 export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
@@ -54,6 +55,7 @@ export function useTaskPanel() {
   const [prepared, setPrepared] = useState<PreparedCommand | null>(null);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState(readDrafts);
+  useWithdrawnQueue(setDrafts);
   const [choices, setChoices] = useState(readChoices);
   useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);
@@ -74,7 +76,10 @@ export function useTaskPanel() {
   // The page holds one task's transcript at a time. A side chat moves the hold to its own task,
   // and every close takes it back for the conversation by reloading it (`useTaskDetail`'s epoch).
   const [holdEpoch, setHoldEpoch] = useState(0);
-  const current = useTaskDetail(taskId, holdEpoch);
+  // What the latest send returned shows its conversation until the detail loads.
+  const [sent, setSent] = useState<TaskDetail | null>(null);
+  if (sent && sent.task.id !== taskId) setSent(null);
+  const current = useTaskDetail(taskId, holdEpoch, sent);
   const scope = view === 'task' ? taskId : null;
   const child = useChildView(scope, current.detail?.requests ?? NO_REQUESTS);
   // `submit` reads the side chat it serves, so the side chat starts its runs through the `submit`
@@ -192,6 +197,7 @@ export function useTaskPanel() {
         if (choice && !launched && !targetTaskId)
           setChoices((previous) => ({ ...previous, [detail.task.id]: choice }));
         if (!sideChatOf && !sideFollowUp) {
+          setSent(detail);
           setTaskId(detail.task.id);
           setView('task');
           setPrepared(null);

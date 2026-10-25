@@ -44,9 +44,10 @@ function checkSize(size, name) {
 
 /**
  * A release to mirror: its version, the build version its feeds declare, and the artifacts it
- * has. `absent` lists the optional architectures it lacks.
+ * has. `absent` lists the optional architectures it lacks. A GitHub release also carries its
+ * `assets` (name, size, state, digest), where the add-on locks and archives are found.
  * @typedef {{ version: string, buildVersion: string, tag: string, releaseId?: number,
- *   artifacts: Artifact[], absent: string[] }} Release
+ *   artifacts: Artifact[], absent: string[], assets?: object[] }} Release
  */
 
 function latestRelease() {
@@ -131,6 +132,7 @@ export function readGitHubRelease(tag, channel) {
     releaseId: release.id,
     artifacts,
     absent,
+    assets: release.assets,
   };
 }
 

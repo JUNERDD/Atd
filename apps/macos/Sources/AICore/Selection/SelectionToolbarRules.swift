@@ -97,6 +97,11 @@ public enum SelectionProbe: Equatable, Sendable {
   /// A selection of `length` characters (UTF-16, as Accessibility counts them); `bounds` in
   /// Quartz points (origin top-left of the primary display, y down) when the app reports them.
   case selected(length: Int, bounds: CGRect?)
+  /// An opaque editor's Copy command suggests a selection, but exposes no range or bounds.
+  /// The action still has to verify that the selection copies as text.
+  case unmeasured
+  /// A cell-based table reports a non-empty cell selection, without reading cell contents.
+  case cells
 }
 
 /// When the selection toolbar appears (grill decision Q4): only over a non-empty selection in
@@ -112,7 +117,10 @@ public enum SelectionToolbarRules {
 
   /// Whether the check found a selection to offer the toolbar for.
   public static func shows(_ probe: SelectionProbe) -> Bool {
-    if case .selected(let length, _) = probe { return length > 0 }
-    return false
+    switch probe {
+    case .selected(let length, _): return length > 0
+    case .unmeasured, .cells: return true
+    case .none, .secureField: return false
+    }
   }
 }

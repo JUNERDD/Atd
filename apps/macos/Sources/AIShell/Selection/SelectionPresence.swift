@@ -5,14 +5,16 @@ import Synchronization
 
 /// The selection toolbar's Accessibility check (grill decision Q4): whether the frontmost app's
 /// focused element has a non-empty selection, and where it is. It asks only for the selection's
-/// range, length and bounds, never for the text, which ``SelectionReader`` reads only when the
-/// user picks a toolbar action.
+/// range, length, bounds or the custom editor's Copy availability, never for the text, which
+/// ``SelectionReader`` reads only when the user picks a toolbar action.
 ///
 /// - Every AX message is bounded by a 100 ms messaging timeout set on each element it asks
 ///   (never on the system-wide element, which would change the default of every read).
 /// - A secure text field answers ``SelectionProbe/secureField`` before anything else is asked.
 /// - `AXSelectedTextRange` first; web content (WebKit, Chromium) reports its selection as a
 ///   text-marker range, whose length and bounds it answers without the text.
+/// - Cell-based tables report selected cell identities. Opaque editors can supply only a Copy
+///   menu hint (``SelectionEditMenu``); the action verifies that it really copies text.
 /// - Electron and Chromium build their web tree only once an assistive tool asks the
 ///   application something (``wakeWebContent(_:)``), so each probe does, and
 ///   ``prepare(pid:bundleURL:)`` does it ahead of time when an Electron app comes forward.
@@ -36,19 +38,52 @@ nonisolated struct SelectionPresence: Sendable {
     let subrole: String? = Self.copy(focused, kAXSubroleAttribute)
     if role == secure || subrole == secure { return .secureField }
 
-    if let rangeValue: AXValue = Self.copy(focused, kAXSelectedTextRangeAttribute) {
+    let surface = SelectionSurface(focused)
+    if let probe = textProbe(focused) { return probe }
+    if surface.selectedCellContainer() != nil { return .cells }
+    // Some editors focus a wrapper and expose the text selection on a child or ancestor.
+    // Keep this search local and bounded, as SelectionReader does for an explicit read.
+    let deadline = ContinuousClock.now + .milliseconds(150)
+    let children: [AXUIElement] = Self.copy(focused, kAXChildrenAttribute) ?? []
+    for child in children.prefix(20) where ContinuousClock.now < deadline {
+      if let probe = textProbe(child) { return probe }
+    }
+    var current = focused
+    for _ in 0..<6 where ContinuousClock.now < deadline {
+      guard let parent: AXUIElement = Self.copy(current, kAXParentAttribute) else { break }
+      let role: String? = Self.copy(parent, kAXRoleAttribute)
+      if role == kAXWindowRole || role == kAXApplicationRole { break }
+      if let probe = textProbe(parent) { return probe }
+      current = parent
+    }
+    return surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
+      ? .unmeasured : .none
+  }
+
+  private func textProbe(_ element: AXUIElement) -> SelectionProbe? {
+    AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
+    let surface = SelectionSurface(element)
+    let subrole: String? = Self.copy(element, kAXSubroleAttribute)
+    if subrole == kAXSecureTextFieldSubrole { return .secureField }
+    if surface.advertisesTextRange,
+      let rangeValue: AXValue = Self.copy(element, kAXSelectedTextRangeAttribute)
+    {
       var range = CFRange()
-      if AXValueGetValue(rangeValue, .cfRange, &range), range.length > 0 {
+      let valid = AXValueGetValue(rangeValue, .cfRange, &range)
+      if valid, range.length > 0 {
         let bounds: AXValue? = Self.copy(
-          focused, kAXBoundsForRangeParameterizedAttribute, rangeValue)
+          element, kAXBoundsForRangeParameterizedAttribute, rangeValue)
         return .selected(length: range.length, bounds: bounds.flatMap(Self.rect))
       }
+      if valid, surface.nativeText, range.length == 0 { return SelectionProbe.none }
     }
-    guard let marker: CFTypeRef = Self.copy(focused, "AXSelectedTextMarkerRange"),
-      let length: Int = Self.copy(focused, "AXLengthForTextMarkerRange", marker), length > 0
-    else { return .none }
-    let bounds: AXValue? = Self.copy(focused, "AXBoundsForTextMarkerRange", marker)
-    return .selected(length: length, bounds: bounds.flatMap(Self.rect))
+    if let marker: CFTypeRef = Self.copy(element, "AXSelectedTextMarkerRange"),
+      let length: Int = Self.copy(element, "AXLengthForTextMarkerRange", marker), length > 0
+    {
+      let bounds: AXValue? = Self.copy(element, "AXBoundsForTextMarkerRange", marker)
+      return .selected(length: length, bounds: bounds.flatMap(Self.rect))
+    }
+    return nil
   }
 
   /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`
@@ -97,18 +132,19 @@ extension SelectionPresence {
   /// the last one, and the caller drops stale answers anyway).
   private nonisolated static let busy = Mutex(false)
 
-  /// Where ``prepare(pid:bundleURL:)`` runs, apart from the probes' queue so a slow app never
-  /// holds up a selection check.
+  /// Where ``prepare(pid:bundleURL:)`` runs, apart from the probes' queue so preparing a slow
+  /// app never holds up a selection check.
   private nonisolated static let prepareQueue = DispatchQueue(
     label: "com.junerdd.ai.selection-prepare", qos: .utility)
 
-  /// Wakes an Electron app's web content off the main thread, ahead of the first selection: the
-  /// tree takes a moment to build, longer than a quick selection gives the first probe. Only
-  /// apps that ship Electron's framework are woken early; any other app waits for its first
-  /// probe, so merely bringing a browser forward never changes its accessibility state.
+  /// Prepares editing-menu handles and wakes Electron's web content ahead of the first selection:
+  /// discovery can take longer than a quick gesture gives the first probe. Only apps that ship
+  /// Electron's framework have their web content woken early, so merely bringing a browser
+  /// forward never changes its accessibility state.
   nonisolated static func prepare(pid: pid_t, bundleURL: URL?) {
     guard let bundleURL else { return }
     prepareQueue.async {
+      SelectionEditMenu.prepare(pid: pid)
       let framework = bundleURL.appendingPathComponent(
         "Contents/Frameworks/Electron Framework.framework", isDirectory: true)
       guard FileManager.default.fileExists(atPath: framework.path) else { return }

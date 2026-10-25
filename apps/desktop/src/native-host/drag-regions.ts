@@ -5,12 +5,13 @@ type Rect = PostParams<'window.dragRegions'>['rects'][number];
 /**
  * The surfaces that move the window: the panel header, the service-starting surface that stands
  * in for it, the settings window's title bar strips (the sidebar strip under the traffic lights
- * and the content header), and the window-level loading splash.
+ * and the content header), a view window's header, and the window-level loading splash.
  */
 const DRAG_AREAS = [
   '.panel-header',
   '.service-starting',
   '.settings-titlebar',
+  '.view-window-header',
   '#root > .window-loading',
 ].join(',');
 

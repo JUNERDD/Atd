@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import type { AssistantMessage, Message } from '@earendil-works/pi-ai';
+import type { AssistantMessage } from '@earendil-works/pi-ai';
 import {
-  buildSessionContext,
+  buildSessionProjection,
   convertToLlm,
   migrateSessionEntries,
   parseSessionEntries,
@@ -9,6 +9,9 @@ import {
   type FileEntry,
   type SessionEntry,
 } from '@earendil-works/pi-coding-agent';
+import { readVerifiedCompletion } from '../computer/completion-message.js';
+import { INVOCATION_ENTRY } from '../invocation-marker.js';
+import { invocationRunId } from '../transcript.js';
 
 /** Characters one referenced conversation may add to a run, before the budget trims it. */
 export const CONVERSATION_EXCERPT_CHARS = 12000;
@@ -43,24 +46,48 @@ export async function readConversation(sessionFile: string): Promise<Conversatio
   const entries = parseSessionEntries(await readFile(sessionFile, 'utf8'));
   if (entries[0]?.type !== 'session') throw new Error('The file is not a Pi session.');
   migrateSessionEntries(entries);
-  const { messages } = buildSessionContext(entries.filter(isSessionEntry));
-  // Run material (instructions, attachments, references) is injected as
-  // hidden custom messages; an excerpt carries what was said, not that
-  // material, so a referenced conversation never nests its own references.
-  const said = convertToLlm(messages.filter((message) => message.role !== 'custom'));
-  const turns: Message[][] = [];
-  for (const message of said) {
-    // System entries are prompt and tool patches, not conversation.
-    if (message.role === 'system') continue;
-    const kept = message.role === 'assistant' ? withoutThinking(message) : message;
-    const current = turns.at(-1);
-    if (message.role === 'user' || !current) turns.push([kept]);
-    else current.push(kept);
+  const sessionEntries = entries.filter(isSessionEntry);
+  const runs = new Map<string, string | undefined>();
+  for (const entry of sessionEntries)
+    runs.set(
+      entry.id,
+      entry.type === 'custom' && entry.customType === INVOCATION_ENTRY
+        ? invocationRunId(entry.data)
+        : runs.get(entry.parentId ?? ''),
+    );
+  const projection = buildSessionProjection(sessionEntries);
+  // Custom context stays hidden; only validated visible completions are assistant prose.
+  // Source ancestry keeps their run association even when compaction omits its marker.
+  const turns: string[][] = [];
+  let opening = '';
+  for (const { sourceEntry, messages } of projection.entries) {
+    for (const message of messages) {
+      if (message.role === 'custom') {
+        const completion = readVerifiedCompletion(message, runs.get(sourceEntry.id));
+        if (completion) {
+          const text = `[Assistant]: ${completion.text}`;
+          const current = turns.at(-1);
+          if (current) current.push(text);
+          else turns.push([text]);
+        }
+        continue;
+      }
+      for (const said of convertToLlm([message])) {
+        // System entries are prompt and tool patches, not conversation.
+        if (said.role === 'system') continue;
+        const kept = said.role === 'assistant' ? withoutThinking(said) : said;
+        const text = serializeConversation([kept]);
+        const current = turns.at(-1);
+        if (said.role === 'user' || !current) {
+          if (!turns.length && said.role === 'user') opening = text;
+          turns.push([text]);
+        } else current.push(text);
+      }
+    }
   }
-  const first = turns[0] ?? [];
   return {
-    turns: turns.map((turn) => serializeConversation(turn)).filter(Boolean),
-    opening: serializeConversation(first.filter((message) => message.role === 'user')),
+    turns: turns.map((turn) => turn.filter(Boolean).join(SEPARATOR)).filter(Boolean),
+    opening,
   };
 }
 

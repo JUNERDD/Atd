@@ -4,9 +4,9 @@ import QuartzCore
 
 /// The window and layers of a paced paste's typing trace (``InsertionTracer``): a glow that
 /// follows the insertion point and a wash behind each chunk that fades as the next ones land.
-/// All of it is the release film's coral caret (``Coral``): the glow is that caret with its
-/// bloom, the wash its selection colour, so the trace on screen is the one the film shows; the
-/// window draws nothing else. Under reduced motion only the washes show, which fade in place: the
+/// The caret, bloom and wash share the HUD and mini panel's working palette for the app's
+/// appearance (``InsertionTracePalette``); the window draws nothing else.
+/// Under reduced motion only the washes show, which fade in place: the
 /// glow, which moves, is left out rather than the trace as a whole.
 ///
 /// The window is a borderless, non-activating panel that ignores the mouse, above the target
@@ -42,14 +42,47 @@ final class InsertionTraceOverlay {
   private var washes: [(layer: CALayer, gone: CFTimeInterval)] = []
   /// Whether the system reduces motion, which leaves the glow out.
   private let reducesMotion: Bool
+  private let palette: InsertionTracePalette
+  private let isCurrent: () -> Bool
+  private var closed = false
+  private var validity: Task<Void, Never>?
+  private var fadeTask: Task<Void, Never>?
+  private static var captureHolds = 0
+  private static let active = NSHashTable<InsertionTraceOverlay>.weakObjects()
 
-  init(reducesMotion: Bool = false) {
+  /// Captures must contain the target's pixels, never Atd's insertion feedback.
+  static func beginCapture() {
+    captureHolds += 1
+    cancelAll()
+  }
+
+  static func endCapture() { captureHolds -= 1 }
+
+  static func cancelAll() {
+    for trace in active.allObjects { trace.cancel() }
+  }
+
+  func cancel() {
+    closed = true
+    validity?.cancel()
+    fadeTask?.cancel()
+    window?.orderOut(nil)
+    window = nil
+  }
+
+  init(reducesMotion: Bool = false, isCurrent: @escaping () -> Bool = { true }) {
     self.reducesMotion = reducesMotion
+    palette = InsertionTracePalette(
+      dark: NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+        == .darkAqua)
+    self.isCurrent = isCurrent
+    Self.active.add(self)
   }
 
   /// Moves the glow to `anchor`, the last character in, and lays a fading wash over `wash`; all
   /// in Quartz points. The window opens with the first mark.
   func show(anchor: CGRect?, wash: [CGRect], field: CGRect?) {
+    guard !closed, Self.captureHolds == 0, isCurrent() else { return cancel() }
     let anchor = reducesMotion ? nil : anchor
     guard let first = anchor ?? wash.first else { return }
     // Layers move only as the animations below say, the window's first ones included.
@@ -69,16 +102,16 @@ final class InsertionTraceOverlay {
 
   /// Fades the glow out and closes the window once the last wash is gone.
   func finish() {
-    guard let window else { return }
+    guard window != nil else { return }
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     fade(glow)
     CATransaction.commit()
     let remaining = max(Self.glowFade, (washes.map(\.gone).max() ?? 0) - CACurrentMediaTime())
-    self.window = nil
-    Task {
+    fadeTask = Task {
       try? await Task.sleep(for: .seconds(remaining + 0.05))
-      window.orderOut(nil)
+      guard !Task.isCancelled else { return }
+      cancel()
     }
   }
 
@@ -111,6 +144,16 @@ final class InsertionTraceOverlay {
     buildGlow(scale: screen.backingScaleFactor)
     window.orderFrontRegardless()
     self.window = window
+    validity = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(50))
+        guard let self, !Task.isCancelled else { return }
+        if !self.isCurrent() {
+          self.cancel()
+          return
+        }
+      }
+    }
     return true
   }
 
@@ -131,25 +174,24 @@ final class InsertionTraceOverlay {
     return window
   }
 
-  /// The glow, as the film draws its caret: a rounded coral bar shading to the deep coral, a tight
-  /// glow and a wide bloom around it, and a tail of the wash behind it that shows only while it
-  /// moves.
+  /// A rounded bar shading into the working blue, a tight glow and a wide bloom around it,
+  /// and a tail of the wash behind it that shows only while it moves.
   private func buildGlow(scale: CGFloat) {
     glow.anchorPoint = CGPoint(x: 0.5, y: 0)
     glow.opacity = 0
     halo.type = .radial
-    halo.colors = [Coral.glow, Coral.wash, Coral.clear]
+    halo.colors = [palette.glow, palette.wash, palette.clear]
     halo.locations = [0, 0.45, 1]
     halo.startPoint = CGPoint(x: 0.5, y: 0.5)
     halo.endPoint = CGPoint(x: 1, y: 1)
     tail.startPoint = CGPoint(x: 0, y: 0.5)
     tail.endPoint = CGPoint(x: 1, y: 0.5)
-    tail.colors = [Coral.clear, Coral.wash]
+    tail.colors = [palette.clear, palette.wash]
     tail.cornerRadius = 3
     tail.opacity = 0
-    core.colors = [Coral.caret, Coral.deep]
+    core.colors = [palette.highlight, palette.caret]
     core.cornerRadius = Self.coreWidth / 2
-    core.shadowColor = Coral.glow
+    core.shadowColor = palette.glow
     core.shadowOpacity = 1
     core.shadowRadius = 4
     core.shadowOffset = .zero
@@ -174,7 +216,7 @@ final class InsertionTraceOverlay {
     layer.frame = rect
     layer.cornerRadius = 3
     let strong = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
-    layer.backgroundColor = strong ? Coral.washStrong : Coral.wash
+    layer.backgroundColor = strong ? palette.washStrong : palette.wash
     layer.opacity = 0
     let fade = CABasicAnimation(keyPath: "opacity")
     fade.fromValue = 1
@@ -227,22 +269,27 @@ final class InsertionTraceOverlay {
   }
 }
 
-/// The release film's caret colours, from its world tokens
-/// (`atd-films/src/films/release-0.8/world/release.css`, `--r08-coral…`): the caret, its deep end,
-/// its glow and its wash, which the film also selects text with. Fixed colours, as in the film:
-/// the trace is Atd's mark over another app, not a colour of that app's.
-private enum Coral {
-  static let caret = color(255, 106, 61)
-  static let deep = color(226, 71, 28)
-  static let glow = color(255, 106, 61, 0.55)
-  static let wash = color(255, 106, 61, 0.3)
-  /// The wash under Increase Contrast.
-  static let washStrong = color(255, 106, 61, 0.4)
-  static let clear = color(255, 106, 61, 0)
+/// The working field's tones adapted to a narrow caret and translucent text washes. The dark
+/// appearance uses the mist highlight so the caret stays visible over dark target fields.
+private struct InsertionTracePalette {
+  let highlight: CGColor
+  let caret: CGColor
+  let glow: CGColor
+  let wash: CGColor
+  let washStrong: CGColor
+  let clear: CGColor
 
-  private static func color(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1)
-    -> CGColor
-  {
-    CGColor(srgbRed: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
+  init(dark: Bool) {
+    let tones = IslandGlowPalette.working.tones(dark: dark)
+    highlight = Self.color(dark ? tones.mist : tones.deep)
+    caret = Self.color(tones.steel)
+    glow = Self.color(tones.steel, alpha: 0.55)
+    wash = Self.color(tones.steel, alpha: 0.3)
+    washStrong = Self.color(tones.steel, alpha: 0.4)
+    clear = Self.color(tones.steel, alpha: 0)
+  }
+
+  private static func color(_ tone: SIMD3<Double>, alpha: CGFloat = 1) -> CGColor {
+    CGColor(srgbRed: tone.x, green: tone.y, blue: tone.z, alpha: alpha)
   }
 }

@@ -12,6 +12,7 @@
     "label": "Settings sections",
     "navigationLabel": "Settings navigation",
     "permissions": "Permissions",
+    "computer": "Computer use",
     "extensions": "Extensions",
     "providers": "Models",
     "commands": "Commands",
@@ -62,6 +63,7 @@
       "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "appearance": "theme appearance color scheme light dark mode night day system automatic follow",
+      "viewInitiative": "view views interactive ui widget window card chart form dashboard visual show display agent proactive proactively balanced request ask unprompted automatic conversation chat",
       "panelPlacement": "position place location where appear open center centre middle corner bottom right remember last moved dragged display monitor screen multiple",
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
@@ -81,7 +83,7 @@
       "skills": "skill skills create with ai instructions",
       "subagents": "subagent subagents agent roles delegate specialist",
       "mcp": "mcp server servers tools model context protocol stdio http oauth",
-      "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility",
+      "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility device control data access",
       "selectionToolbarActivation": "hold key option command shift press twice toggle switch modifier activation trigger toolbar selection",
       "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
@@ -90,7 +92,17 @@
       "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
       "notificationsAttention": "notification notifications notify alert banner approval approve confirm confirmation question answer input waiting needs attention",
       "notificationsSound": "notification notifications sound audio chime ding beep mute silent quiet",
-      "notificationsPreviews": "notification notifications preview previews content text private privacy hide message lock screen banner"
+      "notificationsPreviews": "notification notifications preview previews content text private privacy hide message lock screen banner",
+      "computer": "computer use browser automation websites apps background agent control",
+      "computerPointer": "pointer cursor live highlight show hide",
+      "computerTargets": "targets websites apps applications browser environment profile sites",
+      "computerBrowser": "browser chrome profile website sign in login site",
+      "computerStop": "stop cancel halt emergency computer",
+      "computerEngines": "engine add-on download install remove browser component",
+      "computerApplication": "application app program window native mac",
+      "computerTyping": "computer typing typewriter highlight animation input command",
+      "computerVision": "vision model screen monitor sharing",
+      "computerCapture": "screen access capture recording consent prepare permission prompt"
     }
   },
   "providers": {
@@ -218,8 +230,8 @@
       "description": "While the toolbar is on, a small HUD near the bottom of the screen says so. Drag it anywhere, or hide it until the next time you turn the toolbar on."
     },
     "accessibility": {
-      "title": "Accessibility access needed",
-      "description": "Atd needs Accessibility access to notice selected text. The toolbar starts working as soon as you allow it.",
+      "title": "App control access needed",
+      "description": "Allow Atd in Device Control and Data Access (Accessibility on earlier macOS versions) to use the selection toolbar.",
       "open": "Open System Settings"
     },
     "excluded": {
@@ -234,7 +246,7 @@
       "save": "The selection toolbar setting couldn't be saved. Try again.",
       "pick": "The app picker couldn't open. Try again.",
       "limit": "Exclude at most {{max}} apps.",
-      "accessibility": "System Settings couldn't open. Open Privacy & Security › Accessibility yourself."
+      "accessibility": "System Settings couldn't open. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
     }
   },
   "notifications": {
@@ -284,10 +296,27 @@
         "dark": "Dark"
       }
     },
+    "viewInitiative": {
+      "title": "Interactive views",
+      "description": "Choose whether the agent shows interactive views on its own, only when they clearly help, or only when you ask.",
+      "label": "When the agent shows interactive views",
+      "saveFailed": "The interactive views setting could not be saved.",
+      "modes": {
+        "proactive": "Proactive",
+        "balanced": "Balanced",
+        "onRequest": "On request"
+      },
+      "hints": {
+        "proactive": "Shows a view whenever one would help, without waiting to be asked.",
+        "balanced": "Shows a view when it clearly works better than text.",
+        "onRequest": "Shows a view only when you ask for one."
+      }
+    },
     "groups": {
       "global": "Global",
       "inApp": "In app",
       "appearance": "Appearance",
+      "conversation": "Conversation",
       "window": "Window"
     },
     "actions": {
@@ -850,7 +879,6 @@
     "versionUnavailable": "Version unavailable",
     "developmentVersion": "{{version}} · Development build",
     "updatesTitle": "Check for updates",
-    "checkForUpdates": "Check for updates…",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",
     "links": {
@@ -872,5 +900,191 @@
     "success": "Sync complete. Commands: {{commands}} · Skills: {{skills}} · Agents: {{agents}}.",
     "backup": "Backup: {{path}}",
     "keywords": "development dev sync import installed production settings commands personal skills agents backup"
+  },
+  "computer": {
+    "title": "Computer use",
+    "description": "Atd requests access to the apps and websites a task needs. Automatic and Full approval save approved access here for later tasks; Manual approval lasts for one run. Remove a target here to revoke its saved access. Automations use only their separately authorized scope.",
+    "statusLabel": "Computer use status",
+    "host": {
+      "ready": {
+        "title": "Ready",
+        "description": "Atd can act on your targets in the background. In tasks you run, when the background can’t do a step in an app, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app you were using."
+      },
+      "starting": {
+        "title": "Starting…",
+        "description": "Atd is getting computer use ready."
+      },
+      "locked": {
+        "title": "In use by another copy of Atd",
+        "description": "Only one copy of Atd at a time can act on websites and apps. Quit the other copy to use it here."
+      },
+      "unavailable": {
+        "title": "Unavailable",
+        "description": "Atd’s background service isn’t connected, so nothing can act on websites or apps right now."
+      }
+    },
+    "unsettled": {
+      "title": "Background computer use is paused",
+      "description_one": "Atd couldn’t confirm whether {{count}} action changed anything. Until you check the apps and websites your computer automations use, they won’t act on them in the background.",
+      "description_other": "Atd couldn’t confirm whether {{count}} actions changed anything. Until you check the apps and websites your computer automations use, they won’t act on them in the background.",
+      "review": "I’ve checked…",
+      "confirmTitle": "Resume background computer use?",
+      "confirmDescription": "Confirm that you looked at the apps and websites these actions may have changed and fixed anything that wasn’t right. Atd records them as done with an unknown result and won’t repeat them.",
+      "confirm": "I’ve checked"
+    },
+    "engine": {
+      "playwright": "Websites",
+      "atd": "Apps"
+    },
+    "engineState": {
+      "starting": "Starting…",
+      "ready": "Ready",
+      "unqualified": "Ready for tasks; not yet for automations",
+      "unavailable": "Unavailable",
+      "notInstalled": "Not installed"
+    },
+    "engineVersion": "Version {{version}}",
+    "permission": {
+      "accessibility": {
+        "title": "App control access is off",
+        "description": "Allow Atd in Device Control and Data Access (Accessibility on earlier macOS versions) to read and operate app controls."
+      },
+      "screenRecording": {
+        "title": "Screen Recording is off",
+        "description": "Atd needs Screen Recording to save pictures of a target as evidence."
+      },
+      "open": "Open System Settings"
+    },
+    "capture": {
+      "title": "Screen access",
+      "searchDescription": "Let macOS ask about screen capture here, never in the middle of a task.",
+      "notPrepared": "macOS may ask whether Atd can capture the screen directly. Prepare it here so the question never interrupts a task.",
+      "preparing": "If macOS asks whether Atd can capture the screen, allow it.",
+      "prepared": "Prepared on {{time}}. If macOS asks again later, prepare it again here.",
+      "denied": "macOS didn’t allow screen capture. Turn on Screen Recording for Atd in System Settings, then try again.",
+      "unavailable": "Atd couldn’t prepare screen access just now. Try again in a moment.",
+      "prepare": "Prepare screen access"
+    },
+    "pointer": {
+      "title": "Show live pointer",
+      "description": "While Atd acts on a target you can see, mark where it is working. This only changes what you see."
+    },
+    "targets": {
+      "title": "Targets",
+      "searchDescription": "Browser environments and apps Atd may act on.",
+      "addBrowser": "Add browser environment",
+      "inUse": "In use",
+      "kind": {
+        "browser": "Browser environment",
+        "application": "Application"
+      },
+      "signIn": "Sign in again",
+      "disconnect": "Disconnect",
+      "more": "More",
+      "moreFor": "More actions for {{name}}",
+      "disconnectedAutomations_one": "Target disconnected. {{count}} automation needs authorizing again.",
+      "disconnectedAutomations_other": "Target disconnected. {{count}} automations need authorizing again.",
+      "disconnectTitle": "Disconnect {{name}}?",
+      "disconnectDescription": "Tasks and automations can no longer use it, and automations authorized for it stop running until you authorize them again. Sign-in data in its browser environment is kept.",
+      "add": "Add target",
+      "browserHint": "A website you sign in to",
+      "emptyTitle": "No targets yet",
+      "emptyDescription": "Add a browser environment for a website, or an app Atd may work in.",
+      "needsEngine": "Install the engine first",
+      "addApplication": "Add application",
+      "applicationHint": "An app whose windows Atd works in"
+    },
+    "stopAll": {
+      "action": "Stop all computer use",
+      "description": "Ends everything Atd is doing on websites and apps, in tasks and automations alike.",
+      "stopped_one": "Stopped computer use in {{count}} run.",
+      "stopped_other": "Stopped computer use in {{count}} runs.",
+      "nothing": "Nothing was acting on a target.",
+      "button": "Stop all"
+    },
+    "browser": {
+      "title": "Add browser environment",
+      "description": "Atd opens a separate Chrome profile just for this, never your everyday one. Sign in there; the environment is added when you finish.",
+      "label": "Name",
+      "labelPlaceholder": "Team expense form",
+      "startUrl": "Start page",
+      "origins": "Allowed sites",
+      "originsNote": "One site per line. Atd won’t open pages outside them. Leave empty to allow only the start page’s site.",
+      "waiting": "Sign in in the window Atd opened. This finishes when you’re done there.",
+      "preparing": "Waiting for sign-in…",
+      "add": "Add and sign in",
+      "errors": {
+        "label": "Enter a name.",
+        "startUrl": "Enter a web address that starts with http or https.",
+        "origin": "“{{entry}}” isn’t a site address.",
+        "outside": "Include the start page’s site in the allowed sites."
+      }
+    },
+    "prepareFailed": {
+      "unavailable": "Computer use isn’t available right now.",
+      "busy": "Another target is being set up. Finish that first.",
+      "unsupported": "This can’t be added as a target.",
+      "notInstalled": "That app isn’t where Atd found it anymore. Choose it again."
+    },
+    "cancel": "Cancel",
+    "groups": {
+      "status": "Status",
+      "controls": "Controls",
+      "engines": "Engines"
+    },
+    "engines": {
+      "searchDescription": "Download or remove the browser engine that website targets run on."
+    },
+    "application": {
+      "title": "Add application",
+      "description": "Atd works in this app’s windows in the background. In tasks you run, when the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app you were using. It checks what it can read without opening or activating the app.",
+      "label": "Name",
+      "labelPlaceholder": "Calendar",
+      "app": "App",
+      "noApp": "No app chosen",
+      "chooseApp": "Choose app…",
+      "add": "Add application",
+      "errors": {
+        "label": "Enter a name.",
+        "app": "Choose an app.",
+        "unsupported": "This app can’t be a target. Choose another app."
+      },
+      "probe": {
+        "title": "{{name}} was added",
+        "description": "What Atd could read of the app just now, without opening or activating it:",
+        "windows_one": "{{count}} open window",
+        "windows_other": "{{count}} open windows",
+        "noWindows": "No open windows. Atd can work once one is open.",
+        "tree": "Atd can read its controls.",
+        "noTree": "Atd can’t read its controls yet. Check app control access under Status.",
+        "screenshot": "Atd can take pictures of its windows.",
+        "noScreenshot": "Atd can’t take pictures of its windows yet. Check Screen Recording under Status.",
+        "done": "Done"
+      }
+    },
+    "capability": {
+      "background": "Works in the background",
+      "backgroundAndForeground": "Works in the background, and in the foreground when a task needs it",
+      "qualified": "Checked for automations",
+      "unqualified": "Not yet checked for automations"
+    },
+    "typing": {
+      "title": "Type text gradually",
+      "description": "Use the Command typing pace in apps and browsers. Unsupported fields receive text all at once. This setting is independent of Commands.",
+      "reducedMotion": "Reduce Motion is on, so text is entered all at once. Your typing preference is kept."
+    },
+    "typingAnimation": {
+      "title": "Highlight new text",
+      "description": "Briefly highlight the input as text arrives, even when gradual typing is off. Reduced Motion keeps only the highlight."
+    },
+    "vision": {
+      "title": "Screen understanding",
+      "model": "Vision model",
+      "followTask": "Follow task model",
+      "description": "Reads the latest screens before each step.",
+      "choose": "Choose vision model: {{model}}",
+      "search": "Search image-capable models",
+      "unavailable": "Model unavailable. Reconnect or choose another."
+    }
   }
 }

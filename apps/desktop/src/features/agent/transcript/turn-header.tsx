@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
+import { useContentChangeFade } from '../content-feedback';
 import { formatElapsed } from './elapsed';
 import { formatRate, turnRate, type TurnGeneration } from './token-rate';
 import { TurnUsageDetail } from './turn-usage-detail';
 import type { TurnUsage } from './turn-usage';
+import './turn-header.css';
 
 /** One reading of the live header's clock: active elapsed time, and the wall time read. */
 interface LiveTick {
@@ -96,48 +98,52 @@ export function TurnHeader({
   const { t } = useTranslation('tasks');
   const tick = useLiveTick(live ? startedAt : null, live, waiting !== null);
   const liveRate = useLiveRate(generation, tick.at, live);
-
-  if (live) {
-    const elapsed = formatElapsed(tick.elapsed) ?? '';
-    const label =
-      waiting !== null
-        ? waiting === 'answer'
-          ? t('permission.waitingAnswer')
-          : t('permission.waitingApproval')
-        : modelName
-          ? t('transcript.footer.live', { elapsed, model: modelName })
-          : `${t('transcript.verb.working')} · ${t('transcript.footer.elapsed', { elapsed })}`;
-    const suffix = liveRate === null ? '' : ` · ${t('transcript.rate.tps', { rate: liveRate })}`;
-    return (
-      <output
-        aria-live="polite"
-        aria-label={waiting !== null ? label : modelName || t('transcript.verb.working')}
-        className="turn-header turn-header-live"
-      >
-        <LoaderCircle className="turn-header-spinner" />
-        <Shimmer as="span" className="turn-header-label">
-          {`${label}${suffix}`}
-        </Shimmer>
-      </output>
-    );
-  }
-
-  const elapsed = formatElapsed(durationMs);
-  if (elapsed === null) return null;
-  const rate = generation ? turnRate(generation) : null;
-  const suffix = rate === null ? '' : ` · ${t('transcript.rate.tps', { rate: formatRate(rate) })}`;
-  const label = `${
-    modelName
+  // Only lifecycle changes arrive. Clock ticks and token rates update the same content in place;
+  // a historical header mounts settled, so opening a conversation never replays its completion.
+  const phase = live ? (waiting ?? 'working') : 'settled';
+  const feedbackRef = useContentChangeFade<HTMLDivElement>(phase);
+  const elapsed = formatElapsed(live ? tick.elapsed : durationMs);
+  const rate = generation && !live ? turnRate(generation) : null;
+  const rateLabel = live ? liveRate : rate === null ? null : formatRate(rate);
+  const suffix = rateLabel === null ? '' : ` · ${t('transcript.rate.tps', { rate: rateLabel })}`;
+  const label = live
+    ? waiting !== null
+      ? waiting === 'answer'
+        ? t('permission.waitingAnswer')
+        : t('permission.waitingApproval')
+      : modelName
+        ? t('transcript.footer.live', { elapsed: elapsed ?? '', model: modelName })
+        : `${t('transcript.verb.working')} · ${t('transcript.footer.elapsed', { elapsed: elapsed ?? '' })}`
+    : modelName
       ? t('transcript.footer.done', { elapsed, model: modelName })
-      : t('transcript.footer.workedFor', { elapsed })
-  }${suffix}`;
+      : t('transcript.footer.workedFor', { elapsed });
+  if (elapsed === null) return null;
+  const text = `${label}${suffix}`;
   return (
-    <div className="turn-header" aria-label={label}>
-      <Check className="turn-header-check" />
-      <span className="turn-header-label" title={label}>
-        {label}
-      </span>
-      {usage && <TurnUsageDetail usage={usage} />}
+    <div
+      className={live ? 'turn-header turn-header-live' : 'turn-header'}
+      role={live ? 'status' : undefined}
+      aria-label={
+        live ? (waiting !== null ? label : modelName || t('transcript.verb.working')) : text
+      }
+    >
+      <div ref={feedbackRef} className="turn-header-content">
+        {live ? (
+          <LoaderCircle className="turn-header-spinner" />
+        ) : (
+          <Check className="turn-header-check" />
+        )}
+        {live ? (
+          <Shimmer as="span" className="turn-header-label">
+            {text}
+          </Shimmer>
+        ) : (
+          <span className="turn-header-label" title={text}>
+            {text}
+          </span>
+        )}
+        {!live && usage && <TurnUsageDetail usage={usage} />}
+      </div>
     </div>
   );
 }

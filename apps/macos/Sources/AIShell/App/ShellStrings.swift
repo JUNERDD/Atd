@@ -33,6 +33,18 @@ final class ShellStrings {
     table.localizedString(forKey: key.rawValue, value: nil, table: nil)
   }
 
+  func text(_ key: TaskActivityStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: ComputerMonitorStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: ComputerMonitorStringKey, count: Int) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), count)
+  }
+
   /// A catalog string with one `%lld`.
   func text(_ key: ShellStringKey, count: Int) -> String {
     String(format: text(key), locale: Locale(identifier: language.rawValue), count)

@@ -2,6 +2,7 @@ import type { ToolResultMessage } from '@earendil-works/pi-ai';
 import { Compile } from 'typebox/compile';
 import {
   CODEMODE_TOOL,
+  COMPUTER_TOOL,
   CONFIGURE_MCP_TOOL,
   ProductArtifactSchema,
   TODO_TOOL,
@@ -20,6 +21,7 @@ import { isSubagentLaunch, SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 import { projectAppDetails } from './app.js';
 import { projectArtifact } from './artifact.js';
 import { projectCodemodeDetails, type CodemodeDetailsInput, type StepList } from './codemode.js';
+import { projectComputerDetails } from './computer.js';
 import { projectEditDetails } from './edit.js';
 import { projectMcpApprovalDetails } from './mcp-approval.js';
 import { projectSubagentDetails, subagentRows, type SubagentRow } from './subagent.js';
@@ -45,6 +47,7 @@ const PROJECTORS: ReadonlyMap<string, Projector> = new Map<string, Projector>([
   [WEB_FETCH_TOOL, projectWebFetchDetails],
   [CONFIGURE_MCP_TOOL, projectMcpApprovalDetails],
   [APP_TOOL, projectAppDetails],
+  [COMPUTER_TOOL, projectComputerDetails],
 ]);
 
 /**

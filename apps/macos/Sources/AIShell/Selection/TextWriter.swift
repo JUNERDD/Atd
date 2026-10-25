@@ -6,10 +6,12 @@ import Carbon.HIToolbox
 /// Performs `text.write` (contract: `text-calls.ts`): checks the refusals of ``TextWritePlan``
 /// before changing anything, then hides the panel, brings the target app forward, restores its
 /// field and selection (``FieldRestore``) and types the text in through the clipboard as the
-/// user's typing setting says (``ClipboardPaste``), resolving once the field shows the last of it in. One
-/// write runs at a time; a second one while it runs fails.
+/// user's typing setting says (``ClipboardPaste``), resolving once the field shows the last of it in. A
+/// write holds global input and the clipboard (``DeviceArbiter``) from its checks until the
+/// user's pasteboard is back; it fails without changing anything while another feature of the
+/// shell holds either, a second write included, or a background write still does after
+/// ``DeviceArbiter/userWait``.
 enum TextWriter {
-  private static var writing = false
   /// How long the target app gets to come forward.
   private static let activationLimit: Duration = .seconds(1)
   /// A net over the restore's AX messages, each bounded by the messaging timeout.
@@ -17,12 +19,24 @@ enum TextWriter {
   /// Lets the window server route the keyboard to the target app before keys are posted.
   private static let settle: Duration = .milliseconds(60)
 
-  static func write(_ params: TextWriteParams, to target: WriteTarget?, hidePanel: () -> Void)
-    async -> TextWriteResult
-  {
-    guard !writing else { return refuse(.failed) }
-    writing = true
-    defer { writing = false }
+  static func write(
+    _ params: TextWriteParams, to target: WriteTarget?, arbiter: DeviceArbiter,
+    hidePanel: () -> Void
+  ) async -> TextWriteResult {
+    // Do this before activation or clipboard ownership. The renderer offers the result card;
+    // a direct bridge caller must not accidentally move into the next cell with Right Arrow.
+    if params.mode == .afterSelection {
+      switch target?.selection {
+      case .cells, .untyped: return refuse(.unsupportedSelection)
+      default: break
+      }
+    }
+    guard
+      let claim = try? await arbiter.claim(
+        [.globalInput, .clipboard], owner: .user(.textWrite),
+        deadline: .now + DeviceArbiter.userWait)
+    else { return refuse(.failed) }
+    defer { claim.release() }
     let app = target.flatMap { NSRunningApplication(processIdentifier: $0.pid) }
     let facts = TextWriteFacts(
       trusted: AXIsProcessTrusted(), targetAvailable: app.map { !$0.isTerminated } ?? false,
@@ -60,7 +74,7 @@ enum TextWriter {
     guard let target else { return false }
     switch target.selection {
     // A copy is recorded only when it copied text.
-    case .copied: return true
+    case .copied, .untyped, .cells: return true
     case .field(let range):
       if let range, range.length > 0 { return true }
       return !(target.selectedText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -123,6 +137,10 @@ nonisolated struct FieldRestore: Sendable {
     // Also the liveness check: a vanished field throws `invalidElement`.
     if try AXField.isSecure(element) { return .refused(.secureInput) }
     try AXField.focus(element, in: app)
+    if case .cells(let cells) = target.selection {
+      if let cells, !cells.isCurrent() { return .refused(.targetChanged) }
+      return .ready(collapseWithArrow: false)
+    }
     guard case .field(let recorded) = target.selection else {
       return .ready(collapseWithArrow: mode == .afterSelection)
     }

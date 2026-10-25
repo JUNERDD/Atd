@@ -24,6 +24,10 @@ final class HotKeyRegistrar {
   private var registered: [String: Registration] = [:]
   /// The set last pushed, which ``reapply()`` registers again.
   private var desired: [ShortcutRegistration] = []
+  private var recording: [ObjectIdentifier: Set<Int>] = [:]
+  private var pending:
+    [(desired: [ShortcutRegistration], continuation: CheckedContinuation<[ShortcutResult], Never>)] =
+      []
   private let onPress: @MainActor (String) -> Void
   private let onRelease: @MainActor (String) -> Void
   private let canWatchKeyboard: () -> Bool
@@ -44,8 +48,17 @@ final class HotKeyRegistrar {
 
   /// Registers the difference to `desired` and reports every entry once, in order. The page
   /// words failures by reason; the details go to the log.
-  func apply(_ desired: [ShortcutRegistration]) -> [ShortcutResult] {
+  func apply(_ desired: [ShortcutRegistration]) async -> [ShortcutResult] {
     self.desired = desired
+    guard recording.isEmpty else {
+      // Do not claim registration succeeded while listeners are suspended. Each caller gets the
+      // real OS result after recording ends; the last request remains the desired set.
+      return await withCheckedContinuation { pending.append((desired, $0)) }
+    }
+    return register(desired)
+  }
+
+  private func register(_ desired: [ShortcutRegistration]) -> [ShortcutResult] {
     let plan = HotKeyPlanner.plan(
       desired: desired, registered: registered.mapValues(\.trigger),
       reserved: CarbonHotKeys.reservedBySystem(), doubleTapAvailable: canWatchKeyboard())
@@ -87,7 +100,43 @@ final class HotKeyRegistrar {
   /// registers once the app is trusted and is released when it no longer is. The page learns
   /// the outcome from its own next push.
   func reapply() {
-    _ = apply(desired)
+    if recording.isEmpty { _ = register(desired) }
+  }
+
+  /// Multiple recorders/windows can coexist; only releasing the last one restores shortcuts.
+  func startRecording(owner: ObjectIdentifier, session: Int) {
+    if recording.isEmpty { unregisterAll() }
+    recording[owner, default: []].insert(session)
+  }
+
+  @discardableResult
+  func stopRecording(owner: ObjectIdentifier, session: Int? = nil) -> Bool {
+    guard var sessions = recording[owner] else { return false }
+    if let session { sessions.remove(session) } else { sessions.removeAll() }
+    if sessions.isEmpty {
+      recording.removeValue(forKey: owner)
+    } else {
+      recording[owner] = sessions
+    }
+    return resumeIfReady()
+  }
+
+  @discardableResult
+  func cancelRecordings() -> Bool {
+    guard !recording.isEmpty else { return false }
+    recording.removeAll()
+    return resumeIfReady()
+  }
+
+  private func resumeIfReady() -> Bool {
+    guard recording.isEmpty else { return false }
+    let waiting = pending
+    pending = []
+    if waiting.isEmpty { _ = register(desired) }
+    for request in waiting {
+      request.continuation.resume(returning: register(request.desired))
+    }
+    return true
   }
 
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "hotkeys")

@@ -18,6 +18,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
   return {
     connectionId,
     expectedRevision: revision,
+    ...(connection.presetId ? { presetId: connection.presetId } : {}),
     provider,
     name,
     baseUrl,

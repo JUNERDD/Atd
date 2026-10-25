@@ -11,7 +11,11 @@ import {
   type SubmitTaskResponse,
   type TaskInput,
 } from '@atd/agent-contracts';
-import { CommandLaunchError, type LaunchCommandRequest } from '../commands/launch.js';
+import {
+  CommandFingerprintMismatch,
+  CommandLaunchError,
+  type LaunchCommandRequest,
+} from '../commands/launch.js';
 import type { FolderStore } from '../folders/store.js';
 import { DrainingError } from '../errors.js';
 import { checkFolder } from '../folders/check.js';
@@ -21,20 +25,25 @@ import { importResources } from '../resources/import.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
 import { templateReferences } from '../commands/templates.js';
 import { commandRefusal, folderRegistered, lookups, runModel } from './checks.js';
+import type { AutomationComputer } from './computer-deps.js';
+import { computerPreflight, type FrozenComputer } from './computer-fire.js';
 import type { AutomationRuns } from './engine-deps.js';
 import { finalAnswer } from './outcome.js';
-import { automationFrame, automationPrompt, runTitle, type FireFacts } from './prompt.js';
+import { automationFrame, automationPrompt, clip, runTitle, type FireFacts } from './prompt.js';
+import type { Settlement } from './records.js';
 import { oneLine } from './untrusted.js';
 
 /**
  * Starts the task run of one automation fire through the same acceptance path a manual run takes:
  * `RunnerManager.submit` for a prompt, the service-side `launchCommand` for a saved command. A
  * preflight refuses before any model call when the model, the command or a folder no longer
- * resolves; the engine then records a failed run without a task (decision D4).
+ * resolves; the engine then records a failed run without a task (decision D4). A computer
+ * automation's run is also refused when its grant no longer covers what its fire froze, a hold
+ * stands or the host cannot serve its targets (computer-fire.ts), and it freezes the grant.
  */
 
 /** What a prompt run may use when the automation names no tools: reading and file edits, no shell. */
-const PROMPT_TOOLS = snapshotToolsFor(['read', 'write', 'edit']);
+export const PROMPT_TOOLS = snapshotToolsFor(['read', 'write', 'edit']);
 
 /** `launchCommand` bound to the service's paths, ledger and manager. */
 export type CommandLauncher = (
@@ -48,6 +57,10 @@ export interface LaunchDeps {
   launchCommand: CommandLauncher;
   folders: Pick<FolderStore, 'resolve'>;
   resources: Pick<ResourceStore, 'save'>;
+  /** Computer use; absent when the service runs without it. */
+  computer?: AutomationComputer;
+  /** Whether a computer hold stands on the automation. */
+  held: (automationId: string) => boolean;
 }
 
 /** A run that could not start, with the reason its record fails with. */
@@ -72,6 +85,8 @@ export interface LaunchRequest {
   filePaths: readonly string[];
   /** The last delivered run, whose answer a prompt run reads as `<previous-result>`. */
   previous: { taskId: string; runId: string } | null;
+  /** What a computer automation's fire froze at its receipt. */
+  frozen?: FrozenComputer;
 }
 
 /** The deterministic idempotency key of a fire (decision D6). */
@@ -100,6 +115,9 @@ export async function launchRun(
   const command = action.kind === 'command' ? await saved.command(action.commandId) : null;
   if (!(await saved.modelAvailable(runModel(automation, command))))
     throw new LaunchFailure('modelUnavailable', 'No provider connection can run the automation.');
+  const held = deps.held(automation.id);
+  const preflight = computerPreflight(automation, deps.computer, held, request.frozen);
+  if (!preflight.ok) throw new LaunchFailure(preflight.reason, preflight.message);
   const internal: InternalSubmitOptions = {
     origin: { kind: 'automation', automationId: automation.id },
     permissionTier: automation.policy.permissionTier,
@@ -111,6 +129,7 @@ export async function launchRun(
       source: record.source,
       firedAt: record.firedAt,
     },
+    ...(preflight.computer ? { computer: preflight.computer } : {}),
   };
   try {
     return automation.action.kind === 'prompt'
@@ -132,7 +151,7 @@ async function foldersReadable(deps: LaunchDeps, ids: readonly string[]): Promis
   return true;
 }
 
-function baseInput(text: string, firedAt: string, folders: string[]): TaskInput {
+export function baseInput(text: string, firedAt: string, folders: string[]): TaskInput {
   return {
     text,
     source: 'manual',
@@ -214,6 +233,10 @@ async function submitCommand(
         ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
         memory: policy.memory,
       },
+      // A computer run starts only with the command its grant approved, as its fire froze it.
+      ...(request.frozen?.commandFingerprint
+        ? { expectedFingerprint: request.frozen.commandFingerprint }
+        : {}),
     },
     internal,
   );
@@ -256,10 +279,29 @@ async function wantedPrevious(deps: LaunchDeps, request: LaunchRequest): Promise
 /** The reason a refused launch records; drains pass through for the engine to tell apart. */
 function launchFailure(error: unknown): unknown {
   if (error instanceof LaunchFailure) return error;
+  if (error instanceof CommandFingerprintMismatch)
+    return new LaunchFailure('computerGrantInvalid', error.message);
   if (error instanceof CommandLaunchError)
     return new LaunchFailure('commandUnavailable', error.message);
   if (error instanceof LedgerNotFound && error.kind === 'Connection')
     return new LaunchFailure('modelUnavailable', error.message);
   if (error instanceof DrainingError) return error;
   return new LaunchFailure('submitFailed', errorMessage(error));
+}
+
+/**
+ * How a fire whose run could not start settles; a drain is no failure of the automation, and a
+ * computer run refused for its hold or its authorization needs a person rather than counting as a
+ * failure toward the auto-pause.
+ */
+export function launchSettlement(error: unknown): Settlement {
+  if (error instanceof DrainingError)
+    return { outcome: 'interrupted', detail: 'Atd quit before the run started.' };
+  const reason = error instanceof LaunchFailure ? error.reason : 'submitFailed';
+  const detail = clip(errorMessage(error), 2000);
+  // Files a command cannot take are no failure of the automation; they are not tried again.
+  if (reason === 'unsupportedFiles') return { outcome: 'skipped', reason, detail };
+  if (reason === 'computerHold' || reason === 'computerGrantInvalid')
+    return { outcome: 'needsAttention', reason, detail };
+  return { outcome: 'failed', reason, detail };
 }

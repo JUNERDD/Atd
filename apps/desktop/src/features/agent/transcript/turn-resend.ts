@@ -69,6 +69,8 @@ function relocate(text: string, next: string, ranges: readonly InputChipRange[])
  */
 function composerChip(chip: InputChip, files: readonly FileRef[]): Chip | null {
   switch (chip.kind) {
+    case 'application':
+      return chip;
     case 'file': {
       const file = files.find((item) => item.id === chip.fileId);
       return file ? { kind: 'file', file } : null;

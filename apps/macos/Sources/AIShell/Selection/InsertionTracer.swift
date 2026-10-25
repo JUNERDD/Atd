@@ -17,14 +17,15 @@ final class InsertionTracer {
   private let reader: InsertionTraceReader
   private let overlay: InsertionTraceOverlay
   private var queue = InsertionTraceQueue()
+  private var cancelled = false
   /// The field's frame; nil until a read reported it (or that the field has none).
   private var field: CGRect??
 
   /// The trace of a write into `target`; under reduced motion (`reducesMotion`) it keeps the
   /// washes and leaves out the moving glow.
-  init(target: WriteTarget, reducesMotion: Bool) {
+  init(target: WriteTarget, reducesMotion: Bool, isCurrent: @escaping () -> Bool = { true }) {
     reader = InsertionTraceReader(target: target)
-    overlay = InsertionTraceOverlay(reducesMotion: reducesMotion)
+    overlay = InsertionTraceOverlay(reducesMotion: reducesMotion, isCurrent: isCurrent)
   }
 
   /// `text` went in: the caret moved from `start` to `end`.
@@ -37,7 +38,13 @@ final class InsertionTracer {
     perform(queue.finish())
   }
 
+  func cancel() {
+    cancelled = true
+    overlay.cancel()
+  }
+
   private func perform(_ step: InsertionTraceQueue.Step) {
+    guard !cancelled else { return }
     switch step {
     case .wait:
       break
@@ -53,6 +60,7 @@ final class InsertionTracer {
         let marks = await Task.detached(priority: .userInitiated) {
           reader.read(run, field: known, until: deadline)
         }.value
+        guard !cancelled else { return }
         if let marks {
           if field == nil { field = .some(marks.field) }
           overlay.show(anchor: marks.anchor, wash: marks.wash, field: marks.field)

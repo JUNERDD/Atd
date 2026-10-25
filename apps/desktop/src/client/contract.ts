@@ -3,10 +3,13 @@ import type {
   FileSearchReply,
   FolderRef,
   OnboardingProgress,
+  QueueState,
 } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
+import type { AddonsBridge } from './addons-contract';
 import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
+import type { ComputerBridge } from './computer-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
 import type { NotificationsBridge } from './notifications-contract';
@@ -15,6 +18,13 @@ import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
 export type EditCommand = 'undo' | 'redo';
+
+/** Messages an exact native run cancellation withdrew, destined for that task's draft. */
+export interface TaskQueueWithdrawn {
+  taskId: string;
+  runId: string;
+  unsent: QueueState;
+}
 
 export interface ContextFile {
   name: string;
@@ -115,12 +125,33 @@ export interface AboutBridge {
 }
 
 /**
+ * A generative view's window to open: the view's task and `show_ui` call, the window's title, and
+ * its preferred size in points, title bar included (`show_ui` `window`), each side null for the
+ * shell's default.
+ */
+export interface ViewWindowRequest {
+  taskId: string;
+  callId: string;
+  title: string;
+  width: number | null;
+  height: number | null;
+}
+
+/** Generative views' windows, which the shell opens, in every window. */
+export interface ViewsBridge {
+  /** Opens the view's window, or brings its open window forward. */
+  open(request: ViewWindowRequest): Promise<void>;
+}
+
+/**
  * What the page reaches beyond itself. The macOS shell hosting the renderer in a WKWebView
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
  */
 export interface DesktopBridge {
   /** The OS as a Node platform name. */
   readonly platform: string;
+  /** Pauses native shortcuts until the returned release runs. Absent in renderer-only tests. */
+  beginShortcutRecording?: () => Promise<() => void>;
   readonly settings: SettingsBridge;
   readonly agent: AgentBridge;
   /** T6 narrow service channel: status/skills/roles/MCP. No token crosses. Optional for test compat. */
@@ -136,8 +167,14 @@ export interface DesktopBridge {
   readonly apps?: AppsBridge;
   /** Saved prompts and commands that start their own tasks; absent in tests that need none. */
   readonly automations?: AutomationsBridge;
+  /** Optional downloadable parts of the product; absent in tests that need none. */
+  readonly addons?: AddonsBridge;
+  /** Browser and computer use: targets, stopping, live progress; absent in tests that need none. */
+  readonly computer?: ComputerBridge;
   /** The shell's task notifications and their settings; absent in tests that need none. */
   readonly notifications?: NotificationsBridge;
+  /** Generative views' windows; absent in tests that need none. */
+  readonly views?: ViewsBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
@@ -217,6 +254,8 @@ export interface DesktopBridge {
    * that arrived before anything subscribed reaches the first subscriber.
    */
   onTaskOpen?: (listener: (taskId: string) => void) => () => void;
+  /** Native Stop's withdrawn messages; panel only, held until its draft owner subscribes. */
+  onTaskQueueWithdrawn?: (listener: (event: TaskQueueWithdrawn) => void) => () => void;
   /** The welcome guide window's own controls; present only in that window. */
   readonly onboarding?: OnboardingBridge;
 }

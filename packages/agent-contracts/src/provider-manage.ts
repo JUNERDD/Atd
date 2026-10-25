@@ -37,6 +37,7 @@ export const ProviderUpdateRequestSchema = Type.Object(
     resumeChatGPTUsage: Type.Optional(Type.Literal(true)),
     expectedRevision: Type.Integer({ minimum: 1 }),
     name: ServiceConnectionSchema.properties.name,
+    presetId: ServiceConnectionSchema.properties.presetId,
     baseUrl: ServiceConnectionSchema.properties.baseUrl,
     defaultModel: ServiceConnectionSchema.properties.defaultModel,
     /** Absent clears the saved level, so runs fall back to off. */

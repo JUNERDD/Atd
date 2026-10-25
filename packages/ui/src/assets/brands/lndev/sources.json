@@ -185,7 +185,9 @@
       "file": "opencode.svg",
       "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/opencode.svg",
       "sha256": "5a44ee78769508c7226d8ac35b7b9738f929176a6c63b15f594a617afbc82a72",
-      "rendering": "original"
+      "rendering": "original",
+      "symbolFile": "opencode-symbol.svg",
+      "derivation": "Unchanged dark outline path from opencode.svg, cropped to its 128 96 256 320 bounds. The paper background and pale interior fill are omitted for an inline monochrome mark; the original asset is retained."
     },
     {
       "brand": "NVIDIA symbol",

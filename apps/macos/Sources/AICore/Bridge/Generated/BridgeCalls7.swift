@@ -78,6 +78,7 @@ public enum TextWriteResult: Codable, Equatable, Sendable {
       case secureInput
       case failed
       case interrupted
+      case unsupportedSelection
     }
   }
 }

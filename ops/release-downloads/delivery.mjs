@@ -69,7 +69,7 @@ export async function verifyRequest(url, { method = 'GET', range, timeout = 3000
   }
 }
 
-async function hashBody(response) {
+export async function hashBody(response) {
   const hash = createHash('sha256');
   let bytes = 0;
   for await (const chunk of response.body) {

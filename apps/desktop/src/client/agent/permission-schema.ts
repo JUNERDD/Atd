@@ -1,5 +1,7 @@
+import { ComputerAccessScopeSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import {
+  ComputerEffectSchema,
   ConfirmReviewSchema,
   DEFAULT_PERMISSION_TIER,
   ShellAllowlistEntrySchema,
@@ -30,6 +32,7 @@ export type GrantLocation = Static<typeof GrantLocationSchema>;
  * same scope in the same task session; shell and command saves are scoped as a whole.
  */
 export const GrantScopeSchema = Type.Union([
+  ComputerAccessScopeSchema,
   Type.Object(
     {
       tool: Type.Union([Type.Literal('read'), Type.Literal('write'), Type.Literal('edit')]),
@@ -47,6 +50,16 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
   // Automations: the `automation` harness tool's saves, deletes and Run now (always asked).
   Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
+  // Computer use: one effect on one revision of one registered target. The scope names no delivery.
+  Type.Object(
+    {
+      tool: Type.Literal('computer'),
+      bindingId: Identifier,
+      revision: Type.Integer({ minimum: 1 }),
+      effect: ComputerEffectSchema,
+    },
+    { additionalProperties: false },
+  ),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
