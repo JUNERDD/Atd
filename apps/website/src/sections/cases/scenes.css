@@ -5,8 +5,8 @@
    and replies stream in. The scroll is the clock: under the showcase's `data-scrub` every
    animation is paused, and use-case-scroll.ts seeks it (scene-clock.ts) as far as the scene's step
    has scrolled, so the delays and durations below place each moment along the step rather than in
-   time. Every animation runs from a hidden keyframe to the layer's resting style, with a backwards
-   fill through its delay, so nothing is held once it ends and a scene past its end is complete.
+   time. Every animation runs from a hidden keyframe to the layer's resting style, filling both
+   ends so completed animations remain available when the scroll clock collects them again.
    Offsets are in cqw of the screen, so motion scales with it. Without `data-scrub` (the
    prerendered page, no script) and under reduced motion every layer stays at rest. */
 
@@ -14,7 +14,7 @@
   :root[data-motion] .cases__showcase[data-scrub] .cases__layer {
     --cs-delay: 0ms;
     animation-delay: var(--cs-delay);
-    animation-fill-mode: backwards;
+    animation-fill-mode: both;
     animation-play-state: paused;
   }
 

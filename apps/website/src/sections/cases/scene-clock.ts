@@ -9,7 +9,8 @@ export const PLAY = 0.85;
  * entrance as a paused CSS animation (under the showcase's `data-scrub`), so the stylesheet stays
  * the one source of the timing; this reads those animations back and sets their time from how far
  * the scene's step has scrolled. A scene's length is its latest animation end, so a longer
- * choreography plays over the same step at a finer grain and nothing is held but the final rest.
+ * choreography plays over the same step at a finer grain. Filled end states keep completed CSS
+ * animations collectable for reverse scrubbing after more scenes have been rendered.
  */
 export function createSceneClock(slides: readonly HTMLElement[]) {
   let scenes: { animations: Animation[]; length: number }[] = [];
@@ -17,7 +18,10 @@ export function createSceneClock(slides: readonly HTMLElement[]) {
   /** Reads the scenes' animations again: after the scrub is enabled or the motion preference changes. */
   function collect() {
     scenes = slides.map((slide) => {
-      const animations = slide.getAnimations({ subtree: true });
+      // The slide's opacity cross-fade follows selection, independently of layer choreography.
+      const animations = Array.from(slide.querySelectorAll<HTMLElement>('.cases__layer')).flatMap(
+        (layer) => layer.getAnimations(),
+      );
       const ends = animations.map((animation) => animation.effect?.getComputedTiming().endTime);
       const length = Math.max(0, ...ends.map((end) => (typeof end === 'number' ? end : 0)));
       return { animations, length };
