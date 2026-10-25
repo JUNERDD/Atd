@@ -30,12 +30,14 @@ export function isNativeOutput(name) {
 export const codegenSourceTrees = [
   '../desktop/src/native-bridge',
   '../../packages/agent-contracts/src',
+  '../../packages/plugin-kit/src',
 ];
 export const codegenFiles = [
   '.swift-format',
   'package.json',
   '../desktop/package.json',
   '../../packages/agent-contracts/package.json',
+  '../../packages/plugin-kit/package.json',
   '../../package.json',
   '../../pnpm-lock.yaml',
   '../../pnpm-workspace.yaml',
@@ -59,6 +61,7 @@ export const codegenGeneratedDirectories = [
 export const codegenDependencyParents = [
   '../desktop/node_modules',
   '../../packages/agent-contracts/node_modules',
+  '../../packages/plugin-kit/node_modules',
 ];
 
 export function isCodegenScript(name) {

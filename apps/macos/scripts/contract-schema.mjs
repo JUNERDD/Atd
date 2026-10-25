@@ -6,12 +6,18 @@ import { fileURLToPath } from 'node:url';
 const contracts = new URL('../../../packages/agent-contracts/src/', import.meta.url);
 let hooked = false;
 
-/** Contract sources use compiled `.js` imports; Node type stripping needs their `.ts` siblings. */
+/** Resolve workspace source exports and `.ts` siblings without requiring a prior package build. */
 export async function loadContract(name) {
   if (!hooked) {
     hooked = true;
     registerHooks({
       resolve(specifier, context, next) {
+        if (specifier.startsWith('@atd/')) {
+          return next(specifier, {
+            ...context,
+            conditions: [...context.conditions, 'source'],
+          });
+        }
         if (
           specifier.startsWith('.') &&
           specifier.endsWith('.js') &&
