@@ -15,13 +15,13 @@
   inline-size: 32.4306%;
 }
 .cases__layer[data-layer='selection-toolbar/toolbar'] {
-  inset-inline-start: 34.7917%;
-  inset-block-start: 44.4444%;
-  inline-size: 30.4861%;
+  inset-inline-start: 34.7222%;
+  inset-block-start: 44.3333%;
+  inline-size: 30.5556%;
 }
 .cases__layer[data-layer='selection-toolbar/menu'] {
   inset-inline-start: 42.5%;
-  inset-block-start: 48.8889%;
+  inset-block-start: 48.7778%;
   inline-size: 22.8472%;
 }
 .cases__layer[data-layer='write-back/page'] {
@@ -49,20 +49,20 @@
   inset-block-start: 83.4444%;
   inline-size: 10.2778%;
 }
-.cases__layer[data-layer='mini-panel/flyout'] {
-  inset-inline-start: 74.6528%;
-  inset-block-start: 27.6667%;
-  inline-size: 22.9167%;
-}
 .cases__layer[data-layer='mini-panel/rail'] {
   inset-inline-start: 94.6528%;
   inset-block-start: 26.2222%;
   inline-size: 5.3472%;
 }
+.cases__layer[data-layer='mini-panel/activity'] {
+  inset-inline-start: 69.7917%;
+  inset-block-start: 42.3333%;
+  inline-size: 27.5694%;
+}
 .cases__layer[data-layer='mini-panel/pointer'] {
-  inset-inline-start: 82.2222%;
-  inset-block-start: 34.7778%;
-  inline-size: 1.25%;
+  inset-inline-start: 98.0556%;
+  inset-block-start: 53.8889%;
+  inline-size: 1.1806%;
 }
 .cases__layer[data-layer='screenshot/windows'] {
   inset-inline-start: 5.4861%;

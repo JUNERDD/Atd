@@ -5,8 +5,8 @@
    and replies stream in. The scroll is the clock: under the showcase's `data-scrub` every
    animation is paused, and use-case-scroll.ts seeks it (scene-clock.ts) as far as the scene's step
    has scrolled, so the delays and durations below place each moment along the step rather than in
-   time. Every animation runs from a hidden keyframe to the layer's resting style, with a backwards
-   fill through its delay, so nothing is held once it ends and a scene past its end is complete.
+   time. Every animation runs from a hidden keyframe to the layer's resting style, filling both
+   ends so completed animations remain available when the scroll clock collects them again.
    Offsets are in cqw of the screen, so motion scales with it. Without `data-scrub` (the
    prerendered page, no script) and under reduced motion every layer stays at rest. */
 
@@ -14,7 +14,7 @@
   :root[data-motion] .cases__showcase[data-scrub] .cases__layer {
     --cs-delay: 0ms;
     animation-delay: var(--cs-delay);
-    animation-fill-mode: backwards;
+    animation-fill-mode: both;
     animation-play-state: paused;
   }
 
@@ -98,7 +98,7 @@
     animation-timing-function: var(--spring-snappy);
   }
 
-  /* 03 · Mini Panel: the rail slides out from the edge, its menu unfolds, the pointer arrives. */
+  /* 03 · Mini Panel: the rail appears, the pointer reaches activity, then its task list unfolds. */
   :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/rail'] {
     --cs-delay: 150ms;
     animation-name: cs-from-edge;
@@ -106,17 +106,17 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/flyout'] {
-    --cs-delay: 800ms;
-    transform-origin: 100% 30%;
+  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/activity'] {
+    --cs-delay: 1500ms;
+    transform-origin: 100% 20%;
     animation-name: cs-unfold;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
   :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/pointer'] {
-    --cs-delay: 1150ms;
-    --cs-from: 12cqw 3cqw;
+    --cs-delay: 650ms;
+    --cs-from: -10cqw 4cqw;
     animation-name: cs-glide;
     animation-duration: 800ms;
     animation-timing-function: var(--curve-sheet);
