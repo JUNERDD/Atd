@@ -1,3 +1,4 @@
+import Metal
 import Observation
 import QuartzCore
 import SwiftUI
@@ -35,12 +36,16 @@ import SwiftUI
   }
 }
 
-/// One opaque mesh with a uniform overall opacity, so no transparent tails meet in the middle.
+/// One opaque field with a uniform overall opacity, so no transparent tails meet in the middle.
 /// The fixed outer ring covers the capsule while its internal shapes and color regions flow.
 struct IslandGlowField: View {
   let state: IslandGlowFieldState
   let palette: IslandGlowPalette
   @Environment(\.colorScheme) private var colorScheme
+
+  // The macOS 15 paravirtual GPU lacks Mac2 support and aborts while loading SwiftUI's
+  // mesh shader archive. Use an ordinary gradient on legacy or unavailable Metal devices.
+  private static let supportsMesh = MTLCreateSystemDefaultDevice()?.supportsFamily(.mac2) == true
 
   var body: some View {
     GeometryReader { geometry in
@@ -50,23 +55,34 @@ struct IslandGlowField: View {
         let scale = IslandGlowStyle.fieldScale
         let drift = (scale - 1) * 0.12
         // Only a crop of the larger field is visible; its edges never become the HUD's edges.
-        MeshGradient(
-          width: 6, height: 4,
-          points: points(phase: phase),
-          colors: colors(phase: phase),
-          smoothsColors: true
-        )
-        .frame(width: size.width * scale, height: size.height * scale)
-        .position(
-          x: size.width / 2 + size.width * drift * sin(phase * 0.39),
-          y: size.height / 2 + size.height * drift * cos(phase * 0.31 + 1.2)
-        )
-        .opacity(state.strength)
+        field(phase: phase, size: size)
+          .frame(width: size.width * scale, height: size.height * scale)
+          .position(
+            x: size.width / 2 + size.width * drift * sin(phase * 0.39),
+            y: size.height / 2 + size.height * drift * cos(phase * 0.31 + 1.2)
+          )
+          .opacity(state.strength)
       }
     }
     .clipped()
     .allowsHitTesting(false)
     .accessibilityHidden(true)
+  }
+
+  @ViewBuilder private func field(phase: Double, size: CGSize) -> some View {
+    if Self.supportsMesh {
+      MeshGradient(
+        width: 6, height: 4,
+        points: points(phase: phase),
+        colors: colors(phase: phase),
+        smoothsColors: true)
+    } else {
+      let (deep, steel, mist) = palette.tones(dark: colorScheme != .light)
+      RadialGradient(
+        colors: [mist, steel, deep].map { Color(red: $0.x, green: $0.y, blue: $0.z) },
+        center: UnitPoint(x: 0.5 + 0.2 * sin(phase * 0.39), y: 0.5 + 0.2 * cos(phase * 0.31)),
+        startRadius: 0, endRadius: max(size.width, size.height) * IslandGlowStyle.fieldScale)
+    }
   }
 
   private func points(phase: Double) -> [SIMD2<Float>] {
