@@ -94,7 +94,8 @@ scene is a stack of layers cut from Figma (`scripts/matte-layers.py`) that repro
 export at rest, and each plays in the way the real surfaces arrive on a Mac
 (`src/sections/cases/scenes.css`): text is selected before its toolbar appears and the command's
 options cascade from its chevron, an answer types itself over the selection before the command
-island confirms it, the Mini Panel slides out from the edge, a capture is framed and annotated step
+island confirms it, the Mini Panel slides out and opens task activity after the pointer reaches it,
+a capture is framed and annotated step
 by step, windows open and replies stream in. The layers are positioned by `case-layers.css`, so
 the prerendered page shows the first scene complete; reduced motion keeps them at rest and only
 cross-fades between scenes.

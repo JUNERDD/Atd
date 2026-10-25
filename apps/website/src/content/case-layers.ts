@@ -39,14 +39,14 @@ export const caseLayers = {
     {
       id: 'toolbar',
       src: mediaUrl('/cases/layers/selection-toolbar/4-toolbar.webp'),
-      width: 878,
-      height: 160,
+      width: 880,
+      height: 162,
     },
     {
       id: 'menu',
       src: mediaUrl('/cases/layers/selection-toolbar/5-menu.webp'),
       width: 658,
-      height: 400,
+      height: 402,
     },
   ],
   'write-back': [
@@ -72,18 +72,18 @@ export const caseLayers = {
     },
   ],
   'mini-panel': [
+    { id: 'rail', src: mediaUrl('/cases/layers/mini-panel/1-rail.webp'), width: 154, height: 584 },
     {
-      id: 'flyout',
-      src: mediaUrl('/cases/layers/mini-panel/1-flyout.webp'),
-      width: 660,
-      height: 454,
+      id: 'activity',
+      src: mediaUrl('/cases/layers/mini-panel/2-activity.webp'),
+      width: 794,
+      height: 916,
     },
-    { id: 'rail', src: mediaUrl('/cases/layers/mini-panel/2-rail.webp'), width: 154, height: 488 },
     {
       id: 'pointer',
       src: mediaUrl('/cases/layers/mini-panel/3-pointer.webp'),
-      width: 36,
-      height: 44,
+      width: 34,
+      height: 42,
     },
   ],
   screenshot: [

@@ -9,17 +9,23 @@ from the canonical Figma file, not recordings of a live browser agent.
 All nine PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
 scene. Frames are in “W · Website · Interface scenes · shared desktop” (`2462:142863`).
 
-| File                       | Export frame  | Application design source                                      |
-| -------------------------- | ------------- | -------------------------------------------------------------- |
-| `ui/selection-toolbar.png` | `2462:142864` | Selection and toolbar `1798:97448`, options menu `2711:186043` |
-| `ui/write-back.png`        | `2823:164824` | Command island `Phase=Done` in `2714:186710`                   |
-| `ui/mini-panel.png`        | `2462:142972` | Expanded Mini Panel `2294:134033` and pointer `2294:134080`    |
-| `ui/screenshot.png`        | `2462:143105` | Annotated capture `1699:74894`                                 |
-| `ui/main-panel.png`        | `2462:143430` | New-task panel `1:400`                                         |
-| `ui/chat.png`              | `2462:143565` | Conversation `1637:159329`                                     |
-| `ui/settings.png`          | `2462:143808` | Settings window `1123:41395`                                   |
-| `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                   |
-| `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499`   |
+| File                       | Export frame  | Application design source                                                              |
+| -------------------------- | ------------- | -------------------------------------------------------------------------------------- |
+| `ui/selection-toolbar.png` | `2462:142864` | Selection and toolbar `1798:97448`, options menu `2711:186043`                         |
+| `ui/write-back.png`        | `2823:164824` | Command island `Phase=Done` in `2714:186710`                                           |
+| `ui/mini-panel.png`        | `2462:142972` | Mini Panel Activity `3285:241539`, task popover `3288:66740` and pointer `2294:134080` |
+| `ui/screenshot.png`        | `2462:143105` | Annotated capture `1699:74894`                                                         |
+| `ui/main-panel.png`        | `2462:143430` | New-task panel `1:400`                                                                 |
+| `ui/chat.png`              | `2462:143565` | Conversation `1637:159329`                                                             |
+| `ui/settings.png`          | `2462:143808` | OpenAI connection editor in Settings `3385:199906`                                     |
+| `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                                           |
+| `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499`                           |
+
+The 0.10.0 refresh uses the current connected task-activity and provider editor components. The
+Mini Panel shows two running tasks and a synthetic approval request to write `release-notes.md`;
+the pointer reaches the activity entry before its popover opens. Settings shows the ChatGPT plan
+connection path, with API as the alternate tab and consent still off. Its English labels match
+the product translations, and sign-in stays disabled until consent is given.
 
 The selection scene's toolbar is the `Content=With options` variant: Fix grammar is a split button
 whose chevron has opened its answer destinations (`App / Toolbar options menu`, cloned from the
@@ -32,9 +38,9 @@ new installations.
 The common desktop comes from `2294:133952`, with its wallpaper, menu bar and Dock. The exported
 scenes reuse connected application components. The screenshot scene preserves the capture selection,
 annotations, controls and dimming while its duplicate desktop layers are hidden to reveal the shared
-background. The provider identity source keeps its Default badge beside the name. My apps search
-examples use one icon inside the input; their source frames and website scene stay aligned.
-User-message bubbles, the Default badge and Notes rows use the existing `glass/control-wash`
+background. My apps search examples use one icon inside the input; their source frames and
+website scene stay aligned.
+User-message bubbles and Notes rows use the existing `glass/control-wash`
 variable so their fills retain the window's backdrop. The Notes settings icon binds to the local
 dark-theme `foreground` variable rather than the imported library's appearance.
 The automation scene keeps the overview's connected components and routine task examples; failure
@@ -68,17 +74,17 @@ the remaining maximum is lossy WebP on the Dock icons).
 
 1. Update the corresponding Figma scene, retaining the common canvas and desktop component. Keep
    small floating tools at their intended screen position and preserve full window bounds.
-2. Export the complete frame as a PNG at the default scale and save it to the matching `ui/` path.
+2. Configure the complete frame for PNG export at 1x with contents only and save it to the matching `ui/` path.
    Keep exact exports in this directory rather than relying on expiring Figma URLs or CSS crops.
 3. Rebuild the scene's sheet in the layer section from the updated scene, keeping one row per layer
    as above, and update `scripts/case-layers.json` when layers or sheets change. Export every sheet
    listed there at 2x into one directory, each file named after its node (`2553-145107.png`), then
    run `python3 apps/website/scripts/matte-layers.py <directory>` from the repository root (numpy
-   and Pillow with WebP). The sheets must keep their transparency; an export path that flattens
-   them onto the section's gray (the Figma MCP export does) needs a second export of every layer
-   sheet on a temporary white fill, and
-   [`scripts/unflatten-sheets.py`](../../scripts/unflatten-sheets.py) recovers the transparent
-   sheets from the pair. A new or renamed layer also needs its entrance in
+   and Pillow with WebP). Configure each sheet for PNG export at 2x with contents only, and let
+   the Figma exporter use those settings to preserve transparency and full resolution. Check
+   dimensions and alpha before processing. For a legacy export path that flattens onto gray, a
+   second export on white and [`scripts/unflatten-sheets.py`](../../scripts/unflatten-sheets.py)
+   can recover transparency. A new or renamed layer also needs its entrance in
    `src/sections/cases/scenes.css`.
 4. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
 5. Verify all nine scenes and their entrances while scrolling through the pinned stage, both

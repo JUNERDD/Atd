@@ -57,16 +57,16 @@ export const cases = [
   {
     id: 'mini-panel',
     label: { en: 'Mini Panel', zh: 'Mini Panel' },
-    title: { en: 'A little space. A quick way in.', zh: '屏幕边缘，留一个入口。' },
+    title: { en: 'Keep ongoing work in sight.', zh: '进行中的任务，都在眼前。' },
     description: {
-      en: 'Open a task, take a screenshot or pick a saved command from the edge of your screen.',
-      zh: '在屏幕边缘展开迷你面板，新建任务、截图，或运行常用命令。',
+      en: 'Follow task progress, respond to requests and return to a conversation from the edge of your screen.',
+      zh: '在屏幕边缘查看任务进度、处理确认请求，随时回到对话。',
     },
     image: {
       src: mediaUrl('/cases/ui/mini-panel.png'),
       alt: {
-        en: 'Expanded Mini Panel at the right edge of the desktop, with its saved-command menu open.',
-        zh: '桌面右侧展开的迷你面板，以及打开的常用命令菜单。',
+        en: 'Mini Panel and Active tasks at the right edge of the desktop, showing two running tasks and a request to approve writing release-notes.md.',
+        zh: '桌面右侧的迷你面板和任务动态，显示两个进行中的任务，以及写入 release-notes.md 的待确认请求。',
       },
     },
     layers: caseLayers['mini-panel'],
@@ -125,16 +125,16 @@ export const cases = [
   {
     id: 'settings',
     label: { en: 'Settings', zh: '设置页' },
-    title: { en: 'Make room for your way of working.', zh: '按你的习惯，安排好一切。' },
+    title: { en: 'Choose how you connect.', zh: '选择适合你的连接方式。' },
     description: {
-      en: 'Connect your models and manage permissions, commands, automations, memory and extensions.',
-      zh: '接入模型，管理权限、命令、自动化、记忆与扩展，让 Atd 配合你的工作方式。',
+      en: 'Connect with a ChatGPT plan or API credentials, and control background use.',
+      zh: '连接 ChatGPT 订阅或 API，先确认数据使用范围，再选择是否允许后台调用。',
     },
     image: {
       src: mediaUrl('/cases/ui/settings.png'),
       alt: {
-        en: 'Atd settings with the navigation sidebar and model providers, including ChatGPT, Anthropic and LM Studio.',
-        zh: 'Atd 设置窗口，左侧为功能导航，右侧为 ChatGPT、Anthropic 和 LM Studio 模型配置。',
+        en: 'Connect OpenAI in Atd settings, with ChatGPT plan and API tabs, a connection name, data and privacy consent, background use controls and a sign-in action.',
+        zh: 'Atd 设置中的 OpenAI 连接页，包含 ChatGPT 订阅与 API 选项、连接名称、数据与隐私同意、后台调用控制和登录操作。',
       },
     },
     layers: caseLayers['settings'],

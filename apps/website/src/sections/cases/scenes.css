@@ -98,7 +98,7 @@
     animation-timing-function: var(--spring-snappy);
   }
 
-  /* 03 · Mini Panel: the rail slides out from the edge, its menu unfolds, the pointer arrives. */
+  /* 03 · Mini Panel: the rail appears, the pointer reaches activity, then its task list unfolds. */
   :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/rail'] {
     --cs-delay: 150ms;
     animation-name: cs-from-edge;
@@ -106,17 +106,17 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/flyout'] {
-    --cs-delay: 800ms;
-    transform-origin: 100% 30%;
+  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/activity'] {
+    --cs-delay: 1500ms;
+    transform-origin: 100% 20%;
     animation-name: cs-unfold;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
   :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/pointer'] {
-    --cs-delay: 1150ms;
-    --cs-from: 12cqw 3cqw;
+    --cs-delay: 650ms;
+    --cs-from: -10cqw 4cqw;
     animation-name: cs-glide;
     animation-duration: 800ms;
     animation-timing-function: var(--curve-sheet);
