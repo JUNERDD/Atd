@@ -13,18 +13,31 @@ extension ShellController {
     // The guide would activate and order in against the capture overlays.
     guard !isCapturingScreenshot else { return }
     trust.skipFirstLaunchPrompt()
-    trust.guideAsks = true
-    onboarding.onClose = { [weak self] in
-      self?.trust.guideAsks = false
-      self?.toolbar.hidePractice()
-    }
+    onboarding.onOpenChange = { [weak self] in self?.onboardingOpenChanged() }
     // Shown first, so the panel hides without key status: hiding a key panel first would
     // deactivate the app just before the guide activates it.
     onboarding.open(title: ShellStrings.shared.text(.windowOnboardingTitle))
     if panel.isVisible, !isPinned { hidePanel() }
   }
 
-  /// The guide's intro has settled: its full-screen stage no longer needs to cover the menu bar.
+  private func onboardingOpenChanged() {
+    let open = onboarding.host != nil
+    trust.guideAsks = open
+    presence.applyDockVisibility(onboardingOpen: open, restoreFocus: open)
+    if !open { toolbar.hidePractice() }
+  }
+
+  /// A Dock or Finder reopen returns to an existing guide before showing the task panel.
+  func reopen() {
+    guard !systemPanels.isOpen, !isCapturingScreenshot else { return }
+    if onboarding.host != nil {
+      openOnboarding()
+    } else {
+      showPanel()
+    }
+  }
+
+  /// Keeps the renderer's intro-completion bridge entry point.
   func settleOnboarding() {
     onboarding.settle()
   }

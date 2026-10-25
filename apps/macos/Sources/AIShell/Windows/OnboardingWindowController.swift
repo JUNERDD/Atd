@@ -2,15 +2,14 @@ import AICore
 import AppKit
 import WebKit
 
-/// The welcome guide's window: a transparent, borderless stage covering the whole display under
-/// the cursor, menu bar and Dock included. The page draws the scrim, opening page and card; under
+/// The welcome guide's window: a transparent, borderless stage filling the display under the
+/// cursor, behind the menu bar and Dock. The page draws the scrim, opening page and card; under
 /// them the shell lays the panel's and Settings' window material (``NativeMaterialView``), placed,
 /// rounded and shown as the page reports its surface (`onboarding.surface`: the opening page's
 /// whole box, then the card's), since a page cannot draw the desktop's glass itself. There is no
-/// title bar or window shadow. It stays above the menu bar while the intro plays; from
-/// ``settle()`` on it stays above other apps' windows (see ``applyLevel(for:)``). The window owns its
-/// renderer web view (loaded at `#onboarding`); closing releases both, and opening again builds
-/// fresh ones.
+/// title bar or window shadow. Normal window ordering lets other apps come forward throughout
+/// the guide, including its intro. The window owns its renderer web view (loaded at `#onboarding`);
+/// closing releases both, and opening again builds fresh ones.
 /// The shell opens it for the panel page's first-run decision (`app.startup`), or the user opens
 /// it through the Welcome Guide menu item.
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
@@ -20,29 +19,17 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private var surface: NativeMaterialView?
   /// Whether the glass is shown or fading in, so only the first rect after a hide fades.
   private var surfaceShown = false
-  /// Whether the intro is over (``settle()``), so ``applyLevel(for:)`` owns the window's level.
-  private var settled = false
   private(set) var host: WebViewHost?
   private let makeHost: () -> WebViewHost
-  /// Runs as the window closes, by Skip, the last step or its close button.
-  var onClose: (() -> Void)?
+  /// Runs after the host is created or released, before an opened guide activates the app.
+  var onOpenChange: (() -> Void)?
 
-  /// Above the menu bar (`.mainMenu`) and the Dock, which the stage must cover for the intro.
-  private static let introLevel = NSWindow.Level.statusBar
-  /// The page settles the stage when its intro ends (a few seconds); a page that never does (it
-  /// failed to load, or threw) must not keep a window above the menu bar, so the shell settles
-  /// it after this long regardless.
-  private static let settleDeadline: Duration = .seconds(12)
   init(makeHost: @escaping () -> WebViewHost) {
     self.makeHost = makeHost
     super.init()
     NotificationCenter.default.addObserver(
       self, selector: #selector(screensChanged),
       name: NSApplication.didChangeScreenParametersNotification, object: nil)
-    // Every change of the app in front, Atd's own included, arrives here.
-    NSWorkspace.shared.notificationCenter.addObserver(
-      self, selector: #selector(appActivated(_:)),
-      name: NSWorkspace.didActivateApplicationNotification, object: nil)
   }
 
   var isKey: Bool { window?.isKeyWindow == true }
@@ -50,8 +37,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// Activates the app and shows the stage over the display under the cursor, or brings an open
   /// one forward with its page as it is.
   func open(title: String) {
-    NSApp.activate()
     if let window {
+      NSApp.activate()
       window.makeKeyAndOrderFront(nil)
       return
     }
@@ -69,7 +56,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     // every theme (the page takes its `.dark` class from `prefers-color-scheme`).
     window.appearance = NSAppearance(named: .darkAqua)
     window.isReleasedWhenClosed = false
-    window.level = Self.introLevel
+    window.level = .normal
     // Like the panel: it appears on the Space the user is on, and never becomes a full-screen
     // window of its own, which would move it to a Space of its own.
     window.collectionBehavior = [.moveToActiveSpace, .fullScreenNone]
@@ -80,44 +67,15 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     self.window = window
     self.surface = surface
     surfaceShown = false
-    settled = false
     self.host = host
+    onOpenChange?()
+    NSApp.activate()
     host.load()
     window.makeKeyAndOrderFront(nil)
-    Task { @MainActor [weak self, weak window] in
-      try? await Task.sleep(for: Self.settleDeadline)
-      if let window, self?.window === window { self?.settle() }
-    }
   }
 
-  /// The intro is over: the stage leaves the menu bar's level for ``applyLevel(for:)``'s.
-  /// Idempotent, and a no-op without an open guide.
-  func settle() {
-    guard window != nil else { return }
-    settled = true
-    applyLevel(for: NSWorkspace.shared.frontmostApplication)
-  }
-
-  /// The settled stage's level, from the app in front. Atd: a normal window, so Atd's own panel
-  /// and windows order with it as usual. System Settings: normal too, so the permission rows'
-  /// Privacy & Security pages (and their drag-to-allow guide) come in front of it. Any other app:
-  /// it floats above that app's windows, so the guide is never buried; in particular when System
-  /// Settings closes, macOS brings forward whichever regular app is next, never Atd (an agent
-  /// app), and this lifts the stage at that moment rather than when System Settings has quit.
-  private func applyLevel(for front: NSRunningApplication?) {
-    guard let window, settled else { return }
-    let yields =
-      front?.processIdentifier == ProcessInfo.processInfo.processIdentifier
-      || front?.bundleIdentifier == SettingsWindowTracker.bundleIdentifier
-    window.level = yields ? .normal : .floating
-  }
-
-  /// The app the notification names, not `frontmostApplication`, which still reports the previous
-  /// app while this notification is delivered (System Settings, as it closes).
-  @objc private func appActivated(_ notification: Notification) {
-    applyLevel(
-      for: notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)
-  }
+  /// Retains the renderer's intro-completion bridge call; the intro never changes window ordering.
+  func settle() {}
 
   /// Makes an open, visible window key again; false when there is none to focus.
   func focusIfShown() -> Bool {
@@ -137,8 +95,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     window = nil
     surface = nil
     surfaceShown = false
-    settled = false
-    onClose?()
+    onOpenChange?()
   }
 
   /// The window's content: the guide's glass, with the transparent page over it filling the stage

@@ -10,6 +10,7 @@ import AppKit
 public final class ShellController {
   let services: ShellServices
   private let defaults: UserDefaults
+  let presence: AppPresence
   let panelHost: WebViewHost
   var shownComputerTaskId: String?
   let panel: PanelWindowController
@@ -75,11 +76,11 @@ public final class ShellController {
   private var toolbarConfigured = false
 
   private static let pinnedKey = "panel.pinned"
-  private static let showInDockKey = "app.showInDock"
 
   public init(services: ShellServices, defaults: UserDefaults = .standard) {
     self.services = services
     self.defaults = defaults
+    presence = AppPresence(defaults: defaults)
     let trust = AccessibilityTrust(defaults: defaults)
     self.trust = trust
     let screenRecording = ScreenRecordingTrust()
@@ -249,7 +250,7 @@ public final class ShellController {
     screenRecording.start()
     StaleGrantRecovery.start(
       defaults: defaults, accessibility: trust, screenRecording: screenRecording)
-    AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
+    presence.applyDockVisibility(onboardingOpen: onboarding.host != nil)
     applyLanguage()
     NotificationCenter.default.addObserver(
       forName: ShellStrings.didChange, object: nil, queue: .main
@@ -324,15 +325,14 @@ public final class ShellController {
   }
 
   func setShowInDock(_ show: Bool) {
-    defaults.set(show, forKey: Self.showInDockKey)
-    AppPresence.setShowInDock(show)
+    presence.setShowInDock(show, onboardingOpen: onboarding.host != nil)
   }
 
   /// `openAtLogin` is null where it is unavailable (Debug builds); `widgetsAvailable` is false
   /// outside the folders macOS indexes for widgets (``WidgetPlacement``).
   func appState() -> AppStateResult {
     AppStateResult(
-      pinned: isPinned, showInDock: defaults.bool(forKey: Self.showInDockKey),
+      pinned: isPinned, showInDock: presence.showInDock,
       openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable,
       panelPlacement: panelPlacementState())
   }
