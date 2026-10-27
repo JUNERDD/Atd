@@ -78,6 +78,7 @@
       "bridge.ready",
       "language.set",
       "appearance.set",
+      "glowEffects.set",
       "typing.set",
       "window.dragRegions",
       "onboarding.surface",
@@ -2840,6 +2841,31 @@
                       "type": "null"
                     }
                   ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "glowEffects.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["enabled"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -7801,6 +7827,16 @@
               "type": "null"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "GlowEffectsSetPost": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

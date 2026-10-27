@@ -13,11 +13,12 @@ import QuartzCore
 /// gradient's position, so it runs on the render server; the main thread only redraws the mask
 /// (and measures the ink) when the size, text or scale changes.
 ///
-/// The sweep runs only while the label is in a window that is at least partly visible and
-/// Reduce Motion is off; otherwise the overlay is hidden and its animation removed, leaving the
-/// static muted text the page shows under reduced motion. Leaving the window (the row replaced,
-/// the HUD hidden) or the window leaving the screen stops it. The band's colour is resolved again
-/// whenever the appearance changes; the muted text colour is dynamic already.
+/// The sweep runs only while the label is in a window that is at least partly visible, Reduce
+/// Motion is off and the user's glow effects are on (``GlowEffects``); otherwise the overlay is
+/// hidden and its animation removed, leaving the static muted text the page shows then. Leaving
+/// the window (the row replaced, the HUD hidden) or the window leaving the screen stops it. The
+/// band's colour is resolved again whenever the appearance changes; the muted text colour is
+/// dynamic already.
 final class ShimmerLabel: NSTextField {
   private static let sweepKey = "shimmer.sweep"
 
@@ -82,6 +83,7 @@ final class ShimmerLabel: NSTextField {
       observe(
         NSWorkspace.shared.notificationCenter,
         NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, nil)
+      observe(NotificationCenter.default, GlowEffects.didChange, nil)
     }
     viewDidChangeEffectiveAppearance()
     needsLayout = true
@@ -109,7 +111,7 @@ final class ShimmerLabel: NSTextField {
     syncSweep()
   }
 
-  /// Runs the sweep while it can be seen and motion is welcome; removes it otherwise.
+  /// Runs the sweep while it can be seen and motion and glows are welcome; removes it otherwise.
   private func syncSweep() {
     let visible = window?.occlusionState.contains(.visible) == true
     let sweep = ink.flatMap { ink in
@@ -119,7 +121,9 @@ final class ShimmerLabel: NSTextField {
           ShimmerSweep.characters(in: stringValue), shownWidth: ink.upperBound - ink.lowerBound,
           fullWidth: attributedStringValue.size().width))
     }
-    guard visible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, let sweep else {
+    guard visible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+      GlowEffects.shared.enabled, let sweep
+    else {
       animated = nil
       overlay.stop(Self.sweepKey)
       return

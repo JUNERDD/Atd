@@ -147,6 +147,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
       case "appearance.set":
         post = try .appearanceSet(container.value(.params, AppearanceSetPost.self))
+      case "glowEffects.set":
+        post = try .glowEffectsSet(container.value(.params, GlowEffectsSetPost.self))
       case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))
       case "window.dragRegions":
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
