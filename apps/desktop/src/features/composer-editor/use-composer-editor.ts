@@ -21,6 +21,8 @@ export interface ComposerEditorOptions extends EditorSettings {
   onChange: (draft: ComposerDraft) => void;
   onTrigger: (trigger: TriggerState | null) => void;
   onSend: () => void;
+  /** Takes a paste as a file chip (paste-as-file.ts); false leaves it to the editor. */
+  onPasteText: (text: string, room: number) => boolean;
   panel: RefObject<QuickPanelHandle | null>;
   shortcuts: ShortcutBindings;
   platform: string;
@@ -106,6 +108,10 @@ class ComposerEditor implements EditorHost {
   onUpdate(update: ViewUpdate) {
     if (update.docChanged) this.emit(editorDraft(update.state));
     this.report(update.state);
+  }
+
+  onPasteText(text: string, room: number) {
+    return this.options.onPasteText(text, room);
   }
 
   onOverflow(overflowing: boolean) {

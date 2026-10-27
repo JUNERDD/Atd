@@ -29,16 +29,27 @@ function withinLimit(transaction: Transaction) {
   return next > serializedLength(start.doc, start.field(chipTable), write) ? [] : transaction;
 }
 
-/** Pasted and dropped text: no chip sentinels, one newline form, cut to the room left. */
-function clipboardInput(text: string, state: EditorState): string {
-  const clean = text.replace(SENTINELS, '').replace(/\r\n?/g, '\n');
+/** Clipboard text as the draft takes it: no chip sentinels, one newline form. */
+export function clipboardText(text: string): string {
+  return text.replace(SENTINELS, '').replace(/\r\n?/g, '\n');
+}
+
+/** Serialized length an input may still add in place of the selection, under the limit. */
+export function textRoom(state: EditorState): number {
   const table = state.field(chipTable);
   const write = state.facet(segmentText);
   const { from, to } = state.selection.main;
-  const room =
+  return (
     state.facet(textLimit) -
     serializedLength(state.doc, table, write) +
-    serializedLength(state.doc, table, write, from, to);
+    serializedLength(state.doc, table, write, from, to)
+  );
+}
+
+/** Pasted and dropped text: no chip sentinels, one newline form, cut to the room left. */
+function clipboardInput(text: string, state: EditorState): string {
+  const clean = clipboardText(text);
+  const room = textRoom(state);
   if (clean.length <= room) return clean;
   const cut = Math.max(0, room);
   // Never leave half of a surrogate pair at the cut.
