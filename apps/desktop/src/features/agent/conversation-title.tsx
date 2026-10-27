@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Skeleton } from '@atd/ui/components/skeleton';
 
 /**
- * The live title line shared by the header and history. Both layers occupy one line, so a
- * pending summary dissolves into its title without an empty frame or shifting its baseline.
+ * The live title line shared by the header and history. The text stays in layout while pending,
+ * so its typography and available width size both layers identically, including truncation.
  * Settled titles mount still; the readable fallback also keeps a pending task identifiable.
  */
 export function ConversationTitle({
@@ -23,37 +23,34 @@ export function ConversationTitle({
   const transition = { duration: reduced ? 0.1 : 0.2, ease: 'easeOut' } as const;
   return (
     <span
-      className="inline-grid h-5 max-w-full min-w-0 items-center align-middle"
+      className="relative inline-grid max-w-full min-w-0 align-middle"
       aria-busy={pending || undefined}
     >
       <span className="sr-only">
         {title}
         {pending && ` — ${t('titles.generating')}`}
       </span>
+      <motion.span
+        aria-hidden
+        className="block min-w-0 truncate"
+        initial={false}
+        animate={{ opacity: pending ? 0 : 1 }}
+        transition={transition}
+      >
+        {children}
+      </motion.span>
       <AnimatePresence initial={false} mode="sync">
-        {pending ? (
+        {pending && (
           <motion.span
             key="pending"
             aria-hidden
-            className="col-start-1 row-start-1 block w-28 max-w-full"
+            className="absolute inset-0 block"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={transition}
           >
-            <Skeleton className="h-3 w-full rounded-full" />
-          </motion.span>
-        ) : (
-          <motion.span
-            key="title"
-            aria-hidden
-            className="col-start-1 row-start-1 block min-w-0 truncate"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={transition}
-          >
-            {children}
+            <Skeleton className="size-full rounded-full" />
           </motion.span>
         )}
       </AnimatePresence>
