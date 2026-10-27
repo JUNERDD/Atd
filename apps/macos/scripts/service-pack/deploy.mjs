@@ -58,7 +58,17 @@ export async function deployService({ repoRoot, packDir }) {
 
   const deploy = spawnSync(
     'pnpm',
-    ['--filter', '@atd/agent-service', 'deploy', '--prod', '--legacy', packDir],
+    [
+      // Renderer-only patches have no target in this production service subset. Keep the
+      // workspace's full-install validation strict; patches present here must still apply.
+      '--config.allow-unused-patches=true',
+      '--filter',
+      '@atd/agent-service',
+      'deploy',
+      '--prod',
+      '--legacy',
+      packDir,
+    ],
     { cwd: repoRoot, stdio: 'inherit', env: { ...process.env, npm_config_lockfile: 'false' } },
   );
   // Restore before any failure below so a failed deploy cannot leave it either.
