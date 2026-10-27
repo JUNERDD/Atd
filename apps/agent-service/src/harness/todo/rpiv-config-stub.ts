@@ -5,7 +5,7 @@
  * every tool registration; the service must not pick up a user's personal rpiv configuration, so
  * this module answers with fixed defaults and never touches the filesystem.
  *
- * Only the two runtime exports rpiv-todo 2.12.0 imports are provided.
+ * Only the two runtime exports rpiv-todo 2.15.0 imports are provided.
  */
 
 /** rpiv-todo's `TodoConfig`, fixed: no guidance override and no overlay collapse shortcut. */

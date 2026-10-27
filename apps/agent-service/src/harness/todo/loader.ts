@@ -13,7 +13,7 @@ import { createJiti } from 'jiti';
  */
 
 const RPIV_TODO = '@juicesharp/rpiv-todo';
-const RPIV_TODO_VERSION = '2.12.0';
+const RPIV_TODO_VERSION = '2.15.0';
 
 /** rpiv-todo's default export: registers the `todo` tool, `/todos` and its session handlers. */
 export type RpivTodoFactory = (pi: ExtensionAPI) => void;

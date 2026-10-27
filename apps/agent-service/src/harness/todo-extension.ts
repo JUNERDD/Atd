@@ -6,11 +6,11 @@ import { loadRpivTodo } from './todo/loader.js';
 /**
  * `todo`: the pinned rpiv-todo extension (harness/todo/loader.ts), registered unchanged on the
  * parent session. rpiv-todo owns the tool, its per-session state and the branch replay on
- * `session_start` / `session_compact` / `session_tree`: the latest successful `todo` tool result
- * on the branch is the list, so resume, rebuild and branch switches restore it. Its TUI overlay
+ * `session_start` / `session_compact` / `session_tree`: native `rpiv-todo-state` entries restore
+ * the list, with tool-result snapshots as the fallback for older branches. Its TUI overlay
  * and `/todos` command stay inert here (no UI; prompts are sent without command expansion).
- * Children never get the tool (run-binding / subagent rules). The tool is model-only: a codemode
- * script's nested call leaves no persisted result, so its change would be lost on replay.
+ * Children never get the tool (run-binding / subagent rules). The tool stays model-only because
+ * desktop progress reads direct todo tool blocks; nested codemode calls would not update it.
  */
 export function todoExtension(deps: HarnessDeps): ExtensionFactory {
   return async (pi) => {

@@ -34,7 +34,7 @@ let package = Package(
   // Direct dependencies are pinned exactly; Package.resolved (checked in) pins their transitive
   // dependencies, and scripts/build.mjs makes xcodebuild use only those versions.
   dependencies: [
-    .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
+    .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     // The official MCP SDK (Apache-2.0/MIT, licenses/mcp-swift-sdk-LICENSE): the client side of
     // the private stdio MCP connection to the computer-use browser worker
     // (Computer/Engines/Browser).

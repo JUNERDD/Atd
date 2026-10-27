@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 
 /**
- * The parts of `pi-web-access 0.37.0` the web tools reuse, loaded module by module through jiti
+ * The parts of `pi-web-access 0.44.0` the web tools reuse, loaded module by module through jiti
  * from the package's TypeScript sources. The package factory (`index.ts`) and its bundled
  * `dist/index.js` are never loaded: index.ts statically imports the curator server, Gemini web
  * (browser cookies) and every keyed provider, and reads `web-search.json`. The modules loaded
@@ -15,8 +15,8 @@ import { createJiti } from 'jiti';
  *   search-result-count-normalization.ts; its `perplexity.ts` import is type-only and erased.
  * - `ssrf-protection.ts` (`fetchRemoteUrl`: public-address check on every hop, manual redirects)
  *   → utils.ts. Loading it probes whether a `web-search.json` exists (utils.ts
- *   `getWebSearchConfigDir`); the file is only opened by `loadSsrfConfig` /
- *   `loadFetchContentDomainPolicy`, which the web tools never call — they pass explicit options —
+ *   `getWebSearchConfigDir`); the file is only opened by the SSRF and fetch config loaders,
+ *   which the web tools never call — they pass explicit options —
  *   and by `loadConfiguredProxy`, which `fetchRemoteUrl` reaches only with a proxy in play.
  * - `data-uri-sanitize.ts` (strips inline base64 data URIs from extracted text).
  * - `rsc-extract.ts` (Next.js React Server Components payloads) and `declared-web-links.ts`
@@ -34,7 +34,7 @@ import { createJiti } from 'jiti';
  */
 
 /** The version the module list above was verified against; `loadWebPackage` refuses others. */
-export const WEB_PACKAGE_VERSION = '0.37.0';
+export const WEB_PACKAGE_VERSION = '0.44.0';
 
 export interface SearchHit {
   title: string;

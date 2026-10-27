@@ -23,16 +23,16 @@
     "check:secrets": "gitleaks git --staged --redact --verbose --no-banner --ignore-gitleaks-allow --config .gitleaks.toml"
   },
   "devDependencies": {
-    "@shadcn/lint": "0.2.0",
-    "@types/node": "24.19.1",
-    "oxfmt": "0.72.0",
-    "oxlint": "1.87.0",
+    "@shadcn/lint": "0.2.3",
+    "@types/node": "24.19.2",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
     "oxlint-tsgolint": "catalog:",
-    "turbo": "2.11.8",
+    "turbo": "2.11.10",
     "typescript": "7.0.2"
   },
   "engines": {
     "node": "^24.15.0 || >=26.0.0"
   },
-  "packageManager": "pnpm@12.10.1"
+  "packageManager": "pnpm@12.15.0"
 }
