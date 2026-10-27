@@ -232,6 +232,8 @@
     "importedDraft": "导入的草稿",
     "delete": "删除",
     "more": "更多",
+    "pin": "置顶",
+    "unpin": "取消置顶",
     "moreActionsFor": "{{title}} 的更多操作",
     "rename": "重命名",
     "copyId": "复制会话 ID",
@@ -283,9 +285,37 @@
       "today": "今天",
       "yesterday": "昨天",
       "previous7Days": "过去 7 天",
-      "previous30Days": "过去 30 天"
+      "previous30Days": "过去 30 天",
+      "pinned": "已置顶",
+      "unpinned": "其他任务"
     },
-    "needsAttention": "需要你处理"
+    "needsAttention": "需要你处理",
+    "filter": {
+      "label": "筛选任务",
+      "all": "全部",
+      "pinned": "置顶",
+      "active": "进行中",
+      "failed": "失败",
+      "automated": "自动运行"
+    },
+    "filterEmpty": {
+      "pinned": {
+        "title": "没有置顶的任务",
+        "description": "在任务的菜单中选择置顶，它就会固定在列表顶部。"
+      },
+      "active": {
+        "title": "没有进行中的任务",
+        "description": "正在运行或等待你回复的任务会显示在这里。"
+      },
+      "failed": {
+        "title": "没有失败的任务",
+        "description": "最近一次运行失败或被中断的任务会显示在这里。"
+      },
+      "automated": {
+        "title": "没有自动运行的任务",
+        "description": "由自动化或应用发起的任务会显示在这里。"
+      }
+    }
   },
   "transcript": {
     "footer": {

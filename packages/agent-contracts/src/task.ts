@@ -237,6 +237,8 @@ export const AgentTaskSchema = Type.Object(
      * deleted task.
      */
     sideChatOf: Type.Optional(Identifier),
+    /** The person pinned the task to the top of their task list; absent when it is not pinned. */
+    pinned: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

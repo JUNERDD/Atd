@@ -106,10 +106,17 @@ export const AgentRequestSchema = Type.Union([
     taskId: Identifier,
     tier: PermissionTierSchema,
   }),
+  /** Renames and/or pins a task; the bridge's `renameTask` and `pinTask` send one field each. */
   Type.Object({
-    action: Type.Literal('renameTask'),
+    action: Type.Literal('patchTask'),
     taskId: Identifier,
-    title: Type.String({ minLength: 1, maxLength: 120 }),
+    patch: Type.Object(
+      {
+        title: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
+        pinned: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false, minProperties: 1 },
+    ),
   }),
   Type.Object({ action: Type.Literal('deleteTask'), taskId: Identifier }),
   Type.Object({

@@ -86,6 +86,7 @@ export function mapTask(task: ServiceTask): AgentTask {
     ...(task.permissionTier ? { permissionTier: task.permissionTier } : {}),
     ...(task.origin ? { origin: { ...task.origin } } : {}),
     ...(task.sideChatOf ? { sideChatOf: task.sideChatOf } : {}),
+    ...(task.pinned ? { pinned: true as const } : {}),
   };
 }
 

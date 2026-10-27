@@ -141,6 +141,8 @@ export const TaskSchema = Type.Object(
      * absent for every other task. The conversation may have been deleted since.
      */
     sideChatOf: Type.Optional(Identifier),
+    /** Pinned to the top of the task list; absent when it is not. */
+    pinned: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

@@ -195,6 +195,7 @@ export function installBridge(extras?: {
     replaceQueue: vi.fn(async () => {}),
     setPermissionTier: vi.fn(async () => {}),
     renameTask: vi.fn(async () => {}),
+    pinTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
     compactTask: vi.fn(async () => null),
     contextBreakdown: vi.fn(async () => ({

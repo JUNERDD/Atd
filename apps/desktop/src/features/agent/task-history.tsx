@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, SearchIcon } from 'lucide-react';
+import { History, ListFilter, SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Empty,
@@ -26,8 +26,9 @@ import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { HistoryList, type HistoryActions } from './history-list';
 import { historyRows, type HistoryEntry } from './history-rows';
+import { HistoryFilterTabs } from './history-filter-tabs';
 import { HistoryViewMenu } from './history-view-menu';
-import { groupHistory, sortHistory } from './history-view';
+import { groupHistory, matchesFilter, sortHistory, type HistoryFilter } from './history-view';
 import { RenameTaskDialog } from './rename-task-dialog';
 import { useCopyTaskId } from './use-copy-task-id';
 import { useHistoryView } from './use-history-view';
@@ -49,6 +50,7 @@ export function TaskHistory({
   const copyId = useCopyTaskId();
   const search = useCompositionQuery();
   const [view, setView] = useHistoryView();
+  const [filter, setFilter] = useState<HistoryFilter>('all');
   const [error, setError] = useState('');
   const query = search.query.trim();
   const content = useTaskContentSearch(query, tasks);
@@ -63,6 +65,7 @@ export function TaskHistory({
   // matches with that message, which shows only where it is why the task is listed (a title match
   // would mostly repeat itself); the view orders and sections them, never by relevance.
   const visible = tasks.flatMap((task): HistoryEntry[] => {
+    if (!matchesFilter(task, filter)) return [];
     const statusLabel = statusLabelOf(task);
     const match = matchFields(query, { title: task.title, status: statusLabel || undefined });
     const hit = query ? (content.hits.get(task.id) ?? null) : null;
@@ -93,14 +96,21 @@ export function TaskHistory({
         return section.model ?? t('history.noModel');
       case 'origin':
         return t(`history.originSection.${section.origin}`);
+      case 'pinned':
+        return t('history.section.pinned');
+      // Below pinned tasks the ungrouped rest needs a heading of its own.
       case 'all':
-        return null;
+        return sections.length > 1 ? t('history.section.unpinned') : null;
     }
   }
   const rows = historyRows(
     sections.map((section) => ({ title: sectionTitle(section), items: section.items })),
   );
   const actions: HistoryActions = {
+    togglePin: (task) =>
+      void agentApi()
+        .pinTask(task.id, !task.pinned)
+        .catch((error) => setError(messageOf(error))),
     rename: (task) => setRenaming({ task, open: true }),
     copyId: (task) => void copyId(task),
     delete: (task) => setDeleting({ task, open: true }),
@@ -116,21 +126,11 @@ export function TaskHistory({
         />
         <HistoryViewMenu view={view} onChange={setView} />
       </div>
-      <HistoryList rows={rows} view={view} now={now} actions={actions} onChoose={onChoose}>
-        {settledEmpty && (
-          <Empty className="px-4 py-10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">{tasks.length ? <SearchIcon /> : <History />}</EmptyMedia>
-              <EmptyTitle className="text-base">
-                {tasks.length ? t('history.noMatches', { query }) : t('history.empty')}
-              </EmptyTitle>
-              <EmptyDescription>
-                {tasks.length ? t('history.noMatchesDescription') : t('history.emptyDescription')}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-      </HistoryList>
+      <HistoryFilterTabs filter={filter} onChange={setFilter}>
+        <HistoryList rows={rows} view={view} now={now} actions={actions} onChoose={onChoose}>
+          {settledEmpty && <HistoryEmpty tasks={tasks.length} query={query} filter={filter} />}
+        </HistoryList>
+      </HistoryFilterTabs>
       {/* Always mounted, so assistive technology announces the search's progress and failure. */}
       <output className="block text-xs text-muted-foreground">{searchStatus}</output>
       {error && (
@@ -178,5 +178,42 @@ export function TaskHistory({
         </AlertDialogContent>
       </AlertDialog>
     </section>
+  );
+}
+
+/**
+ * Why the list shows nothing: there are no tasks yet, the search matched none, or the chosen tab
+ * holds none (a search names itself first, since clearing it is the likelier fix).
+ */
+function HistoryEmpty({
+  tasks,
+  query,
+  filter,
+}: {
+  tasks: number;
+  query: string;
+  filter: HistoryFilter;
+}) {
+  const { t } = useTranslation('tasks');
+  let icon = <History />;
+  let title = t('history.empty');
+  let description = t('history.emptyDescription');
+  if (tasks && query) {
+    icon = <SearchIcon />;
+    title = t('history.noMatches', { query });
+    description = t('history.noMatchesDescription');
+  } else if (tasks && filter !== 'all') {
+    icon = <ListFilter />;
+    title = t(`history.filterEmpty.${filter}.title`);
+    description = t(`history.filterEmpty.${filter}.description`);
+  }
+  return (
+    <Empty className="px-4 py-10">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">{icon}</EmptyMedia>
+        <EmptyTitle className="text-base">{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }

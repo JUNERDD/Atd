@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Copy, Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Ellipsis, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { Badge } from '@atd/ui/components/badge';
@@ -23,6 +23,8 @@ import { TaskOriginBadge } from './task-origin-badge';
 
 /** What the rows' menus do to their task; the history owns the dialogs these open. */
 export type HistoryActions = {
+  /** Pins an unpinned task, unpins a pinned one. */
+  togglePin: (task: AgentTask) => void;
   rename: (task: AgentTask) => void;
   copyId: (task: AgentTask) => void;
   delete: (task: AgentTask) => void;
@@ -125,6 +127,10 @@ function TaskMenuItems({ task, actions }: { task: AgentTask; actions: HistoryAct
   const { t } = useTranslation('tasks');
   return (
     <>
+      <ItemMenuItem onSelect={() => actions.togglePin(task)}>
+        {task.pinned ? <PinOff /> : <Pin />}
+        {task.pinned ? t('history.unpin') : t('history.pin')}
+      </ItemMenuItem>
       <ItemMenuItem onSelect={() => actions.rename(task)}>
         <Pencil />
         {t('history.rename')}
@@ -209,7 +215,8 @@ function HistoryTaskRow({
               {task.origin && <TaskOriginBadge origin={task.origin} />}
             </span>
             <time className="task-row-time" dateTime={stamp} title={updated.toLocaleString()}>
-              {rowDate(updated, now, i18n.language, view.group === 'date')}
+              {/* A pinned task sits in the pinned section, under no day heading. */}
+              {rowDate(updated, now, i18n.language, view.group === 'date' && !task.pinned)}
             </time>
           </span>
           <span className="task-row-meta">

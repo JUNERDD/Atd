@@ -232,6 +232,8 @@
     "importedDraft": "Imported draft",
     "delete": "Delete",
     "more": "More",
+    "pin": "Pin to top",
+    "unpin": "Unpin",
     "moreActionsFor": "More actions for {{title}}",
     "rename": "Rename",
     "copyId": "Copy session ID",
@@ -283,9 +285,37 @@
       "today": "Today",
       "yesterday": "Yesterday",
       "previous7Days": "Previous 7 Days",
-      "previous30Days": "Previous 30 Days"
+      "previous30Days": "Previous 30 Days",
+      "pinned": "Pinned",
+      "unpinned": "Other tasks"
     },
-    "needsAttention": "Needs your attention"
+    "needsAttention": "Needs your attention",
+    "filter": {
+      "label": "Filter tasks",
+      "all": "All",
+      "pinned": "Pinned",
+      "active": "Active",
+      "failed": "Failed",
+      "automated": "Automated"
+    },
+    "filterEmpty": {
+      "pinned": {
+        "title": "No pinned tasks",
+        "description": "Pin a task from its menu to keep it at the top of the list."
+      },
+      "active": {
+        "title": "Nothing in progress",
+        "description": "Tasks that are running or waiting for your answer appear here."
+      },
+      "failed": {
+        "title": "No failed tasks",
+        "description": "Tasks whose last run failed or was interrupted appear here."
+      },
+      "automated": {
+        "title": "No automated tasks",
+        "description": "Tasks started by an automation or an app appear here."
+      }
+    }
   },
   "transcript": {
     "footer": {
