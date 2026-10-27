@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
   DEFAULT_COMMAND_TYPING,
+  DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
@@ -107,6 +108,7 @@ export class SettingsStore {
       const settings: UserSettings = {
         language: null,
         appearance: null,
+        glowEffects: DEFAULT_GLOW_EFFECTS,
         summaryTitles: DEFAULT_SUMMARY_TITLES,
         computerVisionModel: null,
         permissionTier: defaultTier,

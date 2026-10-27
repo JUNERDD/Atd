@@ -1,5 +1,6 @@
 import {
   DEFAULT_COMMAND_TYPING,
+  DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
@@ -52,12 +53,17 @@ function withAddedVisionModel(file: unknown): unknown {
   return { ...file, settings: { computerVisionModel: null, ...settings } };
 }
 
-/** A file written before the appearance setting existed follows the system. */
+/**
+ * A file written before the appearance settings existed follows the system and shows the glows.
+ */
 function withAddedAppearance(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
   if (typeof settings !== 'object' || settings === null) return file;
-  return { ...file, settings: { appearance: null, ...settings } };
+  return {
+    ...file,
+    settings: { appearance: null, glowEffects: DEFAULT_GLOW_EFFECTS, ...settings },
+  };
 }
 
 /**

@@ -146,6 +146,9 @@ export type OnboardingProgress = Static<typeof OnboardingProgressSchema>;
 /** Enable summary titles for new conversations whose initial request needs one. */
 export const DEFAULT_SUMMARY_TITLES = true;
 
+/** Show the app's decorative glows and shimmering running text until the user turns them off. */
+export const DEFAULT_GLOW_EFFECTS = true;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
@@ -155,6 +158,11 @@ export const UserSettingsSchema = Type.Object(
   {
     language: Type.Union([AppLanguageSchema, Type.Null()]),
     appearance: Type.Union([AppAppearanceSchema, Type.Null()]),
+    /**
+     * Whether the app shows its decorative glows (the flowing light while a reply is awaited, the
+     * HUD's and mini panel's working light) and shimmers running text (`DEFAULT_GLOW_EFFECTS`).
+     */
+    glowEffects: Type.Boolean(),
     /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
     summaryTitles: Type.Boolean(),
     /** Null follows the current task model; a selection is only for read-only screen analysis. */
@@ -210,6 +218,7 @@ export const PatchSettingsRequestSchema = Type.Object(
   {
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
+    glowEffects: Type.Optional(Type.Boolean()),
     summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),
