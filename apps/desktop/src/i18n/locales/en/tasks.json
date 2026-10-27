@@ -875,5 +875,33 @@
       "link": "Only web links can be opened.",
       "widget": "Open the view’s window to do this."
     }
+  },
+  "nextSteps": {
+    "title": "Next steps",
+    "label": "Suggested next steps",
+    "hide": "Hide suggestions",
+    "showCard": "Show suggested next steps",
+    "hideCard": "Hide suggested next steps",
+    "preparing": "Preparing suggestions…",
+    "kinds": {
+      "continue": "Continue here",
+      "newTask": "New task",
+      "automation": "Automation"
+    },
+    "kindReason": "{{kind}} · {{reason}}",
+    "willFill": "Click to put in the composer",
+    "willSend": "Click to send",
+    "why": "Why: {{reason}}",
+    "nameLabel": "Name",
+    "promptLabel": "Prompt",
+    "openHint": "Becomes the new task’s first message; you send it once the task opens.",
+    "startHint": "Sent as the new task’s first message as soon as it starts.",
+    "automationTitle": "Create automation",
+    "automationHint": "Used as the task on every run. Change or turn it off later in Settings › Automations.",
+    "openInNewTask": "Open in new task",
+    "startNewTask": "Start new task",
+    "create": "Create",
+    "cancel": "Cancel",
+    "automationCreated": "Automation “{{name}}” created."
   }
 }

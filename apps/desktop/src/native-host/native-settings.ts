@@ -2,6 +2,8 @@ import { getSettings, patchSettings } from '@atd/agent-client';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -111,6 +113,8 @@ export function nativeSettings(
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
       summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
+      nextSteps: settings?.nextSteps ?? DEFAULT_NEXT_STEPS,
+      nextStepClick: settings?.nextStepClick ?? DEFAULT_NEXT_STEP_CLICK,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -237,6 +241,13 @@ export function nativeSettings(
       return write({ viewInitiative });
     },
     setSummaryTitles: (summaryTitles) => write({ summaryTitles }),
+    setNextSteps: (nextSteps) => write({ nextSteps }),
+    setNextStepClick: async (nextStepClick) => {
+      if (nextStepClick !== 'fill' && nextStepClick !== 'send') {
+        throw new TypeError('Unsupported next step click behavior.');
+      }
+      return write({ nextStepClick });
+    },
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,

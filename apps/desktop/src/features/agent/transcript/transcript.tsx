@@ -8,6 +8,7 @@ import { compactBlock } from '../compaction/compact-availability';
 import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
 import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
+import { useNextStepsOffer, type NextStepsHost } from '../next-steps/use-next-steps-offer';
 import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import {
@@ -40,7 +41,8 @@ import { useTranscriptScroll } from './use-transcript-scroll';
  * an answer can be quoted into the reply through `onQuote`. The commands offered on an answer, or
  * on text selected in one, open through `onCommand`. While shown and not covered it publishes its
  * controls (`conversation-controls.ts`): the composer's message entry steps through its user
- * messages, mounted or not, and the header opens its find bar (`ConversationFind`).
+ * messages, mounted or not, and the header opens its find bar (`ConversationFind`). With
+ * `nextSteps`, the last turn offers the suggestions saved for its completed run.
  */
 export function Transcript({
   detail,
@@ -51,6 +53,7 @@ export function Transcript({
   onRemember,
   onQuote,
   onCommand,
+  nextSteps,
 }: {
   detail: TaskDetail;
   covered?: boolean;
@@ -65,6 +68,8 @@ export function Transcript({
   onQuote?: (markdown: string, source: QuoteSource | undefined) => void;
   /** Opens an offered command on an answer or a selection; without it no command is offered. */
   onCommand?: CommandOpener;
+  /** What the panel does with suggested next steps; without it no suggestions show. */
+  nextSteps?: NextStepsHost | undefined;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
@@ -137,6 +142,7 @@ export function Transcript({
   const headRequest = requests[0];
   const { compact, pending: compacting } = useCompactTask();
   const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
+  const offer = useNextStepsOffer(task, live, nextSteps);
   const latestCompaction = blocks.findLast((block) => block.kind === 'compaction')?.id ?? null;
   const retry = useMemo<CompactionRetry>(
     () => ({ retry: () => void compact(task.id), disabled: retryBlocked, latestCompaction }),
@@ -152,6 +158,7 @@ export function Transcript({
     openTask: onOpenTask,
     remember: onRemember,
     runCommand: onCommand,
+    nextSteps: offer,
   };
   // Each view's data, folded from the whole transcript: a later turn's update reaches a view card
   // in a settled turn, which the adapter keeps as it was.

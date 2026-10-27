@@ -1,5 +1,6 @@
 import { createContext, use } from 'react';
 import type { TaskRun } from '../../../client/agent/task-schema';
+import type { NextStepsOffer } from '../next-steps/use-next-steps-offer';
 import type { CommandOpener } from './use-offered-commands';
 
 /**
@@ -19,6 +20,8 @@ export interface TaskTurns {
   remember?: ((text: string) => void) | undefined;
   /** Opens a command placed on turn actions on a turn's answer; without it turns offer none. */
   runCommand?: CommandOpener | undefined;
+  /** The suggested next steps the last turn offers, when it offers any (`next-steps/`). */
+  nextSteps?: NextStepsOffer | null | undefined;
 }
 
 export const TaskTurnsContext = createContext<TaskTurns | null>(null);

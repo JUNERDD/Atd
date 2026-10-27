@@ -5,6 +5,7 @@ import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { MAX_FOLDERS } from './folders.js';
+import { TaskNextStepsSchema } from './next-steps.js';
 import { InputChipRangeSchema, MAX_INPUT_CHIPS } from './input-chips.js';
 import { RunTriggerSchema } from './run-trigger.js';
 import { ThinkingLevelSchema } from './models.js';
@@ -241,6 +242,8 @@ export const AgentTaskSchema = Type.Object(
     sideChatOf: Type.Optional(Identifier),
     /** The person pinned the task to the top of their task list; absent when it is not pinned. */
     pinned: Type.Optional(Type.Literal(true)),
+    /** Suggested next steps for the last run, once generated (`next-steps.ts`). */
+    nextSteps: Type.Optional(TaskNextStepsSchema),
   },
   { additionalProperties: false },
 );

@@ -65,10 +65,7 @@ export class RunnerManager {
 
   constructor(private readonly deps: ManagerDeps) {
     this.acceptance = new RunAcceptance({
-      ctx: deps.ctx,
-      folders: deps.folders,
-      newTaskTier: deps.newTaskTier,
-      titles: deps.titles,
+      ...deps,
       runner: (taskId) => this.runners.get(taskId),
     });
     this.releases = new SessionReleases({
@@ -193,6 +190,7 @@ export class RunnerManager {
   /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
     this.deps.titles.cancel(taskId);
+    this.deps.ctx.nextSteps.cancel(taskId);
     const runner = this.runners.get(taskId);
     this.releases.cancel(taskId);
     this.runners.delete(taskId);
@@ -275,7 +273,7 @@ export class RunnerManager {
    */
   async shutdown(): Promise<void> {
     this.draining = true;
-    await this.deps.titles.stop();
+    await Promise.all([this.deps.titles.stop(), this.deps.ctx.nextSteps.stop()]);
     this.releases.cancelAll();
     const stopping: Promise<unknown>[] = [];
     for (const task of this.deps.ctx.ledger.data.tasks)

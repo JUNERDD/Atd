@@ -22,6 +22,8 @@ import {
 } from '@atd/ui/components/dropdown-menu';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';
+import { NextStepsToggle } from '../next-steps/next-steps-card';
+import { useTurnNextSteps } from '../next-steps/use-next-steps-offer';
 import type { AdaptedTurn } from './adapter';
 import { showErrorToast } from '../../../components/toast-store';
 import { CommandMenuItems } from './command-menu-items';
@@ -35,10 +37,11 @@ import { useTurnSpeech } from './use-turn-speech';
  * The action bar that closes a settled turn, below everything the turn shows (tool activity, a
  * stop note and approval banners included): Copy for the final answer `answer`, applying it to the
  * app a command ran from (`TurnApplyButton`), Regenerate on the task's last turn, Read aloud, Fork,
- * and a More menu with the exports, Share and Remember, then the commands placed on turn actions,
- * which run on the answer. Only what applies is listed, and
- * nothing renders when nothing does. The last turn's bar always shows; an earlier turn's appears
- * on hover or keyboard focus (`data-reveal`) in space it always keeps.
+ * the last turn's toggle for its suggested next steps (`NextStepsToggle`), and a More menu with the
+ * exports, Share and Remember, then the commands placed on turn actions, which run on the answer.
+ * Only what applies is listed, and nothing renders when nothing does. The last turn's bar always
+ * shows; an earlier turn's appears on hover or keyboard focus (`data-reveal`) in space it always
+ * keeps.
  */
 export function TurnActions({
   turn,
@@ -58,6 +61,7 @@ export function TurnActions({
   const { regenerate, fork, copyMarkdown, saveMarkdown, remember, commands, runCommand } = actions;
   const moreButton = useRef<HTMLButtonElement>(null);
   const speech = useTurnSpeech(turn.id, answer ? speakableText(answer) : '');
+  const nextSteps = useTurnNextSteps(run, last);
   const canShare = Boolean(answer && window.desktop?.share);
   // The share picker points at More, which opened the menu that chose it (closed by then). Not the
   // bar: it spans the transcript's width, so the picker would center far right of the buttons.
@@ -70,7 +74,7 @@ export function TurnActions({
   }
   const builtIn = copyMarkdown || saveMarkdown || canShare || remember;
   const more = builtIn || commands.length > 0;
-  if (!answer && !regenerate && !speech && !fork && !more) return null;
+  if (!answer && !regenerate && !speech && !fork && !nextSteps && !more) return null;
 
   return (
     <div
@@ -116,6 +120,7 @@ export function TurnActions({
           <GitFork />
         </IconButton>
       )}
+      {nextSteps && <NextStepsToggle offer={nextSteps} />}
       {more && (
         <DropdownMenu>
           <DropdownMenuTrigger ref={moreButton} asChild>

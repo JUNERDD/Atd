@@ -1,5 +1,7 @@
 import {
   DEFAULT_COMMAND_TYPING,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -25,7 +27,10 @@ export function upgradeSettingsFile(raw: unknown): unknown {
   );
 }
 
-/** Older settings take the defaults for view initiative and new-conversation summaries. */
+/**
+ * Older settings take the defaults for view initiative, new-conversation summaries and suggested
+ * next steps.
+ */
 function withAddedTaskPreferences(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
@@ -33,6 +38,8 @@ function withAddedTaskPreferences(file: unknown): unknown {
   const defaults = {
     viewInitiative: DEFAULT_VIEW_INITIATIVE,
     summaryTitles: DEFAULT_SUMMARY_TITLES,
+    nextSteps: DEFAULT_NEXT_STEPS,
+    nextStepClick: DEFAULT_NEXT_STEP_CLICK,
   };
   return { ...file, settings: { ...defaults, ...settings } };
 }

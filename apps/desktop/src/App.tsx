@@ -27,6 +27,7 @@ import {
 import { PanelHeader } from './features/agent/panel-header';
 import { SideChatLayer } from './features/agent/side-chat/side-chat-layer';
 import { useNewChat } from './features/agent/use-new-chat';
+import { useNextStepsHost } from './features/agent/next-steps/use-next-steps-host';
 import { WaitingGlow } from './features/agent/waiting-glow/waiting-glow';
 import { WelcomePresence } from './features/agent/welcome-presence';
 import { MessageFlight } from './features/agent/message-flight';
@@ -159,6 +160,15 @@ export function App() {
     if (view === 'new') newChat.depart(captureComposerContent(panelBody));
     return submit();
   };
+  // Suggested next steps fill or send this conversation's draft, or open a new conversation.
+  const nextSteps = useNextStepsHost({
+    settings: snapshot,
+    draftKey,
+    draft,
+    changeDraft,
+    newTask,
+    submit: submitDraft,
+  });
   const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
@@ -242,6 +252,7 @@ export function App() {
                           onRemember={remember}
                           onQuote={quoteToDraft}
                           onCommand={side.runCommand}
+                          nextSteps={nextSteps}
                         />
                         {child.childKey && (
                           <ChildTranscriptView

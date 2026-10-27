@@ -25,6 +25,7 @@ import {
   type SettingsSnapshot,
   type ViewInitiative,
 } from '../../client/settings-contract';
+import { NextStepClickRow, NextStepsRow } from './next-steps-rows';
 import { useSettingsSectionExit } from './settings-navigation';
 import { SummaryTitlesRow } from './summary-titles-row';
 
@@ -117,6 +118,8 @@ export function ConversationSettings({ snapshot }: { snapshot: SettingsSnapshot 
       <Card size="sm" className="settings-card">
         <ItemGroup>
           <SummaryTitlesRow snapshot={snapshot} />
+          <NextStepsRow snapshot={snapshot} />
+          <NextStepClickRow snapshot={snapshot} />
           <ViewInitiativeRow snapshot={snapshot} />
         </ItemGroup>
       </Card>

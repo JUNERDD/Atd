@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import { PermissionTierSchema } from './confirms.js';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
+import { NextStepClickSchema } from './next-steps.js';
 import { ModelSelectionSchema } from './task.js';
 import { ViewInitiativeSchema } from './views.js';
 
@@ -177,6 +178,10 @@ export const UserSettingsSchema = Type.Object(
     commandTypingAnimation: Type.Union([Type.Boolean(), Type.Null()]),
     /** How readily the agent shows interactive views (`VIEW_INITIATIVES`); runs freeze it. */
     viewInitiative: ViewInitiativeSchema,
+    /** Whether a normally completed run gets suggested next steps (`DEFAULT_NEXT_STEPS`). */
+    nextSteps: Type.Boolean(),
+    /** What a click on a suggested follow-up does (`DEFAULT_NEXT_STEP_CLICK`). */
+    nextStepClick: NextStepClickSchema,
     /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
     /** An interrupted guide resumes here; null starts with the intro. */
@@ -214,6 +219,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     commandTyping: Type.Optional(Type.Boolean()),
     commandTypingAnimation: Type.Optional(Type.Boolean()),
     viewInitiative: Type.Optional(ViewInitiativeSchema),
+    nextSteps: Type.Optional(Type.Boolean()),
+    nextStepClick: Type.Optional(NextStepClickSchema),
     onboardingCompleted: Type.Optional(Type.Boolean()),
     onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */

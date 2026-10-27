@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
   DEFAULT_COMMAND_TYPING,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -114,6 +116,8 @@ export class SettingsStore {
         commandTyping: DEFAULT_COMMAND_TYPING,
         commandTypingAnimation: null,
         viewInitiative: DEFAULT_VIEW_INITIATIVE,
+        nextSteps: DEFAULT_NEXT_STEPS,
+        nextStepClick: DEFAULT_NEXT_STEP_CLICK,
         onboardingCompleted: false,
         onboardingProgress: null,
       };

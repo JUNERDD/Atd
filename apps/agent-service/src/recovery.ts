@@ -43,6 +43,12 @@ export async function recoverService(options: {
     await ledger.change((data) => {
       for (const task of data.tasks) delete task.titleGeneration;
     });
+  // Suggestions still being made belong to it too; saved ones stay with the run they were made for.
+  if (ledger.data.tasks.some((task) => task.nextSteps?.status === 'pending'))
+    await ledger.change((data) => {
+      for (const task of data.tasks)
+        if (task.nextSteps?.status === 'pending') delete task.nextSteps;
+    });
 
   for (const task of ledger.data.tasks) {
     for (const run of task.runs) {

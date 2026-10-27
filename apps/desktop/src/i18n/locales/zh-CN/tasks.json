@@ -875,5 +875,33 @@
       "link": "只能打开网页链接。",
       "widget": "请在视图的窗口中执行此操作。"
     }
+  },
+  "nextSteps": {
+    "title": "下一步",
+    "label": "建议的下一步",
+    "hide": "隐藏建议",
+    "showCard": "显示建议的下一步",
+    "hideCard": "隐藏建议的下一步",
+    "preparing": "正在准备建议…",
+    "kinds": {
+      "continue": "在此对话中继续",
+      "newTask": "新任务",
+      "automation": "自动化"
+    },
+    "kindReason": "{{kind}} · {{reason}}",
+    "willFill": "点击填入输入框",
+    "willSend": "点击直接发送",
+    "why": "推荐理由：{{reason}}",
+    "nameLabel": "名称",
+    "promptLabel": "提示词",
+    "openHint": "会作为新任务的第一条消息，打开后由你发送。",
+    "startHint": "新任务开始时会立即作为第一条消息发送。",
+    "automationTitle": "创建自动化",
+    "automationHint": "每次运行时作为任务内容。创建后可以在 设置 › 自动化 中修改或停用。",
+    "openInNewTask": "在新任务中打开",
+    "startNewTask": "开始新任务",
+    "create": "创建",
+    "cancel": "取消",
+    "automationCreated": "已创建自动化“{{name}}”。"
   }
 }

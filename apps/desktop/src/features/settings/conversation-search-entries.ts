@@ -14,6 +14,22 @@ export const conversationSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.summaryTitles',
   },
   {
+    id: 'conversation-next-steps',
+    section: 'agent',
+    anchor: 'settings-next-steps',
+    label: 'shortcuts.nextSteps.title',
+    description: 'shortcuts.nextSteps.description',
+    keywords: 'search.keywords.nextSteps',
+  },
+  {
+    id: 'conversation-next-step-click',
+    section: 'agent',
+    anchor: 'settings-next-step-click',
+    label: 'shortcuts.nextStepClick.title',
+    description: 'shortcuts.nextStepClick.description',
+    keywords: 'search.keywords.nextStepClick',
+  },
+  {
     id: 'conversation-view-initiative',
     section: 'agent',
     anchor: 'settings-view-initiative',

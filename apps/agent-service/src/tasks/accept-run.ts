@@ -116,6 +116,8 @@ export class RunAcceptance {
           error: '',
           snapshot,
         });
+        // The previous run's suggestions leave with it, in the write that adds this run.
+        delete task.nextSteps;
         task.updatedAt = now;
         data.operations[request.operationId] = { taskId, runId };
       })
@@ -127,6 +129,7 @@ export class RunAcceptance {
       type: 'run.status',
       data: { status: 'queued', error: '' },
     });
+    ctx.nextSteps.cancel(taskId);
     if (!previous) this.deps.titles.start(taskId, ledger.run(taskId, runId));
     return { taskId, runId, duplicate: false };
   }

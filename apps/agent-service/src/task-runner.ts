@@ -39,6 +39,7 @@ import {
   rebindSubagentsForRun,
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
+import type { NextStepJobs } from './tasks/next-steps.js';
 import { TaskQueue } from './tasks/task-queue.js';
 import {
   finishRunPreparation,
@@ -58,6 +59,7 @@ export interface RunnerContext {
   paths: ServicePaths;
   log: Logger;
   tier: PermissionTier;
+  nextSteps: NextStepJobs;
 }
 
 /**
@@ -333,6 +335,7 @@ export class TaskRunner {
       run.status = status;
       run.error = error;
       task.updatedAt = new Date().toISOString();
+      if (status === 'completed') this.ctx.nextSteps.markPending(task, run);
       return true;
     });
     if (!applied) return;
@@ -341,7 +344,7 @@ export class TaskRunner {
       runId,
       executionId: rootExecutionId(runId),
       type: 'run.status',
-      data: { status, error },
+      data: { status, error, ...this.ctx.nextSteps.statusData(this.taskId, runId) },
     });
   }
 }

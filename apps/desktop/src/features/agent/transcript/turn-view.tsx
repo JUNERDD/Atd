@@ -1,6 +1,7 @@
 import { memo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
+import { NextStepsCard } from '../next-steps/next-steps-card';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
@@ -175,6 +176,8 @@ export const TurnView = memo(function TurnView({
           last={last}
         />
       )}
+      {/* The suggestions saved for the last turn's completed run, under its actions. */}
+      {settled && !pending && copyable && last && <NextStepsCard run={run} last={last} />}
     </section>
   );
 });

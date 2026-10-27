@@ -8,6 +8,7 @@ import {
   type AppLanguage,
   type ExcludedApp,
   type ModelSelection,
+  type NextStepClick,
   type SelectionToolbarActivation,
   type SelectionToolbarKey,
   type SelectionToolbarSettings,
@@ -52,6 +53,7 @@ export type {
   AppAppearance,
   AppLanguage,
   ExcludedApp,
+  NextStepClick,
   SelectionToolbarActivation,
   SelectionToolbarKey,
   SelectionToolbarSettings,
@@ -60,6 +62,8 @@ export type {
 export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
@@ -184,6 +188,10 @@ export interface SettingsSnapshot {
   viewInitiative: ViewInitiative;
   /** Whether new conversations receive an asynchronously generated summary title. */
   summaryTitles: boolean;
+  /** Whether finished conversations get suggested next steps. */
+  nextSteps: boolean;
+  /** What a click on a suggested follow-up does: put it in the composer or send it at once. */
+  nextStepClick: NextStepClick;
   /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
@@ -253,6 +261,10 @@ export interface SettingsBridge {
   setViewInitiative: (level: ViewInitiative) => Promise<SettingsSnapshot>;
   /** Applies to conversations created after this preference is saved. */
   setSummaryTitles: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Applies to runs that finish after this preference is saved. */
+  setNextSteps: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Applies to suggestions clicked after this preference is saved; automations always confirm. */
+  setNextStepClick: (value: NextStepClick) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

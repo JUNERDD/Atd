@@ -30,6 +30,14 @@ export async function startTestService() {
     return fetch(`${baseUrl}${pathname}`, { ...rest, headers });
   }
 
+  // Suggested next steps add a background model request after each completed run, which tests
+  // that script or count the fake model's requests do not expect.
+  const settings = await call('/v1/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ nextSteps: false }),
+  });
+  if (!settings.ok) throw new Error(`Next steps stayed on: ${await settings.text()}`);
+
   async function stop(): Promise<void> {
     await service.stop();
     await rm(dataDir, { recursive: true, force: true });

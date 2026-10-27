@@ -3,6 +3,7 @@ import {
   InputChipRangeSchema,
   MAX_FOLDERS,
   MAX_INPUT_CHIPS,
+  TaskNextStepsSchema,
   TaskOriginSchema,
 } from '@atd/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
@@ -145,6 +146,11 @@ export const TaskSchema = Type.Object(
     sideChatOf: Type.Optional(Identifier),
     /** Pinned to the top of the task list; absent when it is not. */
     pinned: Type.Optional(Type.Literal(true)),
+    /**
+     * Suggested next steps for the last run once it completed normally: `pending` while they are
+     * generated, then `ready` with the items (`next-steps.ts`).
+     */
+    nextSteps: Type.Optional(TaskNextStepsSchema),
   },
   { additionalProperties: false },
 );

@@ -88,6 +88,7 @@ export function mapTask(task: ServiceTask): AgentTask {
     ...(task.origin ? { origin: { ...task.origin } } : {}),
     ...(task.sideChatOf ? { sideChatOf: task.sideChatOf } : {}),
     ...(task.pinned ? { pinned: true as const } : {}),
+    ...(task.nextSteps ? { nextSteps: task.nextSteps } : {}),
   };
 }
 
