@@ -76,9 +76,15 @@ export async function beforeRestart(api, fixture, check, state) {
     const saved = await api.request('/v1/settings', 'PATCH', {
       language: 'zh-CN',
       commandTyping: false,
+      // This fixture scripts each foreground request; background generations would consume
+      // the next case's response mode and make its request/connection assertions ambiguous.
+      summaryTitles: false,
+      nextSteps: false,
     });
     assert.equal(saved.settings.language, 'zh-CN');
     assert.equal(saved.settings.commandTyping, false);
+    assert.equal(saved.settings.summaryTitles, false);
+    assert.equal(saved.settings.nextSteps, false);
     assert.equal((await api.request('/v1/settings')).revision, saved.revision);
   });
   await check(CORE_CASES[2], async () => {
@@ -169,7 +175,11 @@ export async function beforeRestart(api, fixture, check, state) {
         (frame) =>
           frame.type === 'event' &&
           frame.event.runId === accepted.runId &&
-          frame.event.type === 'transcript.patch',
+          frame.event.type === 'transcript.patch' &&
+          frame.event.data.blocks.some(
+            (block) =>
+              block.kind === 'assistant' && block.streaming && block.text === ANSWER.slice(0, 6),
+          ),
       );
       await api.request(`/v1/tasks/${accepted.taskId}/runs/${accepted.runId}/cancel`, 'POST');
       await finished(api, accepted, 'stopped');
@@ -205,6 +215,8 @@ export async function afterRestart(api, fixture, check, state) {
     const { settings } = await api.request('/v1/settings');
     assert.equal(settings.language, 'zh-CN');
     assert.equal(settings.commandTyping, false);
+    assert.equal(settings.summaryTitles, false);
+    assert.equal(settings.nextSteps, false);
     const { connection } = await api.request(`/v1/providers/${state.connectionId}`);
     assert.equal(connection.connected, true);
     assert.equal(connection.hasCredential, true);
