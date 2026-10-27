@@ -9,6 +9,7 @@ configure({ asyncUtilTimeout: 5_000 });
 
 beforeEach(() => {
   localStorage.clear();
+  window.history.replaceState(null, '', '/');
   delete window.desktop;
   // Each case installs its own bridge; nothing it cached may answer the next case.
   queryClient.clear();

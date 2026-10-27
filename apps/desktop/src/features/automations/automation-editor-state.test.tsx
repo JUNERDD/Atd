@@ -28,7 +28,7 @@ function renderSettings(
     };
   }
   installAutomations(automations);
-  localStorage.setItem('settings.lastSection', section);
+  window.history.replaceState(null, '', `#settings?section=${section}`);
   render(<SettingsWindow />);
 }
 

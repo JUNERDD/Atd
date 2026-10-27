@@ -29,7 +29,7 @@ function renderAutomations(
   const { api } = installBridge();
   withTasks(api, tasks);
   installAutomations(automations);
-  localStorage.setItem('settings.lastSection', 'automations');
+  window.history.replaceState(null, '', '#settings?section=automations');
   return render(<SettingsWindow />);
 }
 
