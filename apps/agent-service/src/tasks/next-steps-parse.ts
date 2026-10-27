@@ -4,6 +4,7 @@ import {
   MAX_NEXT_STEP_FOLLOW_UPS,
   MAX_NEXT_STEPS,
   NextStepSchema,
+  type MessageUsage,
   type NextStep,
   type NextStepKind,
 } from '@atd/agent-contracts';
@@ -97,4 +98,14 @@ function labelKey(label: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** A request that failed after the provider reported what it used, which still counts. */
+export class UsedRequestError extends Error {
+  constructor(
+    message: string,
+    readonly usage: MessageUsage | undefined,
+  ) {
+    super(message);
+  }
 }

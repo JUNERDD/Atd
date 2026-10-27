@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { NextStep, TaskRun } from '@atd/agent-contracts';
+import { errorMessage, type MessageUsage, type NextStep, type TaskRun } from '@atd/agent-contracts';
 import { withInferencePurpose } from '../providers/chatgpt-usage.js';
 import { inferenceError } from '../providers/inference-result.js';
 import { openRunModel } from '../run-model.js';
 import type { ServicePaths } from '../storage.js';
-import { parseNextSteps } from './next-steps-parse.js';
+import { messageUsage } from '../transcript-blocks.js';
+import { parseNextSteps, UsedRequestError } from './next-steps-parse.js';
 
 /**
  * What one suggestion request reads, already bounded by `nextStepMaterial` (next-steps.ts): the
@@ -51,14 +52,15 @@ const MAX_REPLY_TOKENS = 4096;
 
 /**
  * One bounded, tool-free completion on the model frozen for the completed run. Answers the valid
- * suggestions, possibly none; a failed or malformed reply throws.
+ * suggestions, possibly none, with what the request used; a failed or malformed reply throws a
+ * `UsedRequestError` that still carries the usage the provider reported.
  */
 export async function generateNextSteps(
   paths: ServicePaths,
   run: TaskRun,
   material: NextStepMaterial,
   signal: AbortSignal,
-): Promise<NextStep[]> {
+): Promise<{ steps: NextStep[]; usage: MessageUsage | undefined }> {
   signal.throwIfAborted();
   const { models, model } = await openRunModel(paths, run);
   signal.throwIfAborted();
@@ -73,10 +75,15 @@ export async function generateNextSteps(
     ),
   );
   signal.throwIfAborted();
+  const usage = messageUsage(result, undefined);
   const error = inferenceError(result);
-  if (error) throw new Error(error);
+  if (error) throw new UsedRequestError(error, usage);
   const text = result.content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('');
-  return parseNextSteps(text, material.automations);
+  try {
+    return { steps: parseNextSteps(text, material.automations), usage };
+  } catch (malformed) {
+    throw new UsedRequestError(errorMessage(malformed), usage);
+  }
 }
 
 /** The material as tagged sections; quoted text cannot close a section of its own. */

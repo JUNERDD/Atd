@@ -3,6 +3,7 @@ import {
   errorMessage,
   RunStatusDataSchema,
   type AgentTask,
+  type MessageUsage,
   type NextStep,
   type ServiceBlock,
   type ServiceEvent,
@@ -16,6 +17,7 @@ import type { Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
 import type { ServicePaths } from '../storage.js';
 import { readableInputText } from './input-chips.js';
+import { UsedRequestError } from './next-steps-parse.js';
 import type { NextStepMaterial } from './next-steps-model.js';
 
 interface NextStepDeps {
@@ -133,6 +135,7 @@ export class NextStepJobs {
 
   private async generate(task: AgentTask, run: TaskRun, signal: AbortSignal): Promise<void> {
     let steps: NextStep[] = [];
+    let usage: MessageUsage | undefined;
     let aborted: (() => void) | undefined;
     try {
       // Race the entire job: a provider or credential lookup that ignores cancellation cannot
@@ -143,12 +146,14 @@ export class NextStepJobs {
         if (signal.aborted) aborted();
       });
       const completion = this.material(task, run).then(async (material) => {
-        if (!material) return [];
+        if (!material) return { steps: [], usage: undefined };
         const { generateNextSteps } = await import('./next-steps-model.js');
         return generateNextSteps(this.deps.paths, run, material, signal);
       });
-      steps = await Promise.race([completion, cancelled]);
+      ({ steps, usage } = await Promise.race([completion, cancelled]));
     } catch (error) {
+      // A reply that came back unusable was still paid for.
+      if (error instanceof UsedRequestError) usage = error.usage;
       if (!signal.aborted || signal.reason === TIMED_OUT)
         this.deps.log.debug('No next steps were suggested.', {
           taskId: task.id,
@@ -158,7 +163,7 @@ export class NextStepJobs {
       if (aborted) signal.removeEventListener('abort', aborted);
     }
     // Shutdown writes nothing more; recovery clears the marker the stopped request leaves.
-    if (!this.stopped) await this.settle(task.id, run.id, signal.aborted ? [] : steps);
+    if (!this.stopped) await this.settle(task.id, run.id, signal.aborted ? [] : steps, usage);
   }
 
   /** What the request reads, or null when the run left no answer to build on. */
@@ -193,20 +198,24 @@ export class NextStepJobs {
     };
   }
 
-  /** Replaces the run's pending marker with its suggestions, or removes it when there are none. */
-  private async settle(taskId: string, runId: string, items: NextStep[]): Promise<void> {
-    if (
-      !pendingFor(
-        this.deps.ledger.data.tasks.find((task) => task.id === taskId),
-        runId,
-      )
-    )
-      return;
+  /**
+   * Records what the request used on its run, which a later run's withdrawal leaves in place, and
+   * replaces the run's pending marker with its suggestions, or removes it when there are none.
+   */
+  private async settle(
+    taskId: string,
+    runId: string,
+    items: NextStep[],
+    usage: MessageUsage | undefined,
+  ): Promise<void> {
     const changed = await this.deps.ledger.change((data) => {
       const task = data.tasks.find((item) => item.id === taskId);
-      if (!pendingFor(task, runId)) return false;
-      if (items.length) task.nextSteps = { runId, status: 'ready', items };
-      else delete task.nextSteps;
+      const run = task?.runs.find((item) => item.id === runId);
+      const pending = pendingFor(task, runId);
+      if (!pending && !(run && usage)) return false;
+      if (run && usage) run.nextStepsUsage = usage;
+      if (pending && items.length) task.nextSteps = { runId, status: 'ready', items };
+      else if (pending) delete task.nextSteps;
       // Suggestions are metadata: keep the conversation's last activity time and list position.
       return true;
     });

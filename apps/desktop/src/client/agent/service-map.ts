@@ -100,6 +100,7 @@ function mapRun(run: ServiceRun): TaskRun {
     status: run.status,
     error: run.error,
     snapshot: mapRunSnapshot(run),
+    ...(run.nextStepsUsage ? { nextStepsUsage: run.nextStepsUsage } : {}),
   };
 }
 

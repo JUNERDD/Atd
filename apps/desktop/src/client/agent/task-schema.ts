@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import {
   InputChipRangeSchema,
+  MessageUsageSchema,
   MAX_FOLDERS,
   MAX_INPUT_CHIPS,
   TaskNextStepsSchema,
@@ -117,6 +118,8 @@ export const RunSchema = Type.Object(
     status: RunStatusSchema,
     error: Type.String(),
     snapshot: RunSnapshotSchema,
+    /** What the request for the run's suggested next steps used, once it answered. */
+    nextStepsUsage: Type.Optional(MessageUsageSchema),
   },
   { additionalProperties: false },
 );

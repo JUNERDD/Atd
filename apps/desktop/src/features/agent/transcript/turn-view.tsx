@@ -111,6 +111,7 @@ export const TurnView = memo(function TurnView({
           waiting={liveFooter ? turn.waiting : null}
           generation={turn.generation}
           usage={liveFooter ? null : turn.usage}
+          nextStepsUsage={liveFooter ? undefined : run?.nextStepsUsage}
         />
       )}
       {turn.items.map((item) => {

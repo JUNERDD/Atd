@@ -74,8 +74,9 @@ function useLiveRate(
  * Per-turn elapsed header, directly under the user message. Settled turns show
  * "Worked for … · model · … tok/s" from provider totals over service-timed generation; the live
  * turn shows a ticking "Working · … · model · … tok/s" that adds an estimate for the message
- * still streaming until its true total replaces it. A settled turn with reported usage ends in a
- * trigger for its token and cost detail. Copy lives in the turn actions, not here.
+ * still streaming until its true total replaces it. A settled turn with reported usage, its own
+ * or its suggested next steps' request, ends in a trigger for its token and cost detail. Copy
+ * lives in the turn actions, not here.
  */
 export function TurnHeader({
   startedAt,
@@ -85,6 +86,7 @@ export function TurnHeader({
   waiting,
   generation,
   usage,
+  nextStepsUsage,
 }: {
   startedAt: number | null;
   durationMs: number | null;
@@ -94,6 +96,8 @@ export function TurnHeader({
   /** Absent before the turn has blocks (the pending turn). */
   generation?: TurnGeneration;
   usage?: TurnUsage | null;
+  /** What the request for the turn's suggested next steps used, shown apart from the reply's. */
+  nextStepsUsage?: TurnUsage | undefined;
 }) {
   const { t } = useTranslation('tasks');
   const tick = useLiveTick(live ? startedAt : null, live, waiting !== null);
@@ -142,7 +146,9 @@ export function TurnHeader({
             {text}
           </span>
         )}
-        {!live && usage && <TurnUsageDetail usage={usage} />}
+        {!live && (usage || nextStepsUsage) && (
+          <TurnUsageDetail usage={usage ?? null} nextStepsUsage={nextStepsUsage} />
+        )}
       </div>
     </div>
   );

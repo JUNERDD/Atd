@@ -5,6 +5,7 @@ import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { MAX_FOLDERS } from './folders.js';
+import { MessageUsageSchema } from './message-usage.js';
 import { TaskNextStepsSchema } from './next-steps.js';
 import { InputChipRangeSchema, MAX_INPUT_CHIPS } from './input-chips.js';
 import { RunTriggerSchema } from './run-trigger.js';
@@ -211,6 +212,11 @@ export const TaskRunSchema = Type.Object(
     status: RunStatusSchema,
     error: Type.String(),
     snapshot: RunSnapshotSchema,
+    /**
+     * What the request for this run's suggested next steps used (`next-steps.ts`), added once it
+     * answers. It stays when a later run withdraws the suggestions, since it was spent either way.
+     */
+    nextStepsUsage: Type.Optional(MessageUsageSchema),
   },
   { additionalProperties: false },
 );
@@ -257,7 +263,10 @@ export function isActiveStatus(status: RunStatus | undefined): boolean {
   );
 }
 
-/** Terminal statuses after which the ledger entry never changes again. */
+/**
+ * Terminal statuses after which the run's status and snapshot never change again; only usage
+ * metadata such as `nextStepsUsage` may still be added.
+ */
 export function isTerminalStatus(status: RunStatus | undefined): boolean {
   return (
     status !== undefined &&

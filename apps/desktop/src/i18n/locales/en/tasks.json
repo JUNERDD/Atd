@@ -404,11 +404,12 @@
     "usage": {
       "label": "Token usage",
       "title": "Token usage",
-      "input": "Input",
-      "output": "Output",
-      "cacheRead": "Cache read",
-      "cacheWrite": "Cache write",
-      "cost": "Cost"
+      "reply": "Reply",
+      "nextSteps": "Suggested next steps",
+      "tokens": "{{formatted}} tokens",
+      "split": "{{input}} in · {{output}} out",
+      "cacheDetails": "Cache details",
+      "cache": "Read {{read}} · Write {{write}}"
     }
   },
   "todo": {

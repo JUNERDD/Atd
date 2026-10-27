@@ -404,11 +404,12 @@
     "usage": {
       "label": "Token 用量",
       "title": "Token 用量",
-      "input": "输入",
-      "output": "输出",
-      "cacheRead": "缓存读取",
-      "cacheWrite": "缓存写入",
-      "cost": "费用"
+      "reply": "回答",
+      "nextSteps": "建议的下一步",
+      "tokens": "{{formatted}} tokens",
+      "split": "{{input}} 输入 · {{output}} 输出",
+      "cacheDetails": "缓存明细",
+      "cache": "读取 {{read}} · 写入 {{write}}"
     }
   },
   "todo": {
