@@ -60,11 +60,16 @@ export function useTaskPanel() {
   useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
-  /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
+  /**
+   * Shows the new conversation as it was left: its draft and model are remembered, not reset. The
+   * composer takes focus once the new view is drawn, so starting a chat from the header, a shortcut
+   * or `/new` leaves the caret in the prompt rather than on the control that started it.
+   */
   const newTask = () => {
     setView('new');
     setTaskId(null);
     setPrepared(null);
+    requestAnimationFrame(focusPanelInput);
   };
   const seeded = useSeededSessions((seed) => {
     newTask();
