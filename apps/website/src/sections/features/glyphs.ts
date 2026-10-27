@@ -5,7 +5,7 @@ const CHANNEL = { columns: 21, rows: 15 };
 
 /**
  * Each capability's pictogram, 11 × 11 dots, top row first: `x` is a lit dot and `.` an unlit one.
- * Every icon keeps a one-dot stroke so the five read as one family.
+ * Every icon keeps a one-dot stroke so the pictograms read as one family.
  */
 export const PICTOGRAMS: Record<FeatureId, readonly string[]> = {
   // A plug: a connection to whichever provider you bring.
@@ -21,6 +21,20 @@ export const PICTOGRAMS: Record<FeatureId, readonly string[]> = {
     '.....x.....',
     '.....x.....',
     '.....x.....',
+  ],
+  // A pointer: acting on a website or app with the person's permission.
+  computer: [
+    '.x.........',
+    '.xx........',
+    '.x.x.......',
+    '.x..x......',
+    '.x...x.....',
+    '.x....x....',
+    '.x..xxxx...',
+    '.x.x.x.....',
+    '.xx..x.....',
+    '.x....x....',
+    '......x....',
   ],
   // Three blocks and a fourth being added.
   extensions: [
@@ -95,6 +109,7 @@ function onChannel(pictogram: readonly string[]): readonly string[] {
 /** Each capability's channel, ready for the LED board. */
 export const CHANNELS = {
   providers: onChannel(PICTOGRAMS.providers),
+  computer: onChannel(PICTOGRAMS.computer),
   extensions: onChannel(PICTOGRAMS.extensions),
   memory: onChannel(PICTOGRAMS.memory),
   permissions: onChannel(PICTOGRAMS.permissions),

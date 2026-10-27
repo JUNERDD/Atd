@@ -30,7 +30,7 @@ _Interface preview of the main panel._
 
 The selection toolbar asks for Accessibility access; screen capture asks for Screen Recording access. Grant these in macOS when you use those features.
 
-Atd includes its local agent service and Node.js runtime. Tools invoked by a task still need to be available on your Mac.
+Atd includes what it needs to run; you do not need to install Node.js. If a task needs an external tool, that tool must be available on your Mac.
 
 ### Shortcuts
 
@@ -53,10 +53,21 @@ Change these in **Settings → General**. The menu bar icon is another way to op
 - **Make work reusable.** Save commands with parameters and shortcuts. Add skills, subagents, and MCP servers individually or through [supported plugin bundles](packages/plugin-kit/README.md).
 - **Answer in place.** Run a command from the selection toolbar or its shortcut: tap to use the options you picked last, or hold to choose them. Its answer can replace the selected text, go in after it or at the cursor, be copied, or open in a conversation.
 - **Build personal apps.** Describe a small tool, create it in a conversation, and open it from **My apps**. Apps can have an independent window, their own backend, and desktop widgets; return to the task to refine them.
+- **Work across websites and apps.** Let a task request access to the websites and Mac apps it needs. Manage that access, browser environments, and computer-use controls in **Settings → Computer use**.
 - **Run work automatically.** Schedule prompts or saved commands, react to folder changes, run when your Mac is idle, or chain work after another automation. Inspect status and run history, and pause automations from settings.
 - **Keep control.** Set permissions per task, manage the shell allowlist, review stored memories, and pause memory learning.
 
 Automations run while Atd is running. Unattended tasks decline actions that require approval instead of waiting for a response. Missed schedules can run once on return or be skipped. New installations include an editable **Consolidate memory** automation that runs at most once a day after two hours of Mac inactivity.
+
+### Computer use
+
+Ask Atd to work in a website or Mac app from a conversation. It requests access to the apps and sites the task needs. Open **Settings → Computer use** to review saved access, add a website or app yourself, and grant the macOS app-control and Screen Recording permissions.
+
+For websites, install the optional browser engine from **Engines**, then choose **Add browser environment**. Sign in to the separate Chrome profile Atd opens and choose which sites it may use. Mac app control is included with Atd; choose **Add application** to make an app available.
+
+Atd works in the background where the website or app supports it. In a task you start, a step that needs the foreground can briefly bring a Mac app forward, send clicks or keys without moving your pointer, and then return to the app you were using. Computer actions in automations need separate authorization and apps or websites checked for automation use.
+
+Use **Stop all** in Computer use settings to stop computer actions across tasks and automations. Disconnecting a website or app revokes its saved access; browser sign-in data is kept.
 
 ## Interface previews
 
@@ -92,12 +103,11 @@ These images are **1440 × 900** interface previews exported from the UI designs
 
 ## Data and permissions
 
-- **Local storage.** Task history, settings, and memories live in the service data directory on your Mac.
+- **Local storage.** The installed app stores task history, settings, and memories in `~/Library/Application Support/AgentService`. Personal skills and agents live in `~/.atd` by default. Browser environments keep their sign-in data in separate profiles on your Mac.
 - **Model and tool access.** Requests go to the model providers you configure. Tools and MCP servers can access the files or external services allowed by their configuration and the task's permissions.
-- **Credentials.** Provider and MCP secrets live in the OS keychain and do not reach the renderer or task snapshots.
+- **Credentials.** Provider and MCP credentials are stored in your Mac’s keychain.
 - **Approval controls.** Each task can use Manual approval, Auto approval, or Always allow; new installations start on Auto approval, which still asks when an action looks risky. Settings also owns the shell allowlist and memory-learning controls.
-- **Native isolation.** The page communicates through a typed native bridge and an authenticated relay. The service listens on loopback; the renderer never holds its bearer token.
-- **Lifecycle and logs.** Release starts its bundled service and stops it on quit. Service logs are in `~/Library/Logs/AI/`; **Show Service Logs** in the menu reveals them.
+- **Lifecycle and logs.** Atd starts its local agent service when you open the app and stops it when you quit. If you need logs to troubleshoot a problem, choose **Show Service Logs** from the menu bar menu.
 
 ## Contributing
 

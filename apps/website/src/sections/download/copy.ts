@@ -14,6 +14,8 @@ interface DownloadCopy {
   specs: { label: string; value: string; href?: string }[];
   /** What to expect the first time it opens, in one line. */
   firstLaunch: string;
+  /** Optional setup for tasks that operate websites. */
+  computerSetup: string;
   /** Leads the preview line, before each chip family's name linking to its preview download. */
   preview: string;
 }
@@ -37,7 +39,7 @@ function chips(lang: Lang): string {
 export const downloadCopy = {
   en: {
     title: 'Ready when you are.',
-    lede: 'Download Atd, press ⌘ ⇧ Space, and hand it your first task.',
+    lede: 'Download Atd, connect a model in Settings → Models, then press ⌘ ⇧ Space to start.',
     choose: 'Download for Mac',
     key: (chip) => `Download for ${chip}`,
     which:
@@ -50,11 +52,13 @@ export const downloadCopy = {
     ],
     firstLaunch:
       'Atd isn’t notarized, so the first time, choose Open Anyway in System Settings › Privacy & Security. It updates itself after that.',
+    computerSetup:
+      'For website tasks, open Settings → Computer use, install the browser engine, and sign in to the sites you need in its separate browser.',
     preview: 'Preview: ',
   },
   zh: {
     title: '随时待命。',
-    lede: '下载 Atd，按下 ⌘ ⇧ Space，交给它第一个任务。',
+    lede: '下载 Atd，在「设置 → 模型」中连接模型，再按下 ⌘ ⇧ Space 开始。',
     choose: '下载 Mac 版',
     key: (chip) => `下载 ${chip}版`,
     which:
@@ -67,6 +71,8 @@ export const downloadCopy = {
     ],
     firstLaunch:
       'Atd 未经公证，首次打开时请在“系统设置 › 隐私与安全性”中点按“仍要打开”。此后它会自行更新。',
+    computerSetup:
+      '需要操作网站时，在「设置 → 电脑操作」中安装浏览器引擎，再在独立的浏览器环境中登录所需网站。',
     preview: '预览版：',
   },
 } satisfies Localized<DownloadCopy>;

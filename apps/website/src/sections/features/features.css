@@ -1,7 +1,7 @@
 /* The capabilities on one LED display set into the plate, a channel each. A channel is 21 × 15 dots
    (glyphs.ts) and lights its capability's pictogram on the shared LED board. Compact, each channel
-   is a small display beside its name and line. Regular, the five channels join into two strips,
-   three over two; wide, into one strip of five. In a strip the names and lines are printed on the
+   is a small display beside its name and line. Regular, the six channels join into two strips
+   of three; wide, into one strip of six. In a strip the names and lines are printed on the
    plate beneath their channels. */
 .feat {
   /* A channel is mostly unlit dots; dimmed a step, they stay a texture behind the pictogram. */
@@ -57,6 +57,8 @@
 
 .feat__line {
   color: var(--fg-2);
+  /* The localized copy owns the two-line rhythm; longer text can still reflow when enlarged. */
+  white-space: pre-line;
   text-wrap: pretty;
 }
 
@@ -121,20 +123,11 @@
   }
 }
 
-/* Three over two, on a six-column grid: each channel takes two columns, and the second strip starts
-   one column in, so it sits centered under the first. */
+/* Two strips of three keep each channel the same readable size as the wide display. */
 @media (width >= 700px) and (width < 1100px) {
   .feat {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     max-inline-size: 37.5rem;
-  }
-
-  .feat__item {
-    grid-column: span 2;
-  }
-
-  .feat__item:nth-child(4) {
-    grid-column: 2 / span 2;
   }
 
   .feat__item:is(:nth-child(1), :nth-child(4)) .feat__channel {
@@ -142,7 +135,7 @@
     border-end-start-radius: var(--r-display);
   }
 
-  .feat__item:is(:nth-child(3), :nth-child(5)) .feat__channel {
+  .feat__item:is(:nth-child(3), :nth-child(6)) .feat__channel {
     --bezel-end: -1px 0 var(--line-1);
     border-start-end-radius: var(--r-display);
     border-end-end-radius: var(--r-display);
@@ -151,8 +144,8 @@
 
 @media (width >= 1100px) {
   .feat {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    max-inline-size: 60rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-inline-size: 72rem;
   }
 
   .feat__item:first-child .feat__channel {
