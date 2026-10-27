@@ -6,7 +6,6 @@ import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { AppearanceRow } from './appearance-row';
-import { ConversationSettings } from './conversation-settings';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
 import { NotificationSettings } from './notification-settings';
 import { PanelPlacementRow } from './panel-placement-row';
@@ -81,8 +80,6 @@ export function GeneralSettings({
             </Card>
           </section>
         )}
-        {/* How readily the agent shows views is saved through the desktop app's settings bridge. */}
-        {desktopApp && <ConversationSettings snapshot={snapshot} />}
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
           <h3 id="settings-global-shortcuts" className="settings-section-title">
             {t('shortcuts.groups.global')}

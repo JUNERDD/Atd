@@ -124,6 +124,8 @@ export const TaskSchema = Type.Object(
   {
     id: Identifier,
     title: Type.String(),
+    /** An asynchronous summary title is still pending; `title` remains the readable fallback. */
+    titleGeneration: Type.Optional(Type.Literal('pending')),
     createdAt: Type.String(),
     updatedAt: Type.String(),
     sessionFile: Type.Union([Type.String(), Type.Null()]),

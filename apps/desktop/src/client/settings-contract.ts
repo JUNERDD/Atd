@@ -60,6 +60,7 @@ export type {
 export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_KEYS,
@@ -181,6 +182,8 @@ export interface SettingsSnapshot {
    * as it starts. The service's default until it loads.
    */
   viewInitiative: ViewInitiative;
+  /** Whether new conversations receive an asynchronously generated summary title. */
+  summaryTitles: boolean;
   /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
@@ -248,6 +251,8 @@ export interface SettingsBridge {
   saveCommandTypingAnimation: (value: boolean) => Promise<SettingsSnapshot>;
   /** Sets how readily the agent shows interactive views; runs that start later use the new level. */
   setViewInitiative: (level: ViewInitiative) => Promise<SettingsSnapshot>;
+  /** Applies to conversations created after this preference is saved. */
+  setSummaryTitles: (enabled: boolean) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

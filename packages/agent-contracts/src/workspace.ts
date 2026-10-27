@@ -142,6 +142,9 @@ export const OnboardingProgressSchema = Type.Object(
 );
 export type OnboardingProgress = Static<typeof OnboardingProgressSchema>;
 
+/** Enable summary titles for new conversations whose initial request needs one. */
+export const DEFAULT_SUMMARY_TITLES = true;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
@@ -151,6 +154,8 @@ export const UserSettingsSchema = Type.Object(
   {
     language: Type.Union([AppLanguageSchema, Type.Null()]),
     appearance: Type.Union([AppAppearanceSchema, Type.Null()]),
+    /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
+    summaryTitles: Type.Boolean(),
     /** Null follows the current task model; a selection is only for read-only screen analysis. */
     computerVisionModel: Type.Union([ModelSelectionSchema, Type.Null()]),
     /** Tier a new task freezes at creation; existing tasks keep their own. */
@@ -200,6 +205,7 @@ export const PatchSettingsRequestSchema = Type.Object(
   {
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
+    summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),
     shellAllowlist: Type.Optional(ShellAllowlistSchema),

@@ -38,6 +38,12 @@ export async function recoverService(options: {
     droppedCapabilities: await capabilities.recover(),
   };
 
+  // A title request belongs to the previous process; retain its saved fallback without retrying.
+  if (ledger.data.tasks.some((task) => task.titleGeneration === 'pending'))
+    await ledger.change((data) => {
+      for (const task of data.tasks) delete task.titleGeneration;
+    });
+
   for (const task of ledger.data.tasks) {
     for (const run of task.runs) {
       switch (run.status) {

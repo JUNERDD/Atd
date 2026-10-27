@@ -58,7 +58,14 @@ function spellChips(text: string, chips: readonly InputChipRange[]): string {
  * `/skill:x explain` reads `x explain`), else its instruction, else a generic name.
  */
 export function taskTitle(snapshot: RunSnapshot): string {
-  const { text, chips } = snapshot.input;
-  const readable = chips?.length ? spellChips(text, chips).replace(/\s+/g, ' ') : text;
-  return readable.trim().slice(0, 120) || snapshot.instructions.slice(0, 120) || 'New task';
+  return (
+    readableInputText(snapshot.input).trim().slice(0, 120) ||
+    snapshot.instructions.slice(0, 120) ||
+    'New task'
+  );
+}
+
+/** Initial user text for naming a task, with composer chips expressed by their visible names. */
+export function readableInputText({ text, chips }: TaskInput): string {
+  return chips?.length ? spellChips(text, chips).replace(/\s+/g, ' ') : text;
 }

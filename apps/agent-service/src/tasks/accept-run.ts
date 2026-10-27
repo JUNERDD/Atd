@@ -17,6 +17,7 @@ import {
   loadSubmitCatalog,
 } from './run-snapshot.js';
 import { checkSideChatOf, newTaskRecord, type InternalSubmitOptions } from './submit-options.js';
+import type { TaskTitles } from './titles.js';
 
 export interface RunAcceptanceDeps {
   ctx: RunnerContext;
@@ -24,6 +25,7 @@ export interface RunAcceptanceDeps {
   folders: FolderStore;
   /** The shared settings' default tier, frozen onto each task at creation. */
   newTaskTier: () => PermissionTier;
+  titles: TaskTitles;
   /** The task's runner, when it has one: its live transcript names the entries a run may replace. */
   runner: (taskId: string) => TaskRunner | undefined;
 }
@@ -95,7 +97,15 @@ export class RunAcceptance {
         let task = data.tasks.find((item) => item.id === taskId);
         if (!task) {
           const tier = this.deps.newTaskTier();
-          task = newTaskRecord({ id: taskId, now, snapshot, tier, sideChatOf, internal });
+          task = newTaskRecord({
+            id: taskId,
+            now,
+            snapshot,
+            tier,
+            sideChatOf,
+            internal,
+            summaryTitles: this.deps.titles.enabled(),
+          });
           data.tasks.unshift(task);
         }
         task.runs.push({
@@ -117,6 +127,7 @@ export class RunAcceptance {
       type: 'run.status',
       data: { status: 'queued', error: '' },
     });
+    if (!previous) this.deps.titles.start(taskId, ledger.run(taskId, runId));
     return { taskId, runId, duplicate: false };
   }
 }

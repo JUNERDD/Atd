@@ -26,6 +26,7 @@
     "desktopOnly": "打开桌面应用以运行 Agent 并管理已保存的命令。"
   },
   "titles": {
+    "generating": "正在生成标题…",
     "tasks": "任务",
     "commandInput": "命令输入",
     "task": "任务",

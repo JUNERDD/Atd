@@ -3,6 +3,7 @@ import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_SHORTCUTS,
+  DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   parseShortcutBindings,
   type PatchSettingsRequest,
@@ -109,6 +110,7 @@ export function nativeSettings(
       commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
+      summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -234,6 +236,7 @@ export function nativeSettings(
       if (!isViewInitiative(viewInitiative)) throw new TypeError('Unsupported view initiative.');
       return write({ viewInitiative });
     },
+    setSummaryTitles: (summaryTitles) => write({ summaryTitles }),
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,

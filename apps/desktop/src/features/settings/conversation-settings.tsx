@@ -26,6 +26,7 @@ import {
   type ViewInitiative,
 } from '../../client/settings-contract';
 import { useSettingsSectionExit } from './settings-navigation';
+import { SummaryTitlesRow } from './summary-titles-row';
 
 /**
  * How readily the agent shows interactive views, one of `VIEW_INITIATIVES`, with a sentence about
@@ -105,7 +106,7 @@ function ViewInitiativeRow({ snapshot }: { snapshot: SettingsSnapshot | null }) 
   );
 }
 
-/** General › Conversation: preferences for how the agent behaves in a conversation. */
+/** Agent › Conversation: preferences for how the agent behaves in a conversation. */
 export function ConversationSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
   return (
@@ -115,6 +116,7 @@ export function ConversationSettings({ snapshot }: { snapshot: SettingsSnapshot 
       </h3>
       <Card size="sm" className="settings-card">
         <ItemGroup>
+          <SummaryTitlesRow snapshot={snapshot} />
           <ViewInitiativeRow snapshot={snapshot} />
         </ItemGroup>
       </Card>

@@ -7,6 +7,7 @@ import type {
   TaskOrigin,
 } from '@atd/agent-contracts';
 import { taskTitle } from './input-chips.js';
+import { needsSummaryTitle } from './title-policy.js';
 
 /**
  * What service code may set on an accepted run besides the HTTP request. The renderer-facing
@@ -54,7 +55,8 @@ export function checkSideChatOf(
 
 /**
  * The ledger record of a task a run creates. Everything that labels the task is part of the
- * creating write, so the task's first summary already carries its title, origin and side-chat link.
+ * creating write, including whether its initial input needs a background summary. Short plain
+ * requests retain their direct title without entering a loading state.
  */
 export function newTaskRecord(fields: {
   id: string;
@@ -62,13 +64,21 @@ export function newTaskRecord(fields: {
   snapshot: RunSnapshot;
   /** The shared settings' default tier, used when the options name none. */
   tier: PermissionTier;
+  summaryTitles: boolean;
   sideChatOf: string | undefined;
   internal: InternalSubmitOptions;
 }): AgentTask {
-  const { id, now, snapshot, tier, sideChatOf, internal } = fields;
+  const { id, now, snapshot, tier, summaryTitles, sideChatOf, internal } = fields;
   return {
     id,
     title: internal.title ?? taskTitle(snapshot),
+    ...(summaryTitles &&
+    internal.title === undefined &&
+    internal.origin === undefined &&
+    sideChatOf === undefined &&
+    needsSummaryTitle(snapshot.input)
+      ? { titleGeneration: 'pending' as const }
+      : {}),
     createdAt: now,
     updatedAt: now,
     sessionFile: null,

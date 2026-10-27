@@ -219,6 +219,8 @@ export const AgentTaskSchema = Type.Object(
   {
     id: Identifier,
     title: Type.String(),
+    /** The initial summary is being generated; absence means the saved title is settled. */
+    titleGeneration: Type.Optional(Type.Literal('pending')),
     createdAt: Type.String(),
     updatedAt: Type.String(),
     sessionFile: Type.Union([Type.String(), Type.Null()]),

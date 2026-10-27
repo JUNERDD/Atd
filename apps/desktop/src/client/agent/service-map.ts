@@ -78,6 +78,7 @@ export function mapTask(task: ServiceTask): AgentTask {
   return {
     id: task.id,
     title: task.title,
+    ...(task.titleGeneration ? { titleGeneration: task.titleGeneration } : {}),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     sessionFile: task.sessionFile,

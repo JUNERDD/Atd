@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_SHORTCUTS,
+  DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   parse,
   parseShortcutBindings,
@@ -46,7 +47,7 @@ export async function readStoredSettings(
   }
   return parse(
     SettingsFileSchema,
-    withAddedViewInitiative(
+    withAddedTaskPreferences(
       withAddedVisionModel(
         withAddedAppearance(
           withAddedCommandTypingAnimation(
@@ -60,12 +61,16 @@ export async function readStoredSettings(
   );
 }
 
-/** A file written before views had a level takes the default, which is proactive. */
-function withAddedViewInitiative(file: unknown): unknown {
+/** Older settings take the defaults for view initiative and new-conversation summaries. */
+function withAddedTaskPreferences(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
   if (typeof settings !== 'object' || settings === null) return file;
-  return { ...file, settings: { viewInitiative: DEFAULT_VIEW_INITIATIVE, ...settings } };
+  const defaults = {
+    viewInitiative: DEFAULT_VIEW_INITIATIVE,
+    summaryTitles: DEFAULT_SUMMARY_TITLES,
+  };
+  return { ...file, settings: { ...defaults, ...settings } };
 }
 
 /** Old settings follow the task model without selecting another connection. */
@@ -234,6 +239,7 @@ export class SettingsStore {
       const settings: UserSettings = {
         language: null,
         appearance: null,
+        summaryTitles: DEFAULT_SUMMARY_TITLES,
         computerVisionModel: null,
         permissionTier: defaultTier,
         shellAllowlist: [],

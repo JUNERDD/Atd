@@ -35,7 +35,7 @@ export function RenameTaskDialog({
     setWasOpen(open);
     if (open) setName(task.title);
   }
-  const title = renamedTitle(task.title, name);
+  const title = renamedTitle(task.title, name, task.titleGeneration === 'pending');
 
   async function save() {
     if (title === null || saving) return;

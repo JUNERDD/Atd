@@ -20,6 +20,7 @@ import { ProviderBrand } from '../providers/provider-brand';
 import type { HistoryEntry, HistoryRow } from './history-rows';
 import { modelNameOf, rowDate, stampOf, type HistoryView } from './history-view';
 import { TaskOriginBadge } from './task-origin-badge';
+import { ConversationTitle } from './conversation-title';
 
 /** What the rows' menus do to their task; the history owns the dialogs these open. */
 export type HistoryActions = {
@@ -194,7 +195,9 @@ function HistoryTaskRow({
           <span className="task-row-head">
             <span className="task-row-heading">
               <span className="task-row-title" title={task.title}>
-                <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                <ConversationTitle title={task.title} pending={task.titleGeneration === 'pending'}>
+                  <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                </ConversationTitle>
               </span>
               {statusLabel && (
                 <Badge

@@ -33,6 +33,7 @@ import { RunAcceptance } from './tasks/accept-run.js';
 import { heldMessageInput } from './tasks/held-queue.js';
 import { TaskSearch } from './tasks/search.js';
 import type { InternalSubmitOptions } from './tasks/submit-options.js';
+import type { TaskTitles } from './tasks/titles.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -42,6 +43,7 @@ export interface ManagerDeps {
   log: Logger;
   /** The shared settings' default tier, frozen onto each task at creation. */
   newTaskTier: () => PermissionTier;
+  titles: TaskTitles;
   /** Idle time before a task's live session is released (session-release.ts `IDLE_RELEASE_MS`). */
   idleReleaseMs?: number;
 }
@@ -66,6 +68,7 @@ export class RunnerManager {
       ctx: deps.ctx,
       folders: deps.folders,
       newTaskTier: deps.newTaskTier,
+      titles: deps.titles,
       runner: (taskId) => this.runners.get(taskId),
     });
     this.releases = new SessionReleases({
@@ -189,6 +192,7 @@ export class RunnerManager {
 
   /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
+    this.deps.titles.cancel(taskId);
     const runner = this.runners.get(taskId);
     this.releases.cancel(taskId);
     this.runners.delete(taskId);
@@ -271,6 +275,7 @@ export class RunnerManager {
    */
   async shutdown(): Promise<void> {
     this.draining = true;
+    await this.deps.titles.stop();
     this.releases.cancelAll();
     const stopping: Promise<unknown>[] = [];
     for (const task of this.deps.ctx.ledger.data.tasks)

@@ -5,6 +5,7 @@ import { Input } from '@atd/ui/components/input';
 import { isComposingKey } from '@atd/ui/lib/ime';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { showErrorToast } from '../../components/toast-store';
+import { ConversationTitle } from './conversation-title';
 import { renamedTitle, TASK_TITLE_LIMIT } from './task-title';
 import { agentApi } from './use-agent';
 
@@ -22,7 +23,11 @@ export function PanelTitle({ title, task }: { title: string; task: AgentTask | n
   const [saved, setSaved] = useState<{ from: string; to: string } | null>(null);
   const hintId = useId();
   if (!task) return <h1 title={title}>{title}</h1>;
-  if (saved && task.title !== saved.from) setSaved(null);
+  if (
+    saved &&
+    (task.title !== saved.from || (task.title === saved.to && task.titleGeneration !== 'pending'))
+  )
+    setSaved(null);
   const shown = saved && task.title === saved.from ? saved.to : task.title;
   return (
     <>
@@ -44,7 +49,10 @@ export function PanelTitle({ title, task }: { title: string; task: AgentTask | n
             aria-describedby={hintId}
             onClick={() => setEditing(true)}
           >
-            <span className="truncate">{shown}</span>
+            <ConversationTitle
+              title={shown}
+              pending={!saved && task.titleGeneration === 'pending'}
+            />
           </Button>
         )}
       </h1>
@@ -58,7 +66,7 @@ export function PanelTitle({ title, task }: { title: string; task: AgentTask | n
 
 /**
  * The rename field, focused with its text selected. Enter or leaving the field saves, Escape keeps
- * the current name, and an empty or unchanged name saves nothing. A failed save keeps the field
+ * the current name. Empty names and unchanged settled titles save nothing. A failed save keeps the field
  * open while it still has focus, so the name can be fixed; after a blur it closes on the old name.
  */
 function TitleField({
@@ -87,7 +95,7 @@ function TitleField({
   }
   async function commit() {
     if (closed.current || saving) return;
-    const next = renamedTitle(current, name);
+    const next = renamedTitle(current, name, task.titleGeneration === 'pending');
     if (next === null) return close(null);
     setSaving(true);
     try {

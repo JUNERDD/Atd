@@ -1,6 +1,7 @@
 import {
   AppWindow,
   Blocks,
+  Bot,
   Brain,
   Command,
   Info,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { appWindowMotion } from '@atd/ui/lib/icon-motions/app-window';
 import { blocksMotion } from '@atd/ui/lib/icon-motions/blocks';
+import { botMotion } from '@atd/ui/lib/icon-motions/bot';
 import { brainMotion } from '@atd/ui/lib/icon-motions/brain';
 import { commandMotion } from '@atd/ui/lib/icon-motions/command';
 import { infoMotion } from '@atd/ui/lib/icon-motions/info';
@@ -24,6 +26,7 @@ import { zapMotion } from '@atd/ui/lib/icon-motions/zap';
 /** The destinations the navigation lists from its top, in order. */
 const listedSections = [
   { id: 'general', labelKey: 'nav.general', icon: Settings, motion: settingsMotion },
+  { id: 'agent', labelKey: 'nav.agent', icon: Bot, motion: botMotion },
   { id: 'providers', labelKey: 'nav.providers', icon: Plug, motion: plugMotion },
   { id: 'permissions', labelKey: 'nav.permissions', icon: Shield, motion: shieldMotion },
   {

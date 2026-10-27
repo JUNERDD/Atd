@@ -72,7 +72,10 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
         if (body.pinned === true) item.pinned = true;
         if (body.pinned === false) delete item.pinned;
         if (title === undefined && body.permissionTier === undefined) return;
-        if (title !== undefined) item.title = title.slice(0, 120);
+        if (title !== undefined) {
+          item.title = title.slice(0, 120);
+          delete item.titleGeneration;
+        }
         if (body.permissionTier !== undefined) item.permissionTier = body.permissionTier;
         item.updatedAt = new Date().toISOString();
       });

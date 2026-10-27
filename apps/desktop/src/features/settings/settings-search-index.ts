@@ -30,6 +30,7 @@ export interface SettingsSearchEntry {
 /** Each section's own description, shown under its row in the results. */
 export const SECTION_DESCRIPTIONS = {
   general: 'general.description',
+  agent: 'agent.description',
   providers: 'providers.overview.description',
   permissions: 'permissions.description',
   computer: 'computer.description',
@@ -43,6 +44,7 @@ export const SECTION_DESCRIPTIONS = {
 
 export const SECTION_KEYWORDS = {
   general: 'search.keywords.sectionGeneral',
+  agent: 'search.keywords.sectionAgent',
   providers: 'search.keywords.sectionProviders',
   permissions: 'search.keywords.sectionPermissions',
   computer: 'search.keywords.computer',
