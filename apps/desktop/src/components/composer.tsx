@@ -229,6 +229,8 @@ export function Composer({
     onChange,
     onTrigger: setTrigger,
     onSend: () => void send(),
+    // Queued messages and answers are plain text, so a run in progress keeps pastes as text.
+    onPasteText: (text, textRoom) => !active && pasteText(text, textRoom),
     panel,
     shortcuts,
     platform,
@@ -239,7 +241,7 @@ export function Composer({
     placeholder,
     aria,
   });
-  const { room, attach } = useComposerAttach(draft, commands);
+  const { room, attach, pasteText } = useComposerAttach(draft, commands);
   const surface = useComposerDispatch(dispatch, expanded);
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>

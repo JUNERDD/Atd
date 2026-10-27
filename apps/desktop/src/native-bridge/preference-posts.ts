@@ -24,4 +24,10 @@ export const NativePreferencePosts = {
     },
     { additionalProperties: false },
   ),
+  /**
+   * Whether the shell's surfaces show their working glows and shimmer running text, like the
+   * page's (`glowEffects`). Swift keeps it and restores the last one at launch, showing them until
+   * the first push.
+   */
+  'glowEffects.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
 };

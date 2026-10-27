@@ -8,6 +8,7 @@ import { FileDropOverlay } from './components/file-drop-overlay';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
+import { useGlowEffects } from './theme/glow-effects';
 import { useNewTaskRequest } from './features/agent/use-new-task-request';
 import { focusPanelInput, showPanel } from './features/agent/use-panel-window';
 import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
@@ -27,6 +28,7 @@ import {
 import { PanelHeader } from './features/agent/panel-header';
 import { SideChatLayer } from './features/agent/side-chat/side-chat-layer';
 import { useNewChat } from './features/agent/use-new-chat';
+import { useNextStepsHost } from './features/agent/next-steps/use-next-steps-host';
 import { WaitingGlow } from './features/agent/waiting-glow/waiting-glow';
 import { WelcomePresence } from './features/agent/welcome-presence';
 import { MessageFlight } from './features/agent/message-flight';
@@ -82,6 +84,7 @@ export function App() {
     requests,
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
+  const glow = useGlowEffects(snapshot?.glowEffects);
   const starting = useServiceStarting();
   const reserveRef = useOverlayReserve();
   const subagents = useSubagentContextValue(
@@ -159,6 +162,15 @@ export function App() {
     if (view === 'new') newChat.depart(captureComposerContent(panelBody));
     return submit();
   };
+  // Suggested next steps fill or send this conversation's draft, or open a new conversation.
+  const nextSteps = useNextStepsHost({
+    settings: snapshot,
+    draftKey,
+    draft,
+    changeDraft,
+    newTask,
+    submit: submitDraft,
+  });
   const quickActions = { newTask, openHistory: () => setView('history') };
   return (
     <TooltipProvider delayDuration={350}>
@@ -182,7 +194,9 @@ export function App() {
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
-                {(view === 'new' || view === 'task') && <WaitingGlow phase={newChat.waitPhase} />}
+                {glow && (view === 'new' || view === 'task') && (
+                  <WaitingGlow phase={newChat.waitPhase} />
+                )}
                 <ServiceBanner onOpenSettings={openSettingsWindow} />
                 <WelcomePresence shown={view === 'new'} {...newChat.welcome}>
                   <ScrollArea
@@ -242,6 +256,7 @@ export function App() {
                           onRemember={remember}
                           onQuote={quoteToDraft}
                           onCommand={side.runCommand}
+                          nextSteps={nextSteps}
                         />
                         {child.childKey && (
                           <ChildTranscriptView

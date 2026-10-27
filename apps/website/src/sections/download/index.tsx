@@ -65,6 +65,7 @@ export function DownloadSection() {
             <div className="download__notes" data-reveal="fade" data-reveal-delay="580">
               <p className="download__note legend">{t.which}</p>
               <p className="download__note legend">{t.firstLaunch}</p>
+              <p className="download__note legend">{t.computerSetup}</p>
               {previews.length > 0 && (
                 <p className="download__note legend">
                   {t.preview}

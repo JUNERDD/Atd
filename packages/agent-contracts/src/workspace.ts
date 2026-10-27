@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import { PermissionTierSchema } from './confirms.js';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
+import { NextStepClickSchema } from './next-steps.js';
 import { ModelSelectionSchema } from './task.js';
 import { ViewInitiativeSchema } from './views.js';
 
@@ -142,6 +143,12 @@ export const OnboardingProgressSchema = Type.Object(
 );
 export type OnboardingProgress = Static<typeof OnboardingProgressSchema>;
 
+/** Enable summary titles for new conversations whose initial request needs one. */
+export const DEFAULT_SUMMARY_TITLES = true;
+
+/** Show the app's decorative glows and shimmering running text until the user turns them off. */
+export const DEFAULT_GLOW_EFFECTS = true;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
@@ -151,6 +158,13 @@ export const UserSettingsSchema = Type.Object(
   {
     language: Type.Union([AppLanguageSchema, Type.Null()]),
     appearance: Type.Union([AppAppearanceSchema, Type.Null()]),
+    /**
+     * Whether the app shows its decorative glows (the flowing light while a reply is awaited, the
+     * HUD's and mini panel's working light) and shimmers running text (`DEFAULT_GLOW_EFFECTS`).
+     */
+    glowEffects: Type.Boolean(),
+    /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
+    summaryTitles: Type.Boolean(),
     /** Null follows the current task model; a selection is only for read-only screen analysis. */
     computerVisionModel: Type.Union([ModelSelectionSchema, Type.Null()]),
     /** Tier a new task freezes at creation; existing tasks keep their own. */
@@ -172,6 +186,10 @@ export const UserSettingsSchema = Type.Object(
     commandTypingAnimation: Type.Union([Type.Boolean(), Type.Null()]),
     /** How readily the agent shows interactive views (`VIEW_INITIATIVES`); runs freeze it. */
     viewInitiative: ViewInitiativeSchema,
+    /** Whether a normally completed run gets suggested next steps (`DEFAULT_NEXT_STEPS`). */
+    nextSteps: Type.Boolean(),
+    /** What a click on a suggested follow-up does (`DEFAULT_NEXT_STEP_CLICK`). */
+    nextStepClick: NextStepClickSchema,
     /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
     /** An interrupted guide resumes here; null starts with the intro. */
@@ -200,6 +218,8 @@ export const PatchSettingsRequestSchema = Type.Object(
   {
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
+    glowEffects: Type.Optional(Type.Boolean()),
+    summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
@@ -208,6 +228,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     commandTyping: Type.Optional(Type.Boolean()),
     commandTypingAnimation: Type.Optional(Type.Boolean()),
     viewInitiative: Type.Optional(ViewInitiativeSchema),
+    nextSteps: Type.Optional(Type.Boolean()),
+    nextStepClick: Type.Optional(NextStepClickSchema),
     onboardingCompleted: Type.Optional(Type.Boolean()),
     onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */

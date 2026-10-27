@@ -26,6 +26,7 @@
     "desktopOnly": "Open the desktop app to run the Agent and manage saved commands."
   },
   "titles": {
+    "generating": "Generating title…",
     "tasks": "Tasks",
     "commandInput": "Command input",
     "task": "Task",

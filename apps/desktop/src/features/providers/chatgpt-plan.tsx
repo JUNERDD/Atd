@@ -131,7 +131,9 @@ export function ChatGPTUsageError({ error }: { error: string }) {
         <Button
           size="xs"
           variant="outline"
-          onClick={() => void window.desktop?.settings.open().catch(showErrorToast)}
+          onClick={() =>
+            void window.desktop?.settings.openSection('providers').catch(showErrorToast)
+          }
         >
           {t('chatgpt.openSettings')}
         </Button>

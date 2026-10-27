@@ -14,7 +14,7 @@ import { SettingsWindow } from '../settings/settings-window';
 function renderSettings(automations: ReturnType<typeof fakeAutomations>, section = 'automations') {
   installBridge();
   installAutomations(automations);
-  localStorage.setItem('settings.lastSection', section);
+  window.history.replaceState(null, '', `#settings?section=${section}`);
   return render(<SettingsWindow />);
 }
 

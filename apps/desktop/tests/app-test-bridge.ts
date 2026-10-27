@@ -63,6 +63,7 @@ export function installBridge(extras?: {
     providersLoaded: true,
     language: 'en',
     appearance: null,
+    glowEffects: true,
     computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
@@ -83,6 +84,9 @@ export function installBridge(extras?: {
     commandTyping: true,
     commandTypingAnimation: true,
     viewInitiative: 'proactive',
+    summaryTitles: true,
+    nextSteps: true,
+    nextStepClick: 'fill',
     accessibilityTrusted: true,
     screenRecordingTrusted: true,
     onboardingCompleted: true,
@@ -195,6 +199,7 @@ export function installBridge(extras?: {
     replaceQueue: vi.fn(async () => {}),
     setPermissionTier: vi.fn(async () => {}),
     renameTask: vi.fn(async () => {}),
+    pinTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
     compactTask: vi.fn(async () => null),
     contextBreakdown: vi.fn(async () => ({
@@ -301,6 +306,7 @@ export function installBridge(extras?: {
       setAppearance: vi.fn(async (appearance: SettingsSnapshot['appearance']) =>
         writeSettings({ appearance }),
       ),
+      setGlowEffects: vi.fn(async (glowEffects) => writeSettings({ glowEffects })),
       saveShortcuts: vi.fn(async () => settings),
       setComputerVisionModel: vi.fn(async (computerVisionModel) =>
         writeSettings({ computerVisionModel }),
@@ -328,6 +334,9 @@ export function installBridge(extras?: {
         writeSettings({ commandTypingAnimation }),
       ),
       setViewInitiative: vi.fn(async (viewInitiative) => writeSettings({ viewInitiative })),
+      setSummaryTitles: vi.fn(async (summaryTitles) => writeSettings({ summaryTitles })),
+      setNextSteps: vi.fn(async (nextSteps) => writeSettings({ nextSteps })),
+      setNextStepClick: vi.fn(async (nextStepClick) => writeSettings({ nextStepClick })),
       requestAccessibility: vi.fn(async () => {}),
       requestScreenRecording: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),

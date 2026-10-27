@@ -234,6 +234,8 @@ export interface AgentBridge {
   replaceQueue: (taskId: string, followUp: string[]) => Promise<void>;
   setPermissionTier: (taskId: string, tier: PermissionTier) => Promise<void>;
   renameTask: (taskId: string, title: string) => Promise<void>;
+  /** Pins the task to the top of the task list, or unpins it; its update time stays. */
+  pinTask: (taskId: string, pinned: boolean) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   /**
    * Compacts an idle task's context now. Resolves to null once the service accepts; progress and

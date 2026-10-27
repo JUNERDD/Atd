@@ -20,6 +20,7 @@
     "memory": "记忆",
     "apps": "应用",
     "general": "通用",
+    "agent": "智能体",
     "about": "关于"
   },
   "drawer": {
@@ -52,6 +53,7 @@
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
       "sectionApps": "应用 小程序 工具 构建 小组件 版本 权限",
       "sectionGeneral": "通用 常规 键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录 启动",
+      "sectionAgent": "智能体 对话 聊天 行为 偏好 总结 标题 交互 视图 建议下一步",
       "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
       "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",
       "tierAlways": "始终 总是 允许 不询问 无人值守 完全放行 免确认",
@@ -63,7 +65,11 @@
       "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
       "appearance": "主题 外观 配色 颜色 浅色 深色 亮色 暗色 夜间 日间 白天 黑夜 跟随系统 自动 light dark theme",
+      "glowEffects": "光效 光晕 发光 流光 闪光 微光 高光 动效 动画 特效 视觉效果 闪烁 扫光 glow shimmer",
       "viewInitiative": "视图 交互 界面 小组件 窗口 卡片 图表 表单 看板 可视化 显示 展示 智能体 主动 积极 适中 平衡 按需 要求 对话 聊天",
+      "summaryTitles": "总结 摘要 标题 名称 命名 自动 对话 聊天",
+      "nextSteps": "建议 推荐 下一步 后续 追问 继续 新任务 自动化 想法 回答结束 对话 聊天",
+      "nextStepClick": "点击 建议 追问 输入框 填入 发送 直接 立即 对话 聊天",
       "panelPlacement": "位置 显示位置 出现 打开 居中 中央 中间 右下角 角落 记住 上次 拖动 移动 显示器 屏幕 多屏 position center corner remember display",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
@@ -196,6 +202,10 @@
       "detailDescription": "以此前缀开头的命令将直接运行。"
     }
   },
+  "agent": {
+    "title": "智能体",
+    "description": "设置智能体处理对话的方式。"
+  },
   "general": {
     "title": "通用",
     "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
@@ -294,6 +304,31 @@
         "system": "跟随系统",
         "light": "浅色",
         "dark": "深色"
+      }
+    },
+    "glowEffects": {
+      "title": "光效",
+      "description": "等待回复时显示流动光效，命令和迷你面板工作时显示光晕，进行中的文字带有闪光。",
+      "saveFailed": "无法保存光效设置。"
+    },
+    "summaryTitles": {
+      "title": "总结性标题",
+      "description": "为较长或复杂的新对话生成总结性标题，简短消息直接保留为标题。",
+      "saveFailed": "无法保存总结性标题设置。"
+    },
+    "nextSteps": {
+      "title": "建议下一步",
+      "description": "回答结束后，建议继续追问、新任务或自动化。",
+      "saveFailed": "无法保存建议下一步设置。"
+    },
+    "nextStepClick": {
+      "title": "点击建议后",
+      "description": "选择点击建议的追问后的行为。自动化始终需要你确认后才会创建。",
+      "label": "点击建议的追问后的行为",
+      "saveFailed": "无法保存点击行为设置。",
+      "modes": {
+        "fill": "填入输入框",
+        "send": "直接发送"
       }
     },
     "viewInitiative": {

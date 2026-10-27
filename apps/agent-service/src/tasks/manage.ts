@@ -29,7 +29,7 @@ export interface TaskManageContext {
 }
 
 /**
- * Live task management routes (T6b). PATCH renames and/or retiers (tier
+ * Live task management routes (T6b). PATCH renames, retiers and/or pins (tier
  * changes refuse while a run is live: D8 no-hot-swap; the tier is part of
  * the run binding, so the next run reopens the session with it). DELETE
  * refuses while any run is active and otherwise removes the task, its
@@ -50,7 +50,11 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
     async (request) => {
       const taskId = parse(Identifier, request.params.taskId);
       const body = parse(PatchTaskRequestSchema, request.body);
-      if (body.title === undefined && body.permissionTier === undefined)
+      if (
+        body.title === undefined &&
+        body.permissionTier === undefined &&
+        body.pinned === undefined
+      )
         throw new TypeError('Invalid data: nothing to update.');
       const task = ctx.ledger.task(taskId);
       const title = body.title?.trim();
@@ -65,7 +69,13 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       await ctx.ledger.change((data) => {
         const item = data.tasks.find((entry) => entry.id === taskId);
         if (!item) return;
-        if (title !== undefined) item.title = title.slice(0, 120);
+        if (body.pinned === true) item.pinned = true;
+        if (body.pinned === false) delete item.pinned;
+        if (title === undefined && body.permissionTier === undefined) return;
+        if (title !== undefined) {
+          item.title = title.slice(0, 120);
+          delete item.titleGeneration;
+        }
         if (body.permissionTier !== undefined) item.permissionTier = body.permissionTier;
         item.updatedAt = new Date().toISOString();
       });

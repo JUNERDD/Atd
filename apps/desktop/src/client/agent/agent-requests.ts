@@ -15,7 +15,7 @@ import {
   forkLiveTask,
   notConnected,
   previewRun,
-  renameLiveTask,
+  patchLiveTask,
   replaceLiveQueue,
   retierLiveTask,
 } from './service-manage';
@@ -264,8 +264,8 @@ export class AgentRequests<S> {
         await retierLiveTask(this.options(), request.taskId, request.tier);
         await this.tasks.loadSummary(request.taskId);
         return null;
-      case 'renameTask':
-        await renameLiveTask(this.options(), request.taskId, request.title);
+      case 'patchTask':
+        await patchLiveTask(this.options(), request.taskId, request.patch);
         await this.tasks.loadSummary(request.taskId);
         return null;
       case 'deleteTask':

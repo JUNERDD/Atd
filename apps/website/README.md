@@ -63,13 +63,15 @@ public/
 
 Section headings and introductions share the page's center line, with no category label beside them.
 The features plate is one LED display set into the plate, a channel per capability (models,
-extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
+computer use, extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
 capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
 (`src/ui/led-board.tsx`), which also draws the download board: the dots power on column by column
 as the plate arrives, and a fine pointer swells them like a loupe. Strips keep each channel near
-12rem wide, so the display stays compact. Wide (from 1100px), the five channels join into one strip
+12rem wide, so the display stays compact. Wide (from 1100px), the six channels join into one strip
 with hairline seams and their names and lines are centered beneath them; regular (700–1099px),
-they form two strips, three over two; compact, each channel is a small square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
+they form two strips of three; compact, each channel is a small square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
+Each capability's description has two short lines authored in `copy.ts`; preserve their newline
+so the descriptions align in both languages, while allowing enlarged text to reflow.
 The features review (`2564:159329` desktop, `2564:159355` compact) composes the shared section
 heading with `Website / Feature channel` (Layout=Strip with Position Start, Middle, End;
 Layout=Compact), whose Pictogram property swaps among `Website / Feature pictogram` (one variant

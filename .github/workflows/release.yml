@@ -529,8 +529,8 @@ jobs:
       - name: Download Sparkle's sign_update
         env:
           # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
-          SPARKLE: 2.10.0
-          SPARKLE_SHA256: c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
+          SPARKLE: 2.10.1
+          SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
         run: |
           tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
           curl -fsSL -o "$tools/sparkle.tar.xz" \

@@ -232,6 +232,8 @@
     "importedDraft": "导入的草稿",
     "delete": "删除",
     "more": "更多",
+    "pin": "置顶",
+    "unpin": "取消置顶",
     "moreActionsFor": "{{title}} 的更多操作",
     "rename": "重命名",
     "copyId": "复制会话 ID",
@@ -283,9 +285,37 @@
       "today": "今天",
       "yesterday": "昨天",
       "previous7Days": "过去 7 天",
-      "previous30Days": "过去 30 天"
+      "previous30Days": "过去 30 天",
+      "pinned": "已置顶",
+      "unpinned": "其他任务"
     },
-    "needsAttention": "需要你处理"
+    "needsAttention": "需要你处理",
+    "filter": {
+      "label": "筛选任务",
+      "all": "全部",
+      "pinned": "置顶",
+      "active": "进行中",
+      "failed": "失败",
+      "automated": "自动运行"
+    },
+    "filterEmpty": {
+      "pinned": {
+        "title": "没有置顶的任务",
+        "description": "在任务的菜单中选择置顶，它就会固定在列表顶部。"
+      },
+      "active": {
+        "title": "没有进行中的任务",
+        "description": "正在运行或等待你回复的任务会显示在这里。"
+      },
+      "failed": {
+        "title": "没有失败的任务",
+        "description": "最近一次运行失败或被中断的任务会显示在这里。"
+      },
+      "automated": {
+        "title": "没有自动运行的任务",
+        "description": "由自动化或应用发起的任务会显示在这里。"
+      }
+    }
   },
   "transcript": {
     "footer": {
@@ -374,11 +404,12 @@
     "usage": {
       "label": "Token 用量",
       "title": "Token 用量",
-      "input": "输入",
-      "output": "输出",
-      "cacheRead": "缓存读取",
-      "cacheWrite": "缓存写入",
-      "cost": "费用"
+      "reply": "回答",
+      "nextSteps": "建议的下一步",
+      "tokens": "{{formatted}} tokens",
+      "split": "{{input}} 输入 · {{output}} 输出",
+      "cacheDetails": "缓存明细",
+      "cache": "读取 {{read}} · 写入 {{write}}"
     }
   },
   "todo": {
@@ -845,5 +876,33 @@
       "link": "只能打开网页链接。",
       "widget": "请在视图的窗口中执行此操作。"
     }
+  },
+  "nextSteps": {
+    "title": "下一步",
+    "label": "建议的下一步",
+    "hide": "隐藏建议",
+    "showCard": "显示建议的下一步",
+    "hideCard": "隐藏建议的下一步",
+    "preparing": "正在准备建议…",
+    "kinds": {
+      "continue": "在此对话中继续",
+      "newTask": "新任务",
+      "automation": "自动化"
+    },
+    "kindReason": "{{kind}} · {{reason}}",
+    "willFill": "点击填入输入框",
+    "willSend": "点击直接发送",
+    "why": "推荐理由：{{reason}}",
+    "nameLabel": "名称",
+    "promptLabel": "提示词",
+    "openHint": "会作为新任务的第一条消息，打开后由你发送。",
+    "startHint": "新任务开始时会立即作为第一条消息发送。",
+    "automationTitle": "创建自动化",
+    "automationHint": "每次运行时作为任务内容。创建后可以在 设置 › 自动化 中修改或停用。",
+    "openInNewTask": "在新任务中打开",
+    "startNewTask": "开始新任务",
+    "create": "创建",
+    "cancel": "取消",
+    "automationCreated": "已创建自动化“{{name}}”。"
   }
 }

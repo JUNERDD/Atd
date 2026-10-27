@@ -73,8 +73,32 @@ export function modelNameOf(task: AgentTask): string | null {
   return 'definition' in model ? model.definition.name : model.modelId;
 }
 
+/**
+ * Which tasks the history's tabs show: every task, the pinned ones, the ones still running or
+ * waiting for the person, the failed ones, or the ones an automation or an app started.
+ */
+export const HISTORY_FILTERS = ['all', 'pinned', 'active', 'failed', 'automated'] as const;
+export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
+
+export function matchesFilter(task: AgentTask, filter: HistoryFilter): boolean {
+  switch (filter) {
+    case 'all':
+      return true;
+    case 'pinned':
+      return task.pinned === true;
+    case 'active': {
+      const status = statusGroupOf(task);
+      return status === 'needsInput' || status === 'inProgress';
+    }
+    case 'failed':
+      return statusGroupOf(task) === 'failed';
+    case 'automated':
+      return originGroupOf(task) !== 'personal';
+  }
+}
+
 export type HistorySection<T> = {
-  /** Stable key: the period name, `year-month`, the status group, the model, or `all`. */
+  /** Stable key: `pinned`, the period name, `year-month`, the status group, the model, or `all`. */
   id: string;
   items: T[];
 } & (
@@ -85,6 +109,8 @@ export type HistorySection<T> = {
   /** `model` is null for tasks that never ran. */
   | { kind: 'model'; model: string | null }
   | { kind: 'origin'; origin: OriginGroup }
+  /** The pinned tasks, above every other section whatever the group. */
+  | { kind: 'pinned' }
   /** The whole list, without a heading. */
   | { kind: 'all' }
 );
@@ -130,12 +156,27 @@ function newestFirst<T>(a: HistorySection<T>, b: HistorySection<T>): number {
 }
 
 /**
- * Sections for the already sorted `items`. Each keeps the incoming order of its rows; the sections
- * themselves follow the group: dates newest first, statuses in `STATUS_GROUPS` order, models by
- * their latest activity with tasks that never ran last, origins in `ORIGIN_GROUPS` order. Empty
- * sections are omitted, and `none` is one section without a heading.
+ * Sections for the already sorted `items`. Each keeps the incoming order of its rows. Pinned tasks
+ * open the list in their own section; the others follow the group: dates newest first, statuses in
+ * `STATUS_GROUPS` order, models by their latest activity with tasks that never ran last, origins in
+ * `ORIGIN_GROUPS` order. Empty sections are omitted, and `none` is one section.
  */
 export function groupHistory<T extends { task: AgentTask }>(
+  items: readonly T[],
+  view: HistoryView,
+  now: Date,
+): HistorySection<T>[] {
+  const pinned = items.filter(({ task }) => task.pinned);
+  if (!pinned.length) return groupUnpinned(items, view, now);
+  const rest = groupUnpinned(
+    items.filter(({ task }) => !task.pinned),
+    view,
+    now,
+  );
+  return [{ id: 'pinned', kind: 'pinned', items: pinned }, ...rest];
+}
+
+function groupUnpinned<T extends { task: AgentTask }>(
   items: readonly T[],
   { group, sort }: HistoryView,
   now: Date,

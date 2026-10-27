@@ -32,12 +32,14 @@ export interface ContextFile {
   type: string;
 }
 
-/** The panel's `@` file search through the service's file routes. */
+/** The panel's `@` file search through the service's file routes, and its pasted text files. */
 export interface FileSearchBridge {
   /** An empty query returns recent files only. */
   search(request: FileSearchQuery): Promise<FileSearchReply>;
   /** Creates resources from the files behind the ids; rejects with English messages. */
   attach(resultIds: string[]): Promise<FileRef[]>;
+  /** Stores `text` as a UTF-8 text resource named `name`; rejects with an English message. */
+  saveText(name: string, text: string): Promise<FileRef>;
 }
 
 /**

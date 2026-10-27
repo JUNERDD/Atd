@@ -2,7 +2,11 @@ import { getSettings, patchSettings } from '@atd/agent-client';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_GLOW_EFFECTS,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
+  DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   parseShortcutBindings,
   type PatchSettingsRequest,
@@ -100,6 +104,7 @@ export function nativeSettings(
       providersLoaded: live !== null,
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
+      glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
       computerVisionModel: settings?.computerVisionModel ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
       ...shell,
@@ -109,6 +114,9 @@ export function nativeSettings(
       commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
+      summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
+      nextSteps: settings?.nextSteps ?? DEFAULT_NEXT_STEPS,
+      nextStepClick: settings?.nextStepClick ?? DEFAULT_NEXT_STEP_CLICK,
       onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
@@ -217,6 +225,7 @@ export function nativeSettings(
         throw new TypeError('Unsupported appearance.');
       return write({ appearance });
     },
+    setGlowEffects: (glowEffects) => write({ glowEffects }),
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
     setComputerVisionModel: (computerVisionModel) => write({ computerVisionModel }),
     restoreShortcuts: () => write({ shortcuts: { ...DEFAULT_SHORTCUTS } }),
@@ -233,6 +242,14 @@ export function nativeSettings(
     setViewInitiative: async (viewInitiative) => {
       if (!isViewInitiative(viewInitiative)) throw new TypeError('Unsupported view initiative.');
       return write({ viewInitiative });
+    },
+    setSummaryTitles: (summaryTitles) => write({ summaryTitles }),
+    setNextSteps: (nextSteps) => write({ nextSteps }),
+    setNextStepClick: async (nextStepClick) => {
+      if (nextStepClick !== 'fill' && nextStepClick !== 'send') {
+        throw new TypeError('Unsupported next step click behavior.');
+      }
+      return write({ nextStepClick });
     },
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),

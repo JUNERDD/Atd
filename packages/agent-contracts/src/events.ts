@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { CapabilityRequestSchema, PermissionRequestSchema } from './confirms.js';
 import { TaskContextStateSchema } from './snapshot.js';
+import { TaskNextStepsSchema } from './next-steps.js';
 import { RunStatusSchema } from './task.js';
 
 /** Execution identity: `root:<runId>` today; T5 adds `child:<runId>:<n>`. */
@@ -54,6 +55,11 @@ export const RunStatusDataSchema = Type.Object(
   {
     status: RunStatusSchema,
     error: Type.String(),
+    /**
+     * On `completed`: the pending suggestions marker saved in the same write, so a client shows
+     * the run settled and its suggestions loading in one update (`AgentTask.nextSteps`).
+     */
+    nextSteps: Type.Optional(TaskNextStepsSchema),
   },
   { additionalProperties: false },
 );

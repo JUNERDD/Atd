@@ -35,6 +35,8 @@ struct IslandWorkingGlow: NSViewRepresentable {
 
 /// AppKit owns visibility and appearance; the nested host owns only the background's updates.
 /// No frame tick changes the island's model, layout, foreground controls, or outer hosting view.
+/// With the user's glow effects off (``GlowEffects``) the field stays dark whatever `active` says,
+/// and fades out like any other end when they are turned off while it shows.
 final class IslandWorkingGlowView: NSView {
   private let field: IslandGlowFieldState
   private let palette: IslandGlowPalette
@@ -48,7 +50,7 @@ final class IslandWorkingGlowView: NSView {
   init(active: Bool, motionEnabled: Bool, palette: IslandGlowPalette) {
     self.active = active
     self.motionEnabled = motionEnabled
-    let field = IslandGlowFieldState(active: active)
+    let field = IslandGlowFieldState(active: active && GlowEffects.shared.enabled)
     self.field = field
     self.palette = palette
     hostingView = IslandGlowHostingView(rootView: IslandGlowField(state: field, palette: palette))
@@ -95,6 +97,7 @@ final class IslandWorkingGlowView: NSView {
       observe(
         NSWorkspace.shared.notificationCenter,
         NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, nil)
+      observe(NotificationCenter.default, GlowEffects.didChange, nil)
     }
     needsLayout = true
     syncField()
@@ -127,6 +130,7 @@ final class IslandWorkingGlowView: NSView {
 
   private func syncField() {
     let workspace = NSWorkspace.shared
+    let active = active && GlowEffects.shared.enabled
     if active != field.active {
       stopRetreat()
       if !active {

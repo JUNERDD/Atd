@@ -29,7 +29,7 @@ export const LLAMA_PROVIDER = 'llamacpp';
  * The version whose built-in llama.cpp extension and FileModelsStore were verified here.
  * These are not exported, so they are loaded by file path and refused for any other version.
  */
-const PI_CODING_AGENT_VERSION = '1.3.0';
+const PI_CODING_AGENT_VERSION = '1.4.0';
 
 interface LlamaModules {
   /** Pi's id for the provider (`llama.cpp`); its stored models carry it. */

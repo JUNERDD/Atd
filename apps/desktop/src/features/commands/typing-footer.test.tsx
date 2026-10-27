@@ -24,7 +24,7 @@ async function renderCommands(stored: { commandTyping: boolean; commandTypingAni
   await settings.saveCommandTypingAnimation(stored.commandTypingAnimation);
   vi.mocked(settings.saveCommandTyping).mockClear();
   vi.mocked(settings.saveCommandTypingAnimation).mockClear();
-  localStorage.setItem('settings.lastSection', 'commands');
+  window.history.replaceState(null, '', '#settings?section=commands');
   render(<SettingsWindow />);
   const footer = (await screen.findByText('Typing effect')).closest('footer')!;
   const trigger = within(footer).getByRole('button', { name: /^Typing effect/ });

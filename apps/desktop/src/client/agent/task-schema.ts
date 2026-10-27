@@ -1,8 +1,10 @@
 import { Type, type Static } from 'typebox';
 import {
   InputChipRangeSchema,
+  MessageUsageSchema,
   MAX_FOLDERS,
   MAX_INPUT_CHIPS,
+  TaskNextStepsSchema,
   TaskOriginSchema,
 } from '@atd/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
@@ -116,6 +118,8 @@ export const RunSchema = Type.Object(
     status: RunStatusSchema,
     error: Type.String(),
     snapshot: RunSnapshotSchema,
+    /** What the request for the run's suggested next steps used, once it answered. */
+    nextStepsUsage: Type.Optional(MessageUsageSchema),
   },
   { additionalProperties: false },
 );
@@ -124,6 +128,8 @@ export const TaskSchema = Type.Object(
   {
     id: Identifier,
     title: Type.String(),
+    /** An asynchronous summary title is still pending; `title` remains the readable fallback. */
+    titleGeneration: Type.Optional(Type.Literal('pending')),
     createdAt: Type.String(),
     updatedAt: Type.String(),
     sessionFile: Type.Union([Type.String(), Type.Null()]),
@@ -141,6 +147,13 @@ export const TaskSchema = Type.Object(
      * absent for every other task. The conversation may have been deleted since.
      */
     sideChatOf: Type.Optional(Identifier),
+    /** Pinned to the top of the task list; absent when it is not. */
+    pinned: Type.Optional(Type.Literal(true)),
+    /**
+     * Suggested next steps for the last run once it completed normally: `pending` while they are
+     * generated, then `ready` with the items (`next-steps.ts`).
+     */
+    nextSteps: Type.Optional(TaskNextStepsSchema),
   },
   { additionalProperties: false },
 );

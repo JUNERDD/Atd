@@ -1,5 +1,6 @@
 import type { ParseKeys } from 'i18next';
 import { Languages, type LucideIcon } from 'lucide-react';
+import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
@@ -30,6 +31,7 @@ export interface SettingsSearchEntry {
 /** Each section's own description, shown under its row in the results. */
 export const SECTION_DESCRIPTIONS = {
   general: 'general.description',
+  agent: 'agent.description',
   providers: 'providers.overview.description',
   permissions: 'permissions.description',
   computer: 'computer.description',
@@ -43,6 +45,7 @@ export const SECTION_DESCRIPTIONS = {
 
 export const SECTION_KEYWORDS = {
   general: 'search.keywords.sectionGeneral',
+  agent: 'search.keywords.sectionAgent',
   providers: 'search.keywords.sectionProviders',
   permissions: 'search.keywords.sectionPermissions',
   computer: 'search.keywords.computer',
@@ -89,14 +92,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: `shortcuts.actions.${action}.description`,
     keywords: 'search.keywords.shortcutAction',
   })),
-  {
-    id: 'appearance-theme',
-    section: 'general',
-    anchor: 'settings-appearance',
-    label: 'shortcuts.appearance.title',
-    description: 'shortcuts.appearance.description',
-    keywords: 'search.keywords.appearance',
-  },
+  ...appearanceSearchEntries,
   ...conversationSearchEntries,
   {
     id: 'window-open-at-login',

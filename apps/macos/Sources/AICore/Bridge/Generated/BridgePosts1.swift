@@ -58,6 +58,24 @@ public struct AppearanceSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `glowEffects.set` post.
+public struct GlowEffectsSetPost: Codable, Equatable, Sendable {
+  public let enabled: Bool
+
+  public init(enabled: Bool) {
+    self.enabled = enabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    enabled = try container.boolean(.enabled)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case enabled
+  }
+}
+
 /// Params of the `typing.set` post.
 public struct TypingSetPost: Codable, Equatable, Sendable {
   public let typing: Bool

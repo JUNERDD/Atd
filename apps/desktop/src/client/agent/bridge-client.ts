@@ -48,7 +48,8 @@ export function createAgentBridge(
     queueMessage: (taskId, text, mode) => invoke({ action: 'queueMessage', taskId, text, mode }),
     replaceQueue: (taskId, followUp) => invoke({ action: 'replaceQueue', taskId, followUp }),
     setPermissionTier: (taskId, tier) => invoke({ action: 'setPermissionTier', taskId, tier }),
-    renameTask: (taskId, title) => invoke({ action: 'renameTask', taskId, title }),
+    renameTask: (taskId, title) => invoke({ action: 'patchTask', taskId, patch: { title } }),
+    pinTask: (taskId, pinned) => invoke({ action: 'patchTask', taskId, patch: { pinned } }),
     deleteTask: (taskId) => invoke({ action: 'deleteTask', taskId }),
     compactTask: (taskId, instructions) =>
       invoke({

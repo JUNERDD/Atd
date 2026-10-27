@@ -19,6 +19,7 @@ import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import '../agent/agent.css';
 import { AboutSettings } from './about-settings';
+import { AgentSettings } from './agent-settings';
 import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
 import { ShellAllowlistSettings } from './shell-allowlist-settings';
@@ -55,20 +56,12 @@ import { useSettingsSection } from './use-settings-section';
 import './settings.css';
 
 function subscribeLayout(listener: () => void) {
-  const queries = [
-    window.matchMedia('(min-width: 480px)'),
-    window.matchMedia('(min-width: 760px)'),
-  ];
-  queries.forEach((query) => query.addEventListener('change', listener));
-  return () => queries.forEach((query) => query.removeEventListener('change', listener));
+  const query = window.matchMedia('(min-width: 760px)');
+  query.addEventListener('change', listener);
+  return () => query.removeEventListener('change', listener);
 }
-/** Sidebar from 760px, the navigation card above the content from 480px, a drawer below. */
-const getLayout = () =>
-  window.matchMedia('(min-width: 760px)').matches
-    ? 'sidebar'
-    : window.matchMedia('(min-width: 480px)').matches
-      ? 'top'
-      : 'drawer';
+/** A persistent sidebar from 760px; smaller windows open the same navigation in a drawer. */
+const getLayout = () => (window.matchMedia('(min-width: 760px)').matches ? 'sidebar' : 'drawer');
 
 export function SettingsWindow() {
   const { t } = useTranslation('settings');
@@ -94,6 +87,7 @@ export function SettingsWindow() {
   } = useSettingsSection(recording, unsaved.guard.confirmLeave);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
+  // Crossing 760px unmounts the sheet and clears its open state before a later return to narrow.
   if (layout !== previousLayout) {
     setPreviousLayout(layout);
     setDrawer(null);
@@ -111,13 +105,14 @@ export function SettingsWindow() {
   useSettingsKeys(recording, {
     search: () => {
       if (layout === 'drawer') setDrawer('search');
-      else {
-        const input = document.querySelector<HTMLInputElement>(
-          '.settings-sidebar .settings-search input',
-        );
-        input?.focus();
-        input?.select();
-      }
+      // An already-open drawer needs focus moved too; opening one uses its initialFocus handler.
+      const input = document.querySelector<HTMLInputElement>(
+        layout === 'drawer'
+          ? '.settings-drawer .settings-search input'
+          : '.settings-sidebar .settings-search input',
+      );
+      input?.focus();
+      input?.select();
     },
     back: () => {
       if (pages?.canGoBack) pages.back();
@@ -159,7 +154,7 @@ export function SettingsWindow() {
               <SettingsPageHistoryContext value={registerPages}>
                 <SettingsUnsavedChangesContext value={unsaved.guard}>
                   <div className="settings-window" data-layout={layout}>
-                    {layout !== 'drawer' && (
+                    {layout === 'sidebar' && (
                       <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
                         <div className="settings-sidebar-surface" aria-hidden="true" />
                         <div className="settings-sidebar-body">
@@ -268,6 +263,7 @@ export function SettingsWindow() {
                               )}
                               {page('apps', <AppSettings />)}
                               {page('about', <AboutSettings />)}
+                              {page('agent', <AgentSettings snapshot={snapshot} />)}
                               {page(
                                 'general',
                                 <GeneralSettings

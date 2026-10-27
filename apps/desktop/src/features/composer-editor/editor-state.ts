@@ -9,6 +9,7 @@ import { commandMarks } from './command-mark';
 import { overflowWatcher } from './editor-overflow';
 import { composerKeys, type KeyRouting } from './editor-keys';
 import { inputFilters, textLimit } from './input-filters';
+import { pasteAsFile, type PasteTarget } from './paste-as-file';
 import { quickCommandIds, triggerField } from './trigger-field';
 
 /** Combobox wiring the quick panel reports while it is open. */
@@ -31,7 +32,7 @@ export interface EditorSettings {
 }
 
 /** React side of the editor; handlers read the latest props through it. */
-export interface EditorHost extends KeyRouting {
+export interface EditorHost extends KeyRouting, PasteTarget {
   quickCommands: CommandIds;
   onUpdate(update: ViewUpdate): void;
   onCompositionEnd(view: EditorView): void;
@@ -85,6 +86,7 @@ export function createComposerState(
       chipDecorations,
       chipIntegrity,
       inputFilters,
+      pasteAsFile(host),
       triggerField,
       quickCommandIds.of(host.quickCommands),
       commandMarks,

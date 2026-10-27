@@ -475,6 +475,11 @@
 .markdown-mermaid > [data-streamdown='mermaid-block'] {
   margin: 0;
 }
+/* WebKit mispaints relatively positioned MathML inside SVG foreignObject. Mermaid's native
+   MathML needs no positioned wrapper; keep KaTeX's positioning for its HTML output elsewhere. */
+[data-streamdown='mermaid'] .katex:has(> math) {
+  position: static;
+}
 /* A diagram that fails to draw shows its source in the plain code frame, wrapped to its width. */
 .mermaid-fallback pre {
   margin: 0;

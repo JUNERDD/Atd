@@ -1,5 +1,5 @@
 import { downloadResource } from '@atd/agent-client';
-import type { AppAppearance, McpApprovalRequestResult } from '@atd/agent-contracts';
+import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import {
   AutomationSessionTargetSchema,
@@ -22,6 +22,7 @@ import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
+import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
 import { nativeAutomations } from './native-automations';
@@ -178,29 +179,14 @@ export async function installNativeHost(
       : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
-  let pushedLanguage: string | null = null;
-  let pushedAppearance: AppAppearance | null | undefined;
-  let pushedTyping: string | null = null;
+  const pushPreferences = preferencePusher(native);
   settings.bridge.onChange((next) => {
     latest = next;
     if (surface !== 'panel' || !settings.loaded()) return;
     onboarding?.onSettings(next);
     shortcuts?.sync();
     toolbar?.sync();
-    // The shell prepares a browser for the typing animation when a command is summoned, before
-    // any write tells it the settings.
-    const typing = { typing: next.commandTyping, animation: next.commandTypingAnimation };
-    if (JSON.stringify(typing) !== pushedTyping) {
-      pushedTyping = JSON.stringify(typing);
-      native.post('typing.set', typing);
-    }
-    if (next.appearance !== pushedAppearance) {
-      pushedAppearance = next.appearance;
-      native.post('appearance.set', { appearance: next.appearance });
-    }
-    if (next.language === pushedLanguage) return;
-    pushedLanguage = next.language;
-    native.post('language.set', { language: next.language });
+    pushPreferences(next);
   });
 
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));

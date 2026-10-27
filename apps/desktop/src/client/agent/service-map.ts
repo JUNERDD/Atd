@@ -78,6 +78,7 @@ export function mapTask(task: ServiceTask): AgentTask {
   return {
     id: task.id,
     title: task.title,
+    ...(task.titleGeneration ? { titleGeneration: task.titleGeneration } : {}),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     sessionFile: task.sessionFile,
@@ -86,6 +87,8 @@ export function mapTask(task: ServiceTask): AgentTask {
     ...(task.permissionTier ? { permissionTier: task.permissionTier } : {}),
     ...(task.origin ? { origin: { ...task.origin } } : {}),
     ...(task.sideChatOf ? { sideChatOf: task.sideChatOf } : {}),
+    ...(task.pinned ? { pinned: true as const } : {}),
+    ...(task.nextSteps ? { nextSteps: task.nextSteps } : {}),
   };
 }
 
@@ -97,6 +100,7 @@ function mapRun(run: ServiceRun): TaskRun {
     status: run.status,
     error: run.error,
     snapshot: mapRunSnapshot(run),
+    ...(run.nextStepsUsage ? { nextStepsUsage: run.nextStepsUsage } : {}),
   };
 }
 

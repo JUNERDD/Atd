@@ -95,13 +95,14 @@ export async function previewRun(
   }
 }
 
-export async function renameLiveTask(
+/** Renames and/or pins a task. */
+export async function patchLiveTask(
   options: AgentClientOptions,
   taskId: string,
-  title: string,
+  patch: { title?: string; pinned?: boolean },
 ): Promise<void> {
   try {
-    await patchTask(options, taskId, { title });
+    await patchTask(options, taskId, patch);
   } catch (error) {
     manageError(error);
   }

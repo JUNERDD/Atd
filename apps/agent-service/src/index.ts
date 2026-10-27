@@ -17,6 +17,7 @@ import {
 import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
 import { FolderStore } from './folders/store.js';
+import { invalidateOffRoute } from './invalidate.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
@@ -31,6 +32,8 @@ import { effectiveLanguage } from './settings/language.js';
 import { SettingsStore } from './settings/store.js';
 import { SystemActivity } from './system-activity.js';
 import type { RunnerContext } from './task-runner.js';
+import { NextStepJobs } from './tasks/next-steps.js';
+import { TaskTitles } from './tasks/titles.js';
 import type { SyncProfile } from './development/plan.js';
 
 export type { ServiceConfig } from './config.js';
@@ -105,6 +108,17 @@ export async function createService(
     addons,
     development: options.development !== undefined,
   });
+  // Reads settings, answers and automation names once runs complete, after all three exist.
+  const nextSteps = new NextStepJobs({
+    ledger,
+    events,
+    paths: config.paths,
+    log,
+    enabled: () => settings.current().settings.nextSteps,
+    blocks: async (taskId) => (await manager.snapshot(taskId)).blocks,
+    automations: () => automations.store.data.definitions.automations.map(({ name }) => name),
+    notify: (taskId) => invalidateOffRoute(app, { type: 'invalidate', scope: 'task', taskId }),
+  });
   const runnerContext: RunnerContext = {
     ledger,
     events,
@@ -114,8 +128,16 @@ export async function createService(
     paths: config.paths,
     log,
     tier: options.tier ?? DEFAULT_PERMISSION_TIER,
+    nextSteps,
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
+  const titles = new TaskTitles({
+    ledger,
+    paths: config.paths,
+    log,
+    enabled: () => settings.current().settings.summaryTitles,
+    notify: (taskId) => invalidateOffRoute(app, { type: 'invalidate', scope: 'task', taskId }),
+  });
   const folders = await FolderStore.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
@@ -123,6 +145,7 @@ export async function createService(
     folders,
     log,
     newTaskTier: () => settings.newTaskTier(),
+    titles,
   });
   const report = await recoverService({ ledger, events, confirms, capabilities, log });
   // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.

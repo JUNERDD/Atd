@@ -8,6 +8,7 @@ import {
   type AppLanguage,
   type ExcludedApp,
   type ModelSelection,
+  type NextStepClick,
   type SelectionToolbarActivation,
   type SelectionToolbarKey,
   type SelectionToolbarSettings,
@@ -52,6 +53,7 @@ export type {
   AppAppearance,
   AppLanguage,
   ExcludedApp,
+  NextStepClick,
   SelectionToolbarActivation,
   SelectionToolbarKey,
   SelectionToolbarSettings,
@@ -60,6 +62,10 @@ export type {
 export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_GLOW_EFFECTS,
+  DEFAULT_NEXT_STEP_CLICK,
+  DEFAULT_NEXT_STEPS,
+  DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_KEYS,
@@ -116,6 +122,11 @@ export interface SettingsSnapshot {
   language: AppLanguage;
   /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
   appearance: AppAppearance | null;
+  /**
+   * Whether the app's decorative glows show and running text shimmers, in the renderer and the
+   * shell's surfaces alike; the service's default until it loads.
+   */
+  glowEffects: boolean;
   /** Null reads screens with the task model; a selection uses a separate image model. */
   computerVisionModel: ModelSelection | null;
   shortcuts: ShortcutBindings;
@@ -181,6 +192,12 @@ export interface SettingsSnapshot {
    * as it starts. The service's default until it loads.
    */
   viewInitiative: ViewInitiative;
+  /** Whether new conversations receive an asynchronously generated summary title. */
+  summaryTitles: boolean;
+  /** Whether finished conversations get suggested next steps. */
+  nextSteps: boolean;
+  /** What a click on a suggested follow-up does: put it in the composer or send it at once. */
+  nextStepClick: NextStepClick;
   /**
    * Whether macOS trusts the app for Accessibility, which selection capture and the toolbar need;
    * null until the shell reports it.
@@ -225,6 +242,8 @@ export interface SettingsBridge {
   setLanguage: (language: AppLanguage) => Promise<SettingsSnapshot>;
   /** Pins the light or dark scheme; null follows the system. */
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
+  /** Shows or leaves out the decorative glows and the running-text shimmer everywhere. */
+  setGlowEffects: (enabled: boolean) => Promise<SettingsSnapshot>;
   setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;
@@ -248,6 +267,12 @@ export interface SettingsBridge {
   saveCommandTypingAnimation: (value: boolean) => Promise<SettingsSnapshot>;
   /** Sets how readily the agent shows interactive views; runs that start later use the new level. */
   setViewInitiative: (level: ViewInitiative) => Promise<SettingsSnapshot>;
+  /** Applies to conversations created after this preference is saved. */
+  setSummaryTitles: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Applies to runs that finish after this preference is saved. */
+  setNextSteps: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Applies to suggestions clicked after this preference is saved; automations always confirm. */
+  setNextStepClick: (value: NextStepClick) => Promise<SettingsSnapshot>;
   /**
    * Shows the system's Accessibility prompt while the app is not trusted and opens its pane in
    * System Settings; `accessibilityTrusted` follows the outcome.

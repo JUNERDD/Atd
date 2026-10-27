@@ -12,7 +12,7 @@ import {
 import { IconButton } from '../../components/icon-button';
 
 /**
- * The navigation below 480px: a menu button in the content header opens the sidebar card as a
+ * The navigation below 760px: a menu button in the content header opens the sidebar card as a
  * modal sheet. Radix contains focus while it is open, returns it to the menu button, and closes on
  * Escape and on the backdrop; the window closes it after navigating. It opens with focus on the
  * shown section's row, or on the search field when ⌘F opened it.

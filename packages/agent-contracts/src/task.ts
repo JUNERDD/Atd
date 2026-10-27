@@ -1,18 +1,15 @@
 import { Type, type Static } from 'typebox';
-import { ApplicationReferenceSchema } from './application-reference.js';
 import { AppIdSchema } from './app-identity.js';
 import type { CommandTool } from './commands.js';
 import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { MAX_FOLDERS } from './folders.js';
-import { McpServerIdSchema } from './mcp.js';
-import { MemoryTargetSchema } from './memory.js';
-import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
+import { MessageUsageSchema } from './message-usage.js';
+import { TaskNextStepsSchema } from './next-steps.js';
+import { InputChipRangeSchema, MAX_INPUT_CHIPS } from './input-chips.js';
 import { RunTriggerSchema } from './run-trigger.js';
 import { ThinkingLevelSchema } from './models.js';
-import { SkillName } from './skills.js';
-import { SubagentNameSchema } from './subagents.js';
 
 /**
  * Snapshot tool ids: frozen per run, granted by roles and inherited by subagent children within
@@ -61,91 +58,6 @@ export const FileRefSchema = Type.Object(
   { additionalProperties: false },
 );
 export type FileRef = Static<typeof FileRefSchema>;
-
-/** Upper bound on the chip records one submitted message carries. */
-export const MAX_INPUT_CHIPS = 64;
-
-/**
- * Display record of one composer chip, kept with the submitted text so the transcript and the
- * title show the message the way it was composed. Each kind holds only what the chip shows and
- * identifies; what the run does with it still comes from staging (skills, references), `files`
- * and `folders`.
- * A quote is the exception: it identifies nothing outside the message, so its record carries the
- * quoted Markdown itself, which the run reads into its material and a resend restores.
- */
-export const InputChipSchema = Type.Union([
-  ApplicationReferenceSchema,
-  Type.Object(
-    { kind: Type.Literal('file'), fileId: Identifier, name: Type.String({ maxLength: 255 }) },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      kind: Type.Literal('folder'),
-      folderId: Identifier,
-      /** The folder's basename when it was added; the record keeps no path. */
-      name: Type.String({ minLength: 1, maxLength: 255 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { kind: Type.Literal('task'), taskId: Identifier, title: Type.String({ maxLength: 1024 }) },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { kind: Type.Literal('mcpServer'), serverId: McpServerIdSchema },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { kind: Type.Literal('agent'), name: SubagentNameSchema },
-    { additionalProperties: false },
-  ),
-  Type.Object({ kind: Type.Literal('skill'), name: SkillName }, { additionalProperties: false }),
-  Type.Object(
-    {
-      kind: Type.Literal('command'),
-      commandId: Identifier,
-      /** The command's name when it was picked; a plugin command's is `<plugin>:<item>`. */
-      name: Type.String({ minLength: 1, maxLength: 256 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      kind: Type.Literal('memory'),
-      target: MemoryTargetSchema,
-      entryId: Identifier,
-      /** One line of the entry's content, shown in place of the whole entry. */
-      title: Type.String({ minLength: 1, maxLength: 1024 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      kind: Type.Literal('quote'),
-      text: Type.String({ minLength: 1, maxLength: MAX_QUOTE_CHARS }),
-      /** Absent when the passage cannot be found again (a subagent's answer, an older client). */
-      source: Type.Optional(QuoteSourceSchema),
-    },
-    { additionalProperties: false },
-  ),
-]);
-export type InputChip = Static<typeof InputChipSchema>;
-
-/**
- * A chip and the `[from, to)` UTF-16 range of its serialized token in `TaskInput.text`. The
- * schema bounds the numbers only; acceptance checks that ranges lie inside the text, ascending and
- * without overlap.
- */
-export const InputChipRangeSchema = Type.Object(
-  {
-    from: Type.Integer({ minimum: 0, maximum: 100000 }),
-    to: Type.Integer({ minimum: 0, maximum: 100000 }),
-    chip: InputChipSchema,
-  },
-  { additionalProperties: false },
-);
-export type InputChipRange = Static<typeof InputChipRangeSchema>;
 
 export const TaskInputSchema = Type.Object(
   {
@@ -300,6 +212,11 @@ export const TaskRunSchema = Type.Object(
     status: RunStatusSchema,
     error: Type.String(),
     snapshot: RunSnapshotSchema,
+    /**
+     * What the request for this run's suggested next steps used (`next-steps.ts`), added once it
+     * answers. It stays when a later run withdraws the suggestions, since it was spent either way.
+     */
+    nextStepsUsage: Type.Optional(MessageUsageSchema),
   },
   { additionalProperties: false },
 );
@@ -309,6 +226,8 @@ export const AgentTaskSchema = Type.Object(
   {
     id: Identifier,
     title: Type.String(),
+    /** The initial summary is being generated; absence means the saved title is settled. */
+    titleGeneration: Type.Optional(Type.Literal('pending')),
     createdAt: Type.String(),
     updatedAt: Type.String(),
     sessionFile: Type.Union([Type.String(), Type.Null()]),
@@ -327,6 +246,10 @@ export const AgentTaskSchema = Type.Object(
      * deleted task.
      */
     sideChatOf: Type.Optional(Identifier),
+    /** The person pinned the task to the top of their task list; absent when it is not pinned. */
+    pinned: Type.Optional(Type.Literal(true)),
+    /** Suggested next steps for the last run, once generated (`next-steps.ts`). */
+    nextSteps: Type.Optional(TaskNextStepsSchema),
   },
   { additionalProperties: false },
 );
@@ -340,7 +263,10 @@ export function isActiveStatus(status: RunStatus | undefined): boolean {
   );
 }
 
-/** Terminal statuses after which the ledger entry never changes again. */
+/**
+ * Terminal statuses after which the run's status and snapshot never change again; only usage
+ * metadata such as `nextStepsUsage` may still be added.
+ */
 export function isTerminalStatus(status: RunStatus | undefined): boolean {
   return (
     status !== undefined &&

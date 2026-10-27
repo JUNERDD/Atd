@@ -161,8 +161,8 @@ export const cases = [
     label: { en: 'Automations', zh: '自动化' },
     title: { en: 'Work that starts on its own.', zh: '让工作自己开始。' },
     description: {
-      en: 'Start tasks on a schedule, when files change or when your Mac is idle. Check their status and results in one place.',
-      zh: '按计划、文件变化或 Mac 空闲时自动开始，统一查看任务状态与结果。',
+      en: 'While Atd is running, start tasks on a schedule, when files change or your Mac is idle. Computer actions need separate authorization.',
+      zh: 'Atd 运行时，按计划、文件变化或 Mac 空闲自动开始任务。操作网站与应用需单独授权。',
     },
     image: {
       src: mediaUrl('/cases/ui/automations.png'),

@@ -1,4 +1,8 @@
-import { TaskContextStateSchema, type ServiceEvent } from '@atd/agent-contracts';
+import {
+  TaskContextStateSchema,
+  TaskNextStepsSchema,
+  type ServiceEvent,
+} from '@atd/agent-contracts';
 import type { CachedTask, TaskClient } from './service-tasks';
 import { mapBlock, mapRequest } from './service-map';
 import { applyTranscriptPatch, QueueStateSchema, type TranscriptPatch } from './transcript-schema';
@@ -36,6 +40,10 @@ export function applyEventState(task: CachedTask, event: ServiceEvent): EventCha
       const status = data['status'] as typeof run.status;
       if (status) run.status = status;
       if (typeof data['error'] === 'string') run.error = data['error'];
+      // A completed run's suggestions marker arrives with its status, so the settled turn shows
+      // them loading from its first frame instead of after a later reload.
+      if (data['nextSteps'] !== undefined)
+        task.task.nextSteps = parse(TaskNextStepsSchema, data['nextSteps']);
       task.task.updatedAt = event.at;
       return TASK;
     }

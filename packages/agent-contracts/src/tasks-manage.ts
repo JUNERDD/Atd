@@ -17,11 +17,15 @@ import { CommandSkillRefSchema, ServiceCommandFullSchema } from './commands.js';
  * no run) and shows the snapshot a submit with the same inputs would freeze.
  */
 
-/** Rename and/or retier; at least one field is required (400 otherwise). */
+/**
+ * Rename, retier and/or pin; at least one field is required (400 otherwise). Pinning is the
+ * person's arrangement of their list, not a change to the task, so it leaves `updatedAt` alone.
+ */
 export const PatchTaskRequestSchema = Type.Object(
   {
     title: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
     permissionTier: Type.Optional(PermissionTierSchema),
+    pinned: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

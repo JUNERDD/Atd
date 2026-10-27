@@ -8,6 +8,7 @@ import {
 } from '../features/composer-editor/draft-attachments';
 import type { ComposerDraft } from '../features/composer-editor/draft';
 import type { ComposerEditorCommands } from '../features/composer-editor/editor-commands';
+import { pastedTextName, pastesAsFile } from '../features/composer-editor/paste-as-file';
 import { showErrorToast } from './toast-store';
 import { useImportedFiles } from './use-imported-files';
 
@@ -30,6 +31,20 @@ export function useComposerAttach(draft: ComposerDraft, commands: ComposerEditor
     if (!foldersFit) showErrorToast(t('composer.folderLimit', { max: MAX_FOLDERS }));
     commands.attachChips(chips.filter((chip) => (chip.kind === 'file' ? filesFit : foldersFit)));
   }
+  /**
+   * Takes a long paste (paste-as-file.ts) as a text file chip, given the text room the editor has
+   * left; false leaves it to the editor, as when the draft has no file room or the window cannot
+   * store files. A failed save shows a toast; the text stays on the clipboard.
+   */
+  function pasteText(text: string, textRoom: number) {
+    const bridge = window.desktop?.files;
+    if (!bridge || room < 1 || !pastesAsFile(text, textRoom)) return false;
+    void bridge.saveText(pastedTextName(new Date()), text).then(
+      (file) => attach([{ kind: 'file', file }]),
+      (error: unknown) => showErrorToast(error),
+    );
+    return true;
+  }
   useImportedFiles(attach);
-  return { room, attach };
+  return { room, attach, pasteText };
 }

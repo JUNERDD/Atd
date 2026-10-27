@@ -171,6 +171,7 @@ public enum NativePost: Equatable, Sendable {
   case bridgeReady(BridgeReadyPost)
   case languageSet(LanguageSetPost)
   case appearanceSet(AppearanceSetPost)
+  case glowEffectsSet(GlowEffectsSetPost)
   case typingSet(TypingSetPost)
   case windowDragRegions(WindowDragRegionsPost)
   case onboardingSurface(OnboardingSurfacePost)
@@ -189,6 +190,7 @@ public enum NativePost: Equatable, Sendable {
     case .bridgeReady: "bridge.ready"
     case .languageSet: "language.set"
     case .appearanceSet: "appearance.set"
+    case .glowEffectsSet: "glowEffects.set"
     case .typingSet: "typing.set"
     case .windowDragRegions: "window.dragRegions"
     case .onboardingSurface: "onboarding.surface"

@@ -6,7 +6,7 @@ import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { AppearanceRow } from './appearance-row';
-import { ConversationSettings } from './conversation-settings';
+import { GlowEffectsRow } from './glow-effects-row';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
 import { NotificationSettings } from './notification-settings';
 import { PanelPlacementRow } from './panel-placement-row';
@@ -68,7 +68,7 @@ export function GeneralSettings({
       <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
         {import.meta.env.DEV && <DevelopmentSyncSettings />}
-        {/* The color scheme is the desktop app's: the shell mirrors it onto its windows. */}
+        {/* The color scheme and glows are the desktop app's: the shell mirrors them onto its windows. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-appearance-group">
             <h3 id="settings-appearance-group" className="settings-section-title">
@@ -77,12 +77,11 @@ export function GeneralSettings({
             <Card size="sm" className="settings-card">
               <ItemGroup>
                 <AppearanceRow snapshot={snapshot} />
+                <GlowEffectsRow snapshot={snapshot} />
               </ItemGroup>
             </Card>
           </section>
         )}
-        {/* How readily the agent shows views is saved through the desktop app's settings bridge. */}
-        {desktopApp && <ConversationSettings snapshot={snapshot} />}
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
           <h3 id="settings-global-shortcuts" className="settings-section-title">
             {t('shortcuts.groups.global')}

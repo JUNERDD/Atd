@@ -6,8 +6,8 @@ import { CHANNELS } from './glyphs';
 import './features.css';
 
 /**
- * The five capabilities on one LED display set into the plate, a channel each: every channel lights
- * its capability's pictogram, and its name and one line are printed on the plate beside or beneath
+ * The capabilities on one LED display set into the plate, a channel each: every channel lights
+ * its capability's pictogram, and its name and two-line copy sit on the plate beside or beneath
  * it. Each capability is its own reveal group, so channels arriving together power on in reading
  * order: the display opens, its dots come up and the pictogram lights column by column. Under a fine
  * pointer the dots swell like a loupe, as the download board's do.

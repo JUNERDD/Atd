@@ -6,7 +6,8 @@ import type { NativeConnection } from './native-connection';
  * The panel's `@` file search through the relay to the service's file routes. The window is one
  * search channel: a newer query supersedes only this window's older one, which the service answers
  * `superseded` for the file group to drop, and result ids attach only through the channel that
- * issued them. The channel lives as long as the page, so a reload starts a fresh one.
+ * issued them. The channel lives as long as the page, so a reload starts a fresh one. Long pastes
+ * the composer takes as files go to the service's resource upload.
  */
 export function nativeFiles(connection: NativeConnection): FileSearchBridge {
   const channel = `panel-${crypto.randomUUID()}`;
@@ -16,6 +17,18 @@ export function nativeFiles(connection: NativeConnection): FileSearchBridge {
       const request = { channel, resultIds };
       const { resources } = await attachFileResults(connection.options(), request).catch(rethrow);
       return resources.map(({ id, name, size, mime }) => ({ id, name, size, type: mime }));
+    },
+    async saveText(name, text) {
+      const bytes = new TextEncoder().encode(text);
+      const { resource } = await connection
+        .http()
+        .upload(name, 'text/plain', bytes)
+        .catch((error: unknown) => {
+          throw new Error(
+            error instanceof AgentClientError ? error.message : 'The pasted text was not saved.',
+          );
+        });
+      return { id: resource.id, name: resource.name, size: resource.size, type: resource.mime };
     },
   };
 }
