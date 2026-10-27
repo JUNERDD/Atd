@@ -250,6 +250,7 @@ patchedDependencies:
   '@earendil-works/pi-ai@1.4.0': 14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96
   '@earendil-works/pi-coding-agent@1.4.0': 18a9acda4cf04681c70ff4ba1762ee3f8b21216e0ad6a2831bc28a8515111d10
   pi-subagents@0.76.1: 78821542d73d110112e37f32609d478233fdec675c3875a2936342b4f2424430
+  streamdown@2.7.1: 95530e39dd8385e7ea852984e9fdf6466357e4a1f6c336afc0588f5637ecaf08
 
 importers:
 
@@ -516,7 +517,7 @@ importers:
         version: 4.5.0
       streamdown:
         specifier: 2.7.1
-        version: 2.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)
+        version: 2.7.1(patch_hash=95530e39dd8385e7ea852984e9fdf6466357e4a1f6c336afc0588f5637ecaf08)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
@@ -15823,7 +15824,7 @@ snapshots:
 
   stream-shift@1.0.3: {}
 
-  streamdown@2.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2):
+  streamdown@2.7.1(patch_hash=95530e39dd8385e7ea852984e9fdf6466357e4a1f6c336afc0588f5637ecaf08)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2):
     dependencies:
       clsx: 2.1.1
       hast-util-to-jsx-runtime: 2.3.6(supports-color@10.2.2)

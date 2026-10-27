@@ -62,3 +62,5 @@ patchedDependencies:
   # Preserve the app's summary output budgets; Pi 1.4 otherwise uses the model's full limit.
   '@earendil-works/pi-coding-agent@1.4.0': patches/@earendil-works__pi-coding-agent@1.4.0.patch
   pi-subagents@0.76.1: patches/pi-subagents@0.76.1.patch
+  # Normalize fullscreen SVGs too and keep Flex from shrinking them before PanZoom fits them.
+  streamdown@2.7.1: patches/streamdown@2.7.1.patch
