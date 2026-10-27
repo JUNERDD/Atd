@@ -29,7 +29,7 @@ export function SettingsContentHeader({
   disabled: boolean;
   onBack: () => void;
   onForward: () => void;
-  /** The drawer's menu button, below 480px. */
+  /** The drawer's menu button, below 760px. */
   leading?: ReactNode;
   trailing?: ReactNode;
 }) {

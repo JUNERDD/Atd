@@ -1,8 +1,8 @@
 /*
  * The settings window follows Raycast's settings layout. The shell gives the window a unified
  * NSToolbar, so the native title bar is 52px tall and the traffic lights sit centered in it,
- * 19–79px from the leading edge. Below 760px the sidebar card moves above the content; below
- * 480px it opens as a drawer from the content header.
+ * 19–79px from the leading edge. Below 760px the sidebar opens as a drawer from the content
+ * header, so the navigation never pushes the page down as categories grow.
  */
 .settings-window,
 .settings-drawer,
@@ -27,9 +27,6 @@
 /* Chinese text sets taller ideographs in the same 14px; the extra leading keeps lines apart. */
 .settings-window:lang(zh) {
   line-height: 22px;
-}
-.settings-window[data-layout='top'] {
-  flex-direction: column;
 }
 /*
  * The sidebar card: an inset card whose corners follow the window's (the toolbar window's radius
@@ -79,39 +76,6 @@
   flex-shrink: 0;
   height: calc(var(--settings-titlebar-height) - 8px);
 }
-/* 480–759px: the card spans the window above the content. The traffic lights keep the leading
- * end of its first row, the search field fills the rest, and the sections wrap below. */
-.settings-window[data-layout='top'] .settings-sidebar {
-  flex: 0 0 auto;
-  padding: var(--settings-inset) var(--settings-inset) 0;
-}
-.settings-window[data-layout='top'] .settings-sidebar-surface {
-  inset: var(--settings-inset) var(--settings-inset) 0;
-}
-.settings-window[data-layout='top'] .settings-sidebar-body {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 0 8px 8px 0;
-}
-.settings-window[data-layout='top'] .settings-sidebar-strip {
-  width: calc(var(--settings-traffic-lights-inset) - var(--settings-inset) - 8px);
-  height: calc(var(--settings-titlebar-height) - var(--settings-inset));
-}
-.settings-window[data-layout='top'] .settings-search {
-  flex: 1 1 0;
-}
-.settings-window[data-layout='top'] .settings-nav-scroll {
-  flex: 1 0 100%;
-  margin-left: 5px;
-}
-.settings-window[data-layout='top'] .settings-navigation {
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-.settings-window[data-layout='top'] .settings-nav-button {
-  flex: 1 0 auto;
-}
 .settings-search {
   flex-shrink: 0;
 }
@@ -128,12 +92,9 @@
   padding: 3px;
 }
 /* About sits at the bottom of the card while the list leaves room, and follows the list when it
- * scrolls; in the compact bar it wraps into the rows like any other section. */
+ * scrolls. The sidebar and drawer share the same order. */
 .settings-navigation .settings-nav-button:not([data-footer]) + [data-footer] {
   margin-top: auto;
-}
-.settings-window[data-layout='top'] .settings-navigation .settings-nav-button[data-footer] {
-  margin-top: 0;
 }
 /* Results have no footer to pin, so a search's list keeps its own height and the empty state below
  * it stays right under the search field. */
@@ -243,19 +204,6 @@
   font-weight: 400;
   line-height: 16px;
 }
-/* The compact bar stacks results instead of wrapping them into a row, and caps their height so a
- * long list scrolls inside the card rather than pushing the content down. */
-.settings-window[data-layout='top'] .settings-navigation[data-searching] {
-  flex-direction: column;
-  flex-wrap: nowrap;
-}
-.settings-window[data-layout='top'] .settings-navigation[data-searching] .settings-nav-button {
-  flex: 0 0 auto;
-}
-.settings-window[data-layout='top'] .settings-nav-scroll[data-searching] {
-  flex: 1 0 100%;
-  max-height: min(280px, 45vh);
-}
 /* A setting the search opened: an outline that fades out. It only changes color, so it stays
  * under reduced motion. It sits outside the element, so states that draw inside a control's box
  * are not disturbed. */
@@ -348,15 +296,16 @@
 /* Below 480px the language control keeps only its icon (the value and the chevron `SelectTrigger`
  * appends are hidden), in a square of the trigger's 32px height, which leaves the breadcrumb its
  * width; its accessible name stays "Language". */
-.settings-window[data-layout='drawer'] .settings-language [data-slot='select-trigger'] {
-  justify-content: center;
-  width: 32px;
-  padding-inline: 0;
-}
-.settings-window[data-layout='drawer']
+@media (width < 480px) {
+  .settings-language [data-slot='select-trigger'] {
+    justify-content: center;
+    width: 32px;
+    padding-inline: 0;
+  }
   .settings-language
-  :is([data-slot='select-value'], [data-slot='select-trigger'] > svg:last-child) {
-  display: none;
+    :is([data-slot='select-value'], [data-slot='select-trigger'] > svg:last-child) {
+    display: none;
+  }
 }
 .settings-content-scroll-area {
   flex: 1;
@@ -427,7 +376,7 @@
   ) {
   height: 100%;
 }
-.settings-window:not([data-layout='sidebar']) .settings-content-scroll {
+.settings-window[data-layout='drawer'] .settings-content-scroll {
   padding: 8px 16px 16px;
 }
 /* A failed settings read, above the pages it leaves without data, with its Retry beside it. */

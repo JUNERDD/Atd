@@ -23,7 +23,7 @@ import {
 import { useSettingsSearch, type SettingsSearchResult } from './use-settings-search';
 import { useSettingsIconMotion } from './use-settings-icon-motion';
 
-/** Keys that move focus between the navigation rows, whether they stack or wrap into rows. */
+/** Keys that move focus between the navigation rows in the sidebar or drawer. */
 const STEP: Partial<Record<string, 1 | -1>> = {
   ArrowDown: 1,
   ArrowRight: 1,
@@ -32,8 +32,8 @@ const STEP: Partial<Record<string, 1 | -1>> = {
 };
 
 /**
- * The settings search field above the section list, shared by the sidebar, the compact bar and
- * the drawer. Without a query the card lists the sections. With one, it lists the sections and
+ * The settings search field above the section list, shared by the sidebar and drawer.
+ * Without a query the card lists the sections. With one, it lists the sections and
  * settings that match, best first, each opening its section and revealing the setting; Enter opens
  * the best match, and the arrow keys move from the field into the results and between them. The
  * list is one tab stop: Tab enters it at the shown section, or at the best match while searching.
@@ -128,7 +128,6 @@ export function SettingsNavPanel({
         viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
         gutter="none"
         scrollShadow
-        data-searching={searching || undefined}
       >
         <nav
           ref={list}
