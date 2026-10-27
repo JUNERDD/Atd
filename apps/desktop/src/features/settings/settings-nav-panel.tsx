@@ -21,6 +21,7 @@ import {
   type SettingsSectionId,
 } from './settings-sections';
 import { useSettingsSearch, type SettingsSearchResult } from './use-settings-search';
+import { useSettingsIconMotion } from './use-settings-icon-motion';
 
 /** Keys that move focus between the navigation rows, whether they stack or wrap into rows. */
 const STEP: Partial<Record<string, 1 | -1>> = {
@@ -55,6 +56,7 @@ export function SettingsNavPanel({
   const results = useSettingsSearch(search.query);
   const query = search.query.trim();
   const searching = query !== '';
+  useSettingsIconMotion(list, current, disabled, searching);
 
   const rows = () => [...(list.current?.querySelectorAll('button') ?? [])];
 
