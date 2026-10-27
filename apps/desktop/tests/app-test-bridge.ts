@@ -63,6 +63,7 @@ export function installBridge(extras?: {
     providersLoaded: true,
     language: 'en',
     appearance: null,
+    glowEffects: true,
     computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
@@ -305,6 +306,7 @@ export function installBridge(extras?: {
       setAppearance: vi.fn(async (appearance: SettingsSnapshot['appearance']) =>
         writeSettings({ appearance }),
       ),
+      setGlowEffects: vi.fn(async (glowEffects) => writeSettings({ glowEffects })),
       saveShortcuts: vi.fn(async () => settings),
       setComputerVisionModel: vi.fn(async (computerVisionModel) =>
         writeSettings({ computerVisionModel }),

@@ -65,6 +65,7 @@
       "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "appearance": "theme appearance color scheme light dark mode night day system automatic follow",
+      "glowEffects": "glow glows light lighting effect effects shimmer shine sparkle highlight animation motion flowing working decorative visual",
       "viewInitiative": "view views interactive ui widget window card chart form dashboard visual show display agent proactive proactively balanced request ask unprompted automatic conversation chat",
       "summaryTitles": "summary summarize title titles name naming automatic conversation chat",
       "nextSteps": "suggest suggestion suggestions next steps follow-up followups follow up continue task automation idea after reply finish conversation chat",
@@ -304,6 +305,11 @@
         "light": "Light",
         "dark": "Dark"
       }
+    },
+    "glowEffects": {
+      "title": "Glow effects",
+      "description": "Show the flowing light while a reply is on its way, the glow around running commands and the mini panel, and shimmering progress text.",
+      "saveFailed": "The glow effects setting could not be saved."
     },
     "summaryTitles": {
       "title": "Summary titles",

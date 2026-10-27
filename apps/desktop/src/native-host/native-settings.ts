@@ -2,6 +2,7 @@ import { getSettings, patchSettings } from '@atd/agent-client';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_SHORTCUTS,
@@ -103,6 +104,7 @@ export function nativeSettings(
       providersLoaded: live !== null,
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
+      glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
       computerVisionModel: settings?.computerVisionModel ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
       ...shell,
@@ -223,6 +225,7 @@ export function nativeSettings(
         throw new TypeError('Unsupported appearance.');
       return write({ appearance });
     },
+    setGlowEffects: (glowEffects) => write({ glowEffects }),
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
     setComputerVisionModel: (computerVisionModel) => write({ computerVisionModel }),
     restoreShortcuts: () => write({ shortcuts: { ...DEFAULT_SHORTCUTS } }),

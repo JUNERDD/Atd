@@ -62,6 +62,7 @@ export type {
 export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
+  DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_SUMMARY_TITLES,
@@ -121,6 +122,11 @@ export interface SettingsSnapshot {
   language: AppLanguage;
   /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
   appearance: AppAppearance | null;
+  /**
+   * Whether the app's decorative glows show and running text shimmers, in the renderer and the
+   * shell's surfaces alike; the service's default until it loads.
+   */
+  glowEffects: boolean;
   /** Null reads screens with the task model; a selection uses a separate image model. */
   computerVisionModel: ModelSelection | null;
   shortcuts: ShortcutBindings;
@@ -236,6 +242,8 @@ export interface SettingsBridge {
   setLanguage: (language: AppLanguage) => Promise<SettingsSnapshot>;
   /** Pins the light or dark scheme; null follows the system. */
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
+  /** Shows or leaves out the decorative glows and the running-text shimmer everywhere. */
+  setGlowEffects: (enabled: boolean) => Promise<SettingsSnapshot>;
   setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;

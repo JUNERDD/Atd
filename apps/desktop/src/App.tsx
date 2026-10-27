@@ -8,6 +8,7 @@ import { FileDropOverlay } from './components/file-drop-overlay';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
+import { useGlowEffects } from './theme/glow-effects';
 import { useNewTaskRequest } from './features/agent/use-new-task-request';
 import { focusPanelInput, showPanel } from './features/agent/use-panel-window';
 import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
@@ -83,6 +84,7 @@ export function App() {
     requests,
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
+  const glow = useGlowEffects(snapshot?.glowEffects);
   const starting = useServiceStarting();
   const reserveRef = useOverlayReserve();
   const subagents = useSubagentContextValue(
@@ -192,7 +194,9 @@ export function App() {
               />
               {/* Everything below the header; composer overlays stay inside it. */}
               <div ref={setPanelBody} className="panel-body">
-                {(view === 'new' || view === 'task') && <WaitingGlow phase={newChat.waitPhase} />}
+                {glow && (view === 'new' || view === 'task') && (
+                  <WaitingGlow phase={newChat.waitPhase} />
+                )}
                 <ServiceBanner onOpenSettings={openSettingsWindow} />
                 <WelcomePresence shown={view === 'new'} {...newChat.welcome}>
                   <ScrollArea

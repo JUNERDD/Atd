@@ -1,5 +1,6 @@
 import type { ParseKeys } from 'i18next';
 import { Languages, type LucideIcon } from 'lucide-react';
+import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
@@ -91,14 +92,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     description: `shortcuts.actions.${action}.description`,
     keywords: 'search.keywords.shortcutAction',
   })),
-  {
-    id: 'appearance-theme',
-    section: 'general',
-    anchor: 'settings-appearance',
-    label: 'shortcuts.appearance.title',
-    description: 'shortcuts.appearance.description',
-    keywords: 'search.keywords.appearance',
-  },
+  ...appearanceSearchEntries,
   ...conversationSearchEntries,
   {
     id: 'window-open-at-login',
