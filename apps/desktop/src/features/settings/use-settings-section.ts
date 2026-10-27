@@ -4,9 +4,6 @@ import { USER_PLUGIN_ID } from '../service/plugin-rows';
 import type { SettingsAutomationTarget, SettingsExtensionItem } from './settings-navigation';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
-/** Where the window remembers the section shown last, for the next time it opens. */
-const LAST_SECTION_KEY = 'settings.lastSection';
-
 /** A new settings window carries its editor or section target in the URL hash. */
 function readHashParam(name: 'commandId' | 'section'): string | null {
   const hash = window.location.hash;
@@ -24,30 +21,12 @@ function readSectionFromHash(): SettingsSectionId | null {
   return section ? (findSettingsSection(section)?.id ?? null) : null;
 }
 
-/** Storage can be unavailable or cleared; the window then opens at its first section. */
-function readLastSection(): SettingsSectionId | null {
-  try {
-    const stored = window.localStorage.getItem(LAST_SECTION_KEY);
-    return stored ? (findSettingsSection(stored)?.id ?? null) : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeLastSection(section: SettingsSectionId) {
-  try {
-    window.localStorage.setItem(LAST_SECTION_KEY, section);
-  } catch {
-    // Remembering the section is a convenience; the window still opens without it.
-  }
-}
-
 /** How the drawer is shown: closed, or open with focus on the section list or on the search. */
 export type SettingsDrawerState = 'section' | 'search' | null;
 
 /**
  * The shown settings section and the ways into it. The window opens at a command link's editor,
- * else at a section link's section, else at the section shown last. `leave` asks before a switch
+ * else at a section link's section, else at the first section. `leave` asks before a switch
  * discards unsaved edits (see `useSettingsUnsavedChanges`); while `locked` (a shortcut is being
  * recorded) nothing switches.
  */
@@ -57,9 +36,7 @@ export function useSettingsSection(
 ) {
   // Only the shown section: each section keeps its own page history (`useSettingsPageHistory`).
   const [section, setSection] = useState<SettingsSectionId>(() =>
-    readCommandIdFromHash()
-      ? 'commands'
-      : (readSectionFromHash() ?? readLastSection() ?? settingsSections[0].id),
+    readCommandIdFromHash() ? 'commands' : (readSectionFromHash() ?? settingsSections[0].id),
   );
   const [visited, setVisited] = useState<readonly SettingsSectionId[]>([section]);
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
@@ -76,7 +53,6 @@ export function useSettingsSection(
   const [drawer, setDrawer] = useState<SettingsDrawerState>(null);
   // Every way into a section (the list, search, a link) mounts it on its first visit.
   if (!visited.includes(section)) setVisited([...visited, section]);
-  useEffect(() => storeLastSection(section), [section]);
 
   /** Shows a section, then runs `then`; staying on the shown section never asks. */
   const navigate = useCallback(
