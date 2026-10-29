@@ -5,6 +5,15 @@ import { folderChip, type AttachedChip } from '../features/composer-editor/draft
 import { onImportedFiles, type ImportedFiles } from '../lib/imported-files';
 import { showErrorToast } from './toast-store';
 
+/** Shows one toast per item the host refused, naming it and saying why. */
+export function reportImportFailures(
+  failures: ImportedFiles['failures'],
+  t: TFunction<'panel'>,
+): void {
+  for (const { name, reason } of failures)
+    showErrorToast(t(`composer.importFailed.${reason}`, { name }));
+}
+
 /**
  * Takes one batch the host imported or registered: each refused item reports why, and the files
  * and folders go through `attach`, the composer's path for picked files, so the same limits apply.
@@ -14,8 +23,7 @@ export function receiveImported(
   attach: (chips: AttachedChip[]) => void,
   t: TFunction<'panel'>,
 ): void {
-  for (const { name, reason } of failures)
-    showErrorToast(t(`composer.importFailed.${reason}`, { name }));
+  reportImportFailures(failures, t);
   const chips: AttachedChip[] = [
     ...files.map((file): AttachedChip => ({ kind: 'file', file })),
     ...folders.map(folderChip),

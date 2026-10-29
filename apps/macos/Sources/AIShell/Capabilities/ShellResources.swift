@@ -61,15 +61,11 @@ final class AttachmentImporter {
     if drop.event != before { panel?.setState(.filesDrag(drop.event)) }
   }
 
-  /// `files.pick`: the chooser's files as the page's refs; none when cancelled. A pick whose
-  /// every file was refused fails with the first reason.
-  func pick() async throws(BridgeError) -> [FileRef] {
-    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else { return [] }
-    let response = try await importPaths(urls)
-    if response.imported.isEmpty, let failure = response.failures.first {
-      throw BridgeError(failure.message)
-    }
-    return response.imported.map { FileRef($0.resource) }
+  /// `files.pick`: the service's import of the chooser's files, each stored or refused with its
+  /// reason, so every refused file can be reported; empty when cancelled.
+  func pick() async throws(BridgeError) -> ResourceImportResponse {
+    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else { return .empty }
+    return try await importPaths(urls)
   }
 
   /// `files.pickFolder`: the chosen folders registered as the page's refs; both lists are

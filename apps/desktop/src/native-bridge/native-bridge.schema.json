@@ -6180,7 +6180,7 @@
     },
     "FilesPickResult": {
       "type": "object",
-      "required": ["resources"],
+      "required": ["resources", "failures"],
       "properties": {
         "resources": {
           "type": "array",
@@ -6205,6 +6205,45 @@
               "type": {
                 "type": "string",
                 "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "unreadable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unsupported"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "notDirectory"
+                  },
+                  {
+                    "type": "string",
+                    "const": "forbidden"
+                  }
+                ]
               }
             },
             "additionalProperties": false

@@ -60,8 +60,8 @@ export interface CommandCatalog {
 
 /** What only the host can do: native pickers, clipboard, links and artifact operations. */
 export interface AgentPlatform {
-  /** Lets the user pick files and uploads them; resolves `[]` when cancelled. */
-  chooseFiles(http: AgentHttpClient): Promise<FileRef[]>;
+  /** Lets the user pick files and imports them; both lists are empty when cancelled. */
+  chooseFiles(http: AgentHttpClient): Promise<CallResult<'files.pick'>>;
   copy(text: string): Promise<void>;
   /** Writes a command's answer into the app it ran from; a refusal resolves with its reason. */
   writeText(request: CallParams<'text.write'>): Promise<CallResult<'text.write'>>;

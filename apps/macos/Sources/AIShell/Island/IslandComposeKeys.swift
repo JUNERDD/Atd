@@ -7,9 +7,9 @@ import Carbon.HIToolbox
 struct ComposeAttachments {
   /// The capture `screenshot.capture` runs, under its conditions.
   let screenshot: () async throws(BridgeError) -> ScreenshotCaptureResult
-  /// The chooser and import `files.pick` runs: the chosen files as resources, none when
-  /// cancelled.
-  let pickFiles: () async throws(BridgeError) -> [FileRef]
+  /// The chooser and import `files.pick` runs: the service's answer for the chosen files, each
+  /// stored or refused with its reason, empty when cancelled.
+  let pickFiles: () async throws(BridgeError) -> ResourceImportResponse
   /// Opens Privacy & Security › Screen & System Audio Recording, as the welcome guide does.
   let openScreenRecordingSettings: () -> Void
 }
@@ -113,9 +113,10 @@ extension CommandProgressController {
     case screenshot, files
   }
 
-  /// What an attachment brought: files to add, a note in their place, or nothing (cancelled).
+  /// What an attachment brought: files to add, with a note when some chosen files were refused;
+  /// a note in their place; or nothing (cancelled).
   private enum Attached {
-    case files([FileRef])
+    case files([FileRef], refused: ComposeDraft.Note? = nil)
     case note(ComposeDraft.Note)
     case nothing
   }
@@ -159,7 +160,10 @@ extension CommandProgressController {
       attaching = false
       guard state.isComposing, state.shown?.target == target else { return }
       switch attached {
-      case .files(let files): island.model.compose.attach(files)
+      case .files(let files, let refused):
+        island.model.compose.attach(files)
+        // A refused file's note takes the place of the one attaching leaves.
+        if let refused { island.model.compose.note = refused }
       case .note(let note): island.model.compose.note = note
       case .nothing: break
       }
@@ -179,8 +183,12 @@ extension CommandProgressController {
           return refused.reason == .notPermitted ? .note(.screenRecording) : .nothing
         }
       case .files:
-        let files = try await attachments.pickFiles()
-        return files.isEmpty ? .nothing : .files(files)
+        let response = try await attachments.pickFiles()
+        let files = response.imported.map { FileRef($0.resource) }
+        // The card has one note: the first refused file's reason, in the service's words.
+        let refused = response.failures.first.map { ComposeDraft.Note.failed($0.message) }
+        if files.isEmpty { return refused.map { .note($0) } ?? .nothing }
+        return .files(files, refused: refused)
       }
     } catch {
       return .note(.failed(error.message))

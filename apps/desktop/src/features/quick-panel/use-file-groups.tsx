@@ -5,6 +5,7 @@ import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import type { AgentTask, FileRef } from '../../client/agent/task-schema';
 import { FILE_KIND_ICONS } from '../../lib/file-kinds';
 import { showErrorToast } from '../../components/toast-store';
+import { reportImportFailures } from '../../components/use-imported-files';
 import { fileSize } from '../../lib/file-size';
 import { agentApi } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
@@ -161,7 +162,12 @@ export function useFileGroups({
     title: t('quickPanel.files.browse'),
     description: full ? limitReason : (searchOff ?? t('quickPanel.files.browseDescription')),
     disabled: full,
-    select: () => pick('browse', () => agentApi().chooseFiles()),
+    select: () =>
+      pick('browse', async () => {
+        const { resources, failures } = await agentApi().chooseFiles();
+        reportImportFailures(failures, t);
+        return resources;
+      }),
   };
   return {
     lists: [

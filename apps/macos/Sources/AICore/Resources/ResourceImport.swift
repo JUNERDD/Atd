@@ -89,6 +89,28 @@ extension ResourcesImportedEvent.Failure.Reason {
   }
 }
 
+extension FilesPickResult {
+  /// `files.pick`'s answer for the picked files' import: the stored files and, for refused
+  /// paths, the basename only.
+  public init(_ response: ResourceImportResponse) {
+    self.init(
+      resources: response.imported.map { FileRef($0.resource) },
+      failures: response.failures.map {
+        Failure(name: AttachmentRules.basename($0.path), reason: Failure.Reason($0.reason))
+      })
+  }
+}
+
+extension FilesPickResult.Failure.Reason {
+  init(_ reason: ResourceImportFailureReason) {
+    switch reason {
+    case .unreadable: self = .unreadable
+    case .unsupported: self = .unsupported
+    case .tooLarge: self = .tooLarge
+    }
+  }
+}
+
 /// The shell's part of the attachment rules (packages/agent-contracts/src/attachments.ts): how
 /// many paths one import carries. Every regular file is attachable, whatever its format, so the
 /// shell filters none; the service applies the size limit (`MAX_ATTACHMENT_BYTES`) to the file it

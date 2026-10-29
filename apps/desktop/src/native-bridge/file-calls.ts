@@ -23,10 +23,6 @@ export const NativeFileRefSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-const Resources = Type.Object(
-  { resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }) },
-  { additionalProperties: false },
-);
 
 /**
  * Mirrors agent-contracts `FolderRefSchema`: a folder the shell registered through
@@ -101,8 +97,21 @@ export const NativeFileCalls = {
     ),
     result: NativeFileRefSchema,
   },
-  /** Open panel for attachments, imported through `/v1/resources/import`; `[]` when cancelled. */
-  'files.pick': { params: Empty, result: Resources },
+  /**
+   * Open panel for attachments (regular files, multiple selection), imported through
+   * `/v1/resources/import`: each imported file is in `resources`, each refused one in
+   * `failures`; both are empty when the user cancelled.
+   */
+  'files.pick': {
+    params: Empty,
+    result: Type.Object(
+      {
+        resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
+        failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+      },
+      { additionalProperties: false },
+    ),
+  },
   /**
    * Open panel for folders (directories only, multiple selection), registered through
    * `/v1/folders/register`. Every pick lands in `folders` or `failures`; both are empty when the

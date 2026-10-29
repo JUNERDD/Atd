@@ -18,6 +18,7 @@ import { RunOutputField } from './run-output-field';
 import { agentApi } from './use-agent';
 import { FileKindIcon } from '../../components/file-kind-icon';
 import { showErrorToast } from '../../components/toast-store';
+import { reportImportFailures } from '../../components/use-imported-files';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
 import { isImageMime, type CommandOutput } from '@atd/agent-contracts';
@@ -165,10 +166,11 @@ export function CommandInput({
                   onClick={() => {
                     void agentApi()
                       .chooseFiles()
-                      .then((files) => {
-                        if (input.files.length + files.length > 10)
+                      .then(({ resources, failures }) => {
+                        reportImportFailures(failures, t);
+                        if (input.files.length + resources.length > 10)
                           throw new Error(t('input.attachLimit'));
-                        onChange({ ...input, files: [...input.files, ...files] });
+                        onChange({ ...input, files: [...input.files, ...resources] });
                       })
                       .catch((error) => showErrorToast(error));
                   }}

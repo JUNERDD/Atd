@@ -4,6 +4,46 @@
 
 import Foundation
 
+/// Params of the `text.write` call.
+public struct TextWriteParams: Codable, Equatable, Sendable {
+  public let target: String
+  public let mode: Mode
+  public let text: String
+  public let typing: Bool
+  public let animation: Bool
+
+  public init(target: String, mode: Mode, text: String, typing: Bool, animation: Bool) {
+    self.target = target
+    self.mode = mode
+    self.text = text
+    self.typing = typing
+    self.animation = animation
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
+    mode = try container.value(.mode, Mode.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+    typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case target
+    case mode
+    case text
+    case typing
+    case animation
+  }
+
+  public enum Mode: String, Codable, Equatable, Sendable {
+    case selection
+    case afterSelection
+    case cursor
+  }
+}
+
 /// Result of the `text.write` call.
 public enum TextWriteResult: Codable, Equatable, Sendable {
   case ok(Ok)
