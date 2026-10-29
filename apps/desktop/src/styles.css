@@ -81,6 +81,9 @@ body {
 .panel-header h1 {
   flex: 1;
   min-width: 0;
+  /* Where the title text starts in every view, so opening a conversation swaps in its rename
+     button without moving the text. */
+  padding-left: 5px;
   overflow: hidden;
   font-size: 14px;
   font-weight: 500;
@@ -89,25 +92,27 @@ body {
   white-space: nowrap;
 }
 /* A task's title renames in place (`PanelTitle`). The button and the field share one box: 28px
-   tall with an 8px text inset, pulled 4px toward the logo so the text moves only 4px while the
-   hover wash stays clear of the logo button. The button hugs its title and leaves the rest of the
-   header to the window drag; the field fills the row while it is open. Both truncate on their
-   own, so the heading stops clipping, which would cut the pulled edge off their fill. */
+   tall with an 8px text inset inside their 1px border, pulled back by those 9px so their text
+   starts where the plain titles of the other views do. The box then reaches 4px past the heading,
+   up to the logo button, so its hover wash stays clear of the logo. The button hugs its title and
+   leaves the rest of the header to the window drag; the field fills the row while it is open.
+   Both truncate on their own, so the heading stops clipping, which would cut the pulled edge off
+   their fill. */
 .panel-header h1:has(> .panel-title-button, > .panel-title-field) {
   overflow: visible;
 }
 .panel-title-button,
 .panel-title-field {
   height: 28px;
-  margin-left: -4px;
+  margin-left: -9px;
   padding-inline: 8px;
 }
 .panel-title-button {
-  max-width: calc(100% + 4px);
+  max-width: calc(100% + 9px);
   justify-content: flex-start;
 }
 .panel-title-field {
-  width: calc(100% + 4px);
+  width: calc(100% + 9px);
   font-weight: 500;
 }
 
