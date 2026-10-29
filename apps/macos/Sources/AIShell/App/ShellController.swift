@@ -251,7 +251,7 @@ public final class ShellController {
     screenRecording.start()
     StaleGrantRecovery.start(
       defaults: defaults, accessibility: trust, screenRecording: screenRecording)
-    presence.applyDockVisibility(onboardingOpen: onboarding.host != nil)
+    presence.applyDockVisibility(windowOpen: keepsDockIcon)
     applyLanguage()
     NotificationCenter.default.addObserver(
       forName: ShellStrings.didChange, object: nil, queue: .main
@@ -319,8 +319,12 @@ public final class ShellController {
   }
 
   func setShowInDock(_ show: Bool) {
-    presence.setShowInDock(show, onboardingOpen: onboarding.host != nil)
+    presence.setShowInDock(show, windowOpen: keepsDockIcon)
   }
+
+  /// The welcome guide and the settings window show the Dock icon while open, so the Dock and
+  /// Command-Tab reach them whatever the preference.
+  var keepsDockIcon: Bool { onboarding.host != nil || settings.isOpen }
 
   /// `openAtLogin` is null where it is unavailable (Debug builds); `widgetsAvailable` is false
   /// outside the folders macOS indexes for widgets (``WidgetPlacement``).

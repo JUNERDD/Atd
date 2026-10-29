@@ -88,7 +88,8 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     controller?.cancelShortcutRecordings()
   }
 
-  /// A Dock click or Finder reopen returns to the welcome guide while it is open.
+  /// A Dock click or Finder reopen returns to the welcome guide or the settings window while one
+  /// is open.
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
   {
     controller?.reopen()

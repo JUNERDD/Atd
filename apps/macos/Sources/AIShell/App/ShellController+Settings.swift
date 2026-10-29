@@ -8,10 +8,15 @@ extension ShellController {
   func openSettings(commandId: String?, section: String?) {
     // The settings window would activate and order in against the capture overlays.
     guard !screenshots.isCapturing else { return }
+    settings.onOpenChange = { [weak self] in self?.settingsOpenChanged() }
     settings.open(
       fragment: SettingsWindowController.fragment(commandId: commandId, section: section),
       title: ShellStrings.shared.text(.windowSettingsTitle))
   }
 
   func closeSettings() { settings.close() }
+
+  private func settingsOpenChanged() {
+    presence.applyDockVisibility(windowOpen: keepsDockIcon, restoreFocus: settings.isOpen)
+  }
 }
