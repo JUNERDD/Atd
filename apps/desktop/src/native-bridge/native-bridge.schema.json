@@ -3886,22 +3886,76 @@
               "const": "update.state"
             },
             "payload": {
-              "type": "object",
-              "required": ["version"],
-              "properties": {
-                "version": {
-                  "anyOf": [
-                    {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["phase"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "idle"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version", "percent"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "downloading"
+                    },
+                    "version": {
                       "type": "string",
                       "maxLength": 64
                     },
-                    {
-                      "type": "null"
+                    "percent": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
-                  ]
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "preparing"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "ready"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "additionalProperties": false
+              ]
             }
           },
           "additionalProperties": false
@@ -8428,22 +8482,76 @@
       "additionalProperties": false
     },
     "UpdateStateEvent": {
-      "type": "object",
-      "required": ["version"],
-      "properties": {
-        "version": {
-          "anyOf": [
-            {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["phase"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "idle"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version", "percent"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "downloading"
+            },
+            "version": {
               "type": "string",
               "maxLength": 64
             },
-            {
-              "type": "null"
+            "percent": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
-          ]
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "preparing"
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "ready"
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
         }
-      },
-      "additionalProperties": false
+      ]
     },
     "ComputerStateEvent": {
       "type": "object",

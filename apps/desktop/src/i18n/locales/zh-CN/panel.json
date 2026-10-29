@@ -8,6 +8,9 @@
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
+    "updateDownloading": "正在下载 {{version}} 版本…",
+    "updateDownloadingPercent": "正在下载 {{version}} 版本 · {{percent}}%",
+    "updatePreparing": "正在准备 {{version}} 版本…",
     "loadingConversation": "正在加载对话…"
   },
   "find": {

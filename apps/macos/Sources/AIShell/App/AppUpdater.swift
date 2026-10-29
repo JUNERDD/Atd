@@ -9,42 +9,54 @@ import Sparkle
 /// instead (``feedURLString(for:)``). `release.yml` signs that dmg with the key `SUPublicEDKey`
 /// names, and the EdDSA signature is what authorizes an update, since the self-signed release
 /// certificate proves no identity.
-/// Info.plist turns on scheduled checks without asking and silent downloads, so a newer version
-/// downloads in the background and installs when the app quits. Once one waits,
-/// ``readyVersion`` names it and ``installNow()`` installs it and relaunches.
+/// Info.plist turns on hourly scheduled checks without asking. A newer version found that way
+/// downloads in the background through ``UpdateUserDriver``, which reports its progress as
+/// ``state`` and leaves it to install when the app quits; ``installNow()`` installs it at once
+/// and relaunches. Info.plist also turns off Sparkle's own silent automatic downloads
+/// (`SUAllowsAutomaticUpdates`), which report no progress and would bypass that driver.
 ///
 /// Debug builds never update: they run against `pnpm dev`, and a release would replace them.
 final class AppUpdater: NSObject {
-  /// The version of the downloaded update waiting to install, or nil.
-  private(set) var readyVersion: String?
-  /// Runs after ``readyVersion`` changes.
+  /// Where the update stands, as the panel shows it.
+  var state: UpdateStateEvent { driver?.state ?? .idle(.init()) }
+  /// Runs after ``state`` changes.
   var onChange: (() -> Void)?
-  private var controller: SPUStandardUpdaterController?
-  /// Sparkle's handler for the waiting update. It terminates the app through
-  /// `applicationShouldTerminate`, so the quit guard still asks about running tasks, and it may
-  /// run again after a quit was cancelled.
-  private var installHandler: (() -> Void)?
+  private var updater: SPUUpdater?
+  private var driver: UpdateUserDriver?
   /// The feed last written to the log by ``feedURLString(for:)``.
   private var loggedFeed: String?
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "updates")
 
   /// Starts the updater, which checks at once when the last check is older than its interval.
+  /// An updater that cannot start, which only a configuration error causes, is logged and leaves
+  /// the build without updates.
   func start() {
     #if !DEBUG
-      controller = SPUStandardUpdaterController(
-        startingUpdater: true, updaterDelegate: self, userDriverDelegate: self)
+      let driver = UpdateUserDriver(
+        standard: SPUStandardUserDriver(hostBundle: .main, delegate: self))
+      driver.onChange = { [weak self] in self?.onChange?() }
+      let updater = SPUUpdater(
+        hostBundle: .main, applicationBundle: .main, userDriver: driver, delegate: self)
+      do {
+        try updater.start()
+      } catch {
+        Self.log.fault("updater failed to start: \(error.localizedDescription, privacy: .public)")
+        return
+      }
+      self.driver = driver
+      self.updater = updater
     #endif
   }
 
   /// Whether this build updates, and so offers Check for Updates.
-  var isAvailable: Bool { controller != nil }
+  var isAvailable: Bool { updater != nil }
 
-  /// A check the user asked for, with Sparkle's own progress and result windows. A waiting
-  /// update shows as ready to install. Does nothing in a build that never updates.
+  /// A check the user asked for, with Sparkle's own progress and result windows. An update
+  /// already downloading or ready moves into them. Does nothing in a build that never updates.
   func checkForUpdates() {
-    guard let controller else { return }
+    guard let updater else { return }
     NSApp.activate()
-    controller.checkForUpdates(nil)
+    updater.checkForUpdates()
   }
 
   /// The running build as the settings window's About page shows it.
@@ -55,8 +67,10 @@ final class AppUpdater: NSObject {
       build: info["CFBundleVersion"] as? String ?? "", updates: isAvailable)
   }
 
+  /// Installs the ready update and relaunches through `applicationShouldTerminate`, so the quit
+  /// guard still asks about running tasks; after a cancelled quit it asks again.
   func installNow() {
-    installHandler?()
+    driver?.installNow()
   }
 }
 
@@ -102,18 +116,6 @@ extension AppUpdater: SPUUpdaterDelegate {
     var value: Int32 = 0
     var size = MemoryLayout<Int32>.size
     return sysctlbyname("sysctl.proc_translated", &value, &size, nil, 0) == 0 && value == 1
-  }
-
-  /// A silently downloaded update is ready. Returning true keeps Sparkle from announcing it: the
-  /// panel offers the restart instead, and a quit installs it either way.
-  func updater(
-    _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
-    immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
-  ) -> Bool {
-    installHandler = immediateInstallHandler
-    readyVersion = item.displayVersionString
-    onChange?()
-    return true
   }
 }
 

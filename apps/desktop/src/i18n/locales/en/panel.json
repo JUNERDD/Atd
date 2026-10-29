@@ -8,6 +8,9 @@
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
+    "updateDownloading": "Downloading version {{version}}…",
+    "updateDownloadingPercent": "Downloading version {{version}} · {{percent}}%",
+    "updatePreparing": "Preparing version {{version}}…",
     "loadingConversation": "Loading conversation…"
   },
   "find": {

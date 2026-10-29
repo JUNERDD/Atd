@@ -35,7 +35,8 @@ public final class ShellController {
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
-  /// Release builds' Sparkle updater; a waiting update reaches the panel as `update.state`.
+  /// Release builds' Sparkle updater; its download and a waiting update reach the panel as
+  /// `update.state`.
   let updater = AppUpdater()
   let quitGuard: QuitGuard
   /// Accessibility trust; every page learns it as `accessibility.trust`.
@@ -177,7 +178,7 @@ public final class ShellController {
     }
     updater.onChange = { [weak self] in
       guard let self else { return }
-      panelHost.setState(.updateState(.init(version: updater.readyVersion)))
+      panelHost.setState(.updateState(updater.state))
     }
     panel.onVisibilityChange = { [weak self, weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
