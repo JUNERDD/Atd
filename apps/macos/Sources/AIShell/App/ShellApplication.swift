@@ -25,8 +25,8 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   private var launchedAtLogin = false
   /// Files opened while launching, before the controller exists.
   private var openedBeforeLaunch: [URL] = []
-  /// Widget taps that launched the app: on a cold start the URL arrives before
-  /// `applicationDidFinishLaunching` (T1b).
+  /// Widget taps and Finder Sync links that launched the app: on a cold start the URL arrives
+  /// before `applicationDidFinishLaunching` (T1b).
   private var linksBeforeLaunch: [URL] = []
   /// Clicks and actions on notifications, held until the controller can act on them.
   private let notifications = NotificationResponder()
@@ -58,7 +58,7 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
         && !notifications.hasHeldResponses)
     controller.openItems(openedBeforeLaunch)
     openedBeforeLaunch = []
-    for link in linksBeforeLaunch { controller.openWidgetLink(link) }
+    for link in linksBeforeLaunch { openLink(link, in: controller) }
     linksBeforeLaunch = []
     notifications.deliver { [weak controller] in controller?.respondToNotification($0) }
   }
@@ -66,8 +66,8 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   /// Files or folders dropped on the Dock icon or opened with `open -a`, through the same import
   /// as the Finder service. While launching they arrive before the controller exists.
   ///
-  /// Any other URL is a widget link (`atd://` or `atd-dev://`), which only opens an app window
-  /// after ``WidgetLink`` accepted it.
+  /// Any other URL is the Finder Sync extension's link (``FinderHandoff``) or a widget link
+  /// (`atd://` or `atd-dev://`), which only opens an app window after ``WidgetLink`` accepted it.
   func application(_ application: NSApplication, open urls: [URL]) {
     let files = urls.filter(\.isFileURL)
     let links = urls.filter { !$0.isFileURL }
@@ -77,7 +77,11 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
       return
     }
     controller.openItems(files)
-    for link in links { controller.openWidgetLink(link) }
+    for link in links { openLink(link, in: controller) }
+  }
+
+  private func openLink(_ link: URL, in controller: ShellController) {
+    if finderService?.openHandoff(link) != true { controller.openWidgetLink(link) }
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

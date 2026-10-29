@@ -10,17 +10,18 @@
  * - Registering an unchanged copy (`lsregister -f`, with or without `-R`, or after `touch`) does
  *   not index it again; only a bundle with new contents does. So the copy is replaced as a new
  *   bundle (removed, then `ditto`), never updated in place.
- * - The Debug build keeps its widget extension in `Contents/PlugIns/DevStaging`, where macOS does
- *   not look for extensions (project.yml `ATD_WIDGETS_EMBED_SUBPATH`). Were it in
- *   `Contents/PlugIns`, chronod would launch the DerivedData build's extension as soon as
- *   xcodebuild registers it, fail there (a sandboxed extension cannot run under `~/Documents`),
- *   and keep using that path after the build is unregistered: Atd's widgets would leave the
- *   widget gallery until chronod restarts. So only this copy gets the extension in place.
- * - The copy gets a build number of its own (`CFBundleVersion`, the app's and the extension's):
+ * - The Debug build keeps its extensions (widgets, Finder Sync) in `Contents/PlugIns/DevStaging`,
+ *   where macOS does not look for extensions (project.yml `ATD_EXTENSIONS_EMBED_SUBPATH`). Were
+ *   they in `Contents/PlugIns`, chronod would launch the DerivedData build's widget extension as
+ *   soon as xcodebuild registers it, fail there (a sandboxed extension cannot run under
+ *   `~/Documents`), and keep using that path after the build is unregistered: Atd's widgets would
+ *   leave the widget gallery until chronod restarts. So only this copy gets the extensions in
+ *   place.
+ * - The copy gets a build number of its own (`CFBundleVersion`, the app's and the extensions'):
  *   chronod reads an extension's widget list again only when its version changes, so a
  *   reinstall that kept the version would go on showing the previous build's widgets.
- * - Moving the extension and changing the build numbers break the build's signatures, so the
- *   extension and then the app are signed again with the certificate the build used (ad hoc
+ * - Moving the extensions and changing the build numbers break the build's signatures, so the
+ *   extensions and then the app are signed again with the certificate the build used (ad hoc
  *   when it had none), keeping their entitlements and the grants macOS ties to that identity.
  * - The copy is registered as trusted (`-trusted`, as xcodebuild registers its products): its new
  *   signature has never been launched, and LaunchServices would otherwise mark it
@@ -42,9 +43,11 @@ const readLog = promisify(execFile);
 const LSREGISTER =
   '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister';
 const INDEX_WAIT_MS = 10_000;
-const WIDGET_EXTENSION = 'Contents/PlugIns/AtdWidgets.appex';
-/** Where the Debug build puts the extension instead (project.yml `ATD_WIDGETS_EMBED_SUBPATH`). */
-const STAGED_WIDGET_EXTENSION = 'Contents/PlugIns/DevStaging/AtdWidgets.appex';
+const PLUGINS = 'Contents/PlugIns';
+/** Where the Debug build puts its extensions instead (project.yml `ATD_EXTENSIONS_EMBED_SUBPATH`). */
+const STAGING = 'Contents/PlugIns/DevStaging';
+const WIDGET_EXTENSION = 'AtdWidgets.appex';
+const EXTENSIONS = [WIDGET_EXTENSION, 'AtdFinderSync.appex'];
 /**
  * The widget extension's App Intents metadata. Without it linkd indexes an empty record for the
  * bundle ("aggregateMetadataIsEmpty") and every widget stays a placeholder; an incremental
@@ -53,7 +56,7 @@ const STAGED_WIDGET_EXTENSION = 'Contents/PlugIns/DevStaging/AtdWidgets.appex';
 const WIDGET_METADATA = 'Contents/Resources/Metadata.appintents/extract.actionsdata';
 
 /**
- * Replaces `installedApp` with `builtApp`, puts its widget extension in place and registers it.
+ * Replaces `installedApp` with `builtApp`, puts its extensions in place and registers it.
  * Returns `{ installed, indexed, widgetMetadata, problem }`: `problem` says why nothing was
  * installed, `indexed` resolves to null when linkd's log could not be read, and `widgetMetadata` is false
  * when the build lacks the widget extension's App Intents metadata. The caller makes sure no
@@ -61,19 +64,22 @@ const WIDGET_METADATA = 'Contents/Resources/Metadata.appintents/extract.actionsd
  */
 export async function installDevCopy({ builtApp, installedApp, bundleId, signal }) {
   if (signal?.aborted) return { installed: false, problem: 'Development session stopped.' };
-  const widgetMetadata = existsSync(path.join(builtApp, STAGED_WIDGET_EXTENSION, WIDGET_METADATA));
+  const widgetMetadata = existsSync(
+    path.join(builtApp, STAGING, WIDGET_EXTENSION, WIDGET_METADATA),
+  );
   const since = logTimestamp(new Date(Date.now() - 1000));
   spawnSync(LSREGISTER, ['-u', builtApp], { stdio: 'ignore' });
-  // WidgetKit keeps the old copy's extension process alive and keeps serving widgets from it
-  // after the bundle is replaced; end it so the next request starts the new extension.
-  spawnSync('pkill', ['-f', `${path.join(installedApp, WIDGET_EXTENSION)}/`], { stdio: 'ignore' });
+  // WidgetKit and Finder keep the old copy's extension processes alive and keep using them after
+  // the bundle is replaced; end them so the next request starts the new extensions.
+  for (const name of EXTENSIONS)
+    spawnSync('pkill', ['-f', `${path.join(installedApp, PLUGINS, name)}/`], { stdio: 'ignore' });
   rmSync(installedApp, { recursive: true, force: true });
   mkdirSync(path.dirname(installedApp), { recursive: true });
   const copy = spawnSync('ditto', [builtApp, installedApp], { stdio: 'inherit' });
   const problem =
     copy.error || copy.status !== 0
       ? `the build could not be copied to ${installedApp}`
-      : placeWidgetExtension(installedApp, signingIdentity(builtApp));
+      : placeExtensions(installedApp, signingIdentity(builtApp));
   if (problem) {
     // An unsigned or half-moved copy must not be found and registered later.
     rmSync(installedApp, { recursive: true, force: true });
@@ -90,19 +96,23 @@ export async function installDevCopy({ builtApp, installedApp, bundleId, signal 
 }
 
 /**
- * Moves the staged widget extension into `Contents/PlugIns`, gives the app and the extension a
- * new build number, signs the extension and then the app with `identity`, and checks the result.
+ * Moves the staged extensions into `Contents/PlugIns`, gives the app and the extensions a new
+ * build number, signs the extensions and then the app with `identity`, and checks the result.
  * Returns what failed, or null.
  */
-function placeWidgetExtension(app, identity) {
-  const staged = path.join(app, STAGED_WIDGET_EXTENSION);
-  const extension = path.join(app, WIDGET_EXTENSION);
-  if (!existsSync(staged)) return `the build has no widget extension in ${STAGED_WIDGET_EXTENSION}`;
-  renameSync(staged, extension);
-  rmSync(path.dirname(staged), { recursive: true, force: true });
+function placeExtensions(app, identity) {
+  const staging = path.join(app, STAGING);
+  const missing = EXTENSIONS.filter((name) => !existsSync(path.join(staging, name)));
+  if (missing.length > 0) return `the build lacks ${missing.join(', ')} in ${STAGING}`;
+  const extensions = EXTENSIONS.map((name) => {
+    const extension = path.join(app, PLUGINS, name);
+    renameSync(path.join(staging, name), extension);
+    return extension;
+  });
+  rmSync(staging, { recursive: true, force: true });
   const build = String(Math.floor(Date.now() / 1000));
-  // The extension first: the app's signature seals the extension's.
-  for (const bundle of [extension, app]) {
+  // The extensions first: the app's signature seals theirs.
+  for (const bundle of [...extensions, app]) {
     const info = path.join(bundle, 'Contents/Info.plist');
     const stamp = spawnSync('plutil', ['-replace', 'CFBundleVersion', '-string', build, info], {
       encoding: 'utf8',

@@ -7,6 +7,7 @@ included:
   - Sources
   - Tests
   - Widgets
+  - FinderSync
 file_length:
   warning: 350
   error: 350
