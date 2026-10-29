@@ -51,6 +51,7 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     let finderService = FinderService { [weak controller] urls in controller?.openItems(urls) }
     self.finderService = finderService
     NSApp.servicesProvider = finderService
+    Task { await FinderExtension.enableIfUndecided() }
     // Opened at login, the app waits in the menu bar instead of showing the panel; opened with
     // files, it shows them; opened by a widget or a notification, it shows what that asks for.
     controller.start(

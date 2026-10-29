@@ -6,8 +6,8 @@ import os
 /// The top-level Finder entry: "Add to Atd" ("Add to Atd Dev" in Debug builds) in the context
 /// menu of selected files and folders, next to Quick Actions, a place the app's Services entry
 /// (`FinderService`) cannot reach. Finder runs this sandboxed extension while it is enabled in
-/// System Settings; it observes the whole disk only so the entry shows everywhere, and badges
-/// nothing.
+/// System Settings (the app enables it once, `FinderExtension`); it observes the whole disk only
+/// so the entry shows everywhere, and badges nothing.
 ///
 /// The extension cannot read the selected items, so it hands their URLs to the containing app
 /// through ``FinderHandoff``, and the app imports them as it imports the service's.
