@@ -1,16 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  AttachableExtension,
   FileSearchQuery,
   FileSearchReply,
   FileSearchResult,
   ResourceRef,
 } from '@atd/agent-contracts';
-import { readAttachable, type AttachableFile } from '../resources/attachable-read.js';
-import type { ResourceStore } from '../resources.js';
+import { readAttachable } from '../resources/attachable-read.js';
+import type { NewResource, ResourceStore } from '../resources.js';
 import type { SearchBackend } from './backend.js';
 import { candidatesOf, rankCandidates, tooLarge, type Ranked } from './rank.js';
-import { resolveSearchScope, searchableLocation } from './scope.js';
+import { resolveSearchScope, searchableLocation, type SearchScope } from './scope.js';
 
 /** Results per reply, whatever limit the client asks for. */
 const MAX_RESULTS = 20;
@@ -23,29 +22,6 @@ const SEARCH_BUDGET_MS = 1500;
 const RESULT_TTL_MS = 10 * 60 * 1000;
 /** Live result ids across all channels; the oldest are evicted first. */
 const MAX_RESULT_IDS = 300;
-
-/** Icon family per attachable format. */
-const KINDS: Record<AttachableExtension, FileSearchResult['kind']> = {
-  txt: 'text',
-  md: 'text',
-  log: 'text',
-  csv: 'data',
-  json: 'data',
-  yaml: 'data',
-  yml: 'data',
-  xml: 'data',
-  png: 'image',
-  jpg: 'image',
-  jpeg: 'image',
-  gif: 'image',
-  webp: 'image',
-  html: 'code',
-  css: 'code',
-  ts: 'code',
-  tsx: 'code',
-  js: 'code',
-  py: 'code',
-};
 
 /** A result id that is unknown to its channel or has expired; the client searches again. */
 export class SearchResultGone extends Error {
@@ -78,7 +54,7 @@ export class FileSearchService {
 
   constructor(
     private readonly createBackend: () => SearchBackend,
-    private readonly resources: Pick<ResourceStore, 'save'>,
+    private readonly resources: Pick<ResourceStore, 'saveAll'>,
     private readonly home: string,
     private readonly platform: NodeJS.Platform,
     /** Monotonic, so wall-clock changes cannot extend or cut short a result's lifetime. */
@@ -126,26 +102,14 @@ export class FileSearchService {
   /**
    * Checks every id before touching any file, then reads each file under the attachment rules and
    * confirms its resolved path is still searchable, so a link swapped in after the search cannot
-   * reach outside the scope. Resources are stored only after every file passed; a file the rules
-   * refuse rejects with `AttachableRejected`.
+   * reach outside the scope. Each file is stored as soon as it passes, so one file at a time is
+   * held in memory, yet the resources exist only once every file passed: a file the rules refuse
+   * rejects with `AttachableRejected`, and the store removes the files stored before it.
    */
   async attach(channel: string, resultIds: string[]): Promise<ResourceRef[]> {
     const paths = resultIds.map((resultId) => this.resolve(channel, resultId));
     const scope = await resolveSearchScope(this.home, this.platform);
-    const files: AttachableFile[] = [];
-    for (const filePath of paths) {
-      const file = await readAttachable(filePath);
-      if (searchableLocation(scope, file.realPath) === null)
-        throw new AttachRefused(
-          `${file.name} is outside the searchable folders. Browse for it instead.`,
-        );
-      files.push(file);
-    }
-    // No task id: the ledger lets any later run reference the resource.
-    const stored: ResourceRef[] = [];
-    for (const { name, mime, bytes } of files)
-      stored.push(await this.resources.save({ name, mime, bytes }));
-    return stored;
+    return this.resources.saveAll(attachableFiles(paths, scope));
   }
 
   /** Aborts in-flight searches and stops the backend; later searches reject. */
@@ -180,14 +144,25 @@ export class FileSearchService {
   }
 }
 
+/** The files behind `paths` under the attachment rules; one resolved outside `scope` is refused. */
+async function* attachableFiles(paths: string[], scope: SearchScope): AsyncGenerator<NewResource> {
+  for (const filePath of paths) {
+    const { name, mime, bytes, realPath } = await readAttachable(filePath);
+    if (searchableLocation(scope, realPath) === null)
+      throw new AttachRefused(`${name} is outside the searchable folders. Browse for it instead.`);
+    // No task id: the ledger lets any later run reference the resource.
+    yield { name, mime, bytes };
+  }
+}
+
 /** Client-safe metadata: a name and a location, never the path. */
 function resultFields({ candidate, match }: Ranked): Omit<FileSearchResult, 'resultId'> {
-  const { hit, name, location, extension } = candidate;
-  const oversized = tooLarge(hit, extension);
+  const { hit, name, location, kind } = candidate;
+  const oversized = tooLarge(hit);
   return {
     name,
     location,
-    kind: KINDS[extension],
+    kind,
     size: hit.size,
     modifiedAt: hit.modifiedAt,
     usedAt: hit.usedAt,

@@ -9,8 +9,9 @@ import type { Connection, ModelReference } from '../../client/providers/schema';
  * Says that the model a run would use cannot see the attached images, when `files` hold an image
  * and that model's catalog entry lacks `image` input. `model` is the run's effective model as the
  * caller resolves it for the run (the panel's `selectedModel`); a model missing from the catalog
- * reads as unknown and shows nothing. Text attachments, such as a capture's screen context, still
- * reach the model, which the notice adds when one is attached.
+ * reads as unknown and shows nothing. Other attachments, such as a capture's screen context, still
+ * reach the model as text (their own, a document's, or a description of the file), which the
+ * notice adds when one is attached.
  */
 export function VisionNotice({
   files,

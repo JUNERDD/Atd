@@ -11,7 +11,7 @@ enum PastedImageExport {
   enum Failure: Error {
     /// The pasteboard data is not an image ImageIO can decode, or it could not be written.
     case unreadable
-    /// Even the smallest fallback is over the service's image limit.
+    /// Even the smallest fallback is over ``ScreenshotRules/maxImageBytes``.
     case tooLarge
   }
 

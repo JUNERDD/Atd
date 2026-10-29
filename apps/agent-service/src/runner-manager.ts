@@ -18,7 +18,7 @@ import { runFolders } from './folders/material.js';
 import type { FolderStore } from './folders/store.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
-import { loadRunAttachments } from './run-attachments.js';
+import { AttachmentLoads } from './run-attachments.js';
 import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
@@ -62,8 +62,10 @@ export class RunnerManager {
   private readonly acceptance: RunAcceptance;
   private readonly releases: SessionReleases;
   private readonly searcher: TaskSearch;
+  private readonly attachments: AttachmentLoads;
 
   constructor(private readonly deps: ManagerDeps) {
+    this.attachments = new AttachmentLoads(deps.resources, deps.log);
     this.acceptance = new RunAcceptance({
       ...deps,
       runner: (taskId) => this.runners.get(taskId),
@@ -143,6 +145,7 @@ export class RunnerManager {
     const run = ledger.run(taskId, runId);
     const nothingQueued = { steering: [], followUp: [] };
     if (run.status === 'queued') {
+      this.attachments.stop(runId);
       await ledger.change((data) => {
         const task = data.tasks.find((item) => item.id === taskId);
         const item = task?.runs.find((entry) => entry.id === runId);
@@ -267,9 +270,10 @@ export class RunnerManager {
   }
 
   /**
-   * Enters draining: no new runs, started runs abort, runners dispose. Queued runs never started,
-   * so they stay `queued` in the ledger: draining keeps `dispatch` from starting them now, and the
-   * next boot keeps them queued (recovery.ts) and dispatches them once the server listens.
+   * Enters draining: no new runs, started runs abort, runs loading their attachments stop, runners
+   * dispose. Queued runs never started, so they stay `queued` in the ledger: draining keeps
+   * `dispatch` from starting them now, and the next boot keeps them queued (recovery.ts) and
+   * dispatches them once the server listens.
    */
   async shutdown(): Promise<void> {
     this.draining = true;
@@ -282,6 +286,7 @@ export class RunnerManager {
           stopping.push(this.cancel(task.id, run.id).catch(() => undefined));
       }
     await Promise.allSettled(stopping);
+    this.attachments.stopAll();
     await Promise.allSettled(this.executions.values());
     // Together: capped memory reviews (memory/learner) must not add up past the native stop budget.
     const disposing = [...this.runners].map(([taskId, runner]) =>
@@ -303,12 +308,9 @@ export class RunnerManager {
 
   private async run(taskId: string, run: TaskRun): Promise<void> {
     try {
-      const attachments = await loadRunAttachments(
-        this.deps.resources,
-        run.snapshot.input.files,
-        this.deps.log,
-        taskId,
-      );
+      const attachments = await this.attachments.load(run.id, run.snapshot.input.files, taskId);
+      // Stop or shutdown ended the loading before the run started.
+      if (!attachments) return;
       const folders = () => runFolders(this.deps.folders, taskId, this.deps.log);
       await this.runnerFor(taskId).execute(run, attachments, folders);
     } catch (error) {

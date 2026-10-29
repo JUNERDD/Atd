@@ -1,7 +1,7 @@
 import type { RunPolicy } from '../../client/agent/run-policy';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, FileText, Paperclip, Shield, X } from 'lucide-react';
+import { Brain, Paperclip, Shield, X } from 'lucide-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Button } from '@atd/ui/components/button';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
@@ -16,6 +16,7 @@ import { missingScreenshot, screenshotOf } from '../../client/agent/screenshot-i
 import { ParameterField } from '../commands/parameter-field';
 import { RunOutputField } from './run-output-field';
 import { agentApi } from './use-agent';
+import { FileKindIcon } from '../../components/file-kind-icon';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
@@ -183,7 +184,12 @@ export function CommandInput({
                     {isImageMime(file.type) ? (
                       <ResourceImage file={file} variant="icon" />
                     ) : (
-                      <FileText size={16} className="shrink-0 text-muted-foreground" />
+                      <FileKindIcon
+                        name={file.name}
+                        mime={file.type}
+                        size={16}
+                        className="shrink-0 text-muted-foreground"
+                      />
                     )}
                     <span className="min-w-0 flex-1 truncate" title={file.name}>
                       {file.name}

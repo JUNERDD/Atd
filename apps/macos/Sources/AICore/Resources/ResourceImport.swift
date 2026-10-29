@@ -89,18 +89,14 @@ extension ResourcesImportedEvent.Failure.Reason {
   }
 }
 
-/// Attachment limits the shell applies before asking the service (packages/agent-contracts/src/
-/// attachments.ts). The service applies the format and size rules to the file it resolves.
+/// The shell's part of the attachment rules (packages/agent-contracts/src/attachments.ts): how
+/// many paths one import carries. Every regular file is attachable, whatever its format, so the
+/// shell filters none; the service applies the size limit (`MAX_ATTACHMENT_BYTES`) to the file it
+/// resolves and turns it into model input or a description of it.
 public enum AttachmentRules {
   /// Paths per import call (`ResourceImportRequestSchema.paths.maxItems`, `MAX_ATTACHMENTS`),
   /// which is also the most the page takes from one pick, drop or paste.
   public static let maxPathsPerImport = 10
-  /// Every attachable format (`ATTACHABLE_EXTENSIONS`): the text formats the service reads back
-  /// as run material, then the image formats it sends to the model as image input.
-  public static let extensions = [
-    "txt", "md", "csv", "json", "log", "yaml", "yml", "xml", "html", "css", "ts", "tsx", "js",
-    "py", "png", "jpg", "jpeg", "gif", "webp",
-  ]
 
   /// Node's `path.basename` for the POSIX paths the shell imports.
   public static func basename(_ path: String) -> String {

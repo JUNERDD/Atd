@@ -7,9 +7,12 @@ import { useSyncExternalStore } from 'react';
  */
 export interface FileDrag {
   phase: 'over' | 'importing' | 'none';
-  /** Dragged files; 0 outside `over`. */
+  /** Dragged files and folders; 0 outside `over`. */
   files: number;
-  /** Files of an attachable format among those the drop imports (its first 10). */
+  /**
+   * What the drop's import takes: its first 10 files, of any format, and its first 10 folders.
+   * At least 1 during `over`, since the shell reports only a drag that carries one; 0 otherwise.
+   */
   attachable: number;
 }
 

@@ -56,28 +56,25 @@ final class ShellWebView: WindowDraggingWebView {
   }
 
   /// The file drag over the view, read when it entered; nil for any other drag, which WebKit
-  /// handles. A drag with nothing attachable is refused, so the cursor says so before the drop.
+  /// handles. Every file drag is accepted: its import takes any file and any folder, so the
+  /// summary tells the page how much of it a drop attaches, never that it attaches nothing.
   private var fileDrag: FileDragSummary? {
     didSet { if fileDrag != oldValue { onFileDrag?(fileDrag) } }
-  }
-
-  private var fileDragOperation: NSDragOperation {
-    (fileDrag?.attachable ?? 0) > 0 ? .copy : []
   }
 
   override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
     let files = droppedFiles(sender)
     guard onFiles != nil, !files.isEmpty else { return super.draggingEntered(sender) }
     fileDrag = FileDragSummary(items: files.map(ImportItem.init(fileURL:)))
-    return fileDragOperation
+    return .copy
   }
 
   override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
     guard fileDrag != nil else { return super.draggingUpdated(sender) }
-    return fileDragOperation
+    return .copy
   }
 
-  /// Sent when the drag leaves, is cancelled, or is released while refused.
+  /// Sent when the drag leaves or is cancelled.
   override func draggingExited(_ sender: (any NSDraggingInfo)?) {
     guard fileDrag != nil else { return super.draggingExited(sender) }
     fileDrag = nil
@@ -85,8 +82,7 @@ final class ShellWebView: WindowDraggingWebView {
 
   override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
     guard fileDrag != nil else { return super.prepareForDragOperation(sender) }
-    if fileDragOperation.isEmpty { fileDrag = nil }
-    return !fileDragOperation.isEmpty
+    return true
   }
 
   /// The import starts before the drag is cleared, so the page goes from `over` to `importing`.

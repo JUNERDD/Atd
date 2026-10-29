@@ -207,9 +207,10 @@ export const NativeEvents = {
   /**
    * The panel's file drop, a state the shell replays: `over` while files are dragged over the
    * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
-   * dragged items, folders included; `attachable` counts those of the drop's import (at most 10
-   * files and 10 folders) that it would take: files with an attachable format, and folders. Both
-   * are 0 outside `over`.
+   * dragged items, folders included; `attachable` counts those the drop's import would take: its
+   * first 10 files, of any format, and its first 10 folders. The shell reports only a drag that
+   * carries a file or folder, so `attachable` is at least 1 during `over`; the service may still
+   * refuse a file after the drop. Both are 0 outside `over`.
    */
   'files.drag': Type.Object(
     {

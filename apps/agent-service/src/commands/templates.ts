@@ -1,8 +1,7 @@
 import {
   actsOnSelection,
-  attachableExtension,
+  attachmentMime,
   instructionTokenProblem,
-  isImageExtension,
   isImageMime,
   readsSelection,
   type CommandInput,
@@ -167,9 +166,7 @@ export function defaultArguments(
 
 /** Whether an attached file is an image, by the media type it carries or else its name. */
 function isImageFile(file: { name: string; type: string }): boolean {
-  if (isImageMime(file.type)) return true;
-  const extension = attachableExtension(file.name);
-  return extension !== undefined && isImageExtension(extension);
+  return isImageMime(file.type) || isImageMime(attachmentMime(file.name));
 }
 
 export interface ResolveInput {

@@ -4,6 +4,7 @@ import {
   CapabilityReplyRequestSchema,
   ConfirmReplyRequestSchema,
   errorMessage,
+  MAX_ATTACHMENT_BYTES,
   parse,
   PROTOCOL_VERSION,
   QueueMessageRequestSchema,
@@ -254,15 +255,26 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     },
   );
 
-  app.post('/v1/resources', RENDERER_ROUTE, async (request) => {
-    const query = request.query as { name?: unknown; mime?: unknown };
-    const name = typeof query.name === 'string' && query.name ? query.name : 'upload.bin';
-    const mime =
-      typeof query.mime === 'string' && query.mime ? query.mime : 'application/octet-stream';
-    if (!Buffer.isBuffer(request.body)) throw new TypeError('Invalid data: body must be bytes.');
-    const resource = await deps.resources.save({ name, mime, bytes: new Uint8Array(request.body) });
-    return { resource };
-  });
+  // Pasted text the composer turns into a file may be as large as any attachment. The token is
+  // checked before the body is read, so only an authorized client can make the service buffer one.
+  app.post(
+    '/v1/resources',
+    {
+      ...RENDERER_ROUTE,
+      bodyLimit: MAX_ATTACHMENT_BYTES,
+      onRequest: async (request) => authorize(request, deps.config.token),
+    },
+    async (request) => {
+      const query = request.query as { name?: unknown; mime?: unknown };
+      const name = typeof query.name === 'string' && query.name ? query.name : 'upload.bin';
+      const mime =
+        typeof query.mime === 'string' && query.mime ? query.mime : 'application/octet-stream';
+      if (!Buffer.isBuffer(request.body)) throw new TypeError('Invalid data: body must be bytes.');
+      // Stored as parsed: a copy would hold the upload in memory twice.
+      const resource = await deps.resources.save({ name, mime, bytes: request.body });
+      return { resource };
+    },
+  );
 
   app.post('/v1/admin/shutdown', SHELL_ROUTE, async (_request, reply) => {
     void reply.send({ ok: true });

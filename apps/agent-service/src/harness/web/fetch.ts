@@ -108,7 +108,7 @@ async function readResponse(
   const mime = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? '';
   const responseUrl = response.url || url;
   if (isPdf(responseUrl, mime))
-    return readablePdf(web, await readBody(response, MAX_PDF_BYTES), responseUrl, signal);
+    return readablePdf(await readBody(response, MAX_PDF_BYTES), responseUrl, signal);
   const isHtml = mime === 'text/html' || mime === 'application/xhtml+xml';
   if (!isHtml && !isTextual(mime)) {
     await response.body?.cancel();

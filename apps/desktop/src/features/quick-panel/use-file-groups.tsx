@@ -1,19 +1,9 @@
 import { useState } from 'react';
-import {
-  FileBraces,
-  FileCode,
-  FileImage,
-  FileSearch,
-  FileText,
-  FolderOpen,
-  History,
-  Paperclip,
-  type LucideIcon,
-} from 'lucide-react';
+import { FileSearch, FolderOpen, History, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
-import type { FileSearchResult } from '@atd/agent-contracts';
 import type { AgentTask, FileRef } from '../../client/agent/task-schema';
+import { FILE_KIND_ICONS } from '../../lib/file-kinds';
 import { showErrorToast } from '../../components/toast-store';
 import { fileSize } from '../../lib/file-size';
 import { agentApi } from '../agent/use-agent';
@@ -25,12 +15,6 @@ import { useFileSearch } from './use-file-search';
 /** Run input limit (`InputSchema.files`), counted over the draft's file chips. */
 const ATTACHMENT_LIMIT = 10;
 const RECENT_ATTACHED_LIMIT = 3;
-const KIND_ICONS: Record<FileSearchResult['kind'], LucideIcon> = {
-  text: FileText,
-  code: FileCode,
-  data: FileBraces,
-  image: FileImage,
-};
 /** Main names iCloud Drive results from their own root; every other location is home-relative. */
 const ICLOUD = 'iCloud Drive';
 
@@ -67,10 +51,11 @@ function locationLabel(location: string): string {
 /**
  * The `@` file sources (plan 1.9): recently attached and recently used files for an empty query,
  * system search matches for a query, and the "Browse files…" row, which the list keeps last and
- * which reuses the system picker to insert one chip per chosen file. When the system search is
- * off or failed, the "Browse files…" row says why. Rows grey out, with the reason, for files over
- * 1 MB and once the draft already carries ten attachments. While a pick uploads, further picks are
- * ignored rather than disabled, so the active row does not jump.
+ * which reuses the system picker to insert one chip per chosen file, of any format. When the
+ * system search is off or failed, the "Browse files…" row says why. Rows grey out, with the
+ * reason, for files over the attachment size limit (`MAX_ATTACHMENT_BYTES`) and once the draft
+ * already carries ten attachments. While a pick uploads, further picks are ignored rather than
+ * disabled, so the active row does not jump.
  */
 export function useFileGroups({
   enabled,
@@ -136,7 +121,7 @@ export function useFileGroups({
     search.status !== 'ready'
       ? []
       : search.results.map((result): QuickOption => {
-          const Icon = KIND_ICONS[result.kind];
+          const Icon = FILE_KIND_ICONS[result.kind];
           const reason = full
             ? limitReason
             : result.reason === 'tooLarge'

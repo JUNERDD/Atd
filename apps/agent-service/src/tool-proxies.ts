@@ -1,14 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { isUtf8 } from 'node:buffer';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { TSchema } from 'typebox';
 import {
   createEditToolDefinition,
-  createReadToolDefinition,
   createWriteToolDefinition,
-  detectSupportedImageMimeTypeFromFile,
   type EditOperations,
   type ExtensionFactory,
-  type ReadOperations,
   type SessionManager,
   type ToolDefinition,
   type WriteOperations,
@@ -26,6 +25,7 @@ import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
+import { loaderReadTool, resourceHints } from './file-loader/read-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { inGrantedFolder } from './folders/access.js';
 import { createGate } from './harness/gate.js';
@@ -98,9 +98,9 @@ export interface ToolInvocation {
 
 /**
  * Resolves the real path one file operation may touch, or throws to refuse it. The parent and
- * every subagent child build pi's file tools from the same operations and differ only here: the
- * parent confines to the data directory inside a tool invocation, a child decides through
- * `checkChildPath` (subagents/child-tools.ts).
+ * every subagent child build pi's file tools from the same operations (read from
+ * file-loader/read-tool.ts) and differ only here: the parent confines to the data directory inside
+ * a tool invocation, a child decides through `checkChildPath` (subagents/child-tools.ts).
  */
 export type ResolvePath = (target: string) => Promise<string>;
 
@@ -110,28 +110,25 @@ export type WriteResolved = (real: string, content: string) => Promise<void>;
 const plainWrite: WriteResolved = (real, content) => writeFile(real, content);
 
 /**
- * pi's read operations on confined paths. An image is detected by its content, so the read returns
- * it as image input (fitted to the model's limits) instead of its bytes as text.
+ * pi's edit operations: reads resolve as readable, the rewrite as writable. Edit changes only
+ * UTF-8 text: pi decodes and rewrites the file as UTF-8, which would replace a file in another
+ * encoding (or one `read` showed as converted text) with mojibake.
  */
-export function readOperations(readable: ResolvePath): ReadOperations {
-  return {
-    readFile: async (target) => readFile(await readable(target)),
-    access: async (target) => {
-      await stat(await readable(target));
-    },
-    detectImageMimeType: async (target) =>
-      detectSupportedImageMimeTypeFromFile(await readable(target)),
-  };
-}
-
-/** pi's edit operations: reads resolve as readable, the rewrite as writable. */
 export function editOperations(
   readable: ResolvePath,
   writable: ResolvePath,
   write: WriteResolved = plainWrite,
 ): EditOperations {
   return {
-    readFile: async (target) => readFile(await readable(target)),
+    readFile: async (target) => {
+      const real = await readable(target);
+      const bytes = await readFile(real);
+      if (!isUtf8(bytes))
+        throw new Error(
+          `${path.basename(real)} is not UTF-8 text; edit changes only UTF-8 text files. Write a new file instead.`,
+        );
+      return bytes;
+    },
     writeFile: async (target, content) => write(await writable(target), content),
     access: async (target) => {
       await stat(await readable(target));
@@ -299,12 +296,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   );
 
   return (pi) => {
-    pi.registerTool(
-      controlled(
-        createReadToolDefinition(host.cwd, { operations: readOperations(readable(readRoots)) }),
-        'read',
-      ),
+    const read = loaderReadTool(
+      host.cwd,
+      readable(readRoots),
+      resourceHints(host.taskResources, host.cwd),
     );
+    pi.registerTool(controlled(read, 'read'));
     pi.registerTool(controlled(createEditToolDefinition(host.cwd, { operations: edits }), 'edit'));
     pi.registerTool(
       controlled(createWriteToolDefinition(host.cwd, { operations: writes }), 'write'),

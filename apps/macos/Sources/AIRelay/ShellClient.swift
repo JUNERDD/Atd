@@ -24,8 +24,9 @@ public nonisolated struct ShellClient: Sendable {
     try RouteManifest.decode(try await send("GET", RelayPolicy.manifestPath).data)
   }
 
-  /// `POST /v1/resources/import { paths }`: the service reads each file under its attachable
-  /// rules and stores it as a resource. Each path succeeds or fails on its own.
+  /// `POST /v1/resources/import { paths }`: the service stores each path's regular file, of any
+  /// format, as a resource within its size limit (`MAX_ATTACHMENT_BYTES`). Each path succeeds or
+  /// fails on its own.
   public func importResources(paths: [String]) async throws -> ResourceImportResponse {
     guard (1...10).contains(paths.count), paths.allSatisfy({ $0.hasPrefix("/") }) else {
       throw ShellClientError.invalidArgument("Import takes 1 to 10 absolute paths.")

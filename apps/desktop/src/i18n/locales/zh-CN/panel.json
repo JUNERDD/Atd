@@ -66,8 +66,7 @@
       "attach_one": "将把 {{count}} 项添加到消息中。",
       "attach_other": "将把 {{count}} 项添加到消息中。",
       "attachSome": "将添加 {{total}} 项中的 {{count}} 项。",
-      "rules": "可添加文件夹，以及文本、代码和图片文件（最多 {{max}} 个）。",
-      "unsupported": "无法附加这些文件",
+      "rules": "每条消息最多可添加 {{max}} 个任意类型的文件和 {{folders}} 个文件夹。",
       "full": "附件已达上限",
       "fullDescription": "每条消息最多 {{max}} 个文件，移除一些后再添加。",
       "tooMany": "文件过多",
@@ -77,7 +76,7 @@
     },
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
-      "unsupported": "不支持附加 {{name}}。",
+      "unsupported": "{{name}} 不是可附加的文件。",
       "tooLarge": "{{name}} 太大，无法附加。",
       "notDirectory": "{{name}} 不是文件夹。",
       "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。"
@@ -363,7 +362,7 @@
     },
     "files": {
       "browse": "浏览文件…",
-      "browseDescription": "从这台电脑选择文本文件或图片",
+      "browseDescription": "从这台电脑选择任意文件",
       "partial": "结果可能不完整。",
       "indexDisabled": "Spotlight 索引未开启，无法搜索文件。",
       "unsupported": "此系统不支持文件搜索。",
@@ -381,6 +380,6 @@
   },
   "attachments": {
     "noVision": "{{model}} 无法识别图片，附加的图片不会发送给它。",
-    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等附加文本仍会发送。"
+    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等其他附件仍会发送。"
   }
 }

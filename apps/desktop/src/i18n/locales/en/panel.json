@@ -66,8 +66,7 @@
       "attach_one": "{{count}} item will be added to your message.",
       "attach_other": "{{count}} items will be added to your message.",
       "attachSome": "{{count}} of {{total}} items will be added.",
-      "rules": "Folders, and text, code and image files (up to {{max}}), can be added to a message.",
-      "unsupported": "These files can't be attached",
+      "rules": "Up to {{max}} files of any type and {{folders}} folders can be added to a message.",
       "full": "Attachment limit reached",
       "fullDescription": "A message takes up to {{max}} files. Remove one to add more.",
       "tooMany": "Too many files",
@@ -77,7 +76,7 @@
     },
     "importFailed": {
       "unreadable": "{{name}} could not be read.",
-      "unsupported": "{{name}} is not supported.",
+      "unsupported": "{{name}} is not a file that can be attached.",
       "tooLarge": "{{name}} is too large to attach.",
       "notDirectory": "{{name}} is not a folder.",
       "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder."
@@ -363,7 +362,7 @@
     },
     "files": {
       "browse": "Browse files…",
-      "browseDescription": "Choose text files or images on this computer",
+      "browseDescription": "Choose any file on this computer",
       "partial": "Some results may be missing.",
       "indexDisabled": "Spotlight indexing is off, so file search is unavailable.",
       "unsupported": "File search isn't available on this system.",
@@ -381,6 +380,6 @@
   },
   "attachments": {
     "noVision": "{{model}} can't see images, so attached images won't reach it.",
-    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Attached text, such as the screen context, is still sent."
+    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Other attachments, such as the screen context, are still sent."
   }
 }

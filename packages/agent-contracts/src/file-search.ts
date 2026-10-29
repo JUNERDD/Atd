@@ -53,11 +53,18 @@ export const FileSearchResultSchema = Type.Object(
      * never absolute.
      */
     location: Type.String(),
+    /** The format's family (`FileKind`), for its icon. */
     kind: Type.Union([
       Type.Literal('text'),
       Type.Literal('code'),
       Type.Literal('data'),
+      Type.Literal('document'),
+      Type.Literal('spreadsheet'),
+      Type.Literal('presentation'),
       Type.Literal('image'),
+      Type.Literal('audio'),
+      Type.Literal('video'),
+      Type.Literal('archive'),
     ]),
     /** Bytes. */
     size: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),

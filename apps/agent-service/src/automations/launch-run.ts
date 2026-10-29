@@ -203,7 +203,8 @@ async function submitCommand(
   if (!command || refusal)
     throw new LaunchFailure('commandUnavailable', refusal ?? 'The command no longer exists.');
   // `{{files}}` reads files as resources; a command without file input gets none. Files the
-  // attachment rules refuse (a PDF, an archive) reach the run by path in its trigger data.
+  // attachment rules refuse (unreadable, or over the size limit) reach the run by path in its
+  // trigger data.
   const { files, unattached } = command.input.files
     ? await importFiles(deps, request.filePaths)
     : { files: [], unattached: [] };

@@ -1,9 +1,5 @@
 import path from 'node:path';
-import {
-  attachableExtension,
-  attachmentByteLimit,
-  type AttachableExtension,
-} from '@atd/agent-contracts';
+import { fileFormat, MAX_ATTACHMENT_BYTES, type FileKind } from '@atd/agent-contracts';
 import type { SearchHit } from './backend.js';
 import { searchableLocation, type SearchScope } from './scope.js';
 
@@ -12,7 +8,8 @@ export interface Candidate {
   hit: SearchHit;
   name: string;
   location: string;
-  extension: AttachableExtension;
+  /** The family of the file's known format, for its icon. */
+  kind: FileKind;
 }
 
 /** `[from, to)` UTF-16 offsets into the NFC name, the text the renderer highlights. */
@@ -98,14 +95,14 @@ function foldChar(char: string): string {
     .toLowerCase();
 }
 
-/** Whether the file exceeds the size limit of its own format (images read larger than text). */
-export function tooLarge(hit: SearchHit, extension: AttachableExtension): boolean {
-  return hit.size !== null && hit.size > attachmentByteLimit(extension);
+/** Whether the file exceeds the attachment size limit. */
+export function tooLarge(hit: SearchHit): boolean {
+  return hit.size !== null && hit.size > MAX_ATTACHMENT_BYTES;
 }
 
 /**
- * Keeps searchable attachable files and merges one file found twice (for example by a recent pass
- * and a name pass), which works because backends report real paths.
+ * Keeps searchable files of a known format and merges one file found twice (for example by a
+ * recent pass and a name pass), which works because backends report real paths.
  */
 export function candidatesOf(hits: SearchHit[], scope: SearchScope): Candidate[] {
   const byPath = new Map<string, Candidate>();
@@ -115,10 +112,10 @@ export function candidatesOf(hits: SearchHit[], scope: SearchScope): Candidate[]
       seen.hit = merge(seen.hit, hit);
       continue;
     }
-    const extension = attachableExtension(hit.path);
+    const format = fileFormat(hit.path);
     const location = searchableLocation(scope, hit.path);
-    if (!extension || location === null) continue;
-    byPath.set(hit.path, { hit, name: path.basename(hit.path), location, extension });
+    if (!format || location === null) continue;
+    byPath.set(hit.path, { hit, name: path.basename(hit.path), location, kind: format.kind });
   }
   return [...byPath.values()];
 }
@@ -156,7 +153,7 @@ export function rankCandidates(query: string, candidates: Candidate[], now: numb
       score,
       used,
       recency,
-      last: tooLarge(candidate.hit, candidate.extension),
+      last: tooLarge(candidate.hit),
     });
   }
   scored.sort(

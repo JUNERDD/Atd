@@ -5,7 +5,11 @@ import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
 import type { LoadedSkill } from './skills/run-skills.js';
 import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalog.js';
 
-/** A text file; its content goes into the run material. */
+/**
+ * Any file that is not image input: its loaded text (decoded text, a document's extracted text or
+ * a description; file-loader/loader.ts) as the run material carries it, cut to the file's share of
+ * the material budget with a note naming the line where `read` continues (file-loader/material.ts).
+ */
 export interface RunTextAttachment {
   kind: 'text';
   name: string;

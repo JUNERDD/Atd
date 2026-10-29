@@ -33,7 +33,7 @@ final class ShellCapabilities: CapabilityHandling {
     }
   }
 
-  /// Attachable files the user picks, imported by path. The value's shape:
+  /// Regular files the user picks, of any format, imported by path. The value's shape:
   /// `{ files: [{ resourceId, name, size, mime }] }`.
   private func pickFiles() async throws -> JSONValue {
     guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
@@ -143,16 +143,16 @@ final class SystemPanels {
     self.arbiter = arbiter
   }
 
-  /// Attachable files (text and images); nil when cancelled or another system panel is open.
+  /// Regular files to attach, of any format, as the service takes them; nil when cancelled or
+  /// another system panel is open.
   func chooseAttachments() async -> [URL]? {
     let panel = NSOpenPanel()
     panel.message = ShellStrings.shared.text(.filePickTitle)
     panel.canChooseFiles = true
     panel.canChooseDirectories = false
     panel.allowsMultipleSelection = true
-    panel.allowedContentTypes = AttachmentRules.extensions.compactMap {
-      UTType(filenameExtension: $0)
-    }
+    // Regular files conform to public.data; packages, which the service refuses, do not.
+    panel.allowedContentTypes = [.data]
     return await run(panel) ? panel.urls : nil
   }
 

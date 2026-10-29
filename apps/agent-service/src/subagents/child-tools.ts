@@ -2,20 +2,19 @@ import { writeFile } from 'node:fs/promises';
 import {
   createBashToolDefinition,
   createEditToolDefinition,
-  createReadToolDefinition,
   createWriteToolDefinition,
   type ExtensionAPI,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
 import type { TSchema } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
+import { loaderReadTool, type HintResolver } from '../file-loader/read-tool.js';
 import { childSearchTools } from '../harness/search/tools.js';
 import { childWebTools } from '../harness/web-extension.js';
 import { authorizeShellCommand } from '../shell-policy.js';
 import { boundedExec } from '../shell-tool.js';
 import {
   editOperations,
-  readOperations,
   writeOperations,
   type ResolvePath,
   type WriteResolved,
@@ -29,7 +28,8 @@ import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
  * policy, no parallel same-file writes, explicit blocks. Child writes stay
  * inside the task output dir; outside paths are blocked without a prompt.
  * read/write/edit/bash are pi's own tools, built on the parent's operation
- * builders (tool-proxies.ts) with the child's path decision; grep/find/ls are
+ * builders (tool-proxies.ts, the file loader's read in file-loader/read-tool.ts)
+ * with the child's path decision; grep/find/ls are
  * the parent's confined pi tools (harness/search), and web_search/fetch_content
  * the parent's keyless web tools (harness/web-extension).
  *
@@ -129,7 +129,7 @@ export function registerChildTools(pi: ChildPi, host: ChildToolHost): void {
       childCommandTool(host.dataDir, approvals.gate, (decision) => allow('command', decision)),
     );
   for (const tool of tools) pi.registerTool(childDefinition(tool));
-  registerFileTools(pi, host);
+  registerFileTools(pi, host, parent.resourceHint);
   if (host.allowedTools.includes('bash')) {
     const bash = createBashToolDefinition(host.cwd, {
       exposeSessionEnvironment: false,
@@ -179,7 +179,7 @@ function childDefinition(tool: ChildTool): ToolDefinition {
  * children never write one file at the same time. A call is audited once it succeeds; a refused
  * path is audited as a denial.
  */
-function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
+function registerFileTools(pi: ChildPi, host: ChildToolHost, resourceHint: HintResolver): void {
   const readable =
     (tool: string): ResolvePath =>
     async (target) => {
@@ -220,7 +220,7 @@ function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
   const register = <T extends TSchema, D, S>(tool: ToolDefinition<T, D, S>): void => {
     if (host.allowedTools.includes(tool.name)) pi.registerTool(audited(host, tool));
   };
-  register(createReadToolDefinition(host.cwd, { operations: readOperations(readable('read')) }));
+  register(loaderReadTool(host.cwd, readable('read'), resourceHint));
   register(
     createWriteToolDefinition(host.cwd, {
       operations: writeOperations(writable('write'), locked('write')),

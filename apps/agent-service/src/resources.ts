@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, open, readFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
-import type { ResourceRef } from '@atd/agent-contracts';
+import { MAX_ATTACHMENT_BYTES, type ResourceRef } from '@atd/agent-contracts';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { ServicePaths } from './storage.js';
 
-const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
+const MIB = 1024 * 1024;
+
+/** A resource to store: the name and media type it is shown with, its bytes and its task. */
+export interface NewResource {
+  name: string;
+  mime: string;
+  bytes: Uint8Array;
+  taskId?: string;
+}
 
 /**
  * One task's view of the resource store: where resource files live (a resource's file is
@@ -15,6 +23,11 @@ const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
 export interface TaskResources {
   dir: string;
   owns(id: string): boolean;
+  /**
+   * The name and media type resource `id` was stored with, which its file's name does not carry:
+   * the read tool loads a resource as the run's attachment material did (file-loader/read-tool.ts).
+   */
+  hint(id: string): { name: string; mime: string } | undefined;
 }
 
 /**
@@ -27,35 +40,28 @@ export class ResourceStore {
     private readonly paths: ServicePaths,
   ) {}
 
-  async save(options: {
-    name: string;
-    mime: string;
-    bytes: Uint8Array;
-    taskId?: string;
-  }): Promise<ResourceRef> {
-    if (options.bytes.length > MAX_RESOURCE_BYTES)
-      throw new Error('The resource exceeds the 8 MiB upload limit.');
-    const id = randomUUID();
-    const file = path.join(this.paths.resourcesDir, id);
-    await mkdir(this.paths.resourcesDir, { recursive: true });
-    const handle = await open(file, 'wx', 0o600);
-    try {
-      await handle.writeFile(options.bytes);
-    } finally {
-      await handle.close();
-    }
-    const resource: ResourceRef = {
-      id,
-      name: options.name.slice(0, 255),
-      size: options.bytes.length,
-      mime: options.mime.slice(0, 100),
-      taskId: options.taskId ?? null,
-      createdAt: new Date().toISOString(),
-    };
-    await this.ledger.change((data) => {
-      data.resources.push(resource);
-    });
+  async save(options: NewResource): Promise<ResourceRef> {
+    const resource = await this.write(options);
+    await this.register([resource]);
     return resource;
+  }
+
+  /**
+   * Stores every file `files` yields, or none. Each is written as it arrives, so one file at a
+   * time is held in memory, and the ledger records them all in one change once the last is
+   * written. When `files` throws, the files written so far are removed and the error passes on.
+   */
+  async saveAll(files: AsyncIterable<NewResource>): Promise<ResourceRef[]> {
+    const written: ResourceRef[] = [];
+    try {
+      for await (const file of files) written.push(await this.write(file));
+    } catch (error) {
+      // Nothing refers to them yet; a file that cannot be removed stays behind unreferenced.
+      await Promise.allSettled(written.map(({ id }) => rm(this.pathOf(id), { force: true })));
+      throw error;
+    }
+    await this.register(written);
+    return written;
   }
 
   /** The file holding resource `id`, as the model reads it with the read tool. */
@@ -81,6 +87,10 @@ export class ResourceStore {
           task?.runs.some((run) => run.snapshot.input.files.some((file) => file.id === id)),
         );
       },
+      hint: (id) => {
+        const resource = this.ledger.data.resources.find((item) => item.id === id);
+        return resource && { name: resource.name, mime: resource.mime };
+      },
     };
   }
 
@@ -95,5 +105,34 @@ export class ResourceStore {
       throw new LedgerNotFound('Resource', id);
     const bytes = await readFile(path.join(this.paths.resourcesDir, id));
     return { resource, bytes: new Uint8Array(bytes) };
+  }
+
+  /** Writes a new resource's file; no run can reference it until `register` records it. */
+  private async write(options: NewResource): Promise<ResourceRef> {
+    // The attachment limit is the store's cap, so any file a user can attach fits.
+    if (options.bytes.length > MAX_ATTACHMENT_BYTES)
+      throw new Error(`The resource exceeds the ${MAX_ATTACHMENT_BYTES / MIB} MiB upload limit.`);
+    const id = randomUUID();
+    await mkdir(this.paths.resourcesDir, { recursive: true });
+    const handle = await open(this.pathOf(id), 'wx', 0o600);
+    try {
+      await handle.writeFile(options.bytes);
+    } finally {
+      await handle.close();
+    }
+    return {
+      id,
+      name: options.name.slice(0, 255),
+      size: options.bytes.length,
+      mime: options.mime.slice(0, 100),
+      taskId: options.taskId ?? null,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  private async register(resources: ResourceRef[]): Promise<void> {
+    await this.ledger.change((data) => {
+      data.resources.push(...resources);
+    });
   }
 }

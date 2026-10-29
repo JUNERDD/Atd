@@ -1,4 +1,4 @@
-//! Persistent file-name index of the attachable files under the home folder, kept current with
+//! Persistent file-name index of the known-format files under the home folder, kept current with
 //! FSEvents. This is the Rust side of the Raycast-style file search planned in
 //! `docs/plans/2026-09-29-macos-native-frontend.md` (P6): a first walk of home, then incremental
 //! updates, with the last applied event id saved so a restart replays only what it missed.
@@ -40,7 +40,7 @@ pub use scope::{ICLOUD_LABEL, RootSpec};
 #[derive(Debug, Clone)]
 pub struct IndexOptions {
     pub roots: Vec<RootSpec>,
-    /// Attachable extensions, from the caller's attachment rules (see `Extensions`).
+    /// Extensions of the formats to index, from the caller's searchable formats (see `Extensions`).
     pub extensions: Vec<String>,
 }
 

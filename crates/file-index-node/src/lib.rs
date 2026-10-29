@@ -14,7 +14,7 @@ use napi_derive::napi;
 #[napi(object)]
 #[derive(Debug)]
 pub struct OpenOptions {
-    /// Attachable extensions without dots, from the service's attachment rules.
+    /// Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules.
     pub extensions: Vec<String>,
     /// Home folder to index; defaults to `$HOME`. iCloud Drive inside it is indexed as well.
     pub home: Option<String>,

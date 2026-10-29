@@ -1,4 +1,6 @@
+import { resourceHints } from '../file-loader/read-tool.js';
 import type { SessionFactoryDeps } from '../pi-session.js';
+import { ResourceStore } from '../resources.js';
 import type { RunBinding } from '../run-binding.js';
 import { SUBAGENT_CHILD_ENTRY } from '@atd/agent-contracts';
 import {
@@ -276,6 +278,10 @@ function registerParentSession(
     runMemory: run.snapshot.memory,
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
+    resourceHint: resourceHints(
+      new ResourceStore(deps.ctx.ledger, deps.ctx.paths).forTask(taskId),
+      ctx.cwd,
+    ),
     childRuntime: session.childRuntime,
     approvals,
     // The ceiling admits their names once enrich.ts has narrowed it; until then pi drops them.

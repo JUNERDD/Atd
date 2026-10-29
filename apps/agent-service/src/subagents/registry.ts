@@ -6,6 +6,7 @@ import {
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
 import type { ExtensionFactory, ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { HintResolver } from '../file-loader/read-tool.js';
 import type { PermissionLookup } from '../transcript-blocks.js';
 import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';
 import type { ParentAgents } from './task-agents.js';
@@ -83,6 +84,8 @@ export interface SubagentHost {
   mcpBuilder: (child: ChildApprovalsRequest) => ExtensionFactory;
   /** Ledger resource ids frozen for this run (resource-ref checks). */
   resourceIds: string[];
+  /** A resource file's stored name and media type, which a child's read loads it by. */
+  resourceHint: HintResolver;
   /** Builds each child's model runtime like the parent's (run-model.ts `childRuntime`). */
   childRuntime: ChildModelRuntime;
   /** Approvals for one child execution; child bash and command saves decide through them. */

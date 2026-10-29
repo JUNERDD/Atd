@@ -1,4 +1,4 @@
-import { ATTACHABLE_EXTENSIONS } from '@atd/agent-contracts';
+import { SEARCHABLE_EXTENSIONS } from '@atd/agent-contracts';
 import type { FileIndex } from '@atd/file-index';
 import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend.js';
 import { foldText } from './rank.js';
@@ -77,7 +77,7 @@ export class NativeIndexBackend implements SearchBackend {
   private async open(): Promise<FileIndex | null> {
     try {
       const { FileIndex } = await import('@atd/file-index');
-      const index = await FileIndex.open(this.dataDir, { extensions: [...ATTACHABLE_EXTENSIONS] });
+      const index = await FileIndex.open(this.dataDir, { extensions: [...SEARCHABLE_EXTENSIONS] });
       try {
         index.start();
       } catch (error) {

@@ -88,17 +88,17 @@ struct FolderImportTests {
     #expect(response.failures.first?.reason == .forbidden)
   }
 
-  @Test("A drag counts folders as attachable, within the batch's limits")
+  @Test("A drag counts every file, of any format, and every folder, within the batch's limits")
   func dragSummary() {
     let mixed = FileDragSummary(items: [
       Self.file("/a.md"), Self.file("/b.bin"), Self.folder("/src"), Self.folder("/docs"),
     ])
     #expect(mixed.files == 4)
-    #expect(mixed.attachable == 3)
+    #expect(mixed.attachable == 4)
     let many = FileDragSummary(
       items: (1...12).map { Self.folder("/d\($0)") } + (1...12).map { Self.file("/f\($0).txt") })
     #expect(many.files == 24)
     #expect(many.attachable == 20)
-    #expect(FileDragSummary(items: [Self.file("/a.bin")]).attachable == 0)
+    #expect(FileDragSummary(items: [Self.file("/a.bin")]).attachable == 1)
   }
 }

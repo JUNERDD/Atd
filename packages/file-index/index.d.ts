@@ -45,7 +45,7 @@ export interface IndexStatus {
 }
 
 export interface OpenOptions {
-  /** Attachable extensions without dots, from the service's attachment rules. */
+  /** Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules. */
   extensions: Array<string>;
   /** Home folder to index; defaults to `$HOME`. iCloud Drive inside it is indexed as well. */
   home?: string;

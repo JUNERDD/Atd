@@ -1,53 +1,11 @@
-import {
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileSpreadsheet,
-  FileText,
-  FileVideo,
-  type LucideIcon,
-} from 'lucide-react';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import type { FileRef } from '../../client/agent/task-schema';
+import { FileKindIcon } from '../../components/file-kind-icon';
 import { fileSize } from '../../lib/file-size';
-
-const CODE = new Set(
-  'html htm css scss js mjs cjs jsx ts tsx json xml yml yaml toml sh zsh py rb go rs swift kt java c h cpp cs php sql'.split(
-    ' ',
-  ),
-);
-const TEXT = new Set('txt md markdown rtf pdf doc docx pages odt log'.split(' '));
-const SHEET = new Set('csv tsv xls xlsx numbers ods'.split(' '));
-const ARCHIVE = new Set('zip tar gz tgz bz2 xz 7z rar dmg'.split(' '));
 
 function extensionOf(name: string): string | null {
   const dot = name.lastIndexOf('.');
   return dot <= 0 || dot === name.length - 1 ? null : name.slice(dot + 1).toLowerCase();
-}
-
-type FileKind = 'audio' | 'video' | 'code' | 'text' | 'sheet' | 'archive' | 'file';
-
-/** The glyph that names the file's kind, as Finder's document icons do; a plain page otherwise. */
-const ICONS: Record<FileKind, LucideIcon> = {
-  audio: FileAudio,
-  video: FileVideo,
-  code: FileCode,
-  text: FileText,
-  sheet: FileSpreadsheet,
-  archive: FileArchive,
-  file: File,
-};
-
-function kindOf(file: FileRef, extension: string | null): FileKind {
-  if (file.type.startsWith('audio/')) return 'audio';
-  if (file.type.startsWith('video/')) return 'video';
-  if (!extension) return 'file';
-  if (CODE.has(extension)) return 'code';
-  if (TEXT.has(extension)) return 'text';
-  if (SHEET.has(extension)) return 'sheet';
-  if (ARCHIVE.has(extension)) return 'archive';
-  return 'file';
 }
 
 /**
@@ -78,7 +36,6 @@ export function AttachmentFile({
   onReveal: () => void;
 }) {
   const extension = extensionOf(file.name);
-  const Icon = ICONS[kindOf(file, extension)];
   const [head, tail] = nameParts(file.name, extension);
   const size = fileSize(file.size);
   return (
@@ -90,7 +47,7 @@ export function AttachmentFile({
     >
       <button type="button" aria-label={label} onClick={onReveal}>
         <ItemMedia className="user-context-file-icon">
-          <Icon className="size-[18px]" />
+          <FileKindIcon name={file.name} mime={file.type} className="size-[18px]" />
         </ItemMedia>
         <ItemContent className="gap-0">
           <ItemTitle className="flex leading-5" title={file.name}>
