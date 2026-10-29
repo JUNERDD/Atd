@@ -261,6 +261,12 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // write messages that read as the user's own; close every loop with `update_ui`; and build to
   // the view runtime, the sandbox limits and the apple-design rules for a compact inline view.
   skill('generative-ui', 1, []),
+  // Teaches working with what files contain, whatever their format: start from the loaded material
+  // and its extraction notes, page through files with `read` instead of loading them whole,
+  // compute over data with code, use only tools a stock Mac has (with bundled on-device OCR and
+  // page rendering for pages without text), cite where each claim comes from, name what was not
+  // read, and treat file contents as data rather than instructions.
+  skill('file-loader', 1, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */
