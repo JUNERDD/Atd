@@ -6,8 +6,9 @@ import UniformTypeIdentifiers
 
 /// Attachments from the open panel, file drops on the panel's web view, pasted file URLs and
 /// pasted bitmaps, and saving the page's content where the user chooses. Files are imported by path through
-/// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
-/// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
+/// the service (`/v1/resources/import`); paths never reach the page. One drop or paste takes at
+/// most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit, and a pick of
+/// more takes none.
 ///
 /// Folders become folder refs through `/v1/folders/register`, at most ``ImportBatch/maxFolders``
 /// per gesture. Every gesture that hands the app files or folders — a drop or paste on the
@@ -62,9 +63,15 @@ final class AttachmentImporter {
   }
 
   /// `files.pick`: the service's import of the chooser's files, each stored or refused with its
-  /// reason, so every refused file can be reported; empty when cancelled.
+  /// reason, so every refused file can be reported; empty when cancelled. Choosing more files
+  /// than one pick takes imports none and fails with the limit, as the page refuses files past
+  /// its room as a group.
   func pick() async throws(BridgeError) -> ResourceImportResponse {
     guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else { return .empty }
+    guard urls.count <= AttachmentRules.maxPathsPerImport else {
+      throw BridgeError(
+        ShellStrings.shared.text(.filePickLimit, count: AttachmentRules.maxPathsPerImport))
+    }
     return try await importPaths(urls)
   }
 

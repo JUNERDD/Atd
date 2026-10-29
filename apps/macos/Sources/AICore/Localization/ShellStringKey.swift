@@ -58,6 +58,8 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case cancel = "common.cancel"
 
   case filePickTitle = "file.pick.title"
+  /// `%lld` the most files one pick takes.
+  case filePickLimit = "file.pick.limit"
   case fileSaveTitle = "file.save.title"
   case fileSaveFailed = "file.save.failed"
   case fileSaveInvalidImage = "file.save.invalidImage"

@@ -2829,6 +2829,24 @@
         }
       }
     },
+    "file.pick.limit" : {
+      "comment" : "Error the page and the command island show when more files were chosen in the attachment open panel than one pick takes, so none were attached; %lld is that limit",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attach at most %lld files."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最多附加 %lld 个文件。"
+          }
+        }
+      }
+    },
     "file.pick.title" : {
       "comment" : "Open panel message when attaching files",
       "extractionState" : "manual",

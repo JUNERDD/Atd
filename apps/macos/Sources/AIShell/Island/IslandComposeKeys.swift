@@ -8,7 +8,8 @@ struct ComposeAttachments {
   /// The capture `screenshot.capture` runs, under its conditions.
   let screenshot: () async throws(BridgeError) -> ScreenshotCaptureResult
   /// The chooser and import `files.pick` runs: the service's answer for the chosen files, each
-  /// stored or refused with its reason, empty when cancelled.
+  /// stored or refused with its reason, empty when cancelled; it fails when more files were
+  /// chosen than one pick takes.
   let pickFiles: () async throws(BridgeError) -> ResourceImportResponse
   /// Opens Privacy & Security › Screen & System Audio Recording, as the welcome guide does.
   let openScreenRecordingSettings: () -> Void

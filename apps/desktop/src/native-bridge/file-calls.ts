@@ -100,7 +100,8 @@ export const NativeFileCalls = {
   /**
    * Open panel for attachments (regular files, multiple selection), imported through
    * `/v1/resources/import`: each imported file is in `resources`, each refused one in
-   * `failures`; both are empty when the user cancelled.
+   * `failures`; both are empty when the user cancelled. Choosing more than ten files imports
+   * none and rejects with a message in the shell's language.
    */
   'files.pick': {
     params: Empty,
