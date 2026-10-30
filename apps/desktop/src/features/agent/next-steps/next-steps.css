@@ -70,6 +70,25 @@
   background: var(--muted);
   color: var(--muted-foreground);
 }
+/*
+ * The prompt preview (useNextStepPreview). Radix places it against the card, its trigger, on
+ * whichever side has room; this moves it onto the previewed row's same side, so its arrow meets the
+ * row, and slides it when another row takes over while it shows. A first appearance does not slide.
+ */
+.next-step-preview {
+  transition: translate 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.next-step-preview[data-side='top'] {
+  translate: 0 var(--next-step-from-top);
+}
+.next-step-preview[data-side='bottom'] {
+  translate: 0 calc(-1 * var(--next-step-from-bottom));
+}
+@media (prefers-reduced-motion: reduce) {
+  .next-step-preview {
+    transition: none;
+  }
+}
 /* A long label wraps to two lines instead of one truncated line. */
 .next-step-title {
   display: -webkit-box;
