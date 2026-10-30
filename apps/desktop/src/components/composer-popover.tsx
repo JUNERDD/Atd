@@ -13,6 +13,7 @@ import { TodosPanel } from '../features/agent/progress/todo-list';
 import { useTaskProgress } from '../features/agent/progress/use-task-progress';
 import { useSideChats } from '../features/agent/side-chat/side-chats';
 import { useSubagents } from '../features/agent/transcript/subagent-context';
+import { useComputerMonitor } from '../features/computer/use-computer-monitor';
 import { HitlPanel } from './hitl-panel';
 import { consentRequest, taskHitlRequests } from './hitl-request';
 import { MorphViewport } from './morph-viewport';
@@ -26,7 +27,8 @@ const NO_CONSENTS: readonly AppCapabilityConsent[] = [];
 
 /**
  * The status pill above the composer surface and the one Radix popover its parts open: HITL
- * content (requests and the queue), Todos, Subagents, or Side chats. Like a navigation menu's
+ * content (requests and the queue), Todos, Subagents, or Side chats. The pill's live screens part
+ * (`useComputerMonitor`) opens the native Screen Monitor instead. Like a navigation menu's
  * viewport, the popover stays open while the user moves between parts and morphs to the next view
  * instead of stacking a second popover, sliding to center on the part that opened it; clicking the
  * expanded part closes it. Opening and closing are the popover primitive's own animation at the
@@ -96,6 +98,7 @@ export function ComposerPopover({
   );
   const hitl = useHitlSummary(requests, queue, taskId);
   const progress = useTaskProgress(blocks);
+  const monitor = useComputerMonitor(taskId);
   const { open: openChild } = useSubagents();
   const sideChats = useSideChats();
   const [view, setView] = useComposerView({
@@ -199,6 +202,7 @@ export function ComposerPopover({
           live={live}
           hitl={hitl.status}
           compacting={compacting}
+          monitor={monitor}
           view={open ? shown : null}
           onToggle={toggle}
         />

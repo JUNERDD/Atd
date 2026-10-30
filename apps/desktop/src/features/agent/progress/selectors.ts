@@ -34,14 +34,19 @@ function isVisible(todo: TodoItem): todo is VisibleTodo {
 /**
  * The current todo list: every successful `todo` call carries the whole list after it, so the
  * latest block with todo details is the list of the transcript's branch. Running or failed calls
- * have no details and are skipped.
+ * have no details and are skipped. A list finished before the latest user message is over: the
+ * finished plan stays until the user moves on, then leaves, while an unfinished one carries over.
  */
 export function latestTodos(blocks: readonly Block[]): VisibleTodo[] {
+  let asked = false;
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
     const block = blocks[index];
+    if (block?.kind === 'user') asked = true;
     if (block?.kind !== 'tool' || block.name !== TODO_TOOL) continue;
     const data = block.details.data;
-    if (data?.type === 'todo') return data.tasks.filter(isVisible);
+    if (data?.type !== 'todo') continue;
+    const todos = data.tasks.filter(isVisible);
+    return asked && todos.every((todo) => todo.status === 'completed') ? [] : todos;
   }
   return [];
 }
