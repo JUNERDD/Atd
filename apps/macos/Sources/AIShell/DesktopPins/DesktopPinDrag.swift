@@ -12,11 +12,13 @@ import AppKit
 final class DesktopPinDrag: NSObject, NSDraggingSource {
   static let pasteboardType = NSPasteboard.PasteboardType("com.junerdd.ai.desktop-pin")
 
-  /// A drop on the desktop: the app and the point, in AppKit's global coordinates.
-  var onDrop: ((_ appId: String, _ point: NSPoint) -> Void)?
+  /// A drop on the desktop: the app, the widget the drag named (nil for the pin's own), and the
+  /// point, in AppKit's global coordinates.
+  var onDrop: ((_ appId: String, _ face: DesktopPinFace?, _ point: NSPoint) -> Void)?
 
   private struct Session {
     let appId: String
+    let face: DesktopPinFace?
     weak var webView: ShellWebView?
     var catchers: [DesktopDropCatcher] = []
     var drop: NSPoint?
@@ -25,9 +27,12 @@ final class DesktopPinDrag: NSObject, NSDraggingSource {
 
   var isActive: Bool { session != nil }
 
-  /// Starts dragging `image`, the pin as it will look, centered under the press. False while
-  /// another drag runs.
-  func start(appId: String, image: NSImage, press: NSEvent, from webView: ShellWebView) -> Bool {
+  /// Starts dragging `image`, the pin as it will look, centered under the press; a drop pins the
+  /// app showing `face`, or what it shows already. False while another drag runs.
+  func start(
+    appId: String, face: DesktopPinFace?, image: NSImage, press: NSEvent,
+    from webView: ShellWebView
+  ) -> Bool {
     guard session == nil else { return false }
     let item = NSPasteboardItem()
     item.setString("pin", forType: Self.pasteboardType)
@@ -38,7 +43,7 @@ final class DesktopPinDrag: NSObject, NSDraggingSource {
       NSRect(
         x: point.x - size.width / 2, y: point.y - size.height / 2, width: size.width,
         height: size.height), contents: image)
-    session = Session(appId: appId, webView: webView)
+    session = Session(appId: appId, face: face, webView: webView)
     let started = webView.beginDraggingSession(with: [dragging], event: press, source: self)
     started.animatesToStartingPositionsOnCancelOrFail = true
     started.draggingFormation = .none
@@ -76,7 +81,7 @@ final class DesktopPinDrag: NSObject, NSDraggingSource {
     self.session = nil
     for catcher in ended.catchers { catcher.close() }
     ended.webView?.releasePress()
-    if !operation.isEmpty, let drop = ended.drop { onDrop?(ended.appId, drop) }
+    if !operation.isEmpty, let drop = ended.drop { onDrop?(ended.appId, ended.face, drop) }
   }
 }
 

@@ -63,11 +63,12 @@ export interface AppsBridge {
   /** Removes the app's desktop pin; resolves when it has none. */
   unpin(appId: string): Promise<void>;
   /**
-   * Hands a press on the app's card that started moving to the shell, which drags the app's pin
-   * out of the window while the button is held; a drop on the desktop pins the app there. The
-   * outcome arrives as a `pins` change.
+   * Hands a press on the app's card, or on one of its widget previews, that started moving to the
+   * shell, which drags the app's pin out of the window while the button is held; a drop on the
+   * desktop pins the app there, showing `widget` when given, as `pin` does. The outcome arrives as
+   * a `pins` change.
    */
-  startPinDrag(appId: string): void;
+  startPinDrag(appId: string, widget?: { widgetId: string; family: WidgetFamily }): void;
   /** The relay URL of the app's current icon, keyed on its build `revision` so a new one is fetched. */
   iconUrl(appId: string, revision: number): string;
   /**

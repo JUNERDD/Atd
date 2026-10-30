@@ -7,7 +7,9 @@ import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/u
 import { queryClient } from '../../lib/query-client';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { AppDetailSection } from './app-detail-group';
+import { useAppPins } from './use-app-pins';
 import { appKeys, appsBridge } from './use-apps';
+import { usePinDrag } from './use-pin-drag';
 import './apps.css';
 
 /** Smallest first: a widget's preview shows the smallest size it declares. */
@@ -36,20 +38,25 @@ function useWidgetPreview(appId: string, widgetId: string, family: WidgetFamily,
  * One declared widget (Figma `App / App widget row · Rhea`): a 56px preview of its smallest size,
  * its title and description, and the sizes it offers with how often it refreshes, or "No preview
  * yet" while the shell has no snapshot. No actions: widgets are added from the macOS widget
- * gallery, as the group's footnote says.
+ * gallery, as the group's footnote says, and dragging the preview out of the window pins the app
+ * to the desktop showing this widget in that size (`onDragOut`).
  */
 function AppWidgetRow({
   appId,
   revision,
   widget,
+  onDragOut,
 }: {
   appId: string;
   revision: number;
   widget: WidgetDecl;
+  onDragOut: (family: WidgetFamily) => void;
 }) {
   const { t } = useTranslation('apps');
   const families = FAMILY_ORDER.filter((family) => widget.families.includes(family));
-  const preview = useWidgetPreview(appId, widget.id, families[0] ?? 'systemSmall', revision);
+  const family = families[0] ?? 'systemSmall';
+  const preview = useWidgetPreview(appId, widget.id, family, revision);
+  const gesture = usePinDrag(() => onDragOut(family));
   const sizes = families.map((family) => t(`detail.widgets.family.${family}`)).join(' · ');
   const status = preview.pending
     ? t('detail.widgets.noPreview')
@@ -58,11 +65,15 @@ function AppWidgetRow({
     <Item asChild size="sm" className="settings-card-row">
       <li>
         <ItemMedia>
-          <span className="app-icon-tile flex size-14 items-center justify-center overflow-hidden rounded-xl bg-input/40 text-muted-foreground">
+          <span
+            {...gesture}
+            className="app-icon-tile flex size-14 items-center justify-center overflow-hidden rounded-xl bg-input/40 text-muted-foreground"
+          >
             {preview.src ? (
               <img
                 src={preview.src}
                 alt={t('detail.widgets.previewAlt', { name: widget.title })}
+                draggable={false}
                 className="size-full object-cover"
               />
             ) : (
@@ -104,6 +115,7 @@ export function AppWidgetsSection({
 }) {
   const { t } = useTranslation('apps');
   const available = useSettingsSnapshot().snapshot?.widgetsAvailable ?? true;
+  const pins = useAppPins();
   return (
     <AppDetailSection
       title={t('detail.widgets.title')}
@@ -120,7 +132,15 @@ export function AppWidgetsSection({
       }
     >
       {widgets.map((widget) => (
-        <AppWidgetRow key={widget.id} appId={appId} revision={revision} widget={widget} />
+        <AppWidgetRow
+          key={widget.id}
+          appId={appId}
+          revision={revision}
+          widget={widget}
+          onDragOut={(family) =>
+            pins.dragOut({ id: appId, name: appName }, { widgetId: widget.id, family })
+          }
+        />
       ))}
     </AppDetailSection>
   );

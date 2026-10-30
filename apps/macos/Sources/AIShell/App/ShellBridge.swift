@@ -49,7 +49,7 @@ final class ShellBridge {
     case .socketClose(let post): host.pipe?.close(post)
     case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
-    case .userAppPinDrag(let post): shell?.startPinDrag(post.appId, from: host)
+    case .userAppPinDrag(let post): shell?.startPinDrag(post, from: host)
     // Only the panel's page decides which task the person is looking at.
     case .taskShown(let post):
       guard host === shell?.panelHost else { return }

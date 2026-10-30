@@ -3248,11 +3248,45 @@
             },
             "params": {
               "type": "object",
-              "required": ["appId"],
+              "required": ["appId", "widget"],
               "properties": {
                 "appId": {
                   "type": "string",
                   "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widget": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["widgetId", "family"],
+                      "properties": {
+                        "widgetId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "family": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "systemSmall"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemMedium"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemLarge"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -8147,11 +8181,45 @@
     },
     "UserAppPinDragPost": {
       "type": "object",
-      "required": ["appId"],
+      "required": ["appId", "widget"],
       "properties": {
         "appId": {
           "type": "string",
           "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["widgetId", "family"],
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

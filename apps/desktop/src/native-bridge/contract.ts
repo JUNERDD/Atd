@@ -28,7 +28,12 @@ import { NativeTaskEvents } from './task-events.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
-import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
+import {
+  DesktopPinSchema,
+  MAX_DESKTOP_PINS,
+  MiniPanelOpenOnSchema,
+  PinWidgetSchema,
+} from './window-calls.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -122,13 +127,19 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   /**
-   * Drags the app's pin out of the panel: posted once a press on the app's card moved past the
-   * drag threshold, with the button still down. The shell starts a native drag from that press
-   * with the pin as its image; a drop on the desktop pins the app there or moves its pin, and
-   * Escape or a drop anywhere else ends it without a change. The shell takes it only from the panel
-   * and the settings window, while the left button is down after a press under two seconds old.
+   * Drags the app's pin out of the page: posted once a press on the app's card, or on one of its
+   * widget previews, moved past the drag threshold, with the button still down. The shell starts
+   * a native drag from that press with the pin as its image; a drop on the desktop pins the app
+   * there or moves its pin, and Escape or a drop anywhere else ends it without a change. `widget`
+   * is what the pin shows, as for `userApp.pin` (an undeclared one ends the drag before it
+   * starts); null keeps what a pinned app shows and gives a new pin the app's default. The shell
+   * takes it only from the panel and the settings window, while the left button is down after a
+   * press under two seconds old.
    */
-  'userApp.pinDrag': Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
+  'userApp.pinDrag': Type.Object(
+    { appId: UserAppIdSchema, widget: Type.Union([PinWidgetSchema, Type.Null()]) },
+    { additionalProperties: false },
+  ),
 } satisfies Record<string, TSchema>;
 
 /** One socket frame; Swift batches them per run-loop turn, in order. */

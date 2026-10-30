@@ -43,19 +43,30 @@ extension ShellController {
   /// `userApp.pinDrag`, taken only from the panel and settings pages, while the left button is
   /// down after a press in that page under ``pressLifetime`` old, and not during a capture: a
   /// page cannot fake the physical press.
-  func startPinDrag(_ appId: String, from host: WebViewHost) {
+  func startPinDrag(_ post: UserAppPinDragPost, from host: WebViewHost) {
     let webView = host.webView
     guard host.role != .onboarding, !isCapturingScreenshot,
       NSEvent.pressedMouseButtons & 1 == 1,
       let press = webView.lastMouseDown, press.window === webView.window,
       ProcessInfo.processInfo.systemUptime - press.timestamp < Self.pressLifetime
     else { return Self.pinLog.notice("Refused a pin drag without a live press.") }
-    pins.startDrag(appId: appId, press: press, from: webView)
+    let face = post.widget.map {
+      DesktopPinFace.widget(id: $0.widgetId, family: WidgetFamily($0.family))
+    }
+    pins.startDrag(appId: post.appId, face: face, press: press, from: webView)
   }
 }
 
 extension WidgetFamily {
   fileprivate init(_ family: UserAppPinParams.Widget.Family) {
+    switch family {
+    case .systemSmall: self = .systemSmall
+    case .systemMedium: self = .systemMedium
+    case .systemLarge: self = .systemLarge
+    }
+  }
+
+  fileprivate init(_ family: UserAppPinDragPost.Widget.Family) {
     switch family {
     case .systemSmall: self = .systemSmall
     case .systemMedium: self = .systemMedium

@@ -4,25 +4,25 @@ import { useRef, type MouseEvent, type PointerEvent } from 'react';
 const DRAG_THRESHOLD = 4;
 
 /**
- * Dragging an app's card out of its window: once a press with the main mouse button moves past
- * the threshold, `onDragOut` hands it to the shell, which runs the drag natively from that press
+ * Dragging an app out of its window: once a press with the main mouse button moves past the
+ * threshold, `onDragOut` hands it to the shell, which runs the drag natively from that press
  * (`userApp.pinDrag`). The page sees no more of that press; the click WebKit may still send when
- * the drag ends is swallowed, so the card does not also open the app. The handlers go on the
- * card's open button, which fills the card.
+ * the drag ends is swallowed, so a card does not also open the app. The handlers go on what the
+ * press drags out: a card's open button, which fills the card, or a widget preview.
  */
 export function usePinDrag(onDragOut: (() => void) | undefined) {
   const press = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const swallowClick = useRef(false);
   if (!onDragOut) return undefined;
   return {
-    onPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    onPointerDown(event: PointerEvent<HTMLElement>) {
       swallowClick.current = false;
       press.current =
         event.button === 0 && event.pointerType === 'mouse'
           ? { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
           : null;
     },
-    onPointerMove(event: PointerEvent<HTMLButtonElement>) {
+    onPointerMove(event: PointerEvent<HTMLElement>) {
       const start = press.current;
       if (!start || event.pointerId !== start.pointerId) return;
       if ((event.buttons & 1) === 0) {
@@ -40,7 +40,7 @@ export function usePinDrag(onDragOut: (() => void) | undefined) {
     onPointerCancel() {
       press.current = null;
     },
-    onClickCapture(event: MouseEvent<HTMLButtonElement>) {
+    onClickCapture(event: MouseEvent<HTMLElement>) {
       if (!swallowClick.current) return;
       swallowClick.current = false;
       event.preventDefault();
