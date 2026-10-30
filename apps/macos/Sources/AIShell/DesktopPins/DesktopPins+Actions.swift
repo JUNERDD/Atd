@@ -191,7 +191,10 @@ extension DesktopPins {
       record(appId)
       ?? DesktopPinRecord(
         appId: appId, face: defaultFace(appId), display: nil, offset: .init(x: 0, y: 0))
-    let look = look(for: record).look
+    var look = look(for: record).look
+    // A picture's links are inert: a link draws as an AppKit control, which an offscreen
+    // render replaces with a placeholder.
+    look.context = WidgetRenderContext(image: look.context.image, link: { _ in nil })
     // The pin at its current size: the card fills whatever frame it is given.
     let pinned = pinSize(record)
     let size = CGSize(width: pinned.width, height: pinned.height)
