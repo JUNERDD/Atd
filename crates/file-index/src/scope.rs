@@ -57,16 +57,30 @@ impl Root {
 }
 
 /// The roots and the rules deciding which paths below them are indexed.
+///
+/// Inside a git work tree, a folder below a root that holds `.git`, every file the repository's
+/// ignore rules keep is indexed whatever its name, hidden folders included; only dependency and
+/// tool folders (`exclusions::ALWAYS_EXCLUDED`), app bundles, the globs and never-index markers
+/// keep things out. Elsewhere only non-hidden files with a listed extension are, outside hidden
+/// and output folders. A work tree's root is admitted by the rules
+/// of the folder holding it, so it is never hidden, and a root itself never starts one: a home
+/// folder kept in git would otherwise turn all of home into one work tree.
 #[derive(Debug)]
 pub(crate) struct Scope {
     pub roots: Vec<Root>,
     pub extensions: Extensions,
     /// Roots left out because they are not on a local, internal volume.
     pub skipped_roots: Vec<PathBuf>,
+    /// The index's own data folder: never indexed, so its writes never cause work.
+    own_dir: Option<PathBuf>,
 }
 
 impl Scope {
-    pub fn new(specs: Vec<RootSpec>, extensions: Extensions) -> Result<Self, Error> {
+    pub fn new(
+        specs: Vec<RootSpec>,
+        extensions: Extensions,
+        own_dir: Option<PathBuf>,
+    ) -> Result<Self, Error> {
         let mut roots = Vec::new();
         let mut skipped_roots = Vec::new();
         for spec in specs {
@@ -101,6 +115,7 @@ impl Scope {
             roots,
             extensions,
             skipped_roots,
+            own_dir,
         })
     }
 
@@ -124,55 +139,94 @@ impl Scope {
         Some((index, segments))
     }
 
-    /// Whether a directory below a root is pruned: by name or glob, or by a never-index marker
-    /// inside it. `depth` counts folder levels below the root, 1 for a folder directly inside it.
-    pub fn prunes_directory(&self, root: usize, path: &Path, name: &str, depth: usize) -> bool {
-        self.rules_exclude_directory(root, path, name, depth)
+    /// Whether a directory below a root is pruned: by name or glob, by a never-index marker
+    /// inside it, or as the index's own folder. `depth` counts folder levels below the root, 1
+    /// for a folder directly inside it; `in_tree` says whether the folder holding it lies inside
+    /// a work tree.
+    pub fn prunes_directory(
+        &self,
+        root: usize,
+        path: &Path,
+        name: &str,
+        depth: usize,
+        in_tree: bool,
+    ) -> bool {
+        self.rules_exclude_directory(root, path, name, depth, in_tree)
             || path.join(NEVER_INDEX_MARKER).exists()
     }
 
-    /// The fixed part of `prunes_directory`: names and globs, which never change while running.
-    fn rules_exclude_directory(&self, root: usize, path: &Path, name: &str, depth: usize) -> bool {
-        let root = &self.roots[root];
-        exclusions::is_excluded_directory(name, root.skips_system_folder && depth == 1)
-            || root.overrides.matched(path, true).is_ignore()
+    /// The part of `prunes_directory` that needs no disk access.
+    fn rules_exclude_directory(
+        &self,
+        root: usize,
+        path: &Path,
+        name: &str,
+        depth: usize,
+        in_tree: bool,
+    ) -> bool {
+        let spec = &self.roots[root];
+        let home_level = spec.skips_system_folder && depth == 1;
+        exclusions::is_excluded_directory(name, in_tree, home_level)
+            || spec.overrides.matched(path, true).is_ignore()
+            || self.own_dir.as_deref() == Some(path)
+    }
+
+    /// Whether an admitted directory outside any work tree starts one.
+    pub fn starts_tree(path: &Path, depth: usize) -> bool {
+        depth >= 1 && path.join(".git").exists()
     }
 
     /// Whether a file found inside an unpruned directory is kept.
-    pub fn keeps_file(&self, root: usize, path: &Path, name: &str) -> bool {
-        !exclusions::is_excluded_file(name)
-            && self.extensions.matches_name(name)
+    pub fn keeps_file(&self, root: usize, path: &Path, name: &str, in_tree: bool) -> bool {
+        !exclusions::is_excluded_file(name, in_tree)
+            && (in_tree || self.extensions.matches_name(name))
             && !self.roots[root].overrides.matched(path, false).is_ignore()
     }
 
-    /// Whether a directory is inside a root and neither it nor a folder above it is pruned.
-    pub fn admits_directory(&self, path: &Path) -> bool {
-        self.chain_passes(path, |root, dir, name, depth| {
-            !self.prunes_directory(root, dir, name, depth)
-        })
-    }
-
-    /// Whether files below `path` could ever have been indexed: false when the name or glob
-    /// rules exclude it or a folder above it. Lets event handling skip removals for folders the
-    /// index never covers (dependency trees, build output), which would only add tombstones.
-    pub fn may_hold_files(&self, path: &Path) -> bool {
-        self.chain_passes(path, |root, dir, name, depth| {
-            !self.rules_exclude_directory(root, dir, name, depth)
-        })
-    }
-
-    fn chain_passes(
-        &self,
-        path: &Path,
-        passes: impl Fn(usize, &Path, &str, usize) -> bool,
-    ) -> bool {
-        let Some((root, segments)) = self.root_of(path) else {
-            return false;
-        };
+    /// Where a directory stands: `None` when it lies outside every root or it or a folder above
+    /// it is pruned, otherwise whether it lies inside a work tree. Reads the disk along the way
+    /// for markers and work trees.
+    pub fn directory_context(&self, path: &Path) -> Option<bool> {
+        let (root, segments) = self.root_of(path)?;
         let mut dir = self.roots[root].path.clone();
-        segments.iter().enumerate().all(|(depth, folder)| {
+        let mut in_tree = false;
+        for (index, folder) in segments.iter().enumerate() {
             dir.push(folder);
-            passes(root, &dir, folder, depth + 1)
+            if self.prunes_directory(root, &dir, folder, index + 1, in_tree) {
+                return None;
+            }
+            in_tree = in_tree || Self::starts_tree(&dir, index + 1);
+        }
+        Some(in_tree)
+    }
+
+    /// Whether nothing at or below `path` can ever be indexed, by the rules that need no disk
+    /// access: below a hidden folder directly inside a root, home's `Library`, `.git` or a
+    /// dependency folder, an app bundle, a glob or the index's own folder. `is_dir` says whether
+    /// `path` itself is a folder; a file is judged by the folders holding it. A path holding a
+    /// root never is. Lets event handling drop events before planning them.
+    pub fn never_indexed(&self, path: &Path, is_dir: bool) -> bool {
+        if self.roots.iter().any(|root| root.path.starts_with(path)) {
+            return false;
+        }
+        if self
+            .own_dir
+            .as_deref()
+            .is_some_and(|own| path.starts_with(own))
+        {
+            return true;
+        }
+        let Some((root, mut segments)) = self.root_of(path) else {
+            return true;
+        };
+        if !is_dir {
+            segments.pop();
+        }
+        let mut dir = self.roots[root].path.clone();
+        segments.iter().enumerate().any(|(index, folder)| {
+            dir.push(folder);
+            // Below the first level a folder may lie inside a work tree, whose rules keep more.
+            self.rules_exclude_directory(root, &dir, folder, index + 1, index > 0)
         })
     }
 

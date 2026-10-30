@@ -1,24 +1,28 @@
-import { randomUUID } from 'node:crypto';
-import type {
-  FileSearchQuery,
-  FileSearchReply,
-  FileSearchResult,
-  ResourceRef,
+import { createHmac, randomBytes } from 'node:crypto';
+import {
+  attachmentMime,
+  fileFormat,
+  MAX_ATTACHMENT_BYTES,
+  type FileSearchQuery,
+  type FileSearchReply,
+  type FileSearchResult,
+  type ResourceRef,
 } from '@atd/agent-contracts';
-import { readAttachable } from '../resources/attachable-read.js';
+import { inspectAttachable, readInspected } from '../resources/attachable-read.js';
 import type { NewResource, ResourceStore } from '../resources.js';
-import type { SearchBackend } from './backend.js';
-import { candidatesOf, rankCandidates, tooLarge, type Ranked } from './rank.js';
-import { resolveSearchScope, searchableLocation, type SearchScope } from './scope.js';
+import type { SearchBackend, SearchHit } from './backend.js';
+import { offeredLocation, resolveSearchScope, type ScopeRoots, type SearchScope } from './scope.js';
 
 /** Results per reply, whatever limit the client asks for. */
 const MAX_RESULTS = 20;
+/** Hits asked beyond the rows shown, so files the scope keeps out do not leave the list short. */
+const FILTER_HEADROOM = 10;
 /**
- * Time budget per search; a backend still working at the deadline replies `partial`. The client
- * keeps showing the previous results while a search runs.
+ * Time budget per search; a backend still working at the deadline replies `partial`, or
+ * `indexing` while the index opens. The client keeps showing the previous results meanwhile.
  */
 const SEARCH_BUDGET_MS = 1500;
-/** How long an issued result id stays attachable. */
+/** How long an issued result id stays attachable after the latest reply that listed it. */
 const RESULT_TTL_MS = 10 * 60 * 1000;
 /** Live result ids across all channels; the oldest are evicted first. */
 const MAX_RESULT_IDS = 300;
@@ -41,22 +45,24 @@ interface IssuedResult {
 }
 
 /**
- * File search for client search surfaces. Absolute paths stay in the result registry: clients
- * receive opaque ids bound to their channel, and attach re-validates the file behind each id
- * before reading and storing it. Queries and paths are never logged or persisted. The backend is
- * created on the first search, so the service starts no index work before anyone searches.
+ * File search for client search surfaces. The index decides which files match and in what order;
+ * the service keeps out files outside its scope, marks those too large to attach, and trims the
+ * list, without reordering it. Absolute paths stay in the result registry: clients receive
+ * opaque ids bound to their channel, and attach re-validates the file behind each id before
+ * reading and storing it. Queries and paths are never logged or persisted.
  */
 export class FileSearchService {
   private readonly issued = new Map<string, IssuedResult>();
   private readonly searches = new Map<string, AbortController>();
+  /** Keys result ids, so they are opaque and differ between channels and service runs. */
+  private readonly idKey = randomBytes(32);
   private backend: SearchBackend | null = null;
   private closed = false;
 
   constructor(
     private readonly createBackend: () => SearchBackend,
     private readonly resources: Pick<ResourceStore, 'saveAll'>,
-    private readonly home: string,
-    private readonly platform: NodeJS.Platform,
+    private readonly roots: ScopeRoots,
     /** Monotonic, so wall-clock changes cannot extend or cut short a result's lifetime. */
     private readonly now: () => number = () => performance.now(),
   ) {}
@@ -68,28 +74,19 @@ export class FileSearchService {
     const current = new AbortController();
     this.searches.set(channel, current);
     try {
-      const scope = await resolveSearchScope(this.home, this.platform);
+      const scope = await resolveSearchScope(this.roots);
       // A query typed while the scope resolved replaces this one before any backend work starts.
       if (current.signal.aborted) return { state: 'superseded', results: [] };
-      const query = request.query.trim();
       const limit = Math.min(request.limit, MAX_RESULTS);
-      this.backend ??= this.createBackend();
-      const reply = await this.backend.search({
-        query,
-        limit,
-        scope,
+      const reply = await this.backendOf().search({
+        query: request.query.trim(),
+        limit: limit + FILTER_HEADROOM,
         signal: AbortSignal.any([current.signal, AbortSignal.timeout(SEARCH_BUDGET_MS)]),
       });
       if (current.signal.aborted) return { state: 'superseded', results: [] };
       if (reply.state === 'unavailable')
         return { state: 'unavailable', reason: reply.reason, results: [] };
-      // Every hit passes the same filter here, whichever backend produced it.
-      const ranked = rankCandidates(query, candidatesOf(reply.hits, scope), Date.now());
-      const results = ranked.slice(0, limit).map((entry) => ({
-        resultId: this.issue(channel, entry.candidate.hit.path),
-        ...resultFields(entry),
-      }));
-      return { state: reply.state, results };
+      return { state: reply.state, results: this.resultsOf(channel, scope, reply.hits, limit) };
     } catch {
       if (current.signal.aborted) return { state: 'superseded', results: [] };
       // Backend failures can carry paths, so only a generic message reaches the client.
@@ -100,15 +97,23 @@ export class FileSearchService {
   }
 
   /**
+   * Resumes an index an earlier search left on disk, so the first search after a restart need not
+   * wait for it to load. Nothing waits for this, and a fresh data dir starts nothing.
+   */
+  warm(): void {
+    if (!this.closed) void this.backendOf().warm();
+  }
+
+  /**
    * Checks every id before touching any file, then reads each file under the attachment rules and
-   * confirms its resolved path is still searchable, so a link swapped in after the search cannot
-   * reach outside the scope. Each file is stored as soon as it passes, so one file at a time is
-   * held in memory, yet the resources exist only once every file passed: a file the rules refuse
-   * rejects with `AttachableRejected`, and the store removes the files stored before it.
+   * confirms its resolved path is still in scope, so a link swapped in after the search cannot
+   * reach outside it. Each file is stored as soon as it passes, so one file at a time is held in
+   * memory, yet the resources exist only once every file passed: a file the rules refuse rejects
+   * with `AttachableRejected`, and the store removes the files stored before it.
    */
   async attach(channel: string, resultIds: string[]): Promise<ResourceRef[]> {
     const paths = resultIds.map((resultId) => this.resolve(channel, resultId));
-    const scope = await resolveSearchScope(this.home, this.platform);
+    const scope = await resolveSearchScope(this.roots);
     return this.resources.saveAll(attachableFiles(paths, scope));
   }
 
@@ -119,15 +124,49 @@ export class FileSearchService {
     await this.backend?.close();
   }
 
-  private issue(channel: string, filePath: string): string {
-    const now = this.now();
-    // Every id shares one lifetime, so insertion order is also expiry order.
-    for (const [resultId, entry] of this.issued) {
-      if (entry.expiresAt > now && this.issued.size < MAX_RESULT_IDS) break;
-      this.issued.delete(resultId);
+  private backendOf(): SearchBackend {
+    return (this.backend ??= this.createBackend());
+  }
+
+  /** The first `limit` hits the scope allows, in the index's order, as client-safe results. */
+  private resultsOf(
+    channel: string,
+    scope: SearchScope,
+    hits: SearchHit[],
+    limit: number,
+  ): FileSearchResult[] {
+    const results: FileSearchResult[] = [];
+    for (const hit of hits) {
+      if (results.length === limit) break;
+      const location = offeredLocation(scope, hit.path);
+      const resultId = location === null ? null : this.issue(channel, hit);
+      if (location !== null && resultId !== null) results.push(resultOf(resultId, hit, location));
     }
-    const resultId = randomUUID();
-    this.issued.set(resultId, { path: filePath, channel, expiresAt: now + RESULT_TTL_MS });
+    return results;
+  }
+
+  /**
+   * The file's result id for this channel: derived from the index's id for its path, so every
+   * reply names the same file with the same id and the panel keeps its rows (and its highlight)
+   * steady. Listing a file again renews its lifetime.
+   */
+  private issue(channel: string, hit: SearchHit): string | null {
+    const resultId = createHmac('sha256', this.idKey)
+      .update(`${channel}\n${hit.id}`)
+      .digest('base64url')
+      .slice(0, 32);
+    // Two paths with one index id would share a result id; neither may stand in for the other.
+    const known = this.issued.get(resultId);
+    if (known && known.path !== hit.path) return null;
+    this.issued.delete(resultId);
+    const now = this.now();
+    // Every id shares one lifetime and a renewed id moves to the end, so insertion order is
+    // also expiry order.
+    for (const [issuedId, entry] of this.issued) {
+      if (entry.expiresAt > now && this.issued.size < MAX_RESULT_IDS) break;
+      this.issued.delete(issuedId);
+    }
+    this.issued.set(resultId, { path: hit.path, channel, expiresAt: now + RESULT_TTL_MS });
     return resultId;
   }
 
@@ -147,29 +186,38 @@ export class FileSearchService {
 /** The files behind `paths` under the attachment rules; one resolved outside `scope` is refused. */
 async function* attachableFiles(paths: string[], scope: SearchScope): AsyncGenerator<NewResource> {
   for (const filePath of paths) {
-    const { name, mime, bytes, realPath } = await readAttachable(filePath);
-    if (searchableLocation(scope, realPath) === null)
-      throw new AttachRefused(`${name} is outside the searchable folders. Browse for it instead.`);
-    // No task id: the ledger lets any later run reference the resource.
-    yield { name, mime, bytes };
+    const file = await inspectAttachable(filePath);
+    if (offeredLocation(scope, file.realPath) === null)
+      throw new AttachRefused(
+        `${file.name} is outside the searchable folders. Browse for it instead.`,
+      );
+    // No task id: the ledger lets any later run reference the resource. With its source the store
+    // reuses an unchanged copy without reading the file, and a run sent later reads a changed one
+    // again (resources/refresh.ts), as for a picked or dropped file.
+    yield {
+      name: file.name,
+      mime: attachmentMime(file.name),
+      ...(file.source ? { source: file.source } : {}),
+      read: () => readInspected(file),
+    };
   }
 }
 
-/** Client-safe metadata: a name and a location, never the path. */
-function resultFields({ candidate, match }: Ranked): Omit<FileSearchResult, 'resultId'> {
-  const { hit, name, location, kind } = candidate;
-  const oversized = tooLarge(hit);
+/**
+ * Client-safe metadata: a name and a location, never the path. A file too large to attach keeps
+ * its place in the list and says why it cannot be picked.
+ */
+function resultOf(resultId: string, hit: SearchHit, location: string): FileSearchResult {
+  const tooLarge = hit.size !== null && hit.size > MAX_ATTACHMENT_BYTES;
   return {
-    name,
+    resultId,
+    name: hit.name,
     location,
-    kind,
+    kind: fileFormat(hit.name)?.kind ?? null,
     size: hit.size,
     modifiedAt: hit.modifiedAt,
-    usedAt: hit.usedAt,
-    source: hit.source,
-    attachable: !oversized,
-    ...(oversized ? { reason: 'tooLarge' as const } : {}),
-    // Ranking settles on one occurrence per name: the one that placed the file.
-    ...(match ? { match: [match] } : {}),
+    attachable: !tooLarge,
+    ...(tooLarge ? { reason: 'tooLarge' as const } : {}),
+    ...(hit.matches.length ? { match: hit.matches } : {}),
   };
 }

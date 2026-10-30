@@ -24,7 +24,10 @@ export type ChipLabel = {
   name: string;
   /** An image file in the composer: an image icon, and a tooltip that clicking edits it. */
   image?: boolean;
-  /** The full value the tooltip names instead of `name`, such as a folder's path. */
+  /**
+   * The full value the tooltip names instead of `name`, such as a folder's path or where a file
+   * picked from search lives.
+   */
   detail?: string | undefined;
 } & (
   | { kind: 'application'; bundleId: string }
@@ -63,8 +66,8 @@ const LABEL_KEYS = {
 /**
  * A chip's icon and name. Screen readers get the kind with the name ("File: notes.txt"); the
  * tooltip repeats it because long names are truncated (with `detail`, the full value: a folder's
- * path), or names the edit an image chip opens. The spoken label is not selectable, so copying
- * text that spans a chip copies only its visible name.
+ * path, a searched file's location), or names the edit an image chip opens. The spoken label is
+ * not selectable, so copying text that spans a chip copies only its visible name.
  */
 export function ChipContent({ kind, name, bundleId, image = false, detail }: ChipLabel) {
   const { t } = useTranslation('panel');

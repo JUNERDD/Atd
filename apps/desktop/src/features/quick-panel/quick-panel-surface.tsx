@@ -39,6 +39,14 @@ export type QuickPanelPlacement = Pick<
   | 'className'
 >;
 
+/**
+ * The list's value while no option is active. cmdk 1.1 selects its first enabled item on its own
+ * (on mount while its value is empty, and whenever the selected item unmounts) and reports that
+ * as a value change; it has no option to turn this off (pacocoursey/cmdk#171). A hidden first
+ * item holding this value takes that selection, so it never highlights "Browse files…".
+ */
+const NO_OPTION = 'quick-panel:none';
+
 export interface QuickPanelSurfaceProps {
   open: boolean;
   /** The rows to show; the owning editor builds them for its trigger. */
@@ -83,6 +91,7 @@ export function QuickPanelSurface({
   const scroller = useRef<SectionScroller>(null);
   const { activeValue, activeSection, hover, jumpTo, list, setList, trackOption } = useQuickPanel({
     open,
+    query: view.query,
     groups,
     sections,
     scroller,
@@ -118,7 +127,7 @@ export function QuickPanelSurface({
       >
         <Command
           shouldFilter={false}
-          value={activeValue}
+          value={activeValue || NO_OPTION}
           onValueChange={hover}
           className="min-h-0 bg-transparent"
         >
@@ -137,6 +146,7 @@ export function QuickPanelSurface({
               scrollShadow
               className="max-h-none min-h-0 flex-1"
             >
+              {activeValue === '' && <CommandItem value={NO_OPTION} hidden />}
               {empty !== null && (
                 <p className="px-2 py-6 text-center text-sm text-muted-foreground">{empty}</p>
               )}

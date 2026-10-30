@@ -1,4 +1,5 @@
 import { AgentClientError, attachFileResults, searchFiles } from '@atd/agent-client';
+import i18n from '../i18n';
 import type { FileSearchBridge } from '../client/contract';
 import type { NativeConnection } from './native-connection';
 
@@ -12,10 +13,17 @@ import type { NativeConnection } from './native-connection';
 export function nativeFiles(connection: NativeConnection): FileSearchBridge {
   const channel = `panel-${crypto.randomUUID()}`;
   return {
-    search: (query) => searchFiles(connection.options(), { channel, ...query }).catch(rethrow),
+    search: (query) =>
+      searchFiles(connection.options(), { channel, ...query }).catch((error: unknown) => {
+        throw failure(error, 'quickPanel.files.searchTimedOut', 'quickPanel.files.failed');
+      }),
     async attach(resultIds) {
       const request = { channel, resultIds };
-      const { resources } = await attachFileResults(connection.options(), request).catch(rethrow);
+      const { resources } = await attachFileResults(connection.options(), request).catch(
+        (error: unknown) => {
+          throw failure(error, 'quickPanel.files.attachTimedOut', 'quickPanel.files.attachFailed');
+        },
+      );
       return resources.map(({ id, name, size, mime }) => ({ id, name, size, type: mime }));
     },
     async saveText(name, text) {
@@ -25,7 +33,9 @@ export function nativeFiles(connection: NativeConnection): FileSearchBridge {
         .upload(name, 'text/plain', bytes)
         .catch((error: unknown) => {
           throw new Error(
-            error instanceof AgentClientError ? error.message : 'The pasted text was not saved.',
+            error instanceof AgentClientError
+              ? error.message
+              : i18n.t('composer.pasteNotSaved', { ns: 'panel' }),
           );
         });
       return { id: resource.id, name: resource.name, size: resource.size, type: resource.mime };
@@ -33,9 +43,17 @@ export function nativeFiles(connection: NativeConnection): FileSearchBridge {
   };
 }
 
-/** Service messages are English and path-free; transport failures read as a generic retry. */
-function rethrow(error: unknown): never {
-  throw new Error(
-    error instanceof AgentClientError ? error.message : 'File search failed. Try again.',
-  );
+/**
+ * Service messages are English and path-free, so they pass on; a request the client timed out
+ * (`files-client.ts`) and other transport failures read as a retry, in the app's language.
+ */
+function failure(
+  error: unknown,
+  timedOut: 'quickPanel.files.searchTimedOut' | 'quickPanel.files.attachTimedOut',
+  failed: 'quickPanel.files.failed' | 'quickPanel.files.attachFailed',
+): Error {
+  if (error instanceof AgentClientError) return new Error(error.message);
+  // The client's deadline rejects the fetch with its signal's reason.
+  const late = error instanceof DOMException && error.name === 'TimeoutError';
+  return new Error(i18n.t(late ? timedOut : failed, { ns: 'panel' }));
 }

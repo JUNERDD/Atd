@@ -1,14 +1,14 @@
 //! The persistent file-name store. `NameStore` is the only surface the rest of the crate sees;
 //! `MinidexStore` is its sole implementation and the only code that names a `minidex` type, so a
 //! breaking minidex release, a vendored copy or a replacement touches this file alone. It also
-//! owns the in-memory `NameList` behind `containing`, kept in step with every write.
+//! owns the in-memory `NameList` that queries search, kept in step with every write.
 
 use std::fmt;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use minidex::{FilesystemEntry, Index, Kind, SearchOptions, VolumeType};
+use minidex::{FilesystemEntry, Index, Kind, VolumeType};
 
 use crate::names::NameList;
 
@@ -30,32 +30,31 @@ pub(crate) struct StoreError(String);
 pub(crate) trait NameStore: Send + Sync + fmt::Debug {
     /// Inserts files or replaces the entries with the same root and path.
     fn upsert(&self, files: Vec<StoredFile>) -> Result<(), StoreError>;
-    fn remove(&self, root: &str, rel: &str) -> Result<(), StoreError>;
-    /// Removes `rel` and everything below it; `""` removes the whole root.
-    fn remove_tree(&self, root: &str, rel: &str) -> Result<(), StoreError>;
-    /// Files whose path words start with the query words, at most `cap`, in no promised order.
-    fn candidates(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
-    /// Files whose name contains the query anywhere (case- and accent-folded), newest first, at
-    /// most `cap`. Slower than `candidates`: for mid-word matches when word matches run short.
-    fn containing(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
-    /// Files modified since `since_secs`, at most `cap`.
-    fn recent(&self, since_secs: u64, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
+    fn contains(&self, root: &str, rel: &str) -> bool;
+    /// Removes one file; returns whether it was stored. A path never stored writes nothing.
+    fn remove(&self, root: &str, rel: &str) -> Result<bool, StoreError>;
+    /// Removes `rel` and everything below it, `""` the whole root; returns whether anything was
+    /// stored there. A tree holding nothing writes nothing.
+    fn remove_tree(&self, root: &str, rel: &str) -> Result<bool, StoreError>;
+    /// Runs `read` over the in-memory list of every stored file; writes wait meanwhile.
+    fn read_names(&self, read: &mut dyn FnMut(&NameList));
     /// Makes every accepted write durable.
     fn persist(&self) -> Result<(), StoreError>;
     /// Moves buffered entries into the compact on-disk form, so memory drops and the next open
     /// maps them instead of replaying a log. Slower than `persist`; for the end of a walk or close.
     fn checkpoint(&self) -> Result<(), StoreError>;
+    /// Rebuilds the in-memory list from the store, after a walk interleaved its allocations
+    /// with the store's own.
+    fn compact_names(&self) -> Result<(), StoreError>;
 }
 
 /// minidex 0.39.0: FST segments + mmap + write-ahead log, with background flush and compaction.
 ///
-/// Word-prefix matching only: the query `port` finds `port-notes.md` and `reportPort.md` (camel
-/// case splits words) but not `report.md`. Paths are stored as displayed locations with the root
-/// as minidex's volume, so home's own path words (`Users`, the account name) never match a query.
-/// minidex merges results by path alone, which is why stored paths must be unique across roots.
-///
-/// minidex has no substring search, so every stored path is also held in `names` (about 100 bytes
-/// per file), loaded from the index at open and updated after each successful write.
+/// Only the store's persistence is used: its word-prefix search would trim candidates by its
+/// own scoring before ours (E3-6), so queries search `names` instead, every stored path held in
+/// memory (about 100 bytes per file), loaded from the index at open and updated after each
+/// successful write. Paths are stored as displayed locations with the root as minidex's volume.
+/// minidex deletes by path across volumes, which is why stored paths must be unique across roots.
 pub(crate) struct MinidexStore {
     index: Index,
     names: RwLock<NameList>,
@@ -97,13 +96,6 @@ impl MinidexStore {
             .write()
             .unwrap_or_else(|poison| poison.into_inner())
     }
-
-    fn options() -> SearchOptions<'static> {
-        SearchOptions {
-            kind: Some(Kind::File),
-            ..SearchOptions::default()
-        }
-    }
 }
 
 impl NameStore for MinidexStore {
@@ -126,39 +118,32 @@ impl NameStore for MinidexStore {
         Ok(())
     }
 
-    fn remove(&self, root: &str, rel: &str) -> Result<(), StoreError> {
-        // minidex deletes a path across volumes; stored paths are unique across roots.
-        self.index.delete(Path::new(rel)).map_err(fail)?;
-        self.names_mut().remove(root, rel);
-        Ok(())
+    fn contains(&self, root: &str, rel: &str) -> bool {
+        self.names().contains(root, rel)
     }
 
-    fn remove_tree(&self, root: &str, rel: &str) -> Result<(), StoreError> {
+    fn remove(&self, root: &str, rel: &str) -> Result<bool, StoreError> {
+        // Skipping paths never stored keeps tombstones, and the writes they cost, out of the log.
+        if !self.contains(root, rel) {
+            return Ok(false);
+        }
+        // minidex deletes a path across volumes; stored paths are unique across roots.
+        self.index.delete(Path::new(rel)).map_err(fail)?;
+        Ok(self.names_mut().remove(root, rel))
+    }
+
+    fn remove_tree(&self, root: &str, rel: &str) -> Result<bool, StoreError> {
+        if !self.names().holds_tree(root, rel) {
+            return Ok(false);
+        }
         self.index
             .delete_by_volume_name(Some(root), rel)
             .map_err(fail)?;
-        self.names_mut().remove_tree(root, rel);
-        Ok(())
+        Ok(self.names_mut().remove_tree(root, rel))
     }
 
-    fn candidates(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
-        let results = self
-            .index
-            .search(query, cap, 0, Self::options())
-            .map_err(fail)?;
-        Ok(results.into_iter().map(stored).collect())
-    }
-
-    fn containing(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
-        Ok(self.names().containing(query, cap))
-    }
-
-    fn recent(&self, since_secs: u64, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
-        let results = self
-            .index
-            .recent_files(since_secs, cap, 0, Self::options())
-            .map_err(fail)?;
-        Ok(results.into_iter().map(stored).collect())
+    fn read_names(&self, read: &mut dyn FnMut(&NameList)) {
+        read(&self.names());
     }
 
     fn persist(&self) -> Result<(), StoreError> {
@@ -167,8 +152,11 @@ impl NameStore for MinidexStore {
 
     fn checkpoint(&self) -> Result<(), StoreError> {
         self.index.sync().map_err(fail)?;
-        self.index.flush().map_err(fail)?;
-        // Rebuilt after the flush freed minidex's in-memory table: names allocated during a walk
+        self.index.flush().map_err(fail)
+    }
+
+    fn compact_names(&self) -> Result<(), StoreError> {
+        // Rebuilt after a flush freed minidex's in-memory table: names allocated during a walk
         // sit between that table's allocations and would keep its freed pages resident.
         let mut names = self.names_mut();
         *names = NameList::default();
@@ -197,17 +185,8 @@ fn list_all(index: &Index) -> Result<NameList, StoreError> {
     Ok(names)
 }
 
-/// minidex timestamps are microseconds: it divides them into seconds for its recency filter and
-/// scoring, so seconds passed as-is would read as 1970 and no file would count as recent.
+/// minidex timestamps are microseconds, the unit its own recency filter and scoring expect.
 const MICROS: u64 = 1_000_000;
-
-fn stored(result: minidex::SearchResult) -> StoredFile {
-    StoredFile {
-        root: result.volume,
-        rel: result.path.to_string_lossy().into_owned(),
-        modified_secs: result.last_modified / MICROS,
-    }
-}
 
 fn fail(error: impl fmt::Display) -> StoreError {
     StoreError(error.to_string())

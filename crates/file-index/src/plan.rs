@@ -2,7 +2,9 @@
 //! Pure, so it is tested without FSEvents; `reconcile` carries the plan out.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use crate::exclusions::RULE_FILES;
 
 /// FSEvents event flags (`FSEventStreamEventFlags`); `fsevents.rs` asserts they match the SDK.
 pub(crate) mod flags {
@@ -16,6 +18,13 @@ pub(crate) mod flags {
     pub const ITEM_REMOVED: u32 = 0x0000_0200;
     pub const ITEM_RENAMED: u32 = 0x0000_0800;
     pub const ITEM_IS_DIR: u32 = 0x0002_0000;
+}
+
+/// What planning needs to know of the scope, answered without reading the disk.
+pub(crate) struct Filter<'a> {
+    /// Nothing at or below the path, a folder when the flag says so, can ever be indexed.
+    pub never_indexed: &'a dyn Fn(&Path, bool) -> bool,
+    pub is_root: &'a dyn Fn(&Path) -> bool,
 }
 
 /// One event as FSEvents delivered it.
@@ -40,7 +49,7 @@ pub(crate) struct Plan {
     pub history_done: bool,
 }
 
-pub(crate) fn plan(events: &[RawEvent]) -> Plan {
+pub(crate) fn plan(events: &[RawEvent], filter: &Filter<'_>) -> Plan {
     use flags::*;
     let mut plan = Plan::default();
     let mut subtrees = BTreeSet::new();
@@ -60,6 +69,19 @@ pub(crate) fn plan(events: &[RawEvent]) -> Plan {
             continue;
         }
         let structural = ITEM_CREATED | ITEM_REMOVED | ITEM_RENAMED;
+        if let Some(folder) = rule_folder(event, structural) {
+            // A root never starts a work tree and its marker prunes nothing, so a root's rule
+            // files wait for the next rebuild instead of emptying the whole root now.
+            if !(filter.is_root)(folder) && !(filter.never_indexed)(folder, true) {
+                subtrees.insert(folder.to_path_buf());
+            }
+            continue;
+        }
+        let is_dir = flags & (ITEM_IS_DIR | MUST_SCAN_SUB_DIRS) != 0 || flags == 0;
+        if (filter.never_indexed)(&event.path, is_dir) {
+            // Home's Library, `.git` internals, dependency trees: most of FSEvents' traffic.
+            continue;
+        }
         if flags & MUST_SCAN_SUB_DIRS != 0 || flags == 0 {
             // Coalesced or dropped events: FSEvents only knows that something below changed.
             subtrees.insert(event.path.clone());
@@ -95,12 +117,37 @@ pub(crate) fn plan(events: &[RawEvent]) -> Plan {
     plan
 }
 
+/// The folder whose rules an event changes: an ignore file or marker was written or removed,
+/// or `.git` appeared or went away.
+fn rule_folder(event: &RawEvent, structural: u32) -> Option<&Path> {
+    let name = event.path.file_name()?.to_str()?;
+    let is_git = name == ".git";
+    let changes_rules = RULE_FILES.contains(&name)
+        && if is_git {
+            event.flags & structural != 0
+        } else {
+            event.flags & flags::ITEM_IS_DIR == 0
+        };
+    changes_rules.then(|| event.path.parent()).flatten()
+}
+
 #[cfg(test)]
 mod tests {
     use super::flags::*;
     use super::*;
 
     const FILE: u32 = 0x0001_0000;
+
+    /// Plans with nothing filtered.
+    fn planned(events: &[RawEvent]) -> Plan {
+        plan(
+            events,
+            &Filter {
+                never_indexed: &|_, _| false,
+                is_root: &|_| false,
+            },
+        )
+    }
 
     fn event(path: &str, flags: u32, id: u64) -> RawEvent {
         RawEvent {
@@ -112,7 +159,7 @@ mod tests {
 
     #[test]
     fn groups_file_events_by_folder() {
-        let plan = plan(&[
+        let plan = planned(&[
             event("/h/a/one.md", ITEM_CREATED | FILE, 5),
             event("/h/a/two.md", ITEM_REMOVED | FILE, 7),
             event("/h/b/three.md", ITEM_RENAMED | FILE, 6),
@@ -125,7 +172,7 @@ mod tests {
 
     #[test]
     fn folder_changes_become_subtrees_that_absorb_nested_work() {
-        let plan = plan(&[
+        let plan = planned(&[
             event("/h/a/b", ITEM_RENAMED | ITEM_IS_DIR, 1),
             event("/h/a", ITEM_CREATED | ITEM_IS_DIR, 2),
             event("/h/a/b/c.md", ITEM_CREATED | FILE, 3),
@@ -146,13 +193,13 @@ mod tests {
 
     #[test]
     fn lost_history_rescans_everything() {
-        let plan = plan(&[
+        let plan = planned(&[
             event("/h/a.md", ITEM_CREATED | FILE, 1),
             event("/h", ROOT_CHANGED, 2),
         ]);
         assert!(plan.rescan_all);
         assert!(plan.files.is_empty());
-        let replayed = super::plan(&[event("", HISTORY_DONE, 9)]);
+        let replayed = planned(&[event("", HISTORY_DONE, 9)]);
         assert!(replayed.history_done && !replayed.rescan_all);
         assert_eq!(replayed.last_id, Some(9));
     }

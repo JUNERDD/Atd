@@ -2,10 +2,11 @@ import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * Where file search looks: the home directory, plus iCloud Drive on macOS, minus hidden entries,
- * dependency trees, build and cache output, app bundles and the OS-owned home folder. The native
- * index prunes with these rules merged with its own (`crates/file-index/src/exclusions.rs`); every
- * hit is filtered here again, and attach re-checks each resolved path before reading.
+ * Where file search may offer and attach files from. The native index decides what is searchable
+ * (`crates/file-index`: hidden folders, ignore files, formats); the service re-applies none of
+ * that and only keeps out what must never be offered, whatever the index holds: anything outside
+ * home and iCloud Drive, the OS-owned folder inside home, and the service's own data dir (its
+ * token, ledger, resources and the index itself). Attach checks each resolved path again.
  */
 export interface SearchScope {
   readonly platform: NodeJS.Platform;
@@ -13,21 +14,16 @@ export interface SearchScope {
   readonly home: string;
   /** Resolved iCloud Drive folder when it exists (macOS only); searched as its own root. */
   readonly iCloud: string | null;
+  /** The service data dir with links resolved. */
+  readonly dataDir: string;
 }
 
-/** Directory names skipped at any depth (compared in lower case). */
-const EXCLUDED_DIRECTORIES = new Set([
-  'node_modules',
-  'bower_components',
-  '__pycache__',
-  'site-packages',
-  'deriveddata',
-  'dist',
-  'build',
-  'out',
-  'target',
-  'coverage',
-]);
+/** The folders a scope is resolved from. */
+export interface ScopeRoots {
+  home: string;
+  platform: NodeJS.Platform;
+  dataDir: string;
+}
 
 /** The home-level folder that holds OS and application data rather than the user's files. */
 const SYSTEM_FOLDERS: Partial<Record<NodeJS.Platform, string>> = {
@@ -38,13 +34,17 @@ const SYSTEM_FOLDERS: Partial<Record<NodeJS.Platform, string>> = {
 /** Shown in place of iCloud Drive's real path, which sits inside the excluded Library folder. */
 const ICLOUD_LABEL = 'iCloud Drive';
 
-export async function resolveSearchScope(
-  home: string,
-  platform: NodeJS.Platform,
-): Promise<SearchScope> {
-  // The fs error would carry the absolute home path to the client.
+export async function resolveSearchScope({
+  home,
+  platform,
+  dataDir,
+}: ScopeRoots): Promise<SearchScope> {
+  // The fs errors would carry absolute paths to the client.
   const resolved = await realpath(home).catch(() => {
     throw new Error('The home folder could not be read.');
+  });
+  const data = await realpath(dataDir).catch(() => {
+    throw new Error('The service data folder could not be read.');
   });
   const iCloud =
     platform === 'darwin'
@@ -52,56 +52,30 @@ export async function resolveSearchScope(
           path.join(resolved, 'Library', 'Mobile Documents', 'com~apple~CloudDocs'),
         ).catch(() => null)
       : null;
-  return { platform, home: resolved, iCloud };
+  return { platform, home: resolved, iCloud, dataDir: data };
 }
 
 /**
- * Whether a directory is left out. `homeLevel` marks a folder directly inside home, where the
- * OS-owned folder (Library, AppData) is skipped; the same name deeper down stays searchable.
+ * The parent folder as the renderer sees it when `filePath` may be offered, otherwise null. Home
+ * files read as the home-relative folder ('' for home itself); iCloud Drive files as
+ * `iCloud Drive[/folder]`. This is the only form of a path that leaves the service.
  */
-export function isExcludedDirectory(scope: SearchScope, name: string, homeLevel: boolean): boolean {
-  const lower = name.toLowerCase();
-  return (
-    lower.startsWith('.') ||
-    lower.endsWith('.app') ||
-    EXCLUDED_DIRECTORIES.has(lower) ||
-    (homeLevel && lower === SYSTEM_FOLDERS[scope.platform])
-  );
-}
-
-/**
- * The parent folder as the renderer sees it when `filePath` is searchable, otherwise null:
- * outside every root, inside an excluded directory, or a hidden file. Home files read as the
- * home-relative folder ('' for home itself); iCloud Drive files as `iCloud Drive[/folder]`. This is
- * the only form of a path that leaves the service.
- */
-export function searchableLocation(scope: SearchScope, filePath: string): string | null {
-  // iCloud Drive first: its real path is inside home's excluded Library folder.
+export function offeredLocation(scope: SearchScope, filePath: string): string | null {
+  if (segmentsBelow(scope.dataDir, filePath)) return null;
+  // iCloud Drive first: its real path is inside home's OS-owned Library folder.
   const inICloud = scope.iCloud === null ? null : segmentsBelow(scope.iCloud, filePath);
-  if (inICloud) return locate(scope, inICloud, ICLOUD_LABEL, false);
+  if (inICloud) return [ICLOUD_LABEL, ...inICloud.slice(0, -1)].join(path.sep);
   const inHome = segmentsBelow(scope.home, filePath);
-  return inHome ? locate(scope, inHome, '', true) : null;
+  if (!inHome) return null;
+  const folders = inHome.slice(0, -1);
+  if (folders[0]?.toLowerCase() === SYSTEM_FOLDERS[scope.platform]) return null;
+  return folders.join(path.sep);
 }
 
+/** The path's segments below `root`, file name last; null when it is not inside `root`. */
 function segmentsBelow(root: string, filePath: string): string[] | null {
   const relative = path.relative(root, filePath);
   if (!relative || path.isAbsolute(relative)) return null;
   const segments = relative.split(path.sep);
   return segments[0] === '..' ? null : segments;
-}
-
-function locate(
-  scope: SearchScope,
-  segments: string[],
-  label: string,
-  underHome: boolean,
-): string | null {
-  const folders = segments.slice(0, -1);
-  const fileName = segments.at(-1);
-  if (!fileName || fileName.startsWith('.')) return null;
-  const excluded = folders.some((name, depth) =>
-    isExcludedDirectory(scope, name, underHome && depth === 0),
-  );
-  if (excluded) return null;
-  return (label ? [label, ...folders] : folders).join(path.sep);
 }

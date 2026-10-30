@@ -125,6 +125,7 @@ name = "file-index"
 version = "0.1.0"
 dependencies = [
  "dispatch2",
+ "frizbee",
  "ignore",
  "libc",
  "minidex",
@@ -152,6 +153,15 @@ name = "find-msvc-tools"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
+
+[[package]]
+name = "frizbee"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19435f276a44d90570cb403d22fbe4b20c80eabc134f718d6ec0ae888eb47edc"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "fs4"

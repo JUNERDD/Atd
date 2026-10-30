@@ -49,6 +49,7 @@
     "followUpPlaceholder": "继续追问…",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
+    "pasteNotSaved": "粘贴的文本未能保存。",
     "folderLimit": "最多添加 {{max}} 个文件夹。",
     "editImage": "编辑 {{name}}",
     "attachMenu": {
@@ -277,7 +278,7 @@
       "commands": "快捷指令",
       "skills": "技能",
       "recentAttached": "最近附加",
-      "recentUsed": "最近使用",
+      "recentModified": "最近修改",
       "files": "文件",
       "conversations": "对话",
       "mcp": "MCP",
@@ -345,6 +346,7 @@
     "states": {
       "loading": "正在加载…",
       "noMatches": "没有匹配项。",
+      "noMatchesYet": "暂无匹配项。",
       "noCommandMatches": "没有匹配的指令或技能。",
       "noSkillMatches": "没有匹配的技能。",
       "runningNoMatches": "没有匹配的指令。技能需等这次运行结束后使用。",
@@ -364,12 +366,17 @@
       "browse": "浏览文件…",
       "browseDescription": "从这台电脑选择任意文件",
       "partial": "结果可能不完整。",
-      "indexDisabled": "Spotlight 索引未开启，无法搜索文件。",
+      "indexing": "正在为文件建立索引…找到的文件会陆续显示。",
+      "indexingMore": "仍在建立索引，可能还会出现更多文件。",
       "unsupported": "此系统不支持文件搜索。",
+      "retrying": "文件搜索未能启动，正在重试…",
       "tooLarge": "文件过大，无法附加",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
+      "searchTimedOut": "文件搜索超时，请重试。",
       "attaching": "正在附加…",
+      "attachFailed": "无法附加该文件，请重试。",
+      "attachTimedOut": "附加文件超时，请重试。",
       "attachedFrom": "{{size}} · {{conversation}}"
     }
   },

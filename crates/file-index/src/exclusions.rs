@@ -1,8 +1,9 @@
 //! What the index leaves out, merged from two sources:
 //!
-//! - `apps/agent-service/src/file-search/scope.ts`: hidden entries, `.app` bundles, the directory
-//!   names below, and the OS-owned `Library` folder directly in home. These carry over unchanged,
-//!   so the index covers the same files the current search offers.
+//! - The service's earlier search scope (`scope.ts`): hidden entries, `.app` bundles, the
+//!   directory names below, and the OS-owned `Library` folder directly in home. Inside a git work
+//!   tree the repository's ignore rules decide instead (`scope.rs`), and only the dependency and
+//!   tool folders that are never anyone's files stay out.
 //! - Raycast 2.0's file indexer: the override globs below, read from the strings of
 //!   `/Applications/Raycast.app/.../backend/indexer.darwin-arm64.node` (Raycast bundle dated
 //!   2025-09-25 on the author's machine). Most of them sit under hidden folders or home's
@@ -14,25 +15,29 @@
 //! ...) without context showing whether they are exclusions or classification hints, so they are
 //! not adopted; ranking already demotes cache and output folders (see `rank::NOISY_FOLDERS`).
 
-/// Directory names skipped at any depth, compared in lower case (scope.ts `EXCLUDED_DIRECTORIES`).
-pub(crate) const EXCLUDED_DIRECTORIES: &[&str] = &[
+/// Directory names skipped at any depth, inside work trees too, compared in lower case.
+pub(crate) const ALWAYS_EXCLUDED: &[&str] = &[
+    ".git",
     "node_modules",
     "bower_components",
     "__pycache__",
     "site-packages",
     "deriveddata",
-    "dist",
-    "build",
-    "out",
-    "target",
-    "coverage",
 ];
+
+/// Output folder names also skipped at any depth outside work trees, where no ignore rules say
+/// what is output (scope.ts `EXCLUDED_DIRECTORIES`).
+pub(crate) const OUTPUT_DIRECTORIES: &[&str] = &["dist", "build", "out", "target", "coverage"];
 
 /// The home-level folder holding OS and application data (scope.ts `SYSTEM_FOLDERS.darwin`).
 pub(crate) const HOME_SYSTEM_FOLDER: &str = "library";
 
 /// A directory containing this file is skipped with everything below it, as Spotlight does.
 pub(crate) const NEVER_INDEX_MARKER: &str = ".metadata_never_index";
+
+/// Files whose creation, change or removal changes which files their folder's subtree keeps:
+/// the walker's ignore files, the marker, and `.git`, which starts or ends a work tree.
+pub(crate) const RULE_FILES: &[&str] = &[".gitignore", ".ignore", NEVER_INDEX_MARKER, ".git"];
 
 /// Raycast's exclusion globs, in `ignore` override syntax (`!` excludes).
 pub(crate) const RAYCAST_GLOBS: &[&str] = &[
@@ -106,17 +111,25 @@ pub(crate) const RAYCAST_GLOBS: &[&str] = &[
     "!node_modules",
 ];
 
-/// Whether a directory name is skipped by the scope.ts rules. `home_level` marks a folder directly
-/// inside the home root, where the OS-owned `Library` folder is skipped.
-pub(crate) fn is_excluded_directory(name: &str, home_level: bool) -> bool {
+/// Whether a directory name is skipped. `in_tree` marks a folder inside a git work tree, where
+/// hidden and output folders are kept unless ignore rules skip them; `home_level` a folder
+/// directly inside the home root, where the OS-owned `Library` folder is skipped. App bundles
+/// are packages, opaque like files, everywhere.
+pub(crate) fn is_excluded_directory(name: &str, in_tree: bool, home_level: bool) -> bool {
     let lower = name.to_lowercase();
-    lower.starts_with('.')
-        || lower.ends_with(".app")
-        || EXCLUDED_DIRECTORIES.contains(&lower.as_str())
-        || (home_level && lower == HOME_SYSTEM_FOLDER)
+    lower.ends_with(".app")
+        || ALWAYS_EXCLUDED.contains(&lower.as_str())
+        || (!in_tree
+            && (lower.starts_with('.')
+                || OUTPUT_DIRECTORIES.contains(&lower.as_str())
+                || (home_level && lower == HOME_SYSTEM_FOLDER)))
 }
 
-/// Hidden files are never offered (scope.ts `locate`).
-pub(crate) fn is_excluded_file(name: &str) -> bool {
-    name.starts_with('.')
+/// Files never offered, inside work trees too: Finder's folder settings and the `.git` file that
+/// links a submodule or an extra work tree to its repository.
+const EXCLUDED_FILES: &[&str] = &[".DS_Store", ".git"];
+
+/// Hidden files are offered only inside work trees (`.gitignore`, `.oxlintrc.json`).
+pub(crate) fn is_excluded_file(name: &str, in_tree: bool) -> bool {
+    EXCLUDED_FILES.contains(&name) || (!in_tree && name.starts_with('.'))
 }

@@ -21,8 +21,8 @@ function composingKey(event: KeyboardEvent, view: EditorView): boolean {
 
 /**
  * An open quick panel takes unmodified ↑/↓/Enter/Tab, and ⌘↑/⌘↓ (⌘ alone), which jump between its
- * groups as in Spotlight; false leaves the key to the editor (the panel is closed, or has nothing
- * to select for Enter and Tab). Keys of an IME composition never reach the panel.
+ * groups as in Spotlight; false leaves the key to the editor (the panel is closed, or no option is
+ * active for Enter and Tab). Keys of an IME composition never reach the panel.
  */
 export function routePanelKey(
   event: KeyboardEvent,

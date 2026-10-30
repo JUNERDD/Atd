@@ -65,6 +65,7 @@ export function skillsView(
   t: TFunction<'panel'>,
 ): QuickView {
   return {
+    query,
     groups: [skillGroup(skills, query, editor, t)],
     empty:
       skills.status === 'loading'
@@ -116,7 +117,7 @@ export function useSlashView({
   // Windows load with the levels; they gate `/context` and fill its drill list.
   const contexts = useModelContexts(leading, shownConnection);
   useCatalogRefresh(trigger?.drill?.command === 'model');
-  if (!trigger) return { groups: [], empty: null };
+  if (!trigger) return { query: '', groups: [], empty: null };
   if (trigger.drill?.command === 'compact')
     return compactDrill({ query: trigger.drill.query, block: compact, actions, editor, t });
   const drill = trigger.drill && isDrillCommand(trigger.drill.command) ? trigger.drill : null;
@@ -162,6 +163,7 @@ export function useSlashView({
     });
     const anyModel = connections.some((connection) => connection.catalog.length > 0);
     return {
+      query: drill.query,
       groups: orderGroups(groups, drill.query),
       empty: anyModel ? tp('models.noMatch') : tp('models.none'),
     };
@@ -202,7 +204,11 @@ export function useSlashView({
       },
     }));
     const group = { id: 'effort', heading: tp('thinkingLevels.label'), icon: <Gauge />, options };
-    return { groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
+    return {
+      query: drill.query,
+      groups: [group],
+      empty: reason ?? t('quickPanel.states.noMatches'),
+    };
   }
 
   if (trigger.placement === 'inline') return skillsView(skills, trigger.query, editor, t);
@@ -261,8 +267,14 @@ export function useSlashView({
     options: commands,
   };
   // A run in progress lists quick commands only: chips wait until the run finishes.
-  if (running) return { groups: [commandGroup], empty: t('quickPanel.states.runningNoMatches') };
+  if (running)
+    return {
+      query: trigger.query,
+      groups: [commandGroup],
+      empty: t('quickPanel.states.runningNoMatches'),
+    };
   return {
+    query: trigger.query,
     groups: orderGroups([commandGroup, skillOptions], trigger.query),
     empty: loading ? t('quickPanel.states.loading') : t('quickPanel.states.noCommandMatches'),
   };

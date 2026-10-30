@@ -284,7 +284,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
-  registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
+  registerFileRoutes(app, {
+    resources: deps.resources,
+    dataDir: deps.config.paths.root,
+    log: deps.log,
+  });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
   registerComputerRoutes(app, deps.computer);

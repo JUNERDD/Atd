@@ -14,7 +14,8 @@ use napi_derive::napi;
 #[napi(object)]
 #[derive(Debug)]
 pub struct OpenOptions {
-    /// Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules.
+    /// Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules. They
+    /// gate files outside git work trees; inside one, every file its ignore rules keep is indexed.
     pub extensions: Vec<String>,
     /// Home folder to index; defaults to `$HOME`. iCloud Drive inside it is indexed as well.
     pub home: Option<String>,
@@ -34,9 +35,18 @@ pub struct QueryHit {
     pub modified_at: Option<f64>,
     /// Bytes.
     pub size: Option<f64>,
-    /// `[from, to)` UTF-16 offsets into `name.normalize('NFC')` where the query matched.
-    pub match_start: Option<u32>,
-    pub match_end: Option<u32>,
+    /// Where the query matched the name: sorted, non-overlapping `[from, to)` UTF-16 ranges into
+    /// `name.normalize('NFC')`, covering whole characters with their combining marks; empty when
+    /// only the folder matched or the query was empty.
+    pub matches: Vec<MatchRange>,
+}
+
+/// A `[from, to)` UTF-16 range into a name in NFC.
+#[napi(object)]
+#[derive(Debug)]
+pub struct MatchRange {
+    pub from: u32,
+    pub to: u32,
 }
 
 impl From<file_index::Hit> for QueryHit {
@@ -49,8 +59,11 @@ impl From<file_index::Hit> for QueryHit {
             score: hit.score as f64,
             modified_at: hit.modified_ms.map(|ms| ms as f64),
             size: hit.size.map(|bytes| bytes as f64),
-            match_start: hit.name_match.map(|(from, _)| from),
-            match_end: hit.name_match.map(|(_, to)| to),
+            matches: hit
+                .matches
+                .into_iter()
+                .map(|(from, to)| MatchRange { from, to })
+                .collect(),
         }
     }
 }
@@ -61,10 +74,16 @@ impl From<file_index::Hit> for QueryHit {
 pub enum Phase {
     /// Opened, `start` not called yet.
     Idle,
-    /// The first walk is running; queries see the files found so far.
+    /// A walk is running, the first one or a root's rebuild; queries see the files found so far.
     Scanning,
+    /// Resumed: the changes made while the index was closed are being applied, so queries may
+    /// still show files as they were then.
+    Replaying,
     /// Up to date and following file-system events.
     Watching,
+    /// Background work failed (`error` says why): queries answer from what the index holds,
+    /// which may be missing changes until it is opened again, which rebuilds it.
+    Failed,
     Stopped,
 }
 
@@ -73,7 +92,9 @@ impl From<file_index::Phase> for Phase {
         match phase {
             file_index::Phase::Idle => Self::Idle,
             file_index::Phase::Scanning => Self::Scanning,
+            file_index::Phase::Replaying => Self::Replaying,
             file_index::Phase::Watching => Self::Watching,
+            file_index::Phase::Failed => Self::Failed,
             file_index::Phase::Stopped => Self::Stopped,
         }
     }
@@ -88,6 +109,7 @@ pub struct IndexStatus {
     /// FSEvents ids can exceed 2^53, so the id travels as a decimal string.
     pub last_event_id: String,
     pub skipped_roots: Vec<String>,
+    /// The last background failure; set exactly when `phase` is `failed`, or `stopped` after one.
     pub error: Option<String>,
 }
 
@@ -173,7 +195,12 @@ impl FileIndex {
         self.inner.start().map_err(reason)
     }
 
-    /// Best matches first; `limit` is clamped to 1-100. Aborting `signal` rejects with an
+    /// Best matches first; `limit` is clamped to 1-100. The text after the last `/` matches
+    /// names, contiguously or as a fuzzy subsequence, with `_`, `-`, `.` and spaces
+    /// interchangeable; folders before it match the end of the location, and a pasted absolute
+    /// or `~/` path works too. A plain query also lists the files of folders it names, below
+    /// contiguous name matches. An empty query or a single ASCII character lists recently
+    /// modified files outside hidden, output and cache folders. Aborting `signal` rejects with an
     /// `AbortError` while the query is still queued; a query that already runs finishes.
     #[napi(ts_return_type = "Promise<Array<QueryHit>>")]
     pub fn query(

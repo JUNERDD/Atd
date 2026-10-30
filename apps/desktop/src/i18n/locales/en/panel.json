@@ -49,6 +49,7 @@
     "followUpPlaceholder": "Ask a follow-up…",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
+    "pasteNotSaved": "The pasted text was not saved.",
     "folderLimit": "Add at most {{max}} folders.",
     "editImage": "Edit {{name}}",
     "attachMenu": {
@@ -277,7 +278,7 @@
       "commands": "Quick commands",
       "skills": "Skills",
       "recentAttached": "Recently attached",
-      "recentUsed": "Recently used",
+      "recentModified": "Recently modified",
       "files": "Files",
       "conversations": "Conversations",
       "mcp": "MCP",
@@ -345,6 +346,7 @@
     "states": {
       "loading": "Loading…",
       "noMatches": "No matches.",
+      "noMatchesYet": "No matches yet.",
       "noCommandMatches": "No matching commands or skills.",
       "noSkillMatches": "No matching skills.",
       "runningNoMatches": "No matching commands. Skills are available after this run finishes.",
@@ -364,12 +366,17 @@
       "browse": "Browse files…",
       "browseDescription": "Choose any file on this computer",
       "partial": "Some results may be missing.",
-      "indexDisabled": "Spotlight indexing is off, so file search is unavailable.",
+      "indexing": "Indexing files… Matches appear as they're found.",
+      "indexingMore": "Still indexing. More files may appear.",
       "unsupported": "File search isn't available on this system.",
+      "retrying": "File search couldn't start. Retrying…",
       "tooLarge": "Too large to attach",
       "limit": "10 files already attached",
       "failed": "File search failed. Try again.",
+      "searchTimedOut": "File search took too long. Try again.",
       "attaching": "Attaching…",
+      "attachFailed": "The file could not be attached. Try again.",
+      "attachTimedOut": "Attaching the file took too long. Try again.",
       "attachedFrom": "{{size}} · {{conversation}}"
     }
   },

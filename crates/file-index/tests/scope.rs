@@ -15,6 +15,11 @@ fn keeps_attachable_files_and_applies_every_exclusion() {
         // `Library` is only skipped directly inside home.
         fixture.write("proj/Library/inner.md", "deeper Library"),
         fixture.write("repo/keep.ts", "tracked"),
+        // Inside a work tree the ignore rules decide, whatever the name or folder.
+        fixture.write("repo/.gitignore", "ignored/\nsecret.txt\n"),
+        fixture.write("repo/Makefile", "no extension"),
+        fixture.write("repo/.github/workflows/ci.yml", "dot folder"),
+        fixture.write("repo/build/output.md", "output folder git keeps"),
         // Outside a git repository `.gitignore` does not apply, as in git and ripgrep.
         fixture.write("loose/skipme.md", "not in a repo"),
     ];
@@ -32,13 +37,13 @@ fn keeps_attachable_files_and_applies_every_exclusion() {
         fixture.write("repo/secret.txt", "gitignored file"),
         fixture.write("quiet/never.md", "marker folder"),
         fixture.write("proj/DerivedData/derived.md", "Xcode output"),
+        fixture.write("loose/Makefile", "no extension outside a repo"),
+        fixture.write(
+            "repo/node_modules/lib/vendored.md",
+            "dependency tree in a repo",
+        ),
+        fixture.write("repo/.git/notes.md", "git's own folder"),
     ];
-    fs::create_dir_all(fixture.home.join("repo/.git")).unwrap();
-    fs::write(
-        fixture.home.join("repo/.gitignore"),
-        "ignored/\nsecret.txt\n",
-    )
-    .unwrap();
     fs::write(fixture.home.join("quiet/.metadata_never_index"), "").unwrap();
 
     let index = fixture.ready();
@@ -123,15 +128,15 @@ fn ranks_like_the_typescript_search() {
             "readme.md"
         ]
     );
-    assert_eq!(hits[0].name_match, Some((0, 6)));
-    assert_eq!(hits[2].name_match, Some((5, 11)));
-    assert_eq!(hits[3].name_match, None);
+    assert_eq!(hits[0].matches, [(0, 6)]);
+    assert_eq!(hits[2].matches, [(5, 11)]);
+    assert!(hits[3].matches.is_empty());
     assert!(hits.windows(2).all(|pair| pair[0].score >= pair[1].score));
     assert_eq!(hits[0].size, Some("exact, deep".len() as u64));
     // Mid-word matches come from the in-memory name list (R10) and rank below word matches.
     let hits = index.query("port", 10).unwrap();
     assert_eq!(common::names(&hits), ["port-notes.md", "report.md"]);
-    assert_eq!(hits[1].name_match, Some((2, 6)));
+    assert_eq!(hits[1].matches, [(2, 6)]);
     // With enough word matches to fill the limit, the list is not consulted.
     assert_eq!(
         common::names(&index.query("port", 1).unwrap()),

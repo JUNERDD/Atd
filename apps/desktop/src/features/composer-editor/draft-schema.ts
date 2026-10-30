@@ -12,7 +12,12 @@ const name = Type.String({ maxLength: 1024 });
 const ChipSchema = Type.Union([
   ApplicationReferenceSchema,
   Type.Object(
-    { kind: Type.Literal('file'), file: FileRefSchema, context: Type.Optional(FileRefSchema) },
+    {
+      kind: Type.Literal('file'),
+      file: FileRefSchema,
+      context: Type.Optional(FileRefSchema),
+      location: Type.Optional(Type.String({ maxLength: 4096 })),
+    },
     { additionalProperties: false },
   ),
   Type.Object(

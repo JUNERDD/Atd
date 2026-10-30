@@ -85,7 +85,7 @@ export function contextDrill({
     icon: <Layers />,
     options,
   };
-  return { groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
+  return { query, groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
 }
 
 /**
@@ -130,6 +130,6 @@ export function compactDrill({
     icon: <FoldVertical />,
     options: [option],
   };
-  if (block) return { groups: [], empty: t(`quickPanel.blocked.${block}`) };
-  return { groups: [group], empty: null };
+  if (block) return { query, groups: [], empty: t(`quickPanel.blocked.${block}`) };
+  return { query, groups: [group], empty: null };
 }

@@ -10,16 +10,28 @@ use std::time::{Duration, Instant};
 
 use file_index::{FileIndex, IndexOptions, Phase};
 
-/// `ATTACHABLE_EXTENSIONS` of `packages/agent-contracts/src/attachments.ts` at the time of writing.
-const EXTENSIONS: &[&str] = &[
-    "txt", "md", "csv", "json", "log", "yaml", "yml", "xml", "html", "css", "ts", "tsx", "js", "py",
-];
+/// `SEARCHABLE_EXTENSIONS` of `packages/agent-contracts/src/attachments.ts`, the list the service
+/// passes, at the time of writing; refresh it with the format table.
+const EXTENSIONS: &str = "\
+    txt text log rst adoc tex org nfo md markdown mdx mdc html htm xhtml css scss sass less \
+    js mjs cjs jsx ts tsx mts cts vue svelte astro py pyi rb go rs java kt kts scala groovy \
+    gradle swift m mm c h cc cpp cxx hpp hh cs fs vb php pl pm lua r dart ex exs erl hs clj \
+    elm zig nim jl sol asm s sql sh bash zsh fish ps1 bat cmd proto graphql gql tf hcl cmake \
+    mk diff patch nix prisma glsl vert frag wgsl metal erb pbxproj csv tsv json jsonc json5 \
+    jsonl ndjson geojson ipynb xcstrings xml xsd xsl xslt rss atom yaml yml plist \
+    entitlements ics vcf vtt srt sqlite sqlite3 db toml ini cfg conf properties env lock pdf \
+    doc docx rtf odt pages epub xls xlsx xlsm ods numbers ppt pptx odp key png jpg jpeg gif \
+    webp heic heif tif tiff bmp avif svg ico mp3 wav m4a aac flac ogg oga opus aif aiff caf \
+    mid midi mp4 m4v mov avi mkv webm mpg mpeg 3gp zip tar gz tgz bz2 xz zst 7z rar dmg";
 const QUERIES: &[&str] = &[
     "", "a", "readme", "notes", "index", "config", "test", "package", "todo", "plan", "report",
     "main", "doc", "api", "log", "setup", "data", "claude", "resume", "2026",
-    // Mid-word text that only the substring fallback (R10) finds.
-    "eadm", "onfig", "ackag", "sume",
+    // Mid-word, fuzzy, separator-variant, path and CJK queries.
+    "eadm", "onfig", "ackag", "sume", "rdme", "pkgjsn", "read_me", "src/main", "docs/", "报告",
+    "表",
 ];
+/// The rows the panel shows and the hits the service asks for.
+const LIMITS: [usize; 2] = [20, 100];
 const WALK_DEADLINE: Duration = Duration::from_secs(540);
 
 fn main() {
@@ -29,7 +41,7 @@ fn main() {
             .expect("usage: home_bench <data dir>"),
     );
     let home = PathBuf::from(std::env::var_os("HOME").expect("HOME"));
-    let extensions: Vec<String> = EXTENSIONS.iter().map(|ext| ext.to_string()).collect();
+    let extensions: Vec<String> = EXTENSIONS.split(' ').map(str::to_string).collect();
 
     let started = Instant::now();
     let index = FileIndex::open(&data, IndexOptions::home(&home, extensions.clone())).unwrap();
@@ -56,24 +68,26 @@ fn main() {
         footprint_mib()
     );
 
-    let mut latencies = Vec::new();
-    for _ in 0..20 {
-        for query in QUERIES {
-            let start = Instant::now();
-            let hits = index.query(query, 20).unwrap();
-            latencies.push(start.elapsed());
-            std::hint::black_box(hits);
+    for limit in LIMITS {
+        let mut latencies = Vec::new();
+        for _ in 0..20 {
+            for query in QUERIES {
+                let start = Instant::now();
+                let hits = index.query(query, limit).unwrap();
+                latencies.push(start.elapsed());
+                std::hint::black_box(hits);
+            }
         }
+        latencies.sort();
+        let at = |q: f64| latencies[((latencies.len() - 1) as f64 * q) as usize];
+        println!(
+            "query latency, limit {limit}, over {}: p50 {:.2?} p95 {:.2?} max {:.2?}",
+            latencies.len(),
+            at(0.5),
+            at(0.95),
+            at(1.0)
+        );
     }
-    latencies.sort();
-    let at = |q: f64| latencies[((latencies.len() - 1) as f64 * q) as usize];
-    println!(
-        "query latency over {}: p50 {:.2?} p95 {:.2?} max {:.2?}",
-        latencies.len(),
-        at(0.5),
-        at(0.95),
-        at(1.0)
-    );
     println!(
         "rss after queries: {} MiB (footprint {} MiB)",
         rss_mib(),

@@ -16,9 +16,15 @@ import type { QuickSection, SectionScroller } from './use-section-pin';
  * Keys never go through cmdk; the editor forwards them here and falls through on `false`.
  */
 export interface QuickPanelHandle {
-  /** Moves the active option, skipping disabled rows; false when the panel is closed (key falls through). */
+  /**
+   * Moves the active option, skipping disabled rows; with none active, ↓ starts at the first
+   * option and ↑ at the last. False when the panel is closed (key falls through).
+   */
   move(delta: 1 | -1): boolean;
-  /** Runs the active option exactly like a click; false when closed or nothing is selectable (Enter then sends). */
+  /**
+   * Runs the active option exactly like a click. False when closed or no option is active, so
+   * Enter does what it does without the panel (sends, or starts a new line).
+   */
   select(): boolean;
   /**
    * Moves the active option to the first selectable option of the next or previous section that
@@ -46,15 +52,32 @@ export function isQuickPanelOpen(trigger: TriggerState | null, running: boolean)
 }
 
 interface Selection {
-  /** Candidate signature the choice belongs to; any other signature resets to the first option. */
-  key: string;
+  /** The opening the choice was made in; a new opening starts at the first result. */
+  opening: number;
+  /** The query the choice was made for; typing starts over at the first result. */
+  query: string;
   value: string;
+  /**
+   * The candidate signature a pointer choice belongs to: the highlight follows the pointer, so a
+   * list that changes under it starts over. Null for a keyboard move or a jump, which follows its
+   * option by value while the rows change for the same query (a reply landing, stale rows
+   * narrowed or reordered), for as long as that option stays selectable.
+   */
+  signature: string | null;
   /**
    * Whether the option scrolls into view: keyboard moves do; pointer choices do not, so the list
    * never moves under the cursor, and neither do jumps, which scroll their section's heading.
    */
   reveal: boolean;
 }
+
+const NO_SELECTION: Selection = {
+  opening: -1,
+  query: '',
+  value: '',
+  signature: null,
+  reveal: true,
+};
 
 // Like cmdk, no `container` limit: the option's nearest scroll container is its `overflow-hidden`
 // group, not the list viewport, so a limited scroll would never move the list.
@@ -81,13 +104,21 @@ function nextSection(sections: readonly QuickSection[], from: number, delta: 1 |
 
 /**
  * Active-option state for the controlled cmdk list. The active option is derived: the last choice
- * while the opening and the candidate signature are unchanged, otherwise the first selectable
- * option, so a new opening and new candidates or groups always start at the top. Option elements are tracked by value because cmdk
- * 1.1 leaves `selectedItemId` unset for a controlled value; their ids become
- * `aria-activedescendant`. A keyboard reveal takes the scroll over from a running jump.
+ * while it still applies, otherwise the first selectable result (an option in a section), so a
+ * new opening and every edit of the query start at the best match. A heading-less action
+ * ("Browse files…") is active only once chosen: when it is all that is selectable, no option is
+ * active and Enter and Tab keep their editor meaning, so a draft whose `@` matches nothing sends.
+ * A keyboard choice is kept by its option's value while the rows change for the same query, so a
+ * reply that lands after ↓ never moves the highlight to another row under Enter; once its option
+ * is gone or disabled, or the query changes, the choice is dropped for good, so neither a later
+ * reply nor the query typed back restores it. A pointer choice lasts only while the query and the
+ * candidates are unchanged. Option elements are tracked by value because cmdk 1.1 leaves
+ * `selectedItemId` unset for a controlled value; their ids become `aria-activedescendant`. A
+ * keyboard reveal takes the scroll over from a running jump.
  */
 export function useQuickPanel({
   open,
+  query,
   groups,
   sections,
   scroller,
@@ -95,6 +126,8 @@ export function useQuickPanel({
   onAriaChange,
 }: {
   open: boolean;
+  /** The text the rows answer (`QuickView.query`). */
+  query: string;
   groups: readonly QuickGroup[];
   /** The groups with headings (`sectionsOf`), in list order. */
   sections: readonly QuickSection[];
@@ -103,18 +136,29 @@ export function useQuickPanel({
   handleRef: Ref<QuickPanelHandle>;
   onAriaChange: (aria: QuickPanelAria | null) => void;
 }) {
-  // Every opening starts at the first option; the count only moves on open, so a closing panel
+  // Every opening starts at the first result; the count only moves on open, so a closing panel
   // keeps its highlight while it fades out.
   const [opening, setOpening] = useState({ open, count: 0 });
   if (opening.open !== open) setOpening({ open, count: opening.count + (open ? 1 : 0) });
-  const key = `${opening.count}|${signatureOf(groups)}`;
+  const count = opening.count;
+  const signature = signatureOf(groups);
+  const key = `${count}|${signature}`;
   const selectable = groups.flatMap((group) => group.options).filter((option) => !option.disabled);
-  const [selection, setSelection] = useState<Selection>({ key: '', value: '', reveal: true });
-  const chosen =
-    selection.key === key
-      ? selectable.find((option) => option.value === selection.value)
-      : undefined;
-  const active = chosen ?? selectable[0];
+  const [selection, setSelection] = useState<Selection>(NO_SELECTION);
+  const applies =
+    selection.opening === count &&
+    selection.query === query &&
+    (selection.signature === null || selection.signature === signature);
+  const chosen = applies
+    ? selectable.find((option) => option.value === selection.value)
+    : undefined;
+  // A choice that no longer applies is forgotten, so neither the same row reappearing nor the
+  // query typed back restores it.
+  if (selection.opening === count && selection.value !== '' && !chosen)
+    setSelection({ ...NO_SELECTION, opening: count });
+  // The default is the first selectable result; an action outside the sections never is.
+  const active =
+    chosen ?? sections.flatMap((item) => item.options).find((option) => !option.disabled);
   const activeValue = active?.value ?? '';
   const first = active !== undefined && active === selectable[0];
   const reveal = chosen === undefined || selection.reveal;
@@ -125,7 +169,8 @@ export function useQuickPanel({
   const jumpTo = (index: number) => {
     if (!open) return;
     const option = sections[index]?.options.find((item) => !item.disabled);
-    if (option) setSelection({ key, value: option.value, reveal: false });
+    if (option)
+      setSelection({ opening: count, query, value: option.value, signature: null, reveal: false });
     scroller.current?.scrollTo(index);
   };
 
@@ -133,10 +178,11 @@ export function useQuickPanel({
     move(delta) {
       if (!open) return false;
       scroller.current?.stop();
-      if (!active) return true;
-      const index = selectable.indexOf(active);
+      // From no active option, ↓ lands on the first selectable option and ↑ on the last.
+      const index = active ? selectable.indexOf(active) : delta === 1 ? -1 : selectable.length;
       const next = selectable[(index + delta + selectable.length) % selectable.length];
-      if (next) setSelection({ key, value: next.value, reveal: true });
+      if (next)
+        setSelection({ opening: count, query, value: next.value, signature: null, reveal: true });
       return true;
     },
     select() {
@@ -154,10 +200,12 @@ export function useQuickPanel({
     },
   }));
 
-  /** cmdk's pointer selection. It also re-selects the first option after a list change, which
-   * the derived reset already covers, so an unchanged value is ignored. */
+  /** cmdk's pointer selection. cmdk also re-selects its first item after a list change or once
+   * the active option unmounts; that lands on the derived active option (or, with none, on the
+   * surface's hidden placeholder), so an unchanged value is ignored. */
   const hover = (value: string) => {
-    if (value !== activeValue) setSelection({ key, value, reveal: false });
+    if (value !== activeValue)
+      setSelection({ opening: count, query, value, signature, reveal: false });
   };
 
   // The listbox mounts one render after `open` (the Radix portal mounts first), so its node is state.
@@ -196,9 +244,9 @@ export function useQuickPanel({
       open && list
         ? { controls: list.id, ...(option ? { activeDescendant: option.id } : {}) }
         : null;
-    const signature = aria ? `${aria.controls}\n${aria.activeDescendant ?? ''}` : '';
-    if (signature === reported.current) return;
-    reported.current = signature;
+    const wiring = aria ? `${aria.controls}\n${aria.activeDescendant ?? ''}` : '';
+    if (wiring === reported.current) return;
+    reported.current = wiring;
     latestAria.current(aria);
   }, [open, list, key, activeValue, reveal, first, scroller]);
 

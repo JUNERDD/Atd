@@ -21,7 +21,12 @@ export declare class FileIndex {
    */
   start(): void;
   /**
-   * Best matches first; `limit` is clamped to 1-100. Aborting `signal` rejects with an
+   * Best matches first; `limit` is clamped to 1-100. The text after the last `/` matches
+   * names, contiguously or as a fuzzy subsequence, with `_`, `-`, `.` and spaces
+   * interchangeable; folders before it match the end of the location, and a pasted absolute
+   * or `~/` path works too. A plain query also lists the files of folders it names, below
+   * contiguous name matches. An empty query or a single ASCII character lists recently
+   * modified files outside hidden, output and cache folders. Aborting `signal` rejects with an
    * `AbortError` while the query is still queued; a query that already runs finishes.
    */
   query(
@@ -41,18 +46,28 @@ export interface IndexStatus {
   /** FSEvents ids can exceed 2^53, so the id travels as a decimal string. */
   lastEventId: string;
   skippedRoots: Array<string>;
+  /** The last background failure; set exactly when `phase` is `failed`, or `stopped` after one. */
   error?: string;
 }
 
+/** A `[from, to)` UTF-16 range into a name in NFC. */
+export interface MatchRange {
+  from: number;
+  to: number;
+}
+
 export interface OpenOptions {
-  /** Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules. */
+  /**
+   * Extensions without dots: `SEARCHABLE_EXTENSIONS` from the service's attachment rules. They
+   * gate files outside git work trees; inside one, every file its ignore rules keep is indexed.
+   */
   extensions: Array<string>;
   /** Home folder to index; defaults to `$HOME`. iCloud Drive inside it is indexed as well. */
   home?: string;
 }
 
 /** Where the index is in its life. */
-export type Phase = 'idle' | 'scanning' | 'watching' | 'stopped';
+export type Phase = 'idle' | 'scanning' | 'replaying' | 'watching' | 'failed' | 'stopped';
 
 export interface QueryHit {
   /** Stable per path across queries and restarts. */
@@ -66,7 +81,10 @@ export interface QueryHit {
   modifiedAt?: number;
   /** Bytes. */
   size?: number;
-  /** `[from, to)` UTF-16 offsets into `name.normalize('NFC')` where the query matched. */
-  matchStart?: number;
-  matchEnd?: number;
+  /**
+   * Where the query matched the name: sorted, non-overlapping `[from, to)` UTF-16 ranges into
+   * `name.normalize('NFC')`, covering whole characters with their combining marks; empty when
+   * only the folder matched or the query was empty.
+   */
+  matches: Array<MatchRange>;
 }
