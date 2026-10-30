@@ -15,8 +15,8 @@ import { usePinDrag } from './use-pin-drag';
  * `App / App list card · Rhea`): the app's icon and name with actions at the top right, its own
  * description, and at the foot the list's meta line and a status badge. In Settings the whole
  * card opens the app's page (`onShow`) and Open at the top right opens the app; in the panel the
- * whole card opens the app, dragging it out of the window pins the app to the desktop
- * (`onDragOut`), and the actions are the panel's (`children`).
+ * whole card opens the app and the actions are the panel's (`children`). In both lists dragging
+ * the card out of its window pins the app to the desktop (`onDragOut`).
  */
 export function AppListCard({
   app,
@@ -36,7 +36,7 @@ export function AppListCard({
   actions: AppActions;
   /** Settings: the whole card opens the app's page. */
   onShow?: () => void;
-  /** The panel: a press on the card that moves hands the drag to the shell, which pins the app. */
+  /** A press on the card that moves hands the drag to the shell, which pins the app. */
   onDragOut?: (() => void) | undefined;
   /** Actions at the top right in place of Open (the panel's pin toggle, Continue editing, More). */
   children?: ReactNode;
@@ -78,7 +78,7 @@ export function AppListCard({
       badges={status ? <Badge variant="secondary">{status}</Badge> : undefined}
       open={
         onShow
-          ? { label: t('settings.showLabel', { name: app.name }), onOpen: onShow }
+          ? { label: t('settings.showLabel', { name: app.name }), onOpen: onShow, gesture }
           : { label: t('panel.openLabel', { name: app.name }), onOpen: openApp, gesture }
       }
       busy={busy}
