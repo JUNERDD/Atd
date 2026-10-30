@@ -1,19 +1,44 @@
-import { randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, rm } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, open, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { MAX_ATTACHMENT_BYTES, type ResourceRef } from '@atd/agent-contracts';
+import {
+  MAX_ATTACHMENT_BYTES,
+  type ResourceRef,
+  type ResourceSource,
+  type StoredResource,
+} from '@atd/agent-contracts';
 import { Ledger, LedgerNotFound } from './ledger.js';
+import { ResourceBatch } from './resources/batch.js';
+import { storedMime } from './resources/media-type.js';
+import { sameVersion, toRef } from './resources/stored.js';
 import type { ServicePaths } from './storage.js';
 
 const MIB = 1024 * 1024;
 
-/** A resource to store: the name and media type it is shown with, its bytes and its task. */
-export interface NewResource {
+/**
+ * A resource to store: the name it is shown with, its bytes and its task. Without a task it is a
+ * shared attachment, which any run may send and which is stored once per content.
+ */
+export type NewResource = {
   name: string;
+  /**
+   * The media type the caller names. A shared resource is stored with the one its content shows
+   * instead, and with this one only when neither its content nor its name settles it
+   * (resources/media-type.ts).
+   */
   mime: string;
-  bytes: Uint8Array;
   taskId?: string;
-}
+  /**
+   * The file a shared attachment is read from (resources/attachable-read.ts). A resource read from
+   * it while it was in this same version is reused without reading the file again, and a run sent
+   * later reads the file again once it changed (resources/refresh.ts).
+   */
+  source?: ResourceSource;
+} & (
+  | { bytes: Uint8Array }
+  /** Reads the bytes, which the store does only when no stored resource already holds them. */
+  | { read: () => Promise<Uint8Array> }
+);
 
 /**
  * One task's view of the resource store: where resource files live (a resource's file is
@@ -40,10 +65,18 @@ export class ResourceStore {
     private readonly paths: ServicePaths,
   ) {}
 
-  async save(options: NewResource): Promise<ResourceRef> {
-    const resource = await this.write(options);
-    await this.register([resource]);
-    return resource;
+  /**
+   * Stores a resource. A shared one that a stored shared resource of the same name and media type
+   * already holds (the same content, or its unchanged source) is not stored again: that resource
+   * is reused and handed out anew. With `batch`, the ledger records the resource only when the
+   * batch is recorded, together with the rest of it; without, at once.
+   */
+  async save(options: NewResource, batch?: ResourceBatch): Promise<ResourceRef> {
+    if (batch) return this.stage(options, batch);
+    const own = new ResourceBatch();
+    const saved = await this.stage(options, own);
+    await own.commit();
+    return saved;
   }
 
   /**
@@ -52,21 +85,26 @@ export class ResourceStore {
    * written. When `files` throws, the files written so far are removed and the error passes on.
    */
   async saveAll(files: AsyncIterable<NewResource>): Promise<ResourceRef[]> {
-    const written: ResourceRef[] = [];
+    const batch = new ResourceBatch();
+    const saved: ResourceRef[] = [];
     try {
-      for await (const file of files) written.push(await this.write(file));
+      for await (const file of files) saved.push(await this.stage(file, batch));
     } catch (error) {
-      // Nothing refers to them yet; a file that cannot be removed stays behind unreferenced.
-      await Promise.allSettled(written.map(({ id }) => rm(this.pathOf(id), { force: true })));
+      await batch.discard();
       throw error;
     }
-    await this.register(written);
-    return written;
+    await batch.commit();
+    return saved;
   }
 
   /** The file holding resource `id`, as the model reads it with the read tool. */
   pathOf(id: string): string {
     return path.join(this.paths.resourcesDir, id);
+  }
+
+  /** Resource `id`'s ledger row, with what only the service keeps (its source). */
+  stored(id: string): StoredResource | undefined {
+    return this.ledger.data.resources.find((item) => item.id === id);
   }
 
   /**
@@ -78,7 +116,7 @@ export class ResourceStore {
     return {
       dir: this.paths.resourcesDir,
       owns: (id) => {
-        const resource = this.ledger.data.resources.find((item) => item.id === id);
+        const resource = this.stored(id);
         // A resource saved for another task stays that task's, even when attached here.
         if (!resource || (resource.taskId !== null && resource.taskId !== taskId)) return false;
         if (resource.taskId === taskId) return true;
@@ -88,7 +126,7 @@ export class ResourceStore {
         );
       },
       hint: (id) => {
-        const resource = this.ledger.data.resources.find((item) => item.id === id);
+        const resource = this.stored(id);
         return resource && { name: resource.name, mime: resource.mime };
       },
     };
@@ -99,40 +137,98 @@ export class ResourceStore {
    * whose task is gone both answer 404; bytes never ride a JSON envelope.
    */
   async readBytes(id: string): Promise<{ resource: ResourceRef; bytes: Uint8Array }> {
-    const resource = this.ledger.data.resources.find((item) => item.id === id);
+    const resource = this.stored(id);
     if (!resource) throw new LedgerNotFound('Resource', id);
     if (resource.taskId && !this.ledger.data.tasks.some((task) => task.id === resource.taskId))
       throw new LedgerNotFound('Resource', id);
     const bytes = await readFile(path.join(this.paths.resourcesDir, id));
-    return { resource, bytes: new Uint8Array(bytes) };
+    return { resource: toRef(resource), bytes: new Uint8Array(bytes) };
   }
 
-  /** Writes a new resource's file; no run can reference it until `register` records it. */
-  private async write(options: NewResource): Promise<ResourceRef> {
+  /** Stages one resource in `batch`: a reused stored one, or a file written for it. */
+  private async stage(options: NewResource, batch: ResourceBatch): Promise<ResourceRef> {
+    batch.claim(this.ledger, this.paths.resourcesDir);
+    const { source, taskId } = options;
+    const name = options.name.slice(0, 255);
+    if (taskId !== undefined) {
+      const bytes = 'bytes' in options ? options.bytes : await options.read();
+      return batch.add(await this.write(bytes, { name, mime: options.mime, taskId }));
+    }
+    if (source) {
+      const known = await this.find(batch, (row) => {
+        return row.name === name && row.source !== undefined && sameVersion(row.source, source);
+      });
+      if (known) return batch.reuse(known);
+    }
+    const bytes = 'bytes' in options ? options.bytes : await options.read();
+    const mime = storedMime(bytes, name, options.mime).slice(0, 100);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    // Content read from a file matches only a copy of that file or one of no file: a copy of a
+    // namesake elsewhere would make a run sent later follow the other file.
+    const known = await this.find(
+      batch,
+      (row) =>
+        row.sha256 === sha256 &&
+        row.name === name &&
+        row.mime === mime &&
+        (source ? !row.source || row.source.path === source.path : !row.source),
+    );
+    if (known) return batch.reuse(known, source);
+    return batch.add(
+      await this.write(bytes, { name, mime, sha256, ...(source ? { source } : {}) }),
+    );
+  }
+
+  /**
+   * The newest shared resource `match` accepts whose file is still stored, among `batch`'s own
+   * first. One whose file is missing or another size (removed or changed outside the service) is
+   * never reused.
+   */
+  private async find(
+    batch: ResourceBatch,
+    match: (row: StoredResource) => boolean,
+  ): Promise<StoredResource | undefined> {
+    const staged = batch.rows().find((row) => row.taskId === null && match(row));
+    if (staged) return staged;
+    const rows = this.ledger.data.resources;
+    for (let index = rows.length - 1; index >= 0; index -= 1) {
+      const row = rows[index];
+      if (!row || row.taskId !== null || !match(row)) continue;
+      const info = await stat(this.pathOf(row.id)).catch(() => null);
+      if (info?.isFile() && info.size === row.size) return row;
+    }
+    return undefined;
+  }
+
+  /** Writes a new resource's file; no run can reference it until its batch is recorded. */
+  private async write(
+    bytes: Uint8Array,
+    fields: Omit<StoredResource, 'id' | 'size' | 'taskId' | 'createdAt'> & { taskId?: string },
+  ): Promise<StoredResource> {
     // The attachment limit is the store's cap, so any file a user can attach fits.
-    if (options.bytes.length > MAX_ATTACHMENT_BYTES)
+    if (bytes.length > MAX_ATTACHMENT_BYTES)
       throw new Error(`The resource exceeds the ${MAX_ATTACHMENT_BYTES / MIB} MiB upload limit.`);
     const id = randomUUID();
     await mkdir(this.paths.resourcesDir, { recursive: true });
-    const handle = await open(this.pathOf(id), 'wx', 0o600);
+    const file = this.pathOf(id);
+    const handle = await open(file, 'wx', 0o600);
+    let written = false;
     try {
-      await handle.writeFile(options.bytes);
+      await handle.writeFile(bytes);
+      written = true;
     } finally {
       await handle.close();
+      // A partial file (a full disk) would otherwise wait for the sweep (resources/gc.ts).
+      if (!written) await rm(file, { force: true });
     }
+    const { taskId, ...rest } = fields;
     return {
+      ...rest,
       id,
-      name: options.name.slice(0, 255),
-      size: options.bytes.length,
-      mime: options.mime.slice(0, 100),
-      taskId: options.taskId ?? null,
+      size: bytes.length,
+      mime: fields.mime.slice(0, 100),
+      taskId: taskId ?? null,
       createdAt: new Date().toISOString(),
     };
-  }
-
-  private async register(resources: ResourceRef[]): Promise<void> {
-    await this.ledger.change((data) => {
-      data.resources.push(...resources);
-    });
   }
 }

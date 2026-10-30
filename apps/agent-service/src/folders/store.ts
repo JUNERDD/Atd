@@ -14,8 +14,8 @@ import { LedgerNotFound } from '../ledger.js';
 import { checkFolder } from './check.js';
 
 /**
- * One folder granted to a task. `introduced` turns true once a run started with the grant: that
- * run's material carried the folder's tree overview, later runs only list the folder.
+ * One folder granted to a task. `introduced` turns true once a run's material carried the
+ * folder's tree overview to the task's session (`markIntroduced`); later runs only list the folder.
  */
 const GrantSchema = Type.Object(
   { folderId: Identifier, introduced: Type.Boolean() },
@@ -38,7 +38,10 @@ type FoldersFile = Static<typeof FoldersFileSchema>;
 /** A granted folder as a run starts with it. */
 export interface RunFolderGrant {
   folder: FolderRef;
-  /** The first run since the folder was granted (or granted again) introduces it. */
+  /**
+   * Whether the run introduces the folder: no run's material has carried its overview to the
+   * session since it was granted (or granted again).
+   */
   introduce: boolean;
 }
 
@@ -163,26 +166,37 @@ export class FolderStore {
   }
 
   /**
-   * The grants a run of the task starts with, marking each introduced: the run's material
-   * carries the overview of the ones not introduced yet. A folder that is no longer the directory
-   * it was registered as (removed, or replaced by a link to elsewhere) is left out of the run.
+   * The grants a run of the task starts with: the run's material carries the overview of the ones
+   * not introduced yet, which stay so until it reaches the session (`markIntroduced`), so a run
+   * that ends before its prompt leaves them to the next one. A folder that is no longer the
+   * directory it was registered as (removed, or replaced by a link to elsewhere) is left out.
    */
   startRun(taskId: string): Promise<RunFolderGrant[]> {
     return this.serialize(async () => {
-      const grants = this.state.grants[taskId] ?? [];
       const started: RunFolderGrant[] = [];
-      for (const grant of grants) {
+      for (const grant of this.state.grants[taskId] ?? []) {
         const [folder] = this.resolve([grant.folderId]);
         const checked = folder && (await checkFolder(folder.path, this.dataDir));
         if (folder && checked?.ok && checked.real === folder.path)
           started.push({ folder, introduce: !grant.introduced });
       }
-      if (grants.some((grant) => !grant.introduced))
-        await this.writeGrants(
-          taskId,
-          grants.map((grant) => ({ ...grant, introduced: true })),
-        );
       return started;
+    });
+  }
+
+  /**
+   * Marks granted folders introduced: a run's material carried their overviews to the task's
+   * session, so later runs only list them. A folder no longer granted to the task is skipped.
+   */
+  markIntroduced(taskId: string, folderIds: readonly string[]): Promise<void> {
+    return this.serialize(async () => {
+      const grants = this.state.grants[taskId] ?? [];
+      const marks = (grant: Grant) => !grant.introduced && folderIds.includes(grant.folderId);
+      if (!grants.some(marks)) return;
+      await this.writeGrants(
+        taskId,
+        grants.map((grant) => (marks(grant) ? { ...grant, introduced: true } : grant)),
+      );
     });
   }
 

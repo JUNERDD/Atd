@@ -30,7 +30,18 @@ export interface RunImageAttachment {
   note?: string;
 }
 
-export type RunAttachment = RunTextAttachment | RunImageAttachment;
+/**
+ * A file the run could not load (run-attachments.ts): the material names it with the reason, and
+ * with no resource path, since its stored copy may be the part that is missing.
+ */
+export interface RunUnavailableAttachment {
+  kind: 'unavailable';
+  name: string;
+  /** Why it was not loaded, in words for the model. */
+  reason: string;
+}
+
+export type RunAttachment = RunTextAttachment | RunImageAttachment | RunUnavailableAttachment;
 
 /** Material a run injects before its first turn: its instructions, files, references and skills. */
 export interface RunMaterial {

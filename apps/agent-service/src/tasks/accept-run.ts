@@ -8,6 +8,9 @@ import {
 import { ConnectionStore } from '../credentials/connections.js';
 import { ConflictError } from '../errors.js';
 import type { FolderStore } from '../folders/store.js';
+import { ResourceStore } from '../resources.js';
+import { ResourceBatch } from '../resources/batch.js';
+import { assertAttached, currentInput } from '../resources/refresh.js';
 import type { RunnerContext, TaskRunner } from '../task-runner.js';
 import { checkChipRanges } from './input-chips.js';
 import {
@@ -32,8 +35,9 @@ export interface RunAcceptanceDeps {
 
 /**
  * Accepts submitted runs into the ledger as `queued`, idempotently: repeats of an operation return
- * the original run, never a new one. Acceptance checks the request, freezes its snapshot and
- * grants its folders; starting the run is the runner manager's (runner-manager.ts `dispatch`).
+ * the original run, never a new one. Acceptance checks the request, brings its attached files up
+ * to date (resources/refresh.ts), freezes its snapshot and grants its folders; starting the run is
+ * the runner manager's (runner-manager.ts `dispatch`).
  */
 export class RunAcceptance {
   /**
@@ -77,24 +81,33 @@ export class RunAcceptance {
     checkBranchBefore(request.branchBefore, onBranch);
     const { sideChatOf } = request;
     checkSideChatOf(sideChatOf, previous, ledger.data.tasks);
-    for (const file of request.input.files) {
-      if (!ledger.data.resources.some((resource) => resource.id === file.id))
-        throw new Error(`Attachment ${file.id} was not uploaded.`);
-    }
     const folderIds = request.input.folders ?? [];
     this.deps.folders.resolve(folderIds);
-    const snapshot = freezeRunSnapshot(request, connections, catalog, previous, onBranch, internal);
     const runId = randomUUID();
-    const now = new Date().toISOString();
     this.accepting.add(taskId);
-    // Granted before the run exists, so no dispatch can start it without its folders.
-    await this.deps.folders.grant(taskId, folderIds).catch((error: unknown) => {
-      this.accepting.delete(taskId);
-      throw error;
-    });
-    await ledger
-      .change((data) => {
+    // Fresh copies of attached files that changed at their source, recorded with the run.
+    const batch = new ResourceBatch();
+    try {
+      // Read before the snapshot freezes, so the run sends its files as they are now.
+      const input = await currentInput(new ResourceStore(ledger, ctx.paths), request.input, batch);
+      const submitted = { ...request, input };
+      const snapshot = freezeRunSnapshot(
+        submitted,
+        connections,
+        catalog,
+        previous,
+        onBranch,
+        internal,
+      );
+      const now = new Date().toISOString();
+      // Granted before the run exists, so no dispatch can start it without its folders.
+      await this.deps.folders.grant(taskId, folderIds);
+      await ledger.change((data) => {
+        batch.apply(data, now);
+        assertAttached(data, input.files);
         let task = data.tasks.find((item) => item.id === taskId);
+        // Deleted while its files were read: the run must not bring it back.
+        if (!task && previous) throw new ConflictError('This conversation was deleted.');
         if (!task) {
           const tier = this.deps.newTaskTier();
           task = newTaskRecord({
@@ -120,8 +133,13 @@ export class RunAcceptance {
         delete task.nextSteps;
         task.updatedAt = now;
         data.operations[request.operationId] = { taskId, runId };
-      })
-      .finally(() => this.accepting.delete(taskId));
+      });
+    } catch (error) {
+      await batch.discard();
+      throw error;
+    } finally {
+      this.accepting.delete(taskId);
+    }
     ctx.events.publish({
       taskId,
       runId,

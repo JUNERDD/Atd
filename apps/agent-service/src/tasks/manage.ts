@@ -18,6 +18,7 @@ import { announceInvalidation } from '../invalidate.js';
 import type { Ledger } from '../ledger.js';
 import type { RunnerManager } from '../runner-manager.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import { releaseTaskResources } from '../resources/gc.js';
 import type { ServicePaths } from '../storage.js';
 import { forkTask } from './fork.js';
 
@@ -33,8 +34,10 @@ export interface TaskManageContext {
  * changes refuse while a run is live: D8 no-hot-swap; the tier is part of
  * the run binding, so the next run reopens the session with it). DELETE
  * refuses while any run is active and otherwise removes the task, its
- * idempotency entries, its orphaned pending requests and its folder grants;
- * session files, transcripts and audit logs stay on disk for forensics. POST compact starts
+ * idempotency entries, its orphaned pending requests and its folder grants, and
+ * hands the resources no other conversation sends to the sweep, which removes them
+ * after its grace period (resources/gc.ts); session files,
+ * transcripts and audit logs stay on disk for forensics. POST compact starts
  * a manual compaction of an idle task (RunnerManager.compact) and answers once
  * it is accepted; the task's compaction block and context updates follow it.
  * GET context splits the task's context usage by category, computed on request
@@ -93,6 +96,7 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
         throw new ConflictError('Finish the active run before deleting this task.');
       const operationIds = new Set(task.runs.map((run) => run.operationId));
       await ctx.ledger.change((data) => {
+        const removed = data.tasks.find((entry) => entry.id === taskId);
         data.tasks = data.tasks.filter((entry) => entry.id !== taskId);
         // A fork's copied runs keep their operation ids, whose entries name the source task.
         for (const operationId of operationIds)
@@ -101,6 +105,8 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
         data.pendingCapabilities = data.pendingCapabilities.filter(
           (item) => item.taskId !== taskId,
         );
+        // The sweep removes its attachments once no draft can still send them (resources/gc.ts).
+        if (removed) releaseTaskResources(data, removed, new Date().toISOString());
       });
       await ctx.manager.remove(taskId);
       await ctx.folders.forget(taskId);

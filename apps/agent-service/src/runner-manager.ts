@@ -308,7 +308,7 @@ export class RunnerManager {
 
   private async run(taskId: string, run: TaskRun): Promise<void> {
     try {
-      const attachments = await this.attachments.load(run.id, run.snapshot.input.files, taskId);
+      const attachments = await this.attachments.load(run, taskId);
       // Stop or shutdown ended the loading before the run started.
       if (!attachments) return;
       const folders = () => runFolders(this.deps.folders, taskId, this.deps.log);
