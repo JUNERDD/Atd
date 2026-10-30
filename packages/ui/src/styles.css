@@ -452,6 +452,18 @@
   }
 }
 
+/*
+ * A tooltip never takes the pointer: its content is `pointer-events-none` (tooltip.tsx), but Radix
+ * positions it inside a wrapper of the same size that would still hit-test. Without this, an open
+ * or fading tooltip swallows hover over whatever it covers, so the control under it neither
+ * highlights nor opens its own tooltip until the pointer moves again.
+ */
+@layer base {
+  [data-radix-popper-content-wrapper]:has(> [data-slot='tooltip-content']) {
+    pointer-events: none;
+  }
+}
+
 @layer components {
   /*
    * Soft content fade at the scrolled edges, after HeroUI's ScrollShadow fade variant: the
