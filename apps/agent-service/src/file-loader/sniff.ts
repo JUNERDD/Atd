@@ -1,3 +1,4 @@
+import { readsAsUtf8Text } from './text.js';
 import { listZip, smallEntry, type ZipListing } from './zip.js';
 
 /** How the loader turns a file into model input (loader.ts). */
@@ -31,7 +32,8 @@ export type TextutilFormat = 'doc' | 'rtf' | 'odt' | 'wordml';
 
 /**
  * A file's format by its content: `id` keys formats.ts, '' when nothing names the format. A PDF
- * is `prefixed` when bytes precede its `%PDF-` (a text that merely mentions it looks the same).
+ * is `prefixed` when bytes precede its `%PDF-` (a text in a legacy encoding that merely mentions it
+ * looks the same).
  */
 export type Detected =
   | { id: string; route: 'textutil'; format: TextutilFormat; zip?: ZipListing }
@@ -116,8 +118,10 @@ export function detect(bytes: Uint8Array, hint: string): Detected {
   if (ascii(bytes, 0, '{\\rtf')) return { id: 'rtf', route: 'textutil', format: 'rtf' };
   const signed = imageFormat(bytes) ?? binaryFormat(bytes);
   if (signed) return signed;
-  // pdf.js finds a header within the first KB; a format signed at offset 0 never gets here.
-  if (latin1(bytes, 1024).includes('%PDF-')) return { id: 'pdf', route: 'pdf', prefixed: true };
+  // pdf.js finds a header within the first KB; a format signed at offset 0 never gets here. A
+  // text that only mentions it there (PDF tooling, a fixture) reads as UTF-8, which a PDF does not.
+  if (latin1(bytes, 1024).includes('%PDF-') && !readsAsUtf8Text(bytes))
+    return { id: 'pdf', route: 'pdf', prefixed: true };
   return textFormat(bytes, hint);
 }
 

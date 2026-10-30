@@ -23,10 +23,12 @@ export interface FileInput {
  * What the model receives for a file: `utf8` when the file's own bytes are its text (valid UTF-8,
  * passed on as they are), `text` for decoded, extracted or descriptive text, `image` for image
  * input in a format the models or Pi take (`convertedFrom` names the format it was converted from).
+ * A `text` is `failed` when it says why the file could not be extracted or converted
+ * (describe.ts `describeFailure`): the cause may pass, such as a worker that timed out under load.
  */
 export type LoadedFile =
   | { kind: 'utf8'; bytes: Uint8Array }
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; failed?: true }
   | { kind: 'image'; mime: string; bytes: Uint8Array; convertedFrom?: string };
 
 /** The name and stored media type a file is known by, when its path does not carry them. */
@@ -79,6 +81,11 @@ function text(value: string): LoadedFile {
   return { kind: 'text', text: value };
 }
 
+/** The description of a file whose extraction or conversion failed. */
+function failure(value: string): LoadedFile {
+  return { kind: 'text', text: value, failed: true };
+}
+
 function zipOf(found: Detected): ZipListing | undefined {
   return 'zip' in found ? found.zip : undefined;
 }
@@ -97,8 +104,8 @@ export function createFileLoader(overrides: Partial<LoaderDeps> = {}): FileLoade
       return await route(found, input.bytes, deps, signal);
     } catch (error) {
       if (signal?.aborted) throw error;
-      const failure = `could not extract its text: ${failureReason(error)}`;
-      return text(describeFailure(formatOf(found.id), failure, zipOf(found), advice(found.id)));
+      const reason = `could not extract its text: ${failureReason(error)}`;
+      return failure(describeFailure(formatOf(found.id), reason, zipOf(found), advice(found.id)));
     }
   };
   return { load, loadPath: (file, options) => loadPath(file, load, options) };
@@ -204,7 +211,7 @@ function fromOutcome(
     case 'protected':
       return text(describeProtected(format, size));
     case 'failed':
-      return text(
+      return failure(
         describeFailure(
           format,
           `could not extract its text: ${outcome.reason}`,
@@ -244,7 +251,7 @@ async function convertImage(
     jpeg = await sipsJpeg(bytes, id, deps.run, signal);
   } catch (error) {
     if (signal?.aborted) throw error;
-    return text(
+    return failure(
       describeFailure(format, `could not convert it for image input: ${failureReason(error)}`),
     );
   }

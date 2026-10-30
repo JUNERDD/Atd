@@ -111,6 +111,7 @@ export async function createLiveState(
       ];
     },
     taskResources: resources.forTask(taskId),
+    resources,
     folders: () => deps.currentMaterial().folders.map((folder) => folder.path),
     writesInsideOnly: () => restrictedComputerRunOf(ctx.ledger, taskId, deps.currentRunId()),
     upsertMcp: binding.mcp.upsertMcp,

@@ -1,22 +1,25 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access } from 'node:fs/promises';
 import {
   createReadToolDefinition,
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
+  type AgentToolResult,
   type ReadOperations,
+  type ReadToolDetails,
+  type ReadToolInput,
 } from '@earendil-works/pi-coding-agent';
 import type { TaskResources } from '../resources.js';
-import { resourceIdAt } from '../service-fs.js';
+import { resolveToolPath, resourceIdAt } from '../service-fs.js';
 import type { ResolvePath } from '../tool-proxies.js';
 import { formatHint, formatOf } from './formats.js';
 import { IMAGE_HEADER_BYTES, oversizeNote } from './image-size.js';
+import { loadPathCached } from './load-cache.js';
 import { fileLoader, readStart, type FileHint, type FileLoader } from './loader.js';
+import { readTarget } from './read-target.js';
 import { detect } from './sniff.js';
-
-/** Converted files `read` keeps, by count and by total size. */
-const CACHE_ENTRIES = 32;
-const CACHE_BYTES = 128 * 1024 * 1024;
+import { largeTextPage, longLineText, PAGED_TEXT_BYTES, type TextPage } from './text-pages.js';
 
 /** What `read` hands Pi for a file: its bytes, and their media type when they are an image. */
 interface ReadResult {
@@ -24,8 +27,25 @@ interface ReadResult {
   mime: string | null;
 }
 
-/** The abort signal of the `read` call an operation runs in; Pi passes its operations none. */
-const calls = new AsyncLocalStorage<AbortSignal | undefined>();
+/**
+ * One `read` call: its abort signal, which Pi passes its operations none of; the line it starts
+ * at; the file as loaded for it; whether the file is a text file (sniff.ts route `text`), whose
+ * text grep can search, unlike a document's; and the text Pi pages.
+ */
+interface ReadCall {
+  signal: AbortSignal | undefined;
+  offset: number | undefined;
+  loaded?: { real: string; result: Promise<ReadResult> };
+  plainText?: boolean;
+  paged?: Buffer;
+}
+
+type ReadToolResult = AgentToolResult<ReadToolDetails | undefined>;
+
+const calls = new AsyncLocalStorage<ReadCall>();
+
+/** What `read` returns for an empty file; codemode scripts get its text, which is empty. */
+const EMPTY_FILE = '(empty file)';
 
 const DESCRIPTION = [
   'Read a file of any format.',
@@ -63,7 +83,9 @@ export function resourceHints(
  * Pi's read tool over the file loader (loader.ts), for the parent and every subagent child: the
  * same text and line numbers as a run's attachment material, images as image input. `readable`
  * confines each path, as the caller decides; `hintOf` names a file its path does not; the call's
- * abort signal reaches the loader.
+ * abort signal reaches the loader. An empty file and a page of a large UTF-8 text file are
+ * answered here (`readDirect`); Pi reads everything else, and a line too long for its page gets
+ * its first part instead of Pi's bash command (`withLongLine`).
  */
 export function loaderReadTool(
   cwd: string,
@@ -77,56 +99,154 @@ export function loaderReadTool(
     ...tool,
     description: DESCRIPTION,
     execute(toolCallId, params, signal, onUpdate, ctx) {
-      return calls.run(signal, () => tool.execute(toolCallId, params, signal, onUpdate, ctx));
+      const call: ReadCall = { signal, offset: params.offset };
+      return calls.run(call, async () => {
+        // The path as Pi resolves it before falling back to a macOS spelling of a missing name.
+        const target = resolveToolPath(ctx?.cwd || cwd, params.path);
+        const direct = await abortable(signal, () =>
+          readDirect(target, params, readable, hintOf, signal),
+        );
+        if (direct) return direct;
+        const result = await tool.execute(toolCallId, params, signal, onUpdate, ctx);
+        return withLongLine(result, params, call);
+      });
     },
   };
 }
 
 /**
+ * The answer for a file that exists at `target` and needs none of Pi's reading: `(empty file)`,
+ * or a page of a UTF-8 text file over `PAGED_TEXT_BYTES`, read from byte ranges (text-pages.ts)
+ * instead of whole. Null for any other file, and for a missing one, whose macOS spellings Pi
+ * tries. `readable` refuses a path here just as Pi's operations would.
+ */
+async function readDirect(
+  target: string,
+  request: Pick<ReadToolInput, 'offset' | 'limit'>,
+  readable: ResolvePath,
+  hintOf: HintResolver,
+  signal: AbortSignal | undefined,
+): Promise<ReadToolResult | null> {
+  if (!(await exists(target))) return null;
+  const { real, info } = await readTarget(readable, target);
+  if (info.size === 0)
+    return {
+      content: [{ type: 'text', text: EMPTY_FILE }],
+      details: undefined,
+      structuredContent: '',
+    };
+  if (info.size <= PAGED_TEXT_BYTES) return null;
+  const page = await largeTextPage(real, await hintOf(real), request, signal);
+  return page && textResult(page);
+}
+
+/** Whether a path exists, as Pi checks before it tries other spellings. */
+async function exists(target: string): Promise<boolean> {
+  return access(target, constants.F_OK).then(
+    () => true,
+    () => false,
+  );
+}
+
+function textResult({ text, details }: TextPage): ReadToolResult {
+  return { content: [{ type: 'text', text }], details, structuredContent: text };
+}
+
+/**
+ * Pi shows nothing of a first line over its byte limit and points at bash; this shows the
+ * line's first part with a note (text-pages.ts `longLineText`), from the text Pi paged.
+ */
+function withLongLine(
+  result: ReadToolResult,
+  { offset }: Pick<ReadToolInput, 'offset'>,
+  call: ReadCall,
+): ReadToolResult {
+  const { paged } = call;
+  if (!paged || !result.details?.truncation?.firstLineExceedsLimit) return result;
+  const startLine = offset ? Math.max(0, offset - 1) : 0;
+  let start = 0;
+  for (let skip = Math.trunc(startLine); skip > 0; skip -= 1)
+    start = paged.indexOf(0x0a, start) + 1;
+  const end = paged.indexOf(0x0a, start);
+  const line = {
+    display: startLine + 1,
+    size: (end === -1 ? paged.length : end) - start,
+    more: end !== -1,
+    searchable: call.plainText === true,
+  };
+  const text = longLineText(paged.subarray(start, start + DEFAULT_MAX_BYTES + 1), line);
+  return { ...result, content: [{ type: 'text', text }], structuredContent: text };
+}
+
+/** `work`, settled at once with Pi's own error when `signal` aborts, as Pi's read settles. */
+function abortable<T>(signal: AbortSignal | undefined, work: () => Promise<T>): Promise<T> {
+  if (signal?.aborted) return Promise.reject(new Error('Operation aborted'));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error('Operation aborted'));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    void work()
+      .then(resolve, reject)
+      .finally(() => signal?.removeEventListener('abort', onAbort));
+  });
+}
+
+/**
  * Pi's read operations. An image (by its signature) is image input, after a conversion for the
  * formats models do not take; any other file is the loader's text as UTF-8, which Pi pages by
- * lines. Pi asks for an image's media type before reading it, so that answer applies the loader's
- * own gate. Conversions are cached by real path, size, modification time and hint; UTF-8 text
- * passes through uncached. One cache serves every task's tools: an entry is the file's own
- * content, reached only after `readable` allowed the path.
+ * lines, without a final line break: that break ends the last line, so a file of N lines that
+ * each end in one counts N, as a paged file does. A call for line N+1 gets the text with a final
+ * break, which Pi pages as one empty line: an empty page, as a paged file gives there too
+ * (text-pages.ts), so a script that steps `offset` until a page comes back empty stops cleanly;
+ * any offset further on is Pi's error. Pi asks for an image's media type before reading it, so
+ * that answer applies the loader's own gate; the call loads the file once for both, so a
+ * conversion that failed, which the cache does not keep, is not tried twice. Conversions go
+ * through the cache attachment material shares (load-cache.ts), reached only after `readable`
+ * allowed the path.
  */
 function readOperations(
   readable: ResolvePath,
   hintOf: HintResolver,
   loader: FileLoader,
 ): ReadOperations {
-  const result = async (real: string): Promise<ReadResult> => {
-    const info = await stat(real);
+  const load = async (real: string, signal: AbortSignal | undefined): Promise<ReadResult> => {
     const hint = await hintOf(real);
-    const key = [real, info.size, info.mtimeMs, hint?.name, hint?.mime].join('\0');
-    const cached = cache.get(key);
-    if (cached) return cached;
-    const signal = calls.getStore();
-    const loaded = await loader.loadPath(real, {
-      ...(hint ? { hint } : {}),
-      ...(signal ? { signal } : {}),
-    });
+    const options = { ...(hint ? { hint } : {}), ...(signal ? { signal } : {}) };
+    const loaded = await loadPathCached(real, options, loader);
     switch (loaded.kind) {
       case 'utf8':
         return { bytes: asBuffer(loaded.bytes), mime: null };
       case 'text':
-        return cache.put(key, { bytes: Buffer.from(loaded.text, 'utf8'), mime: null });
-      case 'image': {
-        const image = { bytes: asBuffer(loaded.bytes), mime: loaded.mime };
-        return loaded.convertedFrom ? cache.put(key, image) : image;
-      }
+        return { bytes: Buffer.from(loaded.text, 'utf8'), mime: null };
+      case 'image':
+        return { bytes: asBuffer(loaded.bytes), mime: loaded.mime };
     }
   };
+  const result = (real: string): Promise<ReadResult> => {
+    const call = calls.getStore();
+    if (call?.loaded?.real === real) return call.loaded.result;
+    const loading = load(real, call?.signal);
+    if (call) call.loaded = { real, result: loading };
+    return loading;
+  };
   return {
-    readFile: async (target) => (await result(await readable(target))).bytes,
+    readFile: async (target) => {
+      const { bytes, mime } = await result(await readable(target));
+      if (mime !== null) return bytes;
+      const text = bytes.at(-1) === NEWLINE ? bytes.subarray(0, -1) : bytes;
+      const call = calls.getStore();
+      if (call) call.paged = text;
+      return isLineAfterLast(text, call?.offset) ? Buffer.concat([text, LINE_BREAK]) : text;
+    },
     access: async (target) => {
-      await stat(await readable(target));
+      await readTarget(readable, target);
     },
     detectImageMimeType: async (target) => {
       const real = await readable(target);
       const head = await readStart(real, IMAGE_HEADER_BYTES);
       const hint = await hintOf(real);
       const found = detect(head, formatHint(hint?.name ?? real, hint?.mime));
+      const call = calls.getStore();
+      if (call) call.plainText = found.route === 'text';
       if (found.route === 'image')
         return oversizeNote(found.id, head) ? null : formatOf(found.id).mime;
       return found.route === 'convert' ? (await result(real)).mime : null;
@@ -134,44 +254,21 @@ function readOperations(
   };
 }
 
+const NEWLINE = 0x0a;
+const LINE_BREAK = Buffer.of(NEWLINE);
+
+/** Whether `offset` (1-based, as `read` takes it) is the line just after the last of `text`. */
+function isLineAfterLast(text: Buffer, offset: number | undefined): boolean {
+  if (offset === undefined) return false;
+  let lines = 1;
+  // Counting stops once it reaches the offset, which then names a line of the text.
+  for (let at = text.indexOf(NEWLINE); at !== -1 && lines < offset; lines += 1)
+    at = text.indexOf(NEWLINE, at + 1);
+  return offset === lines + 1;
+}
+
 function asBuffer(bytes: Uint8Array): Buffer {
   return Buffer.isBuffer(bytes)
     ? bytes
     : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
-
-/** The most recently used conversions, bounded by `CACHE_ENTRIES` and `CACHE_BYTES`. */
-class ConversionCache {
-  private readonly entries = new Map<string, ReadResult>();
-  private bytes = 0;
-
-  get(key: string): ReadResult | undefined {
-    const entry = this.entries.get(key);
-    if (entry) {
-      this.entries.delete(key);
-      this.entries.set(key, entry);
-    }
-    return entry;
-  }
-
-  put(key: string, entry: ReadResult): ReadResult {
-    if (entry.bytes.byteLength > CACHE_BYTES) return entry;
-    this.drop(key);
-    this.entries.set(key, entry);
-    this.bytes += entry.bytes.byteLength;
-    for (const oldest of this.entries.keys()) {
-      if (this.entries.size <= CACHE_ENTRIES && this.bytes <= CACHE_BYTES) break;
-      this.drop(oldest);
-    }
-    return entry;
-  }
-
-  private drop(key: string): void {
-    const entry = this.entries.get(key);
-    if (!entry) return;
-    this.entries.delete(key);
-    this.bytes -= entry.bytes.byteLength;
-  }
-}
-
-const cache = new ConversionCache();

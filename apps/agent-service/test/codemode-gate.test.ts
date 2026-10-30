@@ -107,6 +107,7 @@ async function openSession(script: string, taskId: string = randomUUID()) {
     setStatus: () => undefined,
     skillDirs: () => [],
     taskResources: harness.service.resources.forTask(taskId),
+    resources: harness.service.resources,
     folders: () => [],
   };
   const loader = new DefaultResourceLoader({

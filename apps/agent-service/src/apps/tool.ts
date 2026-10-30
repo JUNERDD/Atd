@@ -1,7 +1,9 @@
+import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { AppApiNameSchema, AppIdSchema, parse } from '@atd/agent-contracts';
+import { recordCreated, type ViewSession } from '../file-view/ledger.js';
 import type { HarnessDeps } from '../harness/deps.js';
 import type { Gate } from '../harness/gate.js';
 import { dependencyChange } from './dependencies.js';
@@ -114,12 +116,16 @@ function taskFolder(cwd: string, dir = 'app'): string {
   return target;
 }
 
-/** Runs one call; answers the model text and, for a build, the card's details. */
+/**
+ * Runs one call; answers the model text and, for a build, the card's details. `session` is the
+ * session the call runs in, which a scaffold records as the creator of the starter files.
+ */
 export async function runAppCall(
   ctx: ToolContext,
   args: unknown,
   toolCallId: string,
   signal: AbortSignal | undefined,
+  session?: ViewSession,
 ): Promise<{ text: string; details: unknown }> {
   const call: AppCall = parse(AppCallSchema, args);
   const service = await AppService.for(ctx.dataDir);
@@ -153,7 +159,17 @@ export async function runAppCall(
     case 'scaffold': {
       const target = taskFolder(ctx.cwd, call.dir);
       await gate('Start an app from the starter', path.relative(ctx.cwd, target));
-      return { text: JSON.stringify(await scaffoldApp(target)), details: {} };
+      const scaffold = await scaffoldApp(target);
+      // The session made the starter files, so replacing one with `write` needs no read first
+      // (file-view/stale.ts): create-app replaces them with the user's app right away.
+      if (session) {
+        const created = scaffold.files.map((file) => realpath(path.join(target, file)));
+        const reals = (await Promise.allSettled(created)).flatMap((settled) =>
+          settled.status === 'fulfilled' ? [settled.value] : [],
+        );
+        await recordCreated(session, reals, toolCallId);
+      }
+      return { text: JSON.stringify(scaffold), details: {} };
     }
     case 'build': {
       const folder = taskFolder(ctx.cwd, call.dir);
@@ -225,9 +241,21 @@ export function appExtension(deps: HarnessDeps): ExtensionFactory {
       description: DESCRIPTION,
       parameters: AppToolParametersSchema,
       executionMode: 'sequential',
-      async execute(toolCallId, params, signal) {
+      async execute(toolCallId, params, signal, _onUpdate, pi) {
         signal?.throwIfAborted();
-        const { text, details } = await runAppCall(ctx, params, toolCallId, signal ?? undefined);
+        // The parent session, as its file tools know it (file-view/tools.ts `FileViews`).
+        const session: ViewSession = {
+          taskId: runner.taskId,
+          id: pi.sessionManager.getSessionId(),
+          role: 'parent',
+        };
+        const { text, details } = await runAppCall(
+          ctx,
+          params,
+          toolCallId,
+          signal ?? undefined,
+          session,
+        );
         return { content: [{ type: 'text', text }], details };
       },
     });

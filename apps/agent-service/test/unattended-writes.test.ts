@@ -78,6 +78,7 @@ async function runWith(unattended: boolean, calls: Array<[string, ToolArgs]>) {
     setStatus: () => undefined,
     skillDirs: () => [],
     taskResources: harness.service.resources.forTask(taskId),
+    resources: harness.service.resources,
     folders: () => [],
   };
   const settingsManager = SettingsManager.inMemory({ retry: { enabled: false } });

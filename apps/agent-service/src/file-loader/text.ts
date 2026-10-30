@@ -82,6 +82,30 @@ export function startsAsUtf8Text(head: Uint8Array): boolean {
 }
 
 /**
+ * Whether bytes read as UTF-8 text, after a UTF-8 BOM if they have one: no binary signs in their
+ * sample, and valid UTF-8 throughout once a character they cut at their end is set aside. Holds
+ * for a whole text file and for the start of one; a PDF's binary streams never pass.
+ */
+export function readsAsUtf8Text(bytes: Uint8Array): boolean {
+  const body = bomEncoding(bytes) === 'utf-8' ? bytes.subarray(3) : bytes;
+  const sample = body.subarray(0, TEXT_SAMPLE_BYTES);
+  if (bomEncoding(body) !== undefined || utf16Pattern(sample) || looksBinary(sample)) return false;
+  return isUtf8(body.subarray(0, completeUtf8Length(body)));
+}
+
+/**
+ * Where the text starts in a file whose decoded text is its own UTF-8 bytes, judged by its first
+ * bytes: 3 after a UTF-8 BOM, which decoding drops, else 0. Null when they do not read as UTF-8
+ * text, or read as seven-bit ISO-2022 text, which `decodeText` turns into other characters.
+ */
+export function utf8TextStart(head: Uint8Array): number | null {
+  if (!readsAsUtf8Text(head)) return null;
+  const start = bomEncoding(head) === 'utf-8' ? 3 : 0;
+  const sample = head.subarray(start, start + TEXT_SAMPLE_BYTES);
+  return sample.includes(ESC) && detect(sample)?.startsWith('ISO-2022') ? null : start;
+}
+
+/**
  * Whether bytes that are not valid UTF-8 are UTF-8 text with a few invalid bytes: at least
  * `LOSSY_UTF8_RATIO` valid multi-byte characters for each invalid byte.
  */
@@ -198,7 +222,7 @@ function decodeAs(label: string, bytes: Uint8Array): string {
 }
 
 /** The length of `bytes` without a trailing UTF-8 sequence the sample cut short. */
-function completeUtf8Length(bytes: Uint8Array): number {
+export function completeUtf8Length(bytes: Uint8Array): number {
   let start = bytes.length;
   // Step back over continuation bytes (10xxxxxx) to the start of the last sequence.
   while (start > 0 && bytes.length - start < 3 && ((bytes[start - 1] ?? 0) & 0xc0) === 0x80)

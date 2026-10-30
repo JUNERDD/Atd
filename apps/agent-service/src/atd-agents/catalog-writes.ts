@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { CONFIRM_DETAIL_CHARS, type Gate } from '../harness/gate.js';
 import { atdAgentsDir, confinedWrite, realInside } from '../service-fs.js';
@@ -40,6 +40,11 @@ export interface CatalogWriteHost {
   dataDir: string;
   gate: Gate;
   call: () => WriteCall;
+  /**
+   * Writes the bytes once any confirm is answered: the service's checked, atomic write step
+   * (file-view/call.ts `viewedReplace`), so the check of what the session saw comes after the wait.
+   */
+  write: (real: string, content: string) => Promise<void>;
 }
 
 /** Which catalog file a write changes. */
@@ -92,7 +97,7 @@ export function catalogConfirmedWrite(
         'The path resolved to another location during the call, so nothing was written.',
       );
     }
-    await writeFile(real, content);
+    await host.write(real, content);
   };
 }
 

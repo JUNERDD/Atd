@@ -39,8 +39,6 @@ export {
   liveChildren,
   markParentStopping,
   isParentStopping,
-  tryAcquireWrite,
-  releaseWrite,
   forgetTaskTree,
   storeHost,
   hostForTask,
