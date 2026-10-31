@@ -14,6 +14,7 @@ import {
 } from '@atd/agent-contracts';
 import { platformBackend } from './file-search/backend.js';
 import { AttachRefused, FileSearchService, SearchResultGone } from './file-search/service.js';
+import type { Logger } from './logging.js';
 import type { ResourceStore } from './resources.js';
 import { AttachableRejected } from './resources/attachable-read.js';
 import { importResources } from './resources/import.js';
@@ -21,12 +22,23 @@ import type { RouteExposure } from './route-exposure.js';
 
 export interface FileRouteDeps {
   resources: ResourceStore;
-  /** The service data dir; the file index keeps its store in `file-index/` below it. */
+  /**
+   * The service data dir; the file index keeps its store in `file-index/` below it, and file
+   * search never offers a file inside it.
+   */
   dataDir: string;
+  /** Receives path-free reasons when the file index fails to open or to keep up. */
+  log: Logger;
 }
 
 const renderer: { exposure: RouteExposure } = { exposure: 'renderer' };
 const shell: { exposure: RouteExposure } = { exposure: 'shell' };
+
+/**
+ * How long after the service starts listening it resumes an index left on disk: the endpoint is
+ * published and the recovered runs dispatched first, and readiness never waits for the index.
+ */
+const WARM_DELAY_MS = 2000;
 
 /**
  * Files from the user's disk becoming resources. Search and attach-by-result-id serve the
@@ -35,12 +47,18 @@ const shell: { exposure: RouteExposure } = { exposure: 'shell' };
  */
 export function registerFileRoutes(app: FastifyInstance, deps: FileRouteDeps): void {
   const search = new FileSearchService(
-    () => platformBackend(process.platform, path.join(deps.dataDir, 'file-index')),
+    () => platformBackend(process.platform, path.join(deps.dataDir, 'file-index'), deps.log),
     deps.resources,
-    homedir(),
-    process.platform,
+    { home: homedir(), platform: process.platform, dataDir: deps.dataDir },
   );
-  app.addHook('onClose', () => search.close());
+  let warm: NodeJS.Timeout | undefined;
+  app.addHook('onListen', () => {
+    warm = setTimeout(() => search.warm(), WARM_DELAY_MS).unref();
+  });
+  app.addHook('onClose', async () => {
+    clearTimeout(warm);
+    await search.close();
+  });
 
   app.post('/v1/files/search', { config: renderer }, async (request, reply) => {
     const { channel, ...query } = parse(FileSearchRequestSchema, request.body);

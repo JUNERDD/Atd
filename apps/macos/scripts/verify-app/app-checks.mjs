@@ -66,6 +66,7 @@ export async function verifyApp({ app, feedUrl, arm64FeedUrl, publicEdKey }) {
   const helper = path.join(contents, 'MacOS', DRIVER_HELPER);
   const embedded = [
     path.join(contents, 'PlugIns', 'AtdWidgets.appex', 'Contents', 'MacOS', 'AtdWidgets'),
+    path.join(contents, 'PlugIns', 'AtdFinderSync.appex', 'Contents', 'MacOS', 'AtdFinderSync'),
     path.join(contents, 'Frameworks', 'Sparkle.framework', 'Sparkle'),
     helper,
     path.join(resources, 'renderer', 'index.html'),

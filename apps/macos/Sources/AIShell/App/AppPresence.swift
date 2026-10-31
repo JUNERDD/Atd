@@ -1,25 +1,27 @@
 import AppKit
 import ServiceManagement
 
-/// The saved Dock preference and its temporary welcome-guide override, plus Open at Login.
+/// The saved Dock preference and its temporary override while the welcome guide or the settings
+/// window is open, plus Open at Login.
 final class AppPresence {
   private let defaults: UserDefaults
   private static let showInDockKey = "app.showInDock"
 
   init(defaults: UserDefaults) { self.defaults = defaults }
 
-  /// The user's preference, even while the welcome guide keeps the Dock icon visible.
+  /// The user's preference, even while an open guide or settings window keeps the Dock icon.
   var showInDock: Bool { defaults.bool(forKey: Self.showInDockKey) }
 
-  func setShowInDock(_ show: Bool, onboardingOpen: Bool) {
+  func setShowInDock(_ show: Bool, windowOpen: Bool) {
     defaults.set(show, forKey: Self.showInDockKey)
-    applyDockVisibility(onboardingOpen: onboardingOpen)
+    applyDockVisibility(windowOpen: windowOpen)
   }
 
-  /// Recomputes from the latest preference when the guide opens or closes; the override is
-  /// never saved. A closing guide disables focus restoration because its window can still be key.
-  func applyDockVisibility(onboardingOpen: Bool, restoreFocus: Bool = true) {
-    Self.applyShowInDock(showInDock || onboardingOpen, restoreFocus: restoreFocus)
+  /// Recomputes from the latest preference when the guide or the settings window opens or
+  /// closes; the override is never saved. A closing window disables focus restoration because it
+  /// can still be key.
+  func applyDockVisibility(windowOpen: Bool, restoreFocus: Bool = true) {
+    Self.applyShowInDock(showInDock || windowOpen, restoreFocus: restoreFocus)
   }
 
   /// Info.plist starts the app as an agent (`LSUIElement`), so a hidden Dock icon never

@@ -1,35 +1,34 @@
-import { writeFile } from 'node:fs/promises';
 import {
   createBashToolDefinition,
-  createEditToolDefinition,
-  createReadToolDefinition,
   createWriteToolDefinition,
   type ExtensionAPI,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
 import type { TSchema } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
+import { loaderReadTool, type HintResolver } from '../file-loader/read-tool.js';
+import { createAtdEditToolDefinition } from '../file-tools/edit-tool.js';
+import { observedPath } from '../file-view/call.js';
+import { FileViews } from '../file-view/tools.js';
 import { childSearchTools } from '../harness/search/tools.js';
 import { childWebTools } from '../harness/web-extension.js';
+import { resourceIdAt } from '../service-fs.js';
 import { authorizeShellCommand } from '../shell-policy.js';
 import { boundedExec } from '../shell-tool.js';
-import {
-  editOperations,
-  readOperations,
-  writeOperations,
-  type ResolvePath,
-  type WriteResolved,
-} from '../tool-proxies.js';
+import { servicePaths } from '../storage.js';
+import { editOperations, writeOperations, type ResolvePath } from '../tool-proxies.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
-import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
+import { hostForTask } from './registry.js';
 
 /**
  * T5 child tool proxies. The required bridge registers these confined tools
  * in every foreground child: service dataDir confinement, the service shell
- * policy, no parallel same-file writes, explicit blocks. Child writes stay
- * inside the task output dir; outside paths are blocked without a prompt.
+ * policy, the File View Ledger the child shares with its parent (file-view/),
+ * explicit blocks. Child writes stay inside the task output dir; outside paths
+ * are blocked without a prompt.
  * read/write/edit/bash are pi's own tools, built on the parent's operation
- * builders (tool-proxies.ts) with the child's path decision; grep/find/ls are
+ * builders (tool-proxies.ts, the file loader's read in file-loader/read-tool.ts)
+ * with the child's path decision; grep/find/ls are
  * the parent's confined pi tools (harness/search), and web_search/fetch_content
  * the parent's keyless web tools (harness/web-extension).
  *
@@ -129,7 +128,7 @@ export function registerChildTools(pi: ChildPi, host: ChildToolHost): void {
       childCommandTool(host.dataDir, approvals.gate, (decision) => allow('command', decision)),
     );
   for (const tool of tools) pi.registerTool(childDefinition(tool));
-  registerFileTools(pi, host);
+  registerFileTools(pi, host, parent.resourceHint);
   if (host.allowedTools.includes('bash')) {
     const bash = createBashToolDefinition(host.cwd, {
       exposeSessionEnvironment: false,
@@ -175,11 +174,19 @@ function childDefinition(tool: ChildTool): ToolDefinition {
 /**
  * pi's read, write and edit for one child. `checkChildPath` decides every path the operations
  * touch: reads stay in the task output or a ledger resource, writes and edits in the task output
- * (an edit only reads files it may write), and a write holds the sibling lock, so parallel
- * children never write one file at the same time. A call is audited once it succeeds; a refused
- * path is audited as a denial.
+ * (an edit only reads files it may write). The child is a session of the task's File View Ledger
+ * (file-view/), as the parent is: it may overwrite only a file it saw as it is now, and a sibling's
+ * write makes its view stale. pi's per-file mutation queue keeps parallel children from writing
+ * one file at the same time (tool-proxies.ts `editOperations`). A call is audited once it
+ * succeeds; a refused path is audited as a denial.
  */
-function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
+function registerFileTools(pi: ChildPi, host: ChildToolHost, resourceHint: HintResolver): void {
+  const views = new FileViews({
+    taskId: host.taskId,
+    role: 'child',
+    sessionId: () => `child:${host.executionId}`,
+  });
+  views.register(pi);
   const readable =
     (tool: string): ResolvePath =>
     async (target) => {
@@ -188,7 +195,7 @@ function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
         dataDir: host.dataDir,
         rawPath: target,
       });
-      if (location === 'outside' && !isResourcePath(host, real))
+      if (location === 'outside' && !(await isResourcePath(host, real)))
         throw denied(host, tool, 'Child reads outside the task output are blocked.');
       return real;
     };
@@ -205,32 +212,16 @@ function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
         throw denied(host, tool, 'Child writes outside the task output are blocked.');
       return real;
     };
-  const locked =
-    (tool: string): WriteResolved =>
-    async (real, content) => {
-      const lock = tryAcquireWrite(host.taskId, real, host.executionId);
-      if (!lock.ok)
-        throw denied(host, tool, `Parallel write to ${real} is blocked; a sibling holds it.`);
-      try {
-        await writeFile(real, content);
-      } finally {
-        releaseWrite(host.taskId, real, host.executionId);
-      }
-    };
   const register = <T extends TSchema, D, S>(tool: ToolDefinition<T, D, S>): void => {
     if (host.allowedTools.includes(tool.name)) pi.registerTool(audited(host, tool));
   };
-  register(createReadToolDefinition(host.cwd, { operations: readOperations(readable('read')) }));
-  register(
-    createWriteToolDefinition(host.cwd, {
-      operations: writeOperations(writable('write'), locked('write')),
-    }),
-  );
-  register(
-    createEditToolDefinition(host.cwd, {
-      operations: editOperations(writable('edit'), writable('edit'), locked('edit')),
-    }),
-  );
+  const reads = readable('read');
+  const read = loaderReadTool(host.cwd, observedPath(reads), resourceHint);
+  register(views.read(read, host.cwd, reads));
+  const writes = writeOperations(writable('write'));
+  register(views.write(createWriteToolDefinition(host.cwd, { operations: writes })));
+  const edits = editOperations(writable('edit'), writable('edit'));
+  register(views.edit(createAtdEditToolDefinition(host.cwd, { operations: edits })));
 }
 
 /** Audits a pi tool's call once it returns; pi's tool context passes through untouched. */
@@ -255,9 +246,9 @@ function audited<T extends TSchema, D, S>(
   };
 }
 
-function isResourcePath(host: ChildToolHost, real: string): boolean {
+/** Whether the real path `real` is the file of one of the run's ledger resources. */
+async function isResourcePath(host: ChildToolHost, real: string): Promise<boolean> {
   if (!host.resourceIds.length) return false;
-  return host.resourceIds.some(
-    (id) => real.endsWith(`/${id}`) || real.includes(`/resources/${id}`),
-  );
+  const id = await resourceIdAt(servicePaths(host.dataDir).resourcesDir, host.cwd, real);
+  return id !== null && host.resourceIds.includes(id);
 }

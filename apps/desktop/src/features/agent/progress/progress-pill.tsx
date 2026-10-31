@@ -13,6 +13,7 @@ import { Button } from '@atd/ui/components/button';
 import { Separator } from '@atd/ui/components/separator';
 import { cn } from '@atd/ui/lib/utils';
 import { useSideChats, type SideChatItem } from '../side-chat/side-chats';
+import { MonitorPart, type PillMonitor } from './monitor-part';
 import type { TaskProgress } from './selectors';
 import './progress.css';
 
@@ -146,12 +147,13 @@ function SideChatsPart({
 }
 
 /**
- * Compact status capsule, centered above the composer input, with up to five parts, each hidden
+ * Compact status capsule, centered above the composer input, with up to six parts, each hidden
  * when it has nothing to say (the pill hides when all are). Parts with something to list open
  * their view in the one popover the composer owns, so switching parts morphs that popover
  * instead of stacking a second one:
  * - pending HITL content ("Waiting for your approval"), shown for as long as it waits;
- * - a progress ring and `Step x / y` from the latest todo list, which opens Todos;
+ * - a progress ring and `Step x / y` from the latest todo list, which opens Todos; a finished
+ *   list leaves once the user sends a newer message (`latestTodos`);
  * - the subagents the latest reply dispatched, finished ones included, which opens their list.
  *   Summarized children stay after the reply ends and on reopen, since the pill is the way into
  *   their conversations; a bare count from a transcript without summaries has no list to open and
@@ -159,7 +161,8 @@ function SideChatsPart({
  * - the conversation's side chats (`useSideChats`), finished ones included, which opens their
  *   list, also while one is open so its siblings stay one choice away;
  * - "Compacting context…" while the task's context is being compacted, with nothing to open: the
- *   transcript's compaction row carries the outcome.
+ *   transcript's compaction row carries the outcome;
+ * - the task's live screens (`MonitorPart`), last, which open the native Screen Monitor window.
  *
  * The pill enters and leaves animated: its row grows from and collapses to zero height, so the
  * transcript above resizes instead of jumping, while the capsule fades and scales, rising out of
@@ -170,6 +173,7 @@ export function ProgressPill({
   live,
   hitl,
   compacting = false,
+  monitor = null,
   view,
   onToggle,
 }: {
@@ -178,6 +182,8 @@ export function ProgressPill({
   hitl: HitlStatus | null;
   /** The task's context is being compacted. */
   compacting?: boolean;
+  /** The task's live screens, while it streams any. */
+  monitor?: PillMonitor | null;
   /** The view the popover shows, which marks its part expanded. */
   view: PillView | null;
   onToggle: (view: PillView) => void;
@@ -281,6 +287,7 @@ export function ProgressPill({
         </span>
       ),
     });
+  if (monitor) parts.push({ key: 'monitor', node: <MonitorPart {...monitor} /> });
   const reduced = useReducedMotion();
   return (
     <AnimatePresence initial={false}>

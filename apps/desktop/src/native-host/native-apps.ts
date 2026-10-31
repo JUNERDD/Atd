@@ -144,7 +144,8 @@ export function nativeApps(
     pin: async (appId, widget) =>
       void (await native.call('userApp.pin', { appId, widget: widget ?? null })),
     unpin: async (appId) => void (await native.call('userApp.unpin', { appId })),
-    startPinDrag: (appId) => native.post('userApp.pinDrag', { appId }),
+    startPinDrag: (appId, widget) =>
+      native.post('userApp.pinDrag', { appId, widget: widget ?? null }),
     iconUrl: (appId, revision) => appIconUrl(options(), appId, revision),
     showTask: async (taskId) => {
       messages.post({ type: 'openTask', taskId });

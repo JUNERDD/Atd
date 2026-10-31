@@ -23,15 +23,18 @@ extension ShellController {
   private func onboardingOpenChanged() {
     let open = onboarding.host != nil
     trust.guideAsks = open
-    presence.applyDockVisibility(onboardingOpen: open, restoreFocus: open)
+    presence.applyDockVisibility(windowOpen: keepsDockIcon, restoreFocus: open)
     if !open { toolbar.hidePractice() }
   }
 
-  /// A Dock or Finder reopen returns to an existing guide before showing the task panel.
+  /// A Dock or Finder reopen returns to an existing guide, then to an open settings window,
+  /// before showing the task panel.
   func reopen() {
     guard !systemPanels.isOpen, !isCapturingScreenshot else { return }
     if onboarding.host != nil {
       openOnboarding()
+    } else if settings.isOpen {
+      openSettings(commandId: nil, section: nil)
     } else {
       showPanel()
     }

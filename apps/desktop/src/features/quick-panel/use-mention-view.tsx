@@ -76,7 +76,7 @@ export function useMentionView({
     attachmentCount,
   });
   const saved = useSavedGroups({ query, editor, commands, memories, accepts });
-  if (!trigger || (offerFiles && !files)) return { groups: [], empty: null };
+  if (!trigger || (offerFiles && !files)) return { query, groups: [], empty: null };
   const language = i18n.resolvedLanguage ?? i18n.language;
 
   // Titles repeat (they come from the first message), so the row tells conversations apart by how
@@ -203,12 +203,17 @@ export function useMentionView({
     saved.loading;
   const references = [applicationGroup, conversations, mcpGroup, agentGroup, ...saved.groups];
   return {
-    // "Browse files…" ends the list, so the first candidate, not the picker, is active by default.
+    query,
+    // "Browse files…" ends the list and is never active by default (use-quick-panel.ts), so with
+    // no match Enter keeps its composer meaning.
     groups: orderGroups(files ? [...files.lists, ...references, files.browse] : references, query),
+    // While the file index is still being built the panel asks again, so matches may yet appear.
     empty: !query
       ? null
       : loading
         ? t('quickPanel.states.loading')
-        : t('quickPanel.states.noMatches'),
+        : files?.settling
+          ? t('quickPanel.states.noMatchesYet')
+          : t('quickPanel.states.noMatches'),
   };
 }

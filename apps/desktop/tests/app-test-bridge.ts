@@ -211,7 +211,7 @@ export function installBridge(extras?: {
     })),
     searchTasks: vi.fn(async () => ({ hits: [], truncated: false })),
     forkTask: vi.fn(async () => ({ taskId: 'test-fork' })),
-    chooseFiles: vi.fn(async () => []),
+    chooseFiles: vi.fn(async () => ({ resources: [], failures: [] })),
     saveFile: vi.fn(async () => true),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),

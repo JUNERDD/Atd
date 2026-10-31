@@ -35,7 +35,8 @@ public final class ShellController {
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
-  /// Release builds' Sparkle updater; a waiting update reaches the panel as `update.state`.
+  /// Release builds' Sparkle updater; its download and a waiting update reach the panel as
+  /// `update.state`.
   let updater = AppUpdater()
   let quitGuard: QuitGuard
   /// Accessibility trust; every page learns it as `accessibility.trust`.
@@ -177,7 +178,7 @@ public final class ShellController {
     }
     updater.onChange = { [weak self] in
       guard let self else { return }
-      panelHost.setState(.updateState(.init(version: updater.readyVersion)))
+      panelHost.setState(.updateState(updater.state))
     }
     panel.onVisibilityChange = { [weak self, weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
@@ -250,7 +251,7 @@ public final class ShellController {
     screenRecording.start()
     StaleGrantRecovery.start(
       defaults: defaults, accessibility: trust, screenRecording: screenRecording)
-    presence.applyDockVisibility(onboardingOpen: onboarding.host != nil)
+    presence.applyDockVisibility(windowOpen: keepsDockIcon)
     applyLanguage()
     NotificationCenter.default.addObserver(
       forName: ShellStrings.didChange, object: nil, queue: .main
@@ -318,8 +319,12 @@ public final class ShellController {
   }
 
   func setShowInDock(_ show: Bool) {
-    presence.setShowInDock(show, onboardingOpen: onboarding.host != nil)
+    presence.setShowInDock(show, windowOpen: keepsDockIcon)
   }
+
+  /// The welcome guide and the settings window show the Dock icon while open, so the Dock and
+  /// Command-Tab reach them whatever the preference.
+  var keepsDockIcon: Bool { onboarding.host != nil || settings.isOpen }
 
   /// `openAtLogin` is null where it is unavailable (Debug builds); `widgetsAvailable` is false
   /// outside the folders macOS indexes for widgets (``WidgetPlacement``).

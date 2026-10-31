@@ -3,7 +3,7 @@ import { findPackageJSON } from 'node:module';
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-export const nativeDirectories = ['Sources', 'App', 'Widgets'];
+export const nativeDirectories = ['Sources', 'App', 'Widgets', 'FinderSync'];
 export const nativeRootFiles = [
   'Package.swift',
   'Package.resolved',
@@ -17,6 +17,8 @@ const generatedFiles = [
   'App/Info.plist',
   'Widgets/Extension/Info.plist',
   'Widgets/Extension/AtdWidgets.entitlements',
+  'FinderSync/Info.plist',
+  'FinderSync/AtdFinderSync.entitlements',
 ];
 
 export function isNativeOutput(name) {

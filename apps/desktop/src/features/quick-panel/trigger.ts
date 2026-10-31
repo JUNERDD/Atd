@@ -60,13 +60,23 @@ const LEADING_SLASH = /^(\s*)[/／、]([^\s\uE000\uE001]*)(?: ([^\n\uE000\uE001]
  * pi-tui's token rule: a token starts at a line start or after whitespace, a quote, `=`, CJK
  * punctuation, or a chip, so e-mail addresses and URLs never open the panel.
  */
-const TOKEN_START = /(?:^|[\s"'“”‘’=\u3000-\u303F\uFF01-\uFF0F\uFF1A-\uFF1F\uE001])/;
+const TOKEN_BOUNDARY = String.raw`\s"'“”‘’=\u3000-\u303F\uFF01-\uFF0F\uFF1A-\uFF1F\uE001`;
 /**
- * Only the ASCII `/` opens mid-draft: `、` separates Chinese list items. The query stops at the
- * next `/`, so a path such as `/Users/x` closes the panel at its second slash.
+ * Chinese and Japanese put no spaces between words, so `@` also opens right after their script
+ * (`看看@报告`); Hangul is included alike. A Latin letter or digit before `@` (an e-mail
+ * address, a handle inside a word) still never opens the panel.
  */
-const INLINE_SLASH = new RegExp(String.raw`${TOKEN_START.source}/([^\s/\uE000\uE001]*)$`);
-const MENTION = new RegExp(String.raw`${TOKEN_START.source}[@＠]([^\s@＠\uE000\uE001]*)$`);
+const CJK = String.raw`\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=Hangul}`;
+/**
+ * Only the ASCII `/` opens mid-draft: `、` separates Chinese list items. Unlike `@`, a `/` right
+ * after CJK text stays text (`和/或`, "and/or"). The query stops at the next `/`, so a path
+ * such as `/Users/x` closes the panel at its second slash.
+ */
+const INLINE_SLASH = new RegExp(String.raw`(?:^|[${TOKEN_BOUNDARY}])/([^\s/\uE000\uE001]*)$`);
+const MENTION = new RegExp(
+  String.raw`(?:^|[${TOKEN_BOUNDARY}${CJK}])[@＠]([^\s@＠\uE000\uE001]*)$`,
+  'u',
+);
 
 function leadingTrigger(context: TriggerContext, commands: CommandIds | null): TriggerState | null {
   if (!commands || context.start === null) return null;

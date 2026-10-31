@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { WidgetFamily } from '@atd/agent-contracts';
 import type { DesktopPin } from '../../client/apps-contract';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { useSettingsSnapshot } from '../settings/use-settings';
@@ -91,11 +92,17 @@ export function useAppPins() {
     }
   }
 
-  /** A press on the app's card moved: the shell drags its pin out of the panel. */
-  function dragOut(app: { id: string; name: string }) {
+  /**
+   * A press on the app's card, or on one of its widget previews (`widget`), moved: the shell drags
+   * its pin out of the window.
+   */
+  function dragOut(
+    app: { id: string; name: string },
+    widget?: { widgetId: string; family: WidgetFamily },
+  ) {
     if (!pinned.has(app.id))
       dragged.current.set(app.id, { name: app.name, until: Date.now() + DROP_WAIT_MS });
-    appsBridge().startPinDrag(app.id);
+    appsBridge().startPinDrag(app.id, widget);
   }
 
   return { pinned, pending, toggle, dragOut };

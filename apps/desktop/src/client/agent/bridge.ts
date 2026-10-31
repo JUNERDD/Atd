@@ -124,6 +124,11 @@ export type TextWriteRequest = CallParams<'text.write'>;
  * `interrupted` partway by the user.
  */
 export type TextWriteResult = CallResult<'text.write'>;
+/**
+ * One file pick (`files.pick`): `resources` are the picked files the service stored, `failures`
+ * the ones it refused, by basename and reason; both are empty when the user cancelled.
+ */
+export type PickedFiles = CallResult<'files.pick'>;
 /** What the progress HUD shows (`commandProgress.show` in the native bridge). */
 export type CommandProgressState = CallParams<'commandProgress.show'>['state'];
 /**
@@ -252,7 +257,8 @@ export interface AgentBridge {
   searchTasks: (query: TaskSearchQuery) => Promise<TaskSearchResponse>;
   /** Copies the task up to the turn `entryId` starts into a new task; resolves with its id. */
   forkTask: (taskId: string, entryId: string, title?: string) => Promise<{ taskId: string }>;
-  chooseFiles: () => Promise<FileRef[]>;
+  /** Lets the user pick files and imports them; the caller reports each refused one. */
+  chooseFiles: () => Promise<PickedFiles>;
   /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
   saveFile: (name: string, content: SaveContent) => Promise<boolean>;
   /** Reads memory; a failed read, or no connection, is reported in the snapshot's `error`. */

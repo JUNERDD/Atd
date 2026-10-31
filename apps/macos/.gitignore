@@ -6,6 +6,8 @@
 App/Info.plist
 Widgets/Extension/Info.plist
 Widgets/Extension/AtdWidgets.entitlements
+FinderSync/Info.plist
+FinderSync/AtdFinderSync.entitlements
 # xcodebuild -derivedDataPath
 DerivedData/
 xcuserdata/

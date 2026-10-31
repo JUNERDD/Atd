@@ -43,17 +43,20 @@ export interface FileSearchBridge {
 }
 
 /**
- * Why the shell did not import a path: a file import (`unreadable`, `unsupported`, `tooLarge`) or
- * a folder registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read).
+ * Why the shell did not add an item: a file import (`unreadable`, `unsupported`, `tooLarge`), a
+ * folder registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read), a
+ * request that failed as a whole (`failed`), or an item past what one gesture adds (`tooMany`).
  */
 export type ImportFailureReason =
   | 'unreadable'
   | 'unsupported'
   | 'tooLarge'
   | 'notDirectory'
-  | 'forbidden';
+  | 'forbidden'
+  | 'failed'
+  | 'tooMany';
 
-/** A path the shell refused: its basename (the page never sees paths of refused items). */
+/** An item the shell did not add: its basename (the page never sees paths of refused items). */
 export interface ImportFailure {
   name: string;
   reason: ImportFailureReason;
@@ -98,15 +101,25 @@ export interface SpeechBridge {
   onState(listener: (speaking: boolean) => void): () => void;
 }
 
-/** A newer version of the app, downloaded by the shell and waiting to install. */
+/**
+ * Where a newer version of the app stands: downloading in the background (`percent` in whole
+ * steps, null while the size is unknown), being unpacked and checked (`preparing`), or waiting to
+ * install (`ready`); `idle` while none is under way.
+ */
+export type AppUpdateState =
+  | { phase: 'idle' }
+  | { phase: 'downloading'; version: string; percent: number | null }
+  | { phase: 'preparing'; version: string }
+  | { phase: 'ready'; version: string };
+
+/** A newer version of the app, which the shell downloads, prepares and installs. */
 export interface UpdateBridge {
-  /** Installs the waiting update and relaunches; the shell still asks before stopping running tasks. */
+  /** Installs the ready update and relaunches; the shell still asks before stopping running tasks. */
   install(): void;
-  /**
-   * The waiting update's version, or null while none waits, on every change and once on subscribe;
-   * returns the unsubscribe.
-   */
-  onState(listener: (version: string | null) => void): () => void;
+  /** Shows the update under way in the shell's own update window, with its details and Cancel. */
+  show(): void;
+  /** The update's state on every change and once on subscribe; returns the unsubscribe. */
+  onState(listener: (state: AppUpdateState) => void): () => void;
 }
 
 /** The running app as the settings window's About page shows it. */

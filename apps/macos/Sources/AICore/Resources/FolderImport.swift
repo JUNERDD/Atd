@@ -82,8 +82,9 @@ public struct ImportBatch: Equatable, Sendable {
 
   public let files: [URL]
   public let folders: [URL]
-  /// Items past either limit, which the batch leaves out.
-  public let skipped: Int
+  /// Items past either limit, which the batch leaves out unread: the files after the first
+  /// ``AttachmentRules/maxPathsPerImport``, then the folders after the first ``maxFolders``.
+  public let skipped: [URL]
 
   public init(_ items: [ImportItem]) {
     let local = items.filter(\.url.isFileURL)
@@ -91,7 +92,9 @@ public struct ImportBatch: Equatable, Sendable {
     let folders = local.filter(\.isDirectory).map(\.url)
     self.files = Array(files.prefix(AttachmentRules.maxPathsPerImport))
     self.folders = Array(folders.prefix(Self.maxFolders))
-    skipped = local.count - self.files.count - self.folders.count
+    skipped =
+      Array(files.dropFirst(AttachmentRules.maxPathsPerImport))
+      + Array(folders.dropFirst(Self.maxFolders))
   }
 
   public var isEmpty: Bool { files.isEmpty && folders.isEmpty }
@@ -99,6 +102,8 @@ public struct ImportBatch: Equatable, Sendable {
   /// The absolute paths each request carries.
   public var filePaths: [String] { files.map(Self.path) }
   public var folderPaths: [String] { folders.map(Self.path) }
+  /// The basenames the page reports the left-out items under.
+  public var skippedNames: [String] { skipped.map { AttachmentRules.basename(Self.path($0)) } }
 
   private static func path(_ url: URL) -> String {
     url.standardizedFileURL.path(percentEncoded: false)
@@ -121,6 +126,21 @@ extension ResourcesImportedEvent {
           Failure(name: AttachmentRules.basename($0.path), reason: Failure.Reason($0.reason))
         })
   }
+
+  /// One gesture's whole outcome, which accounts for every item of `batch`: the requests'
+  /// answers, every path of a request that failed (nil) as `failed`, and every item the batch
+  /// left out as `tooMany`.
+  public init(
+    batch: ImportBatch, files: ResourceImportResponse?, folders: FolderRegisterResponse?
+  ) {
+    let answered = ResourcesImportedEvent(files: files ?? .empty, folders: folders ?? .empty)
+    let failed = (files == nil ? batch.filePaths : []) + (folders == nil ? batch.folderPaths : [])
+    self.init(
+      resources: answered.resources, folders: answered.folders,
+      failures: answered.failures
+        + failed.map { Failure(name: AttachmentRules.basename($0), reason: .failed) }
+        + batch.skippedNames.map { Failure(name: $0, reason: .tooMany) })
+  }
 }
 
 extension FilesPickFolderResult {
@@ -133,6 +153,15 @@ extension FilesPickFolderResult {
       failures: response.failures.map {
         Failure(name: AttachmentRules.basename($0.path), reason: Failure.Reason($0.reason))
       })
+  }
+
+  /// The registration's answer for a pick of `batch`, with every folder past the first
+  /// ``ImportBatch/maxFolders`` as `tooMany`.
+  public init(batch: ImportBatch, registered response: FolderRegisterResponse) {
+    let answered = FilesPickFolderResult(response)
+    self.init(
+      folders: answered.folders,
+      failures: answered.failures + batch.skippedNames.map { Failure(name: $0, reason: .tooMany) })
   }
 }
 

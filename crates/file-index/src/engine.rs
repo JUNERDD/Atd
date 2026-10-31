@@ -1,24 +1,24 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::Instant;
 
+use crate::background::{self, Progress};
 use crate::fsevents::{self, EventStream};
-use crate::plan::{self, RawEvent};
 use crate::scope::Scope;
 use crate::state::{self, Identity, SavedState, StartPoint};
 use crate::store::{MinidexStore, NameStore};
-use crate::walk::Focus;
-use crate::{Error, Extensions, Hit, IndexOptions, Phase, Status, reconcile};
+use crate::{Error, Extensions, Hit, IndexOptions, Phase, Status};
 
-/// Names the store's on-disk layout in the saved identity; a change rebuilds the index. The
-/// `minidex` part is the release that last changed minidex's file format, not the pinned version:
-/// 0.37.0 and 0.39.0 read 0.36.0's segments and write-ahead log unchanged, so those bumps kept
-/// existing indexes.
-/// Change it when a minidex release alters its format or when the stored paths or times change.
-const STORE_FORMAT: &str = "minidex=0.36.0;paths=display;time=micros";
+/// Names the store's on-disk layout and coverage in the saved identity; a change rebuilds the
+/// index. The `minidex` part is the release that last changed minidex's file format, not the
+/// pinned version: 0.37.0 and 0.39.0 read 0.36.0's segments and write-ahead log unchanged, so
+/// those bumps kept existing indexes. Change it when a minidex release alters its format, when
+/// the stored paths or times change, or when the rules for what is indexed do (`work-trees`:
+/// everything git keeps inside work trees).
+const STORE_FORMAT: &str = "minidex=0.36.0;paths=display;time=micros;scope=work-trees";
 const STORE_DIR: &str = "names";
 const STATE_FILE: &str = "state.json";
 
@@ -35,10 +35,16 @@ pub(crate) struct Shared {
     pub scope: Arc<Scope>,
     pub store: Box<dyn NameStore>,
     start_point: StartPoint,
-    saved: Mutex<SavedState>,
-    status: Mutex<Status>,
-    stop: AtomicBool,
-    state_path: PathBuf,
+    /// What `state.json` holds.
+    pub saved: Mutex<SavedState>,
+    /// What the event stream applied since the state was last saved.
+    pub progress: Mutex<Progress>,
+    pub status: Mutex<Status>,
+    pub stop: AtomicBool,
+    /// A background failure happened, so the store may have missed changes: the saved state is
+    /// not marked resumable again while this process runs.
+    pub failed: AtomicBool,
+    pub state_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -49,10 +55,12 @@ struct Workers {
 
 impl FileIndex {
     /// Opens the index kept in `data_dir`, creating it when missing. A store built for other
-    /// roots, extensions or event history is discarded here; `start` then rebuilds it.
+    /// roots, extensions, coverage rules or event history is discarded here; `start` then
+    /// rebuilds it.
     pub fn open(data_dir: &Path, options: IndexOptions) -> Result<Self, Error> {
+        std::fs::create_dir_all(data_dir)?;
         let extensions = Extensions::new(&options.extensions)?;
-        let scope = Scope::new(options.roots, extensions)?;
+        let scope = Scope::new(options.roots, extensions, data_dir.canonicalize().ok())?;
         let identity = Identity {
             store: STORE_FORMAT.into(),
             extensions: scope.extensions.to_vec(),
@@ -63,7 +71,6 @@ impl FileIndex {
                 .map(|root| fsevents::volume_uuid(&root.path).unwrap_or_default())
                 .collect(),
         };
-        std::fs::create_dir_all(data_dir)?;
         let state_path = data_dir.join(STATE_FILE);
         let loaded = state::load(&state_path);
         let start_point = state::start_point(loaded.as_ref(), &identity);
@@ -92,13 +99,20 @@ impl FileIndex {
             skipped_roots: scope.skipped_roots.clone(),
             error: None,
         };
+        let progress = Progress {
+            applied_id: saved.last_event_id,
+            dirty: false,
+            flushed: Instant::now(),
+        };
         let shared = Shared {
             scope: Arc::new(scope),
             store: Box::new(store),
             start_point,
             saved: Mutex::new(saved),
+            progress: Mutex::new(progress),
             status: Mutex::new(status),
             stop: AtomicBool::new(false),
+            failed: AtomicBool::new(false),
             state_path,
         };
         Ok(Self {
@@ -108,8 +122,9 @@ impl FileIndex {
     }
 
     /// Starts following file-system events and, unless the saved state allows resuming, walks
-    /// every root. Returns once the event stream runs; the walk continues in the background.
-    /// Calling it again while running does nothing.
+    /// every root. Returns once the event stream runs; the walk, or the replay of the events
+    /// recorded while the index was closed, continues in the background. Calling it again while
+    /// running does nothing.
     pub fn start(&self) -> Result<(), Error> {
         let mut workers = lock(&self.workers);
         if workers.is_some() {
@@ -129,11 +144,12 @@ impl FileIndex {
         let mut threads = Vec::new();
         let stream = match shared.start_point {
             StartPoint::Resume { since } => {
+                let stream = EventStream::start(&paths, Some(since), sender)?;
                 shared.update_status(|status| {
-                    status.phase = Phase::Watching;
+                    status.phase = Phase::Replaying;
                     status.resumed = true;
                 });
-                EventStream::start(&paths, Some(since), sender)?
+                stream
             }
             StartPoint::Rebuild => {
                 // Events from this id on are replayed, so nothing changed during the walk is lost.
@@ -141,14 +157,24 @@ impl FileIndex {
                 let stream = EventStream::start(&paths, Some(from), sender)?;
                 shared.update_status(|status| status.phase = Phase::Scanning);
                 let scanner = Arc::clone(shared);
-                threads.push(spawn("file-index-scan", move || scanner.scan(from))?);
+                threads.push(background::spawn(
+                    scanner,
+                    "file-index-scan",
+                    move |shared| {
+                        shared.scan(from);
+                    },
+                )?);
                 stream
             }
         };
         let follower = Arc::clone(shared);
-        threads.push(spawn("file-index-sync", move || {
-            follower.follow(&receiver)
-        })?);
+        threads.push(background::spawn(
+            follower,
+            "file-index-sync",
+            move |shared| {
+                shared.follow(&receiver);
+            },
+        )?);
         *workers = Some(Workers { stream, threads });
         Ok(())
     }
@@ -163,9 +189,11 @@ impl FileIndex {
     }
 
     /// Stops background work, makes every write durable and saves the resume point. Queries
-    /// keep answering from the store until the index is dropped.
+    /// keep answering from the store until the index is dropped. Later calls do nothing.
     pub fn close(&self) -> Result<(), Error> {
-        self.shared.stop.store(true, Ordering::Relaxed);
+        if self.shared.stop.swap(true, Ordering::SeqCst) {
+            return Ok(());
+        }
         if let Some(workers) = lock(&self.workers).take() {
             // Dropping the stream joins its thread and frees its sender, ending `follow`.
             drop(workers.stream);
@@ -173,11 +201,10 @@ impl FileIndex {
                 let _ = thread.join();
             }
         }
-        self.shared.store.checkpoint()?;
-        state::save(&self.shared.state_path, &lock(&self.shared.saved))?;
+        let result = self.shared.finish();
         self.shared
             .update_status(|status| status.phase = Phase::Stopped);
-        Ok(())
+        result
     }
 }
 
@@ -188,109 +215,9 @@ impl Drop for FileIndex {
 }
 
 impl Shared {
-    fn update_status(&self, change: impl FnOnce(&mut Status)) {
+    pub(crate) fn update_status(&self, change: impl FnOnce(&mut Status)) {
         change(&mut lock(&self.status));
     }
-
-    /// The first walk. On completion the store holds every root as of the walk, and every event
-    /// since `from` is either applied or still queued, so the resume point becomes valid.
-    fn scan(&self, from: u64) {
-        let mut complete = true;
-        for root in 0..self.scope.roots.len() {
-            match reconcile::write_walk(
-                &self.scope,
-                self.store.as_ref(),
-                root,
-                Focus::All,
-                &self.stop,
-            ) {
-                Ok(written) => self.update_status(|status| status.scanned_files += written),
-                Err(error) => return self.fail(&error),
-            }
-            complete &= !self.stop.load(Ordering::Relaxed);
-        }
-        if !complete {
-            return;
-        }
-        if let Err(error) = self.store.checkpoint() {
-            return self.fail(&error.into());
-        }
-        let mut saved = lock(&self.saved);
-        saved.scan_complete = true;
-        saved.last_event_id = saved.last_event_id.max(from);
-        let result = state::save(&self.state_path, &saved);
-        let last = saved.last_event_id;
-        drop(saved);
-        match result {
-            Ok(()) => self.update_status(|status| {
-                status.phase = Phase::Watching;
-                status.last_event_id = last;
-            }),
-            Err(error) => self.fail(&error.into()),
-        }
-    }
-
-    /// Applies event batches until the stream ends. Batches that arrive together are merged, so
-    /// a burst of changes costs one plan.
-    fn follow(&self, receiver: &Receiver<Vec<RawEvent>>) {
-        loop {
-            let mut events = match receiver.recv_timeout(Duration::from_millis(250)) {
-                Ok(events) => events,
-                Err(RecvTimeoutError::Timeout) => continue,
-                Err(RecvTimeoutError::Disconnected) => return,
-            };
-            while let Ok(more) = receiver.try_recv() {
-                events.extend(more);
-            }
-            if self.stop.load(Ordering::Relaxed) {
-                // The unapplied events stay after the saved id and are replayed next time.
-                return;
-            }
-            let plan = plan::plan(&events);
-            match reconcile::apply(&self.scope, self.store.as_ref(), &plan, &self.stop) {
-                Ok(written) => self.update_status(|status| status.scanned_files += written),
-                Err(error) => {
-                    // Keep draining; the saved state is incomplete now, so nothing is resumed.
-                    self.fail(&error);
-                    continue;
-                }
-            }
-            if self.stop.load(Ordering::Relaxed) {
-                // A stop cut the walks short: this batch is not fully applied.
-                return;
-            }
-            let Some(last) = plan.last_id else { continue };
-            let mut saved = lock(&self.saved);
-            saved.last_event_id = saved.last_event_id.max(last);
-            let result = if saved.scan_complete {
-                state::save(&self.state_path, &saved)
-            } else {
-                Ok(())
-            };
-            drop(saved);
-            match result {
-                Ok(()) => self.update_status(|status| status.last_event_id = last),
-                Err(error) => self.fail(&error.into()),
-            }
-        }
-    }
-
-    /// Records a background failure and marks the saved state incomplete: the store may have
-    /// missed changes, so the next open rebuilds it.
-    fn fail(&self, error: &Error) {
-        let mut saved = lock(&self.saved);
-        saved.scan_complete = false;
-        let _ = state::save(&self.state_path, &saved);
-        drop(saved);
-        self.update_status(|status| status.error = Some(error.to_string()));
-    }
-}
-
-fn spawn(name: &str, work: impl FnOnce() + Send + 'static) -> Result<JoinHandle<()>, Error> {
-    std::thread::Builder::new()
-        .name(name.into())
-        .spawn(work)
-        .map_err(Error::Io)
 }
 
 /// Locks, recovering from poisoning: every guarded value stays consistent between statements.

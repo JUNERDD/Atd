@@ -27,10 +27,12 @@ import { createJiti } from 'jiti';
  * the environment. Neither is `pdf-extract.ts`: it uploads PDFs to Datalab or Gemini when their
  * keys are in the environment, reads `web-search.json` and writes the text to a temp file. Their
  * HTTP path (extract.ts `extractViaHttp`: linkedom → Readability → Turndown, with the RSC and
- * Defuddle fallbacks, and unpdf for PDFs) is recomposed in fetch.ts, html.ts and pdf.ts from the
- * same package dependencies (linkedom, @mozilla/readability, turndown, `defuddle/node`, unpdf),
- * resolved from the package's own directory so their versions stay the ones the pinned package
- * installed.
+ * Defuddle fallbacks, and unpdf for PDFs) is recomposed in fetch.ts, html.ts and pdf.ts. The HTML
+ * path uses the same package dependencies (linkedom, @mozilla/readability, turndown,
+ * `defuddle/node`), resolved from the package's own directory so their versions stay the ones the
+ * pinned package installed. PDFs go through the file loader's PDF text core
+ * (file-loader/pdf-text.ts) in one of its extraction workers, on the service's own unpdf, the one
+ * copy the package also resolves.
  */
 
 /** The version the module list above was verified against; `loadWebPackage` refuses others. */
@@ -58,15 +60,6 @@ export interface DeclaredWebLink {
   url: string;
   relations: string[];
   type?: string;
-}
-
-/** The subset of pdf.js `PDFDocumentProxy` pdf.ts reads. */
-export interface PdfDocument {
-  numPages: number;
-  getMetadata: () => Promise<{ info: unknown }>;
-  getPage: (pageNumber: number) => Promise<{ getTextContent: () => Promise<{ items: unknown[] }> }>;
-  /** Destroying the loading task frees the document (pdf.js 5 has no `destroy` on the proxy). */
-  loadingTask: { destroy: () => Promise<void> };
 }
 
 export interface WebPackage {
@@ -98,9 +91,6 @@ export interface WebPackage {
     url: string,
     options: { markdown: true; useAsync: false },
   ) => Promise<{ title?: unknown; content?: unknown }>;
-  getDocumentProxy: (data: Uint8Array, options: { verbosity: number }) => Promise<PdfDocument>;
-  /** pdf.js `VerbosityLevel.ERRORS`: warnings about malformed PDFs stay off the service log. */
-  pdfVerbosity: number;
 }
 
 let cached: Promise<WebPackage> | null = null;
@@ -141,8 +131,7 @@ async function packageDir(): Promise<string> {
 
 async function load(): Promise<WebPackage> {
   const dir = await packageDir();
-  // Base inside the package: its dependencies' bare ids (linkedom, defuddle, unpdf…) resolve
-  // from it.
+  // Base inside the package: its dependencies' bare ids (linkedom, defuddle…) resolve from it.
   const jiti = createJiti(path.join(dir, 'package.json'), { moduleCache: true, fsCache: true });
   const source = (file: string) => jiti.import(pathToFileURL(path.join(dir, file)).href);
   const duckduckgo = record(await source('duckduckgo.ts'), 'duckduckgo.ts');
@@ -154,10 +143,6 @@ async function load(): Promise<WebPackage> {
   const readability = record(await jiti.import('@mozilla/readability'), '@mozilla/readability');
   const turndown = record(await jiti.import('turndown'), 'turndown');
   const defuddle = record(await jiti.import('defuddle/node'), 'defuddle/node');
-  const unpdf = record(await jiti.import('unpdf'), 'unpdf');
-  const pdfjs = record(await jiti.import('unpdf/pdfjs'), 'unpdf/pdfjs');
-  const { ERRORS } = record(pdfjs.VerbosityLevel, 'VerbosityLevel');
-  if (typeof ERRORS !== 'number') throw new Error('pi-web-access: VerbosityLevel is unavailable.');
   return {
     searchDuckDuckGo: member(duckduckgo, 'searchWithDuckDuckGo'),
     fetchRemoteUrl: member(ssrf, 'fetchRemoteUrl'),
@@ -169,8 +154,6 @@ async function load(): Promise<WebPackage> {
     Readability: member(readability, 'Readability'),
     Turndown: member(turndown, 'default'),
     Defuddle: member(defuddle, 'Defuddle'),
-    getDocumentProxy: member(unpdf, 'getDocumentProxy'),
-    pdfVerbosity: ERRORS,
   };
 }
 

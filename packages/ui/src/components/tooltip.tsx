@@ -31,7 +31,7 @@ function TooltipTrigger({
       data-slot="tooltip-trigger"
       onFocus={(event) => {
         onFocus?.(event);
-        if (!event.currentTarget.matches(':focus-visible')) event.preventDefault();
+        if (!event.target.matches(':focus-visible')) event.preventDefault();
       }}
       {...props}
     />

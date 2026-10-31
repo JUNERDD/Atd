@@ -10,6 +10,18 @@ import { chipName, type Chip } from './draft';
 const mounted = new WeakMap<HTMLElement, { root: Root; resize: ResizeObserver }>();
 
 /**
+ * The full value a chip's tooltip names: a folder's path, an app's bundle id, or where a file
+ * picked from search lives, so two chips of the same file name can be told apart.
+ */
+function chipDetail(chip: Chip): string | undefined {
+  if (chip.kind === 'folder') return chip.path;
+  if (chip.kind === 'application') return chip.bundleId;
+  if (chip.kind === 'file' && chip.location !== undefined)
+    return `${chip.location}/${chip.file.name}`;
+  return undefined;
+}
+
+/**
  * Renders one chip token into its own React root. The root element stays `inline-block` (an
  * `inline-flex` atom makes Chrome's IME repeat the first character typed after it), and `eq`
  * compares ids so rebuilt decorations keep the existing DOM.
@@ -49,13 +61,11 @@ export class ChipWidget extends WidgetType {
       dom.addEventListener('click', () => void editImageChip(view, id, chip));
     }
     const root = createRoot(dom);
-    const detail =
-      chip.kind === 'folder' ? chip.path : chip.kind === 'application' ? chip.bundleId : undefined;
     const label: ChipLabel =
       chip.kind === 'application'
         ? { kind: chip.kind, bundleId: chip.bundleId, name: chip.name }
         : { kind: chip.kind, name: chipName(chip) };
-    root.render(createElement(ChipContent, { ...label, image, detail }));
+    root.render(createElement(ChipContent, { ...label, image, detail: chipDetail(chip) }));
     const resize = new ResizeObserver(() => {
       if (view.composing) return;
       view.dispatch({

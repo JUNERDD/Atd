@@ -24,8 +24,8 @@ extension ShellController {
         guard let self else { return .notOk(.init(reason: .cancelled)) }
         return try await captureScreenshot()
       },
-      pickFiles: { [weak self] () async throws(BridgeError) -> [FileRef] in
-        guard let self else { return [] }
+      pickFiles: { [weak self] () async throws(BridgeError) -> ResourceImportResponse in
+        guard let self else { return .empty }
         return try await attachments.pick()
       },
       openScreenRecordingSettings: { [weak self] in self?.screenRecording.openSystemSettings() })

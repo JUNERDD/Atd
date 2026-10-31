@@ -13,10 +13,7 @@ export function nativePlatform(
   launch: (prepared: PreparedCommand, autoRun: boolean) => void,
 ): AgentPlatform {
   return {
-    async chooseFiles() {
-      const { resources } = await bridge.call('files.pick', {});
-      return resources;
-    },
+    chooseFiles: () => bridge.call('files.pick', {}),
     async copy(text) {
       await bridge.call('clipboard.write', { text });
     },

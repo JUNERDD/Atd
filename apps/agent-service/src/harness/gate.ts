@@ -75,9 +75,11 @@ const DECLINED = 'The user declined this action.';
  * then one confirm; a flagged or failed review falls through to the confirm, and an `askAlways`
  * request goes straight to it. An unattended run raises no confirm: the call is declined at once
  * and audited as `unattended`. A session answer grants the scope (tool, plus location for file
- * tools) for the rest of the task, including confirms already waiting on it. Every decision is
- * audited; confirm and review outcomes are also appended as `app-permission` session entries so
- * the transcript shows them after reopen.
+ * tools) for the rest of the task, including confirms already waiting on it. While a confirm
+ * waits its run is `awaiting_confirmation`; once it ends, the run takes the status its other
+ * waiting requests give it (`ConfirmStore.runStatus`), `running` only when none waits. Every
+ * decision is audited; confirm and review outcomes are also appended as `app-permission` session
+ * entries so the transcript shows them after reopen.
  */
 export function createGate(host: GateHost): Gate {
   function record(toolCallId: string, scope: GrantScope, outcome: PermissionOutcome): void {
@@ -130,13 +132,12 @@ export function createGate(host: GateHost): Gate {
       record(toolCallId, scope, 'declined');
       throw new Error(UNATTENDED_DECLINED);
     }
-    host.setStatus('awaiting_confirmation');
     try {
       const answer = await host.confirms.request(
         {
           taskId: host.taskId,
-          runId: host.runId(),
-          executionId: host.executionId(),
+          runId: base.runId,
+          executionId: base.executionId,
           toolCallId,
           kind: 'confirmation',
           scope,
@@ -146,8 +147,12 @@ export function createGate(host: GateHost): Gate {
           ...(review ? { review } : {}),
         },
         request.signal,
-        // A request no session grant answers is not settled by another call's grant either.
-        { ownAnswerOnly: !sessionGrant },
+        {
+          // A request no session grant answers is not settled by another call's grant either.
+          ownAnswerOnly: !sessionGrant,
+          // Once listed, so a parallel call whose confirm ends meanwhile sees this one waiting.
+          listed: () => host.setStatus('awaiting_confirmation'),
+        },
       );
       if (!('decision' in answer) || answer.decision === 'declined') {
         host.audit({ ...base, decision: 'declined' });
@@ -165,7 +170,8 @@ export function createGate(host: GateHost): Gate {
       }
       return outcome;
     } finally {
-      host.setStatus('running');
+      // Parallel calls (reads, subagents) wait at once: the run waits while any request does.
+      host.setStatus(host.confirms.runStatus(host.taskId, base.runId));
     }
   };
 }

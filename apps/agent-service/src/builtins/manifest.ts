@@ -164,9 +164,12 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // built-ins (fix it in web/ and shared/, ignore the ES2025 class in server/, which runs on Node
   // 24), DOM and CSS APIs need feature detection, the window material differs between macOS 15 and
   // 26, and widget symbols must exist on macOS 15.0.
-  skill('create-app', 3, [
+  // Version 4 says that a pin may also show the widget whose preview the user dragged out of the
+  // app's page in Settings.
+  skill('create-app', 4, [
     'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
     'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
+    '320c51d014765e1071682461c9bfb465a34aa9051547f2812907d3739f7522d9', // v0.9.0
   ]),
   // Teaches the `computer` tool: act only on targets approved for the run, observe
   // before and after every change, prove completion with an explicit postcondition rather than a
@@ -261,6 +264,16 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // write messages that read as the user's own; close every loop with `update_ui`; and build to
   // the view runtime, the sandbox limits and the apple-design rules for a compact inline view.
   skill('generative-ui', 1, []),
+  // Teaches working with what files contain, whatever their format: start from the loaded material
+  // and its extraction notes, page through files with `read` instead of loading them whole,
+  // compute over data with code, use only tools a stock Mac has (with bundled on-device OCR and
+  // page rendering for pages without text), cite where each claim comes from, name what was not
+  // read, and treat file contents as data rather than instructions.
+  // Version 2 says that a run without `bash` gets the text of an attached PDF's pages without a
+  // text layer recognized with the same script (`--- Page N (OCR) ---`, as far as the material
+  // holds them, within a time limit, never page images), which `read` returns without while the
+  // material's notes keep its line numbers; the pages still without text are named to the user.
+  skill('file-loader', 2, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

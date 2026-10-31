@@ -2,6 +2,8 @@ import path from 'node:path';
 import { readdir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { agentHarnessFile } from './atd-agents/harness.js';
+import { servicePaths } from './storage.js';
 
 /**
  * The product home that holds the `skills` and `agents` catalogs. `AI_ATD_HOME` overrides it; `serve`
@@ -105,36 +107,34 @@ export async function confined(
 }
 
 /**
- * Directories under the data dir no agent file tool may write, whatever the task's cwd: the
- * service's security state (MCP launch approvals, mcp/launch-store.ts), the plugin store
- * (`<dataDir>/plugins`, installed plugin code and its state), the user apps
- * (`<dataDir>/apps`: published versions and app data, apps/paths.ts), the automations
- * (`<dataDir>/automations`: saved automations act later with nobody present, so only confirmed
- * saves may change them, automations/files.ts), the computer targets, action facts and trials
- * (`<dataDir>/computer`: what an action did and which targets may be used, computer/) and Pi's
- * agent dir (`<dataDir>/agent`,
- * storage.ts). The agent dir is protected whole because it holds the memory store
- * (`agent/memory`: the memory files with their search index, the learning settings and the
- * pending suggestions, memory/unit-store.ts). A direct edit would skip the memory content scan,
- * resume learning, or plant, hide and resurrect memories. The rest of the agent dir is service
- * state as well: the task sessions, the managed subagent settings and the npm/Git skill packages.
- * Only the service's own routes and tools change them, from its own process.
+ * The only places in the data dir that an agent's write and edit may reach: the task folders
+ * (`tasks/`, the task's own and, gated as `outside`, other tasks'), the product-home skill and
+ * agent catalogs where the product home lies in the data dir (`<dataDir>/atd` in development, see
+ * `atdHome`), and the subagent harness file, whose every write the user confirms with its content
+ * (atd-agents/catalog-writes.ts). Everything else there is the service's own state, protected
+ * whatever the task's cwd, including state added later: the ledger, the audit log the unattended
+ * automations rely on, the auth token, the resource store (every task's attachments and spills),
+ * `service.json`, `endpoint.json` and the lock, the provider connections and model catalogs, the
+ * settings, commands, granted folders and widget instances, the file index, the MCP, reference,
+ * add-on and skill-profile state, the security approvals, the plugin store, the user apps, the
+ * automations, the computer records, and Pi's agent dir with the task sessions and the memory store
+ * (whose content scan and learning a direct edit would skip). Only the service's own routes and
+ * tools change them, from its own process.
  */
-export function protectedWriteRoots(dataDir: string): string[] {
+export function writableServiceRoots(dataDir: string): string[] {
   return [
-    path.join(dataDir, 'security'),
-    path.join(dataDir, 'plugins'),
-    path.join(dataDir, 'apps'),
-    path.join(dataDir, 'automations'),
-    path.join(dataDir, 'computer'),
-    path.join(dataDir, 'agent'),
+    servicePaths(dataDir).tasksDir,
+    atdSkillsDir(),
+    atdAgentsDir(),
+    agentHarnessFile(dataDir),
   ];
 }
 
 /**
- * `confined` for a write or edit: additionally refuses a path under `protectedWriteRoots`,
- * compared as `realInside` compares. `insideOnly` also refuses anything outside the task output
- * directory (an unattended computer run, computer/tool-set.ts).
+ * `confined` for a write or edit: additionally refuses a path in the data dir outside
+ * `writableServiceRoots`, compared as `realInside` compares (real paths, case-folded where the
+ * file system usually is). `insideOnly` also refuses anything outside the task output directory
+ * (an unattended computer run, computer/tool-set.ts).
  */
 export async function confinedWrite(
   cwd: string,
@@ -145,13 +145,12 @@ export async function confinedWrite(
   const target = await confined(cwd, dataDir, rawPath);
   if (insideOnly && target.location !== 'inside')
     throw new Error('This automation run may only write inside its task output folder.');
-  for (const root of protectedWriteRoots(dataDir)) {
-    if (await realInside(root, target.real))
-      throw new Error(
-        'Writing the service security state, the plugin store, the published apps, the automations, the computer records or the memory and session store is blocked.',
-      );
-  }
-  return target;
+  if (!(await realInside(dataDir, target.real))) return target;
+  for (const root of writableServiceRoots(dataDir))
+    if (await realInside(root, target.real)) return target;
+  throw new Error(
+    "Writing the service's own state (its records, settings, sessions, memory, approvals, plugins, apps, automations and other files in its data folder) is blocked. Write inside the task folder instead.",
+  );
 }
 
 /**

@@ -2,11 +2,23 @@ import AICore
 import AppKit
 import WebKit
 
+/// What a drop from another app brings without file URLs that the panel takes, read as the mini
+/// panel reads it (``MiniPanelDropPayload``).
+enum DroppedContent {
+  /// Promised files, with the drop's pasteboard, which may also hold the drop's image.
+  case promises([NSFilePromiseReceiver], NSPasteboard)
+  /// A bitmap without a file: PNG, TIFF or JPEG data.
+  case image(Data)
+}
+
 /// The renderer's web view. It moves its window from the drag regions its page reports
 /// (``WindowDraggingWebView``) and adds the two things WebKit cannot do for this app:
 /// - **File drops.** Dropped file and folder URLs go to the shell, which imports files by path
 ///   and registers folders; WebKit would otherwise hand the page `File` objects the relay cannot
-///   upload (spike S1). The page gets no drag events for them, so the shell reports the drag
+///   upload (spike S1). So does what a drop from another app brings as files without their URLs
+///   (``DroppedContent``): promised files (Photos, Mail, a browser's images), or else a bitmap a
+///   paste would also attach (``PasteboardPaste``); text and links still drop into the page. The
+///   page gets no drag events for what the shell takes, so the shell reports the drag
 ///   (`onFileDrag`) instead.
 /// - **Pasted files and bitmaps.** Edit › Paste runs ``pasteAttachingFiles(_:)``: file URLs on
 ///   the pasteboard are imported, and so is a bitmap when no text came with it; anything else
@@ -19,6 +31,9 @@ final class ShellWebView: WindowDraggingWebView {
   private(set) var lastMouseDown: NSEvent?
   /// Receives dropped (`drop`) or pasted (`paste`) file URLs; nil leaves both to WebKit.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)?
+  /// Receives what a drop from another app brings without file URLs; nil leaves such drops to
+  /// WebKit. Only a view with `onFiles` takes drops.
+  var onDroppedContent: ((DroppedContent) -> Void)?
   /// Receives a file drag entering (its summary) and leaving, dropped or not (nil); only a view
   /// with `onFiles` takes file drags.
   var onFileDrag: ((FileDragSummary?) -> Void)?
@@ -55,29 +70,50 @@ final class ShellWebView: WindowDraggingWebView {
       as? [URL] ?? []
   }
 
+  /// What the shell takes from a drag instead of WebKit, as the page hears of it: file and folder
+  /// URLs from anywhere; from another app, promised files, or else a bitmap without text. Nil for
+  /// any other drag, Atd's own included (an image dragged within the page).
+  private func takenDrag(_ info: any NSDraggingInfo) -> FileDragSummary? {
+    let files = droppedFiles(info)
+    if !files.isEmpty { return FileDragSummary(items: files.map(ImportItem.init(fileURL:))) }
+    guard onDroppedContent != nil, info.draggingSource == nil else { return nil }
+    let board = info.draggingPasteboard
+    let offer = MiniPanelDragOffer(types: board.types ?? [])
+    let promised = offer.promises ? MiniPanelDropPayload.promises(on: board) : []
+    if !promised.isEmpty { return FileDragSummary(arriving: MiniPanelPromises.expected(promised)) }
+    let paste = PasteboardPaste.route(
+      hasFileURLs: false, hasText: offer.text, hasImage: offer.image)
+    return paste == .image ? FileDragSummary(arriving: 1) : nil
+  }
+
+  /// A drop's promised files, or else its bitmap.
+  private static func droppedContent(on board: NSPasteboard) -> DroppedContent? {
+    let promised = MiniPanelDropPayload.promises(on: board)
+    if !promised.isEmpty { return .promises(promised, board) }
+    return MiniPanelDropPayload.image(on: board).map(DroppedContent.image)
+  }
+
   /// The file drag over the view, read when it entered; nil for any other drag, which WebKit
-  /// handles. A drag with nothing attachable is refused, so the cursor says so before the drop.
+  /// handles. Every file drag is accepted: its import takes any file and any folder, so the
+  /// summary tells the page how much of it a drop attaches, never that it attaches nothing.
   private var fileDrag: FileDragSummary? {
     didSet { if fileDrag != oldValue { onFileDrag?(fileDrag) } }
   }
 
-  private var fileDragOperation: NSDragOperation {
-    (fileDrag?.attachable ?? 0) > 0 ? .copy : []
-  }
-
   override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-    let files = droppedFiles(sender)
-    guard onFiles != nil, !files.isEmpty else { return super.draggingEntered(sender) }
-    fileDrag = FileDragSummary(items: files.map(ImportItem.init(fileURL:)))
-    return fileDragOperation
+    guard onFiles != nil, let summary = takenDrag(sender) else {
+      return super.draggingEntered(sender)
+    }
+    fileDrag = summary
+    return .copy
   }
 
   override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
     guard fileDrag != nil else { return super.draggingUpdated(sender) }
-    return fileDragOperation
+    return .copy
   }
 
-  /// Sent when the drag leaves, is cancelled, or is released while refused.
+  /// Sent when the drag leaves or is cancelled.
   override func draggingExited(_ sender: (any NSDraggingInfo)?) {
     guard fileDrag != nil else { return super.draggingExited(sender) }
     fileDrag = nil
@@ -85,18 +121,21 @@ final class ShellWebView: WindowDraggingWebView {
 
   override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
     guard fileDrag != nil else { return super.prepareForDragOperation(sender) }
-    if fileDragOperation.isEmpty { fileDrag = nil }
-    return !fileDragOperation.isEmpty
+    return true
   }
 
   /// The import starts before the drag is cleared, so the page goes from `over` to `importing`.
   override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+    guard fileDrag != nil else { return super.performDragOperation(sender) }
+    defer { fileDrag = nil }
     let files = droppedFiles(sender)
-    guard fileDrag != nil, let onFiles, !files.isEmpty else {
-      return super.performDragOperation(sender)
+    if !files.isEmpty {
+      onFiles?(files, "drop")
+    } else if let content = Self.droppedContent(on: sender.draggingPasteboard) {
+      onDroppedContent?(content)
+    } else {
+      return false
     }
-    onFiles(files, "drop")
-    fileDrag = nil
     return true
   }
 
@@ -109,7 +148,7 @@ final class ShellWebView: WindowDraggingWebView {
     let board = NSPasteboard.general
     let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
     let files = board.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
-    let image = onPastedImage == nil ? nil : Self.imageData(on: board)
+    let image = onPastedImage == nil ? nil : MiniPanelDropPayload.image(on: board)
     let route = PasteboardPaste.route(
       hasFileURLs: onFiles != nil && !files.isEmpty,
       hasText: board.string(forType: .string)?.isEmpty == false, hasImage: image != nil)
@@ -118,12 +157,5 @@ final class ShellWebView: WindowDraggingWebView {
     case .image: if let image { onPastedImage?(image) }
     case .webKit: NSApp.sendAction(#selector(NSText.paste(_:)), to: self, from: sender)
     }
-  }
-
-  /// The pasteboard's bitmap in the first format ImageIO decodes that it offers: a screenshot
-  /// copy is PNG, most apps copy TIFF.
-  private static func imageData(on board: NSPasteboard) -> Data? {
-    [NSPasteboard.PasteboardType.png, .tiff, NSPasteboard.PasteboardType("public.jpeg")]
-      .lazy.compactMap { board.data(forType: $0) }.first
   }
 }

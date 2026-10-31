@@ -12,10 +12,15 @@ import { Ledger } from './ledger.js';
 import type { Logger } from './logging.js';
 
 export interface ConfirmWaiter {
+  /** Whose request it waits on, which `runStatus` reads. */
+  request: Pick<PermissionRequest, 'taskId' | 'runId' | 'kind'>;
   resolve: (answer: PermissionAnswer) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout> | null;
 }
+
+/** What a run's requests still waiting make its status (`ConfirmStore.runStatus`). */
+export type WaitingStatus = 'awaiting_confirmation' | 'awaiting_input' | 'running';
 
 const CONFIRM_TTL_MS = 30 * 60 * 1000;
 
@@ -48,15 +53,33 @@ export class ConfirmStore {
   }
 
   /**
+   * What a run's requests still waiting make its status: `awaiting_confirmation` while one of its
+   * confirmations waits, else `awaiting_input` while one of its questions does, else `running`.
+   * Parallel calls (reads, subagents) can wait at once, so a call whose request ended sets this
+   * rather than `running`. Its own request no longer counts by then: every way a request ends
+   * drops its waiter before the caller resumes.
+   */
+  runStatus(taskId: string, runId: string): WaitingStatus {
+    let status: WaitingStatus = 'running';
+    for (const { request } of this.waiters.values()) {
+      if (request.taskId !== taskId || request.runId !== runId) continue;
+      if (request.kind === 'confirmation') return 'awaiting_confirmation';
+      status = 'awaiting_input';
+    }
+    return status;
+  }
+
+  /**
    * Raises a confirmation/input request and waits for the reply. Disconnects do
    * not cancel the wait; abort (run cancel) and expiry reject it instead.
    * `ownAnswerOnly` is for a request no session grant may answer (harness/gate.ts):
-   * `grantPending` leaves it waiting for its own reply.
+   * `grantPending` leaves it waiting for its own reply. `listed` runs once the request is listed
+   * and waiting, so `runStatus` already counts it; it must not throw.
    */
   async request(
     draft: PermissionRequestDraft,
     signal?: AbortSignal,
-    options: { ownAnswerOnly?: boolean } = {},
+    options: { ownAnswerOnly?: boolean; listed?: () => void } = {},
   ): Promise<PermissionAnswer> {
     if (this.interjecting(draft.taskId)) return supersededAnswer(draft);
     const stamp = { id: randomUUID(), revision: 1, createdAt: new Date().toISOString() };
@@ -74,8 +97,9 @@ export class ConfirmStore {
       type: 'confirm.requested',
       data: { request: created },
     });
-    return new Promise<PermissionAnswer>((resolve, reject) => {
+    const answer = new Promise<PermissionAnswer>((resolve, reject) => {
       const waiter: ConfirmWaiter = {
+        request: created,
         resolve,
         reject,
         // `expire` logs its own write failure, so nothing awaits it.
@@ -97,6 +121,8 @@ export class ConfirmStore {
         { once: true },
       );
     });
+    options.listed?.();
+    return answer;
   }
 
   /** Applies a client reply; stale revisions and kind mismatches are rejected. */

@@ -11,6 +11,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   private(set) var host: WebViewHost?
   private let makeHost: (_ fragment: String) -> WebViewHost
+  /// Runs after the window is created or released, before an opened window activates the app.
+  var onOpenChange: (() -> Void)?
 
   init(makeHost: @escaping (_ fragment: String) -> WebViewHost) {
     self.makeHost = makeHost
@@ -26,8 +28,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   /// Shows the window, creating it on the display under the cursor when none is open. An open
   /// window keeps its page; `fragment` applies to a new one only.
   func open(fragment: String = "settings", title: String) {
-    NSApp.activate()
     if let window {
+      NSApp.activate()
       if window.isMiniaturized { window.deminiaturize(nil) }
       window.makeKeyAndOrderFront(nil)
       return
@@ -50,6 +52,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     applyMinimumSize(workArea, to: window)
     self.window = window
     self.host = host
+    onOpenChange?()
+    NSApp.activate()
     host.load()
     window.makeKeyAndOrderFront(nil)
   }
@@ -85,6 +89,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     host = nil
     window?.delegate = nil
     window = nil
+    onOpenChange?()
   }
 
   func windowDidBecomeKey(_ notification: Notification) {

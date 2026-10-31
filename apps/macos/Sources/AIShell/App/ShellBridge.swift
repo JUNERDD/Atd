@@ -49,7 +49,7 @@ final class ShellBridge {
     case .socketClose(let post): host.pipe?.close(post)
     case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
-    case .userAppPinDrag(let post): shell?.startPinDrag(post.appId, from: host)
+    case .userAppPinDrag(let post): shell?.startPinDrag(post, from: host)
     // Only the panel's page decides which task the person is looking at.
     case .taskShown(let post):
       guard host === shell?.panelHost else { return }
@@ -195,7 +195,7 @@ final class ShellBridge {
       return try Self.encode(
         await shell.artifacts.perform(artifactId: params.artifactId, operation: params.operation))
     case .filesPick:
-      return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
+      return try Self.encode(FilesPickResult(await shell.attachments.pick()))
     case .filesPickFolder:
       return try Self.encode(await shell.attachments.pickFolders())
     case .filesSave(let params):

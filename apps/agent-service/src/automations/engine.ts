@@ -1,6 +1,7 @@
 import {
   AUTOMATION_FOLDER_FILES_PER_RUN,
   errorMessage,
+  MAX_ATTACHMENTS,
   type Automation,
   type AutomationRun,
 } from '@atd/agent-contracts';
@@ -299,7 +300,7 @@ export class AutomationEngine {
   }
 }
 
-/** Files one folder run is given: a command reads them as attachments, of which a run takes 10. */
+/** Files one folder run is given: a command reads them as attachments, as many as a run takes. */
 function batchSize(automation: Automation): number {
-  return automation.action.kind === 'command' ? 10 : AUTOMATION_FOLDER_FILES_PER_RUN;
+  return automation.action.kind === 'command' ? MAX_ATTACHMENTS : AUTOMATION_FOLDER_FILES_PER_RUN;
 }

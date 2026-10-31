@@ -5,7 +5,11 @@ import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
 import type { LoadedSkill } from './skills/run-skills.js';
 import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalog.js';
 
-/** A text file; its content goes into the run material. */
+/**
+ * Any file that is not image input: its loaded text (decoded text, a document's extracted text or
+ * a description; file-loader/loader.ts) as the run material carries it, cut to the file's share of
+ * the material budget with a note naming the line where `read` continues (file-loader/material.ts).
+ */
 export interface RunTextAttachment {
   kind: 'text';
   name: string;
@@ -26,7 +30,18 @@ export interface RunImageAttachment {
   note?: string;
 }
 
-export type RunAttachment = RunTextAttachment | RunImageAttachment;
+/**
+ * A file the run could not load (run-attachments.ts): the material names it with the reason, and
+ * with no resource path, since its stored copy may be the part that is missing.
+ */
+export interface RunUnavailableAttachment {
+  kind: 'unavailable';
+  name: string;
+  /** Why it was not loaded, in words for the model. */
+  reason: string;
+}
+
+export type RunAttachment = RunTextAttachment | RunImageAttachment | RunUnavailableAttachment;
 
 /** Material a run injects before its first turn: its instructions, files, references and skills. */
 export interface RunMaterial {

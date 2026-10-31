@@ -28,7 +28,12 @@ import { NativeTaskEvents } from './task-events.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
 import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
-import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
+import {
+  DesktopPinSchema,
+  MAX_DESKTOP_PINS,
+  MiniPanelOpenOnSchema,
+  PinWidgetSchema,
+} from './window-calls.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -122,13 +127,19 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   /**
-   * Drags the app's pin out of the panel: posted once a press on the app's card moved past the
-   * drag threshold, with the button still down. The shell starts a native drag from that press
-   * with the pin as its image; a drop on the desktop pins the app there or moves its pin, and
-   * Escape or a drop anywhere else ends it without a change. The shell takes it only from the panel
-   * and the settings window, while the left button is down after a press under two seconds old.
+   * Drags the app's pin out of the page: posted once a press on the app's card, or on one of its
+   * widget previews, moved past the drag threshold, with the button still down. The shell starts
+   * a native drag from that press with the pin as its image; a drop on the desktop pins the app
+   * there or moves its pin, and Escape or a drop anywhere else ends it without a change. `widget`
+   * is what the pin shows, as for `userApp.pin` (an undeclared one ends the drag before it
+   * starts); null keeps what a pinned app shows and gives a new pin the app's default. The shell
+   * takes it only from the panel and the settings window, while the left button is down after a
+   * press under two seconds old.
    */
-  'userApp.pinDrag': Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
+  'userApp.pinDrag': Type.Object(
+    { appId: UserAppIdSchema, widget: Type.Union([PinWidgetSchema, Type.Null()]) },
+    { additionalProperties: false },
+  ),
 } satisfies Record<string, TSchema>;
 
 /** One socket frame; Swift batches them per run-loop turn, in order. */
@@ -192,24 +203,26 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
-   * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
-   * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
-   * import lands in exactly one list.
+   * Swift imported the files of one gesture (a drop, a paste, the Finder service) through
+   * `/v1/resources/import` and registered its folders through `/v1/folders/register`. Every item
+   * lands in exactly one list: a failed request's items and those past the gesture's limits are
+   * `failed` and `tooMany` failures, so `failures` has no fixed bound.
    */
   'resources.imported': Type.Object(
     {
       resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
       folders: Type.Array(NativeFolderRefSchema, { maxItems: 10 }),
-      failures: Type.Array(ImportFailureSchema, { maxItems: 20 }),
+      failures: Type.Array(ImportFailureSchema),
     },
     { additionalProperties: false },
   ),
   /**
    * The panel's file drop, a state the shell replays: `over` while files are dragged over the
    * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
-   * dragged items, folders included; `attachable` counts those of the drop's import (at most 10
-   * files and 10 folders) that it would take: files with an attachable format, and folders. Both
-   * are 0 outside `over`.
+   * dragged items (folders, promised files and a bitmap included); `attachable` those the drop's
+   * import would take: its first 10 files, of any format, and its first 10 folders. The shell
+   * reports only a drag that carries one, so `attachable` is at least 1 during `over`; the service
+   * may still refuse a file after the drop. Both are 0 outside `over`.
    */
   'files.drag': Type.Object(
     {

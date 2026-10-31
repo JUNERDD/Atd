@@ -112,17 +112,54 @@ public struct SocketClosePost: Codable, Equatable, Sendable {
 /// Params of the `userApp.pinDrag` post.
 public struct UserAppPinDragPost: Codable, Equatable, Sendable {
   public let appId: String
+  public let widget: Widget?
 
-  public init(appId: String) {
+  public init(appId: String, widget: Widget?) {
     self.appId = appId
+    self.widget = widget
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    widget = try container.nullable(.widget) { try container.value($0, Widget.self) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appId, forKey: .appId)
+    try container.encode(widget, forKey: .widget)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case appId
+    case widget
+  }
+
+  public struct Widget: Codable, Equatable, Sendable {
+    public let widgetId: String
+    public let family: Family
+
+    public init(widgetId: String, family: Family) {
+      self.widgetId = widgetId
+      self.family = family
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      widgetId = try container.string(.widgetId, pattern: "^[a-z][a-z0-9-]{0,31}$")
+      family = try container.value(.family, Family.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case widgetId
+      case family
+    }
+
+    public enum Family: String, Codable, Equatable, Sendable {
+      case systemSmall
+      case systemMedium
+      case systemLarge
+    }
   }
 }

@@ -169,7 +169,9 @@
       "unsupported": "不支持 {{name}}。",
       "tooLarge": "{{name}} 太大。",
       "notDirectory": "{{name}} 不是文件夹。",
-      "forbidden": "无法使用 {{name}}：自动化不能读取整个个人文件夹或 Atd 自己的数据。"
+      "forbidden": "无法使用 {{name}}：自动化不能读取整个个人文件夹或 Atd 自己的数据。",
+      "failed": "无法添加 {{name}}，请重试。",
+      "tooMany": "只添加了前 {{max}} 个文件夹。"
     }
   },
   "chain": {

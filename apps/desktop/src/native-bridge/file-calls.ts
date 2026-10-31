@@ -23,10 +23,6 @@ export const NativeFileRefSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-const Resources = Type.Object(
-  { resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }) },
-  { additionalProperties: false },
-);
 
 /**
  * Mirrors agent-contracts `FolderRefSchema`: a folder the shell registered through
@@ -43,10 +39,12 @@ export const NativeFolderRefSchema = Type.Object(
 );
 
 /**
- * A path the shell could not import or register: its basename (a path reaches the page only in a
- * registered folder's ref) and the reason. `unreadable`, `unsupported` and `tooLarge` come from a
- * file import; `unreadable`, `notDirectory` and `forbidden` (a folder no task may read) from a
- * folder registration.
+ * An item the shell did not add: its basename (a path reaches the page only in a registered
+ * folder's ref) and the reason. `unreadable`, `unsupported` and `tooLarge` come from a file import;
+ * `unreadable`, `notDirectory` and `forbidden` (a folder no task may read) from a folder
+ * registration. `failed`: the request itself failed (the service was unreachable or answered an
+ * error), so the item may be fine and adding it again may work. `tooMany`: the item came past what
+ * one gesture adds, `MAX_ATTACHMENTS` files and `MAX_FOLDERS` folders, and was left out unread.
  */
 export const ImportFailureSchema = Type.Object(
   {
@@ -57,6 +55,8 @@ export const ImportFailureSchema = Type.Object(
       Type.Literal('tooLarge'),
       Type.Literal('notDirectory'),
       Type.Literal('forbidden'),
+      Type.Literal('failed'),
+      Type.Literal('tooMany'),
     ]),
   },
   { additionalProperties: false },
@@ -101,19 +101,34 @@ export const NativeFileCalls = {
     ),
     result: NativeFileRefSchema,
   },
-  /** Open panel for attachments, imported through `/v1/resources/import`; `[]` when cancelled. */
-  'files.pick': { params: Empty, result: Resources },
+  /**
+   * Open panel for attachments (regular files, multiple selection), imported through
+   * `/v1/resources/import`: each imported file is in `resources`, each refused one in
+   * `failures`; both are empty when the user cancelled. Choosing more than ten files imports
+   * none and rejects with a message in the shell's language.
+   */
+  'files.pick': {
+    params: Empty,
+    result: Type.Object(
+      {
+        resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
+        failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+      },
+      { additionalProperties: false },
+    ),
+  },
   /**
    * Open panel for folders (directories only, multiple selection), registered through
    * `/v1/folders/register`. Every pick lands in `folders` or `failures`; both are empty when the
-   * user cancelled.
+   * user cancelled. The first ten picked are registered, and each one past them is a `tooMany`
+   * failure, so `failures` has no fixed bound.
    */
   'files.pickFolder': {
     params: Empty,
     result: Type.Object(
       {
         folders: Type.Array(NativeFolderRefSchema, { maxItems: 10 }),
-        failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+        failures: Type.Array(ImportFailureSchema),
       },
       { additionalProperties: false },
     ),

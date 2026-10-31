@@ -6,6 +6,7 @@ import {
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
 import type { ExtensionFactory, ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { HintResolver } from '../file-loader/read-tool.js';
 import type { PermissionLookup } from '../transcript-blocks.js';
 import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';
 import type { ParentAgents } from './task-agents.js';
@@ -83,6 +84,8 @@ export interface SubagentHost {
   mcpBuilder: (child: ChildApprovalsRequest) => ExtensionFactory;
   /** Ledger resource ids frozen for this run (resource-ref checks). */
   resourceIds: string[];
+  /** A resource file's stored name and media type, which a child's read loads it by. */
+  resourceHint: HintResolver;
   /** Builds each child's model runtime like the parent's (run-model.ts `childRuntime`). */
   childRuntime: ChildModelRuntime;
   /** Approvals for one child execution; child bash and command saves decide through them. */
@@ -100,7 +103,6 @@ interface RegistryStore {
   parentsBySession: Map<string, ParentRecord>;
   parentsByTask: Map<string, ParentRecord>;
   childrenByParent: Map<string, Map<string, ChildRecord>>;
-  activeWrites: Map<string, Map<string, string>>;
   hosts: Map<string, SubagentHost>;
   childSequence: number;
 }
@@ -115,7 +117,6 @@ function store(): RegistryStore {
     parentsBySession: new Map(),
     parentsByTask: new Map(),
     childrenByParent: new Map(),
-    activeWrites: new Map(),
     hosts: new Map(),
     childSequence: 0,
   };
@@ -162,9 +163,9 @@ export function rebindParentRun(taskId: string, runId: string, tools: string[]):
 }
 
 /**
- * Removes a parent and drops its tracked children and write locks. The task's host goes with the
- * task's current parent: it holds that session's SessionManager and child runtime, so a released
- * session would otherwise stay in memory, and the session reopened for the task stores its own.
+ * Removes a parent and drops its tracked children. The task's host goes with the task's current
+ * parent: it holds that session's SessionManager and child runtime, so a released session would
+ * otherwise stay in memory, and the session reopened for the task stores its own.
  */
 export function unregisterParentBySession(sessionId: string): void {
   const state = store();
@@ -176,7 +177,6 @@ export function unregisterParentBySession(sessionId: string): void {
     state.hosts.delete(record.taskId);
   }
   state.childrenByParent.delete(sessionId);
-  state.activeWrites.delete(record.taskId);
 }
 
 export function parentBySession(sessionId: string): ParentRecord | null {
@@ -308,27 +308,6 @@ export function isParentStopping(taskId: string): boolean {
   return store().parentsByTask.get(taskId)?.stopping ?? false;
 }
 
-/** Guards parallel same-file writes across sibling foreground children. */
-export function tryAcquireWrite(
-  taskId: string,
-  realPath: string,
-  executionId: string,
-): { ok: true } | { ok: false; owner: string } {
-  const state = store();
-  const held = state.activeWrites.get(taskId) ?? new Map<string, string>();
-  const owner = held.get(realPath);
-  if (owner && owner !== executionId) return { ok: false, owner };
-  held.set(realPath, executionId);
-  state.activeWrites.set(taskId, held);
-  return { ok: true };
-}
-
-/** Releases a write lock held by one child execution. */
-export function releaseWrite(taskId: string, realPath: string, executionId: string): void {
-  const held = store().activeWrites.get(taskId);
-  if (held?.get(realPath) === executionId) held.delete(realPath);
-}
-
 /** Drops all registry state for one task tree (isolated cleanup). */
 export function forgetTaskTree(taskId: string): void {
   const state = store();
@@ -339,6 +318,5 @@ export function forgetTaskTree(taskId: string): void {
     state.childrenByParent.delete(record.sessionId);
     state.parentsByTask.delete(taskId);
   }
-  state.activeWrites.delete(taskId);
   state.hosts.delete(taskId);
 }

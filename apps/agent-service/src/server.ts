@@ -29,6 +29,8 @@ import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { ResourceStore } from './resources.js';
+import { scheduleResourceSweeps } from './resources/gc.js';
+import { registerResourceUpload } from './resources/routes.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
 import { registerAtdAgentRoutes } from './atd-agents/mount.js';
@@ -254,14 +256,12 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     },
   );
 
-  app.post('/v1/resources', RENDERER_ROUTE, async (request) => {
-    const query = request.query as { name?: unknown; mime?: unknown };
-    const name = typeof query.name === 'string' && query.name ? query.name : 'upload.bin';
-    const mime =
-      typeof query.mime === 'string' && query.mime ? query.mime : 'application/octet-stream';
-    if (!Buffer.isBuffer(request.body)) throw new TypeError('Invalid data: body must be bytes.');
-    const resource = await deps.resources.save({ name, mime, bytes: new Uint8Array(request.body) });
-    return { resource };
+  registerResourceUpload(app, { resources: deps.resources, config: deps.config });
+  // Resources no conversation references any longer go once the server listens, then daily.
+  scheduleResourceSweeps(app, {
+    ledger: deps.ledger,
+    dir: deps.config.paths.resourcesDir,
+    log: deps.log,
   });
 
   app.post('/v1/admin/shutdown', SHELL_ROUTE, async (_request, reply) => {
@@ -284,7 +284,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
-  registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
+  registerFileRoutes(app, {
+    resources: deps.resources,
+    dataDir: deps.config.paths.root,
+    log: deps.log,
+  });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
   registerComputerRoutes(app, deps.computer);

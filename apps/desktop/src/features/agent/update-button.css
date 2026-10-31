@@ -1,0 +1,24 @@
+/* The header's update download: a ring drawn on Lucide's grid (16px, a 24-unit viewBox, the
+   circle of `loader-circle` and its stroke of 2), so it reads at the same size and weight as the
+   header's icons and the spinner it alternates with. It fills clockwise from 12 o'clock in the
+   button's muted color over a track in the border color. */
+.update-progress-ring {
+  transform: rotate(-90deg);
+}
+.update-progress-ring circle {
+  fill: none;
+  stroke-width: 2;
+}
+.update-progress-track {
+  stroke: var(--border);
+}
+.update-progress-value {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: stroke-dasharray 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-progress-value {
+    transition: none;
+  }
+}

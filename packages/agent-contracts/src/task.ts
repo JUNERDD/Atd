@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { AppIdSchema } from './app-identity.js';
+import { MAX_ATTACHMENTS } from './attachments.js';
 import type { CommandTool } from './commands.js';
 import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
@@ -72,7 +73,7 @@ export const TaskInputSchema = Type.Object(
     capturedAt: Type.String(),
     selection: Type.String({ maxLength: 100000 }),
     clipboard: Type.String({ maxLength: 100000 }),
-    files: Type.Array(FileRefSchema, { maxItems: 10 }),
+    files: Type.Array(FileRefSchema, { maxItems: MAX_ATTACHMENTS }),
     arguments: Type.Record(
       Type.String(),
       Type.Union([Type.String({ maxLength: 10000 }), Type.Number(), Type.Boolean()]),

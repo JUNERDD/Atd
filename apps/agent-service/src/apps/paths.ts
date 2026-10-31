@@ -5,7 +5,7 @@ export const REVISION_PREFIX = '.rev-';
 
 /**
  * Where the service keeps user apps (plan "数据模型"). Everything lives under `<dataDir>/apps`,
- * which agent file tools may not write (service-fs.ts `protectedWriteRoots`):
+ * which agent file tools may not write (service-fs.ts `writableServiceRoots` leaves it out):
  *
  * ```
  * apps/

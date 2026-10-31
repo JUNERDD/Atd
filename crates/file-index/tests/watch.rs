@@ -54,11 +54,14 @@ fn live_changes_respect_the_same_exclusions_as_the_walk() {
     fs::write(fixture.home.join("repo/.gitignore"), "build-out/\n").unwrap();
     let index = fixture.ready();
 
-    // Excluded by gitignore on an ancestor, by name, by extension, and hidden.
+    // Excluded by gitignore on an ancestor and by name; outside work trees, by extension and
+    // as hidden.
     let ignored = fixture.write("repo/build-out/nested/deep/ignored.md", "x");
     let dependency = fixture.write("repo/node_modules/pkg/dependency.md", "x");
-    let binary = fixture.write("repo/picture.png", "x");
-    let hidden = fixture.write("repo/.cache/hidden.md", "x");
+    let binary = fixture.write("loose/picture.png", "x");
+    let hidden = fixture.write("loose/.cache/hidden.md", "x");
+    // Inside a work tree the ignore rules decide, whatever the name.
+    let kept = fixture.write("repo/.cache/picture.png", "x");
     // FSEvents delivers in order, so once the sentinel shows up the others were processed.
     let sentinel = fixture.write("repo/sentinel.md", "x");
     wait_for(|| finds(&index, "sentinel", &sentinel), "the sentinel");
@@ -66,18 +69,26 @@ fn live_changes_respect_the_same_exclusions_as_the_walk() {
     assert!(!finds(&index, "dependency", &dependency));
     assert!(!finds(&index, "picture", &binary));
     assert!(!finds(&index, "hidden", &hidden));
+    assert!(finds(&index, "picture", &kept));
 
-    // A marker added later takes the folder out on its next change.
+    // Rule changes take effect at once: a new ignore entry, a marker added later.
+    fs::write(
+        fixture.home.join("repo/.gitignore"),
+        "build-out/\n.cache/\n",
+    )
+    .unwrap();
+    wait_for(
+        || !finds(&index, "picture", &kept),
+        "a newly ignored folder to drop out",
+    );
     let quiet = fixture.write("quiet/private.md", "x");
     wait_for(
         || finds(&index, "private", &quiet),
         "a file before its folder is marked",
     );
     fs::write(fixture.home.join("quiet/.metadata_never_index"), "").unwrap();
-    fs::rename(fixture.home.join("quiet"), fixture.home.join("hushed")).unwrap();
-    let hushed = fixture.home.join("hushed/private.md");
-    let sentinel = fixture.write("second-sentinel.md", "x");
-    wait_for(|| finds(&index, "second", &sentinel), "the second sentinel");
-    assert!(!finds(&index, "private", &hushed));
-    assert!(!finds(&index, "private", &quiet));
+    wait_for(
+        || !finds(&index, "private", &quiet),
+        "a marked folder to drop out",
+    );
 }

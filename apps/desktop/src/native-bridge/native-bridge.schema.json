@@ -3248,11 +3248,45 @@
             },
             "params": {
               "type": "object",
-              "required": ["appId"],
+              "required": ["appId", "widget"],
               "properties": {
                 "appId": {
                   "type": "string",
                   "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widget": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["widgetId", "family"],
+                      "properties": {
+                        "widgetId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "family": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "systemSmall"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemMedium"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemLarge"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -3626,13 +3660,20 @@
                           {
                             "type": "string",
                             "const": "forbidden"
+                          },
+                          {
+                            "type": "string",
+                            "const": "failed"
+                          },
+                          {
+                            "type": "string",
+                            "const": "tooMany"
                           }
                         ]
                       }
                     },
                     "additionalProperties": false
-                  },
-                  "maxItems": 20
+                  }
                 }
               },
               "additionalProperties": false
@@ -3886,22 +3927,76 @@
               "const": "update.state"
             },
             "payload": {
-              "type": "object",
-              "required": ["version"],
-              "properties": {
-                "version": {
-                  "anyOf": [
-                    {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["phase"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "idle"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version", "percent"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "downloading"
+                    },
+                    "version": {
                       "type": "string",
                       "maxLength": 64
                     },
-                    {
-                      "type": "null"
+                    "percent": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
-                  ]
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "preparing"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["phase", "version"],
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "const": "ready"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "additionalProperties": false
+              ]
             }
           },
           "additionalProperties": false
@@ -6126,7 +6221,7 @@
     },
     "FilesPickResult": {
       "type": "object",
-      "required": ["resources"],
+      "required": ["resources", "failures"],
       "properties": {
         "resources": {
           "type": "array",
@@ -6151,6 +6246,53 @@
               "type": {
                 "type": "string",
                 "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "unreadable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unsupported"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "notDirectory"
+                  },
+                  {
+                    "type": "string",
+                    "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -6227,13 +6369,20 @@
                   {
                     "type": "string",
                     "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
                   }
                 ]
               }
             },
             "additionalProperties": false
-          },
-          "maxItems": 10
+          }
         }
       },
       "additionalProperties": false
@@ -8054,11 +8203,45 @@
     },
     "UserAppPinDragPost": {
       "type": "object",
-      "required": ["appId"],
+      "required": ["appId", "widget"],
       "properties": {
         "appId": {
           "type": "string",
           "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["widgetId", "family"],
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -8303,13 +8486,20 @@
                   {
                     "type": "string",
                     "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
                   }
                 ]
               }
             },
             "additionalProperties": false
-          },
-          "maxItems": 20
+          }
         }
       },
       "additionalProperties": false
@@ -8428,22 +8618,76 @@
       "additionalProperties": false
     },
     "UpdateStateEvent": {
-      "type": "object",
-      "required": ["version"],
-      "properties": {
-        "version": {
-          "anyOf": [
-            {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["phase"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "idle"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version", "percent"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "downloading"
+            },
+            "version": {
               "type": "string",
               "maxLength": 64
             },
-            {
-              "type": "null"
+            "percent": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
-          ]
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "preparing"
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["phase", "version"],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "ready"
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
         }
-      },
-      "additionalProperties": false
+      ]
     },
     "ComputerStateEvent": {
       "type": "object",

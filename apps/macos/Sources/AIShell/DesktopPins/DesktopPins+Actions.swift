@@ -181,17 +181,28 @@ extension DesktopPins {
   // MARK: Drag out
 
   /// `userApp.pinDrag`, whose press the caller checked: drags the pin the app has, or would get,
-  /// out of the page. Ignored outside an app, while another drag runs, and for a new pin past
-  /// the limit.
-  func startDrag(appId: String, press: NSEvent, from webView: ShellWebView) {
+  /// out of the page, showing `face` when the page names a widget (at its family's size, as a
+  /// drop gives it). Ignored outside an app, while another drag runs, for a widget the app does
+  /// not declare, and for a new pin past the limit.
+  func startDrag(
+    appId: String, face requested: DesktopPinFace?, press: NSEvent, from webView: ShellWebView
+  ) {
     guard store != nil, UserAppOrigin.isValidAppId(appId), !drag.isActive,
-      record(appId) != nil || records.count < DesktopPinStore.limit
+      record(appId) != nil || records.count < DesktopPinStore.limit,
+      requested.map({ declares(appId, $0) }) ?? true
     else { return Self.log.notice("A pin drag was refused.") }
-    let record =
+    var record =
       record(appId)
       ?? DesktopPinRecord(
         appId: appId, face: defaultFace(appId), display: nil, offset: .init(x: 0, y: 0))
-    let look = look(for: record).look
+    if let requested, requested != record.face || record.size != nil {
+      record.face = requested
+      record.size = nil
+    }
+    var look = look(for: record).look
+    // A picture's links are inert: a link draws as an AppKit control, which an offscreen
+    // render replaces with a placeholder.
+    look.context = WidgetRenderContext(image: look.context.image, link: { _ in nil })
     // The pin at its current size: the card fills whatever frame it is given.
     let pinned = pinSize(record)
     let size = CGSize(width: pinned.width, height: pinned.height)
@@ -200,6 +211,7 @@ extension DesktopPins {
         of: DesktopPinCard(look: look).frame(width: size.width, height: size.height))
     else { return }
     _ = drag.start(
-      appId: appId, image: NSImage(cgImage: image, size: size), press: press, from: webView)
+      appId: appId, face: requested, image: NSImage(cgImage: image, size: size), press: press,
+      from: webView)
   }
 }

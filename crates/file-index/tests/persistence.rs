@@ -31,12 +31,16 @@ fn reopening_answers_from_the_saved_store_before_start() {
         "mid-word matches should survive a restart"
     );
     reopened.start().unwrap();
-    let status = reopened.status();
     assert!(
-        status.resumed,
+        reopened.status().resumed,
         "a complete store with a saved event id resumes"
     );
-    assert_eq!(status.phase, Phase::Watching);
+    // Replaying until FSEvents has delivered what happened while the index was closed.
+    wait_for(
+        || reopened.status().phase == Phase::Watching,
+        "the replay to end",
+    );
+    let status = reopened.status();
     assert_eq!(status.scanned_files, 0, "resuming must not walk home again");
 }
 

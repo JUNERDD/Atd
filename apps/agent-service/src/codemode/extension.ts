@@ -1,25 +1,20 @@
-import { readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import { createCodemodeExtension, type ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { CODEMODE_TOOL, errorMessage } from '@atd/agent-contracts';
-import type { Logger } from '../logging.js';
-import type { ResourceStore } from '../resources.js';
+import { CODEMODE_TOOL } from '@atd/agent-contracts';
+import { keepSpill, type SpillHost, type SpillKind } from '../spilled-output.js';
 import { isRecord } from '../transcript-details/clamp.js';
 import { NestedStepLog } from './steps.js';
 
 /** Where a script's spilled output goes: the task's resources, a file the read tool reaches. */
-export interface CodemodeHost {
-  taskId: string;
-  resources: Pick<ResourceStore, 'save'>;
-  /** The resource store's directory; a saved resource's file is `<resourcesDir>/<id>`. */
-  resourcesDir: string;
-  log: Pick<Logger, 'warn'>;
-}
+export type CodemodeHost = SpillHost;
 
-/** pi's spill file name (`extensions/codemode/execute.js` `spillOutput`). */
-const SPILL_FILE = /^pi-codemode-[0-9a-f]+\.txt$/;
+/** pi's spill of a script's output (`extensions/codemode/execute.js` `spillOutput`). */
+const CODEMODE_SPILL: SpillKind = {
+  file: /^pi-codemode-[0-9a-f]+\.txt$/,
+  name: 'codemode-output.txt',
+  mime: 'text/plain',
+  label: 'Codemode output',
+};
 
 type Content = (TextContent | ImageContent)[];
 
@@ -67,38 +62,17 @@ export function codemodeExtension(host: CodemodeHost): ExtensionFactory {
   };
 }
 
-/**
- * Moves pi's spill file into the task's resources and points the result at it; the temp file is
- * removed either way. Only pi's own spill file in the system temp dir is read.
- */
+/** Points the result at pi's spill file once the task's resources keep it (spilled-output.ts). */
 async function adoptSpill(host: CodemodeHost, spilled: string, content: Content): Promise<Content> {
   const marker = `[Full output: ${spilled} (read with offset/limit)]`;
-  const rewrite = (replacement: string) =>
-    content.map((part) =>
-      part.type === 'text' ? { ...part, text: part.text.replaceAll(marker, replacement) } : part,
-    );
-  const resolved = path.resolve(spilled);
-  if (
-    path.dirname(resolved) !== path.resolve(tmpdir()) ||
-    !SPILL_FILE.test(path.basename(resolved))
-  )
-    return rewrite('[Full output not kept]');
-  try {
-    const resource = await host.resources.save({
-      name: 'codemode-output.txt',
-      mime: 'text/plain',
-      bytes: new Uint8Array(await readFile(resolved)),
-      taskId: host.taskId,
-    });
-    const kept = path.join(host.resourcesDir, resource.id);
-    return rewrite(`[Full output: ${kept} (read with offset/limit)]`);
-  } catch (error) {
-    host.log.warn('Codemode output could not be kept.', {
-      taskId: host.taskId,
-      error: errorMessage(error),
-    });
-    return rewrite(`[Could not save the full output: ${errorMessage(error)}]`);
-  } finally {
-    await rm(resolved, { force: true });
-  }
+  const kept = await keepSpill(host, spilled, CODEMODE_SPILL);
+  const replacement =
+    kept === null
+      ? '[Full output not kept]'
+      : 'path' in kept
+        ? `[Full output: ${kept.path} (read with offset/limit)]`
+        : `[Could not save the full output: ${kept.error}]`;
+  return content.map((part) =>
+    part.type === 'text' ? { ...part, text: part.text.replaceAll(marker, replacement) } : part,
+  );
 }

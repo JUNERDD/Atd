@@ -4,7 +4,8 @@ import type { FileRef } from '../client/agent/task-schema';
 
 /**
  * One batch the host imported: the resources created, the folders registered, and each path it
- * refused. Drops, pastes, the Finder service and the folder picker all hand over this shape.
+ * refused. Drops, pastes, the Finder service and the file and folder pickers all hand over this
+ * shape.
  */
 export interface ImportedFiles {
   files: FileRef[];

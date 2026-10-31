@@ -76,8 +76,8 @@ describe('task panel', () => {
       type: 'text/plain',
     }));
     vi.mocked(api.chooseFiles)
-      .mockResolvedValueOnce(files)
-      .mockResolvedValueOnce(files.slice(0, 2));
+      .mockResolvedValueOnce({ resources: files, failures: [] })
+      .mockResolvedValueOnce({ resources: files.slice(0, 2), failures: [] });
     render(<App />);
     // Attach context opens a menu of the context a draft takes; Upload files is the file picker.
     await user.click(screen.getByRole('button', { name: 'Attach context' }));

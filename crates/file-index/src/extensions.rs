@@ -3,9 +3,9 @@ use std::path::Path;
 
 use crate::Error;
 
-/// The attachable file extensions the index keeps, lower case and without the dot.
+/// The file extensions the index keeps, lower case and without the dot.
 ///
-/// The list has one owner: `ATTACHABLE_EXTENSIONS` in the TypeScript attachment rules
+/// The list has one owner: `SEARCHABLE_EXTENSIONS` in the TypeScript attachment rules
 /// (`packages/agent-contracts/src/attachments.ts`). The service passes that list to
 /// `FileIndex::open`, so Rust never holds a second copy that could drift. The list is saved with
 /// the index state; opening with a different list discards the index and rescans.
@@ -38,7 +38,7 @@ impl Extensions {
         Ok(Self(set))
     }
 
-    /// Whether a file name's last extension is in the list, the rule `attachableExtension` applies:
+    /// Whether a file name's last extension is in the list, the rule `fileFormat` applies:
     /// a leading dot alone (`.env`) is not an extension.
     pub fn matches_name(&self, name: &str) -> bool {
         match name.rfind('.') {

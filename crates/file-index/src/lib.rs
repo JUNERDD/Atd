@@ -1,29 +1,37 @@
-//! Persistent file-name index of the attachable files under the home folder, kept current with
+//! Persistent file-name index of the known-format files under the home folder, kept current with
 //! FSEvents. This is the Rust side of the Raycast-style file search planned in
 //! `docs/plans/2026-09-29-macos-native-frontend.md` (P6): a first walk of home, then incremental
 //! updates, with the last applied event id saved so a restart replays only what it missed.
 //!
-//! - Scope: `scope.rs`, `exclusions.rs` (scope.ts rules merged with Raycast's), `.gitignore`
-//!   through the `ignore` crate (`walk.rs`), local internal volumes only (`volume.rs`).
+//! - Scope: `scope.rs`, `exclusions.rs` (the earlier search's rules merged with Raycast's; inside
+//!   git work trees, every file the repository's ignore rules keep), ignore files through the
+//!   `ignore` crate (`walk.rs`), local internal volumes only (`volume.rs`).
 //! - Storage: `store.rs`, a `NameStore` trait whose only implementation wraps minidex, plus the
-//!   in-memory `names.rs` list behind it for mid-word matches.
-//! - Updates: `fsevents.rs` → `plan.rs` → `reconcile.rs`, driven by `engine.rs`.
-//! - Ordering: `rank.rs` and `fold.rs`, ported from the TypeScript ranking.
+//!   in-memory `names.rs` list behind it that queries search.
+//! - Updates: `fsevents.rs` → `plan.rs` → `reconcile.rs`, driven by `engine.rs` and
+//!   `background.rs`.
+//! - Queries: `pattern.rs` parses them, `search.rs` scans every name, `fuzzy.rs` scores fuzzy
+//!   name matches, `rank.rs` orders the hits (the only ranker file search has), `fold.rs` folds
+//!   case, accents, width and separators.
 
 #[cfg(not(target_os = "macos"))]
 compile_error!("file-index watches folders with FSEvents and supports macOS only");
 
+mod background;
 mod engine;
 mod exclusions;
 mod extensions;
 mod fold;
 mod fsevents;
+mod fuzzy;
 mod names;
+mod pattern;
 mod plan;
 mod query;
 mod rank;
 mod reconcile;
 mod scope;
+mod search;
 mod state;
 mod store;
 mod volume;
@@ -40,7 +48,7 @@ pub use scope::{ICLOUD_LABEL, RootSpec};
 #[derive(Debug, Clone)]
 pub struct IndexOptions {
     pub roots: Vec<RootSpec>,
-    /// Attachable extensions, from the caller's attachment rules (see `Extensions`).
+    /// Extensions of the formats to index, from the caller's searchable formats (see `Extensions`).
     pub extensions: Vec<String>,
 }
 
@@ -69,18 +77,26 @@ pub struct Hit {
     /// Epoch milliseconds, read when the query ran.
     pub modified_ms: Option<u64>,
     pub size: Option<u64>,
-    /// Where the query matched the name: UTF-16 offsets into the NFC name.
-    pub name_match: Option<NameRange>,
+    /// Where the query matched the name: sorted, non-overlapping UTF-16 ranges into the NFC
+    /// name, covering whole characters with their marks. Empty when only the folder matched or
+    /// the query was empty.
+    pub matches: Vec<NameRange>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
     /// Opened, `start` not called yet. Queries answer from the saved store.
     Idle,
-    /// The first walk is running; queries see the files found so far.
+    /// A walk is running, the first one or a root's rebuild; queries see the files found so far.
     Scanning,
+    /// Resumed: the events recorded while the index was closed are being applied, so queries
+    /// may still show files as they were then.
+    Replaying,
     /// Up to date and following file-system events.
     Watching,
+    /// Background work failed (`Status::error` says why): queries answer from the store, which
+    /// may be missing changes until the index is opened again, which rebuilds it.
+    Failed,
     Stopped,
 }
 
@@ -95,8 +111,9 @@ pub struct Status {
     pub last_event_id: u64,
     /// Roots left out because they are not on a local, internal volume.
     pub skipped_roots: Vec<PathBuf>,
-    /// The last background failure. The saved state is then marked incomplete, so the next
-    /// `open` rebuilds instead of resuming from a store that may have missed changes.
+    /// The last background failure, with the phase at `Failed`. The saved state is then marked
+    /// incomplete, so the next `open` rebuilds instead of resuming from a store that may have
+    /// missed changes.
     pub error: Option<String>,
 }
 

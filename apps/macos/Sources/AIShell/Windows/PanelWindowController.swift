@@ -228,13 +228,25 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 }
 
-/// A panel that can become key although it never activates the app, so the page gets the
-/// keyboard while the other app keeps the menu bar (spike S7). Hidden, it stays ordered in
-/// for WebKit's timers but must not inherit the keyboard when the command island resigns it:
-/// the next summon would otherwise read this invisible panel instead of the original selection.
+/// A panel that can become key on summon without activating the app, so the page gets the
+/// keyboard while the other app keeps the menu bar (spike S7). A direct click requests app
+/// activation. Hidden, it stays ordered in for WebKit's timers but must not inherit the keyboard
+/// when the command island resigns it: the next summon would otherwise read this invisible panel
+/// instead of the original selection.
 final class ShellPanel: NSPanel {
   override var canBecomeKey: Bool {
     alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized
   }
   override var canBecomeMain: Bool { false }
+
+  override func sendEvent(_ event: NSEvent) {
+    // A click expresses intent to switch to Atd, allowing Spotlight's apps window to dismiss.
+    // Keep activation out of makeKey/show so hotkey summons and typing stay non-activating.
+    switch event.type {
+    case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+      if canBecomeKey { NSApp.activate() }
+    default: break
+    }
+    super.sendEvent(event)
+  }
 }

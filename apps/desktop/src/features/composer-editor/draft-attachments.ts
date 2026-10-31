@@ -20,6 +20,12 @@ export interface FileChip {
   kind: 'file';
   file: FileRef;
   context?: FileRef;
+  /**
+   * Where a file picked from file search lives, as the panel showed it (`~/folder` or
+   * `iCloud Drive/folder`, never absolute), so the tooltip tells files of the same name apart. It
+   * stays in the renderer: the message sends the file, not where it came from.
+   */
+  location?: string;
 }
 
 /**

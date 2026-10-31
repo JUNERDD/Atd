@@ -27,7 +27,9 @@ export interface QuickOption {
 
 /**
  * A section of the list; it shows only while it has options. A section with a heading also has a
- * glyph in the panel's section bar; the trailing "Browse files…" row ends the list without either.
+ * glyph in the panel's section bar. A group without a heading is an action, not a result: the
+ * trailing "Browse files…" row ends the list without either, and it is active only once chosen,
+ * never by default (use-quick-panel.ts).
  */
 export type QuickGroup = {
   id: string;
@@ -47,6 +49,12 @@ export type QuickGroup = {
 
 /** Groups for one panel view, plus the line shown when no group with a heading has options. */
 export interface QuickView {
+  /**
+   * The text the rows answer. Any change of it, as the user types, starts the highlight over at
+   * the first result; rows that change while it stays the same (a search reply landing) keep a
+   * keyboard choice.
+   */
+  query: string;
   groups: QuickGroup[];
   /** Why nothing is listed, such as no match or a loading source; null shows no line. */
   empty: string | null;

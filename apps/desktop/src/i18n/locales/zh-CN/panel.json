@@ -8,6 +8,9 @@
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
+    "updateDownloading": "正在下载 {{version}} 版本…",
+    "updateDownloadingPercent": "正在下载 {{version}} 版本 · {{percent}}%",
+    "updatePreparing": "正在准备 {{version}} 版本…",
     "loadingConversation": "正在加载对话…"
   },
   "find": {
@@ -46,6 +49,7 @@
     "followUpPlaceholder": "继续追问…",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
+    "pasteNotSaved": "粘贴的文本未能保存。",
     "folderLimit": "最多添加 {{max}} 个文件夹。",
     "editImage": "编辑 {{name}}",
     "attachMenu": {
@@ -63,8 +67,7 @@
       "attach_one": "将把 {{count}} 项添加到消息中。",
       "attach_other": "将把 {{count}} 项添加到消息中。",
       "attachSome": "将添加 {{total}} 项中的 {{count}} 项。",
-      "rules": "可添加文件夹，以及文本、代码和图片文件（最多 {{max}} 个）。",
-      "unsupported": "无法附加这些文件",
+      "rules": "每条消息最多可添加 {{max}} 个任意类型的文件和 {{folders}} 个文件夹。",
       "full": "附件已达上限",
       "fullDescription": "每条消息最多 {{max}} 个文件，移除一些后再添加。",
       "tooMany": "文件过多",
@@ -74,10 +77,13 @@
     },
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
-      "unsupported": "不支持附加 {{name}}。",
+      "unsupported": "{{name}} 不是可附加的文件。",
       "tooLarge": "{{name}} 太大，无法附加。",
       "notDirectory": "{{name}} 不是文件夹。",
-      "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。"
+      "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。",
+      "failed": "无法添加 {{name}}，请重试。",
+      "tooMany_one": "有 {{count}} 项未添加：每条消息最多可添加 {{max}} 个文件和 {{folders}} 个文件夹。",
+      "tooMany_other": "有 {{count}} 项未添加：每条消息最多可添加 {{max}} 个文件和 {{folders}} 个文件夹。"
     },
     "queued": "排队消息",
     "sendNow": "立即发送",
@@ -275,7 +281,7 @@
       "commands": "快捷指令",
       "skills": "技能",
       "recentAttached": "最近附加",
-      "recentUsed": "最近使用",
+      "recentModified": "最近修改",
       "files": "文件",
       "conversations": "对话",
       "mcp": "MCP",
@@ -343,6 +349,7 @@
     "states": {
       "loading": "正在加载…",
       "noMatches": "没有匹配项。",
+      "noMatchesYet": "暂无匹配项。",
       "noCommandMatches": "没有匹配的指令或技能。",
       "noSkillMatches": "没有匹配的技能。",
       "runningNoMatches": "没有匹配的指令。技能需等这次运行结束后使用。",
@@ -360,14 +367,19 @@
     },
     "files": {
       "browse": "浏览文件…",
-      "browseDescription": "从这台电脑选择文本文件或图片",
+      "browseDescription": "从这台电脑选择任意文件",
       "partial": "结果可能不完整。",
-      "indexDisabled": "Spotlight 索引未开启，无法搜索文件。",
+      "indexing": "正在为文件建立索引…找到的文件会陆续显示。",
+      "indexingMore": "仍在建立索引，可能还会出现更多文件。",
       "unsupported": "此系统不支持文件搜索。",
+      "retrying": "文件搜索未能启动，正在重试…",
       "tooLarge": "文件过大，无法附加",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
+      "searchTimedOut": "文件搜索超时，请重试。",
       "attaching": "正在附加…",
+      "attachFailed": "无法附加该文件，请重试。",
+      "attachTimedOut": "附加文件超时，请重试。",
       "attachedFrom": "{{size}} · {{conversation}}"
     }
   },
@@ -378,6 +390,6 @@
   },
   "attachments": {
     "noVision": "{{model}} 无法识别图片，附加的图片不会发送给它。",
-    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等附加文本仍会发送。"
+    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等其他附件仍会发送。"
   }
 }

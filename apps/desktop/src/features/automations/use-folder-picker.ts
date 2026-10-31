@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FolderRef } from '@atd/agent-contracts';
+import { MAX_FOLDERS, type FolderRef } from '@atd/agent-contracts';
 import { messageOf } from '../../lib/errors';
 import { automationsBridge } from './use-automations';
 
@@ -20,7 +20,11 @@ export function useFolderPicker() {
     try {
       const { folders, failures } = await automationsBridge().pickFolder();
       const refused = failures[0];
-      setFailure(refused ? t(`folder.failure.${refused.reason}`, { name: refused.name }) : '');
+      setFailure(
+        refused
+          ? t(`folder.failure.${refused.reason}`, { name: refused.name, max: MAX_FOLDERS })
+          : '',
+      );
       if (folders.length) onPicked(folders);
     } catch (error) {
       setFailure(messageOf(error));

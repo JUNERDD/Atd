@@ -18,6 +18,11 @@ const PinFamily = Type.Union([
 ]);
 /** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
 const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
+/** What a desktop pin shows: one of the app's declared widgets in one of its declared families. */
+export const PinWidgetSchema = Type.Object(
+  { widgetId: PinWidgetId, family: PinFamily },
+  { additionalProperties: false },
+);
 /** The service's task identifier, as the view origin accepts it (`ViewOrigin` in the shell). */
 const ViewTaskId = Type.String({ pattern: '^[a-zA-Z0-9_-]{1,128}$' });
 
@@ -254,13 +259,7 @@ export const NativeWindowCalls = {
     params: Type.Object(
       {
         appId: UserAppIdSchema,
-        widget: Type.Union([
-          Type.Object(
-            { widgetId: PinWidgetId, family: PinFamily },
-            { additionalProperties: false },
-          ),
-          Type.Null(),
-        ]),
+        widget: Type.Union([PinWidgetSchema, Type.Null()]),
       },
       { additionalProperties: false },
     ),

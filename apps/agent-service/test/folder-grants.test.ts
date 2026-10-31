@@ -5,7 +5,7 @@ import path from 'node:path';
 import { after, before, test } from 'node:test';
 import type { FolderRef } from '@atd/agent-contracts';
 import { createLogger } from '../dist/logging.js';
-import { formatFolders, runFolders } from '../dist/folders/material.js';
+import { formatFolders, markFoldersIntroduced, runFolders } from '../dist/folders/material.js';
 import { folderOverview, OVERVIEW_ENTRIES } from '../dist/folders/overview.js';
 import { FolderStore } from '../dist/folders/store.js';
 
@@ -48,6 +48,8 @@ test('a revoke reaches the next run; grants stay with their task', async () => {
     [true, true],
     'the first run introduces both',
   );
+  // The first run's material carried both overviews to its session.
+  await store.markIntroduced('task-a', ids(first));
   const second = await store.startRun('task-a');
   assert.deepEqual(
     second.map((item) => item.introduce),
@@ -142,6 +144,7 @@ test('the first run after a grant gets the overview; every run lists the folder'
   assert.ok(text.includes(`- material: ${listed.path}`));
   assert.ok(text.includes(`<folder_overview name="material" path="${listed.path}">`));
   assert.match(text, /plan\.md/);
+  await markFoldersIntroduced(first);
   const later = formatFolders(await runFolders(store, 'task-e', log));
   assert.ok(later.includes(`- material: ${listed.path}`));
   assert.doesNotMatch(later, /folder_overview/);

@@ -17,9 +17,6 @@ extension MiniPanelController: MiniPanelDropTarget {
   /// How long the panel waits for a drop after a release in its drop zone: the release reaches
   /// the event monitors and the drop separately.
   static let dropGracePeriod: Duration = .milliseconds(500)
-  /// The name a dropped file that never arrived is reported under, which is data the page shows,
-  /// like `Dropped text <date>.txt`.
-  static let unnamedDrop = "Dropped file"
 
   /// A drag session with something to take began somewhere on screen. One that begins while the
   /// panel still waits for the last session's drop takes over the invite; one that begins during
@@ -184,7 +181,12 @@ extension MiniPanelController: MiniPanelDropTarget {
       actions.openItems(files)
     case .promises(let receivers):
       actions.showPanel()
-      receive(receivers, from: board)
+      PromisedDrop(
+        folder: folder, log: Self.log,
+        deliver: { [weak self] files in self?.actions.openItems(files) },
+        importImage: { [weak self] image in self?.actions.importImage(image) },
+        reportFailures: { [weak self] failures in self?.actions.reportFailures(failures) }
+      ).receive(receivers, from: board)
     case .image(let image):
       actions.importImage(image)
     case .quote(let text):
@@ -195,51 +197,8 @@ extension MiniPanelController: MiniPanelDropTarget {
         actions.openItems([try folder.write(text: text, droppedAt: .now)])
       } catch {
         Self.log.error("Dropped text could not be written: \(String(describing: error))")
-        actions.reportFailures([.init(name: Self.unnamedDrop, reason: .unreadable)])
+        actions.reportFailures([.init(name: PromisedDrop.unnamed, reason: .unreadable)])
       }
     }
-  }
-
-  /// Receives promised files into a drop folder, importing them as they arrive, and settles what
-  /// never came once the wait is over.
-  private func receive(_ receivers: [NSFilePromiseReceiver], from board: NSPasteboard) {
-    folder.pruneInBackground()
-    // The drop's own image, still on the pasteboard while no other drag replaced it, stands in
-    // for promises that bring nothing; it is read only then.
-    let changeCount = board.changeCount
-    let image = MiniPanelDragOffer(types: board.types ?? []).image
-    do {
-      let destination = try folder.makeDropFolder()
-      MiniPanelPromises.receive(
-        receivers, into: destination,
-        deliver: { [weak self] files in self?.actions.openItems(files) },
-        settled: { [weak self] result in
-          let fallback = image && board.changeCount == changeCount ? board : nil
-          self?.promisesSettled(result, image: fallback)
-        })
-    } catch {
-      Self.log.error("A drop folder could not be made: \(String(describing: error))")
-      actions.reportFailures([.init(name: Self.unnamedDrop, reason: .unreadable)])
-    }
-  }
-
-  /// The promises' wait is over (``MiniPanelPromiseOutcome``): when nothing arrived, the drop's
-  /// image goes in like a pasted one; whatever failed or never came is reported.
-  private func promisesSettled(_ result: MiniPanelPromises.Settled, image board: NSPasteboard?) {
-    let image = result.received == 0 ? board.flatMap(MiniPanelDropPayload.image(on:)) : nil
-    let settlement = MiniPanelPromiseOutcome.settle(
-      expected: result.expected, received: result.received, failed: result.failed,
-      imageAvailable: image != nil)
-    if settlement.useImage, let image {
-      Self.log.info("Mini panel drop: no promised file arrived; the drop's image goes in instead.")
-      return actions.importImage(image)
-    }
-    guard settlement.failures > 0 else { return }
-    let failures = settlement.failures
-    Self.log.info("Mini panel drop: \(failures, privacy: .public) promised file(s) reported.")
-    let unnamed = Array(
-      repeating: Self.unnamedDrop, count: max(failures - result.missingNames.count, 0))
-    let names = (result.missingNames + unnamed).prefix(failures)
-    actions.reportFailures(names.map { .init(name: String($0.prefix(255)), reason: .unreadable) })
   }
 }

@@ -8,6 +8,9 @@
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
+    "updateDownloading": "Downloading version {{version}}…",
+    "updateDownloadingPercent": "Downloading version {{version}} · {{percent}}%",
+    "updatePreparing": "Preparing version {{version}}…",
     "loadingConversation": "Loading conversation…"
   },
   "find": {
@@ -46,6 +49,7 @@
     "followUpPlaceholder": "Ask a follow-up…",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
+    "pasteNotSaved": "The pasted text was not saved.",
     "folderLimit": "Add at most {{max}} folders.",
     "editImage": "Edit {{name}}",
     "attachMenu": {
@@ -63,8 +67,7 @@
       "attach_one": "{{count}} item will be added to your message.",
       "attach_other": "{{count}} items will be added to your message.",
       "attachSome": "{{count}} of {{total}} items will be added.",
-      "rules": "Folders, and text, code and image files (up to {{max}}), can be added to a message.",
-      "unsupported": "These files can't be attached",
+      "rules": "Up to {{max}} files of any type and {{folders}} folders can be added to a message.",
       "full": "Attachment limit reached",
       "fullDescription": "A message takes up to {{max}} files. Remove one to add more.",
       "tooMany": "Too many files",
@@ -74,10 +77,13 @@
     },
     "importFailed": {
       "unreadable": "{{name}} could not be read.",
-      "unsupported": "{{name}} is not supported.",
+      "unsupported": "{{name}} is not a file that can be attached.",
       "tooLarge": "{{name}} is too large to attach.",
       "notDirectory": "{{name}} is not a folder.",
-      "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder."
+      "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder.",
+      "failed": "{{name}} could not be added. Try again.",
+      "tooMany_one": "{{count}} item was not added: a message takes up to {{max}} files and {{folders}} folders.",
+      "tooMany_other": "{{count}} items were not added: a message takes up to {{max}} files and {{folders}} folders."
     },
     "queued": "Queued messages",
     "sendNow": "Send now",
@@ -275,7 +281,7 @@
       "commands": "Quick commands",
       "skills": "Skills",
       "recentAttached": "Recently attached",
-      "recentUsed": "Recently used",
+      "recentModified": "Recently modified",
       "files": "Files",
       "conversations": "Conversations",
       "mcp": "MCP",
@@ -343,6 +349,7 @@
     "states": {
       "loading": "Loading…",
       "noMatches": "No matches.",
+      "noMatchesYet": "No matches yet.",
       "noCommandMatches": "No matching commands or skills.",
       "noSkillMatches": "No matching skills.",
       "runningNoMatches": "No matching commands. Skills are available after this run finishes.",
@@ -360,14 +367,19 @@
     },
     "files": {
       "browse": "Browse files…",
-      "browseDescription": "Choose text files or images on this computer",
+      "browseDescription": "Choose any file on this computer",
       "partial": "Some results may be missing.",
-      "indexDisabled": "Spotlight indexing is off, so file search is unavailable.",
+      "indexing": "Indexing files… Matches appear as they're found.",
+      "indexingMore": "Still indexing. More files may appear.",
       "unsupported": "File search isn't available on this system.",
+      "retrying": "File search couldn't start. Retrying…",
       "tooLarge": "Too large to attach",
       "limit": "10 files already attached",
       "failed": "File search failed. Try again.",
+      "searchTimedOut": "File search took too long. Try again.",
       "attaching": "Attaching…",
+      "attachFailed": "The file could not be attached. Try again.",
+      "attachTimedOut": "Attaching the file took too long. Try again.",
       "attachedFrom": "{{size}} · {{conversation}}"
     }
   },
@@ -378,6 +390,6 @@
   },
   "attachments": {
     "noVision": "{{model}} can't see images, so attached images won't reach it.",
-    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Attached text, such as the screen context, is still sent."
+    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Other attachments, such as the screen context, are still sent."
   }
 }

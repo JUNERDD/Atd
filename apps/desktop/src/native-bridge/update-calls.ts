@@ -28,24 +28,44 @@ export const NativeUpdateCalls = {
 export const NativeUpdatePosts = {
   /**
    * Checks for updates as the app menu's Check for Updates does, with Sparkle's own progress and
-   * result windows; a waiting update shows as ready to install. Ignored where `app.about` reports
-   * no updates.
+   * result windows; an update already under way, downloading or ready to install, moves into
+   * those windows instead. Ignored where `app.about` reports no updates.
    */
   'update.check': Empty,
   /**
-   * Installs the update `update.state` names and relaunches, through the app's quit flow (which
-   * still asks before stopping running tasks). Ignored while no update waits.
+   * Installs the update `update.state` reports ready and relaunches, through the app's quit flow
+   * (which still asks before stopping running tasks). Ignored while no update is ready.
    */
   'update.install': Empty,
 };
 
+/** The update an `update.state` other than `idle` is about, as its appcast displays it. */
+const UpdateVersion = Text(64);
+
 export const NativeUpdateEvents = {
   /**
-   * The version of a downloaded update that installs when the app quits, null while none waits.
-   * Sent to the panel on each change and replayed when its page becomes ready.
+   * Where the app's update stands: `downloading` while Sparkle fetches it (`percent` in whole
+   * steps, null while the size is unknown), `preparing` while it unpacks and checks the download,
+   * `ready` once it waits to install (on quit, or now through `update.install`), and `idle` while
+   * none is under way. Sent to the panel on each change and replayed when its page becomes ready.
    */
-  'update.state': Type.Object(
-    { version: Type.Union([Text(64), Type.Null()]) },
-    { additionalProperties: false },
-  ),
+  'update.state': Type.Union([
+    Type.Object({ phase: Type.Literal('idle') }, { additionalProperties: false }),
+    Type.Object(
+      {
+        phase: Type.Literal('downloading'),
+        version: UpdateVersion,
+        percent: Type.Union([Type.Integer({ minimum: 0, maximum: 100 }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { phase: Type.Literal('preparing'), version: UpdateVersion },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { phase: Type.Literal('ready'), version: UpdateVersion },
+      { additionalProperties: false },
+    ),
+  ]),
 };

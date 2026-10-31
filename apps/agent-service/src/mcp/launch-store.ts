@@ -28,7 +28,10 @@ const StoreFileSchema = Type.Object(
 );
 type StoreFile = Static<typeof StoreFileSchema>;
 
-/** Directory of the service's own security state; see `protectedWriteRoots`. */
+/**
+ * Directory of the service's own security state, which agent file tools may not write
+ * (service-fs.ts `writableServiceRoots` leaves it out).
+ */
 export function securityDir(dataDir: string): string {
   return path.join(dataDir, 'security');
 }

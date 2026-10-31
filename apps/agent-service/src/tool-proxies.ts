@@ -1,47 +1,36 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import type { TSchema } from 'typebox';
+import { isUtf8 } from 'node:buffer';
+import { mkdir, readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
 import {
-  createEditToolDefinition,
-  createReadToolDefinition,
   createWriteToolDefinition,
-  detectSupportedImageMimeTypeFromFile,
   type EditOperations,
   type ExtensionFactory,
-  type ReadOperations,
   type SessionManager,
-  type ToolDefinition,
   type WriteOperations,
 } from '@earendil-works/pi-coding-agent';
-import type { GrantScope, PermissionTier } from '@atd/agent-contracts';
+import type { PermissionTier } from '@atd/agent-contracts';
 import {
   catalogConfirmedWrite,
   catalogDeferredFolders,
-  catalogTarget,
   type WriteCall,
 } from './atd-agents/catalog-writes.js';
 import type { CapabilityRegistry } from './capabilities.js';
-import { catalogArtifactWrite } from './catalog-artifacts.js';
 import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
+import { loaderReadTool, resourceHints } from './file-loader/read-tool.js';
+import { fileToolGate } from './file-tool-gate.js';
+import { createAtdEditToolDefinition } from './file-tools/edit-tool.js';
+import { observedPath, viewedReplace } from './file-view/call.js';
+import { FileViews } from './file-view/tools.js';
 import type { Reviewer } from './harness/auto-review.js';
-import { inGrantedFolder } from './folders/access.js';
 import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
-import type { TaskResources } from './resources.js';
-import {
-  confined,
-  confinedWrite,
-  inside,
-  resolveToolPath,
-  resourceIdAt,
-  userAgentsReadRoots,
-  withinRoots,
-} from './service-fs.js';
+import type { ResourceStore, TaskResources } from './resources.js';
+import { confined, confinedWrite, userAgentsReadRoots } from './service-fs.js';
 import { bashToolDefinition } from './shell-tool.js';
-import { auditWrote } from './unattended.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -75,6 +64,8 @@ export interface ServiceToolHost {
    * them; other tasks' resources and the rest of the data dir keep the usual rules.
    */
   taskResources: TaskResources;
+  /** The resource store a bash call's cut output is kept in, as a task resource (shell-tool.ts). */
+  resources: Pick<ResourceStore, 'save'>;
   /**
    * Realpaths of the folders the task was granted, as the current run started: read-only
    * material the read tool (and grep/find/ls) reads without a confirmation; writes never reach it.
@@ -98,43 +89,44 @@ export interface ToolInvocation {
 
 /**
  * Resolves the real path one file operation may touch, or throws to refuse it. The parent and
- * every subagent child build pi's file tools from the same operations and differ only here: the
- * parent confines to the data directory inside a tool invocation, a child decides through
- * `checkChildPath` (subagents/child-tools.ts).
+ * every subagent child build pi's file tools from the same operations (read from
+ * file-loader/read-tool.ts) and differ only here: the parent confines to the data directory inside
+ * a tool invocation, a child decides through `checkChildPath` (subagents/child-tools.ts).
  */
 export type ResolvePath = (target: string) => Promise<string>;
 
-/** Writes one file at an already resolved path; a child holds its sibling write lock around it. */
+/** Writes one file at an already resolved path. */
 export type WriteResolved = (real: string, content: string) => Promise<void>;
 
-const plainWrite: WriteResolved = (real, content) => writeFile(real, content);
-
 /**
- * pi's read operations on confined paths. An image is detected by its content, so the read returns
- * it as image input (fitted to the model's limits) instead of its bytes as text.
+ * pi's edit operations: reads resolve as readable, the rewrite as writable. The write step
+ * defaults to the checked, atomic one of the File View Ledger (file-view/call.ts), which notes the
+ * version the edit read and refuses to write over a change made since. pi's write and edit run
+ * each call whole inside its per-file `withFileMutationQueue`, which serializes the
+ * read-modify-write against every other write and edit of the file, the subagents' included: they
+ * load pi's tools from the same instance (pi's extension virtual modules). Edit changes only
+ * UTF-8 text: pi decodes and rewrites the file as UTF-8, which would replace a file in another
+ * encoding (or one `read` showed as converted text) with mojibake.
  */
-export function readOperations(readable: ResolvePath): ReadOperations {
-  return {
-    readFile: async (target) => readFile(await readable(target)),
-    access: async (target) => {
-      await stat(await readable(target));
-    },
-    detectImageMimeType: async (target) =>
-      detectSupportedImageMimeTypeFromFile(await readable(target)),
-  };
-}
-
-/** pi's edit operations: reads resolve as readable, the rewrite as writable. */
 export function editOperations(
   readable: ResolvePath,
   writable: ResolvePath,
-  write: WriteResolved = plainWrite,
+  write: WriteResolved = viewedReplace,
 ): EditOperations {
+  const seen = observedPath(readable);
   return {
-    readFile: async (target) => readFile(await readable(target)),
+    readFile: async (target) => {
+      const real = await seen(target);
+      const bytes = await readFile(real);
+      if (!isUtf8(bytes))
+        throw new Error(
+          `${path.basename(real)} is not UTF-8 text; edit changes only UTF-8 text files. Write a new file instead.`,
+        );
+      return bytes;
+    },
     writeFile: async (target, content) => write(await writable(target), content),
     access: async (target) => {
-      await stat(await readable(target));
+      await stat(await seen(target));
     },
   };
 }
@@ -146,10 +138,14 @@ const plainFolders: MakeFolders = async (real) => {
   await mkdir(real, { recursive: true });
 };
 
-/** pi's write operations, including the parent directories it creates first. */
+/**
+ * pi's write operations, including the parent directories it creates first. The write step
+ * defaults to the File View Ledger's (file-view/call.ts): it refuses to overwrite a file the
+ * session did not see as it is now, and replaces the file atomically.
+ */
 export function writeOperations(
   writable: ResolvePath,
-  write: WriteResolved = plainWrite,
+  write: WriteResolved = viewedReplace,
   makeFolders: MakeFolders = plainFolders,
 ): WriteOperations {
   return {
@@ -161,10 +157,11 @@ export function writeOperations(
 /**
  * Minimal service file/shell/command proxies. Pi owns the tool protocols;
  * the service owns confinement here, the shell policy in shell-tool.ts,
- * tier/grant checks, confirms and audit in the shared gate (harness/gate.ts),
- * and the confirm of every agent catalog write (atd-agents/catalog-writes.ts).
- * Desktop-only abilities arrive as capability requests, never as direct
- * filesystem or clipboard access.
+ * tier/grant checks, confirms and audit in the shared gate (harness/gate.ts,
+ * file-tool-gate.ts for the file tools), what each session has seen of each
+ * file in the File View Ledger (file-view/), and the confirm of every agent
+ * catalog write (atd-agents/catalog-writes.ts). Desktop-only abilities arrive
+ * as capability requests, never as direct filesystem or clipboard access.
  */
 export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   // The tool call each operation runs in; a bash call never leaves its approval to a write.
@@ -183,98 +180,17 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
 
   const authorize = createGate(host);
   const insideOnly = () => host.writesInsideOnly?.() ?? false;
-
-  /**
-   * Whether a read targets a directory of the current run's skills. Their files are read-only
-   * material the run was given, so reading them needs no confirmation.
-   */
-  async function readsRunSkill(args: unknown): Promise<boolean> {
-    const target = pathOf(args);
-    return target !== '' && (await withinRoots(host.skillDirs(), host.cwd, target));
-  }
-
-  /** Whether a read targets a file of one of the task's own resources (`taskResources`). */
-  async function readsTaskResource(args: unknown): Promise<boolean> {
-    const target = pathOf(args);
-    if (target === '') return false;
-    const id = await resourceIdAt(host.taskResources.dir, host.cwd, target);
-    return id !== null && host.taskResources.owns(id);
-  }
+  const views = new FileViews({
+    taskId: host.taskId,
+    role: 'parent',
+    sessionId: () => host.sessions.getSessionId(),
+  });
 
   /** Roots only the read tool may reach beyond the data directory (service-fs.ts `confined`). */
   async function readRoots(): Promise<string[]> {
     return [...(await userAgentsReadRoots()), ...host.skillDirs(), ...host.folders()];
   }
-
-  /**
-   * Which of the run's own read-only material a read targets, if any: its skills, the task's
-   * resources or a folder granted to the task. Reading it needs no confirmation; the read
-   * operation still confines the path to the data dir and the read roots.
-   */
-  async function ownMaterial(args: unknown): Promise<'skill' | 'resource' | 'folder' | null> {
-    if (await readsRunSkill(args)) return 'skill';
-    if (await readsTaskResource(args)) return 'resource';
-    const target = pathOf(args);
-    const folders = host.folders();
-    return target !== '' && (await inGrantedFolder(folders, host.dataDir, host.cwd, target, false))
-      ? 'folder'
-      : null;
-  }
-
-  function controlled<T extends TSchema, D, S>(
-    tool: ToolDefinition<T, D, S>,
-    name: 'read' | 'write' | 'edit',
-  ): ToolDefinition<T, D, S> {
-    return {
-      ...tool,
-      executionMode: 'sequential',
-      async execute(id, args, signal, onUpdate, ctx) {
-        signal?.throwIfAborted();
-        const scope = scopeOf(name, args, host);
-        const own = name === 'read' ? await ownMaterial(args) : null;
-        // A write that changes the subagent catalog is asked once, with its content, when written.
-        let catalogWrite = false;
-        let written: string | null = null;
-        if (own) {
-          const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
-          host.audit({ ...base, tool: `read:${own}`, decision: own });
-        } else {
-          // A path the operation would refuse fails before the gate, so no prompt or review
-          // is spent on a call that cannot run.
-          const target = resolveToolPath(host.cwd, pathOf(args));
-          if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
-          else {
-            written = (await confinedWrite(host.cwd, host.dataDir, target, insideOnly())).real;
-            catalogWrite = (await catalogTarget(host.dataDir, written)) !== null;
-          }
-          if (!catalogWrite)
-            await authorize({
-              toolCallId: id,
-              scope,
-              title: titleOf(name, args),
-              detail: detailOf(name, args),
-              signal: signal ?? undefined,
-            });
-        }
-        // Pi's tool context goes through untouched. It defines `tools` and `executeTool` as
-        // non-enumerable properties, which a spread drops, and its `cwd` already is `host.cwd`:
-        // pi-session.ts builds the session and these tools from the same task output directory.
-        // A wrapper that needs another cwd must derive from the context, as in
-        // `Object.create(ctx, { cwd: { value } })`, never spread it.
-        const call: WriteCall = { toolCallId: id, signal: signal ?? undefined, catalogWrite };
-        // A Personal skill or subagent it saves is recorded for the turn's artifact cards.
-        const saves = written === null ? null : await catalogArtifactWrite(written);
-        const done = await calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
-        await saves?.record(host.sessions, id, host.dataDir);
-        // What an unattended run wrote is audited, so its folder automation skips its own output.
-        if (written !== null && name !== 'read' && host.unattended()) {
-          const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
-          await auditWrote(host.audit, { ...base, tool: name, path: written });
-        }
-        return done;
-      },
-    };
-  }
+  const controlled = fileToolGate({ host, authorize, calls, views, readRoots, insideOnly });
 
   /** The confined real path of a file a tool reads, inside a tool invocation only. */
   const readable =
@@ -290,7 +206,8 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   const noRoots = async () => [];
   // Writes that change the subagent catalog ask the user every time (atd-agents/catalog-writes.ts).
   const catalog = { cwd: host.cwd, dataDir: host.dataDir, gate: authorize, call: current };
-  const confirmed = (tool: 'write' | 'edit') => catalogConfirmedWrite({ ...catalog, tool });
+  const confirmed = (tool: 'write' | 'edit') =>
+    catalogConfirmedWrite({ ...catalog, tool, write: viewedReplace });
   const edits = editOperations(readable(noRoots), writable, confirmed('edit'));
   const writes = writeOperations(
     writable,
@@ -299,48 +216,18 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   );
 
   return (pi) => {
-    pi.registerTool(
-      controlled(
-        createReadToolDefinition(host.cwd, { operations: readOperations(readable(readRoots)) }),
-        'read',
-      ),
-    );
-    pi.registerTool(controlled(createEditToolDefinition(host.cwd, { operations: edits }), 'edit'));
-    pi.registerTool(
-      controlled(createWriteToolDefinition(host.cwd, { operations: writes }), 'write'),
-    );
+    views.register(pi);
+    const reads = readable(readRoots);
+    const hints = resourceHints(host.taskResources, host.cwd);
+    const read = loaderReadTool(host.cwd, observedPath(reads), hints);
+    pi.registerTool(controlled(views.read(read, host.cwd, reads), 'read'));
+    const edit = createAtdEditToolDefinition(host.cwd, { operations: edits });
+    pi.registerTool(controlled(views.edit(edit), 'edit'));
+    const write = createWriteToolDefinition(host.cwd, { operations: writes });
+    pi.registerTool(controlled(views.write(write), 'write'));
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
     registerMcpCatalogTools(pi, host, authorize);
   };
-}
-
-function scopeOf(
-  name: 'read' | 'write' | 'edit',
-  args: unknown,
-  host: ServiceToolHost,
-): GrantScope {
-  const absolute = resolveToolPath(host.cwd, pathOf(args));
-  return { tool: name, location: inside(host.cwd, absolute) ? 'inside' : 'outside' };
-}
-
-/** The file path a file tool call names; empty when it names none. */
-function pathOf(args: unknown): string {
-  const value = (args as { path?: unknown }).path;
-  return typeof value === 'string' ? value : '';
-}
-
-function titleOf(name: string, args: unknown): string {
-  const record = (args ?? {}) as Record<string, unknown>;
-  if (typeof record.path === 'string') return `${name}: ${record.path.slice(0, 300)}`;
-  return `${name} operation`;
-}
-
-function detailOf(name: string, args: unknown): string {
-  try {
-    return JSON.stringify({ tool: name, args });
-  } catch {
-    return name;
-  }
 }

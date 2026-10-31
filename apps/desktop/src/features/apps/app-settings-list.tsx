@@ -14,10 +14,12 @@ import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { ListCardGrid } from '../../components/list-card';
 import { AppListCard } from './app-list-card';
 import type { AppActions } from './use-app-actions';
+import { useAppPins } from './use-app-pins';
 
 /**
  * The Apps overview's cards (Figma `App / Apps list content`), laid out as the plugin cards are:
- * each opens the app's page from anywhere on the card, with Open at its top right; the search
+ * each opens the app's page from anywhere on the card, with Open at its top right, and dragging
+ * a card out of the window pins its app to the desktop, as in the panel's My apps; the search
  * matches names and descriptions. A card whose app waits for a permission says so in a badge at
  * its foot.
  */
@@ -35,6 +37,7 @@ export function AppSettingsList({
   onClearSearch: () => void;
 }) {
   const { t, i18n } = useTranslation('apps');
+  const pins = useAppPins();
   const shown = apps.filter(
     (app) =>
       !query.trim() ||
@@ -77,6 +80,7 @@ export function AppSettingsList({
             meta={t('settings.rowMeta', { version: app.currentVersion, date })}
             status={app.consents.length ? t('settings.waiting') : undefined}
             onShow={() => onShow(app)}
+            onDragOut={() => pins.dragOut(app)}
           />
         );
       })}

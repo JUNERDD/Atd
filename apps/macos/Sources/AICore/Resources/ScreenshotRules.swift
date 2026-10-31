@@ -5,10 +5,12 @@ import Foundation
 public enum ScreenshotRules {
   /// The longest edge, in pixels, a stored screenshot keeps. A Retina capture of a whole display
   /// is far larger; this keeps the image legible for a model while a PNG of it stays well under
-  /// the service's 8 MiB image limit for typical screen content.
+  /// ``maxImageBytes`` for typical screen content.
   public static let maxLongEdge = 2560
 
-  /// The service's image limit (`MAX_IMAGE_ATTACHMENT_BYTES`); a larger file is refused.
+  /// The shell's own budget for an encoded screenshot or pasted image, well under the service's
+  /// attachment limit (`MAX_ATTACHMENT_BYTES`): a PNG over it falls back to JPEG, and an image
+  /// whose smallest JPEG is still over it is refused before it is imported.
   public static let maxImageBytes = 8 * 1024 * 1024
   /// The JPEG quality of the fallback for a PNG over ``maxImageBytes``.
   public static let jpegQuality = 0.9
@@ -27,7 +29,7 @@ public enum ScreenshotRules {
       encoding: .png, longEdge: scaledLongEdge(width: width, height: height) ?? max(width, height))
   }
 
-  /// What follows an attempt that produced `bytes`: keep it when it fits the service's limit;
+  /// What follows an attempt that produced `bytes`: keep it when it fits ``maxImageBytes``;
   /// otherwise the PNG becomes a JPEG of the same size, and a JPEG shrinks by a quarter until
   /// ``minimumFallbackLongEdge``, after which the capture is refused.
   public static func step(after attempt: ScreenshotAttempt, bytes: Int) -> ScreenshotEncodingStep {
@@ -121,7 +123,8 @@ public enum ScreenshotRules {
 public enum ScreenshotEncoding: Sendable {
   case png, jpeg
 
-  /// Both are in `AttachmentRules.extensions`.
+  /// The file's extension, from which the service takes its media type, `image/png` or
+  /// `image/jpeg` (`attachmentMime`).
   public var fileExtension: String {
     switch self {
     case .png: "png"

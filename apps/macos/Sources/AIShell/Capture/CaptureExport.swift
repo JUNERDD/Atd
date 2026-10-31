@@ -16,7 +16,7 @@ enum ImageExportFailure: Error, Equatable {
 /// Turns a confirmed selection into the file that is imported (decision D10): the frozen
 /// displays' pixels under the selection with the annotations drawn in, scaled to
 /// ``ScreenshotRules/maxLongEdge`` and encoded as PNG, falling back to JPEG when the PNG is over
-/// the service's image limit.
+/// the shell's image budget (``ScreenshotRules/maxImageBytes``).
 enum CaptureExport {
   /// A confirmed selection's pixels: with the annotations, and without them (the base a later
   /// edit reopens and what text recognition reads), and their pixels per point.
@@ -65,7 +65,7 @@ enum CaptureExport {
   }
 
   /// The one encoder of images the shell imports: `image` scaled to ``ScreenshotRules`` (long
-  /// edge, then PNG with JPEG fallbacks under the service's image limit) and written into
+  /// edge, then PNG with JPEG fallbacks under its image budget) and written into
   /// `folder` as `name(encoding)`. Scaling and encoding a Retina image take long enough to keep
   /// them off the main actor.
   @concurrent

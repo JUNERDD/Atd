@@ -47,10 +47,10 @@ fn tiers_dominate_recency_and_placement() {
             "notes.md"
         ]
     );
-    assert_eq!(ranked[0].name_match, Some((0, 4)));
-    assert_eq!(ranked[2].name_match, Some((4, 8)));
-    assert_eq!(ranked[3].name_match, Some((3, 7)));
-    assert_eq!(ranked[4].name_match, None);
+    assert_eq!(ranked[0].matches, [(0, 4)]);
+    assert_eq!(ranked[2].matches, [(4, 8)]);
+    assert_eq!(ranked[3].matches, [(3, 7)]);
+    assert!(ranked[4].matches.is_empty());
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn an_empty_query_lists_newest_first_without_matches() {
     assert!(
         ranked
             .iter()
-            .all(|entry| entry.score == 0 && entry.name_match.is_none())
+            .all(|entry| entry.score == 0 && entry.matches.is_empty())
     );
 }
 
@@ -121,9 +121,12 @@ fn matching_ignores_case_accents_and_normalization_form() {
     );
     assert_eq!(ranked.len(), 1);
     // Prefix of the NFC name "Résumé 2026.md": six UTF-16 units.
-    assert_eq!(ranked[0].name_match, Some((0, 6)));
+    assert_eq!(ranked[0].matches, [(0, 6)]);
     assert_eq!(rank("CAFÉ", vec![file("", "cafe.md", 0)], NOW).len(), 1);
     assert!(rank("tea", vec![file("", "cafe.md", 0)], NOW).is_empty());
+    // Mid-word, folded on both sides.
+    let ranked = rank("afé", vec![file("", "Cafe\u{301}-menu.md", 0)], NOW);
+    assert_eq!(ranked[0].matches, [(1, 4)]);
 }
 
 #[test]
@@ -135,4 +138,81 @@ fn a_stem_equal_to_the_query_is_exact() {
     );
     assert_eq!(names(&ranked), ["Notes.MD", "notes-2.md"]);
     assert_eq!(ranked[0].score, 5300);
+}
+
+#[test]
+fn separators_are_interchangeable() {
+    let ranked = rank(
+        "budget_2024",
+        vec![
+            file("", "budget2024.csv", 0),     // fuzzy
+            file("", "my budget 2024.pdf", 0), // word start
+            file("", "budget - 2024.xlsx", 0), // prefix
+            file("", "notes.md", 0),           // dropped
+        ],
+        NOW,
+    );
+    assert_eq!(
+        names(&ranked),
+        ["budget - 2024.xlsx", "my budget 2024.pdf", "budget2024.csv"]
+    );
+    assert_eq!(ranked[0].matches, [(0, 13)]);
+}
+
+#[test]
+fn fuzzy_matches_rank_below_contiguous_name_and_folder_matches() {
+    let ranked = rank(
+        "mnrs",
+        vec![
+            file("", "main.rs", 0),
+            file("", "mnrs-notes.md", 0),
+            file("mnrs", "readme.md", 0),
+        ],
+        NOW,
+    );
+    assert_eq!(names(&ranked), ["mnrs-notes.md", "readme.md", "main.rs"]);
+    assert!(ranked[1].matches.is_empty());
+    assert_eq!(ranked[2].matches, [(0, 1), (3, 4), (5, 7)]);
+    assert!(ranked[2].score > Tier::Fuzzy.score() && ranked[2].score < Tier::Folder.score());
+}
+
+#[test]
+fn folders_before_a_slash_match_the_end_of_the_location() {
+    let ranked = rank(
+        "src/main",
+        vec![
+            file("proj/src/lib", "main.rs", 0), // one folder passed over
+            file("proj/test", "main.rs", 0),    // no `src` folder
+            file("proj/src", "readme.md", 0),   // the name misses
+            file("proj/src", "main.rs", 0),
+        ],
+        NOW,
+    );
+    let paths: Vec<_> = ranked
+        .iter()
+        .map(|entry| entry.candidate.path.clone())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            PathBuf::from("/h/proj/src/main.rs"),
+            PathBuf::from("/h/proj/src/lib/main.rs")
+        ]
+    );
+    assert_eq!(ranked[0].matches, [(0, 4)]);
+}
+
+#[test]
+fn a_single_ideograph_is_a_full_query() {
+    let ranked = rank(
+        "表",
+        vec![
+            file("", "月度报表.xlsx", 400),
+            file("", "表格.numbers", 400),
+        ],
+        NOW,
+    );
+    assert_eq!(names(&ranked), ["表格.numbers", "月度报表.xlsx"]);
+    assert_eq!(ranked[1].matches, [(3, 4)]);
+    assert!(!crate::pattern::Pattern::parse("表", &[]).recent);
 }

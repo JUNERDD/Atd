@@ -171,7 +171,9 @@
       "unsupported": "{{name}} isn’t supported.",
       "tooLarge": "{{name}} is too large.",
       "notDirectory": "{{name}} isn’t a folder.",
-      "forbidden": "{{name}} can’t be used: automations may not read your whole home folder or Atd’s own data."
+      "forbidden": "{{name}} can’t be used: automations may not read your whole home folder or Atd’s own data.",
+      "failed": "{{name}} couldn’t be added. Try again.",
+      "tooMany": "Only the first {{max}} folders were added."
     }
   },
   "chain": {

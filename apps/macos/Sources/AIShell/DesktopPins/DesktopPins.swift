@@ -70,7 +70,7 @@ final class DesktopPins {
     self.services = services
     self.files = files
     store = DesktopPinStore(files: files, dataDirectory: services.dataDirectory)
-    drag.onDrop = { [weak self] appId, point in self?.dropped(appId, at: point) }
+    drag.onDrop = { [weak self] appId, face, point in self?.dropped(appId, face: face, at: point) }
   }
 
   /// Shows the saved pins from the widget files as they are.
@@ -204,14 +204,26 @@ final class DesktopPins {
     save()
   }
 
-  /// A pin drag dropped on the desktop: the pin goes there, centered on the point.
-  private func dropped(_ appId: String, at point: NSPoint) {
+  /// A pin drag dropped on the desktop: the pin goes there, centered on the point, showing the
+  /// widget the drag named at its family's size, as a widget chosen from the menu would.
+  private func dropped(_ appId: String, face requested: DesktopPinFace?, at point: NSPoint) {
     let placement = DesktopPinScreens.placement(nearestTo: point.x, point.y)
-    if let record = record(appId) {
-      let size = pinSize(record)
-      return moved(
+    if let index = records.firstIndex(where: { $0.appId == appId }) {
+      let changes =
+        requested.map { records[index].face != $0 || records[index].size != nil } ?? false
+      if let requested, changes {
+        records[index].face = requested
+        records[index].size = nil
+      }
+      let size = pinSize(records[index])
+      moved(
         appId,
         to: DesktopPinGeometry.centered(x: point.x, y: point.y, size: size, in: placement.workArea))
+      if changes {
+        refresh(appId)
+        onChange?()
+      }
+      return
     }
     Task {
       do throws(BridgeError) {
@@ -219,7 +231,7 @@ final class DesktopPins {
         try await requireApp(appId)
         guard record(appId) == nil else { return }
         try checkLimit()
-        let face = defaultFace(appId)
+        let face = requested ?? defaultFace(appId)
         let frame = DesktopPinGeometry.centered(
           x: point.x, y: point.y, size: Self.size(of: face), in: placement.workArea)
         add(appId, face: face, frame: frame, placement: placement)

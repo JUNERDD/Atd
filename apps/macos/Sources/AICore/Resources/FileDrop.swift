@@ -1,25 +1,24 @@
-import Foundation
-
 /// What a file drag over the panel carries, read once when it enters: the panel page tells the
 /// user what a drop would attach before the items are imported.
 public struct FileDragSummary: Equatable, Sendable {
   /// Every dragged file and folder.
   public let files: Int
-  /// What a drop's import (``ImportBatch``) would take: its files of an attachable format, and
-  /// its folders. The service still applies its size rule and its folder rules.
+  /// What a drop's import (``ImportBatch``) would take: its files, of any format, and its
+  /// folders, within the batch's limits. The service still refuses a file it cannot read, one
+  /// that is not a regular file or one over its size limit, and applies its folder rules.
   public let attachable: Int
 
   public init(items: [ImportItem]) {
     files = items.count
     let batch = ImportBatch(items)
-    attachable = batch.files.filter(AttachmentRules.isAttachable).count + batch.folders.count
+    attachable = batch.files.count + batch.folders.count
   }
-}
 
-extension AttachmentRules {
-  /// Whether a dropped URL names a file of an attachable format; a folder never is.
-  public static func isAttachable(_ url: URL) -> Bool {
-    !url.hasDirectoryPath && extensions.contains(url.pathExtension.lowercased())
+  /// A drag of `count` files that arrive only after the drop (promised files, or a bitmap the
+  /// shell writes to a file), of which an import takes ``AttachmentRules/maxPathsPerImport``.
+  public init(arriving count: Int) {
+    files = count
+    attachable = min(count, AttachmentRules.maxPathsPerImport)
   }
 }
 

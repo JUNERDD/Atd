@@ -48,7 +48,8 @@ export function ComposerAttachMenu({
   async function upload() {
     setBusy(true);
     try {
-      attach((await agentApi().chooseFiles()).map((file) => ({ kind: 'file', file })));
+      const { resources, failures } = await agentApi().chooseFiles();
+      receiveImported({ files: resources, folders: [], failures }, attach, t);
     } catch (error) {
       showErrorToast(error);
     }

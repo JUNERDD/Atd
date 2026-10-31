@@ -7,7 +7,7 @@ import {
   PermissionRequestSchema,
 } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
-import { ResourceRefSchema } from './resources.js';
+import { ResourceRefSchema, StoredResourceSchema } from './resources.js';
 import {
   QueueStateSchema,
   ServiceBlockSchema,
@@ -177,7 +177,8 @@ export const LedgerDataSchema = Type.Object(
       Type.String(),
       Type.Object({ taskId: Identifier, runId: Identifier }, { additionalProperties: false }),
     ),
-    resources: Type.Array(ResourceRefSchema),
+    /** Every stored resource; clients receive only each row's `ResourceRef` part. */
+    resources: Type.Array(StoredResourceSchema),
     /** Serialized pending confirms/capabilities; recovery revalidates them. */
     pendingConfirms: Type.Array(PermissionRequestSchema),
     pendingCapabilities: Type.Array(

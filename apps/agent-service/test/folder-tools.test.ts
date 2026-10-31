@@ -100,6 +100,7 @@ async function runWith(granted: string[], calls: Array<[string, ToolArgs]>) {
     setStatus: () => undefined,
     skillDirs: () => [],
     taskResources: harness.service.resources.forTask(taskId),
+    resources: harness.service.resources,
     folders: () => granted,
   };
   const material = {
@@ -113,12 +114,13 @@ async function runWith(granted: string[], calls: Array<[string, ToolArgs]>) {
   const search = searchToolsExtension({
     cwd,
     gate: createGate(host),
+    sessions: manager,
     runner: {
       taskId,
       currentRunId: () => runId,
       currentMaterial: () => material,
       audit: host.audit,
-      ctx: { paths: { root: paths.root } },
+      ctx: { ledger: harness.service.ledger, paths },
     },
   });
   const settingsManager = SettingsManager.inMemory({ retry: { enabled: false } });

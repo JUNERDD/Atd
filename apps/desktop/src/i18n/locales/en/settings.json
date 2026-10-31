@@ -415,7 +415,7 @@
     },
     "preferenceNotes": {
       "openAtLogin": "Start the app when you log in to your Mac.",
-      "showInDock": "The menu bar icon stays either way.",
+      "showInDock": "The menu bar icon stays either way, and the Dock icon also shows while Settings is open.",
       "alwaysOnTop": "Keep the panel above other windows.",
       "miniPanel": "Keep a small panel on the screen edge for quick actions. Drop files, images or text on it to add them to your message."
     },
