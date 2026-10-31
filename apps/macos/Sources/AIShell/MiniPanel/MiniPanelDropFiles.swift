@@ -23,9 +23,7 @@ enum MiniPanelDropPayload {
       if !files.isEmpty { return .files(files) }
     }
     if offer.promises {
-      let receivers =
-        board.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil)
-        as? [NSFilePromiseReceiver] ?? []
+      let receivers = promises(on: board)
       if !receivers.isEmpty { return .promises(receivers) }
     }
     if offer.image, let image = image(on: board) { return .image(image) }
@@ -41,7 +39,15 @@ enum MiniPanelDropPayload {
     }
   }
 
-  /// The pasteboard's bitmap in the first format offered: PNG, TIFF, then JPEG.
+  /// The pasteboard's promised files, a receiver per promiser; the task panel's web view reads
+  /// a drop's promises the same way.
+  static func promises(on board: NSPasteboard) -> [NSFilePromiseReceiver] {
+    board.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil)
+      as? [NSFilePromiseReceiver] ?? []
+  }
+
+  /// The pasteboard's bitmap in the first format offered: PNG (a screenshot copy), TIFF (what most
+  /// apps copy), then JPEG; the task panel's web view reads a pasted or dropped bitmap this way.
   static func image(on board: NSPasteboard) -> Data? {
     [NSPasteboard.PasteboardType.png, .tiff, MiniPanelDragOffer.jpeg].lazy
       .compactMap { board.data(forType: $0) }.first
@@ -69,23 +75,26 @@ enum MiniPanelDropPayload {
 }
 
 /// Receives a drop's promised files (Photos, a browser's images, Mail's attachments) into a
-/// folder of its own. Each promiser writes on a background queue and calls back per file; the
-/// files that arrive are handed on in batches, each a short ``batchDelay`` after the first file
-/// in it, so a drop of several becomes one import, and files arriving late (after the others,
-/// after the wait ran out, or more than the promisers announced) still go in. The wait settles
-/// once every announced file has called back or after ``timeout``, with how many arrived and the
-/// names of those that failed or never came (``Settled``), never the files' contents.
+/// folder of its own, for a drop on either panel (``PromisedDrop``). Each promiser writes on a
+/// background queue and calls back per file; the files that arrive are handed on in batches,
+/// each a short ``batchDelay`` after the first file in it, so a drop of several becomes one
+/// import, and files arriving late (after the others, after the wait ran out, or more than the
+/// promisers announced) still go in. The wait settles once every announced file has called back
+/// or after ``timeout``, with how many arrived and the names of those that failed or never came
+/// (``Settled``), never the files' contents.
 enum MiniPanelPromises {
   static let timeout: Duration = .seconds(60)
   static let batchDelay: Duration = .milliseconds(300)
 
   /// The wait's end: the files that arrived so far, how many were announced, and the names of
-  /// those that failed or never came (fewer than the failures when a promiser gave no names).
+  /// those that failed or never came (fewer than the failures when a promiser gave no names),
+  /// with each failure's error domain and code for the log.
   struct Settled {
     let received: Int
     let expected: Int
     let failed: Int
     let missingNames: [String]
+    let reasons: [String]
   }
 
   /// The files the promisers announced: one per promised type, or one for a promiser that
@@ -175,24 +184,18 @@ enum MiniPanelPromises {
       self.settled = nil
       let arrived = Set(received.map(\.lastPathComponent) + failed.map(\.name))
       let promised = receivers.flatMap(\.fileNames).filter { !arrived.contains($0) }
-      let reasons = failed.map(\.reason).joined(separator: ", ")
-      MiniPanelController.log.info(
-        """
-        Mini panel drop: received \(self.received.count, privacy: .public) of \
-        \(self.expected, privacy: .public) promised file(s); failures: \
-        \(reasons.isEmpty ? "none" : reasons, privacy: .public)
-        """)
       settled(
         Settled(
           received: received.count, expected: expected, failed: failed.count,
-          missingNames: failed.map(\.name) + promised))
+          missingNames: failed.map(\.name) + promised, reasons: failed.map(\.reason)))
     }
   }
 }
 
-/// The app's own folder for what a drop on the mini panel brings without a file of its own:
-/// promised files and long dropped text, each drop in a folder of its own
-/// (`~/Library/Application Support/<bundle id>/mini-panel-drops/<uuid>/`).
+/// The app's own folder for what a drop brings without a file of its own: promised files dropped
+/// on either panel and long text dropped on the mini panel, each drop in a folder of its own
+/// (`~/Library/Application Support/<bundle id>/mini-panel-drops/<uuid>/`, named for the mini
+/// panel, which took such drops first).
 ///
 /// The service copies an imported file into its own store (`/v1/resources/import` reads the
 /// bytes, apps/agent-service/src/resources/import.ts) but registers a folder by its path, and an

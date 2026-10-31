@@ -43,17 +43,20 @@ export interface FileSearchBridge {
 }
 
 /**
- * Why the shell did not import a path: a file import (`unreadable`, `unsupported`, `tooLarge`) or
- * a folder registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read).
+ * Why the shell did not add an item: a file import (`unreadable`, `unsupported`, `tooLarge`), a
+ * folder registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read), a
+ * request that failed as a whole (`failed`), or an item past what one gesture adds (`tooMany`).
  */
 export type ImportFailureReason =
   | 'unreadable'
   | 'unsupported'
   | 'tooLarge'
   | 'notDirectory'
-  | 'forbidden';
+  | 'forbidden'
+  | 'failed'
+  | 'tooMany';
 
-/** A path the shell refused: its basename (the page never sees paths of refused items). */
+/** An item the shell did not add: its basename (the page never sees paths of refused items). */
 export interface ImportFailure {
   name: string;
   reason: ImportFailureReason;

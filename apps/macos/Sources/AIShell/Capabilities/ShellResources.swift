@@ -14,12 +14,16 @@ import UniformTypeIdentifiers
 /// per gesture. Every gesture that hands the app files or folders — a drop or paste on the
 /// panel, the Finder service, a drop on the Dock icon, `open -a` — goes through
 /// ``importItems(_:queueWhenUnavailable:)``: its items split into files and folders
-/// (``ImportBatch``), both requests run, and the page gets one `resources.imported` event. The
+/// (``ImportBatch``), both requests run, and the page gets one `resources.imported` event that
+/// accounts for every item, those past the limits and those of a failed request included. The
 /// gestures from outside the panel (``importOpened(_:)``) wait in the shell while the service
 /// is unreachable and are imported once the control stream connects (``serviceDidConnect()``).
 ///
 /// A file drag over the panel and the import of its drop reach the page as `files.drag`
-/// (``FileDropState``), so it can show what the drop attaches and that it is being added.
+/// (``FileDropState``), so it can show what the drop attaches and that it is being added. A drop
+/// from another app that brings files without their URLs (``DroppedContent``) is taken as the
+/// mini panel takes it: promised files are received first (``PromisedDrop``), and a bitmap goes
+/// in like a pasted one.
 ///
 /// A paste with a bitmap but neither file URL nor text (a screenshot copied to the clipboard)
 /// is stored as `Pasted image <date>.png` in a temporary folder and imported like a file;
@@ -30,6 +34,8 @@ final class AttachmentImporter {
   private weak var panel: WebViewHost?
   private let systemPanels: SystemPanels
   private var drop = FileDropState()
+  /// Where promised files dropped on the panel arrive, as the mini panel's do.
+  private let dropFolder = MiniPanelDropFolder.forMainBundle()
   /// Opened items waiting for the service.
   private var pending: [ImportBatch] = []
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "attachments")
@@ -42,12 +48,13 @@ final class AttachmentImporter {
     // attachments.
     panel.onFiles = { [weak self] urls, source in
       guard let self else { return }
-      if source == "drop" { updateDrop { $0.beginImport() } }
-      Task {
-        await self.importItems(urls, queueWhenUnavailable: false)
-        if source == "drop" { self.updateDrop { $0.endImport() } }
+      if source == "drop" {
+        whileImporting { await self.importItems(urls, queueWhenUnavailable: false) }
+      } else {
+        Task { await self.importItems(urls, queueWhenUnavailable: false) }
       }
     }
+    panel.onDroppedContent = { [weak self] content in self?.takeDropped(content) }
     panel.onFileDrag = { [weak self] summary in self?.updateDrop { $0.setDrag(summary) } }
     panel.onPastedImage = { [weak self] data in
       guard let self else { return }
@@ -60,6 +67,37 @@ final class AttachmentImporter {
     let before = drop.event
     change(&drop)
     if drop.event != before { panel?.setState(.filesDrag(drop.event)) }
+  }
+
+  /// Runs one import of a drop while the page shows the drop as importing.
+  private func whileImporting(_ work: @escaping () async -> Void) {
+    updateDrop { $0.beginImport() }
+    Task {
+      await work()
+      updateDrop { $0.endImport() }
+    }
+  }
+
+  /// A drop's bitmap goes in like a pasted image, and its promised files as they arrive; the page
+  /// shows the drop as importing until the last of them answered, the wait for them included.
+  private func takeDropped(_ content: DroppedContent) {
+    switch content {
+    case .image(let data):
+      whileImporting { await self.importPastedImage(data) }
+    case .promises(let receivers, let board):
+      updateDrop { $0.beginImport() }
+      PromisedDrop(
+        folder: dropFolder, log: Self.log,
+        deliver: { [weak self] files in
+          self?.whileImporting { await self?.importItems(files, queueWhenUnavailable: false) }
+        },
+        importImage: { [weak self] data in
+          self?.whileImporting { await self?.importPastedImage(data) }
+        },
+        reportFailures: { [weak self] failures in self?.report(failures) },
+        finished: { [weak self] in self?.updateDrop { $0.endImport() } }
+      ).receive(receivers, from: board)
+    }
   }
 
   /// `files.pick`: the service's import of the chooser's files, each stored or refused with its
@@ -75,19 +113,21 @@ final class AttachmentImporter {
     return try await importPaths(urls)
   }
 
-  /// `files.pickFolder`: the chosen folders registered as the page's refs; both lists are
-  /// empty when the user cancelled.
+  /// `files.pickFolder`: the chosen folders registered as the page's refs, and each one past the
+  /// first ``ImportBatch/maxFolders`` reported as `tooMany`; both lists are empty when the user
+  /// cancelled.
   func pickFolders() async throws(BridgeError) -> FilesPickFolderResult {
     guard let urls = await systemPanels.chooseFolders(), !urls.isEmpty else {
       return FilesPickFolderResult(folders: [], failures: [])
     }
     let batch = ImportBatch(urls.map { ImportItem(url: $0, isDirectory: true) })
-    if batch.skipped > 0 {
+    if !batch.skipped.isEmpty {
       Self.log.info("Registered the first \(batch.folders.count) of \(urls.count) folders.")
     }
     do {
       let client = try await services.client()
-      return FilesPickFolderResult(try await client.registerFolders(paths: batch.folderPaths))
+      return FilesPickFolderResult(
+        batch: batch, registered: try await client.registerFolders(paths: batch.folderPaths))
     } catch {
       throw BridgeError(ShellBridge.message(error, "The folders could not be added."))
     }
@@ -107,9 +147,10 @@ final class AttachmentImporter {
     }
   }
 
-  /// One gesture's files and folders become one `resources.imported` event for the panel page.
-  /// With the service unreachable, a drop or paste sends nothing (the page already shows the
-  /// service as down) while opened items wait for it.
+  /// One gesture's files and folders become one `resources.imported` event for the panel page
+  /// (``ResourcesImportedEvent/init(batch:files:folders:)``): a request that failed, the service
+  /// being down included, reports each of its items as `failed`, and the items past the limits
+  /// are `tooMany`. Opened items instead wait, whole, while the service is unreachable.
   func importItems(_ urls: [URL], queueWhenUnavailable: Bool) async {
     await importBatch(
       ImportBatch(urls.map(ImportItem.init(fileURL:))), queueWhenUnavailable: queueWhenUnavailable)
@@ -117,26 +158,55 @@ final class AttachmentImporter {
 
   private func importBatch(_ batch: ImportBatch, queueWhenUnavailable: Bool) async {
     guard !batch.isEmpty else { return }
-    if batch.skipped > 0 {
-      Self.log.info("Left out \(batch.skipped) items past the attachment and folder limits.")
-    }
+    let files: Result<ResourceImportResponse, any Error>
+    let folders: Result<FolderRegisterResponse, any Error>
+    var errors: [any Error] = []
     do {
       let client = try await services.client()
-      async let files =
-        batch.files.isEmpty ? .empty : client.importResources(paths: batch.filePaths)
-      async let folders =
-        batch.folders.isEmpty ? .empty : client.registerFolders(paths: batch.folderPaths)
-      let event = ResourcesImportedEvent(files: try await files, folders: try await folders)
-      panel?.send(.resourcesImported(event))
+      async let imported = Self.answer(batch.filePaths, empty: .empty, client.importResources)
+      async let registered = Self.answer(batch.folderPaths, empty: .empty, client.registerFolders)
+      (files, folders) = await (imported, registered)
+      if case .failure(let error) = files { errors.append(error) }
+      if case .failure(let error) = folders { errors.append(error) }
     } catch {
-      // No endpoint, or none answering: the service is down, not the request refused.
-      if queueWhenUnavailable, error is ShellServiceError || error is URLError {
-        pending.append(batch)
-        Self.log.info("Holding opened items until the service is available.")
-      } else {
-        Self.log.error("Files or folders were not imported: \(String(describing: error))")
-      }
+      (files, folders) = (.failure(error), .failure(error))
+      errors = [error]
     }
+    // No endpoint, or none answering: the service is down, not the request refused. A part that
+    // went in meanwhile goes in again unchanged: the service reuses a file it already holds, and
+    // a folder's realpath keeps its id.
+    if queueWhenUnavailable, errors.contains(where: { $0 is ShellServiceError || $0 is URLError }) {
+      pending.append(batch)
+      Self.log.info("Holding opened items until the service is available.")
+      return
+    }
+    for error in errors {
+      Self.log.error("Files or folders were not imported: \(String(describing: error))")
+    }
+    if !batch.skipped.isEmpty {
+      Self.log.info("Left out \(batch.skipped.count) items past the attachment and folder limits.")
+    }
+    panel?.send(
+      .resourcesImported(
+        ResourcesImportedEvent(batch: batch, files: try? files.get(), folders: try? folders.get())))
+  }
+
+  /// One request's answer, or the error it failed with; with no paths, it asks nothing.
+  private nonisolated static func answer<Answer: Sendable>(
+    _ paths: [String], empty: Answer, _ request: ([String]) async throws -> Answer
+  ) async -> Result<Answer, any Error> {
+    guard !paths.isEmpty else { return .success(empty) }
+    do {
+      return .success(try await request(paths))
+    } catch {
+      return .failure(error)
+    }
+  }
+
+  /// Items no import took, reported to the page like an import's failures.
+  private func report(_ failures: [ResourcesImportedEvent.Failure]) {
+    panel?.send(
+      .resourcesImported(ResourcesImportedEvent(resources: [], folders: [], failures: failures)))
   }
 
   /// A pasted bitmap as an image attachment, announced to the page like any import. A bitmap
@@ -154,11 +224,7 @@ final class AttachmentImporter {
       Self.log.error("A pasted image was not attached: \(String(describing: error))")
       let reason: ResourcesImportedEvent.Failure.Reason =
         (error as? PastedImageExport.Failure) == .tooLarge ? .tooLarge : .unreadable
-      panel?.send(
-        .resourcesImported(
-          ResourcesImportedEvent(
-            resources: [], folders: [],
-            failures: [.init(name: PastedImageName.fileName(pastedAt: now), reason: reason)])))
+      report([.init(name: PastedImageName.fileName(pastedAt: now), reason: reason)])
     }
   }
 

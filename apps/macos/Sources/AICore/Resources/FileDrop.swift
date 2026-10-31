@@ -13,6 +13,13 @@ public struct FileDragSummary: Equatable, Sendable {
     let batch = ImportBatch(items)
     attachable = batch.files.count + batch.folders.count
   }
+
+  /// A drag of `count` files that arrive only after the drop (promised files, or a bitmap the
+  /// shell writes to a file), of which an import takes ``AttachmentRules/maxPathsPerImport``.
+  public init(arriving count: Int) {
+    files = count
+    attachable = min(count, AttachmentRules.maxPathsPerImport)
+  }
 }
 
 /// The panel's drop phase (`files.drag`): a drag over the panel shows what it carries; once

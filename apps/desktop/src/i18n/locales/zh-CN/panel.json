@@ -80,7 +80,10 @@
       "unsupported": "{{name}} 不是可附加的文件。",
       "tooLarge": "{{name}} 太大，无法附加。",
       "notDirectory": "{{name}} 不是文件夹。",
-      "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。"
+      "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。",
+      "failed": "无法添加 {{name}}，请重试。",
+      "tooMany_one": "有 {{count}} 项未添加：每条消息最多可添加 {{max}} 个文件和 {{folders}} 个文件夹。",
+      "tooMany_other": "有 {{count}} 项未添加：每条消息最多可添加 {{max}} 个文件和 {{folders}} 个文件夹。"
     },
     "queued": "排队消息",
     "sendNow": "立即发送",

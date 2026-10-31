@@ -203,25 +203,26 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
-   * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
-   * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
-   * import lands in exactly one list.
+   * Swift imported the files of one gesture (a drop, a paste, the Finder service) through
+   * `/v1/resources/import` and registered its folders through `/v1/folders/register`. Every item
+   * lands in exactly one list: a failed request's items and those past the gesture's limits are
+   * `failed` and `tooMany` failures, so `failures` has no fixed bound.
    */
   'resources.imported': Type.Object(
     {
       resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
       folders: Type.Array(NativeFolderRefSchema, { maxItems: 10 }),
-      failures: Type.Array(ImportFailureSchema, { maxItems: 20 }),
+      failures: Type.Array(ImportFailureSchema),
     },
     { additionalProperties: false },
   ),
   /**
    * The panel's file drop, a state the shell replays: `over` while files are dragged over the
    * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
-   * dragged items, folders included; `attachable` counts those the drop's import would take: its
-   * first 10 files, of any format, and its first 10 folders. The shell reports only a drag that
-   * carries a file or folder, so `attachable` is at least 1 during `over`; the service may still
-   * refuse a file after the drop. Both are 0 outside `over`.
+   * dragged items (folders, promised files and a bitmap included); `attachable` those the drop's
+   * import would take: its first 10 files, of any format, and its first 10 folders. The shell
+   * reports only a drag that carries one, so `attachable` is at least 1 during `over`; the service
+   * may still refuse a file after the drop. Both are 0 outside `over`.
    */
   'files.drag': Type.Object(
     {

@@ -80,7 +80,10 @@
       "unsupported": "{{name}} is not a file that can be attached.",
       "tooLarge": "{{name}} is too large to attach.",
       "notDirectory": "{{name}} is not a folder.",
-      "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder."
+      "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder.",
+      "failed": "{{name}} could not be added. Try again.",
+      "tooMany_one": "{{count}} item was not added: a message takes up to {{max}} files and {{folders}} folders.",
+      "tooMany_other": "{{count}} items were not added: a message takes up to {{max}} files and {{folders}} folders."
     },
     "queued": "Queued messages",
     "sendNow": "Send now",

@@ -23,6 +23,11 @@ final class WebViewHost: NSObject {
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
     didSet { webView.onFiles = onFiles }
   }
+  /// Receives the promised files or the bitmap a drop from another app brings without file URLs;
+  /// the panel imports them as attachments.
+  var onDroppedContent: ((DroppedContent) -> Void)? {
+    didSet { webView.onDroppedContent = onDroppedContent }
+  }
   /// Receives a file drag entering the web view (its summary) and leaving it (nil).
   var onFileDrag: ((FileDragSummary?) -> Void)? {
     didSet { webView.onFileDrag = onFileDrag }
@@ -196,6 +201,7 @@ final class WebViewHost: NSObject {
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.onFiles = onFiles
+    webView.onDroppedContent = onDroppedContent
     webView.onFileDrag = onFileDrag
     webView.onPastedImage = onPastedImage
     webView.frame = container.bounds

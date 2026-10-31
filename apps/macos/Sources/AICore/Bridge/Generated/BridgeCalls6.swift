@@ -51,6 +51,8 @@ public struct FilesPickResult: Codable, Equatable, Sendable {
       case tooLarge
       case notDirectory
       case forbidden
+      case failed
+      case tooMany
     }
   }
 }
@@ -71,7 +73,7 @@ public struct FilesPickFolderResult: Codable, Equatable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     folders = try container.array(.folders, of: Folder.self, maxItems: 10)
-    failures = try container.array(.failures, of: Failure.self, maxItems: 10)
+    failures = try container.array(.failures, of: Failure.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -130,6 +132,8 @@ public struct FilesPickFolderResult: Codable, Equatable, Sendable {
       case tooLarge
       case notDirectory
       case forbidden
+      case failed
+      case tooMany
     }
   }
 }

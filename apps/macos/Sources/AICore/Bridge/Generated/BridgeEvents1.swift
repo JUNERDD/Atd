@@ -168,7 +168,7 @@ public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
     folders = try container.array(.folders, of: Folder.self, maxItems: 10)
-    failures = try container.array(.failures, of: Failure.self, maxItems: 20)
+    failures = try container.array(.failures, of: Failure.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -228,6 +228,8 @@ public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
       case tooLarge
       case notDirectory
       case forbidden
+      case failed
+      case tooMany
     }
   }
 }

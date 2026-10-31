@@ -3660,13 +3660,20 @@
                           {
                             "type": "string",
                             "const": "forbidden"
+                          },
+                          {
+                            "type": "string",
+                            "const": "failed"
+                          },
+                          {
+                            "type": "string",
+                            "const": "tooMany"
                           }
                         ]
                       }
                     },
                     "additionalProperties": false
-                  },
-                  "maxItems": 20
+                  }
                 }
               },
               "additionalProperties": false
@@ -6276,6 +6283,14 @@
                   {
                     "type": "string",
                     "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
                   }
                 ]
               }
@@ -6354,13 +6369,20 @@
                   {
                     "type": "string",
                     "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
                   }
                 ]
               }
             },
             "additionalProperties": false
-          },
-          "maxItems": 10
+          }
         }
       },
       "additionalProperties": false
@@ -8464,13 +8486,20 @@
                   {
                     "type": "string",
                     "const": "forbidden"
+                  },
+                  {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooMany"
                   }
                 ]
               }
             },
             "additionalProperties": false
-          },
-          "maxItems": 20
+          }
         }
       },
       "additionalProperties": false

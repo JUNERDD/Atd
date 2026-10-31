@@ -21,8 +21,8 @@ struct FolderImportTests {
     let batch = ImportBatch(Array(zip(files, folders).flatMap { [$0, $1] }) + [files[11], web])
     #expect(batch.filePaths == (1...10).map { "/f/\($0).md" })
     #expect(batch.folderPaths == (1...10).map { "/d/\($0)/" })
-    // 12 files and 11 folders: 2 + 1 left out; the web URL is not counted.
-    #expect(batch.skipped == 3)
+    // 12 files and 11 folders: 2 + 1 left out, files first; the web URL is not counted.
+    #expect(batch.skippedNames == ["11.md", "12.md", "11"])
     #expect(!batch.isEmpty)
     #expect(ImportBatch([web]).isEmpty)
   }
