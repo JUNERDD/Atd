@@ -35,6 +35,19 @@ export function websiteMediaAssets(assetBase: string): Plugin {
     resolveId(id) {
       if (id === virtualId) return resolvedId;
     },
+    // `load` watches the media it found; a file added or removed later changes the map itself, so
+    // the dev server rebuilds it and reloads the page instead of resolving against a stale list.
+    configureServer(server) {
+      const media = /[\\/]public[\\/](?:cases|summon)[\\/].*\.(?:mp4|jpe?g|png|webp)$/;
+      const refresh = (file: string) => {
+        if (!media.test(file)) return;
+        const module = server.moduleGraph.getModuleById(resolvedId);
+        if (module) server.moduleGraph.invalidateModule(module);
+        server.ws.send({ type: 'full-reload' });
+      };
+      server.watcher.on('add', refresh);
+      server.watcher.on('unlink', refresh);
+    },
     load(id) {
       if (id !== resolvedId) return;
       const directory = join(config.root, 'public');

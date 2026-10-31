@@ -34,7 +34,7 @@ Run from the repository root:
    `robots.txt`, and deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
-interactive demos and the interface showcase's scroll sequence only enhance what is already there. Canonical and Open Graph URLs
+interactive demos and the interface showcase's timeline only enhance what is already there. Canonical and Open Graph URLs
 use `SITE_URL` when set, otherwise the Vercel production domain (`VERCEL_PROJECT_PRODUCTION_URL`).
 
 ## Layout
@@ -55,7 +55,7 @@ src/
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
   content/             Site facts (links, version), the interface scenes and archived captures
 public/
-  cases/               Interface images and archived recordings (see cases/README.md)
+  cases/               Case clips, earlier interface images, archived recordings (cases/README.md)
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
 ```
 
@@ -88,59 +88,54 @@ reuse the website's monochrome tokens and remain connected to the shared Lucide 
 ## Interface showcase
 
 The interface showcase comes right after the hero; the nav calls it “Features”, and the features
-display after it “Control”. The showcase shows nine Figma scenes as one scroll sequence: the
-selection toolbar with a command's options, write-back, Mini Panel, screenshot tool, main panel,
-conversation, settings, Apps and automations. All scenes share the canonical desktop and a
-1440 × 900 canvas, so the showcase keeps one desktop still and changes only what is on it. Each
-scene is a stack of layers cut from Figma (`scripts/matte-layers.py`) that reproduces the flat
-export at rest, and each plays in the way the real surfaces arrive on a Mac
-(`src/sections/cases/scenes.css`): text is selected before its toolbar appears and the command's
-options cascade from its chevron, an answer types itself over the selection before the command
-island confirms it, the Mini Panel slides out and opens task activity after the pointer reaches it,
-a capture is framed and annotated step
-by step, windows open and replies stream in. The layers are positioned by `case-layers.css`, so
-the prerendered page shows the first scene complete; reduced motion keeps them at rest and only
-cross-fades between scenes.
-Every scene's images stay in the prerendered markup, but only the first scene is rendered until the
-screen scrolls into view, then up to two scenes past the current one (`use-case-scroll.ts`), so the
-page doesn't download every scene's layers on arrival.
+display after it “Control”. The showcase plays ten short clips as a timeline, in three groups: in
+place (the selection toolbar with a command's options, the compose card and the screenshot tool), panel
+and conversation (main panel, conversation and Mini Panel), and apps and connections (computer use,
+Apps, automations and settings). The clips are rendered by the films repository with the same
+Remotion stack and product kit as the tour films: nine are spans of the tour films and one, settings,
+is a short film of its own, each silent, at 1280 × 720, in English and in Chinese, so each language
+shows the product in its own words. Each clip shows its case's whole process, pointer, keys and
+answer included, then fades to black and loops. Their provenance and how to update them are in
+[`public/cases/README.md`](public/cases/README.md).
 
-The scroll is the scenes' clock, not time. Under the showcase's `data-scrub` every layer's
-entrance is a paused CSS animation, and `scene-clock.ts` seeks it from how far the scene's step
-has scrolled, forwards or backwards: a scene's choreography fills the first 85 % of its step, at a
-pace set by its own length, and the rest holds the finished scene before the next cross-fades in.
-The first scene starts building while the screen rises into place, so the stage never pins on an
-empty desktop. The delays and durations in `scenes.css` therefore place each moment along the
-step rather than in seconds.
+Wide, the section's heading and lede are followed by two columns. The left column is a numbered
+index of the ten steps, one per clip, scrolling normally along an LED rail at the displays' 8 px
+pitch; each group opens with its name. On the right a stage holds still at the viewport's middle
+(`position: sticky`): a frameless 16:9 screen that casts the current clip's light onto the plate
+around it (four blurred lights, each its quarter's average color, read from the playing clip and
+easing to each new case's colors: `glow.tsx`), a slate above naming the current group and surface and counting the cases (`05 / 10`),
+and the case's caption below it like a subtitle under a picture, the lead-in dimmer than the part
+it leads to. The step whose middle is nearest the screen's middle is current
+(`use-case-timeline.ts`): its light on the rail turns on, its title brightens and its line rises
+in, while the other steps keep only their number and a quiet title. The rail is lit from the first
+step's light down to that reading line, 1:1 with the scroll. Nothing pins the page and nothing
+snaps: the text moves with the scroll, and the stage changes clip as each step reaches it.
+Narrower than 760 px, the stage and rail are left out and the steps stack, each with its own clip
+above its number, title and line, and every line shows.
 
-The stage pins to the viewport (`position: sticky`) while its track scrolls past. The track is one
-stage tall plus one step of scrolling per scene, and `use-case-scroll.ts` turns how far it has
-scrolled into the scene. Above the screen the stage names every scene in one row over a single
-hairline, and the line is the scroll's progress: it is lit under the scenes already passed and fills
-under the current one 1:1 with the scroll. Each name is also a button that jumps straight to its
-scene, landing in the rest at the end of its step so the scene shows complete; the jump is instant,
-so the pinned stage doesn't move and the scenes in between never flash or play.
-Each scene also has its own link, its id as the hash (`/#automations`, `/zh#settings`): a page
-opened on it goes straight to that scene, and choosing a scene by name puts its link in the address
-bar. Once the stage has measured itself, the page aims again at whatever its hash names, since the
-measure can move the sections after the showcase while the browser is already scrolling to them.
-Where the names don't fit the row scrolls sideways and keeps the current one in its middle. Below
-the screen the scene's caption is a headline and one line; on a phone the headline shrinks with the
-width so it stays on one line. As the stage rises into place the screen grows to full size, tied to
-the scroll where the browser supports scroll-driven animations. The screen takes the height the
-stage leaves it, and on landscape phones the names and caption sit beside it.
-The section's heading and lede open the stage (the showcase places them with `SectionHeader`), and
-they pin with it when the viewport holds them beside the names, a full-size screen and its caption;
-otherwise the stage pins higher by the heading's height, so the heading scrolls away and fades
-while the screen keeps its size (`use-case-scroll.ts` measures which). Whatever height is still
-unused is shared above and below the pinned stage.
+Clips play on their own clock, not the scroll's. Once the steps are a quarter of the way up the
+viewport, the current clip plays from its start each time it becomes current, looping, however fast
+the scroll moves on (`src/sections/cases/clip.tsx`); the others pause. A clip shows its poster, a
+still of its result, until its video is actually playing, so a slow network or a refused autoplay
+leaves the still in place. The prerendered page (no `data-timeline`) shows every step's line and the
+first clip's poster, and reduced motion shows each clip's poster without playing it. A clip's video
+loads only as it is about to play: on the stage the current one and up to two past it once the steps
+come into view, stacked only the current one; posters load lazily.
+
+Each step's title is a button that brings its step to the screen's middle: a neighbouring step
+glides there, a farther one jumps so the clips in between don't flash by. Each step also has its
+own link, its case's id as the hash (`/#automations`, `/zh#settings`): a page opened on it lands
+with that step at the reading line, and choosing a step puts its link in the address bar without
+adding a history entry.
 The showcase review (`2564:159138` desktop, `2564:159288` compact) composes the shared section
-heading, a row of `Website / Case tab` instances (Label text property; State Rest, Hover or Current
-and Line Unlit, Lit or Partial), a scene and `Website / Case caption` (Align: Center, Start; Title
-and Description text properties).
+heading, `Website / Case step` instances (Layout=Wide with State Upcoming, Current or Passed; the
+Group start property shows an exposed `Website / Case group` legend; Number, Title and Description
+text properties) along the rail, and the display with a scene and `Website / Case readout` (Group,
+Current and Total text properties). The compact review stacks each scene above a
+`Website / Case step` (Layout=Stacked), with a `Website / Case group` above a group's first scene.
+These reviews still show the earlier Figma scenes in a bezel display, not the clips on the stage.
 
-The source nodes, layer exports, export process and image paths are in
-[`public/cases/README.md`](public/cases/README.md). Keep bilingual labels and descriptions in
+Keep bilingual labels, titles, descriptions, captions, clip descriptions and group names in
 `src/content/cases.ts`, and the section's own copy in `src/sections/cases/copy.ts`.
 The former standalone Automations section and its navigation link are no longer mounted;
 automations appear as a scene in this showcase.
