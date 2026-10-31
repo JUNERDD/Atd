@@ -1,24 +1,34 @@
 import { stat } from 'node:fs/promises';
-import { fileLoader, type FileHint, type FileLoader, type LoadedFile } from './loader.js';
+import {
+  fileLoader,
+  type FileHint,
+  type FileLoader,
+  type LoadedFile,
+  type LoadFileOptions,
+} from './loader.js';
 
 /** Converted files the cache keeps, by count and by total size. */
 const CACHE_ENTRIES = 32;
 const CACHE_BYTES = 128 * 1024 * 1024;
 
-/** How a file is known to the loader besides its path, and the call's abort signal. */
-export interface LoadOptions {
+/**
+ * How a file is known to the loader besides its path, the call's abort signal, and the
+ * recognition a run's material asks for (loader.ts `Recognize`).
+ */
+export interface LoadOptions extends LoadFileOptions {
   hint?: FileHint;
-  signal?: AbortSignal;
 }
 
 /**
  * A file on disk as the loader turns it into model input, through one process-wide cache that
  * `read` and a run's attachment material share, so a file loaded for one is not converted again
- * for the other. Successful conversions (decoded, extracted or descriptive text, and converted
- * images) are cached by path, size, modification and status-change time, and hint; the status
- * change time catches a rewrite that restored the modification time. A failed extraction is not
- * kept, so a later load tries again; a file whose own bytes are its text and an image that needed
- * no conversion pass through uncached, since reading them again costs no more.
+ * for the other. Successful conversions (decoded, extracted, recognized or descriptive text, and
+ * converted images) are cached by path, size, modification and status-change time, hint and the
+ * recognition asked for; the status change time catches a rewrite that restored the modification
+ * time. Text whose recognition stopped early, at its time limit or on a failure, is kept like the
+ * rest, so later runs of the file do not wait for it again. A failed extraction is not kept, so a
+ * later load tries again; a file whose own bytes are its text and an image that needed no
+ * conversion pass through uncached, since reading them again costs no more.
  * `real` must already be the confined real path: an entry is the file's own content, reached only
  * after the caller allowed that path.
  */
@@ -28,8 +38,16 @@ export async function loadPathCached(
   loader: FileLoader = fileLoader,
 ): Promise<LoadedFile> {
   const info = await stat(real);
-  const { hint } = options;
-  const key = [real, info.size, info.mtimeMs, info.ctimeMs, hint?.name, hint?.mime].join('\0');
+  const { hint, recognize } = options;
+  const key = [
+    real,
+    info.size,
+    info.mtimeMs,
+    info.ctimeMs,
+    hint?.name,
+    hint?.mime,
+    recognize?.tokens,
+  ].join('\0');
   const cached = cache.get(key);
   if (cached) return cached;
   const loaded = await loader.loadPath(real, options);

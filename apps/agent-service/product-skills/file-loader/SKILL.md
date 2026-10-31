@@ -16,7 +16,8 @@ Atd loads attached files before your first turn, and each one names its read-onl
 
 - Text, code and data files arrive as their text, decoded from whatever common encoding they use.
 - Documents (PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB and similar) arrive as their
-  extracted text.
+  extracted text. In a run without `bash`, the PDF pages that have no text layer arrive with their
+  text recognized (see "PDF pages without text" below).
 - Images arrive as image input, numbered in the order the message carries them; HEIC, TIFF and
   AVIF are converted first, and an image over 100 megapixels or one that cannot be decoded arrives
   as a description or a note instead.
@@ -33,8 +34,9 @@ before anything else: they tell you what you have not seen yet.
 
 ## Loading more
 
-Use `read` for files of every format. It returns the same text as the material, so line numbers
-match, and `offset` and `limit` page through it. It reads the task's resources and files in folders
+Use `read` for files of every format. It returns the same text as the material, apart from text
+Atd recognized on PDF pages, and the material's notes count lines as `read` does, so line numbers
+match; `offset` and `limit` page through it. It reads the task's resources and files in folders
 the user attached without asking; other paths may need their approval.
 
 - Continue a cut file from the line its note names, and stop once you have what the task needs. A
@@ -88,8 +90,17 @@ user can judge in one line.
 
 A PDF page without a text layer, such as a scan, a photo or a drawing, yields no text, and neither
 does a page marked `[Page not extracted]`; the extraction note names those pages. Don't guess what
-they say. With `bash`, recognize their text on
-the Mac with the bundled script, limited to the pages the question needs:
+they say.
+
+In a run without `bash`, Atd recognizes the text of an attached PDF's pages without a text layer
+before your first turn, with the same script as below: in page order, as far as the material holds
+them, and within a time limit. Those pages arrive as `--- Page N (OCR) ---` sections, and the
+extraction note names the pages recognized and those left out. A page on which no text was
+recognized may hold only a picture or a drawing. These runs get recognized text only, never images
+of the pages, and `read` returns these pages as `[No text layer]`.
+
+With `bash`, recognize the text of the pages you still need on the Mac with the bundled script,
+limited to the pages the question needs:
 
 ```
 osascript -l JavaScript "<this skill's directory>/scripts/ocr.js" "<file>" [first page] [last page]
@@ -97,8 +108,9 @@ osascript -l JavaScript "<this skill's directory>/scripts/ocr.js" "<file>" [firs
 
 It prints a `--- Page N (OCR) ---` section per page of a PDF, or the text of an image in any format
 macOS reads, using on-device recognition in the languages it detects. Both scripts tell a PDF by
-its content, so a resource path without an extension works as it is. Recognized text can contain
-misreadings: present it as recognized text and double-check numbers and names that matter.
+its content, so a resource path without an extension works as it is. Recognized text, from Atd or
+from the script, can contain misreadings: present it as recognized text and double-check numbers
+and names that matter.
 
 When the look of a page matters (a chart, a form, a stamp, a signature, handwriting) and the model
 takes images, render the pages and `read` the PNG files it lists:
@@ -107,8 +119,8 @@ takes images, render the pages and `read` the PNG files it lists:
 osascript -l JavaScript "<this skill's directory>/scripts/pdf-pages.js" "<file>" "<folder inside the task folder>" [first page] [last page]
 ```
 
-Without `bash`, tell the user which pages you could not read and what would help: a text-based
-export, or screenshots of those pages.
+Without `bash`, for the pages still without text, tell the user which pages you could not read and
+what would help: a text-based export, or screenshots of those pages.
 
 ## Format notes
 

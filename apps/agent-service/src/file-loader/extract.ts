@@ -5,9 +5,10 @@ import {
   parsePdfPagesReply,
   type ExtractJob,
   type ExtractOutcome,
+  type PdfPagesReply,
   type WorkerJob,
 } from './jobs.js';
-import type { PdfText } from './pdf-text.js';
+import type { PdfText, PdfTextOptions } from './pdf-text.js';
 
 /** The worker entry beside this module, in `dist/file-loader/` as in `src/file-loader/`. */
 const WORKER_ENTRY = new URL('./worker.js', import.meta.url);
@@ -93,24 +94,34 @@ export function workerExtract(timeoutMs = EXTRACT_TIMEOUT_MS): Extract {
 }
 
 /**
- * The text of a PDF's first `maxPages` pages, read in an extraction worker as `workerExtract`
- * reads documents. Throws with why the PDF could not be read; rejects with `signal`'s reason once
- * it aborts.
+ * Reads a PDF's pages within `limits`. Resolves with them or why there are none, also when the
+ * worker fails or times out; rejects only with `signal`'s reason once it aborts.
+ */
+export type ExtractPdfPages = (
+  bytes: Uint8Array,
+  limits: PdfTextOptions,
+  signal?: AbortSignal,
+) => Promise<PdfPagesReply>;
+
+/** Reads PDF pages in an extraction worker, as `workerExtract` extracts documents. */
+export function workerPdfPages(timeoutMs = EXTRACT_TIMEOUT_MS): ExtractPdfPages {
+  return async (bytes, limits, signal) => {
+    const settled = await inWorker({ kind: 'pdf-pages', bytes, ...limits }, timeoutMs, signal);
+    if ('reason' in settled) return { status: 'failed', reason: settled.reason };
+    return parsePdfPagesReply(settled.message);
+  };
+}
+
+/**
+ * The text of a PDF's first `maxPages` pages, read in an extraction worker. Throws with why the
+ * PDF could not be read; rejects with `signal`'s reason once it aborts.
  */
 export async function workerPdfText(
   bytes: Uint8Array,
   maxPages: number,
   signal?: AbortSignal,
 ): Promise<PdfText> {
-  const settled = await inWorker(
-    { kind: 'pdf-pages', bytes, maxPages },
-    EXTRACT_TIMEOUT_MS,
-    signal,
-  );
-  const reply =
-    'reason' in settled
-      ? { status: 'failed' as const, reason: settled.reason }
-      : parsePdfPagesReply(settled.message);
+  const reply = await workerPdfPages()(bytes, { maxPages }, signal);
   switch (reply.status) {
     case 'pages':
       return { pageCount: reply.pageCount, pages: reply.pages, title: reply.title };

@@ -13,10 +13,8 @@ import {
  */
 async function extract(job: WorkerJob): Promise<ExtractOutcome | PdfPagesReply> {
   switch (job.kind) {
-    case 'pdf':
-      return (await import('./pdf.js')).pdfDocument(job.bytes, job.label);
     case 'pdf-pages':
-      return (await import('./pdf-text.js')).pdfPages(job.bytes, job.maxPages);
+      return (await import('./pdf-text.js')).pdfPages(job.bytes, job);
     case 'docx':
       return (await import('./docx.js')).docxDocument(job.bytes, job.label);
     case 'sheet':

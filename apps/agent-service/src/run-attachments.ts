@@ -10,12 +10,14 @@ import {
   shareBudget,
   type MaterialSource,
 } from './file-loader/material.js';
+import { readLineAfter } from './file-loader/pdf.js';
 import type { Logger } from './logging.js';
 import type { ResourceStore } from './resources.js';
 import type { RunAttachment } from './run-material.js';
 import { materialBudget, type MaterialBudget } from './tasks/run-budget.js';
 
 type LoadedImage = Extract<LoadedFile, { kind: 'image' }>;
+type LoadedText = Extract<LoadedFile, { kind: 'text' }>;
 
 /** What a run reads its files through: each resource's file and the name and type it was stored with. */
 export type AttachmentResources = Pick<ResourceStore, 'pathOf' | 'forTask'>;
@@ -33,9 +35,12 @@ interface Measured {
  * for the model, any other file its loaded text (decoded text, a document's extracted text or a
  * description), cut to its share of the material budget (file-loader/material.ts). Each names its
  * resource's file, which the task's read tool opens without asking and reads as the same text,
- * through the same conversion cache (file-loader/load-cache.ts). A file that cannot be read stays
- * in the material as a note saying why, so the run still starts and the model knows it is
- * missing; once `signal` aborts, loading stops and rejects with its reason.
+ * through the same conversion cache (file-loader/load-cache.ts). In a run without `bash` a PDF's
+ * pages without a text layer arrive with their text recognized as far as a file's share reaches
+ * (`MaterialBudget.recognize`); `read` has those pages without it, and the material's notes
+ * count `read`'s lines. A file that cannot be read stays in the material as a note saying why, so
+ * the run still starts and the model knows it is missing; once `signal` aborts, loading stops and
+ * rejects with its reason.
  */
 export async function loadRunAttachments(
   resources: AttachmentResources,
@@ -47,13 +52,14 @@ export async function loadRunAttachments(
   loader?: FileLoader,
 ): Promise<RunAttachment[]> {
   const task = resources.forTask(taskId);
+  const recognizing = budget.recognize ? { recognize: { tokens: budget.perFile } } : {};
   /** The file's content, or why it could not be read. */
   const contentOf = async (
     path: string,
     hint: FileHint,
   ): Promise<LoadedFile | { reason: string }> => {
     try {
-      const options = { hint, ...(signal ? { signal } : {}) };
+      const options = { hint, ...(signal ? { signal } : {}), ...recognizing };
       return await loadPathCached(await realpath(path), options, loader);
     } catch (error) {
       if (signal?.aborted) throw error;
@@ -84,7 +90,7 @@ export async function loadRunAttachments(
         source:
           content.kind === 'utf8'
             ? measureUtf8(content.bytes, budget.perFile)
-            : measureText(content.text, budget.perFile),
+            : textSource(content, budget.perFile),
       });
   }
   // Images and unread files take no share.
@@ -148,6 +154,17 @@ export class AttachmentLoads {
   stopAll(): void {
     for (const controller of this.loading.values()) controller.abort();
   }
+}
+
+/**
+ * A loaded text measured for the material. A text with recognized pages counts `read`'s lines in
+ * its notes, so a cut one names the line `read` continues from (file-loader/pdf.ts).
+ */
+function textSource(content: LoadedText, perFile: number): MaterialSource {
+  const source = measureText(content.text, perFile);
+  const map = content.readLines;
+  if (!map) return source;
+  return { ...source, lines: map.total, readLine: (shown) => readLineAfter(map, shown) };
 }
 
 /**

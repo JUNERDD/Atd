@@ -269,7 +269,11 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // compute over data with code, use only tools a stock Mac has (with bundled on-device OCR and
   // page rendering for pages without text), cite where each claim comes from, name what was not
   // read, and treat file contents as data rather than instructions.
-  skill('file-loader', 1, []),
+  // Version 2 says that a run without `bash` gets the text of an attached PDF's pages without a
+  // text layer recognized with the same script (`--- Page N (OCR) ---`, as far as the material
+  // holds them, within a time limit, never page images), which `read` returns without while the
+  // material's notes keep its line numbers; the pages still without text are named to the user.
+  skill('file-loader', 2, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

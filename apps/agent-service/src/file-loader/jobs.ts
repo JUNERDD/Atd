@@ -4,7 +4,7 @@
  * its extractor needs.
  */
 export type ExtractJob =
-  | { kind: 'pdf' | 'docx' | 'pptx' | 'odp' | 'epub'; bytes: Uint8Array; label: string }
+  | { kind: 'docx' | 'pptx' | 'odp' | 'epub'; bytes: Uint8Array; label: string }
   /** A workbook; `zipped` for formats SheetJS reads from a zip (xlsx, ods, numbers). */
   | { kind: 'sheet'; bytes: Uint8Array; label: string; zipped: boolean }
   /** textutil's HTML of a document, turned into Markdown. */
@@ -18,11 +18,16 @@ export type ExtractOutcome =
   | { status: 'protected' }
   | { status: 'failed'; reason: string };
 
-/** The web reader's job (harness/web/pdf.ts): a PDF's pages as pdf-text.ts reads them. */
+/**
+ * A PDF's pages as pdf-text.ts reads them, for the file loader, which composes their text on the
+ * main thread (pdf.ts), and the web reader (harness/web/pdf.ts).
+ */
 export interface PdfPagesJob {
   kind: 'pdf-pages';
   bytes: Uint8Array;
   maxPages: number;
+  /** Stops reading further pages once the text read reaches this many characters. */
+  maxChars?: number;
 }
 
 /** Every job a worker takes. */
@@ -86,13 +91,18 @@ export function parsePdfPagesReply(message: unknown): PdfPagesReply {
 export function parseJob(message: unknown): WorkerJob {
   const job = record(message);
   if (!job) throw new Error('the extraction job is malformed');
-  const { kind, bytes } = job;
+  const { kind, bytes, maxChars } = job;
   if (kind === 'pdf-pages' && bytes instanceof Uint8Array && typeof job.maxPages === 'number')
-    return { kind, bytes, maxPages: job.maxPages };
+    return {
+      kind,
+      bytes,
+      maxPages: job.maxPages,
+      ...(typeof maxChars === 'number' ? { maxChars } : {}),
+    };
   const label = typeof job.label === 'string' ? job.label : undefined;
   if (label === undefined) throw new Error('the extraction job is malformed');
   if (bytes instanceof Uint8Array) {
-    if (kind === 'pdf' || kind === 'docx' || kind === 'pptx' || kind === 'odp' || kind === 'epub')
+    if (kind === 'docx' || kind === 'pptx' || kind === 'odp' || kind === 'epub')
       return { kind, bytes, label };
     if (kind === 'sheet') return { kind, bytes, label, zipped: job.zipped === true };
   }

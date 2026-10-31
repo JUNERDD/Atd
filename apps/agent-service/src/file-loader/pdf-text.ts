@@ -35,7 +35,7 @@ type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
 
 /**
  * Reads a PDF's text page by page through unpdf's pdf.js: the single PDF text core of the file
- * loader (pdf.ts) and the web reader (harness/web/pdf.ts), both in an extraction worker. Each
+ * loader (loader.ts) and the web reader (harness/web/pdf.ts), both in an extraction worker. Each
  * page is released after its text is read and the document when done; a page or the metadata
  * pdf.js fails on is skipped rather than failing the document. A password-protected PDF rejects
  * with pdf.js's `PasswordException` (`isPdfPasswordError`).
@@ -69,10 +69,10 @@ export async function readPdfText(bytes: Uint8Array, options: PdfTextOptions): P
   }
 }
 
-/** The web reader's job (worker.ts): a PDF's pages, or why there are none. */
-export async function pdfPages(bytes: Uint8Array, maxPages: number): Promise<PdfPagesReply> {
+/** The pages job (worker.ts): a PDF's pages, or why there are none. */
+export async function pdfPages(bytes: Uint8Array, options: PdfTextOptions): Promise<PdfPagesReply> {
   try {
-    return { status: 'pages', ...(await readPdfText(bytes, { maxPages })) };
+    return { status: 'pages', ...(await readPdfText(bytes, options)) };
   } catch (error) {
     if (isPdfPasswordError(error)) return { status: 'protected' };
     throw error;

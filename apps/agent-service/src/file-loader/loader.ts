@@ -2,11 +2,13 @@ import { open, readFile, stat } from 'node:fs/promises';
 import { MAX_ATTACHMENT_BYTES } from '@atd/agent-contracts';
 import { describeFailure, describeFile, describeProtected } from './describe.js';
 import { capText } from './document.js';
-import { workerExtract, type Extract } from './extract.js';
+import { workerExtract, workerPdfPages, type Extract, type ExtractPdfPages } from './extract.js';
 import { formatHint, formatOf, type Format } from './formats.js';
 import { IMAGE_HEADER_BYTES, oversizeNote } from './image-size.js';
 import { failureReason, type ExtractOutcome } from './jobs.js';
 import { sipsJpeg, spotlightText, textutilHtml } from './macos-tools.js';
+import { recognizePages } from './pdf-ocr.js';
+import { pdfDocument, PDF_LIMITS, type ReadLines } from './pdf.js';
 import { runProcess, type RunProcess } from './process.js';
 import { detect, type Detected } from './sniff.js';
 import { decodeText, startsAsUtf8Text, TEXT_SAMPLE_BYTES, type DecodedText } from './text.js';
@@ -25,27 +27,44 @@ export interface FileInput {
  * input in a format the models or Pi take (`convertedFrom` names the format it was converted from).
  * A `text` is `failed` when it says why the file could not be extracted or converted
  * (describe.ts `describeFailure`): the cause may pass, such as a worker that timed out under load.
+ * It has `readLines` when it may hold recognized text that `read`'s text of the file does not.
  */
 export type LoadedFile =
   | { kind: 'utf8'; bytes: Uint8Array }
-  | { kind: 'text'; text: string; failed?: true }
+  | { kind: 'text'; text: string; failed?: true; readLines?: ReadLines }
   | { kind: 'image'; mime: string; bytes: Uint8Array; convertedFrom?: string };
 
 /** The name and stored media type a file is known by, when its path does not carry them. */
 export type FileHint = Pick<FileInput, 'name' | 'mime'>;
 
 /**
+ * Asks for the text of PDF pages without a text layer to be recognized on macOS (pdf-ocr.ts), as
+ * far as the document's text reaches `tokens` estimated tokens: for the material of a run that
+ * cannot run the file-loader skill's OCR script itself (tasks/run-budget.ts `recognize`).
+ */
+export interface Recognize {
+  tokens: number;
+}
+
+/** A load's abort signal, and what it recognizes beyond what `read` loads. */
+export interface LoadFileOptions {
+  signal?: AbortSignal;
+  recognize?: Recognize;
+}
+
+/**
  * Turns any file into model input, the same for an attachment and for `read`, so their text and
- * line numbers agree. It never rejects for a bad file, whose text then says what failed; only an
- * aborted `signal` or an unreadable path rejects.
+ * line numbers agree; only `recognize`, which `read` never asks for, adds text. It never rejects
+ * for a bad file, whose text then says what failed; only an aborted `signal` or an unreadable path
+ * rejects.
  */
 export interface FileLoader {
-  load(input: FileInput, signal?: AbortSignal): Promise<LoadedFile>;
+  load(input: FileInput, options?: LoadFileOptions): Promise<LoadedFile>;
   /**
    * A file on disk, hinted by `hint` (a resource's stored name and type) or else by its path. One
    * over `MAX_ATTACHMENT_BYTES` is only read as far as its kind needs; an image passes whole.
    */
-  loadPath(file: string, options?: { hint?: FileHint; signal?: AbortSignal }): Promise<LoadedFile>;
+  loadPath(file: string, options?: { hint?: FileHint } & LoadFileOptions): Promise<LoadedFile>;
 }
 
 /** What the loader runs, injectable so other platforms and tests need no macOS tools or workers. */
@@ -53,6 +72,7 @@ export interface LoaderDeps {
   platform: NodeJS.Platform;
   run: RunProcess;
   extract: Extract;
+  pdfPages: ExtractPdfPages;
 }
 
 const MIB = 1024 * 1024;
@@ -95,13 +115,15 @@ export function createFileLoader(overrides: Partial<LoaderDeps> = {}): FileLoade
     platform: process.platform,
     run: runProcess,
     extract: workerExtract(),
+    pdfPages: workerPdfPages(),
     ...overrides,
   };
-  const load = async (input: FileInput, signal?: AbortSignal): Promise<LoadedFile> => {
+  const load = async (input: FileInput, options: LoadFileOptions = {}): Promise<LoadedFile> => {
+    const { signal } = options;
     signal?.throwIfAborted();
     const found = detect(input.bytes, formatHint(input.name, input.mime));
     try {
-      return await route(found, input.bytes, deps, signal);
+      return await route(found, input.bytes, deps, options);
     } catch (error) {
       if (signal?.aborted) throw error;
       const reason = `could not extract its text: ${failureReason(error)}`;
@@ -118,7 +140,7 @@ async function route(
   found: Detected,
   bytes: Uint8Array,
   deps: LoaderDeps,
-  signal?: AbortSignal,
+  { signal, recognize }: LoadFileOptions,
 ): Promise<LoadedFile> {
   const format = formatOf(found.id);
   const size = bytes.byteLength;
@@ -134,10 +156,20 @@ async function route(
         ? convertImage(bytes, found.id, format, deps, signal)
         : text(describeFile(format, size));
     case 'pdf': {
-      const outcome = await deps.extract({ kind: 'pdf', bytes, label: format.label }, signal);
+      const pdf = await deps.pdfPages(bytes, PDF_LIMITS, signal);
       // A text that mentions `%PDF-` near its start reads like a PDF there, and pdf.js fails on it.
-      const decoded = outcome.status === 'failed' && found.prefixed ? decodeText(bytes) : null;
-      return decoded ? textInput(bytes, decoded) : document(outcome);
+      const decoded = pdf.status === 'failed' && found.prefixed ? decodeText(bytes) : null;
+      if (decoded) return textInput(bytes, decoded);
+      if (pdf.status !== 'pages') return document(pdf);
+      // The OCR script tells a PDF by its first bytes, which a prefixed one does not start with.
+      const recognition =
+        recognize && macOS && !found.prefixed
+          ? await recognizePages(bytes, pdf.pages, recognize.tokens, deps.run, signal)
+          : undefined;
+      const outcome = pdfDocument(pdf, format.label, recognition);
+      if (outcome.status === 'failed') return document(outcome);
+      const { readLines } = outcome;
+      return { kind: 'text', text: outcome.text, ...(readLines ? { readLines } : {}) };
     }
     case 'docx':
     case 'pptx':
@@ -269,13 +301,13 @@ async function convertImage(
 async function loadPath(
   file: string,
   load: FileLoader['load'],
-  { hint, signal }: { hint?: FileHint; signal?: AbortSignal } = {},
+  { hint, ...options }: { hint?: FileHint } & LoadFileOptions = {},
 ): Promise<LoadedFile> {
   const name = hint?.name ?? file;
   const { size } = await stat(file);
   if (size <= MAX_ATTACHMENT_BYTES) {
     const bytes = await readFile(file);
-    return load({ bytes, name, ...(hint?.mime === undefined ? {} : { mime: hint.mime }) }, signal);
+    return load({ bytes, name, ...(hint?.mime === undefined ? {} : { mime: hint.mime }) }, options);
   }
   const head = await readStart(file, IMAGE_HEADER_BYTES);
   const found = detect(head, formatHint(name, hint?.mime));

@@ -77,6 +77,12 @@ export interface MaterialSource {
   lines: number;
   /** Estimated tokens of the whole text; `Infinity` when it holds more than `perFile`. */
   tokens: number;
+  /**
+   * The line `read` continues from once the material shows the first `shown` lines, when the
+   * text's lines are not `read`'s: a PDF's recognized pages (pdf.ts `readLineAfter`). `lines` then
+   * counts `read`'s. Without it, `read` continues from line `shown + 1`.
+   */
+  readLine?: (shown: number) => number;
 }
 
 /** UTF-16 units that always hold more than `tokens` estimated tokens. */
@@ -137,8 +143,9 @@ export function shareBudget(
  * A file's material: its text inside a `file-material` element, cut on a line boundary to `limit`
  * estimated tokens, and after the element the app's note on where the text stops: with `read`, the
  * line `read` continues from; without it, that the rest is not included. Line numbers are
- * `read`'s: lines are split on `\n`. A first line longer than `limit` is cut inside it and the
- * note says so. The note stays outside the element, where file content cannot imitate it.
+ * `read`'s: lines are split on `\n`, and a text whose lines are not `read`'s maps them
+ * (`MaterialSource.readLine`). A first line longer than `limit` is cut inside it and the note says
+ * so. The note stays outside the element, where file content cannot imitate it.
  */
 export function materialText(source: MaterialSource, limit: number, read: boolean): string {
   const { head, lines } = source;
@@ -151,7 +158,8 @@ export function materialText(source: MaterialSource, limit: number, read: boolea
   }
   const kept = head.slice(0, end);
   const shown = lineCount(kept);
-  return `${fileElement(kept)}\n[Showing lines 1–${shown} of ${lines}. ${rest(read, shown + 1)}]`;
+  const next = source.readLine?.(shown) ?? shown + 1;
+  return `${fileElement(kept)}\n[Showing lines 1–${next - 1} of ${lines}. ${rest(read, next)}]`;
 }
 
 function fileElement(text: string): string {
@@ -176,7 +184,8 @@ function fittingLength(text: string, limit: number): number {
   return text.length;
 }
 
-function lineCount(text: string): number {
+/** Lines of `text` split on `\n`, as `read` counts the lines of a text without a final break. */
+export function lineCount(text: string): number {
   let lines = 1;
   for (let index = text.indexOf('\n'); index >= 0; index = text.indexOf('\n', index + 1))
     lines += 1;

@@ -1,4 +1,5 @@
 import type { RunSnapshot } from '@atd/agent-contracts';
+import { isRestrictedComputerRun } from '../computer/tool-set.js';
 import { quoteMaterial } from '../references/quotes.js';
 
 /**
@@ -36,6 +37,11 @@ export interface MaterialBudget {
   perFile: number;
   /** Whether the run has `read`, which continues a cut file from its resource. */
   read: boolean;
+  /**
+   * Whether the material recognizes the text of PDF pages without a text layer, within `perFile`
+   * (file-loader/pdf-ocr.ts): the run has no `bash` to run the file-loader skill's OCR script.
+   */
+  recognize: boolean;
 }
 
 /**
@@ -62,12 +68,15 @@ const MAX_TOTAL = { read: 60_000, noRead: 200_000 };
 const UNKNOWN_WINDOW_TOTAL = 30_000;
 
 /**
- * The material budget of a run, from its frozen context window and whether it has `read`. A
- * lite run binds no tools (lite-session.ts); any other run has `read` exactly when its snapshot
- * lists it (run-binding.ts, computer/tool-set.ts).
+ * The material budget of a run, from its frozen context window and whether it has `read` and
+ * `bash`. A lite run binds no tools (lite-session.ts); any other run has `read` exactly when its
+ * snapshot lists it, and `bash` when it lists it outside an unattended computer run (run-binding.ts,
+ * computer/tool-set.ts).
  */
 export function materialBudget(snapshot: RunSnapshot): MaterialBudget {
   const read = !snapshot.lite && snapshot.tools.includes('read');
+  const bash =
+    !snapshot.lite && !isRestrictedComputerRun(snapshot) && snapshot.tools.includes('bash');
   const window = snapshot.contextWindow;
   const total =
     window === undefined
@@ -80,5 +89,5 @@ export function materialBudget(snapshot: RunSnapshot): MaterialBudget {
           read ? MAX_TOTAL.read : MAX_TOTAL.noRead,
         );
   const perFile = read ? Math.max(Math.floor(total * PER_FILE_SHARE), MIN_PER_FILE) : total;
-  return { total, perFile, read };
+  return { total, perFile, read, recognize: !bash };
 }
