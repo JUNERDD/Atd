@@ -6,6 +6,8 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import type { TSchema } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
+import { entitledEntry, inTaskFolder, type SourceCheck } from '../extraction-access.js';
+import { extractionLayout } from '../file-loader/extraction-paths.js';
 import { loaderReadTool, type HintResolver } from '../file-loader/read-tool.js';
 import { createAtdEditToolDefinition } from '../file-tools/edit-tool.js';
 import { observedPath } from '../file-view/call.js';
@@ -119,8 +121,12 @@ export function registerChildTools(pi: ChildPi, host: ChildToolHost): void {
       tool,
       decision,
     });
+  const entryRoots = async (real: string) => {
+    const entry = await childEntry(host, real);
+    return entry ? [entry] : [];
+  };
   const tools: ChildTool[] = [
-    ...childSearchTools(host.cwd, host.allowedTools, allow),
+    ...childSearchTools(host.cwd, host.allowedTools, allow, entryRoots),
     ...childWebTools(approvals.gate, host.allowedTools),
   ];
   if (host.allowedTools.includes('command'))
@@ -173,12 +179,13 @@ function childDefinition(tool: ChildTool): ToolDefinition {
 
 /**
  * pi's read, write and edit for one child. `checkChildPath` decides every path the operations
- * touch: reads stay in the task output or a ledger resource, writes and edits in the task output
- * (an edit only reads files it may write). The child is a session of the task's File View Ledger
- * (file-view/), as the parent is: it may overwrite only a file it saw as it is now, and a sibling's
- * write makes its view stale. pi's per-file mutation queue keeps parallel children from writing
- * one file at the same time (tool-proxies.ts `editOperations`). A call is audited once it
- * succeeds; a refused path is audited as a denial.
+ * touch: reads stay in the task output, a ledger resource of the run, or the extraction entry of a
+ * source it may read (`childEntry`); writes and edits in the task output (an edit only reads files
+ * it may write). The child is a session of the task's File View Ledger (file-view/), as the parent
+ * is: it may overwrite only a file it saw as it is now, and a sibling's write makes its view stale.
+ * pi's per-file mutation queue keeps parallel children from writing one file at the same time
+ * (tool-proxies.ts `editOperations`). A call is audited once it succeeds; a refused path is
+ * audited as a denial.
  */
 function registerFileTools(pi: ChildPi, host: ChildToolHost, resourceHint: HintResolver): void {
   const views = new FileViews({
@@ -195,8 +202,11 @@ function registerFileTools(pi: ChildPi, host: ChildToolHost, resourceHint: HintR
         dataDir: host.dataDir,
         rawPath: target,
       });
-      if (location === 'outside' && !(await isResourcePath(host, real)))
-        throw denied(host, tool, 'Child reads outside the task output are blocked.');
+      const allowed =
+        location === 'inside' ||
+        (await isResourcePath(host, real)) ||
+        (await childEntry(host, real)) !== null;
+      if (!allowed) throw denied(host, tool, 'Child reads outside the task output are blocked.');
       return real;
     };
   const writable =
@@ -216,7 +226,10 @@ function registerFileTools(pi: ChildPi, host: ChildToolHost, resourceHint: HintR
     if (host.allowedTools.includes(tool.name)) pi.registerTool(audited(host, tool));
   };
   const reads = readable('read');
-  const read = loaderReadTool(host.cwd, observedPath(reads), resourceHint);
+  const read = loaderReadTool(host.cwd, observedPath(reads), {
+    hintOf: resourceHint,
+    extractions: extractionLayout(servicePaths(host.dataDir).extractionsDir),
+  });
   register(views.read(read, host.cwd, reads));
   const writes = writeOperations(writable('write'));
   register(views.write(createWriteToolDefinition(host.cwd, { operations: writes })));
@@ -251,4 +264,20 @@ async function isResourcePath(host: ChildToolHost, real: string): Promise<boolea
   if (!host.resourceIds.length) return false;
   const id = await resourceIdAt(servicePaths(host.dataDir).resourcesDir, host.cwd, real);
   return id !== null && host.resourceIds.includes(id);
+}
+
+/**
+ * Whether this child reads the file at the real path `source`, which it never asks for: a file in
+ * the task folder or one of the run's attachments. What the file loader extracted of it reads the
+ * same way (extraction-access.ts); a child reads no granted folder or skill directory, so no entry
+ * of theirs either.
+ */
+function childSourceCheck(host: ChildToolHost): SourceCheck {
+  return async (source) =>
+    (await inTaskFolder(host.cwd, source)) || (await isResourcePath(host, source));
+}
+
+/** The directory of the extraction entry `real` lies in, when this child may read it. */
+function childEntry(host: ChildToolHost, real: string): Promise<string | null> {
+  return entitledEntry(host.dataDir, real, childSourceCheck(host));
 }

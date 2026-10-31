@@ -1,47 +1,67 @@
-import path from 'node:path';
+import { relatedChartLines } from './charts.js';
+import { counted } from './document.js';
 import type { ExtractOutcome } from './jobs.js';
+import { relationshipId, relationships } from './ooxml.js';
+import { ExtractOutputs } from './outputs.js';
+import { Pictures } from './pictures.js';
+import { SlidePictures } from './slide-pictures.js';
 import { slidesDocument, tableRow, type SlideText } from './slides.js';
 import { childElements, descendants, ownText, xmlEntry, type XmlElement } from './xml.js';
 import { unzipBounded } from './zip.js';
 
-/** The relationships namespace of transitional and of strict OOXML. */
-const RELATIONSHIP_NAMESPACES = [
-  'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-  'http://purl.oclc.org/ooxml/officeDocument/relationships',
-];
-
 /** Placeholders every slide repeats: slide number, date, header and footer. */
 const REPEATED_PLACEHOLDERS = new Set(['sldNum', 'dt', 'hdr', 'ftr']);
 
-interface Relationship {
-  target: string;
-  type: string;
-}
-
 /**
  * A PowerPoint deck's slides in presentation order (`p:sldIdLst` through the presentation's
- * relationships), each with its text paragraphs, its tables as pipe rows and the body of its notes
- * page.
+ * relationships), each with its text paragraphs, its tables as pipe rows, its charts as tables of
+ * the data they cache (charts.ts) and the body of its notes page.
  */
-export function pptxDocument(bytes: Uint8Array, label: string): ExtractOutcome {
+export function pptxDocument(bytes: Uint8Array, label: string, out?: string): ExtractOutcome {
+  const outputs = new ExtractOutputs(out);
+  const pictures = new Pictures(outputs, out !== undefined);
+  const images = new SlidePictures(pictures);
   const files = unzipBounded(
     bytes,
     ({ name }) =>
-      /^ppt\/(presentation\.xml|_rels\/|slides\/|notesSlides\/)/.test(name) &&
+      /^ppt\/(presentation\.xml|_rels\/|slides\/|notesSlides\/|charts\/)/.test(name) &&
       /\.(xml|rels)$/.test(name),
   );
-  const slides: SlideText[] = slideOrder(files).map((slide) => {
+  let charts = 0;
+  const slides: SlideText[] = slideOrder(files).map((slide, index) => {
     const root = xmlEntry(files, slide);
-    const notesPart = [...relationships(files, slide).values()].find((relationship) =>
+    const related = relationships(files, slide);
+    const notesPart = [...related.values()].find((relationship) =>
       relationship.type.endsWith('/notesSlide'),
     )?.target;
     const notes = notesPart ? xmlEntry(files, notesPart) : undefined;
+    const chart = (id: string) => {
+      charts += 1;
+      return relatedChartLines(files, related.get(id), false);
+    };
     return {
-      lines: root ? shapeLines(root, false) : [],
-      notes: notes ? shapeLines(notes, true) : [],
+      lines: root
+        ? shapeLines(root, false, chart, (picture) =>
+            images.mark(picture, related, `Slide ${index + 1}`),
+          )
+        : [],
+      notes: notes
+        ? shapeLines(
+            notes,
+            true,
+            () => [],
+            () => '',
+          )
+        : [],
     };
   });
-  return slidesDocument(label, slides);
+  const placed = images.place(bytes);
+  for (const slide of slides) slide.lines = slide.lines.map((line) => placed.get(line) ?? line);
+  return slidesDocument(label, slides, {
+    facts: [...(charts ? [counted(charts, 'chart')] : []), counted(pictures.count, 'image')],
+    included: `slide text, tables, charts as tables of their data and speaker notes; ${pictures.included}`,
+    files: outputs.summary(),
+  });
 }
 
 /** Slide parts in presentation order; numbered part names when the order cannot be read. */
@@ -61,42 +81,34 @@ function slideOrder(files: Record<string, Uint8Array>): string[] {
     .sort((a, b) => number(a) - number(b));
 }
 
-/** A part's internal relationships by id, targets resolved to archive paths. */
-function relationships(files: Record<string, Uint8Array>, part: string): Map<string, Relationship> {
-  const dir = path.posix.dirname(part);
-  const root = xmlEntry(files, `${dir}/_rels/${path.posix.basename(part)}.rels`);
-  const found = new Map<string, Relationship>();
-  for (const relationship of root ? childElements(root, 'Relationship') : []) {
-    const id = relationship.getAttribute('Id');
-    const target = relationship.getAttribute('Target');
-    if (!id || !target || relationship.getAttribute('TargetMode') === 'External') continue;
-    found.set(id, {
-      target: target.startsWith('/') ? target.slice(1) : path.posix.join(dir, target),
-      type: relationship.getAttribute('Type') ?? '',
-    });
-  }
-  return found;
-}
-
-function relationshipId(element: XmlElement): string {
-  for (const namespace of RELATIONSHIP_NAMESPACES) {
-    const id = element.getAttributeNS(namespace, 'id');
-    if (id) return id;
-  }
-  return '';
-}
-
 /**
  * The text of a slide's or notes page's shapes in document order: a line per paragraph, a pipe row
- * per table row. A notes page contributes its notes body only, a slide everything but the
- * placeholders it repeats.
+ * per table row, `chart`'s lines for a chart frame by its relationship id. A notes page contributes
+ * its notes body only, a slide everything but the placeholders it repeats. Of alternate content
+ * (`mc:AlternateContent`) the first choice counts, or its fallback when the choice shows nothing
+ * read here: a chart newer than the format keeps a fallback saying it cannot be shown.
  */
-function shapeLines(root: XmlElement, notesPage: boolean): string[] {
+function shapeLines(
+  root: XmlElement,
+  notesPage: boolean,
+  chart: (relationshipId: string) => string[],
+  picture: (shape: XmlElement) => string,
+): string[] {
   const lines: string[] = [];
   const visit = (node: XmlElement): void => {
     for (const child of childElements(node)) {
       if (child.localName === 'sp' && skipped(child, notesPage)) continue;
-      if (child.localName === 'tbl') lines.push(...tableRows(child));
+      const chartRef = child.localName === 'graphicFrame' && descendants(child, 'chart')[0];
+      if (chartRef) lines.push(...chart(relationshipId(chartRef)));
+      else if (child.localName === 'pic') {
+        if (!notesPage) lines.push(picture(child));
+      } else if (child.localName === 'AlternateContent') {
+        const before = lines.length;
+        const [choice] = childElements(child, 'Choice');
+        if (choice) visit(choice);
+        const [fallback] = childElements(child, 'Fallback');
+        if (lines.length === before && fallback) visit(fallback);
+      } else if (child.localName === 'tbl') lines.push(...tableRows(child));
       else if (child.localName === 'p') {
         const text = paragraphText(child);
         if (text) lines.push(text);

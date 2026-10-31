@@ -1,7 +1,8 @@
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import { extractionNote } from './file-loader/extraction-store.js';
 import { MATERIAL_TAGS, materialLine, materialSafe } from './file-loader/material.js';
 import { formatFolders, markFoldersIntroduced } from './folders/material.js';
-import type { RunImageAttachment, RunMaterial } from './run-material.js';
+import type { RunImageAttachment, RunMaterial, RunTextAttachment } from './run-material.js';
 
 type ContextMessage = Parameters<ExtensionAPI['sendMessage']>[0];
 
@@ -89,8 +90,7 @@ function formatMaterial(material: RunMaterial, seesImages: boolean): string {
         case 'unavailable':
           return `File: ${materialLine(file.name)}\n[Unavailable: ${file.reason}, so it was not loaded. Tell the user when this matters for the answer.]`;
         case 'text':
-          // The text arrives as its material, already cut and marked (run-attachments.ts).
-          return `File: ${materialLine(file.name)}\nRead-only resource: ${file.path}\n${file.text}`;
+          return textEntry(file);
       }
     }),
     formatFolders(material.folders),
@@ -98,6 +98,21 @@ function formatMaterial(material: RunMaterial, seesImages: boolean): string {
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+/**
+ * A file read as text: its name, its resource, the entry that keeps its extracted files when the
+ * run can open it (file-loader/extraction-store.ts), and its material, already cut and marked
+ * (run-attachments.ts). The entry's line stays outside the file's element, so pruning keeps it
+ * and the material's line numbers stay `read`'s.
+ */
+function textEntry(file: RunTextAttachment): string {
+  return [
+    `File: ${materialLine(file.name)}`,
+    `Read-only resource: ${file.path}`,
+    ...(file.entry ? [materialLine(extractionNote(file.entry))] : []),
+    file.text,
+  ].join('\n');
 }
 
 /**

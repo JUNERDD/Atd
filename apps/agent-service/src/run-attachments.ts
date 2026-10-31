@@ -1,6 +1,8 @@
 import { realpath } from 'node:fs/promises';
 import { formatDimensionNote, resizeImage } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type FileRef, type TaskRun } from '@atd/agent-contracts';
+import { extractionLayout, type ExtractionLayout } from './file-loader/extraction-paths.js';
+import { entryOf, type ExtractionEntry } from './file-loader/extraction-store.js';
 import { loadPathCached } from './file-loader/load-cache.js';
 import type { FileHint, FileLoader, LoadedFile } from './file-loader/loader.js';
 import {
@@ -14,6 +16,7 @@ import { readLineAfter } from './file-loader/pdf.js';
 import type { Logger } from './logging.js';
 import type { ResourceStore } from './resources.js';
 import type { RunAttachment } from './run-material.js';
+import type { ServicePaths } from './storage.js';
 import { materialBudget, type MaterialBudget } from './tasks/run-budget.js';
 
 type LoadedImage = Extract<LoadedFile, { kind: 'image' }>;
@@ -27,6 +30,17 @@ interface Measured {
   name: string;
   path: string;
   source: MaterialSource;
+  entry?: ExtractionEntry;
+}
+
+/**
+ * What loading a run's attachments ends with (`signal`), converts files through, and keeps their
+ * extracted content in: the store whose entries the material names (file-loader/extraction-paths.ts).
+ */
+export interface AttachmentLoadOptions {
+  signal?: AbortSignal;
+  loader?: FileLoader;
+  extractions?: ExtractionLayout;
 }
 
 /**
@@ -38,9 +52,11 @@ interface Measured {
  * through the same conversion cache (file-loader/load-cache.ts). In a run without `bash` a PDF's
  * pages without a text layer arrive with their text recognized as far as a file's share reaches
  * (`MaterialBudget.recognize`); `read` has those pages without it, and the material's notes
- * count `read`'s lines. A file that cannot be read stays in the material as a note saying why, so
- * the run still starts and the model knows it is missing; once `signal` aborts, loading stops and
- * rejects with its reason.
+ * count `read`'s lines. With `extractions`, a document's text and the files it names are kept in
+ * that store, as `read` keeps them, and a run with a tool that opens the store's entries
+ * (`MaterialBudget.entries`) has each file's entry named beside it. A file that cannot be read
+ * stays in the material as a note saying why, so the run still starts and the model knows it is
+ * missing; once `signal` aborts, loading stops and rejects with its reason.
  */
 export async function loadRunAttachments(
   resources: AttachmentResources,
@@ -48,8 +64,7 @@ export async function loadRunAttachments(
   budget: MaterialBudget,
   log: Logger,
   taskId: string,
-  signal?: AbortSignal,
-  loader?: FileLoader,
+  { signal, loader, extractions }: AttachmentLoadOptions = {},
 ): Promise<RunAttachment[]> {
   const task = resources.forTask(taskId);
   const recognizing = budget.recognize ? { recognize: { tokens: budget.perFile } } : {};
@@ -59,7 +74,12 @@ export async function loadRunAttachments(
     hint: FileHint,
   ): Promise<LoadedFile | { reason: string }> => {
     try {
-      const options = { hint, ...(signal ? { signal } : {}), ...recognizing };
+      const options = {
+        hint,
+        ...(signal ? { signal } : {}),
+        ...(extractions ? { extractions } : {}),
+        ...recognizing,
+      };
       return await loadPathCached(await realpath(path), options, loader);
     } catch (error) {
       if (signal?.aborted) throw error;
@@ -84,14 +104,17 @@ export async function loadRunAttachments(
       : { reason: "it is no longer in the app's storage" };
     if ('reason' in content) loaded.push(unavailable(entry, content.reason));
     else if (content.kind === 'image') loaded.push(await imageAttachment(entry, content));
-    else
+    else {
+      const kept = budget.entries ? entryOf(content) : undefined;
       loaded.push({
         ...entry,
         source:
           content.kind === 'utf8'
             ? measureUtf8(content.bytes, budget.perFile)
             : textSource(content, budget.perFile),
+        ...(kept ? { entry: kept } : {}),
       });
+    }
   }
   // Images and unread files take no share.
   const shares = shareBudget(
@@ -105,6 +128,7 @@ export async function loadRunAttachments(
           name: item.name,
           path: item.path,
           text: materialText(item.source, shares[index] ?? 0, budget.read),
+          ...(item.entry ? { entry: item.entry } : {}),
         }
       : item,
   );
@@ -116,11 +140,16 @@ export async function loadRunAttachments(
  */
 export class AttachmentLoads {
   private readonly loading = new Map<string, AbortController>();
+  /** The store a run's documents keep their extracted content in (file-loader/extraction-paths.ts). */
+  private readonly extractions: ExtractionLayout;
 
   constructor(
     private readonly resources: AttachmentResources,
     private readonly log: Logger,
-  ) {}
+    paths: Pick<ServicePaths, 'extractionsDir'>,
+  ) {
+    this.extractions = extractionLayout(paths.extractionsDir);
+  }
 
   /**
    * A run's attachments within its material budget (tasks/run-budget.ts), or null when `stop` or
@@ -136,7 +165,7 @@ export class AttachmentLoads {
         materialBudget(run.snapshot),
         this.log,
         taskId,
-        controller.signal,
+        { signal: controller.signal, extractions: this.extractions },
       );
       return controller.signal.aborted ? null : attachments;
     } catch (error) {

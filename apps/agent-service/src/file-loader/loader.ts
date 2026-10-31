@@ -1,17 +1,17 @@
-import { open, readFile, stat } from 'node:fs/promises';
-import { MAX_ATTACHMENT_BYTES } from '@atd/agent-contracts';
 import { describeFailure, describeFile, describeProtected } from './describe.js';
 import { capText } from './document.js';
 import { workerExtract, workerPdfPages, type Extract, type ExtractPdfPages } from './extract.js';
 import { formatHint, formatOf, type Format } from './formats.js';
 import { IMAGE_HEADER_BYTES, oversizeNote } from './image-size.js';
 import { failureReason, type ExtractOutcome } from './jobs.js';
+import { decodedText, loadPath } from './load-path.js';
 import { sipsJpeg, spotlightText, textutilHtml } from './macos-tools.js';
+import type { ExtractedFiles } from './outputs.js';
 import { recognizePages } from './pdf-ocr.js';
 import { pdfDocument, PDF_LIMITS, type ReadLines } from './pdf.js';
 import { runProcess, type RunProcess } from './process.js';
 import { detect, type Detected } from './sniff.js';
-import { decodeText, startsAsUtf8Text, TEXT_SAMPLE_BYTES, type DecodedText } from './text.js';
+import { decodeText, type DecodedText } from './text.js';
 import type { ZipListing } from './zip.js';
 
 /** A file's bytes; its name and stored media type are hints for what the content leaves open. */
@@ -27,12 +27,37 @@ export interface FileInput {
  * input in a format the models or Pi take (`convertedFrom` names the format it was converted from).
  * A `text` is `failed` when it says why the file could not be extracted or converted
  * (describe.ts `describeFailure`): the cause may pass, such as a worker that timed out under load.
- * It has `readLines` when it may hold recognized text that `read`'s text of the file does not.
+ * It has `readLines` when it may hold recognized text that `read`'s text of the file does not, and
+ * `content` when its text is the file's own content rather than a description of the file.
  */
 export type LoadedFile =
   | { kind: 'utf8'; bytes: Uint8Array }
-  | { kind: 'text'; text: string; failed?: true; readLines?: ReadLines }
+  | {
+      kind: 'text';
+      text: string;
+      failed?: true;
+      /** Only output I/O failed; the store can retry without saving extracted files. */
+      outputFailed?: true;
+      readLines?: ReadLines;
+      content?: TextContent;
+    }
   | { kind: 'image'; mime: string; bytes: Uint8Array; convertedFrom?: string };
+
+/**
+ * What an extraction entry (extraction-store.ts) is made of when a `text` load is the file's own
+ * content: a document's extracted text or a text file's decoded one, never a description, a
+ * failure or a UTF-8 text file, whose own bytes grep reads.
+ */
+export interface TextContent {
+  /** The format's label (formats.ts), which the entry's manifest names. */
+  format: string;
+  /** `read`'s text of the file, when the loaded text holds recognized pages that it does not. */
+  readText?: string;
+  /** The files the extraction wrote into the load's `out` directory, which its text names. */
+  files?: ExtractedFiles;
+  /** The directory of the entry that keeps the content, once the store holds one (load-cache.ts). */
+  entry?: string;
+}
 
 /** The name and stored media type a file is known by, when its path does not carry them. */
 export type FileHint = Pick<FileInput, 'name' | 'mime'>;
@@ -46,10 +71,15 @@ export interface Recognize {
   tokens: number;
 }
 
-/** A load's abort signal, and what it recognizes beyond what `read` loads. */
+/**
+ * A load's abort signal, what it recognizes beyond what `read` loads, and the directory a
+ * document's extraction writes its files into (`out` of the extraction job, outputs.ts), which
+ * its text then names; without one the extraction keeps no files.
+ */
 export interface LoadFileOptions {
   signal?: AbortSignal;
   recognize?: Recognize;
+  out?: string;
 }
 
 /**
@@ -62,7 +92,8 @@ export interface FileLoader {
   load(input: FileInput, options?: LoadFileOptions): Promise<LoadedFile>;
   /**
    * A file on disk, hinted by `hint` (a resource's stored name and type) or else by its path. One
-   * over `MAX_ATTACHMENT_BYTES` is only read as far as its kind needs; an image passes whole.
+   * over `MAX_ATTACHMENT_BYTES` is only read as far as its kind needs; an image passes whole
+   * (load-path.ts).
    */
   loadPath(file: string, options?: { hint?: FileHint } & LoadFileOptions): Promise<LoadedFile>;
 }
@@ -74,10 +105,6 @@ export interface LoaderDeps {
   extract: Extract;
   pdfPages: ExtractPdfPages;
 }
-
-const MIB = 1024 * 1024;
-/** The prefix of a large text file in another encoding that is decoded: past `capText`'s limit in any encoding. */
-const LARGE_TEXT_PREFIX_BYTES = 32 * MIB;
 
 const INCLUDED_TEXTUTIL =
   'text as Markdown with headings, lists and tables; images are not included';
@@ -102,8 +129,8 @@ function text(value: string): LoadedFile {
 }
 
 /** The description of a file whose extraction or conversion failed. */
-function failure(value: string): LoadedFile {
-  return { kind: 'text', text: value, failed: true };
+function failure(value: string, outputFailed?: true): LoadedFile {
+  return { kind: 'text', text: value, failed: true, ...(outputFailed ? { outputFailed } : {}) };
 }
 
 function zipOf(found: Detected): ZipListing | undefined {
@@ -140,15 +167,17 @@ async function route(
   found: Detected,
   bytes: Uint8Array,
   deps: LoaderDeps,
-  { signal, recognize }: LoadFileOptions,
+  { signal, recognize, out }: LoadFileOptions,
 ): Promise<LoadedFile> {
   const format = formatOf(found.id);
   const size = bytes.byteLength;
   const document = (outcome: ExtractOutcome) => fromOutcome(outcome, format, size, found);
   const macOS = deps.platform === 'darwin';
+  // Where a document's pictures and whole sheets go, which its text then names (outputs.ts).
+  const outputs = out === undefined ? {} : { out };
   switch (found.route) {
     case 'text':
-      return loadText(bytes, format);
+      return loadText(bytes, found.id);
     case 'image':
       return imageInput(bytes, found.id, format, size);
     case 'convert':
@@ -159,7 +188,7 @@ async function route(
       const pdf = await deps.pdfPages(bytes, PDF_LIMITS, signal);
       // A text that mentions `%PDF-` near its start reads like a PDF there, and pdf.js fails on it.
       const decoded = pdf.status === 'failed' && found.prefixed ? decodeText(bytes) : null;
-      if (decoded) return textInput(bytes, decoded);
+      if (decoded) return textInput(bytes, decoded, '');
       if (pdf.status !== 'pages') return document(pdf);
       // The OCR script tells a PDF by its first bytes, which a prefixed one does not start with.
       const recognition =
@@ -169,25 +198,37 @@ async function route(
       const outcome = pdfDocument(pdf, format.label, recognition);
       if (outcome.status === 'failed') return document(outcome);
       const { readLines } = outcome;
-      return { kind: 'text', text: outcome.text, ...(readLines ? { readLines } : {}) };
+      // The content an entry keeps is `read`'s text, which recognizes no page.
+      const plain = readLines ? pdfDocument(pdf, format.label) : outcome;
+      const content =
+        plain.status === 'text'
+          ? { format: format.label, ...(readLines ? { readText: plain.text } : {}) }
+          : undefined;
+      return {
+        kind: 'text',
+        text: outcome.text,
+        ...(readLines ? { readLines } : {}),
+        ...(content ? { content } : {}),
+      };
     }
     case 'docx':
     case 'pptx':
     case 'odp':
-    case 'epub':
-      return document(
-        await deps.extract({ kind: found.route, bytes, label: format.label }, signal),
-      );
+    case 'epub': {
+      const job = { kind: found.route, bytes, label: format.label, ...outputs };
+      return document(await deps.extract(job, signal));
+    }
     case 'sheet': {
       const job = {
         kind: 'sheet',
         bytes,
         label: format.label,
         zipped: found.zip !== undefined,
+        ...outputs,
       } as const;
       const outcome = await deps.extract(job, signal);
       // A Pages document with a table has the parts of a Numbers one; Spotlight reads either.
-      if (outcome.status === 'failed' && found.id === 'numbers' && macOS)
+      if (outcome.status === 'failed' && !outcome.outputFailed && found.id === 'numbers' && macOS)
         return spotlightDocument(bytes, found, deps, signal);
       return document(outcome);
     }
@@ -238,8 +279,11 @@ function fromOutcome(
   found: Detected,
 ): LoadedFile {
   switch (outcome.status) {
-    case 'text':
-      return text(outcome.text);
+    case 'text': {
+      const { files } = outcome;
+      const content = { format: format.label, ...(files ? { files } : {}) };
+      return { kind: 'text', text: outcome.text, content };
+    }
     case 'protected':
       return text(describeProtected(format, size));
     case 'failed':
@@ -250,17 +294,21 @@ function fromOutcome(
           zipOf(found),
           advice(found.id),
         ),
+        outcome.outputFailed,
       );
   }
 }
 
-function loadText(bytes: Uint8Array, format: Format): LoadedFile {
+/** A file of format `id` read as text, or described when its bytes turn out binary. */
+function loadText(bytes: Uint8Array, id: string): LoadedFile {
   const decoded = decodeText(bytes);
-  return decoded ? textInput(bytes, decoded) : text(describeFile(format, bytes.byteLength));
+  if (decoded) return textInput(bytes, decoded, id);
+  return text(describeFile(formatOf(id), bytes.byteLength));
 }
 
-function textInput(bytes: Uint8Array, decoded: DecodedText): LoadedFile {
-  return decoded.utf8 ? { kind: 'utf8', bytes } : text(capText(decoded.text));
+/** A text file's own bytes when they are UTF-8 text, else its decoded text (load-path.ts). */
+function textInput(bytes: Uint8Array, decoded: DecodedText, id: string): LoadedFile {
+  return decoded.utf8 ? { kind: 'utf8', bytes } : decodedText(capText(decoded.text), id);
 }
 
 /** An image as it is, or its description when its header declares too many pixels to scale. */
@@ -290,53 +338,4 @@ async function convertImage(
   const oversize = oversizeNote('jpeg', jpeg.subarray(0, IMAGE_HEADER_BYTES));
   if (oversize) return text(describeFile(format, bytes.byteLength, undefined, [oversize]));
   return { kind: 'image', mime: 'image/jpeg', bytes: jpeg, convertedFrom: id.toUpperCase() };
-}
-
-/**
- * Loads a file on disk. One past `MAX_ATTACHMENT_BYTES` is sniffed by its start: an image passes
- * whole as image input, UTF-8 text passes through whole (as `read` always read it), text in
- * another encoding is decoded from a prefix and cut, and anything else is described without being
- * parsed.
- */
-async function loadPath(
-  file: string,
-  load: FileLoader['load'],
-  { hint, ...options }: { hint?: FileHint } & LoadFileOptions = {},
-): Promise<LoadedFile> {
-  const name = hint?.name ?? file;
-  const { size } = await stat(file);
-  if (size <= MAX_ATTACHMENT_BYTES) {
-    const bytes = await readFile(file);
-    return load({ bytes, name, ...(hint?.mime === undefined ? {} : { mime: hint.mime }) }, options);
-  }
-  const head = await readStart(file, IMAGE_HEADER_BYTES);
-  const found = detect(head, formatHint(name, hint?.mime));
-  const format = formatOf(found.id);
-  if (found.route === 'image') {
-    const oversize = oversizeNote(found.id, head);
-    if (oversize) return text(describeFile(format, size, undefined, [oversize]));
-    return { kind: 'image', mime: format.mime, bytes: await readFile(file) };
-  }
-  if (found.route === 'text') {
-    if (startsAsUtf8Text(head.subarray(0, TEXT_SAMPLE_BYTES)))
-      return { kind: 'utf8', bytes: await readFile(file) };
-    const prefix = await readStart(file, LARGE_TEXT_PREFIX_BYTES);
-    const decoded = decodeText(prefix);
-    if (decoded)
-      return text(capText(decoded.utf8 ? Buffer.from(prefix).toString('utf8') : decoded.text));
-  }
-  const note = `Files over ${MAX_ATTACHMENT_BYTES / MIB} MB are not converted.`;
-  return text(describeFile(format, size, undefined, [note]));
-}
-
-/** The first `length` bytes of a file, or all of a shorter one. */
-export async function readStart(file: string, length: number): Promise<Uint8Array> {
-  const handle = await open(file, 'r');
-  try {
-    const buffer = Buffer.alloc(length);
-    const { bytesRead } = await handle.read(buffer, 0, length, 0);
-    return buffer.subarray(0, bytesRead);
-  } finally {
-    await handle.close();
-  }
 }

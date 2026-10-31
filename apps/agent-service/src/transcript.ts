@@ -70,6 +70,17 @@ export function recordedCallIds(branch: readonly ServiceBranchItem[]): string[] 
 }
 
 function outputOf(result: ToolResultMessage): string {
+  // The loader appends its extraction pointer as a second block for the model. Hide that block
+  // before flattening, so identical text inside a file's first block remains visible in the card.
+  const [file, note] = result.content;
+  if (
+    result.toolName === 'read' &&
+    result.content.length === 2 &&
+    file?.type === 'text' &&
+    note?.type === 'text' &&
+    /^\n\[Extracted files: [^\n]*\]$/.test(note.text)
+  )
+    return file.text;
   return settledText(result.content);
 }
 

@@ -29,7 +29,7 @@ export interface IntersectionResult {
 
 /**
  * Service tools a child may inherit; ask/desktop/subagent never pass. grep/find/ls are
- * read-only and confined to the task folder like the parent's.
+ * read-only and confined to the task folder or extraction entries of sources the child may read.
  */
 const CHILD_ELIGIBLE_SERVICE_TOOLS = new Set([
   'read',

@@ -14,8 +14,9 @@ const TINY_ENTRY_BYTES = 1024;
 
 /**
  * Parts the document parsers never read: pictures, embedded files, previews and thumbnails of
- * Office, OpenDocument and Numbers files. The stored copy leaves them out, so a large picture
- * neither counts against `ZIP_LIMITS` nor gets inflated.
+ * Office, OpenDocument and Numbers files. The default stored copy leaves them out, so a large
+ * picture neither counts against `ZIP_LIMITS` nor gets inflated. Picture extraction opts into
+ * selected media with its own allowance.
  */
 const UNREAD_PARTS =
   /^(?:(?:word|xl|ppt)\/(?:media|embeddings)\/|docProps\/thumbnail\.|Pictures\/|Thumbnails\/|ObjectReplacements\/|Data\/|preview[^/]*\.jpg$)/;
@@ -30,6 +31,13 @@ export interface ZipEntry {
 export interface ZipListing {
   entries: ZipEntry[];
   more: boolean;
+}
+
+/** Optional media kept separately from parser parts; excess media is omitted, never inflated. */
+export interface ZipMediaBudget {
+  wanted: (file: UnzipFileInfo) => boolean;
+  totalBytes: number;
+  omitted: () => void;
 }
 
 /** Thrown from fflate's filter to stop listing at the entry cap. */
@@ -74,15 +82,18 @@ export function listZip(bytes: Uint8Array): ZipListing | null {
 /**
  * Inflates the entries `wanted` selects, refusing an archive past `ZIP_LIMITS` or holding an
  * entry larger than it declares before inflating further. Entries in a method fflate cannot
- * inflate (neither stored nor deflated) are left out. Extraction workers call this; the main
- * thread inflates only through `smallEntry`.
+ * inflate (neither stored nor deflated) are left out. Optional media is checked the same way, but
+ * counts against a separate allowance and is omitted on overflow. Extraction workers call this;
+ * the main thread inflates only through `smallEntry`.
  */
 export function unzipBounded(
   bytes: Uint8Array,
   wanted: (file: UnzipFileInfo) => boolean = () => true,
+  media?: ZipMediaBudget,
 ): Record<string, Uint8Array> {
   let entries = 0;
   let total = 0;
+  let mediaTotal = 0;
   return unzipSync(bytes, {
     filter: (file) => {
       entries += 1;
@@ -90,8 +101,18 @@ export function unzipBounded(
         throw new Error(
           `the archive has more than ${ZIP_LIMITS.entries.toLocaleString('en-US')} entries`,
         );
-      if (!wanted(file) || (file.compression !== 0 && file.compression !== 8)) return false;
+      const picture = media?.wanted(file) ?? false;
+      if ((!picture && !wanted(file)) || (file.compression !== 0 && file.compression !== 8))
+        return false;
       if (!sizesAgree(file)) throw new Error('one of its parts is larger than it declares');
+      if (picture && media) {
+        if (mediaTotal + file.originalSize > media.totalBytes) {
+          media.omitted();
+          return false;
+        }
+        mediaTotal += file.originalSize;
+        return true;
+      }
       total += file.originalSize;
       if (total > ZIP_LIMITS.totalBytes) throw new Error('its contents are too large to unpack');
       return true;
@@ -106,10 +127,17 @@ export function unzipBounded(
  * (`UNREAD_PARTS`).
  */
 export function storedCopy(bytes: Uint8Array): Uint8Array {
-  return zipSync(
-    unzipBounded(bytes, (file) => !UNREAD_PARTS.test(file.name)),
-    { level: 0 },
-  );
+  return storedZip(readParts(bytes));
+}
+
+/** Parser parts, plus optional budgeted media, for rewriting before a stored copy is made. */
+export function readParts(bytes: Uint8Array, media?: ZipMediaBudget): Record<string, Uint8Array> {
+  return unzipBounded(bytes, (file) => !UNREAD_PARTS.test(file.name), media);
+}
+
+/** `parts` as an archive of stored (uncompressed) entries. */
+export function storedZip(parts: Record<string, Uint8Array>): Uint8Array {
+  return zipSync(parts, { level: 0 });
 }
 
 /**

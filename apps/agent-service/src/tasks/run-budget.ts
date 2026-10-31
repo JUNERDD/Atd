@@ -42,7 +42,15 @@ export interface MaterialBudget {
    * (file-loader/pdf-ocr.ts): the run has no `bash` to run the file-loader skill's OCR script.
    */
   recognize: boolean;
+  /**
+   * Whether the material names a file's extraction entry (file-loader/extraction-store.ts): the
+   * run has a tool that opens it, `read`, `grep`, `find`, `ls` or `bash`.
+   */
+  entries: boolean;
 }
+
+/** Snapshot tools besides `bash` that open an extraction entry's files. */
+const ENTRY_TOOLS: readonly string[] = ['read', 'grep', 'find', 'ls'];
 
 /**
  * The material's share of the context window. With `read` the material is a start the model
@@ -68,10 +76,10 @@ const MAX_TOTAL = { read: 60_000, noRead: 200_000 };
 const UNKNOWN_WINDOW_TOTAL = 30_000;
 
 /**
- * The material budget of a run, from its frozen context window and whether it has `read` and
- * `bash`. A lite run binds no tools (lite-session.ts); any other run has `read` exactly when its
- * snapshot lists it, and `bash` when it lists it outside an unattended computer run (run-binding.ts,
- * computer/tool-set.ts).
+ * The material budget of a run, from its frozen context window and its file tools. A lite run
+ * binds no tools (lite-session.ts); any other run has `read`, `grep`, `find` and `ls` exactly when
+ * its snapshot lists them, and `bash` when it lists it outside an unattended computer run
+ * (run-binding.ts, computer/tool-set.ts).
  */
 export function materialBudget(snapshot: RunSnapshot): MaterialBudget {
   const read = !snapshot.lite && snapshot.tools.includes('read');
@@ -89,5 +97,7 @@ export function materialBudget(snapshot: RunSnapshot): MaterialBudget {
           read ? MAX_TOTAL.read : MAX_TOTAL.noRead,
         );
   const perFile = read ? Math.max(Math.floor(total * PER_FILE_SHARE), MIN_PER_FILE) : total;
-  return { total, perFile, read, recognize: !bash };
+  const entries =
+    bash || (!snapshot.lite && snapshot.tools.some((tool) => ENTRY_TOOLS.includes(tool)));
+  return { total, perFile, read, recognize: !bash, entries };
 }

@@ -273,7 +273,8 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // text layer recognized with the same script (`--- Page N (OCR) ---`, as far as the material
   // holds them, within a time limit, never page images), which `read` returns without while the
   // material's notes keep its line numbers; the pages still without text are named to the user.
-  skill('file-loader', 2, []),
+  // Version 3 covers searchable entries, whole-sheet CSV, formula gaps, charts and saved pictures.
+  skill('file-loader', 3, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

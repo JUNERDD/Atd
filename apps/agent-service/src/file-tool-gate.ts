@@ -3,6 +3,7 @@ import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { TSchema } from 'typebox';
 import { catalogTarget, type WriteCall } from './atd-agents/catalog-writes.js';
 import { catalogArtifactWrite } from './catalog-artifacts.js';
+import { entitledEntry, inTaskFolder, type SourceCheck } from './extraction-access.js';
 import { pathOf, type FileViews } from './file-view/tools.js';
 import { inGrantedFolder } from './folders/access.js';
 import type { Gate } from './harness/gate.js';
@@ -33,27 +34,58 @@ export interface FileToolGateDeps {
 /** Which file tool a call is; their gates differ. */
 export type FileToolName = 'read' | 'write' | 'edit';
 
+/** The run's skills, the task's resources and the granted folders: the run's own material. */
+type RunMaterial = 'skill' | 'resource' | 'folder';
+
+/** What the parent's checks of its own material read of the tool host. */
+export type MaterialHost = Pick<
+  ServiceToolHost,
+  'cwd' | 'dataDir' | 'skillDirs' | 'taskResources' | 'folders'
+>;
+
+/** Which of the run's skills, the task's resources or the granted folders `real` is in. */
+async function runMaterial(host: MaterialHost, real: string): Promise<RunMaterial | null> {
+  if (await withinRoots(host.skillDirs(), host.cwd, real)) return 'skill';
+  const id = await resourceIdAt(host.taskResources.dir, host.cwd, real);
+  if (id !== null && host.taskResources.owns(id)) return 'resource';
+  const folders = host.folders();
+  return (await inGrantedFolder(folders, host.dataDir, host.cwd, real, false)) ? 'folder' : null;
+}
+
+/**
+ * Whether the parent reads the file at the real path `source` without a confirmation: it lies in
+ * the task folder (`read:inside`) or is the run's own material. What the file loader extracted of
+ * it reads the same way (extraction-access.ts), whichever tool opens it.
+ */
+export function parentSourceCheck(host: MaterialHost): SourceCheck {
+  return async (source) =>
+    (await inTaskFolder(host.cwd, source)) || (await runMaterial(host, source)) !== null;
+}
+
 /**
  * The parent's gate around read, write and edit. A call's target is first confined exactly as its
  * operation confines it, so a path the operation would refuse fails before any prompt or review,
  * and the real path, through every link, decides the grant scope: a link in the task folder that
  * leads into the data dir asks as `outside`, while `/var` and `/private/var` spellings of the task
  * folder both stay `inside`. A confirm shows where such a link really leads. A read of the run's
- * own material (its skills, the task's resources, a granted folder) needs no confirmation; a write
- * over a file this conversation has not seen as it is now fails before any prompt too (stale.ts);
- * a catalog write leaves its confirm to its write step (atd-agents/catalog-writes.ts). Reads may
- * run in parallel; write and edit keep their batch in order.
+ * own material (its skills, the task's resources, a granted folder, and what the file loader
+ * extracted of a document there or in the task folder) needs no confirmation; a write over a file
+ * this conversation has not seen as it is now fails before any prompt too (stale.ts); a catalog
+ * write leaves its confirm to its write step (atd-agents/catalog-writes.ts). Reads may run in
+ * parallel; write and edit keep their batch in order.
  */
 export function fileToolGate(deps: FileToolGateDeps) {
   const { host } = deps;
+  const mayOpen = parentSourceCheck(host);
 
-  /** Which of the run's own read-only material the real path `real` is in, if any. */
-  async function ownMaterial(real: string): Promise<'skill' | 'resource' | 'folder' | null> {
-    if (await withinRoots(host.skillDirs(), host.cwd, real)) return 'skill';
-    const id = await resourceIdAt(host.taskResources.dir, host.cwd, real);
-    if (id !== null && host.taskResources.owns(id)) return 'resource';
-    const folders = host.folders();
-    return (await inGrantedFolder(folders, host.dataDir, host.cwd, real, false)) ? 'folder' : null;
+  /**
+   * Which of the run's own read-only material the real path `real` is in, if any: the run's
+   * material, or an extraction entry of a source the parent reads without a confirmation.
+   */
+  async function ownMaterial(real: string): Promise<RunMaterial | 'extraction' | null> {
+    const kind = await runMaterial(host, real);
+    if (kind) return kind;
+    return (await entitledEntry(host.dataDir, real, mayOpen)) ? 'extraction' : null;
   }
 
   return function controlled<T extends TSchema, D, S>(

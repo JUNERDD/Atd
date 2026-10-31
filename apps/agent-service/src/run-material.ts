@@ -1,5 +1,6 @@
 import type { ImageContent } from '@earendil-works/pi-ai';
 import type { ViewInitiative } from '@atd/agent-contracts';
+import type { ExtractionEntry } from './file-loader/extraction-store.js';
 import type { RunFolder } from './folders/material.js';
 import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
 import type { LoadedSkill } from './skills/run-skills.js';
@@ -15,6 +16,11 @@ export interface RunTextAttachment {
   name: string;
   path: string;
   text: string;
+  /**
+   * The extraction entry that keeps the file's text and the files it names, when the run has a
+   * tool that opens it (run-attachments.ts); the material names it beside the file.
+   */
+  entry?: ExtractionEntry;
 }
 
 /**

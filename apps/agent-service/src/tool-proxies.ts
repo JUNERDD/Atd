@@ -20,6 +20,7 @@ import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
+import { extractionLayout } from './file-loader/extraction-paths.js';
 import { loaderReadTool, resourceHints } from './file-loader/read-tool.js';
 import { fileToolGate } from './file-tool-gate.js';
 import { createAtdEditToolDefinition } from './file-tools/edit-tool.js';
@@ -31,6 +32,7 @@ import type { Logger } from './logging.js';
 import type { ResourceStore, TaskResources } from './resources.js';
 import { confined, confinedWrite, userAgentsReadRoots } from './service-fs.js';
 import { bashToolDefinition } from './shell-tool.js';
+import { servicePaths } from './storage.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -219,7 +221,10 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     views.register(pi);
     const reads = readable(readRoots);
     const hints = resourceHints(host.taskResources, host.cwd);
-    const read = loaderReadTool(host.cwd, observedPath(reads), hints);
+    const read = loaderReadTool(host.cwd, observedPath(reads), {
+      hintOf: hints,
+      extractions: extractionLayout(servicePaths(host.dataDir).extractionsDir),
+    });
     pi.registerTool(controlled(views.read(read, host.cwd, reads), 'read'));
     const edit = createAtdEditToolDefinition(host.cwd, { operations: edits });
     pi.registerTool(controlled(views.edit(edit), 'edit'));
