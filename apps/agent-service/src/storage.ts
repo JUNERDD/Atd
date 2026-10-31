@@ -17,6 +17,8 @@ export interface ServicePaths {
   sessionsDir: string;
   tasksDir: string;
   resourcesDir: string;
+  /** What the file loader keeps of the documents it converts (file-loader/extraction-paths.ts). */
+  extractionsDir: string;
   auditDir: string;
 }
 
@@ -78,6 +80,7 @@ export function servicePaths(root: string): ServicePaths {
     sessionsDir: path.join(root, 'agent', 'sessions'),
     tasksDir: path.join(root, 'tasks'),
     resourcesDir: path.join(root, 'resources'),
+    extractionsDir: path.join(root, 'extractions'),
     auditDir: path.join(root, 'audit'),
   };
 }

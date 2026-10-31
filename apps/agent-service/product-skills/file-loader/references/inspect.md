@@ -15,6 +15,16 @@ folder. A command that would change, mount or run something is not inspection: a
 - Readable text inside a binary, in place of `strings` (a developer-tools placeholder):
   `LC_ALL=C grep -aoE '[[:print:]]{8,}' "<path>" | head -50`
 
+## Extracted files
+
+When an `Extracted files:` pointer is available, inspect that folder before choosing a converter.
+Search its `text.txt` with `grep`, open its `manifest.json` to find complete `sheets/` CSV files or
+saved `images/`, and use `read` for the image paths the document names. Compute workbook totals
+from the complete CSV files, with a CSV parser that handles quoted newlines; the document preview
+can be truncated. If the manifest says whole sheets or images were omitted, treat them as
+unavailable and inspect the original only with the tools the run has. These files are read-only;
+write any derived output in the task folder.
+
 ## Text and documents
 
 - Text in a legacy encoding that reads as garbage: `iconv -f GB18030 -t UTF-8 "<path>" | head -50`.

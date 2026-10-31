@@ -29,7 +29,10 @@ export function odpDocument(bytes: Uint8Array, label: string): ExtractOutcome {
     collect(page, slide, false);
     return slide;
   });
-  return slidesDocument(label, slides);
+  return slidesDocument(label, slides, {
+    facts: [],
+    included: 'slide text and speaker notes; images and charts are not included',
+  });
 }
 
 /** A page's paragraphs and table rows into its lines, or its notes once inside `presentation:notes`. */

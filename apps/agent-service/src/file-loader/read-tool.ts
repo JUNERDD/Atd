@@ -13,18 +13,25 @@ import {
 import type { TaskResources } from '../resources.js';
 import { resolveToolPath, resourceIdAt } from '../service-fs.js';
 import type { ResolvePath } from '../tool-proxies.js';
+import type { ExtractionLayout } from './extraction-paths.js';
+import { entryOf, extractionNote, type ExtractionEntry } from './extraction-store.js';
 import { formatHint, formatOf } from './formats.js';
 import { IMAGE_HEADER_BYTES, oversizeNote } from './image-size.js';
 import { loadPathCached } from './load-cache.js';
-import { fileLoader, readStart, type FileHint, type FileLoader } from './loader.js';
+import { readStart } from './load-path.js';
+import { fileLoader, type FileHint, type FileLoader } from './loader.js';
 import { readTarget } from './read-target.js';
 import { detect } from './sniff.js';
 import { largeTextPage, longLineText, PAGED_TEXT_BYTES, type TextPage } from './text-pages.js';
 
-/** What `read` hands Pi for a file: its bytes, and their media type when they are an image. */
+/**
+ * What `read` hands Pi for a file: its bytes, their media type when they are an image, and the
+ * extraction entry that keeps a converted file's content (extraction-store.ts).
+ */
 interface ReadResult {
   bytes: Buffer;
   mime: string | null;
+  entry?: ExtractionEntry;
 }
 
 /**
@@ -55,6 +62,7 @@ const DESCRIPTION = [
   'Any other file comes back as a short description: its type, size and, for an archive, its first entries.',
   `Output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first); use offset/limit to page through it, and continue with offset until complete.`,
   'Converted text is read-only: edit works only on UTF-8 text files.',
+  "A converted file's result ends with an [Extracted files: …] note naming a folder that holds its text as text.txt, for grep, beside any pictures and whole sheets the text names.",
 ].join(' ');
 
 /**
@@ -64,6 +72,16 @@ const DESCRIPTION = [
 export type HintResolver = (real: string) => Promise<FileHint | undefined>;
 
 const noHints: HintResolver = () => Promise.resolve(undefined);
+
+/**
+ * What a read tool loads files through besides its confinement: the names files are known by, the
+ * loader, and the store that keeps what conversions extract (extraction-paths.ts).
+ */
+export interface ReadToolOptions {
+  hintOf?: HintResolver;
+  loader?: FileLoader;
+  extractions?: ExtractionLayout;
+}
 
 /**
  * The stored name and media type of the resource a read opens (resources.ts), so `read` sees a
@@ -90,10 +108,9 @@ export function resourceHints(
 export function loaderReadTool(
   cwd: string,
   readable: ResolvePath,
-  hintOf: HintResolver = noHints,
-  loader: FileLoader = fileLoader,
+  { hintOf = noHints, loader = fileLoader, extractions }: ReadToolOptions = {},
 ): ReturnType<typeof createReadToolDefinition> {
-  const operations = readOperations(readable, hintOf, loader);
+  const operations = readOperations(readable, hintOf, loader, extractions);
   const tool = createReadToolDefinition(cwd, { operations });
   return {
     ...tool,
@@ -108,7 +125,8 @@ export function loaderReadTool(
         );
         if (direct) return direct;
         const result = await tool.execute(toolCallId, params, signal, onUpdate, ctx);
-        return withLongLine(result, params, call);
+        const entry = (await call.loaded?.result.catch(() => undefined))?.entry;
+        return withEntry(withLongLine(result, params, call, entry !== undefined), entry);
       });
     },
   };
@@ -154,12 +172,14 @@ function textResult({ text, details }: TextPage): ReadToolResult {
 
 /**
  * Pi shows nothing of a first line over its byte limit and points at bash; this shows the
- * line's first part with a note (text-pages.ts `longLineText`), from the text Pi paged.
+ * line's first part with a note (text-pages.ts `longLineText`), from the text Pi paged. The note
+ * says grep finds the rest of the line when the file is a text file or its text has an entry.
  */
 function withLongLine(
   result: ReadToolResult,
   { offset }: Pick<ReadToolInput, 'offset'>,
   call: ReadCall,
+  extracted: boolean,
 ): ReadToolResult {
   const { paged } = call;
   if (!paged || !result.details?.truncation?.firstLineExceedsLimit) return result;
@@ -172,10 +192,23 @@ function withLongLine(
     display: startLine + 1,
     size: (end === -1 ? paged.length : end) - start,
     more: end !== -1,
-    searchable: call.plainText === true,
+    searchable: call.plainText === true || extracted,
   };
   const text = longLineText(paged.subarray(start, start + DEFAULT_MAX_BYTES + 1), line);
   return { ...result, content: [{ type: 'text', text }], structuredContent: text };
+}
+
+/**
+ * The result with the entry that keeps the converted file's content named in a text block of its
+ * own after the file's text and Pi's notes (extraction-store.ts `extractionNote`): Pi built
+ * `structuredContent`, which codemode scripts page through, from the first block alone, so the
+ * file's text and its line numbers stay `read`'s. The line break before it parts it from the text
+ * where the blocks are joined.
+ */
+function withEntry(result: ReadToolResult, entry: ExtractionEntry | undefined): ReadToolResult {
+  if (!entry) return result;
+  const note = { type: 'text' as const, text: `\n${extractionNote(entry)}` };
+  return { ...result, content: [...result.content, note] };
 }
 
 /** `work`, settled at once with Pi's own error when `signal` aborts, as Pi's read settles. */
@@ -207,16 +240,23 @@ function readOperations(
   readable: ResolvePath,
   hintOf: HintResolver,
   loader: FileLoader,
+  extractions: ExtractionLayout | undefined,
 ): ReadOperations {
   const load = async (real: string, signal: AbortSignal | undefined): Promise<ReadResult> => {
     const hint = await hintOf(real);
-    const options = { ...(hint ? { hint } : {}), ...(signal ? { signal } : {}) };
+    const options = {
+      ...(hint ? { hint } : {}),
+      ...(signal ? { signal } : {}),
+      ...(extractions ? { extractions } : {}),
+    };
     const loaded = await loadPathCached(real, options, loader);
     switch (loaded.kind) {
       case 'utf8':
         return { bytes: asBuffer(loaded.bytes), mime: null };
-      case 'text':
-        return { bytes: Buffer.from(loaded.text, 'utf8'), mime: null };
+      case 'text': {
+        const entry = entryOf(loaded);
+        return { bytes: Buffer.from(loaded.text, 'utf8'), mime: null, ...(entry ? { entry } : {}) };
+      }
       case 'image':
         return { bytes: asBuffer(loaded.bytes), mime: loaded.mime };
     }

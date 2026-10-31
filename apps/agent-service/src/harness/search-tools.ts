@@ -1,10 +1,18 @@
 import path from 'node:path';
 import type { TSchema } from 'typebox';
 import type { ExtensionFactory, ToolDefinition } from '@earendil-works/pi-coding-agent';
+import { entitledEntry } from '../extraction-access.js';
+import { parentSourceCheck } from '../file-tool-gate.js';
 import { inGrantedFolder } from '../folders/access.js';
 import type { RunMaterial, SessionFactoryDeps } from '../pi-session.js';
 import { ResourceStore, type TaskResources } from '../resources.js';
-import { resourceIdAt, userAgentsReadRoots, withinRoots } from '../service-fs.js';
+import {
+  realAncestorPath,
+  resolveToolPath,
+  resourceIdAt,
+  userAgentsReadRoots,
+  withinRoots,
+} from '../service-fs.js';
 import { loadedSkillDirs } from '../skills/load-skill-tool.js';
 import type { RunnerContext } from '../task-runner.js';
 import type { HarnessDeps } from './deps.js';
@@ -26,9 +34,18 @@ export type SearchToolsDeps = Pick<HarnessDeps, 'cwd' | 'gate' | 'sessions'> & {
 
 /** The run's read-only material a call reaches without a confirmation, as `read` reaches it. */
 interface OwnMaterial {
-  kind: 'skill' | 'resource' | 'folder';
-  /** A resource's file: the one path of the resource store the call may reach. */
-  file?: string;
+  kind: 'skill' | 'resource' | 'folder' | 'extraction';
+  /**
+   * The one place in the data dir the call may reach, as a root of its own: a resource's file or an
+   * extraction entry's directory, never the store that holds it.
+   */
+  root?: string;
+}
+
+/** The run's granted folders and skill directories, as the current run sees them. */
+interface RunRoots {
+  folders: readonly string[];
+  skills: readonly string[];
 }
 
 /**
@@ -36,13 +53,15 @@ interface OwnMaterial {
  * snapshot tools, so these registrations must exist whenever the binding allows them: they
  * shadow pi's own unconfined built-ins. Every call is confined to the task folder, `~/.agents`
  * with its linked skills (userAgentsReadRoots), the folders granted to the task as the current
- * run started, the directories of the run's skills, or a resource of the task (an attachment or
- * kept output); a path elsewhere, another task's resources among them, throws before the gate.
- * A task-folder call passes the gate as `read:inside`, which no tier prompts for but every call is
- * audited under; a `~/.agents` call as `read:outside`, like a read there. The run's own material
- * (skills, the task's resources, granted folders) skips the gate exactly as the read tool does
- * (tool-proxies.ts `ownMaterial`) and is audited as `<tool>:<kind>`. Children keep the task
- * folder only (search/tools.ts).
+ * run started, the directories of the run's skills, a resource of the task (an attachment or
+ * kept output), or the extraction entry of a document that is one of those or in the task folder
+ * (extraction-access.ts); a path elsewhere, another task's resources and entries among them,
+ * throws before the gate. A task-folder call passes the gate as `read:inside`, which no tier
+ * prompts for but every call is audited under; a `~/.agents` call as `read:outside`, like a read
+ * there. The run's own material (skills, the task's resources, granted folders, those entries)
+ * skips the gate exactly as the read tool does (file-tool-gate.ts `ownMaterial`) and is audited as
+ * `<tool>:<kind>`. Children keep the task folder and the entries of what they may read
+ * (search/tools.ts).
  */
 export function searchToolsExtension(deps: SearchToolsDeps): ExtensionFactory {
   const resources = new ResourceStore(deps.runner.ctx.ledger, deps.runner.ctx.paths).forTask(
@@ -77,7 +96,7 @@ function gated<T extends TSchema, D>(
         ...(await userAgentsReadRoots()),
         ...folders,
         ...skills,
-        ...(own?.file ? [own.file] : []),
+        ...(own?.root ? [own.root] : []),
       ]);
       const location = await precheckSearch(roots, deps.cwd, tool.name, args);
       const base = {
@@ -111,20 +130,33 @@ function runSkillDirs(material: RunMaterial, sessions: SearchToolsDeps['sessions
   ];
 }
 
-/** Which of the run's own material `target` is in, checked in the read tool's order. */
+/**
+ * Which of the run's own material `target` is in, checked in the read tool's order: the run's
+ * skills, the task's resources, the granted folders, then an extraction entry of a source the
+ * parent reads without a confirmation (file-tool-gate.ts `parentSourceCheck`).
+ */
 async function ownMaterial(
   deps: SearchToolsDeps,
   resources: TaskResources,
   target: string,
-  run: { folders: readonly string[]; skills: readonly string[] },
+  run: RunRoots,
   tool: string,
 ): Promise<OwnMaterial | null> {
   if (await withinRoots(run.skills, deps.cwd, target)) return { kind: 'skill' };
   const id = await resourceIdAt(resources.dir, deps.cwd, target);
   if (id !== null && resources.owns(id))
-    return { kind: 'resource', file: path.join(resources.dir, id) };
+    return { kind: 'resource', root: path.join(resources.dir, id) };
   const dataDir = deps.runner.ctx.paths.root;
-  return (await inGrantedFolder(run.folders, dataDir, deps.cwd, target, tool !== 'ls'))
-    ? { kind: 'folder' }
-    : null;
+  if (await inGrantedFolder(run.folders, dataDir, deps.cwd, target, tool !== 'ls'))
+    return { kind: 'folder' };
+  const mayOpen = parentSourceCheck({
+    cwd: deps.cwd,
+    dataDir,
+    skillDirs: () => run.skills,
+    taskResources: resources,
+    folders: () => run.folders,
+  });
+  const real = await realAncestorPath(resolveToolPath(deps.cwd, target));
+  const entry = await entitledEntry(dataDir, real, mayOpen);
+  return entry ? { kind: 'extraction', root: entry } : null;
 }

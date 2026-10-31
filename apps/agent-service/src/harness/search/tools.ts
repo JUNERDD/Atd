@@ -14,6 +14,7 @@ import {
   type LsToolInput,
 } from '@earendil-works/pi-coding-agent';
 import { parse } from '@atd/agent-contracts';
+import { realAncestorPath, resolveToolPath } from '../../service-fs.js';
 import type { ChildTool } from '../../subagents/child-tools.js';
 import {
   confineToolArgument,
@@ -118,27 +119,42 @@ export type SearchRun<A, D = unknown> = (
 ) => Promise<AgentToolResult<D>>;
 
 /**
+ * The roots one child call may reach besides the task folder, by the real path its `path`
+ * argument names: only places the child may already read without a confirmation (child-tools.ts).
+ */
+export type ChildRoots = (real: string) => Promise<readonly string[]>;
+
+/** What a child's search calls are confined to and audited by. */
+interface ChildSearch {
+  root: string;
+  extraRoots: ChildRoots;
+  audit: (tool: string) => void;
+}
+
+/**
  * Child registrations of grep/find/ls: the same tools, operations and confinement as the parent,
- * to the task folder only. Children have no confirm path, but these calls are `read:inside`,
- * which every tier allows, so the child audits the call and runs it.
+ * to the task folder and each call's `extraRoots`. Children have no confirm path, and these calls
+ * need none: a task-folder call is `read:inside`, which every tier allows, and an extra root holds
+ * only what the child may already read, so the child audits the call and runs it.
  */
 export function childSearchTools(
   root: string,
   allowed: readonly string[],
   audit: (tool: string) => void,
+  extraRoots: ChildRoots,
 ): ChildTool[] {
   const tools = searchDefinitions(root);
+  const search: ChildSearch = { root, extraRoots, audit };
   return [
-    child(tools.grep, root, audit, (call, args) => call.grep(args)),
-    child(tools.find, root, audit, (call, args, id) => call.find(id, args)),
-    child(tools.ls, root, audit, (call, args, id) => call.ls(id, args)),
+    child(tools.grep, search, (call, args) => call.grep(args)),
+    child(tools.find, search, (call, args, id) => call.find(id, args)),
+    child(tools.ls, search, (call, args, id) => call.ls(id, args)),
   ].filter((tool) => allowed.includes(tool.name));
 }
 
 function child<T extends TSchema>(
   tool: { name: string; label: string; description: string; parameters: T },
-  root: string,
-  audit: (tool: string) => void,
+  { root, extraRoots, audit }: ChildSearch,
   run: SearchRun<Static<T>>,
 ): ChildTool {
   return {
@@ -149,7 +165,9 @@ function child<T extends TSchema>(
     async execute(id, args, signal) {
       signal?.throwIfAborted();
       const params = parse(tool.parameters, args);
-      const roots = await resolveRoots(root);
+      // The path as pi resolves it, real through every link, as the confinement compares it.
+      const target = await realAncestorPath(resolveToolPath(root, pathArgument(params) || '.'));
+      const roots = await resolveRoots(root, await extraRoots(target));
       await precheckSearch(roots, root, tool.name, params);
       audit(tool.name);
       const result = await run(searchCall(root, roots, signal), params, id);

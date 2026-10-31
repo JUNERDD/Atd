@@ -65,7 +65,7 @@ export class RunnerManager {
   private readonly attachments: AttachmentLoads;
 
   constructor(private readonly deps: ManagerDeps) {
-    this.attachments = new AttachmentLoads(deps.resources, deps.log);
+    this.attachments = new AttachmentLoads(deps.resources, deps.log, deps.ctx.paths);
     this.acceptance = new RunAcceptance({
       ...deps,
       runner: (taskId) => this.runners.get(taskId),

@@ -6,12 +6,25 @@ export interface XmlNode {
   readonly nodeValue: string | null;
   readonly localName: string | null;
   readonly childNodes: ArrayLike<XmlNode>;
+  /** The node holding this one; the document itself above a root element; null once detached. */
+  readonly parentNode: XmlNode | null;
 }
 
 export interface XmlElement extends XmlNode {
   readonly localName: string;
+  readonly namespaceURI: string | null;
+  /** The document the element belongs to, which makes the nodes put in its place. */
+  readonly ownerDocument: XmlNodeFactory;
   getAttribute(name: string): string | null;
   getAttributeNS(namespace: string, localName: string): string | null;
+  appendChild(child: XmlNode): XmlNode;
+  replaceChild(replacement: XmlNode, child: XmlNode): XmlNode;
+}
+
+/** The part of a parsed document a part rewritten before another parser reads it needs. */
+export interface XmlNodeFactory {
+  createElementNS(namespace: string, qualifiedName: string): XmlElement;
+  createTextNode(text: string): XmlNode;
 }
 
 interface XmlParser {
@@ -22,28 +35,44 @@ type XmlParserClass = new (options: {
   errorHandler: Record<string, (message: unknown) => void>;
 }) => XmlParser;
 
+type XmlSerializerClass = new () => { serializeToString(node: XmlNode): string };
+
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
 const CDATA_SECTION_NODE = 4;
 
 let Parser: XmlParserClass | undefined;
+let Serializer: XmlSerializerClass | undefined;
 
 /**
- * xmldom's parser, loaded without its type declarations: they reference the DOM library, which
- * would add browser globals to the whole service's types. Checked to be a constructor before use.
+ * xmldom's module, loaded without its type declarations: they reference the DOM library, which
+ * would add browser globals to the whole service's types. Its classes are checked to be
+ * constructors before use.
  */
+function xmldom(): object {
+  const loaded: unknown = createRequire(import.meta.url)('@xmldom/xmldom');
+  if (typeof loaded !== 'object' || loaded === null)
+    throw new Error('@xmldom/xmldom did not load.');
+  return loaded;
+}
+
 function parserClass(): XmlParserClass {
-  const xmldom: unknown = createRequire(import.meta.url)('@xmldom/xmldom');
-  const parser =
-    typeof xmldom === 'object' && xmldom !== null && 'DOMParser' in xmldom
-      ? xmldom.DOMParser
-      : undefined;
-  if (!isParserClass(parser)) throw new Error('@xmldom/xmldom did not load.');
+  const module = xmldom();
+  const parser = 'DOMParser' in module ? module.DOMParser : undefined;
+  if (!isConstructor<XmlParserClass>(parser)) throw new Error('@xmldom/xmldom did not load.');
   return parser;
 }
 
-/** Only that it is a constructor can be checked; `XmlParserClass` is xmldom's documented API. */
-function isParserClass(value: unknown): value is XmlParserClass {
+function serializerClass(): XmlSerializerClass {
+  const module = xmldom();
+  const serializer = 'XMLSerializer' in module ? module.XMLSerializer : undefined;
+  if (!isConstructor<XmlSerializerClass>(serializer))
+    throw new Error('@xmldom/xmldom did not load.');
+  return serializer;
+}
+
+/** Only that it is a constructor can be checked; the class types are xmldom's documented API. */
+function isConstructor<T>(value: unknown): value is T {
   return typeof value === 'function';
 }
 
@@ -59,6 +88,12 @@ export function parseXml(source: string): XmlElement {
   }).parseFromString(source, 'text/xml');
   if (!document.documentElement) throw new Error('malformed XML: no root element');
   return document.documentElement;
+}
+
+/** An element and everything in it as XML text, as a parser reads it again. */
+export function serializeXml(element: XmlElement): string {
+  Serializer ??= serializerClass();
+  return new Serializer().serializeToString(element);
 }
 
 /** XML bytes as text: UTF-16 by its BOM, otherwise UTF-8 (what OOXML, OpenDocument and EPUB use). */

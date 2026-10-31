@@ -30,6 +30,8 @@ import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { ResourceStore } from './resources.js';
 import { scheduleResourceSweeps } from './resources/gc.js';
+import { extractionLayout } from './file-loader/extraction-paths.js';
+import { scheduleExtractionSweeps } from './file-loader/extraction-store-sweep.js';
 import { registerResourceUpload } from './resources/routes.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
@@ -263,6 +265,9 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     dir: deps.config.paths.resourcesDir,
     log: deps.log,
   });
+  // What the file loader keeps of documents stays bounded, swept soon after start, then daily.
+  const extractions = extractionLayout(deps.config.paths.extractionsDir);
+  scheduleExtractionSweeps(app, { layout: extractions, log: deps.log });
 
   app.post('/v1/admin/shutdown', SHELL_ROUTE, async (_request, reply) => {
     void reply.send({ ok: true });

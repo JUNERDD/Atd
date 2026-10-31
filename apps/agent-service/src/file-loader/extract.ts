@@ -22,8 +22,8 @@ export const EXTRACT_TIMEOUT_MS = 30_000;
  * Memory one extraction may use: its worker's V8 heap plus the memory its objects hold outside
  * that heap (ArrayBuffers such as inflated parts and decoded streams). The heap cap bounds only
  * the first, so a watchdog samples both every `MEMORY_POLL_MS` and terminates the worker past
- * the budget. The largest workbook `ZIP_LIMITS` (zip.ts) admits, 256 MB of sheet XML, peaks near
- * 930 MB.
+ * the budget. Workbook memory also depends on shared strings and parsed cells; the sheet loader
+ * preflights declared part sizes before parsing, while this watchdog bounds actual usage.
  */
 const MEMORY_BUDGET_MB = 1024;
 const MEMORY_POLL_MS = 100;
