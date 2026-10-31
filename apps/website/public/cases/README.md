@@ -1,10 +1,48 @@
 # Interface scenes
 
-The “Interfaces” section (`#cases`) is a nine-scene scroll sequence. Its labels, captions and image
-paths live in [`src/content/cases.ts`](../../src/content/cases.ts). These are design previews exported
-from the canonical Figma file, not recordings of a live browser agent.
+The “Interfaces” section (`#cases`) is a ten-case timeline of short clips. Its labels, captions,
+clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../src/content/cases.ts).
 
-## Active assets
+## Case clips
+
+`clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
+and `zh`. They are a reviewed snapshot of renders from the films repository
+([atd-films](https://github.com/JUNERDD/atd-films), source commit
+`b0e6f5e` from [PR #3](https://github.com/JUNERDD/atd-films/pull/3)), made with
+the same Remotion stack and product kit as the tour films; ordinary website work does not render
+them. `src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings
+film, `src/films/case-settings/`), a closer framing where the film's own shot is too wide for the
+website's frame, and the poster's moment; the tour films take their language from the render's
+`lang` input.
+
+| Clip                | Source                                                                  |
+| ------------------- | ----------------------------------------------------------------------- |
+| `selection-toolbar` | Selection tour, Messages: Translate's options, Japanese                 |
+| `write-back`        | Selection tour, Compose: nothing selected, the compose card, the caret  |
+| `screenshot`        | Mini Panel tour: the capture, its annotations and the composer          |
+| `main-panel`        | Main panel tour: ⌘⇧Space, files dropped in, an @ mention, the request   |
+| `chat`              | Main panel tour: the run, its todos and subagents, an approval          |
+| `mini-panel`        | Mini Panel tour: Active tasks, Allow once, both tasks completed         |
+| `computer-use`      | Main panel tour: Atd's live pointer works the notes app and checks it   |
+| `apps`              | Main panel tour: Create app, the build and its card, My apps            |
+| `automations`       | Main panel tour: a next step becomes an automation                      |
+| `settings`          | Settings case film: consent, Sign in to ChatGPT, the plan-in-use dialog |
+
+Each clip is silent H.264 at 1280 × 720, 60 fps, `faststart`, fading up from black and back down so
+it loops through black; each poster is a JPEG still of the result. The fade covers the finished
+picture, leaving glass backdrops and each window’s motion stable. Both loop endpoints are ink.
+Glass dialogs and islands fade on their own surfaces; the settings close button uses a translucent wash. To update them, render in the
+films repository and copy its `out/website-cases/<lang>/` into `clips/<lang>/`, then review every
+clip in both languages on the page:
+
+```sh
+node scripts/render-website-cases.ts            # both languages, every case
+node scripts/render-website-cases.ts en --only=settings
+```
+
+## Earlier Figma scenes
+
+The showcase no longer loads these flat exports and scene layers; they remain source material.
 
 All nine PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
 scene. Frames are in “W · Website · Interface scenes · shared desktop” (`2462:142863`).

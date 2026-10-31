@@ -1,109 +1,349 @@
-/* The showcase is one scroll sequence. Its track is a stage's height plus one step of scrolling per
-   scene (the empty steps after the stage set that length), and the stage is sticky, so it stays
-   pinned for exactly those steps while use-case-scroll.ts turns how far the stage has travelled
-   into the scene. The plate's perforations keep scrolling behind the pinned stage. */
+/* The showcase is a timeline. Wide, the steps scroll in a column beside a stage that holds still at
+   the viewport's middle (sticky); the step whose middle is nearest the stage's middle is current
+   (use-case-timeline.ts), and only its line shows. An LED rail runs down the steps' edge, lit as
+   far as that reading line. Narrower, the stage is left out and the steps stack, each with its own
+   scene above its title. Without the timeline (the prerendered page, no script) every step's line
+   shows. */
 .cases__showcase {
   --stage-top: calc(var(--nav-top) + var(--nav-h) + 24px);
-  --stage-h: calc(100svh - var(--stage-top));
-  --case-step: max(320px, 50svh);
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  column-gap: 72px;
   container-type: inline-size;
 }
 
-/* The stage opens with the section's heading, then the scenes' names, the screen and its caption,
-   so as it arrives the screen follows the heading at the plate's usual spacing. Below the heading
-   the stage fills the viewport below the nav: the screen's row grows to the screen's height at the
-   stage's full width, or takes what height is left when that is less. When the viewport also holds
-   the heading (use-case-scroll.ts), the heading pins with the rest; otherwise the stage is taller
-   by the heading (`--stage-head`) and pins that much higher, so the heading leaves the viewport and
-   the screen keeps its size. Whatever height is still unused falls to the last row; pinned, the
-   stage sits lower by half of it (`--stage-slack`), so the space is shared above and below. */
-.cases__stage {
-  position: sticky;
-  inset-block-start: calc(var(--stage-top) - var(--stage-head, 0px) + var(--stage-slack, 0px) / 2);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, calc(100cqw / 1.6)) auto minmax(0, 1fr);
-  grid-template-areas:
-    'heading'
-    'tabs'
-    'frame'
-    'caption'
-    '.';
-  block-size: calc(var(--stage-h) + var(--stage-head, 0px));
-  padding-block-end: 24px;
+/* ---------- Steps ---------- */
+
+.cases__index {
+  position: relative;
+  padding-block: 8svh 24svh;
 }
 
-.cases__heading {
-  grid-area: heading;
-  transition: opacity var(--dur-base) var(--curve-standard);
+/* The rail: unlit LEDs at the displays' pitch down the steps' edge, from the first step's light to
+   the last (`--rail-start`, `--rail-length`). A lit copy is revealed from the top as far as the
+   reading line (`--rail-fill`): its window slides down while the copy inside slides back up by the
+   same distance, so the reveal only moves things. */
+.cases__rail {
+  position: absolute;
+  inset-block-start: var(--rail-start, 0);
+  inset-inline-start: 3px;
+  inline-size: 4px;
+  block-size: var(--rail-length, 0);
+  overflow: hidden;
 }
 
-/* A heading that does not pin would rest just above the screen, under the nav: it fades while the
-   stage is pinned and returns as the stage lets go at the top. */
-.cases__stage:not([data-titled])[data-pinned] .cases__heading {
-  opacity: 0;
+.cases__rail-lit {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  translate: 0 calc((var(--rail-fill, 0) - 1) * 100%);
 }
 
-/* The steps run from the top of the track, behind the stage, and the track ends a stage's height
-   after the last one, so the stage unpins as the last scene's step ends. */
+.cases__rail::before,
+.cases__rail-lit::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--rail-dot) 1.1px, transparent 1.6px);
+  background-size: 4px var(--led);
+}
+
+.cases__rail::before {
+  --rail-dot: var(--line-2);
+}
+
+.cases__rail-lit::before {
+  --rail-dot: var(--dot-1);
+  translate: 0 calc((1 - var(--rail-fill, 0)) * 100%);
+}
+
 .cases__steps {
-  margin-block-start: calc(-1 * var(--stage-h));
-  padding-block-end: var(--stage-h);
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each step: its number in a narrow column, its title and line beside it. Steps share one rhythm,
+   with a little more room where a group begins. */
+.cases__step {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-content: center;
+  min-block-size: 34svh;
+  padding-inline-start: 28px;
+}
+
+.cases__step[data-group-start]:not(:first-child) {
+  margin-block-start: 8svh;
+}
+
+/* A group opens with its name, set in the title column. */
+.cases__group {
+  grid-column: 2;
+  margin-block-end: 16px;
+}
+
+.cases__media {
+  display: none;
+  grid-column: 1 / -1;
+}
+
+.cases__step-title {
+  grid-column: 1 / -1;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cases__step-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: baseline;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-part);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cases__step-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 6px;
+}
+
+/* The step's light, on the rail beside the title's first line: unlit ahead, dim once passed, lit
+   with a glow while current. */
+.cases__node {
+  position: absolute;
+  inset-block-start: 0.65em;
+  inset-inline-start: -26.5px;
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background-color: var(--plate);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  translate: 0 -50%;
+  transition: background-color var(--dur-base) linear;
+}
+
+.cases__node::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background-image: radial-gradient(circle, var(--dot-mid), transparent 70%);
+  opacity: 0;
+  scale: 0.4;
+  transition:
+    opacity var(--dur-slow) var(--curve-out),
+    scale var(--dur-spring-smooth) var(--spring-smooth);
+}
+
+.cases__step[data-passed] .cases__node {
+  background-color: var(--fg-3);
+  box-shadow: none;
+}
+
+.cases__step[data-current] .cases__node {
+  background-color: var(--dot-1);
+  box-shadow: none;
+}
+
+.cases__step[data-current] .cases__node::after {
+  opacity: 1;
+  scale: 1;
+}
+
+.cases__number {
+  font-size: 0.625em;
+  font-weight: 800;
+  color: var(--dot-mid);
+  transition: color var(--dur-base) linear;
+}
+
+.cases__name {
+  text-wrap: balance;
+  transition: color var(--dur-base) linear;
+}
+
+.cases__desc {
+  position: relative;
+  grid-column: 2;
+  max-inline-size: 26em;
+  margin-block-start: 10px;
+  color: var(--fg-2);
+}
+
+/* The whole line holds the paragraph's shape, and the copy over it is what shows: it types in
+   (steps.tsx) without reflowing the steps, its caret free to run past the line's end. */
+.cases__desc-line {
+  color: transparent;
+}
+
+.cases__desc-typed {
+  position: absolute;
+  inset: 0;
+}
+
+/* With the timeline running beside the stage, steps other than the current one keep only their
+   number and a quiet title; the current step's line types in (`--case-desc-types`, read by
+   steps.tsx). */
+@container (width >= 760px) {
+  .cases__showcase[data-timeline] .cases__name {
+    color: var(--fg-3);
+  }
+
+  .cases__showcase[data-timeline] .cases__step[data-current] :is(.cases__name, .cases__number) {
+    color: var(--fg-1);
+  }
+
+  .cases__showcase[data-timeline] .cases__desc {
+    --case-desc-types: 1;
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--curve-out);
+  }
+
+  .cases__showcase[data-timeline] .cases__step[data-current] .cases__desc {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .cases__showcase[data-timeline]
+      .cases__step:not([data-current])
+      .cases__step-button:hover
+      .cases__name {
+      color: var(--fg-2);
+    }
+  }
+}
+
+/* ---------- Stage ---------- */
+
+/* The stage holds with its screen at the viewport's middle, its slate above and its caption
+   below, sized so all three fit under the nav: as wide as its column, or as wide as the height
+   leaves it. */
+.cases__aside {
+  --slate-h: 40px;
+  --screen-w: min(100cqi, (100svh - var(--stage-top) - var(--slate-h) - 88px) * 16 / 9);
+  container-type: inline-size;
+}
+
+.cases__hold {
+  position: sticky;
+  inset-block-start: max(var(--stage-top), 50svh - var(--screen-w) * 9 / 32 - var(--slate-h));
+  inline-size: var(--screen-w);
+  max-inline-size: 100%;
+  margin-inline: auto;
+}
+
+/* The screen's light on the plate: four lights behind the screen, each the color of its quarter
+   of the current clip (glow.tsx), blurred wide and fallen a little below it, as a lit screen tints
+   the room around it. They are clear until the clip is read, and each eases to its next color, so
+   a new case relights the plate rather than swapping a picture into it. */
+.cases__glow {
+  position: absolute;
+  inset-block-start: var(--slate-h);
+  inset-inline-start: 0;
+  display: grid;
+  grid-template: 1fr 1fr / 1fr 1fr;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: calc(var(--r-display) + 4px);
+  opacity: 0.3;
+  filter: blur(48px) saturate(1.5);
+  translate: 0 6%;
+  scale: 0.94;
   pointer-events: none;
 }
 
-.cases__space {
-  display: block;
-  block-size: var(--case-step);
+.cases__glow > span {
+  background-color: transparent;
+  transition: background-color 450ms linear;
 }
 
-/* The screen is a 16:10 window: the shared desktop, with the scenes stacked above it. It fits the
-   frame's box whichever way that box is tighter. */
-.cases__frame {
-  grid-area: frame;
-  display: grid;
-  place-items: center;
-  container-type: size;
-  view-timeline: --cases-frame block;
+/* The slate: the current group and surface, and the case's number. */
+.cases__slate {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  block-size: var(--slate-h);
+  margin: 0;
+  padding-inline: 6px;
+}
+
+.cases__where {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-inline-size: 0;
+}
+
+.cases__surface {
+  overflow: hidden;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--fg-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cases__count {
+  font-size: 1.125rem;
+}
+
+.cases__total {
+  color: var(--fg-3);
+}
+
+/* A 16:9 screen with no bezel, like the films' own frame: the clips stacked on it, cross-fading
+   through the black each clip starts and ends on. */
+.cases__screen,
+.cases__shot {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--ink-0);
 }
 
 .cases__screen {
-  inline-size: min(100cqw, 160cqh);
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: var(--r-display);
-  /* Scene motion measures in cqw, so it scales with the screen like the scene itself. */
-  container-type: inline-size;
+  border-radius: calc(var(--r-display) + 4px);
+  box-shadow: 0 40px 80px -32px var(--ink-0);
 }
 
-.cases__desktop,
+/* The glass edge, drawn over the clips so a light frame keeps its corners. */
+.cases__screen::after,
+.cases__shot::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  pointer-events: none;
+}
+
 .cases__slide {
   position: absolute;
   inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-}
-
-.cases__desktop {
-  display: block;
-  user-select: none;
-}
-
-/* Scenes cross-fade: the active one shows, the others wait hidden, their images loading with the
-   screen's. */
-.cases__slide {
-  display: grid;
-  place-items: center;
+  margin: 0;
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity var(--dur-slow) var(--curve-standard),
-    visibility 0s linear var(--dur-slow);
+    opacity var(--dur-sheet) var(--curve-standard),
+    visibility 0s linear var(--dur-sheet);
 }
 
-/* A scene the scroll hasn't come close to yet (use-case-scroll.ts): not rendered, so its lazy images
-   wait. */
+/* A case the scroll hasn't come close to yet (use-case-timeline.ts): not rendered, so its poster
+   and video wait. */
 .cases__slide[data-deferred] {
   display: none;
 }
@@ -114,26 +354,79 @@
   transition-delay: 0s;
 }
 
-.cases__scene {
+/* ---------- Clips ---------- */
+
+/* A clip fills its screen: the poster, and the video over it once it plays. */
+.cases__clip,
+.cases__poster,
+.cases__video {
   position: absolute;
   inset: 0;
 }
 
-/* Boxes come from case-layers.css; the height follows each image's own aspect ratio. */
-.cases__layer {
-  position: absolute;
+.cases__poster,
+.cases__video {
   display: block;
-  block-size: auto;
-  max-inline-size: none;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
   user-select: none;
-  pointer-events: none;
+}
+
+.cases__video {
+  opacity: 0;
+  transition: opacity var(--dur-base) linear;
+}
+
+.cases__clip[data-rolling] .cases__video {
+  opacity: 1;
+}
+
+/* The caption: under the screen, as a subtitle under a picture, every case's in one cell so the
+   stage keeps its height as they change. The lead-in is a step dimmer than the part it leads to. */
+.cases__subtitles {
+  display: grid;
+  margin-block-start: 20px;
+  padding-inline: 6px;
+}
+
+.cases__caption {
+  grid-area: 1 / 1;
+  max-inline-size: 30em;
+  justify-self: center;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 0.9rem + 0.3vw, 1.1875rem);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: var(--tr-title);
+  color: var(--fg-3);
+  text-align: center;
+  text-wrap: balance;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-slow) var(--curve-standard),
+    visibility 0s linear var(--dur-slow);
+}
+
+.cases__caption em {
+  font-style: normal;
+  color: var(--fg-1);
+}
+
+.cases__caption[data-active] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .cases__unavailable {
-  max-inline-size: 28rem;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
   padding: 32px;
-  border-radius: var(--r-part);
-  background: var(--ink-0);
   color: var(--fg-2);
   text-align: center;
 }
@@ -144,208 +437,75 @@
   text-underline-offset: 4px;
 }
 
-/* The caption: every scene's title and line stacked in one cell, so the box keeps the tallest one's
-   height and nothing moves as scenes change. The active one shows. */
-.cases__captions {
-  grid-area: caption;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block-start: 24px;
-  text-align: center;
-}
+/* ---------- Stacked ---------- */
 
-.cases__caption {
-  grid-area: 1 / 1;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 6px;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity var(--dur-base) var(--curve-standard),
-    visibility 0s linear var(--dur-base);
-}
-
-.cases__caption[data-active] {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0s;
-}
-
-/* On a phone the headline shrinks with the showcase, down to 1rem, so the longest one still sets on
-   one line; from about 400px wide it is the usual size. */
-.cases__caption h3 {
-  font-size: clamp(1rem, 5.8cqw, var(--fs-h3));
-  font-weight: 600;
-  line-height: var(--lh-title);
-  letter-spacing: var(--tr-title);
-  text-wrap: balance;
-}
-
-.cases__caption p {
-  max-inline-size: 36rem;
-  color: var(--fg-2);
-  text-wrap: balance;
-}
-
-/* The scenes' names (tabs.tsx), quiet until current or pointed at, over one hairline that runs
-   under the whole row. The line is the scroll's progress bar: each name's stretch of it lights from
-   left to right as that scene's step scrolls by (`--case-fill`), so it is lit up to the current
-   name and partway under it. The names sit edge to edge, spaced by their own padding, so their
-   stretches join into one line. The row stays on one line, centered; where it does not fit it
-   scrolls sideways under a fade at either end, its inner list centered by its own margins so it
-   starts at the edge once it overflows. */
-.cases__tabs {
-  position: relative;
-  grid-area: tabs;
-  min-inline-size: 0;
-  margin-block-end: 12px;
-  padding: 4px 24px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  mask-image: linear-gradient(90deg, transparent, black 24px, black calc(100% - 24px), transparent);
-}
-
-.cases__tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.cases__views {
-  display: flex;
-  inline-size: max-content;
-  margin-inline: auto;
-}
-
-.cases__view {
-  position: relative;
-  display: block;
-  min-block-size: 44px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: var(--r-part);
-  background: transparent;
-  color: var(--fg-3);
-  font: inherit;
-  font-size: var(--fs-small);
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--dur-fast) linear;
-}
-
-.cases__view::before,
-.cases__view::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  block-size: 2px;
-}
-
-.cases__view::before {
-  background: var(--line-2);
-}
-
-.cases__view::after {
-  background: var(--accent-fill);
-  transform-origin: 0 50%;
-  scale: var(--case-fill, 0) 1;
-}
-
-.cases__view[aria-current] {
-  color: var(--fg-1);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .cases__view:hover {
-    color: var(--fg-1);
-  }
-}
-
-.cases__view:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: -2px;
-}
-
-/* A landscape phone has more width than height: the names and caption move beside the screen. */
-@media (orientation: landscape) and (height < 540px) and (width >= 480px) {
-  .cases__stage {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 17rem);
-    grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr);
-    grid-template-areas:
-      'heading heading'
-      'frame .'
-      'frame tabs'
-      'frame caption'
-      'frame .';
-    column-gap: 24px;
+/* Narrower than two columns need, the steps stack under the heading, each with its own scene, and
+   every step's line shows. */
+@container (width < 760px) {
+  .cases__aside,
+  .cases__rail,
+  .cases__node {
+    display: none;
   }
 
-  .cases__captions {
-    margin-block-start: 0;
-    text-align: start;
+  .cases__index {
+    grid-column: 1 / -1;
+    padding-block: 0;
   }
 
-  .cases__caption {
-    justify-items: start;
+  .cases__step {
+    grid-template-columns: 32px minmax(0, 1fr);
+    min-block-size: 0;
+    padding-inline-start: 0;
   }
 
-  .cases__views {
-    margin-inline: 0;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  /* The caption rises a little as it changes, on the same beat as the scene. */
-  .cases__caption {
-    translate: 0 6px;
-    transition:
-      opacity var(--dur-base) var(--curve-standard),
-      translate var(--dur-spring-smooth) var(--spring-smooth),
-      visibility 0s linear var(--dur-base);
+  .cases__step + .cases__step {
+    margin-block-start: 40px;
   }
 
-  .cases__caption[data-active] {
-    translate: none;
-    transition-delay: 0s;
+  .cases__step[data-group-start]:not(:first-child) {
+    margin-block-start: 64px;
   }
 
-  /* As the screen comes up into view, it grows to its full size, tied to the scroll: it is full
-     size once its whole frame is on screen. Without scroll-driven animations it is simply there. */
-  @supports (animation-timeline: view()) {
-    .cases__screen {
-      animation: cases-arrive linear both;
-      animation-timeline: --cases-frame;
-      animation-range: entry 0% entry 100%;
-    }
+  .cases__group {
+    grid-column: 1 / -1;
+  }
+
+  .cases__media {
+    display: block;
+    margin-block-end: 16px;
+  }
+
+  .cases__shot {
+    border-radius: var(--r-part);
+  }
+
+  .cases__step-button {
+    grid-template-columns: 32px minmax(0, 1fr);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cases__view {
-    transition: none;
+  .cases__node::after {
+    scale: 1;
   }
 }
 
-@keyframes cases-arrive {
-  from {
-    scale: 0.86;
-  }
-}
-
-/* In forced colors the line keeps its lit and unlit stretches, and the current name is marked. */
+/* In forced colors the rail keeps its lit and unlit stretches, and the current step is marked. */
 @media (forced-colors: active) {
-  .cases__view::before {
-    background: GrayText;
+  .cases__glow {
+    display: none;
   }
 
-  .cases__view::after {
-    background: Highlight;
+  .cases__rail::before {
+    --rail-dot: GrayText;
   }
 
-  .cases__view[aria-current] {
+  .cases__rail-lit::before {
+    --rail-dot: Highlight;
+  }
+
+  .cases__step[data-current] .cases__name {
     color: Highlight;
   }
 }
