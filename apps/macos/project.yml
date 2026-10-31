@@ -38,14 +38,18 @@ settings:
     DEAD_CODE_STRIPPING: true
   # The shell's bundle id and widget URL scheme, which the App target and the widget extension
   # share: the extension's bundle id, the directory it may read and the links it opens derive
-  # from them. Debug and Release differ, so both builds can be installed side by side.
+  # from them. AI_SERVICE_MENU_TITLE is the Finder entry's title, the Services entry's
+  # (NSServices) and the Finder Sync extension's alike. Debug and Release differ, so both builds
+  # can be installed side by side.
   configs:
     Debug:
       AI_HOST_BUNDLE_ID: com.junerdd.ai.dev
       AI_URL_SCHEME: atd-dev
+      AI_SERVICE_MENU_TITLE: Add to Atd Dev
     Release:
       AI_HOST_BUNDLE_ID: com.junerdd.ai
       AI_URL_SCHEME: atd
+      AI_SERVICE_MENU_TITLE: Add to Atd
 packages:
   AIMac:
     path: .
@@ -62,19 +66,25 @@ targets:
         product: AIShell
       - package: AIMac
         product: AIWidgetModel
-      # Signed with the app's identity (ad hoc by default) and embedded in Contents/PlugIns, plus
-      # ATD_WIDGETS_EMBED_SUBPATH: nothing in Release, `DevStaging` in Debug, where macOS does not
-      # look for extensions. xcodebuild registers every app it builds with LaunchServices; a
-      # DerivedData build whose extension macOS could find makes chronod launch the extension
-      # from under ~/Documents, where a sandboxed extension cannot run, and keep launching it
-      # from there after dev-install.mjs unregisters that build. dev-install.mjs moves it into
-      # Contents/PlugIns of the installed copy only.
+      # The extensions are signed with the app's identity (ad hoc by default) and embedded in
+      # Contents/PlugIns, plus ATD_EXTENSIONS_EMBED_SUBPATH: nothing in Release, `DevStaging` in
+      # Debug, where macOS does not look for extensions. xcodebuild registers every app it builds
+      # with LaunchServices; a DerivedData build whose extension macOS could find makes chronod
+      # (or Finder) launch the extension from under ~/Documents, where a sandboxed extension
+      # cannot run, and keep launching it from there after dev-install.mjs unregisters that
+      # build. dev-install.mjs moves them into Contents/PlugIns of the installed copy only.
       - target: AtdWidgets
         embed: true
         codeSign: true
         copy:
           destination: plugins
-          subpath: $(ATD_WIDGETS_EMBED_SUBPATH)
+          subpath: $(ATD_EXTENSIONS_EMBED_SUBPATH)
+      - target: AtdFinderSync
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+          subpath: $(ATD_EXTENSIONS_EMBED_SUBPATH)
       # The background computer-use driver (the `atd-computer-driver` target below), signed with
       # the app's identity and copied next to the main executable in Debug and Release alike. The
       # shell spawns it from Contents/MacOS as a direct child. Never linked into the app: it is a
@@ -122,15 +132,11 @@ targets:
         # script sandbox only allows for individually declared files.
         ENABLE_USER_SCRIPT_SANDBOXING: false
       configs:
-        # AI_SERVICE_MENU_TITLE: the Finder service's title (NSServices below), distinct in Debug
-        # so both builds can be installed side by side.
         Debug:
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
-          AI_SERVICE_MENU_TITLE: Add to Atd Dev
-          ATD_WIDGETS_EMBED_SUBPATH: DevStaging
+          ATD_EXTENSIONS_EMBED_SUBPATH: DevStaging
         Release:
-          AI_SERVICE_MENU_TITLE: Add to Atd
-          ATD_WIDGETS_EMBED_SUBPATH: ''
+          ATD_EXTENSIONS_EMBED_SUBPATH: ''
     info:
       path: App/Info.plist
       properties:
@@ -141,12 +147,14 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
-        # Widget taps: `<scheme>://apps/<appId>?route=<route>` only (WidgetLink), checked by the
-        # shell before it opens anything.
+        # Widget taps (`<scheme>://apps/<appId>?route=<route>`, WidgetLink) and the Finder Sync
+        # extension's `<scheme>://finder` (FinderHandoff), checked by the shell before it opens
+        # anything.
         CFBundleURLTypes:
           - CFBundleURLName: $(AI_HOST_BUNDLE_ID).widget-link
             CFBundleURLSchemes: [$(AI_URL_SCHEME)]
-        # Read by the shared widget code (WidgetFiles, WidgetLink) in the app and the extension.
+        # Read by the shared code (WidgetFiles, WidgetLink, FinderHandoff) in the app and the
+        # extensions.
         AtdHostBundleIdentifier: $(AI_HOST_BUNDLE_ID)
         AtdURLScheme: $(AI_URL_SCHEME)
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
@@ -175,11 +183,12 @@ targets:
         NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it.
         NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it.
         NSDownloadsFolderUsageDescription: Atd reads a file in your Downloads folder only when you attach it.
-        # The Finder entry (FinderService): selected files and folders go to the panel's composer.
-        # It sits in the context menu's Services / Quick Actions section; the empty
+        # The Services entry (FinderService): selected files and folders go to the panel's
+        # composer. macOS lists it under Services, in Finder and in other apps; the empty
         # NSRequiredContext enables it by default. ServicesMenu.xcstrings localizes the title
         # (keyed by the English one). Development builds may need
-        # `/System/Library/CoreServices/pbs -update` before Finder lists it.
+        # `/System/Library/CoreServices/pbs -update` before Finder lists it. The same entry at the
+        # top of Finder's context menu is the AtdFinderSync extension below.
         NSServices:
           - NSMenuItem:
               default: $(AI_SERVICE_MENU_TITLE)
@@ -247,6 +256,53 @@ targets:
         AtdURLScheme: $(AI_URL_SCHEME)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  # The Finder entry at the top of the context menu (FinderSyncExtension), which the Services
+  # entry cannot reach. Its title comes from the Services entry's String Catalog, shared here; it
+  # hands the selected items to the app through FinderHandoff (AIWidgetModel).
+  AtdFinderSync:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: FinderSync
+        excludes:
+          - Info.plist
+          - AtdFinderSync.entitlements
+      - path: App/ServicesMenu.xcstrings
+    dependencies:
+      - package: AIMac
+        product: AIWidgetModel
+      - sdk: FinderSync.framework
+    settings:
+      base:
+        PRODUCT_NAME: AtdFinderSync
+        PRODUCT_BUNDLE_IDENTIFIER: $(AI_HOST_BUNDLE_ID).finder-sync
+        # One binary in Debug too, so dev-install.mjs signs a single file when it moves the
+        # extension into place.
+        ENABLE_DEBUG_DYLIB: NO
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        # Ad hoc builds would otherwise gain get-task-allow; the sandbox is the only entitlement.
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+    # Finder Sync requires the sandbox. The extension never reads the selected items: it passes
+    # their URLs to the app on a pasteboard, and the app reads them.
+    entitlements:
+      path: FinderSync/AtdFinderSync.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    info:
+      path: FinderSync/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdHostBundleIdentifier: $(AI_HOST_BUNDLE_ID)
+        AtdURLScheme: $(AI_URL_SCHEME)
+        AtdServiceMenuTitle: $(AI_SERVICE_MENU_TITLE)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.FinderSync
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).FinderSyncExtension
   # The background computer-use driver helper (Sources/AIComputerDriver*): the package's
   # `atd-computer-driver` executable built as a command-line tool, so the App target can embed it
   # at Contents/MacOS/atd-computer-driver. Only the entry point (Sources/AtdComputerDriverCLI,

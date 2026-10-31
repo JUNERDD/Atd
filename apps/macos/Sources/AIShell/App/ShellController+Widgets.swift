@@ -16,9 +16,10 @@ extension ShellController {
     widgets.start()
   }
 
-  /// A widget tap's URL (``WidgetLink``), the only non-file URL the shell accepts: it shows the
-  /// task panel, or opens an app's window at the route, and nothing else. A link without a route
-  /// (a launcher tile) brings an open window forward without reloading it.
+  /// A widget tap's URL (``WidgetLink``), the only non-file URL the shell accepts besides the
+  /// Finder Sync extension's: it shows the task panel, or opens an app's window at the route, and
+  /// nothing else. A link without a route (a launcher tile) brings an open window forward without
+  /// reloading it.
   func openWidgetLink(_ url: URL) {
     guard let scheme = WidgetLink.mainBundleScheme,
       let link = WidgetLink.parse(url, scheme: scheme)

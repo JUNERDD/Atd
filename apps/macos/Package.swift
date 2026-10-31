@@ -20,7 +20,8 @@ let package = Package(
   products: [
     .library(name: "AICore", targets: ["AICore"]),
     .library(name: "AIShell", targets: ["AIShell"]),
-    // Shared with the WidgetKit extension (`AtdWidgets` in project.yml).
+    // Shared with the WidgetKit and Finder Sync extensions (`AtdWidgets`, `AtdFinderSync` in
+    // project.yml).
     .library(name: "AIWidgetModel", targets: ["AIWidgetModel"]),
     .library(name: "AIWidgetRender", targets: ["AIWidgetRender"]),
     // The background computer-use driver, spawned by the shell as a direct child. Isolated so a
@@ -77,7 +78,8 @@ let package = Package(
       swiftSettings: approachableConcurrency),
     // Desktop widgets' data, shared by the shell (the only writer) and the sandboxed WidgetKit
     // extension (a reader): the generated view tree and sync types, the files' layout and the
-    // widget link. Foundation and AICore only.
+    // widget link; plus the Finder Sync extension's hand-off to the shell (FinderHandoff).
+    // Foundation and AICore only.
     .target(name: "AIWidgetModel", dependencies: ["AICore"]),
     // The SwiftUI renderer of a widget's view tree, used by the extension and by the shell's
     // previews, so both draw a snapshot the same way.
