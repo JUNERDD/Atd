@@ -1,10 +1,10 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
-import type { Provider } from '@earendil-works/pi-ai';
+import { hasApi, type Api, type Model, type Provider } from '@earendil-works/pi-ai';
 import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
 import { CatalogFailure, readCatalogJson } from './catalog-http.js';
 import { toServiceModel } from './catalog.js';
-import { endpointCapabilities } from './endpoint-capabilities.js';
+import { openRouterReasoning, openRouterReasoningProvider } from './openrouter-reasoning.js';
 import { uniqueModels } from './connection-view.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1';
@@ -29,7 +29,8 @@ const CatalogSchema = Type.Object({
     Type.Object({
       id: Type.String({ minLength: 1, maxLength: 256 }),
       name: Type.String({ minLength: 1, maxLength: 256 }),
-      context_length: Type.Union([Positive, Type.Null()]),
+      // The public directory also uses zero for an unknown window on some entries.
+      context_length: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
       architecture: Type.Object({
         input_modalities: Type.Array(Type.String()),
         output_modalities: Type.Array(Type.String()),
@@ -61,6 +62,15 @@ export function openRouterProvider(base: Provider, connection: ServiceConnection
     ...known.get(model.id),
     ...model,
     provider: 'openrouter',
+    ...(model.api === 'anthropic-messages' && model.reasoningControl
+      ? {
+          compat: {
+            ...known.get(model.id)?.compat,
+            forceAdaptiveThinking: model.reasoningControl !== 'budget',
+            ...(model.reasoningControl === 'budget' ? { supportsMidConvoEffort: false } : {}),
+          },
+        }
+      : {}),
     // A custom endpoint still uses the official catalog, but inference stays at the saved URL.
     ...(connection.baseUrl && connection.baseUrl !== OPENROUTER_URL
       ? { baseUrl: connection.baseUrl }
@@ -70,7 +80,7 @@ export function openRouterProvider(base: Provider, connection: ServiceConnection
   // The service owns refresh/persistence. Pi's background registration passes must not restore
   // an older pi.dev overlay over the official directory, including after app restart.
   delete provider.refreshModels;
-  return provider;
+  return openRouterReasoningProvider(provider, catalog);
 }
 
 function perMillion(price: string | undefined): number {
@@ -82,7 +92,7 @@ function perMillion(price: string | undefined): number {
 
 /** Public tool-capable text models, matching Pi's catalog scope. This does not verify a key. */
 export async function loadOpenRouterModels(
-  known: readonly ServiceModelDefinition[],
+  known: readonly Model<Api>[],
 ): Promise<ServiceModelDefinition[]> {
   const value = await readCatalogJson(`${OPENROUTER_URL}/models?supported_parameters=tools`);
   let catalog;
@@ -103,12 +113,24 @@ export async function loadOpenRouterModels(
       )
         return [];
       const model = definitions.get(entry.id);
-      const contextWindow = entry.context_length ?? model?.contextWindow;
+      const contextWindow = entry.context_length || model?.contextWindow;
       if (!contextWindow) return [];
       // Keep Pi's native Anthropic transport where supported; new models use OpenRouter's
       // documented Chat Completions API. An unknown output limit takes Pi's own default for a
       // registered model (16384); Pi sends it as the request cap, so less truncates reasoning.
-      const api = model?.api === 'anthropic-messages' ? model.api : 'openai-completions';
+      const capabilities = openRouterReasoning(entry);
+      const reasoningControl =
+        'reasoningControl' in capabilities ? capabilities.reasoningControl : undefined;
+      const nativeMessages = model && hasApi(model, 'anthropic-messages');
+      // Older Claude models need token budgets, not adaptive thinking. Let Chat Completions
+      // translate gateway efforts for them; native Messages remains available for budget control.
+      const api =
+        reasoningControl === 'budget' ||
+        (nativeMessages &&
+          (reasoningControl === undefined ||
+            (reasoningControl === 'effort' && model.compat?.forceAdaptiveThinking)))
+          ? 'anthropic-messages'
+          : 'openai-completions';
       // The service can represent token thresholds. Skip time-based or unknown conditions,
       // as OpenRouter requires, instead of applying their prices to every request.
       const overrides = (entry.pricing.overrides ?? []).filter((override) =>
@@ -130,14 +152,12 @@ export async function loadOpenRouterModels(
             cacheWrite: perMillion(rates.input_cache_write),
           };
         });
-      const capabilities = endpointCapabilities(entry);
       const reasoning = capabilities.reasoning ?? false;
       // Parse keeps the entry's `reasoning` object, which carries OpenRouter's default effort.
       const defaultThinkingLevel = reasoning ? capabilities.defaultThinkingLevel : undefined;
-      // An OpenAI effort list is not an Anthropic token budget or adaptive-effort map.
+      // OpenRouter translates output_config.effort to the same gateway efforts on Messages.
       const thinkingLevelMap = reasoning
-        ? ((api === 'openai-completions' ? capabilities.thinkingLevelMap : undefined) ??
-          model?.thinkingLevelMap)
+        ? (capabilities.thinkingLevelMap ?? model?.thinkingLevelMap)
         : undefined;
       return [
         {
@@ -146,6 +166,7 @@ export async function loadOpenRouterModels(
           api,
           baseUrl: api === 'anthropic-messages' ? 'https://openrouter.ai/api' : OPENROUTER_URL,
           reasoning,
+          ...(reasoningControl ? { reasoningControl } : {}),
           ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
           ...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
           input: entry.architecture.input_modalities.includes('image')

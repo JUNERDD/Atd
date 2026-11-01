@@ -3,6 +3,7 @@ import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
 import { ACCOUNT_PROVIDERS } from './auth-policy.js';
+import { nativeThinkingModel } from './native-thinking.js';
 
 /**
  * Service-owned provider catalog: Pi directory plus local entries. Cache the Pi runtime,
@@ -49,18 +50,20 @@ export function toServiceModel(model: Model<Api>): ServiceModelDefinition {
     api,
     baseUrl,
     reasoning,
+    reasoningControl,
     input,
     contextWindow,
     maxTokens,
     cost,
     thinkingLevelMap,
-  } = model;
+  } = nativeThinkingModel(model);
   return {
     id,
     name,
     api,
     baseUrl,
     reasoning,
+    ...(reasoningControl ? { reasoningControl } : {}),
     input,
     contextWindow,
     maxTokens,
@@ -99,8 +102,13 @@ function getDirectory(): Promise<ModelRuntime> {
  * credentials. Local providers and Pi failures have none.
  */
 export async function directoryModels(providerId: string): Promise<ServiceModelDefinition[]> {
+  return (await nativeDirectoryModels(providerId)).map(toServiceModel);
+}
+
+/** Protocol encoders also need the SDK flags that the public model schema intentionally omits. */
+export async function nativeDirectoryModels(providerId: string): Promise<readonly Model<Api>[]> {
   try {
-    return (await getDirectory()).getModels(providerId).map(toServiceModel);
+    return (await getDirectory()).getModels(providerId).map(nativeThinkingModel);
   } catch {
     directory = null;
     return [];
@@ -141,6 +149,16 @@ export async function modelMakerDirectory(): Promise<Map<string, ServiceModelDef
   return byId;
 }
 
+/** Native definitions retain the flags that describe how their provider encodes thinking. */
+export async function nativeThinkingOverrides(provider: string) {
+  return new Map(
+    (await getDirectory()).getModels(provider).flatMap((model) => {
+      const normalized = nativeThinkingModel(model);
+      return normalized === model ? [] : [[model.id.toLowerCase(), normalized] as const];
+    }),
+  );
+}
+
 /** Protocol-specific SDK hints for custom models; ids alone cannot select an effort encoder. */
 export async function protocolModelDirectory(): Promise<Map<string, Model<Api>>> {
   const byId = new Map<string, Model<Api>>();
@@ -148,7 +166,7 @@ export async function protocolModelDirectory(): Promise<Map<string, Model<Api>>>
   for (const provider of MODEL_MAKERS)
     for (const model of models.getModels(provider)) {
       const key = `${model.api}:${model.id.toLowerCase()}`;
-      if (!byId.has(key)) byId.set(key, model);
+      if (!byId.has(key)) byId.set(key, nativeThinkingModel(model));
     }
   return byId;
 }

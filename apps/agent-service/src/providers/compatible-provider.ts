@@ -1,5 +1,12 @@
-import type { Api, Provider, StreamOptions } from '@earendil-works/pi-ai';
+import {
+  hasApi,
+  isModelType,
+  type Api,
+  type Provider,
+  type StreamOptions,
+} from '@earendil-works/pi-ai';
 import { isBailianEndpoint } from './bailian.js';
+import { nativeThinkingModel } from './native-thinking.js';
 
 /**
  * Pi's effort encoder uses Anthropic adaptive thinking. Bailian accepts the same output_config
@@ -18,23 +25,42 @@ function payloadHook(next: StreamOptions['onPayload']): NonNullable<StreamOption
         )
           Reflect.set(payload, 'thinking', { type: 'enabled' });
       }
-      // Verification omits reasoning. Pi's qwen encoder turns that into false even when the
-      // model forbids off; GLM-5.3 rejects it. Preserve its always-on contract on this path too.
-      if (
-        model.api === 'openai-completions' &&
-        model.reasoning &&
-        model.thinkingLevelMap?.off === null &&
-        Reflect.get(payload, 'enable_thinking') === false
-      )
+    }
+    // Verification omits reasoning. Boolean encoders must still honor models that forbid off.
+    if (
+      hasApi(model, 'openai-completions') &&
+      model.reasoning &&
+      model.thinkingLevelMap?.off === null &&
+      typeof payload === 'object' &&
+      payload !== null
+    ) {
+      if (Reflect.get(payload, 'enable_thinking') === false)
         Reflect.set(payload, 'enable_thinking', true);
+      const thinking: unknown = Reflect.get(payload, 'thinking');
+      if (
+        model.compat?.thinkingFormat === 'zai' &&
+        typeof thinking === 'object' &&
+        thinking !== null &&
+        Reflect.get(thinking, 'type') === 'disabled'
+      )
+        Reflect.set(payload, 'thinking', { type: 'enabled', clear_thinking: false });
     }
     return next ? next(payload, model) : undefined;
   };
 }
 
-export function compatibleProvider(base: Provider): Provider {
+export function compatibleProvider(base: Provider, normalizeNative = false): Provider {
   return {
     ...base,
+    ...(normalizeNative
+      ? {
+          getModels: () => base.getModels().map(nativeThinkingModel),
+          getAllModels: () =>
+            (base.getAllModels?.() ?? base.getModels()).map((model) =>
+              isModelType(model, 'chat') ? nativeThinkingModel(model) : model,
+            ),
+        }
+      : {}),
     stream: (model, context, options) =>
       base.stream<Api>(model, context, { ...options, onPayload: payloadHook(options?.onPayload) }),
     streamSimple: (model, context, options) =>

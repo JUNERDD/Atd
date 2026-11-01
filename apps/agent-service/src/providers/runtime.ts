@@ -7,7 +7,12 @@ import { ConnectionStorageLimitError, type ConnectionStore } from '../credential
 import type { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError, UpstreamError } from '../errors.js';
-import { directoryModels, isLocalProvider, toServiceModel } from './catalog.js';
+import {
+  directoryModels,
+  nativeDirectoryModels,
+  isLocalProvider,
+  toServiceModel,
+} from './catalog.js';
 import { contextOverrideFile, type ContextOverride } from './context-override.js';
 import { discoverCompatibleModels } from './discovery.js';
 import { LLAMA_PROVIDER, llamaProvider, migrateLlamaCatalog } from './llama.js';
@@ -121,7 +126,10 @@ export async function connectionRuntime(
         chatgptUsage(stores, connection),
       );
     if (connection.provider === 'openrouter') provider = openRouterProvider(provider, connection);
-    if (connection.provider === 'openai-compatible') provider = compatibleProvider(provider);
+    provider = compatibleProvider(
+      provider,
+      !isLocalProvider(connection.provider) && connection.provider !== 'openrouter',
+    );
     const { apiKey, oauth } = provider.auth;
     const options: Record<string, string> = {
       ...connection.options,
@@ -193,7 +201,7 @@ async function loadCatalog(
   background: boolean,
 ): Promise<ServiceModelDefinition[]> {
   if (connection.provider === 'openrouter')
-    return loadOpenRouterModels(await directoryModels('openrouter'));
+    return loadOpenRouterModels(await nativeDirectoryModels('openrouter'));
   const models = await connectionRuntime(stores, connection);
   if (connection.provider === 'openai' && connection.authType === 'oauth') {
     if (!connection.chatgptPlanEnabled) return [];
