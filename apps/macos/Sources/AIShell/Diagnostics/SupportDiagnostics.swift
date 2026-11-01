@@ -23,17 +23,30 @@ final class SupportDiagnostics {
   private var lastTick = ProcessInfo.processInfo.systemUptime
   private var lastCheckpoint = 0.0
   private var exporting = false
+  private var terminating = false
+  private var cleanupFailed = false
+  private var deadline: Date?
+  private var startedAt = 0.0
+  private var cleanup: Task<Bool, Never>?
+  private var resuming: Task<Void, Error>?
   private var checkpoint: Task<Void, Never>?
 
   func start() {
     guard Self.enabled, initialization == nil else { return }
     initialization = Task {
-      if await archive.shouldRecordOnLaunch() { beginRecording() }
+      let shouldRecord = await archive.shouldRecordOnLaunch()
+      let preparationFailed = await archive.writeFailed
+      cleanupFailed = !shouldRecord && preparationFailed
+      if shouldRecord, !terminating { beginRecording() }
     }
   }
 
   private func beginRecording() {
     recorder = DiagnosticRecorder()
+    cleanup = nil
+    cleanupFailed = false
+    deadline = Date().addingTimeInterval(3600)
+    startedAt = ProcessInfo.processInfo.systemUptime
     recording = true
     lastTick = ProcessInfo.processInfo.systemUptime
     lastCheckpoint = 0
@@ -54,6 +67,7 @@ final class SupportDiagnostics {
 
   private func stopRecording() {
     recording = false
+    deadline = nil
     timer?.invalidate()
     timer = nil
     FocusDiagnostics.shared.stop()
@@ -65,17 +79,76 @@ final class SupportDiagnostics {
   func resume() async throws(BridgeError) {
     await initialization?.value
     guard Self.enabled else { throw BridgeError("Diagnostics are not enabled in this build.") }
-    guard !exporting else { throw BridgeError("A diagnostic export is already in progress.") }
+    guard !exporting, !terminating else {
+      throw BridgeError("Another diagnostic operation or app quit is in progress.")
+    }
     guard !recording else { return }
     exporting = true
     defer { exporting = false }
+    _ = await cleanup?.value
     await checkpoint?.value
+    guard !terminating else { throw BridgeError("The app is quitting.") }
+    let restart = Task { try await archive.resume() }
+    resuming = restart
+    defer { resuming = nil }
     do {
-      try await archive.resume()
+      try await restart.value
     } catch {
       throw BridgeError("Diagnostic recording could not start. Check the log folder's permissions.")
     }
+    guard !terminating else {
+      _ = await archive.complete()
+      throw BridgeError("The app is quitting.")
+    }
     beginRecording()
+  }
+
+  func stop() async throws(BridgeError) -> DiagnosticsStopResult {
+    await initialization?.value
+    guard Self.enabled, !exporting, !terminating else {
+      throw BridgeError("Another diagnostic operation or app quit is in progress.")
+    }
+    exporting = true
+    defer { exporting = false }
+    _ = await cleanup?.value
+    cleanup = nil  // A stopped session can explicitly retry a failed cleanup.
+    return DiagnosticsStopResult(cleanupFailed: !(await finishRecording()))
+  }
+
+  /// Called only once quitting is committed, before service teardown. Never wait for a save
+  /// dialog: its already frozen report can finish independently, and cannot restart collection.
+  func stopForQuit() async {
+    guard Self.enabled else { return }
+    terminating = true
+    stopRecording()
+    await initialization?.value
+    _ = await resuming?.result
+    _ = await cleanup?.value
+    await checkpoint?.value
+    // Always commit again: an in-flight resume may have written active while we awaited it.
+    cleanupFailed = !(await archive.complete())
+    recorder = DiagnosticRecorder()
+  }
+
+  private func finishRecording() async -> Bool {
+    await startCleanup().value
+  }
+
+  private func startCleanup() -> Task<Bool, Never> {
+    if let cleanup { return cleanup }
+    stopRecording()
+    let pending = checkpoint
+    let task = Task {
+      await pending?.value
+      let cleaned = await archive.complete()
+      cleanupFailed = !cleaned
+      recorder = DiagnosticRecorder()
+      checkpoint = nil
+      onRecordingChanged?(false)
+      return cleaned
+    }
+    cleanup = task
+    return task
   }
 
   func preparePermissions(using trust: AccessibilityTrust, automatic: Bool = false) async {
@@ -97,6 +170,10 @@ final class SupportDiagnostics {
   private func tick() {
     guard recording else { return }
     let now = ProcessInfo.processInfo.systemUptime
+    if deadline.map({ Date() >= $0 }) == true || now - startedAt >= 3600 {
+      _ = startCleanup()
+      return
+    }
     record(
       "runtime.sample",
       details: [
@@ -112,7 +189,7 @@ final class SupportDiagnostics {
       let previous = checkpoint
       checkpoint = Task {
         await previous?.value
-        await archive.checkpoint(trace, sequence: sequence)
+        if recording { await archive.checkpoint(trace, sequence: sequence) }
       }
     }
   }
@@ -121,13 +198,14 @@ final class SupportDiagnostics {
     await initialization?.value
     return DiagnosticsStateResult(
       enabled: Self.enabled, focusEnabled: Self.profile == .focus, recording: recording,
+      cleanupFailed: cleanupFailed, expiresAt: deadline?.timeIntervalSince1970,
       accessibilityTrusted: AXIsProcessTrusted(), mouseTapActive: FocusDiagnostics.shared.tapActive)
   }
 
   func export(using panels: SystemPanels) async throws(BridgeError) -> DiagnosticsExportResult {
     await initialization?.value
     guard Self.enabled else { throw BridgeError("Diagnostics are not enabled in this build.") }
-    guard !exporting, !panels.isOpen else {
+    guard !exporting, !terminating, !panels.isOpen else {
       throw BridgeError("Another export or file dialog is open.")
     }
     guard recording else { throw BridgeError("Start diagnostic recording before exporting.") }
@@ -138,6 +216,8 @@ final class SupportDiagnostics {
     // Freeze before a save dialog changes the state under investigation.
     let trace = recorder.trace()
     let sequence = recorder.sequence
+    let suggestedName = "Atd-diagnostics-\(recorder.session.prefix(8)).zip"
+    let notes = FocusDiagnostics.enabled ? FocusDiagnostics.reportNotes : ""
     var manifest = recorder.manifest()
     manifest["environment"] = DiagnosticEnvironment.read()
     manifest["profile"] = .string(Self.profile.rawValue)
@@ -150,27 +230,26 @@ final class SupportDiagnostics {
       .string("Renderer evidence requires the page to load and its bridge to be ready."),
     ])
     await checkpoint?.value
-    await archive.checkpoint(trace, sequence: sequence)
+    if recording { await archive.checkpoint(trace, sequence: sequence) }
     manifest["checkpointFailed"] = .bool(await archive.writeFailed)
+    guard !terminating else {
+      return DiagnosticsExportResult(saved: false, cleanupFailed: cleanupFailed)
+    }
     guard
       let destination = await panels.chooseSaveLocation(
-        suggestedName: "Atd-diagnostics-\(recorder.session.prefix(8)).zip", contentType: .zip)
+        suggestedName: suggestedName, contentType: .zip)
     else { return DiagnosticsExportResult(saved: false, cleanupFailed: false) }
     do {
       try await archive.export(
         current: trace, metadata: JSONEncoder().encode(JSONValue.object(manifest)),
-        notes: FocusDiagnostics.enabled ? FocusDiagnostics.reportNotes : "", to: destination)
+        notes: notes, to: destination)
     } catch {
       record("export.failed", details: ["code": .number(Double((error as NSError).code))])
       throw BridgeError(
         "The diagnostic report could not be saved. Choose a writable folder and try again.")
     }
-    // Saving succeeded. Stop observers before draining every queued checkpoint, so no late
-    // timer can recreate the cache after completion removes it. Cancellation/failure never stops.
-    stopRecording()
-    await checkpoint?.value
-    let cleaned = await archive.complete()
-    recorder = DiagnosticRecorder()
-    return DiagnosticsExportResult(saved: true, cleanupFailed: !cleaned)
+    // Expiry may already have cleaned internal traces while the save dialog was open. The
+    // frozen report stays valid; finishing is idempotent and never resumes its observers.
+    return DiagnosticsExportResult(saved: true, cleanupFailed: !(await finishRecording()))
   }
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Download, Play } from 'lucide-react';
+import { Download, Play, Square } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Card } from '@atd/ui/components/card';
 import {
@@ -16,10 +16,18 @@ import { useSupportDiagnostics } from './use-support-diagnostics';
 
 /** This support-only section is absent from ordinary builds. */
 export function SupportDiagnosticsSettings() {
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
   const diagnostics = useSupportDiagnostics();
   if (!diagnostics.enabled) return null;
-  const busy = diagnostics.status === 'exporting' || diagnostics.status === 'starting';
+  const busy = diagnostics.busy;
+  const primaryBusy = diagnostics.status === 'exporting' || diagnostics.status === 'starting';
+  const expiresAt =
+    diagnostics.expiresAt === null
+      ? null
+      : new Date(diagnostics.expiresAt * 1000).toLocaleTimeString(i18n.language, {
+          hour: 'numeric',
+          minute: '2-digit',
+        });
   const title = !diagnostics.recording
     ? 'supportDiagnostics.stoppedTitle'
     : !diagnostics.ready
@@ -46,13 +54,13 @@ export function SupportDiagnosticsSettings() {
                   )}
                 </ItemDescription>
               </ItemContent>
-              <ItemActions className="ml-auto">
+              <ItemActions className="ml-auto flex-wrap">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  aria-busy={busy}
+                  aria-busy={primaryBusy}
                   aria-describedby="support-diagnostics-description"
                   onClick={() =>
                     void (diagnostics.recording
@@ -60,7 +68,7 @@ export function SupportDiagnosticsSettings() {
                       : diagnostics.startRecording())
                   }
                 >
-                  {busy ? (
+                  {primaryBusy ? (
                     <Spinner data-icon="inline-start" />
                   ) : diagnostics.recording ? (
                     <Download data-icon="inline-start" />
@@ -77,7 +85,40 @@ export function SupportDiagnosticsSettings() {
                           : 'supportDiagnostics.start',
                   )}
                 </Button>
+                {(diagnostics.recording ||
+                  diagnostics.cleanupFailed ||
+                  diagnostics.status === 'stopping') && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    aria-busy={diagnostics.status === 'stopping'}
+                    onClick={() => void diagnostics.stopRecording()}
+                  >
+                    {diagnostics.status === 'stopping' ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <Square data-icon="inline-start" />
+                    )}
+                    {t(
+                      diagnostics.status === 'stopping'
+                        ? 'supportDiagnostics.stopping'
+                        : diagnostics.recording
+                          ? 'supportDiagnostics.stop'
+                          : 'supportDiagnostics.retryCleanup',
+                    )}
+                  </Button>
+                )}
               </ItemActions>
+              <ItemFooter className="min-w-0 flex-col items-start">
+                <p className="text-sm text-muted-foreground">{t('supportDiagnostics.retention')}</p>
+                {diagnostics.recording && expiresAt && (
+                  <p className="text-sm text-muted-foreground">
+                    {t('supportDiagnostics.expiresAt', { time: expiresAt })}
+                  </p>
+                )}
+              </ItemFooter>
               <ItemFooter className="min-w-0 items-start justify-start">
                 <p className="text-sm text-muted-foreground">
                   {t(
@@ -110,7 +151,13 @@ export function SupportDiagnosticsSettings() {
               )}
               {diagnostics.status === 'saved' && (
                 <ItemFooter>
-                  <output>{t('supportDiagnostics.saved')}</output>
+                  <output>
+                    {t(
+                      diagnostics.cleanupFailed
+                        ? 'supportDiagnostics.savedCleanupFailed'
+                        : 'supportDiagnostics.saved',
+                    )}
+                  </output>
                 </ItemFooter>
               )}
               {diagnostics.status === 'failed' && (
@@ -118,9 +165,19 @@ export function SupportDiagnosticsSettings() {
                   {t('supportDiagnostics.failed')}
                 </ItemFooter>
               )}
-              {diagnostics.status === 'cleanupFailed' && (
+              {!diagnostics.recording && diagnostics.cleanupFailed && (
                 <ItemFooter role="alert" className="settings-inline-error">
                   {t('supportDiagnostics.cleanupFailed')}
+                </ItemFooter>
+              )}
+              {diagnostics.status === 'stopFailed' && (
+                <ItemFooter role="alert" className="settings-inline-error">
+                  {t('supportDiagnostics.stopFailed')}
+                </ItemFooter>
+              )}
+              {diagnostics.status === 'cleared' && (
+                <ItemFooter>
+                  <output>{t('supportDiagnostics.cleared')}</output>
                 </ItemFooter>
               )}
               {diagnostics.status === 'startFailed' && (

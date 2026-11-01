@@ -24,6 +24,7 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   private var controller: ShellController?
   private var finderService: FinderService?
   private var launchedAtLogin = false
+  private var earlyQuitPending = false
   /// Files opened while launching, before the controller exists.
   private var openedBeforeLaunch: [URL] = []
   /// Widget taps and Finder Sync links that launched the app: on a cold start the URL arrives
@@ -44,6 +45,7 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    guard !earlyQuitPending else { return }
     // Before any window or web view exists, so the first frame is already in the user's scheme.
     AppAppearance.shared.restore()
     let controller = ShellController(services: makeServices())
@@ -87,7 +89,14 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    controller?.quitGuard.shouldTerminate() ?? .terminateNow
+    if let controller { return controller.quitGuard.shouldTerminate() }
+    guard SupportDiagnostics.enabled, !earlyQuitPending else { return .terminateNow }
+    earlyQuitPending = true
+    Task {
+      await SupportDiagnostics.shared.stopForQuit()
+      sender.reply(toApplicationShouldTerminate: true)
+    }
+    return .terminateLater
   }
 
   func applicationDidResignActive(_ notification: Notification) {

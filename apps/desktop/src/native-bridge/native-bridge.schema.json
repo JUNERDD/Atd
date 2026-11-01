@@ -14,6 +14,7 @@
       "diagnostics.state",
       "diagnostics.prepare",
       "diagnostics.start",
+      "diagnostics.stop",
       "diagnostics.export",
       "app.startup",
       "window.show",
@@ -198,6 +199,30 @@
             "method": {
               "type": "string",
               "const": "diagnostics.start"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.stop"
             },
             "params": {
               "type": "object",
@@ -5389,6 +5414,8 @@
         "enabled",
         "focusEnabled",
         "recording",
+        "cleanupFailed",
+        "expiresAt",
         "accessibilityTrusted",
         "mouseTapActive"
       ],
@@ -5401,6 +5428,19 @@
         },
         "recording": {
           "type": "boolean"
+        },
+        "cleanupFailed": {
+          "type": "boolean"
+        },
+        "expiresAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "accessibilityTrusted": {
           "type": "boolean"
@@ -5429,6 +5469,21 @@
     "DiagnosticsStartResult": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsStopParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsStopResult": {
+      "type": "object",
+      "required": ["cleanupFailed"],
+      "properties": {
+        "cleanupFailed": {
+          "type": "boolean"
+        }
+      },
       "additionalProperties": false
     },
     "DiagnosticsExportParams": {

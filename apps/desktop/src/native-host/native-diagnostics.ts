@@ -79,16 +79,17 @@ export function nativeDiagnostics(native: NativeBridge): DiagnosticsBridge {
       detach = undefined;
     }
   }
-  function updateRecording(next: boolean) {
+  function updateRecording(next: boolean, notify = false) {
     const changed = recording !== next;
     recording = next;
     syncRecorder();
-    if (changed) for (const listener of listeners) listener(next);
+    if (changed || notify) for (const listener of listeners) listener(next);
   }
   // Subscribe before querying: a late state reply must not undo a stop/start event.
   const unsubscribe = native.on('diagnostics.recording', ({ recording: next }) => {
     revision++;
-    updateRecording(next);
+    // A repeated false also announces the outcome of native cache cleanup.
+    updateRecording(next, true);
   });
   async function state(): Promise<DiagnosticState> {
     const requestedAt = revision;
@@ -119,6 +120,7 @@ export function nativeDiagnostics(native: NativeBridge): DiagnosticsBridge {
     start: async () => {
       await native.call('diagnostics.start', {});
     },
+    stop: () => native.call('diagnostics.stop', {}),
     export: () => native.call('diagnostics.export', {}),
     onRecording(listener) {
       listeners.add(listener);

@@ -12,16 +12,20 @@ public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   public let enabled: Bool
   public let focusEnabled: Bool
   public let recording: Bool
+  public let cleanupFailed: Bool
+  public let expiresAt: Double?
   public let accessibilityTrusted: Bool
   public let mouseTapActive: Bool
 
   public init(
-    enabled: Bool, focusEnabled: Bool, recording: Bool, accessibilityTrusted: Bool,
-    mouseTapActive: Bool
+    enabled: Bool, focusEnabled: Bool, recording: Bool, cleanupFailed: Bool, expiresAt: Double?,
+    accessibilityTrusted: Bool, mouseTapActive: Bool
   ) {
     self.enabled = enabled
     self.focusEnabled = focusEnabled
     self.recording = recording
+    self.cleanupFailed = cleanupFailed
+    self.expiresAt = expiresAt
     self.accessibilityTrusted = accessibilityTrusted
     self.mouseTapActive = mouseTapActive
   }
@@ -31,14 +35,29 @@ public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
     enabled = try container.boolean(.enabled)
     focusEnabled = try container.boolean(.focusEnabled)
     recording = try container.boolean(.recording)
+    cleanupFailed = try container.boolean(.cleanupFailed)
+    expiresAt = try container.nullable(.expiresAt) { try container.number($0) }
     accessibilityTrusted = try container.boolean(.accessibilityTrusted)
     mouseTapActive = try container.boolean(.mouseTapActive)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(enabled, forKey: .enabled)
+    try container.encode(focusEnabled, forKey: .focusEnabled)
+    try container.encode(recording, forKey: .recording)
+    try container.encode(cleanupFailed, forKey: .cleanupFailed)
+    try container.encode(expiresAt, forKey: .expiresAt)
+    try container.encode(accessibilityTrusted, forKey: .accessibilityTrusted)
+    try container.encode(mouseTapActive, forKey: .mouseTapActive)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case enabled
     case focusEnabled
     case recording
+    case cleanupFailed
+    case expiresAt
     case accessibilityTrusted
     case mouseTapActive
   }
@@ -55,6 +74,27 @@ public typealias DiagnosticsStartParams = NativeEmpty
 
 /// Result of the `diagnostics.start` call.
 public typealias DiagnosticsStartResult = NativeEmpty
+
+/// Params of the `diagnostics.stop` call.
+public typealias DiagnosticsStopParams = NativeEmpty
+
+/// Result of the `diagnostics.stop` call.
+public struct DiagnosticsStopResult: Codable, Equatable, Sendable {
+  public let cleanupFailed: Bool
+
+  public init(cleanupFailed: Bool) {
+    self.cleanupFailed = cleanupFailed
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    cleanupFailed = try container.boolean(.cleanupFailed)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case cleanupFailed
+  }
+}
 
 /// Params of the `diagnostics.export` call.
 public typealias DiagnosticsExportParams = NativeEmpty

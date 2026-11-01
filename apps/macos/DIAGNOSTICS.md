@@ -57,12 +57,18 @@ ZIP through Settings. A source build alone does not establish that the shipped r
 Give the reporter one sequence: quit the ordinary app, open the support build, complete any
 requested permissions, reproduce, then immediately use **Settings → General → Diagnostics →
 Export diagnostic log**. Preserve the settings and environment involved in the report. Explain
-what the selected profile collects. Successful export stops recording and clears internal trace
-caches; continuing to use or restarting that same build does not resume collection. Settings offers
-**Start diagnostic recording** for another attempt. Canceling or failing to save keeps recording and
-evidence intact. A cleanup warning means the ZIP was saved but internal cache/state cleanup failed;
-the current process stays stopped, though a failed state write can allow recording on relaunch.
-Return to an ordinary build when the fix is available. Exported ZIPs are never automatically removed.
+what the selected profile collects. Each session lasts at most one hour. Successful export stops
+recording and clears internal traces. If the issue does not recur, choose **End diagnostic recording
+and clear**, or quit the app normally; both end collection and clean internal logs. Closing a window
+only hides it and the one-hour limit still applies. A canceled quit confirmation does not end recording.
+
+A later launch of the same build stays stopped and retries cleanup, even after a crash or force quit.
+Settings offers **Start diagnostic recording** for another attempt. Canceling or failing to save does
+not itself clear evidence, but the one-hour limit and quitting still apply. Expiry can clear internal
+traces while a save dialog is open; the frozen in-memory report can still be saved. Cleanup failures
+are shown separately from ZIP save results, with a cleanup retry action. A failed state write can make
+the next launch treat a missing/invalid marker as a new session. Return to an ordinary build when the
+fix is available. Exported ZIPs are never automatically removed.
 
 ## Report contract and analysis
 
@@ -74,8 +80,8 @@ ZIP creation. `FocusDiagnostics` is a collector, not the owner of the report lif
   retained/dropped records, encoding errors, checkpoint status and focus permission coverage.
 - `current.ndjson`: one ordered launch session with module, event, wall time, monotonic uptime,
   sequence, optional correlation, reviewed details and optional collector snapshot.
-- `previous.ndjson`: the previous launch of the same profile and exact build, when verified and available. Treat its session
-  independently; an evicted `session.start` means its environment header may be unavailable.
+- Legacy reports may include `previous.ndjson`; treat its session independently. New sessions
+  clear both legacy trace files and export only the current recording.
 - `README.txt`: common interpretation rules plus notes from the selected specialty collector.
 
 Check the manifest before drawing conclusions. Follow correlated `bridge.begin/end`,
@@ -97,16 +103,20 @@ Background page timers can be throttled; interpret them with page visibility. In
 `snapshotMs` for observer overhead. A missing end can mean eviction, interruption or a crash.
 Zero events can mean missing instrumentation, an unloaded page or unavailable permissions.
 
-Each profile keeps two launch traces under `~/Library/Logs/AtdDiagnostics/<profile>`, at most
-8 MiB / 3000 records each. A checkpoint runs every five seconds; abrupt termination can lose the
+Each profile keeps one current trace under `~/Library/Logs/AtdDiagnostics/<profile>`, at most
+8 MiB / 3000 records. Cleanup also removes the previous trace left by older diagnostic builds. A checkpoint runs every five seconds; abrupt termination can lose the
 last interval. Counts include evicted records. Export freezes current evidence before presenting
 the save dialog. Different profiles never silently attach each other's traces.
 
 A private build marker binds caches to app version, build number and diagnostic revision. Missing,
 invalid or mismatched markers invalidate only `current.ndjson` and `previous.ndjson`, including
-legacy diagnostic caches. After export, the small marker remembers that collection is stopped;
-removing the app does not require deleting a large log directory. Explicitly starting again creates
-a new session and clears the old internal traces. Old asynchronous bridge/relay/focus callbacks
+legacy diagnostic caches. Every end condition saves a stopped marker before clearing caches.
+Matching markers never auto-resume on launch: an active marker means the prior process ended
+without finishing cleanup. A new exact build auto-starts; explicitly starting again creates a new
+session and clears the old internal traces. The small marker remains to remember completion.
+No uninstaller or background daemon runs after the app is force-killed/deleted: if it never opens
+again, bounded internal traces may remain. Normal quit awaits cleanup before service shutdown.
+Old asynchronous bridge/relay/focus callbacks
 cannot complete spans in the new session. An existing socket first observed after resuming records
 `stream.begin` with `observedExisting=true`; it does not imply a new connection or handshake.
 

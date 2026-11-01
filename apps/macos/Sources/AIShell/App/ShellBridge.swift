@@ -148,6 +148,9 @@ final class ShellBridge {
       try await SupportDiagnostics.shared.resume()
       await SupportDiagnostics.shared.preparePermissions(using: shell.trust)
       return try Self.encode(NativeEmpty())
+    case .diagnosticsStop:
+      guard host.role == .settings else { throw BridgeError("Stop diagnostics from Settings.") }
+      return try Self.encode(try await SupportDiagnostics.shared.stop())
     case .diagnosticsPrepare:
       guard host.role == .settings else { throw BridgeError("Prepare diagnostics from Settings.") }
       await SupportDiagnostics.shared.preparePermissions(using: shell.trust)

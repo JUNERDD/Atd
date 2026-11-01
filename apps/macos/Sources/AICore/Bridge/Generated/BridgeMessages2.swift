@@ -24,6 +24,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .diagnosticsPrepare(container.value(.params, DiagnosticsPrepareParams.self))
       case "diagnostics.start":
         call = try .diagnosticsStart(container.value(.params, DiagnosticsStartParams.self))
+      case "diagnostics.stop":
+        call = try .diagnosticsStop(container.value(.params, DiagnosticsStopParams.self))
       case "diagnostics.export":
         call = try .diagnosticsExport(container.value(.params, DiagnosticsExportParams.self))
       case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))

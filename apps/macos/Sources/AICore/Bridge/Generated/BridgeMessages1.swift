@@ -37,6 +37,7 @@ public enum NativeCall: Equatable, Sendable {
   case diagnosticsState(DiagnosticsStateParams)
   case diagnosticsPrepare(DiagnosticsPrepareParams)
   case diagnosticsStart(DiagnosticsStartParams)
+  case diagnosticsStop(DiagnosticsStopParams)
   case diagnosticsExport(DiagnosticsExportParams)
   case appStartup(AppStartupParams)
   case windowShow(WindowShowParams)
@@ -107,6 +108,7 @@ public enum NativeCall: Equatable, Sendable {
     case .diagnosticsState: "diagnostics.state"
     case .diagnosticsPrepare: "diagnostics.prepare"
     case .diagnosticsStart: "diagnostics.start"
+    case .diagnosticsStop: "diagnostics.stop"
     case .diagnosticsExport: "diagnostics.export"
     case .appStartup: "app.startup"
     case .windowShow: "window.show"

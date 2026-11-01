@@ -164,6 +164,7 @@ public final class ShellController {
         return await services.link.activeRunsForQuitGuard()
       },
       stopService: {
+        await SupportDiagnostics.shared.stopForQuit()
         await computer.shutdown()
         control.stop()
         await services.stopForQuit()
@@ -174,7 +175,9 @@ public final class ShellController {
       })
     bridge.shell = self
     SupportDiagnostics.shared.onRecordingChanged = { [weak self] recording in
-      self?.broadcast(.diagnosticsRecording(.init(recording: recording)))
+      let event = NativeEvent.diagnosticsRecording(.init(recording: recording))
+      self?.panelHost.send(event, scope: .document)
+      self?.settings.host?.send(event, scope: .document)
     }
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))

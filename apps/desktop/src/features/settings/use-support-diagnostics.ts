@@ -4,9 +4,11 @@ type Status =
   | 'idle'
   | 'starting'
   | 'startFailed'
+  | 'stopping'
+  | 'stopFailed'
+  | 'cleared'
   | 'exporting'
   | 'saved'
-  | 'cleanupFailed'
   | 'cancelled'
   | 'failed';
 
@@ -15,10 +17,13 @@ export function useSupportDiagnostics() {
   const [enabled, setEnabled] = useState(false);
   const [focus, setFocus] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [cleanupFailed, setCleanupFailed] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [permissionFailed, setPermissionFailed] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
+  const busy = status === 'starting' || status === 'stopping' || status === 'exporting';
   useEffect(() => {
     if (!bridge) return;
     let current = true;
@@ -31,16 +36,17 @@ export function useSupportDiagnostics() {
       const requestId = ++request;
       void bridge.state().then(
         (state) => {
-          if (!current || requestId !== request) return;
+          if (!current || requestId !== request || requestedAt !== revision) return;
           setEnabled(state.enabled);
           setFocus(state.focusEnabled);
           setReady(!state.focusEnabled || (state.accessibilityTrusted && state.mouseTapActive));
-          if (requestedAt !== revision) return;
           setRecording(state.recording);
+          setCleanupFailed(state.cleanupFailed);
+          setExpiresAt(state.expiresAt);
           if (state.enabled && state.recording) timer = setTimeout(refresh, 2000);
         },
         () => {
-          if (current && requestId === request) setEnabled(false);
+          if (current && requestId === request && requestedAt === revision) setEnabled(false);
         },
       );
     };
@@ -48,8 +54,11 @@ export function useSupportDiagnostics() {
       revision++;
       setRecording(next);
       clearTimeout(timer);
-      if (next) refresh();
-      else setPermissionFailed(false);
+      if (!next) {
+        setPermissionFailed(false);
+        setExpiresAt(null);
+      }
+      refresh();
     });
     refresh();
     return () => {
@@ -59,7 +68,7 @@ export function useSupportDiagnostics() {
     };
   }, [bridge]);
   async function preparePermissions() {
-    if (!bridge || !recording || preparing) return;
+    if (!bridge || !recording || preparing || busy) return;
     setPreparing(true);
     setPermissionFailed(false);
     try {
@@ -71,7 +80,7 @@ export function useSupportDiagnostics() {
     }
   }
   async function startRecording() {
-    if (!bridge || recording || status === 'starting' || status === 'exporting') return;
+    if (!bridge || recording || busy) return;
     setStatus('starting');
     setPermissionFailed(false);
     try {
@@ -81,12 +90,24 @@ export function useSupportDiagnostics() {
       setStatus('startFailed');
     }
   }
+  async function stopRecording() {
+    if (!bridge || busy) return;
+    setStatus('stopping');
+    try {
+      const result = await bridge.stop();
+      setCleanupFailed(result.cleanupFailed);
+      setStatus(result.cleanupFailed ? 'idle' : 'cleared');
+    } catch {
+      setStatus('stopFailed');
+    }
+  }
   async function exportReport() {
-    if (!bridge || !recording || status === 'exporting' || status === 'starting') return;
+    if (!bridge || !recording || busy) return;
     setStatus('exporting');
     try {
       const result = await bridge.export();
-      setStatus(result.saved ? (result.cleanupFailed ? 'cleanupFailed' : 'saved') : 'cancelled');
+      if (result.saved) setCleanupFailed(result.cleanupFailed);
+      setStatus(result.saved ? 'saved' : 'cancelled');
     } catch {
       setStatus('failed');
     }
@@ -95,11 +116,15 @@ export function useSupportDiagnostics() {
     enabled,
     focus,
     recording,
+    cleanupFailed,
+    expiresAt,
+    busy,
     ready,
     preparing,
     permissionFailed,
     preparePermissions,
     startRecording,
+    stopRecording,
     status,
     exportReport,
   };

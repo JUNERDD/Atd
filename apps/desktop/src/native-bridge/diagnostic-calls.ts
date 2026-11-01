@@ -10,6 +10,9 @@ export const NativeDiagnosticCalls = {
         enabled: Type.Boolean(),
         focusEnabled: Type.Boolean(),
         recording: Type.Boolean(),
+        cleanupFailed: Type.Boolean(),
+        /** Native-owned wall deadline in Unix seconds; null while stopped. */
+        expiresAt: Type.Union([Type.Number(), Type.Null()]),
         accessibilityTrusted: Type.Boolean(),
         mouseTapActive: Type.Boolean(),
       },
@@ -18,6 +21,10 @@ export const NativeDiagnosticCalls = {
   },
   'diagnostics.prepare': { params: Empty, result: Empty },
   'diagnostics.start': { params: Empty, result: Empty },
+  'diagnostics.stop': {
+    params: Empty,
+    result: Type.Object({ cleanupFailed: Type.Boolean() }, { additionalProperties: false }),
+  },
   'diagnostics.export': {
     params: Empty,
     result: Type.Object(

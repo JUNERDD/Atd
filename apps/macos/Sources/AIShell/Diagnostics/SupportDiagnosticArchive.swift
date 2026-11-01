@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-/// Disk work stays off AppKit. Keeps two launch traces only within the same diagnostic build.
+/// Disk work stays off AppKit. A later launch never resumes an earlier diagnostic session.
 actor SupportDiagnosticArchive {
   private struct BuildIdentity: Codable, Equatable {
     let version: String
@@ -42,7 +42,7 @@ actor SupportDiagnosticArchive {
 
   func shouldRecordOnLaunch() -> Bool {
     if !preparationAttempted {
-      // Never retry a partial rotation in this launch: it could rotate our own checkpoint.
+      // Prepare once: later checkpoints belong to this launch's explicitly started session.
       preparationAttempted = true
       do {
         try prepare()
@@ -103,30 +103,19 @@ actor SupportDiagnosticArchive {
 
   private func prepare() throws {
     guard let identity else { throw CocoaError(.fileReadCorruptFile) }
-    let stored = readState()
-    if let stored, stored.identity == identity { recording = stored.recording }
+    let sameBuild = readState()?.identity == identity
+    // An active marker means the previous process ended without completing cleanup.
+    // Both active and stopped matching builds stay stopped even when persistence fails.
+    if sameBuild { recording = false }
     try prepareDirectory()
-    if stored?.identity == identity {
-      try FileManager.default.setAttributes(
-        [.posixPermissions: 0o600], ofItemAtPath: marker.path)
-      if !recording {
-        try clearTraces()
-        return
-      }
+    if sameBuild {
+      try writeState(recording: false)
+      try clearTraces()
     } else {
       // Commit active state only after old traces are gone. Interrupted cleanup is retried
       // on the next launch because its marker still belongs to the old/unknown build.
       try clearTraces()
       try writeState(recording: true)
-    }
-    let current = directory.appending(path: "current.ndjson")
-    if let attributes = try traceAttributes("current.ndjson") {
-      guard attributes[.type] as? FileAttributeType == .typeRegular else {
-        throw CocoaError(.fileReadCorruptFile)
-      }
-      try removeTrace("previous.ndjson")
-      try FileManager.default.moveItem(
-        at: current, to: directory.appending(path: "previous.ndjson"))
     }
   }
 
@@ -203,14 +192,6 @@ actor SupportDiagnosticArchive {
     try manager.createDirectory(at: payload, withIntermediateDirectories: false)
     try current.write(to: payload.appending(path: "current.ndjson"))
     try metadata.write(to: payload.appending(path: "manifest.json"))
-    let previous = directory.appending(path: "previous.ndjson")
-    if recording, prepared, !writeFailed,
-      let attributes = try? traceAttributes("previous.ndjson"),
-      attributes[.type] as? FileAttributeType == .typeRegular,
-      let size = attributes[.size] as? NSNumber, size.intValue <= Self.byteLimit
-    {
-      try manager.copyItem(at: previous, to: payload.appending(path: "previous.ndjson"))
-    }
     try (Self.readme + "\n" + notes).write(
       to: payload.appending(path: "README.txt"), atomically: true, encoding: .utf8)
     let archive = staging.appending(path: "report.zip")
@@ -232,9 +213,8 @@ actor SupportDiagnosticArchive {
   private static let readme = """
     Atd support diagnostic report, schema 2
 
-    current.ndjson: this launch, ordered by sequence; each record has a session, module, wall time
-    and monotonic uptime. previous.ndjson: previous launch of the SAME profile AND exact build
-    (app version, build number and diagnostic revision), if verified and available.
+    current.ndjson: this recording session, ordered by sequence; each record has a session, module,
+    wall time and monotonic uptime. Previous launches are never included in a report.
     manifest.json: exact build/profile, enabled collectors, event counts, coverage and losses.
     Distinct sessions are never one continuous trace. Counts include evicted records.
 
@@ -250,16 +230,20 @@ actor SupportDiagnosticArchive {
     system snapshots, AX focused application facts and mouse-only event monitors.
 
     No chat contents, key presses, request bodies, URLs, tokens, window titles or screenshots.
-    Files stay local until explicitly shared. Two traces, each at most 8 MiB / 3000 records;
+    Files stay local until explicitly shared. The current trace holds at most 8 MiB / 3000 records;
     checkpoints every five seconds. A crash may lose the last checkpoint interval.
     A changed, missing or invalid build marker discards only the recorder's two cached traces.
     Exported ZIPs and product data are never removed. Preparation failure disables disk recording
-    for this launch; checkpointFailed is true and export uses current memory without previous.
-    A saved ZIP stops recording and requests deletion of the internal traces; any state/cache
-    cleanup failure is reported separately. Persisted stopped builds stay stopped on restart.
-    Settings can explicitly start a fresh recording; a new diagnostic build starts automatically.
-    Canceling or failing to save a ZIP keeps recording and evidence. Removing the app does not
-    delete exported ZIPs. The small build/state marker remains to remember completion.
+    for this launch; checkpointFailed is true and export uses frozen current memory.
+    Recording expires after one hour, including sleep; overdue cleanup runs on wake or next timer.
+    Saving a ZIP, End and clear in Settings, a normal app quit, or expiry stops recording and requests
+    deletion of the internal traces. State/cache cleanup failure is reported separately.
+    Closing a window does not end recording. The same exact build stays stopped on its next launch
+    and retries cleanup, even after an abrupt exit. Settings can explicitly start a fresh session;
+    a new diagnostic build starts automatically. The small build/state marker remembers the build.
+    Canceling or failing to save a ZIP does not itself clear evidence or cancel independent expiry
+    or quit cleanup. A forced kill or app deletion cannot run cleanup; bounded cached data may
+    remain until the next launch. Exported ZIPs are kept, including after the app is removed.
     Export freezes evidence before the save dialog opens. No report is automatically uploaded.
     """
 }
