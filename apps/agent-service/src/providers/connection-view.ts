@@ -2,6 +2,7 @@ import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contr
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { directoryModels, isLocalProvider } from './catalog.js';
+import { resolveModelCapabilities } from './model-capabilities.js';
 
 /** Directory providers do not register caller-defined models; reject un-runnable API configs. */
 export function assertProviderModels(
@@ -39,11 +40,15 @@ export async function presentConnection(connection: ServiceConnection): Promise<
     (connection.provider === 'openai' && connection.authType === 'oauth'
       ? []
       : await directoryModels(connection.provider));
+  const resolved = await resolveModelCapabilities(
+    connection.provider,
+    uniqueModels([...catalog, ...customModels]),
+  );
   return {
     ...connection,
     options: connection.options ?? {},
     customModels,
-    catalog: uniqueModels([...catalog, ...customModels]),
+    catalog: resolved.map(({ definition }) => definition),
     catalogError: connection.catalogError ?? '',
   };
 }
