@@ -42,7 +42,8 @@ enum FocusDiagnosticSnapshot {
   private static func window(_ window: NSWindow) -> JSONValue {
     let point = window.convertPoint(fromScreen: NSEvent.mouseLocation)
     let hit = window.contentView.flatMap { view in
-      view.hitTest(view.convert(point, from: nil))
+      // AppKit hitTest takes coordinates in the receiver's superview.
+      view.hitTest(view.superview?.convert(point, from: nil) ?? point)
     }
     var values: [String: JSONValue] = [
       "number": .number(Double(window.windowNumber)),
