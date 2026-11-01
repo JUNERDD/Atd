@@ -41,6 +41,12 @@ final class ShellWebView: WindowDraggingWebView {
   /// and no text; nil leaves such a paste to WebKit, which would insert it into the editor.
   var onPastedImage: ((_ data: Data) -> Void)?
 
+  /// The task panel's activating click must also reach its button or native drag region.
+  /// Other web windows retain WebKit's first-click policy.
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+    window is ShellPanel || super.acceptsFirstMouse(for: event)
+  }
+
   /// Records every press, then lets a drag region move the window or WebKit take it.
   override func mouseDown(with event: NSEvent) {
     lastMouseDown = event
