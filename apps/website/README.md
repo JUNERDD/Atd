@@ -1,7 +1,8 @@
 # Atd website
 
 The marketing site for Atd: a static site built with Vite and React 19, prerendered once per language, with a
-WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`.
+WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`. Support download
+pages live at `/debug` and `/zh/debug`.
 
 The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
 its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it come the
@@ -30,7 +31,8 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, then `sitemap.xml` (every page with its hreflang alternates) and
+   `dist/zh/index.html`, plus both diagnostic routes, then `sitemap.xml` (only indexable pages,
+   with their hreflang alternates) and
    `robots.txt`, and deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
@@ -283,3 +285,23 @@ pnpm --filter @atd/website assets:check
 
 Build/public paths are implemented with Vite's supported plugin API, and uploads reuse
 [Cloudflare Wrangler](https://developers.cloudflare.com/r2/objects/upload-objects/) rather than custom authentication.
+
+## Diagnostic downloads
+
+`/debug` (English) and `/zh/debug` (Chinese) are standalone support download pages. They preserve
+language when switching, explain the reproduction/export steps, and link back to the regular
+installer. They have `noindex, nofollow` metadata, are excluded from the sitemap, and do not add
+a diagnostic download to the main navigation or regular download section.
+
+The page loads `/downloads/debug.json`, proxied to
+`https://downloads.atd.best/debug/manifest.json` by Vercel and the local Vite configuration.
+Only a valid version-1 debug manifest enables download links. It must name a diagnostic version,
+source revision, runtime/focus profile and architecture entries containing size, SHA-256,
+minimum macOS and an immutable URL below `/debug/builds/<revision>/<version>/` on the download
+host. A 404 shows that no package is available; failed or malformed reads offer Retry. No fallback
+to regular or preview builds is made. JavaScript is required to load current availability.
+
+The permanent `debug` branch owns package recording, signing, verification and the channel
+publisher. This website change is maintained separately on a main-based branch: never merge
+`debug` into `main`. Successful diagnostic builds update only their own channel, after both
+installers and their dependencies pass delivery checks. This website ships no recorder and no logs.

@@ -1,11 +1,18 @@
 import { Check, Languages } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { useCopy, useLang } from '../../i18n/lang';
-import { htmlLang, LANGS, langPath, languageNames, rememberLang } from '../../i18n/routes';
+import {
+  htmlLang,
+  LANGS,
+  pagePath,
+  type Page,
+  languageNames,
+  rememberLang,
+} from '../../i18n/routes';
 import { navCopy } from './copy';
 import './language-menu.css';
 
-export function LanguageMenu() {
+export function LanguageMenu({ page = 'home' }: { page?: Page }) {
   const t = useCopy(navCopy);
   const lang = useLang();
 
@@ -38,7 +45,7 @@ export function LanguageMenu() {
                 asChild
               >
                 <a
-                  href={langPath[code]}
+                  href={pagePath(code, page)}
                   hrefLang={htmlLang[code]}
                   lang={htmlLang[code]}
                   onClick={() => rememberLang(code)}
