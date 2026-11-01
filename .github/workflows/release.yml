@@ -1,7 +1,8 @@
 name: Release
 
 # This branch is diagnostic-only. Reuse production signing and package verification,
-# but permit only manual artifact builds from debug. The version gate rejects publishing,
+# but permit only manual artifact builds from debug. Verified artifacts update the debug download
+# channel only. The version gate rejects GitHub Release publishing,
 # rehearsal, automatic events and other refs before any build or release mutation.
 # Stable/preview release workflows remain on main; never merge this copy there.
 on:
@@ -75,6 +76,11 @@ jobs:
             runtime|focus) ;;
             *) echo "::error::Select the runtime or focus diagnostic profile."; exit 1 ;;
           esac
+          if ! [[ "$INPUT_MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[A-Za-z][0-9A-Za-z.-]*$ ]] ||
+             ! [[ "$INPUT_BUILD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+[A-Za-z][0-9A-Za-z.]*$ ]]; then
+            echo "::error::Provide unique diagnostic marketing/build versions, such as 0.10.3-debug.1 and 0.10.3debug.1."
+            exit 1
+          fi
           semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           if [ "$DIAGNOSTIC_PROFILE" != "none" ] && [ "$MODE" != "artifacts" ]; then
             echo "::error::Diagnostic profiles are only allowed in artifacts mode."
@@ -562,12 +568,54 @@ jobs:
             --public-ed-key "arm64 app=$ARM64_ED_KEY" \
             --public-ed-key "x64 app=$X64_ED_KEY"
           cat dist/appcast.xml dist/appcast-x64.xml
+      - name: Record the diagnostic profile
+        env:
+          DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'runtime' }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'dist/manifest.json';
+          const manifest = JSON.parse(readFileSync(path, 'utf8'));
+          manifest.diagnosticProfile = process.env.DIAGNOSTIC_PROFILE;
+          writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+          JS
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: Atd-${{ needs.version.outputs.marketing_version }}
           path: dist/
           if-no-files-found: error
           compression-level: 0
+
+  debug-downloads:
+    name: Publish verified diagnostic downloads
+    needs: [version, collect]
+    if: github.ref == 'refs/heads/debug' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: debug-download-channel
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          name: Atd-${{ needs.version.outputs.marketing_version }}
+          path: dist
+      - name: Upload and verify the diagnostic channel
+        env:
+          R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_RETRY_MODE: standard
+          AWS_MAX_ATTEMPTS: '3'
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: node ops/debug-downloads/publish.mjs --source-dir dist
 
   # Builds the GitHub release as a draft, checks it by id and publishes it only when every check
   # passed. A rehearsal does the same under a throwaway tag and always deletes its draft.
