@@ -290,7 +290,7 @@ Build/public paths are implemented with Vite's supported plugin API, and uploads
 
 `/debug` (English) and `/zh/debug` (Chinese) are standalone support download pages. They preserve
 language when switching, explain the reproduction/export steps, and link back to the regular
-installer. They have `noindex, nofollow` metadata, are excluded from the sitemap, and do not add
+installer. They have `noindex, nofollow` metadata and `X-Robots-Tag` response headers, are excluded from the sitemap, and do not add
 a diagnostic download to the main navigation or regular download section.
 
 The page loads `/downloads/debug.json`, proxied to
