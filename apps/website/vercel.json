@@ -7,9 +7,21 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
+    {
+      "source": "/downloads/debug.json",
+      "destination": "https://downloads.atd.best/debug/manifest.json"
+    },
     { "source": "/downloads/rc.json", "destination": "https://downloads.atd.best/rc.json" }
   ],
   "headers": [
+    {
+      "source": "/debug",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/zh/debug",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]

@@ -1,23 +1,36 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { normalizeAssetBase, websiteMediaAssets } from './media-assets.ts';
+import { pageFromPath } from './src/i18n/routes.ts';
 import { renderHead } from './src/head.ts';
 
 /**
- * The dev server serves the template unrendered, so it fills the head marker with the English head;
+ * The dev server serves the template unrendered, so the URL determines its localized head;
  * production pages get theirs from the prerender step.
  */
 function devHead(): Plugin {
   return {
     name: 'atd-dev-head',
     apply: 'serve',
-    transformIndexHtml: (html) =>
-      html.replace('<!--app-head-->', renderHead('en', 'http://127.0.0.1:5180')),
+    transformIndexHtml: (html, context) =>
+      html.replace(
+        '<!--app-head-->',
+        renderHead(
+          context.path.startsWith('/zh') ? 'zh' : 'en',
+          'http://127.0.0.1:5180',
+          pageFromPath(context.path),
+        ),
+      ),
   };
 }
 
-/** Serves the rc manifest from the page's origin locally, as the `vercel.json` rewrite does live. */
-const previewManifest = {
+/** Serves download manifests from the page's origin locally, as the `vercel.json` rewrite does live. */
+const downloadManifests = {
+  '/downloads/debug.json': {
+    target: 'https://downloads.atd.best',
+    changeOrigin: true,
+    rewrite: () => '/debug/manifest.json',
+  },
   '/downloads/rc.json': {
     target: 'https://downloads.atd.best',
     changeOrigin: true,
@@ -35,6 +48,6 @@ export default defineConfig(({ mode }) => ({
     devHead(),
     websiteMediaAssets(normalizeAssetBase(loadEnv(mode, process.cwd()).VITE_ASSET_BASE_URL)),
   ],
-  server: { host: '127.0.0.1', port: 5180, strictPort: true, proxy: previewManifest },
-  preview: { host: '127.0.0.1', port: 4180, strictPort: true, proxy: previewManifest },
+  server: { host: '127.0.0.1', port: 5180, strictPort: true, proxy: downloadManifests },
+  preview: { host: '127.0.0.1', port: 4180, strictPort: true, proxy: downloadManifests },
 }));

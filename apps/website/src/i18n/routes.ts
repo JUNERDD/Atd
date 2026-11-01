@@ -1,6 +1,8 @@
 /** The site's languages. Each one is prerendered to its own route; English is the source language. */
 export const LANGS = ['en', 'zh'] as const;
 
+export type Page = 'home' | 'debug';
+
 export type Lang = (typeof LANGS)[number];
 
 /** Copy for every language, with one shape: each section keeps its own `Localized` copy object. */
@@ -13,6 +15,14 @@ export const languageNames: Localized<string> = { en: 'English', zh: '简体中�
 
 /** Where each language's page lives. */
 export const langPath: Localized<string> = { en: '/', zh: '/zh' };
+
+export function pagePath(lang: Lang, page: Page): string {
+  return page === 'home' ? langPath[lang] : lang === 'en' ? '/debug' : '/zh/debug';
+}
+
+export function pageFromPath(path: string): Page {
+  return /^\/(?:zh\/)?debug\/?$/.test(path) ? 'debug' : 'home';
+}
 
 /** The localStorage key that records a visitor's explicit language choice. */
 export const LANG_CHOICE_KEY = 'atd-lang';

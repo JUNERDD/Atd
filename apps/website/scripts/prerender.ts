@@ -1,5 +1,5 @@
 /**
- * Writes one prerendered page per language into `dist`. The client build's `index.html` is the
+ * Writes one prerendered page per route into `dist`. The client build's `index.html` is the
  * template; the server bundle in `dist-ssr` renders each page's markup and head. The server bundle is
  * removed afterwards so it never ships with the site.
  */
@@ -55,7 +55,7 @@ const origin = siteUrl();
 const preload = await fontPreload();
 
 for (const route of entry.routes) {
-  const page = entry.render(route.lang, origin);
+  const page = entry.render(route.lang, origin, route.page);
   const html = template
     .replace(HTML_OPEN, `<html ${page.htmlAttrs}>`)
     .replace(HEAD_MARK, page.head + preload)
@@ -66,12 +66,13 @@ for (const route of entry.routes) {
   console.log(`prerendered ${route.lang} → dist/${route.dir === './' ? '' : route.dir}index.html`);
 }
 
-// Crawlers get every language page, each listing the others as alternates and English as the
+// Crawlers get the indexable language pages, each listing the others as alternates and English as the
 // default for any other language, as the pages' own hreflang links do.
-const fallback = entry.routes.find((route) => route.lang === 'en');
+const indexedRoutes = entry.routes.filter((route) => route.indexable);
+const fallback = indexedRoutes.find((route) => route.lang === 'en');
 if (!fallback) throw new Error('The English page, the x-default alternate, is missing.');
 const alternates = [
-  ...entry.routes.map((route) => [route.hreflang, route.path]),
+  ...indexedRoutes.map((route) => [route.hreflang, route.path]),
   ['x-default', fallback.path],
 ]
   .map(
@@ -82,7 +83,7 @@ const alternates = [
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-  ...entry.routes.map(
+  ...indexedRoutes.map(
     (route) => `  <url>\n    <loc>${origin}${route.path}</loc>\n${alternates}\n  </url>`,
   ),
   '</urlset>',
