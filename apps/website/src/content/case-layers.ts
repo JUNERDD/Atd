@@ -67,9 +67,17 @@ export const caseLayers = {
     {
       id: 'island',
       src: mediaUrl('/cases/layers/write-back/5-island.webp'),
-      width: 296,
+      width: 316,
       height: 172,
     },
+    { id: 'glow', src: mediaUrl('/cases/layers/write-back/6-glow.webp'), width: 220, height: 76 },
+    {
+      id: 'spinner',
+      src: mediaUrl('/cases/layers/write-back/7-spinner.webp'),
+      width: 34,
+      height: 36,
+    },
+    { id: 'label', src: mediaUrl('/cases/layers/write-back/8-label.webp'), width: 114, height: 30 },
   ],
   'mini-panel': [
     { id: 'rail', src: mediaUrl('/cases/layers/mini-panel/1-rail.webp'), width: 154, height: 584 },
@@ -175,6 +183,38 @@ export const caseLayers = {
       src: mediaUrl('/cases/layers/automations/2-page.webp'),
       width: 1534,
       height: 1340,
+    },
+  ],
+  'computer-use': [
+    {
+      id: 'window',
+      src: mediaUrl('/cases/layers/computer-use/1-window.webp'),
+      width: 1412,
+      height: 804,
+    },
+    {
+      id: 'amount',
+      src: mediaUrl('/cases/layers/computer-use/2-amount.webp'),
+      width: 86,
+      height: 26,
+    },
+    {
+      id: 'description',
+      src: mediaUrl('/cases/layers/computer-use/3-description.webp'),
+      width: 144,
+      height: 26,
+    },
+    {
+      id: 'pointer',
+      src: mediaUrl('/cases/layers/computer-use/4-pointer.webp'),
+      width: 1176,
+      height: 114,
+    },
+    {
+      id: 'rail',
+      src: mediaUrl('/cases/layers/computer-use/5-rail.webp'),
+      width: 154,
+      height: 582,
     },
   ],
 } satisfies Record<string, readonly CaseLayer[]>;

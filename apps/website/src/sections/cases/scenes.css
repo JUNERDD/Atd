@@ -1,33 +1,26 @@
-/* Scene choreography. Each scene is the shared desktop with its surfaces as separate layers
-   (case-layers.css places them; at rest they reproduce the flat export). Its layers arrive the way
-   the real surfaces do on a Mac: text gets selected before its toolbar appears, the Mini Panel
-   slides out from the edge, a capture is framed and then annotated step by step, windows open,
-   and replies stream in. The scroll is the clock: under the showcase's `data-scrub` every
-   animation is paused, and use-case-scroll.ts seeks it (scene-clock.ts) as far as the scene's step
-   has scrolled, so the delays and durations below place each moment along the step rather than in
-   time. Every animation runs from a hidden keyframe to the layer's resting style, filling both
-   ends so completed animations remain available when the scroll clock collects them again.
-   Offsets are in cqw of the screen, so motion scales with it. Without `data-scrub` (the
-   prerendered page, no script) and under reduced motion every layer stays at rest. */
+/* Archived scene choreography for the Figma layer exports; the current homepage uses video
+   clips and does not import this stylesheet. A reference scene can set `data-play` to run its
+   layers on their own clock. Each entrance fills from its hidden keyframe to the resting style;
+   the writing island keeps moving while active. Offsets in cqw scale with the scene's screen.
+   Without `data-play`, or under reduced motion, every layer stays at rest. */
 
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-motion] .cases__showcase[data-scrub] .cases__layer {
+  :root[data-motion] .cases__scene[data-play] .cases__layer {
     --cs-delay: 0ms;
     animation-delay: var(--cs-delay);
     animation-fill-mode: both;
-    animation-play-state: paused;
   }
 
-  /* 01 · Selection toolbar: the page opens and its text settles in, a drag selects the words,
+  /* Selection toolbar: the page opens and its text settles in, a drag selects the words,
      the toolbar appears above them, then the command's options cascade down from its chevron. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='selection-toolbar/page'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='selection-toolbar/page'] {
     --cs-delay: 150ms;
     animation-name: cs-open;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='selection-toolbar/text'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='selection-toolbar/text'] {
     --cs-delay: 550ms;
     animation-name: cs-rise;
     animation-duration: var(--dur-spring-smooth);
@@ -35,14 +28,14 @@
   }
 
   /* The drag starts once the text has settled, at an even hand speed. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='selection-toolbar/highlight'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='selection-toolbar/highlight'] {
     --cs-delay: 1300ms;
     animation-name: cs-wipe-right;
     animation-duration: 900ms;
     animation-timing-function: ease-in-out;
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='selection-toolbar/toolbar'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='selection-toolbar/toolbar'] {
     --cs-delay: 2300ms;
     transform-origin: 50% 100%;
     animation-name: cs-pop-up;
@@ -51,7 +44,7 @@
   }
 
   /* The menu hangs 4 pt below the capsule; its origin is the chevron above its leading third. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='selection-toolbar/menu'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='selection-toolbar/menu'] {
     --cs-delay: 3100ms;
     transform-origin: 38% 0;
     animation-name: cs-cascade;
@@ -59,54 +52,83 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  /* 02 · Write-back: a rough line is selected, the command's answer types itself over it in
-     word-sized steps, then the island at the bottom of the screen confirms it was written. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='write-back/page'] {
+  /* Write-back: a rough line is selected, the command island comes up writing at the bottom of
+     the screen, and the answer types itself over the line in word-sized steps. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/page'] {
     --cs-delay: 150ms;
     animation-name: cs-open;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='write-back/text'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/text'] {
     --cs-delay: 550ms;
     animation-name: cs-rise;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='write-back/highlight'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/highlight'] {
     --cs-delay: 1300ms;
     animation-name: cs-wipe-right;
     animation-duration: 700ms;
     animation-timing-function: ease-in-out;
   }
 
-  /* The answer covers the selection as it lands, so the draft is replaced left to right. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='write-back/written'] {
-    --cs-delay: 2300ms;
-    animation-name: cs-wipe-right;
-    animation-duration: 1100ms;
-    animation-timing-function: steps(8, end);
-  }
-
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='write-back/island'] {
-    --cs-delay: 3400ms;
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/island'] {
+    --cs-delay: 2000ms;
     transform-origin: 50% 100%;
     animation-name: cs-pop-up;
     animation-duration: var(--dur-spring-snappy);
     animation-timing-function: var(--spring-snappy);
   }
 
-  /* 03 · Mini Panel: the rail appears, the pointer reaches activity, then its task list unfolds. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/rail'] {
+  /* The capsule's contents fade in once it is up and keep moving while it writes, as in the app:
+     a brighter band flows through its glow, the spinner turns a spoke at a time, and the label's
+     shimmer sweeps left to right every 2 s (ShimmerSweep). The masks dim what the band is not on. */
+  :root[data-motion]
+    .cases__scene[data-play]
+    :is([data-layer='write-back/glow'], [data-layer='write-back/label']) {
+    mask-image: linear-gradient(100deg, rgb(0 0 0 / 45%) 35%, black 50%, rgb(0 0 0 / 45%) 65%);
+    mask-size: 300% 100%;
+    mask-repeat: no-repeat;
+  }
+
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/glow'] {
+    animation:
+      cs-fade var(--dur-slow) var(--curve-out) 2150ms both,
+      cs-sweep 3200ms linear 2150ms infinite;
+  }
+
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/spinner'] {
+    animation:
+      cs-fade var(--dur-base) var(--curve-out) 2150ms both,
+      cs-spin 800ms steps(8, end) 2150ms infinite;
+  }
+
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/label'] {
+    animation:
+      cs-fade var(--dur-base) var(--curve-out) 2150ms both,
+      cs-sweep 2000ms linear 2150ms infinite;
+  }
+
+  /* The answer covers the selection left to right once the writing island has appeared. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='write-back/written'] {
+    --cs-delay: 3300ms;
+    animation-name: cs-wipe-right;
+    animation-duration: 1400ms;
+    animation-timing-function: steps(10, end);
+  }
+
+  /* Mini Panel: the rail appears, the pointer reaches activity, then its task list unfolds. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='mini-panel/rail'] {
     --cs-delay: 150ms;
     animation-name: cs-from-edge;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/activity'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='mini-panel/activity'] {
     --cs-delay: 1500ms;
     transform-origin: 100% 20%;
     animation-name: cs-unfold;
@@ -114,7 +136,7 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='mini-panel/pointer'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='mini-panel/pointer'] {
     --cs-delay: 650ms;
     --cs-from: -10cqw 4cqw;
     animation-name: cs-glide;
@@ -122,16 +144,56 @@
     animation-timing-function: var(--curve-sheet);
   }
 
-  /* 04 · Screenshot: the screen freezes, the area is framed, then the rest dims as the tools rise,
+  /* Computer use: with Atd's rail at the edge, the form's window opens, the amount is typed in,
+     then the live pointer moves down to the description, its field outlined, and types it. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='computer-use/rail'] {
+    --cs-delay: 150ms;
+    animation-name: cs-from-edge;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__scene[data-play] [data-layer='computer-use/window'] {
+    --cs-delay: 400ms;
+    animation-name: cs-open;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  /* One step per character, at a typing pace. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='computer-use/amount'] {
+    --cs-delay: 1300ms;
+    animation-name: cs-wipe-right;
+    animation-duration: 540ms;
+    animation-timing-function: steps(6, end);
+  }
+
+  /* From the amount's row, one field above. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='computer-use/pointer'] {
+    --cs-delay: 2000ms;
+    --cs-from: 0 -5cqw;
+    animation-name: cs-glide;
+    animation-duration: 600ms;
+    animation-timing-function: var(--curve-sheet);
+  }
+
+  :root[data-motion] .cases__scene[data-play] [data-layer='computer-use/description'] {
+    --cs-delay: 2750ms;
+    animation-name: cs-wipe-right;
+    animation-duration: 900ms;
+    animation-timing-function: steps(10, end);
+  }
+
+  /* Screenshot: the screen freezes, the area is framed, then the rest dims as the tools rise,
      and the annotations go on in the order of their step numbers. The dim's cutout is the final
      frame, so it waits until the frame is drawn. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer^='screenshot/'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer^='screenshot/'] {
     animation-name: cs-fade;
     animation-duration: var(--dur-slow);
     animation-timing-function: var(--curve-out);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/selection'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/selection'] {
     --cs-delay: 300ms;
     /* The outline's top-left corner; the layer box also holds the handles and the size label. */
     transform-origin: 1.1% 6.2%;
@@ -141,53 +203,53 @@
   }
 
   /* With the tools, at their pace. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/dim'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/dim'] {
     --cs-delay: 1000ms;
     animation-duration: var(--dur-spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/bars'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/bars'] {
     --cs-delay: 1000ms;
     animation-name: cs-rise;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/hint'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/hint'] {
     --cs-delay: 1200ms;
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/mosaic'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/mosaic'] {
     --cs-delay: 1700ms;
     animation-name: cs-wipe-right;
     animation-duration: 480ms;
     animation-timing-function: steps(12, end);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/step-1'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/step-1'] {
     --cs-delay: 2200ms;
     animation-name: cs-pop;
     animation-duration: var(--dur-spring-snappy);
     animation-timing-function: var(--spring-snappy);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/step-2'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/step-2'] {
     --cs-delay: 2700ms;
     animation-name: cs-wipe-down;
     animation-duration: 600ms;
     animation-timing-function: ease-in-out;
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='screenshot/step-3'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='screenshot/step-3'] {
     --cs-delay: 3200ms;
     animation-name: cs-wipe-left;
     animation-duration: 800ms;
     animation-timing-function: ease-in-out;
   }
 
-  /* 05 · Main panel, 07 · Settings and 09 · Automations: the window opens, then its content. */
+  /* Main panel, Settings and Automations: the window opens, then its content. */
   :root[data-motion]
-    .cases__showcase[data-scrub]
+    .cases__scene[data-play]
     :is(
       [data-layer='main-panel/panel'],
       [data-layer='settings/window'],
@@ -199,7 +261,7 @@
   }
 
   :root[data-motion]
-    .cases__showcase[data-scrub]
+    .cases__scene[data-play]
     :is(
       [data-layer='main-panel/welcome'],
       [data-layer='settings/page'],
@@ -211,17 +273,17 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  /* 06 · Conversation: the follow-up is sent; the reply then builds the way a run does, its
+  /* Conversation: the follow-up is sent; the reply then builds the way a run does, its
      status, then the tools it ran, then the answer streaming in line by line, then its actions. */
   :root[data-motion]
-    .cases__showcase[data-scrub]
+    .cases__scene[data-play]
     :is([data-layer='chat/panel'], [data-layer='chat/earlier']) {
     animation-name: cs-fade;
     animation-duration: var(--dur-base);
     animation-timing-function: var(--curve-out);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='chat/ask'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='chat/ask'] {
     --cs-delay: 500ms;
     transform-origin: 100% 100%;
     animation-name: cs-pop-up;
@@ -229,14 +291,14 @@
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='chat/status'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='chat/status'] {
     --cs-delay: 1100ms;
     animation-name: cs-fade;
     animation-duration: var(--dur-base);
     animation-timing-function: var(--curve-out);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='chat/tools'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='chat/tools'] {
     --cs-delay: 1300ms;
     animation-name: cs-rise;
     animation-duration: var(--dur-slow);
@@ -244,30 +306,30 @@
   }
 
   /* Word-sized steps, like tokens arriving. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='chat/answer'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='chat/answer'] {
     --cs-delay: 1550ms;
     animation-name: cs-stream-answer;
     animation-duration: 1500ms;
     animation-timing-function: steps(12, end);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='chat/actions'] {
+  :root[data-motion] .cases__scene[data-play] [data-layer='chat/actions'] {
     --cs-delay: 3100ms;
     animation-name: cs-rise;
     animation-duration: var(--dur-slow);
     animation-timing-function: var(--curve-out);
   }
 
-  /* 08 · Apps: My apps opens, then the app opens from it. */
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='apps/apps'] {
+  /* Apps: My apps opens, then the app opens from it. */
+  :root[data-motion] .cases__scene[data-play] [data-layer='apps/apps'] {
     --cs-from: -2cqw 0;
     animation-name: cs-glide;
     animation-duration: var(--dur-spring-smooth);
     animation-timing-function: var(--spring-smooth);
   }
 
-  :root[data-motion] .cases__showcase[data-scrub] [data-layer='apps/notes'] {
-    --cs-delay: 700ms;
+  :root[data-motion] .cases__scene[data-play] [data-layer='apps/notes'] {
+    --cs-delay: 1500ms;
     transform-origin: 0 30%;
     animation-name: cs-launch;
     animation-duration: var(--dur-spring-smooth);
@@ -343,6 +405,24 @@
   from {
     opacity: 0;
     translate: var(--cs-from);
+  }
+}
+
+/* A band across a 300%-wide mask, from beyond the leading edge to beyond the trailing one. */
+@keyframes cs-sweep {
+  from {
+    mask-position: 100% 0;
+  }
+
+  to {
+    mask-position: 0 0;
+  }
+}
+
+/* The spinner's eight spokes: one step a spoke. */
+@keyframes cs-spin {
+  to {
+    rotate: 1turn;
   }
 }
 

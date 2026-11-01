@@ -4,10 +4,7 @@ import './section.css';
 interface SectionProps {
   /** The anchor id; the title gets `${id}-title`. */
   id: string;
-  /**
-   * The heading. Leave it out when the children place the heading themselves with `SectionHeader`,
-   * as the interfaces showcase does to pin it with its stage.
-   */
+  /** The heading. Leave it out when the children place the heading themselves with `SectionHeader`. */
   title?: string;
   lede?: ReactNode;
   children?: ReactNode;

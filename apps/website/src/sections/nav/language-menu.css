@@ -18,6 +18,7 @@
   max-inline-size: calc(100vw - 32px);
   max-block-size: var(--radix-dropdown-menu-content-available-height);
   overflow-y: auto;
+  scrollbar-color: var(--dot-mid) transparent;
   padding: 4px;
   border: 1px solid var(--line-2);
   border-radius: calc(var(--r-part) + 4px);

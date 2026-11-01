@@ -1,7 +1,13 @@
 /* Page defaults and the shared materials every section builds with: the plate, the display, the
    legend and the readout, and dot-lit lettering. */
+/* The page's scrollbar, where the system draws a classic one, is a thin half-lit thumb in a track
+   of the faceplate itself, not a gray bar beside it; inner scrollers inherit it. Overlay
+   scrollbars (macOS's default) keep their native look: `::-webkit-scrollbar` is left alone, since
+   Safari would replace them with permanent ones that take the page's width. */
 html {
   background-color: var(--ink-0);
+  scrollbar-color: var(--dot-mid) var(--plate);
+  scrollbar-width: thin;
   -webkit-text-size-adjust: 100%;
 }
 

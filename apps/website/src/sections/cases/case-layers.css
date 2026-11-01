@@ -45,9 +45,24 @@
   inline-size: 24.0972%;
 }
 .cases__layer[data-layer='write-back/island'] {
-  inset-inline-start: 44.8611%;
+  inset-inline-start: 44.5139%;
   inset-block-start: 83.4444%;
-  inline-size: 10.2778%;
+  inline-size: 10.9722%;
+}
+.cases__layer[data-layer='write-back/glow'] {
+  inset-inline-start: 46.1806%;
+  inset-block-start: 85.2222%;
+  inline-size: 7.6389%;
+}
+.cases__layer[data-layer='write-back/spinner'] {
+  inset-inline-start: 47.0833%;
+  inset-block-start: 86.3333%;
+  inline-size: 1.1806%;
+}
+.cases__layer[data-layer='write-back/label'] {
+  inset-inline-start: 48.75%;
+  inset-block-start: 86.6667%;
+  inline-size: 3.9583%;
 }
 .cases__layer[data-layer='mini-panel/rail'] {
   inset-inline-start: 94.6528%;
@@ -183,4 +198,29 @@
   inset-inline-start: 31.5278%;
   inset-block-start: 15.4444%;
   inline-size: 53.2639%;
+}
+.cases__layer[data-layer='computer-use/window'] {
+  inset-inline-start: 18.5417%;
+  inset-block-start: 17.6667%;
+  inline-size: 49.0278%;
+}
+.cases__layer[data-layer='computer-use/amount'] {
+  inset-inline-start: 23.6806%;
+  inset-block-start: 35.1111%;
+  inline-size: 2.9861%;
+}
+.cases__layer[data-layer='computer-use/description'] {
+  inset-inline-start: 23.6806%;
+  inset-block-start: 43.1111%;
+  inline-size: 5%;
+}
+.cases__layer[data-layer='computer-use/pointer'] {
+  inset-inline-start: 22.6389%;
+  inset-block-start: 41.3333%;
+  inline-size: 40.8333%;
+}
+.cases__layer[data-layer='computer-use/rail'] {
+  inset-inline-start: 94.6528%;
+  inset-block-start: 26.3333%;
+  inline-size: 5.3472%;
 }
