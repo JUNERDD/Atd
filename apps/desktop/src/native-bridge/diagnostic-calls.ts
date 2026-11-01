@@ -9,6 +9,7 @@ export const NativeDiagnosticCalls = {
       {
         enabled: Type.Boolean(),
         focusEnabled: Type.Boolean(),
+        recording: Type.Boolean(),
         accessibilityTrusted: Type.Boolean(),
         mouseTapActive: Type.Boolean(),
       },
@@ -16,10 +17,21 @@ export const NativeDiagnosticCalls = {
     ),
   },
   'diagnostics.prepare': { params: Empty, result: Empty },
+  'diagnostics.start': { params: Empty, result: Empty },
   'diagnostics.export': {
     params: Empty,
-    result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),
+    result: Type.Object(
+      { saved: Type.Boolean(), cleanupFailed: Type.Boolean() },
+      { additionalProperties: false },
+    ),
   },
+};
+
+export const NativeDiagnosticEvents = {
+  'diagnostics.recording': Type.Object(
+    { recording: Type.Boolean() },
+    { additionalProperties: false },
+  ),
 };
 
 /** No arbitrary text fields: a page cannot put content, keys or URLs in the diagnostic trace. */

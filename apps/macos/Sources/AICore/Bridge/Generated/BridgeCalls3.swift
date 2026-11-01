@@ -4,6 +4,57 @@
 
 import Foundation
 
+/// Params of the `settings.open` call.
+public struct SettingsOpenParams: Codable, Equatable, Sendable {
+  public let commandId: String?
+  public let section: String?
+
+  public init(commandId: String?, section: String?) {
+    self.commandId = commandId
+    self.section = section
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    commandId = try container.nullable(.commandId) { try container.string($0, maxLength: 128) }
+    section = try container.nullable(.section) {
+      try container.string($0, minLength: 1, maxLength: 32)
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(commandId, forKey: .commandId)
+    try container.encode(section, forKey: .section)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case commandId
+    case section
+  }
+}
+
+/// Result of the `settings.open` call.
+public typealias SettingsOpenResult = NativeEmpty
+
+/// Params of the `settings.close` call.
+public typealias SettingsCloseParams = NativeEmpty
+
+/// Result of the `settings.close` call.
+public typealias SettingsCloseResult = NativeEmpty
+
+/// Params of the `onboarding.open` call.
+public typealias OnboardingOpenParams = NativeEmpty
+
+/// Result of the `onboarding.open` call.
+public typealias OnboardingOpenResult = NativeEmpty
+
+/// Params of the `onboarding.settle` call.
+public typealias OnboardingSettleParams = NativeEmpty
+
+/// Result of the `onboarding.settle` call.
+public typealias OnboardingSettleResult = NativeEmpty
+
 /// Params of the `onboarding.close` call.
 public struct OnboardingCloseParams: Codable, Equatable, Sendable {
   public let summon: Bool
@@ -199,71 +250,3 @@ public struct UserAppPinParams: Codable, Equatable, Sendable {
 
 /// Result of the `userApp.pin` call.
 public typealias UserAppPinResult = NativeEmpty
-
-/// Params of the `userApp.unpin` call.
-public struct UserAppUnpinParams: Codable, Equatable, Sendable {
-  public let appId: String
-
-  public init(appId: String) {
-    self.appId = appId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-  }
-}
-
-/// Result of the `userApp.unpin` call.
-public typealias UserAppUnpinResult = NativeEmpty
-
-/// Params of the `view.open` call.
-public struct ViewOpenParams: Codable, Equatable, Sendable {
-  public let taskId: String
-  public let callId: String
-  public let title: String
-  public let width: Int?
-  public let height: Int?
-
-  public init(taskId: String, callId: String, title: String, width: Int?, height: Int?) {
-    self.taskId = taskId
-    self.callId = callId
-    self.title = title
-    self.width = width
-    self.height = height
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    taskId = try container.string(.taskId, pattern: "^[a-zA-Z0-9_-]{1,128}$")
-    callId = try container.string(.callId, minLength: 1, maxLength: 256)
-    title = try container.string(.title, minLength: 1, maxLength: 120)
-    width = try container.nullable(.width) {
-      try container.integer($0, minimum: 320, maximum: 1_600)
-    }
-    height = try container.nullable(.height) {
-      try container.integer($0, minimum: 240, maximum: 1_200)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(taskId, forKey: .taskId)
-    try container.encode(callId, forKey: .callId)
-    try container.encode(title, forKey: .title)
-    try container.encode(width, forKey: .width)
-    try container.encode(height, forKey: .height)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case taskId
-    case callId
-    case title
-    case width
-    case height
-  }
-}

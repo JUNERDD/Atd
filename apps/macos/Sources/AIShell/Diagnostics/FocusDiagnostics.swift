@@ -4,17 +4,29 @@ import AppKit
 /// The window/input collector. All persistence and report lifecycle belong to SupportDiagnostics.
 final class FocusDiagnostics {
   static let shared = FocusDiagnostics()
-  static var enabled: Bool { SupportDiagnostics.profile == .focus }
+  static var enabled: Bool {
+    SupportDiagnostics.profile == .focus && SupportDiagnostics.shared.recording
+  }
   private var monitoring: FocusDiagnosticMonitoring?
   private var permissions: FocusDiagnosticPermissions?
   private var lastBurst = 0.0
+  private var generation = UUID()
   var tapActive: Bool { monitoring?.tapActive == true }
   var coverage: [String: JSONValue] { monitoring?.coverage ?? [:] }
 
   func start() {
     guard Self.enabled, monitoring == nil else { return }
+    generation = UUID()
     monitoring = FocusDiagnosticMonitoring()
     monitoring?.start()
+  }
+
+  func stop() {
+    generation = UUID()
+    monitoring?.stop()
+    monitoring = nil
+    permissions = nil
+    lastBurst = 0
   }
 
   @discardableResult
@@ -125,9 +137,11 @@ final class FocusDiagnostics {
     let now = ProcessInfo.processInfo.systemUptime
     guard activation || now - lastBurst > 0.2 else { return }
     lastBurst = now
+    let generation = generation
     for delay in [0.0, 0.05, 0.25, 1.0] {
       DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-        self?.record(
+        guard let self, self.generation == generation else { return }
+        self.record(
           activation ? "activation.followup" : "mouse.followup",
           details: ["delay": .number(delay)], system: true, correlation: correlation)
       }

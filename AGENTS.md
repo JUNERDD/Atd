@@ -26,6 +26,8 @@ For each remote diagnosis, reuse this sequence:
 5. Verify the actual package's architecture, signature, version, embedded profile/revision and packaged-app checks. When runtime launch is authorized, export a real ZIP from that exact package and inspect coverage, losses and archive integrity. Source compilation alone does not verify the delivered collector. Give the reporter one short sequence: quit the ordinary app, open this package, complete permissions, reproduce, immediately export in Settings, and share the ZIP.
 6. Analyze manifest coverage and correlated events before concluding. Missing permissions, events or instrumentation are gaps, not proof that an event did not occur. Keep reports local/private, never commit user logs or credentials, and record remaining uncertainty. Retain reusable collectors here; remove obsolete problem-specific probes when they no longer serve a diagnostic profile.
 
+Keep collection bounded to the support session. A new diagnostic build invalidates only its profile's internal trace caches; successful export stops collectors, clears those caches, and persists the stopped state across relaunches. Settings can explicitly start a fresh session. Cancellation or export failure preserves evidence. Never delete user-exported reports or product data, and report cache/state cleanup failures separately from a successfully saved ZIP. Verify this lifecycle when changing collectors or export behavior.
+
 ## Repository Scope And Sources Of Truth
 
 - `pnpm-workspace.yaml` defines workspace membership; the root `package.json` defines the pnpm version and workspace commands. Paths below are repository-relative.

@@ -4,7 +4,8 @@ import ApplicationServices
 
 /// Passive monitors: always forward events; never request permissions, focus or a synthetic click.
 final class FocusDiagnosticMonitoring {
-  private var observers: [any NSObjectProtocol] = []
+  private var observers: [(NotificationCenter, any NSObjectProtocol)] = []
+  private var running = false
   private var local: Any?
   private var global: Any?
   private var tap: CFMachPort?
@@ -24,15 +25,21 @@ final class FocusDiagnosticMonitoring {
   }
 
   func start() {
+    guard !running else { return }
+    running = true
     let mask: NSEvent.EventTypeMask = [
       .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp,
     ]
-    local = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
-      MainActor.assumeIsolated { FocusDiagnostics.shared.mouse(event, stage: "mouse.local") }
+    local = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+      MainActor.assumeIsolated {
+        if self?.running == true { FocusDiagnostics.shared.mouse(event, stage: "mouse.local") }
+      }
       return event
     }
-    global = NSEvent.addGlobalMonitorForEvents(matching: mask) { event in
-      MainActor.assumeIsolated { FocusDiagnostics.shared.mouse(event, stage: "mouse.global") }
+    global = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+      MainActor.assumeIsolated {
+        if self?.running == true { FocusDiagnostics.shared.mouse(event, stage: "mouse.global") }
+      }
     }
     coverage["localMouseMonitor"] = .bool(local != nil)
     coverage["globalMouseMonitor"] = .bool(global != nil)
@@ -61,25 +68,44 @@ final class FocusDiagnosticMonitoring {
     }
   }
 
+  func stop() {
+    running = false
+    if let local { NSEvent.removeMonitor(local) }
+    if let global { NSEvent.removeMonitor(global) }
+    local = nil
+    global = nil
+    for (center, token) in observers { center.removeObserver(token) }
+    observers = []
+    if let tap {
+      CGEvent.tapEnable(tap: tap, enable: false)
+      CFMachPortInvalidate(tap)
+    }
+    if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+    tap = nil
+    source = nil
+    coverage = [:]
+  }
+
   private func observe(_ name: Notification.Name, on center: NotificationCenter) {
-    observers.append(
-      center.addObserver(forName: name, object: nil, queue: .main) { note in
-        let window = note.object as? NSWindow
-        let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
-          .processIdentifier
-        MainActor.assumeIsolated {
-          var details: [String: JSONValue] = ["name": .string(name.rawValue)]
-          if let window {
-            details["windowNumber"] = .number(Double(window.windowNumber))
-          }
-          if let pid {
-            details["pid"] = .number(Double(pid))
-            details["application"] = FocusDiagnosticSnapshot.application(
-              NSRunningApplication(processIdentifier: pid))
-          }
-          FocusDiagnostics.shared.record("notification", details: details)
+    let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+      let window = note.object as? NSWindow
+      let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+        .processIdentifier
+      MainActor.assumeIsolated {
+        guard self?.running == true else { return }
+        var details: [String: JSONValue] = ["name": .string(name.rawValue)]
+        if let window {
+          details["windowNumber"] = .number(Double(window.windowNumber))
         }
-      })
+        if let pid {
+          details["pid"] = .number(Double(pid))
+          details["application"] = FocusDiagnosticSnapshot.application(
+            NSRunningApplication(processIdentifier: pid))
+        }
+        FocusDiagnostics.shared.record("notification", details: details)
+      }
+    }
+    observers.append((center, token))
   }
 
   private func installTap() {
@@ -98,10 +124,15 @@ final class FocusDiagnosticMonitoring {
     tap = CGEvent.tapCreate(
       tap: .cgSessionEventTap, place: .tailAppendEventTap,
       options: .listenOnly, eventsOfInterest: mask,
-      callback: { _, type, event, _ in
+      callback: { _, type, event, context in
+        guard let context else { return Unmanaged.passUnretained(event) }
+        let monitor = Unmanaged<FocusDiagnosticMonitoring>.fromOpaque(context).takeUnretainedValue()
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
           let reason = type == .tapDisabledByTimeout ? "timeout" : "userInput"
-          Task { @MainActor in FocusDiagnostics.shared.tapDisabled(reason: reason) }
+          Task { @MainActor [weak monitor] in
+            guard monitor?.running == true else { return }
+            FocusDiagnostics.shared.tapDisabled(reason: reason)
+          }
           return Unmanaged.passUnretained(event)
         }
         let details: [String: JSONValue] = [
@@ -115,11 +146,12 @@ final class FocusDiagnosticMonitoring {
           "targetPID": .number(Double(event.getIntegerValueField(.eventTargetUnixProcessID))),
         ]
         // Copy only scalar mouse facts before leaving the callback; no CGEvent crosses actors.
-        Task { @MainActor in
+        Task { @MainActor [weak monitor] in
+          guard monitor?.running == true else { return }
           FocusDiagnostics.shared.record("mouse.tap", details: details)
         }
         return Unmanaged.passUnretained(event)
-      }, userInfo: nil)
+      }, userInfo: Unmanaged.passUnretained(self).toOpaque())
     coverage["sessionMouseTap"] = .bool(tap != nil)
     if let tap {
       source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)

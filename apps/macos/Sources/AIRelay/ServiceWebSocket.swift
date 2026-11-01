@@ -30,6 +30,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   private var task: URLSessionWebSocketTask?
   private var ended = false
   private var diagnostic = 0
+  private var diagnosticSession: String?
   private var receivedFrames = 0
   private var receivedBytes = 0
   private var lastSample = 0.0
@@ -40,7 +41,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   }
 
   func start(session: URLSession = RelaySession.shared) {
-    diagnostic = SupportDiagnosticEvents.record("stream.begin")
+    _ = prepareDiagnostic(observedExisting: false)
     var request = URLRequest(url: endpoint.streamURL)
     request.setValue("Bearer \(endpoint.token)", forHTTPHeaderField: "Authorization")
     request.setValue(Self.streamProtocol, forHTTPHeaderField: "Sec-WebSocket-Protocol")
@@ -74,6 +75,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
     task.receive { result in
       MainActor.assumeIsolated {
         guard !self.ended else { return }
+        _ = self.prepareDiagnostic()
         switch result {
         case .success(.string(let text)):
           self.recordReceive(text)
@@ -107,8 +109,32 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
     events.onClose(code, reason)
   }
 
+  /// A resumed recorder observes this connection in place; no handshake or network restart is
+  /// implied. Each session counts only frames observed while its own sink is attached.
+  private func prepareDiagnostic(observedExisting: Bool = true) -> Bool {
+    guard !observedExisting || task != nil else { return false }
+    guard let session = SupportDiagnosticEvents.session, SupportDiagnosticEvents.sink != nil else {
+      diagnosticSession = nil
+      diagnostic = 0
+      receivedFrames = 0
+      receivedBytes = 0
+      lastSample = 0
+      return false
+    }
+    if diagnosticSession == session, diagnostic != 0 { return true }
+    diagnosticSession = session
+    receivedFrames = 0
+    receivedBytes = 0
+    lastSample = 0
+    diagnostic = SupportDiagnosticEvents.record(
+      "stream.begin", details: ["observedExisting": .bool(observedExisting)])
+    return diagnostic != 0
+  }
+
   private func recordReceive(_ text: String) {
-    guard diagnostic != 0 else { return }
+    guard diagnostic != 0, let session = diagnosticSession,
+      SupportDiagnosticEvents.session == session, SupportDiagnosticEvents.sink != nil
+    else { return }
     receivedFrames += 1
     receivedBytes += text.utf8.count
     let now = ProcessInfo.processInfo.systemUptime
@@ -123,6 +149,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   }
 
   private func recordClose(_ code: UInt16) {
+    guard prepareDiagnostic() else { return }
     SupportDiagnosticEvents.record(
       "stream.close",
       details: [
@@ -137,7 +164,9 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   ) {
     MainActor.assumeIsolated {
       guard !ended else { return }
-      SupportDiagnosticEvents.record("stream.open", correlation: diagnostic)
+      if prepareDiagnostic() {
+        SupportDiagnosticEvents.record("stream.open", correlation: diagnostic)
+      }
       events.onOpen()
       receiveNext()
     }

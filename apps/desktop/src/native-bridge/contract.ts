@@ -14,7 +14,7 @@
 import { Type, type TSchema } from 'typebox';
 import { NativeOnboardingPosts } from './onboarding-posts.ts';
 import { NativeCalls } from './calls.ts';
-import { NativeDiagnosticPosts } from './diagnostic-calls.ts';
+import { NativeDiagnosticEvents, NativeDiagnosticPosts } from './diagnostic-calls.ts';
 import {
   CommandArgumentsSchema,
   NativeCommandOptionsEvents,
@@ -125,6 +125,7 @@ export const SocketFrameSchema = Type.Union([
 
 /** Events: Swift → JS pushes. */
 export const NativeEvents = {
+  ...NativeDiagnosticEvents,
   /** The window became or stopped being key; drives the inactive glass dimming. */
   'window.active': Type.Object({ active: Type.Boolean() }, { additionalProperties: false }),
   /** The panel hides at alpha 0 and keeps running, so the page pauses optional work meanwhile. */

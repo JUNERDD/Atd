@@ -252,7 +252,9 @@ export async function installNativeHost(
   });
   const openLink = async (url: string) => void (await native.call('link.open', { url }));
   const bridge: DesktopBridge = {
-    diagnostics: nativeDiagnostics(native),
+    ...(surface === 'panel' || surface === 'settings'
+      ? { diagnostics: nativeDiagnostics(native) }
+      : {}),
     platform: 'darwin',
     beginShortcutRecording: nativeShortcutRecording(native),
     settings: settings.bridge,

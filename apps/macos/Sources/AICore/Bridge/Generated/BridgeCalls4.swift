@@ -4,6 +4,74 @@
 
 import Foundation
 
+/// Params of the `userApp.unpin` call.
+public struct UserAppUnpinParams: Codable, Equatable, Sendable {
+  public let appId: String
+
+  public init(appId: String) {
+    self.appId = appId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+  }
+}
+
+/// Result of the `userApp.unpin` call.
+public typealias UserAppUnpinResult = NativeEmpty
+
+/// Params of the `view.open` call.
+public struct ViewOpenParams: Codable, Equatable, Sendable {
+  public let taskId: String
+  public let callId: String
+  public let title: String
+  public let width: Int?
+  public let height: Int?
+
+  public init(taskId: String, callId: String, title: String, width: Int?, height: Int?) {
+    self.taskId = taskId
+    self.callId = callId
+    self.title = title
+    self.width = width
+    self.height = height
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    taskId = try container.string(.taskId, pattern: "^[a-zA-Z0-9_-]{1,128}$")
+    callId = try container.string(.callId, minLength: 1, maxLength: 256)
+    title = try container.string(.title, minLength: 1, maxLength: 120)
+    width = try container.nullable(.width) {
+      try container.integer($0, minimum: 320, maximum: 1_600)
+    }
+    height = try container.nullable(.height) {
+      try container.integer($0, minimum: 240, maximum: 1_200)
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(taskId, forKey: .taskId)
+    try container.encode(callId, forKey: .callId)
+    try container.encode(title, forKey: .title)
+    try container.encode(width, forKey: .width)
+    try container.encode(height, forKey: .height)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case taskId
+    case callId
+    case title
+    case width
+    case height
+  }
+}
+
 /// Result of the `view.open` call.
 public typealias ViewOpenResult = NativeEmpty
 

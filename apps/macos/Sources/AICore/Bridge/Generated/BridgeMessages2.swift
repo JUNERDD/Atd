@@ -22,6 +22,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .diagnosticsState(container.value(.params, DiagnosticsStateParams.self))
       case "diagnostics.prepare":
         call = try .diagnosticsPrepare(container.value(.params, DiagnosticsPrepareParams.self))
+      case "diagnostics.start":
+        call = try .diagnosticsStart(container.value(.params, DiagnosticsStartParams.self))
       case "diagnostics.export":
         call = try .diagnosticsExport(container.value(.params, DiagnosticsExportParams.self))
       case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))
@@ -204,6 +206,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
 
 /// A Swift → page push; it encodes as its payload.
 public enum NativeEvent: Encodable, Equatable, Sendable {
+  case diagnosticsRecording(DiagnosticsRecordingEvent)
   case windowActive(WindowActiveEvent)
   case windowVisibility(WindowVisibilityEvent)
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
@@ -232,6 +235,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   /// The contract name.
   public var name: String {
     switch self {
+    case .diagnosticsRecording: "diagnostics.recording"
     case .windowActive: "window.active"
     case .windowVisibility: "window.visibility"
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
@@ -261,6 +265,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
 
   public func encode(to encoder: any Encoder) throws {
     switch self {
+    case .diagnosticsRecording(let payload): try payload.encode(to: encoder)
     case .windowActive(let payload): try payload.encode(to: encoder)
     case .windowVisibility(let payload): try payload.encode(to: encoder)
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
@@ -286,41 +291,5 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
     }
-  }
-}
-
-/// Everything Swift delivers: a call's result or error, or an event.
-public enum SwiftMessage: Encodable, Equatable, Sendable {
-  /// `value` must match the call's result schema; the page checks it.
-  case result(id: Int, value: JSONValue)
-  /// At most 2000 characters, which the page shows as is.
-  case error(id: Int, message: String)
-  case event(NativeEvent)
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    switch self {
-    case .result(let id, let value):
-      try container.encode("result", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(value, forKey: .value)
-    case .error(let id, let message):
-      try container.encode("error", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(message, forKey: .message)
-    case .event(let event):
-      try container.encode("event", forKey: .type)
-      try container.encode(event.name, forKey: .event)
-      try container.encode(event, forKey: .payload)
-    }
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case type
-    case id
-    case value
-    case message
-    case event
-    case payload
   }
 }

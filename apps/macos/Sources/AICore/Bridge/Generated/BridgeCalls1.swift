@@ -11,12 +11,17 @@ public typealias DiagnosticsStateParams = NativeEmpty
 public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   public let enabled: Bool
   public let focusEnabled: Bool
+  public let recording: Bool
   public let accessibilityTrusted: Bool
   public let mouseTapActive: Bool
 
-  public init(enabled: Bool, focusEnabled: Bool, accessibilityTrusted: Bool, mouseTapActive: Bool) {
+  public init(
+    enabled: Bool, focusEnabled: Bool, recording: Bool, accessibilityTrusted: Bool,
+    mouseTapActive: Bool
+  ) {
     self.enabled = enabled
     self.focusEnabled = focusEnabled
+    self.recording = recording
     self.accessibilityTrusted = accessibilityTrusted
     self.mouseTapActive = mouseTapActive
   }
@@ -25,6 +30,7 @@ public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     enabled = try container.boolean(.enabled)
     focusEnabled = try container.boolean(.focusEnabled)
+    recording = try container.boolean(.recording)
     accessibilityTrusted = try container.boolean(.accessibilityTrusted)
     mouseTapActive = try container.boolean(.mouseTapActive)
   }
@@ -32,6 +38,7 @@ public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case enabled
     case focusEnabled
+    case recording
     case accessibilityTrusted
     case mouseTapActive
   }
@@ -43,24 +50,34 @@ public typealias DiagnosticsPrepareParams = NativeEmpty
 /// Result of the `diagnostics.prepare` call.
 public typealias DiagnosticsPrepareResult = NativeEmpty
 
+/// Params of the `diagnostics.start` call.
+public typealias DiagnosticsStartParams = NativeEmpty
+
+/// Result of the `diagnostics.start` call.
+public typealias DiagnosticsStartResult = NativeEmpty
+
 /// Params of the `diagnostics.export` call.
 public typealias DiagnosticsExportParams = NativeEmpty
 
 /// Result of the `diagnostics.export` call.
 public struct DiagnosticsExportResult: Codable, Equatable, Sendable {
   public let saved: Bool
+  public let cleanupFailed: Bool
 
-  public init(saved: Bool) {
+  public init(saved: Bool, cleanupFailed: Bool) {
     self.saved = saved
+    self.cleanupFailed = cleanupFailed
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     saved = try container.boolean(.saved)
+    cleanupFailed = try container.boolean(.cleanupFailed)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case saved
+    case cleanupFailed
   }
 }
 
@@ -204,55 +221,3 @@ public struct WindowSetPlacementResult: Codable, Equatable, Sendable {
 
 /// Params of the `app.state` call.
 public typealias AppStateParams = NativeEmpty
-
-/// Result of the `app.state` call.
-public struct AppStateResult: Codable, Equatable, Sendable {
-  public let pinned: Bool
-  public let showInDock: Bool
-  public let openAtLogin: Bool?
-  public let widgetsAvailable: Bool
-  public let panelPlacement: PanelPlacement
-
-  public init(
-    pinned: Bool, showInDock: Bool, openAtLogin: Bool?, widgetsAvailable: Bool,
-    panelPlacement: PanelPlacement
-  ) {
-    self.pinned = pinned
-    self.showInDock = showInDock
-    self.openAtLogin = openAtLogin
-    self.widgetsAvailable = widgetsAvailable
-    self.panelPlacement = panelPlacement
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    pinned = try container.boolean(.pinned)
-    showInDock = try container.boolean(.showInDock)
-    openAtLogin = try container.nullable(.openAtLogin) { try container.boolean($0) }
-    widgetsAvailable = try container.boolean(.widgetsAvailable)
-    panelPlacement = try container.value(.panelPlacement, PanelPlacement.self)
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(pinned, forKey: .pinned)
-    try container.encode(showInDock, forKey: .showInDock)
-    try container.encode(openAtLogin, forKey: .openAtLogin)
-    try container.encode(widgetsAvailable, forKey: .widgetsAvailable)
-    try container.encode(panelPlacement, forKey: .panelPlacement)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case pinned
-    case showInDock
-    case openAtLogin
-    case widgetsAvailable
-    case panelPlacement
-  }
-
-  public enum PanelPlacement: String, Codable, Equatable, Sendable {
-    case bottomRight
-    case center
-    case lastPosition
-  }
-}

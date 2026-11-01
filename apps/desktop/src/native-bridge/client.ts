@@ -69,6 +69,7 @@ export class NativeBridge {
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();
   private readonly listeners: Listeners = {
+    'diagnostics.recording': new Set(),
     'window.active': new Set(),
     'window.visibility': new Set(),
     'accessibility.reduceTransparency': new Set(),

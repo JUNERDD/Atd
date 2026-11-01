@@ -4,6 +4,8 @@ import Foundation
 /// URLs, credentials or arbitrary error text. A normal build leaves the sink unset.
 @MainActor
 public enum SupportDiagnosticEvents {
+  /// The attached recorder's session; nil while collection is stopped or unavailable.
+  public static var session: String?
   public static var sink:
     ((_ name: String, _ details: [String: JSONValue], _ correlation: Int?) -> Int)?
 

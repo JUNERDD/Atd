@@ -173,6 +173,9 @@ public final class ShellController {
         for window in NSApp.windows { window.orderOut(nil) }
       })
     bridge.shell = self
+    SupportDiagnostics.shared.onRecordingChanged = { [weak self] recording in
+      self?.broadcast(.diagnosticsRecording(.init(recording: recording)))
+    }
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }

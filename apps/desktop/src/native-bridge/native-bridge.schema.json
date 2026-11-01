@@ -13,6 +13,7 @@
     "calls": [
       "diagnostics.state",
       "diagnostics.prepare",
+      "diagnostics.start",
       "diagnostics.export",
       "app.startup",
       "window.show",
@@ -96,6 +97,7 @@
       "userApp.pinDrag"
     ],
     "events": [
+      "diagnostics.recording",
       "window.active",
       "window.visibility",
       "accessibility.reduceTransparency",
@@ -172,6 +174,30 @@
             "method": {
               "type": "string",
               "const": "diagnostics.prepare"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.start"
             },
             "params": {
               "type": "object",
@@ -3573,6 +3599,31 @@
             },
             "event": {
               "type": "string",
+              "const": "diagnostics.recording"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["recording"],
+              "properties": {
+                "recording": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "window.active"
             },
             "payload": {
@@ -5334,12 +5385,21 @@
     },
     "DiagnosticsStateResult": {
       "type": "object",
-      "required": ["enabled", "focusEnabled", "accessibilityTrusted", "mouseTapActive"],
+      "required": [
+        "enabled",
+        "focusEnabled",
+        "recording",
+        "accessibilityTrusted",
+        "mouseTapActive"
+      ],
       "properties": {
         "enabled": {
           "type": "boolean"
         },
         "focusEnabled": {
+          "type": "boolean"
+        },
+        "recording": {
           "type": "boolean"
         },
         "accessibilityTrusted": {
@@ -5361,6 +5421,16 @@
       "properties": {},
       "additionalProperties": false
     },
+    "DiagnosticsStartParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsStartResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "DiagnosticsExportParams": {
       "type": "object",
       "properties": {},
@@ -5368,9 +5438,12 @@
     },
     "DiagnosticsExportResult": {
       "type": "object",
-      "required": ["saved"],
+      "required": ["saved", "cleanupFailed"],
       "properties": {
         "saved": {
+          "type": "boolean"
+        },
+        "cleanupFailed": {
           "type": "boolean"
         }
       },
@@ -8660,6 +8733,16 @@
               "type": "null"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsRecordingEvent": {
+      "type": "object",
+      "required": ["recording"],
+      "properties": {
+        "recording": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

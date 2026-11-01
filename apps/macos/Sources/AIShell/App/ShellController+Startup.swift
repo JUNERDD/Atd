@@ -18,7 +18,9 @@ extension ShellController {
         panel.placeForSummon()
         showPanel()
       }
-      FocusDiagnostics.shared.preparePermissions(using: trust, automatic: true)
+      Task {
+        await SupportDiagnostics.shared.preparePermissions(using: trust, automatic: true)
+      }
     case nil:
       break
     }

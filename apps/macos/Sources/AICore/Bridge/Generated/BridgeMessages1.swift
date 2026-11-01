@@ -36,6 +36,7 @@ public struct NativeEmpty: Codable, Equatable, Sendable {
 public enum NativeCall: Equatable, Sendable {
   case diagnosticsState(DiagnosticsStateParams)
   case diagnosticsPrepare(DiagnosticsPrepareParams)
+  case diagnosticsStart(DiagnosticsStartParams)
   case diagnosticsExport(DiagnosticsExportParams)
   case appStartup(AppStartupParams)
   case windowShow(WindowShowParams)
@@ -105,6 +106,7 @@ public enum NativeCall: Equatable, Sendable {
     switch self {
     case .diagnosticsState: "diagnostics.state"
     case .diagnosticsPrepare: "diagnostics.prepare"
+    case .diagnosticsStart: "diagnostics.start"
     case .diagnosticsExport: "diagnostics.export"
     case .appStartup: "app.startup"
     case .windowShow: "window.show"

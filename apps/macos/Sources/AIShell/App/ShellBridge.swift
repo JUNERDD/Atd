@@ -37,7 +37,8 @@ final class ShellBridge {
   private func receive(_ post: NativePost, from host: WebViewHost) {
     switch post {
     case .diagnosticsPage(let params):
-      guard SupportDiagnostics.enabled, host.role == .panel || host.role == .settings else {
+      guard SupportDiagnostics.shared.recording, host.role == .panel || host.role == .settings
+      else {
         return
       }
       if let value = try? JSONValue(encoding: params) {
@@ -141,16 +142,19 @@ final class ShellBridge {
       shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())
     case .diagnosticsState:
-      return try Self.encode(SupportDiagnostics.shared.state())
+      return try Self.encode(await SupportDiagnostics.shared.state())
+    case .diagnosticsStart:
+      guard host.role == .settings else { throw BridgeError("Start diagnostics from Settings.") }
+      try await SupportDiagnostics.shared.resume()
+      await SupportDiagnostics.shared.preparePermissions(using: shell.trust)
+      return try Self.encode(NativeEmpty())
     case .diagnosticsPrepare:
       guard host.role == .settings else { throw BridgeError("Prepare diagnostics from Settings.") }
-      FocusDiagnostics.shared.preparePermissions(using: shell.trust)
+      await SupportDiagnostics.shared.preparePermissions(using: shell.trust)
       return try Self.encode(NativeEmpty())
     case .diagnosticsExport:
       guard host.role == .settings else { throw BridgeError("Export diagnostics from Settings.") }
-      return try Self.encode(
-        DiagnosticsExportResult(
-          saved: try await SupportDiagnostics.shared.export(using: shell.systemPanels)))
+      return try Self.encode(try await SupportDiagnostics.shared.export(using: shell.systemPanels))
     case .settingsClose:
       shell.closeSettings()
       return try Self.encode(NativeEmpty())

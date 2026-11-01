@@ -4,10 +4,14 @@ import Foundation
 /// Only validated method names and the call's lifecycle; parameters and results stay private.
 final class BridgeDiagnosticSpan {
   private let correlation: Int
+  private let session: String
   private let started = ProcessInfo.processInfo.systemUptime
 
   init?(call: NativeCall, id: Int, host: WebViewHost) {
-    guard SupportDiagnostics.enabled, !call.name.hasPrefix("diagnostics.") else { return nil }
+    guard SupportDiagnostics.shared.recording, !call.name.hasPrefix("diagnostics.") else {
+      return nil
+    }
+    session = SupportDiagnostics.shared.session
     correlation = SupportDiagnostics.shared.record(
       "bridge.begin", module: "bridge",
       details: [
@@ -17,6 +21,9 @@ final class BridgeDiagnosticSpan {
   }
 
   func finish(_ reply: SwiftMessage) {
+    guard SupportDiagnostics.shared.recording, SupportDiagnostics.shared.session == session else {
+      return
+    }
     let failed: Bool
     if case .error = reply { failed = true } else { failed = false }
     SupportDiagnostics.shared.record(
