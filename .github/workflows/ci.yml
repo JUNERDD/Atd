@@ -19,6 +19,13 @@ jobs:
     name: Code quality and production build
     runs-on: ubuntu-latest
     steps:
+      # This workflow copy belongs to the permanent diagnostic branch. The existing Protect
+      # main ruleset requires this job, so even renamed/intermediate branches cannot merge it.
+      - name: Reject diagnostic history targeting main
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          echo "::error::Diagnostic history must never merge into main. Reimplement production fixes on a fresh branch from main."
+          exit 1
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0

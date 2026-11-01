@@ -1,5 +1,9 @@
 # Support diagnostic builds
 
+This guide and implementation live only on the permanent `debug` branch. Follow
+[AGENTS.md](../../AGENTS.md#debug-branch-and-reusable-diagnostic-builds) for the reusable workflow
+and branch policy. Never merge this branch into `main`; production fixes use a fresh main-based branch.
+
 Diagnostics ship as a separate, manually distributed build. Ordinary builds have no recorder,
 extra permission prompts or Diagnostics section. There is no runtime preference that enables them.
 Support builds keep the production bundle identity and data directory, disable automatic updates,
@@ -29,7 +33,7 @@ node apps/macos/scripts/build.mjs --configuration Release --diagnostic-profile f
 The signed CI path uses the existing release workflow in **artifacts** mode:
 
 ```sh
-gh workflow run release.yml --ref <support-branch> \
+gh workflow run release.yml --ref debug \
   -f mode=artifacts \
   -f marketing_version=0.0.0-diagnostic.1 \
   -f build_version=0.0.0diagnostic.1 \
@@ -37,9 +41,9 @@ gh workflow run release.yml --ref <support-branch> \
 ```
 
 Replace the example versions with the intended app version and a unique support suffix. Build from
-a committed revision. The workflow rejects diagnostic profiles in publishing/rehearsal modes,
-checks the embedded profile and revision, and creates downloadable artifacts without a release,
-update-feed publication or download-mirror change. `runtime` uses the same path. The workflow
+a committed revision on `debug`. This branch's workflow rejects all publishing/rehearsal modes,
+other branches, automatic runs and the `none` profile. It checks the embedded profile and revision, and creates downloadable artifacts without a release,
+update-feed publication or stable/preview download-channel change. `runtime` uses the same path. The workflow
 builds both architectures; deliver only the reporter's architecture.
 
 Before delivery, inspect the actual DMG: checksum, signature, architecture, app/build version,

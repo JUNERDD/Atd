@@ -1,9 +1,13 @@
 #!/bin/sh
 # main only changes through merged pull requests (see AGENTS.md).
 # stdin lines: <local ref> <local sha> <remote ref> <remote sha>
-while read -r _local_ref _local_sha remote_ref _remote_sha; do
+while read -r local_ref _local_sha remote_ref _remote_sha; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
     echo "pre-push: pushing to main is not allowed; push a branch and open a pull request." >&2
+    exit 1
+  fi
+  if [ "$local_ref" = "refs/heads/debug" ] && [ "$remote_ref" != "refs/heads/debug" ]; then
+    echo "pre-push: debug is diagnostic-only; push it only to refs/heads/debug, never to a production ref." >&2
     exit 1
   fi
 done

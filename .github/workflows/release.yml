@@ -1,70 +1,37 @@
 name: Release
 
-# Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>` with
-# two native builds of the Release app for macOS 15 or later: Atd-<version>-arm64.dmg (Apple
-# silicon, built on macos-26) and Atd-<version>-x64.dmg (Intel, built on macos-26-intel), plus the
-# stable names Atd-arm64.dmg and Atd-x64.dmg. Both are signed with the project's self-signed
-# release certificate and not notarized (until Developer ID signing lands), so a downloaded copy is
-# opened once from Privacy & Security. A macos-15 and a macos-15-intel job check each dmg with
-# verify-app.mjs before anything is signed for Sparkle or published.
-#
-# Each build also packs that architecture's add-ons (the computer-use browser worker the app installs
-# on demand; apps/macos/scripts/addons) and embeds the lock that pins them in the app. The archives
-# (Atd-addon-<id>-<version>-<arch>.tar.gz) and each lock (addons-<arch>.lock.json, byte for byte
-# the app's) ride the same draft as the dmgs, and the mirror uploads the archives to the
-# content-addressed URL every lock names first (ops/release-downloads/README.md: Add-ons).
-#
-# Installed copies update themselves with Sparkle (AppUpdater). Each release carries one feed per
-# architecture, `appcast.xml` (arm64) and `appcast-x64.xml`, whose enclosures carry the dmg's
-# EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY` secret (the private half of
-# `SUPublicEDKey` in project.yml). Both name the GitHub asset. `appcast.xml` stays the arm64 feed
-# because installs of 0.4.0–0.7.9 read the latest release's `appcast.xml` from GitHub; 0.7.10 and
-# later read the mirror's feeds, which the mirror job republishes on R2 pointing at its verified
-# copies. A prerelease is never the latest release and never enters those feeds, so installed
-# copies are not offered it. After every publish the mirror also moves the website's preview
-# channel (`/rc/` on the mirror) to the newest published release, release candidate or stable.
-#
-# A push that leaves the version as it was builds nothing, even when that version has no release
-# yet. A manual run on main in the default `release` mode releases the current version unless its
-# tag exists: use it for a first release without a bump, or to retry a release whose build failed.
-# On a `release/` branch the same run publishes only a prerelease version (such as 0.9.0-rc.1),
-# tagged at that branch's commit; stable versions publish only from main. A manual run on any
-# branch can instead use `artifacts` (build, verify and sign both dmgs and feeds into one workflow
-# artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
-# under a throwaway tag that is checked and always deleted).
+# This branch is diagnostic-only. Reuse production signing and package verification,
+# but permit only manual artifact builds from debug. The version gate rejects publishing,
+# rehearsal, automatic events and other refs before any build or release mutation.
+# Stable/preview release workflows remain on main; never merge this copy there.
 on:
-  push:
-    branches: [main]
-    paths: [apps/macos/package.json]
   workflow_dispatch:
     inputs:
       mode:
-        description: release publishes from main (prereleases also from release/*); artifacts and rehearsal never publish
+        description: debug branch only; build diagnostic artifacts without publishing
         type: choice
-        options: [release, artifacts, rehearsal]
-        default: release
+        options: [artifacts]
+        default: artifacts
       marketing_version:
-        description: artifacts/rehearsal only; shown version such as 0.9.0-rc.3 (default project.yml)
+        description: diagnostic artifacts; shown version such as 0.9.0-rc.3 (default project.yml)
         type: string
         required: false
       build_version:
-        description: artifacts/rehearsal only; CFBundleVersion without '-' such as 0.9.0rc.3
+        description: diagnostic artifacts; CFBundleVersion without '-' such as 0.9.0rc.3
         type: string
         required: false
       diagnostic_profile:
-        description: artifacts only; select support collectors and enable local log export
+        description: select support collectors and enable local log export
         type: choice
-        options: [none, runtime, focus]
-        default: none
+        options: [runtime, focus]
+        default: runtime
 
 permissions:
   contents: read
 
-# Only a release-mode run on main (including a push) joins the publishing group, so a run on
-# another branch can never displace a queued release; prerelease, artifact and rehearsal runs on
-# another branch queue per branch. The mirror serializes every channel's uploads itself.
+# Diagnostic builds must never share the production publishing concurrency group.
 concurrency:
-  group: release-${{ github.ref == 'refs/heads/main' && (inputs.mode || 'release') == 'release' && 'publish' || github.ref }}
+  group: debug-artifacts-${{ github.ref }}
   cancel-in-progress: false
 
 # `shell: bash` adds pipefail, so a failing command inside a pipeline fails its step.
@@ -94,15 +61,19 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
-          MODE: ${{ inputs.mode || 'release' }}
+          MODE: ${{ inputs.mode || 'artifacts' }}
           INPUT_MARKETING_VERSION: ${{ inputs.marketing_version }}
           INPUT_BUILD_VERSION: ${{ inputs.build_version }}
-          DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'none' }}
+          DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'runtime' }}
         run: |
           output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          if [ "$GITHUB_REF" != refs/heads/debug ] || [ "$EVENT" != workflow_dispatch ] || [ "$MODE" != artifacts ]; then
+            echo "::error::This diagnostic branch only builds manual artifacts from debug; publishing and rehearsal are forbidden."
+            exit 1
+          fi
           case "$DIAGNOSTIC_PROFILE" in
-            none|runtime|focus) ;;
-            *) echo "::error::Unknown diagnostic profile."; exit 1 ;;
+            runtime|focus) ;;
+            *) echo "::error::Select the runtime or focus diagnostic profile."; exit 1 ;;
           esac
           semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           if [ "$DIAGNOSTIC_PROFILE" != "none" ] && [ "$MODE" != "artifacts" ]; then
@@ -229,7 +200,7 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
-      DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'none' }}
+      DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'runtime' }}
       # Not ARCH or MACHINE: tools the build runs read those from the environment.
       RELEASE_ARCH: ${{ matrix.arch }}
       RELEASE_MACHINE: ${{ matrix.machine }}
