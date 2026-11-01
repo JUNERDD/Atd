@@ -66,6 +66,9 @@ enum FocusDiagnosticSnapshot {
       values["floating"] = .bool(panel.isFloatingPanel)
       values["becomesKeyOnlyIfNeeded"] = .bool(panel.becomesKeyOnlyIfNeeded)
     }
+    if let panel = window as? ShellPanel {
+      values["nativeClickActivation"] = .bool(panel.nativeClickActivation)
+    }
     return .object(values)
   }
 

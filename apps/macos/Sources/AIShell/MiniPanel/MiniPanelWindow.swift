@@ -143,6 +143,7 @@ final class MiniPanelWindow: ActiveGlassPanel {
 
   /// Forgets a press whose release the window will not see: the panel left the screen.
   func cancelPress() {
+    FocusDiagnostics.shared.mini(.cancelled, press?.down, press?.target)
     press = nil
     replaying = []
   }
@@ -153,6 +154,7 @@ final class MiniPanelWindow: ActiveGlassPanel {
   /// ``MiniPanelPressWatch``), and before the context menu runs its own.
   func endHeldPress() {
     guard let press else { return }
+    FocusDiagnostics.shared.mini(.heldEnded, press.down, press.target)
     self.press = nil
     replaying = []
     if press.target == .scroller {
@@ -166,9 +168,11 @@ final class MiniPanelWindow: ActiveGlassPanel {
 
   override func sendEvent(_ event: NSEvent) {
     if let index = replayIndex(of: event) {
+      FocusDiagnostics.shared.mini(.replayed, event)
       replaying.remove(at: index)
       return super.sendEvent(event)
     }
+    FocusDiagnostics.shared.mini(.original, event)
     switch event.type {
     case .rightMouseDown:
       showMenu(for: event)
@@ -190,6 +194,7 @@ final class MiniPanelWindow: ActiveGlassPanel {
 
   private func begin(_ event: NSEvent) {
     let target = target(of: event)
+    FocusDiagnostics.shared.mini(.routed, event, target)
     guard target != .none, target != .dropShape else { return super.sendEvent(event) }
     press = Press(down: event, start: NSEvent.mouseLocation, origin: frame.origin, target: target)
     onPress?(target)
@@ -212,9 +217,11 @@ final class MiniPanelWindow: ActiveGlassPanel {
     if !press.moving, !press.cancelled, dx * dx + dy * dy > threshold * threshold {
       if press.target.dragsPanel {
         press.moving = true
+        FocusDiagnostics.shared.mini(.dragBegan, press.down, press.target)
         onDragBegan?()
       } else {
         press.cancelled = true
+        FocusDiagnostics.shared.mini(.dragCancelled, press.down, press.target)
         onPressEnded?()
       }
     }
@@ -232,19 +239,28 @@ final class MiniPanelWindow: ActiveGlassPanel {
     guard let press else { return }
     self.press = nil
     if press.target == .scroller {
+      FocusDiagnostics.shared.mini(.releaseScroller, press.down, press.target)
       onScroller?(.ended)
       return
     }
     if press.moving {
+      FocusDiagnostics.shared.mini(.releaseDrag, press.down, press.target)
       onDragEnded?(press.samples)
       return
     }
-    if press.cancelled { return }
+    if press.cancelled {
+      FocusDiagnostics.shared.mini(.releaseCancelled, press.down, press.target)
+      return
+    }
     onPressEnded?()
-    if onClick?(press.target) == true { return }
+    if onClick?(press.target) == true {
+      FocusDiagnostics.shared.mini(.clickConsumed, press.down, press.target)
+      return
+    }
     replaying = [press.down, up]
     postEvent(press.down, atStart: false)
     postEvent(up, atStart: false)
+    FocusDiagnostics.shared.mini(.replayQueued, press.down, press.target)
   }
 
   /// The replayed event this is, matched by value in case the queue hands back a copy. Only left
@@ -266,9 +282,11 @@ final class MiniPanelWindow: ActiveGlassPanel {
       return super.sendEvent(event)
     }
     endHeldPress()
+    FocusDiagnostics.shared.mini(.menuBegan, event)
     onMenu?(true)
     NSMenu.popUpContextMenu(menu, with: event, for: view)
     onMenu?(false)
+    FocusDiagnostics.shared.mini(.menuEnded, event)
   }
 }
 

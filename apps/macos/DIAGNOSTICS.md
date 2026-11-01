@@ -80,6 +80,13 @@ bridge and relay spans have local correlation IDs; they are **not** a distribute
 the Node service. Page error signals deliberately omit messages and stacks. For focus failures,
 follow the collector notes and compare delayed activation snapshots, not just the immediate call.
 
+Task-panel snapshots include `nativeClickActivation`: true means the guarded native click setter
+was invoked, not proof that the OS honored it. Explicit `native.activation.*` calls now describe
+the compatibility fallback only. Compare mouse follow-ups and system focus for native activation.
+`mini.original` and `mini.replayed` distinguish incoming and internally replayed mouse events;
+the mini routing stages expose interception, dragging, cancellation and replay without adding
+snapshots or modifying delivery. Replay receipt alone does not prove selection capture succeeded.
+
 `runtime.sample` and page heartbeat delays expose delayed event loops, not stack traces of hangs.
 Background page timers can be throttled; interpret them with page visibility. Inspect
 `snapshotMs` for observer overhead. A missing end can mean eviction, interruption or a crash.
