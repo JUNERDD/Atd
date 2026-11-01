@@ -26,6 +26,11 @@ on:
         type: choice
         options: [runtime, focus]
         default: runtime
+      architecture:
+        description: build only the reporter's chip, or both architectures
+        type: choice
+        options: [all, arm64, x64]
+        default: all
 
 permissions:
   contents: read
@@ -52,6 +57,9 @@ jobs:
       build_version: ${{ steps.version.outputs.build_version }}
       build: ${{ steps.version.outputs.build }}
       publish: ${{ steps.version.outputs.publish }}
+      architectures: ${{ steps.version.outputs.architectures }}
+      build_matrix: ${{ steps.version.outputs.build_matrix }}
+      verify_matrix: ${{ steps.version.outputs.verify_matrix }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -66,6 +74,7 @@ jobs:
           INPUT_MARKETING_VERSION: ${{ inputs.marketing_version }}
           INPUT_BUILD_VERSION: ${{ inputs.build_version }}
           DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'runtime' }}
+          DIAGNOSTIC_ARCHITECTURE: ${{ inputs.architecture || 'all' }}
         run: |
           output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
           if [ "$GITHUB_REF" != refs/heads/debug ] || [ "$EVENT" != workflow_dispatch ] || [ "$MODE" != artifacts ]; then
@@ -76,6 +85,26 @@ jobs:
             runtime|focus) ;;
             *) echo "::error::Select the runtime or focus diagnostic profile."; exit 1 ;;
           esac
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const selected = process.env.DIAGNOSTIC_ARCHITECTURE;
+          if (!['all', 'arm64', 'x64'].includes(selected)) throw new Error('Unknown diagnostic architecture.');
+          const targets = [
+            { arch: 'arm64', machine: 'arm64', runner: 'macos-26' },
+            { arch: 'x64', machine: 'x86_64', runner: 'macos-26-intel' },
+          ].filter(target => selected === 'all' || target.arch === selected);
+          const verify = targets.map(target => ({
+            ...target,
+            runner: target.arch === 'arm64' ? 'macos-15' : 'macos-15-intel',
+            feed: `https://downloads.atd.best/appcast${target.arch === 'arm64' ? '' : '-x64'}.xml`,
+          }));
+          appendFileSync(process.env.GITHUB_OUTPUT, [
+            `architectures=${targets.map(target => target.arch).join(' ')}`,
+            `build_matrix=${JSON.stringify({ include: targets })}`,
+            `verify_matrix=${JSON.stringify({ include: verify })}`,
+            '',
+          ].join('\n'));
+          JS
           if ! [[ "$INPUT_MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[A-Za-z][0-9A-Za-z.-]*$ ]] ||
              ! [[ "$INPUT_BUILD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+[A-Za-z][0-9A-Za-z.]*$ ]]; then
             echo "::error::Provide unique diagnostic marketing/build versions, such as 0.10.3-debug.1 and 0.10.3debug.1."
@@ -195,10 +224,7 @@ jobs:
     needs: version
     if: needs.version.outputs.build == 'true'
     strategy:
-      matrix:
-        include:
-          - { arch: arm64, machine: arm64, runner: macos-26 }
-          - { arch: x64, machine: x86_64, runner: macos-26-intel }
+      matrix: ${{ fromJSON(needs.version.outputs.build_matrix) }}
     runs-on: ${{ matrix.runner }}
     # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
     # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
@@ -381,16 +407,7 @@ jobs:
     name: Verify ${{ matrix.arch }} on ${{ matrix.runner }}
     needs: [version, build]
     strategy:
-      matrix:
-        include:
-          - arch: arm64
-            machine: arm64
-            runner: macos-15
-            feed: https://downloads.atd.best/appcast.xml
-          - arch: x64
-            machine: x86_64
-            runner: macos-15-intel
-            feed: https://downloads.atd.best/appcast-x64.xml
+      matrix: ${{ fromJSON(needs.version.outputs.verify_matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     env:
@@ -494,7 +511,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
+  # Signs the selected dmgs for Sparkle and writes their feeds and manifest into one artifact,
   # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
   collect:
     name: Sign the update feeds for ${{ needs.version.outputs.marketing_version }}
@@ -503,6 +520,8 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
+      ARCHITECTURES: ${{ needs.version.outputs.architectures }}
+      DIAGNOSTIC_ARCHITECTURE: ${{ inputs.architecture || 'all' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -518,7 +537,7 @@ jobs:
       - name: Check the dmgs' digests
         run: |
           mkdir dist
-          for arch in arm64 x64; do
+          for arch in $ARCHITECTURES; do
             dmg="Atd-$VERSION-$arch.dmg"
             (cd dmg && shasum -a 256 -c "$dmg.sha256")
             mv "dmg/$dmg" "dmg/addons-$arch.lock.json" dist/
@@ -543,7 +562,7 @@ jobs:
         run: |
           {
             echo "PROJECT_ED_KEY=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)"
-            for arch in arm64 x64; do
+            for arch in $ARCHITECTURES; do
               mount="$RUNNER_TEMP/atd-dmg-$arch"
               mkdir -p "$mount"
               hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dist/Atd-$VERSION-$arch.dmg" > /dev/null
@@ -557,17 +576,21 @@ jobs:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
           REPO: ${{ github.repository }}
         run: |
+          public_keys=(--public-ed-key "project.yml=$PROJECT_ED_KEY")
+          for arch in $ARCHITECTURES; do
+            if [ "$arch" = arm64 ]; then key=$ARM64_ED_KEY; else key=$X64_ED_KEY; fi
+            public_keys+=(--public-ed-key "$arch app=$key")
+          done
           node apps/macos/scripts/release/feeds.mjs \
             --dir dist \
             --marketing-version "$VERSION" \
             --build-version "$BUILD_VERSION" \
             --repo "$REPO" \
             --commit "$GITHUB_SHA" \
+            --arch "$DIAGNOSTIC_ARCHITECTURE" \
             --sign-update "$SIGN_UPDATE" \
-            --public-ed-key "project.yml=$PROJECT_ED_KEY" \
-            --public-ed-key "arm64 app=$ARM64_ED_KEY" \
-            --public-ed-key "x64 app=$X64_ED_KEY"
-          cat dist/appcast.xml dist/appcast-x64.xml
+            "${public_keys[@]}"
+          cat dist/appcast*.xml
       - name: Record the diagnostic profile
         env:
           DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'runtime' }}

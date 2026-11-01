@@ -9,7 +9,8 @@
 //     --sign-update <path/to/sign_update> --public-ed-key <label>=<base64> [--public-ed-key …]
 //
 // <dist> holds Atd-<marketing version>-arm64.dmg and Atd-<marketing version>-x64.dmg; the feeds
-// and manifest.json are written beside them. The private key is read from the environment only
+// and manifest.json are written beside them. --arch arm64|x64 selects one diagnostic installer;
+// the default is all. The private key is read from the environment only
 // and reaches sign_update on stdin. Every enclosure must pass `sign_update --verify` (whose public
 // key is derived from the private key) and an Ed25519 verification with each --public-ed-key (the
 // key the installed apps hold), so a secret that no longer matches SUPublicEDKey fails here.
@@ -48,6 +49,7 @@ function readOptions() {
       commit: { type: 'string' },
       'sign-update': { type: 'string' },
       'public-ed-key': { type: 'string', multiple: true },
+      arch: { type: 'string', default: 'all' },
     },
     strict: true,
   });
@@ -55,6 +57,7 @@ function readOptions() {
     .filter((name) => !values[name])
     .map((name) => `--${name}`);
   if (missing.length > 0) fail(`Missing ${missing.join(', ')}.`);
+  if (!['all', 'arm64', 'x64'].includes(values.arch)) fail('Unknown --arch selection.');
   if (!MARKETING_VERSION.test(values['marketing-version'])) {
     fail(`Marketing version '${values['marketing-version']}' is not semver.`);
   }
@@ -78,6 +81,7 @@ function readOptions() {
     signUpdate: values['sign-update'],
     privateKey,
     publicKeys,
+    arch: values.arch,
   };
 }
 
@@ -224,6 +228,7 @@ function checkFeed(options, build) {
 const options = readOptions();
 const builds = [];
 for (const { arch, feed, hardware } of ARCHES) {
+  if (options.arch !== 'all' && options.arch !== arch) continue;
   const dmg = `Atd-${options.marketingVersion}-${arch}.dmg`;
   const path = join(options.dir, dmg);
   let size;

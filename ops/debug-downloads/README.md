@@ -4,7 +4,7 @@ This publisher stays on `debug`. The website's `/debug` and `/zh/debug` routes a
 separately from `main`; they read `https://downloads.atd.best/debug/manifest.json` through their
 same-origin `/downloads/debug.json` proxy. Never merge diagnostic infrastructure into `main`.
 
-The diagnostic release workflow builds and verifies both signed installers, adds the selected
+The diagnostic release workflow builds and verifies the selected signed installers, adds the selected
 `diagnosticProfile` to its artifact manifest, and invokes `publish.mjs` after successful collection.
 It uses the existing R2 download credentials and upload/read-back helpers. Publication rejects
 other refs, automatic events, missing profiles, source-commit mismatches and non-diagnostic versions.
@@ -18,7 +18,7 @@ its displayed version. Failed uploads leave the previous manifest in place. Exis
 are retained for reports that already link to them.
 
 The public schema is version 1: `channel: debug`, `version`, `buildVersion`, `revision`,
-`profile` (`runtime` or `focus`), `publishedAt`, and `architectures` keyed by `arm64` and `x64`.
+`profile` (`runtime` or `focus`), `publishedAt`, and `architectures` keyed by `arm64`, `x64`, or both.
 Each architecture contains `url`, `sha256`, `bytes` and `minMacOS`. No user logs are published.
 The page treats 404 as no available build; malformed manifests and network failures show an error
 with a retry action. It never falls back to a stable or preview installer under a debug label.
@@ -30,5 +30,6 @@ node ops/debug-downloads/publish.mjs --source-dir <artifact-directory> --dry-run
 ```
 
 Publishing is automatic only after a successful manual artifact build on `debug`. Use a new
-version suffix for each package, verify the actual package and report as AGENTS.md requires,
+version suffix for each package. Select `architecture=arm64` or `x64` for a known reporter, or
+`all` for both; the page only offers the architectures verified for that version. Verify the actual package and report as AGENTS.md requires,
 and send the reporter the page link together with the version they should use.

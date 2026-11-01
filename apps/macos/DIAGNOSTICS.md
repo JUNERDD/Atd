@@ -37,14 +37,15 @@ gh workflow run release.yml --ref debug \
   -f mode=artifacts \
   -f marketing_version=0.0.0-diagnostic.1 \
   -f build_version=0.0.0diagnostic.1 \
-  -f diagnostic_profile=focus
+  -f diagnostic_profile=focus \
+  -f architecture=arm64
 ```
 
 Replace the example versions with the intended app version and a unique support suffix. Build from
 a committed revision on `debug`. This branch's workflow rejects all publishing/rehearsal modes,
 other branches, automatic runs and the `none` profile. It checks the embedded profile and revision, and creates downloadable artifacts without a release,
 update-feed publication or stable/preview download-channel change. `runtime` uses the same path. The workflow
-builds both architectures and publishes their verified downloads to the dedicated debug channel
+builds the selected architecture (`arm64`, `x64`, or `all`, which is the default) and publishes its verified downloads to the dedicated debug channel
 ([publisher](../../ops/debug-downloads/README.md)). Send `/debug` or `/zh/debug` with the intended
 version; the reporter selects their architecture.
 

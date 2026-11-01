@@ -44,12 +44,16 @@ assert(
 assert(/^[a-f0-9]{40}$/.test(revision), 'Missing source commit.');
 assert(['runtime', 'focus'].includes(profile), 'Missing diagnostic profile.');
 assert(
-  Array.isArray(manifest.artifacts) && manifest.artifacts.length === 2,
-  'Both verified architectures are required.',
+  Array.isArray(manifest.artifacts) &&
+    manifest.artifacts.length >= 1 &&
+    manifest.artifacts.length <= 2 &&
+    manifest.artifacts.every((entry) => ['arm64', 'x64'].includes(entry.arch)),
+  'One or both verified architectures are required.',
 );
 const artifacts = [];
 for (const arch of ['arm64', 'x64']) {
   const entries = manifest.artifacts.filter((entry) => entry.arch === arch);
+  if (entries.length === 0) continue;
   assert(entries.length === 1, `Expected exactly one ${arch} artifact.`);
   const entry = entries[0];
   const name = `Atd-${version}-${arch}.dmg`;
