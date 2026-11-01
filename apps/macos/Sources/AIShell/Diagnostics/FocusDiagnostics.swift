@@ -1,5 +1,6 @@
 import AICore
 import AppKit
+import ApplicationServices
 
 /// Opt-in at build time, so shipped builds do not install monitors or touch diagnostic files.
 final class FocusDiagnostics {
@@ -11,6 +12,7 @@ final class FocusDiagnostics {
   let session = UUID().uuidString
   private let archive = FocusDiagnosticArchive()
   private var monitoring: FocusDiagnosticMonitoring?
+  private var permissions: FocusDiagnosticPermissions?
   private var timer: Timer?
   private var records: [Data] = []
   private var bytes = 0
@@ -113,6 +115,8 @@ final class FocusDiagnostics {
 
   private func tick() {
     let now = ProcessInfo.processInfo.systemUptime
+    monitoring?.refreshPermission()
+    permissions?.refresh(mouseTapActive: monitoring?.tapActive == true)
     record("sample", details: ["elapsed": .number(now - lastTick)], system: true)
     lastTick = now
     if now - lastCheckpoint >= 5 {
@@ -131,7 +135,15 @@ final class FocusDiagnostics {
   }
 
   func state() -> DiagnosticsStateResult {
-    DiagnosticsStateResult(enabled: Self.enabled)
+    DiagnosticsStateResult(
+      enabled: Self.enabled, accessibilityTrusted: AXIsProcessTrusted(),
+      mouseTapActive: monitoring?.tapActive == true)
+  }
+
+  func preparePermissions(using trust: AccessibilityTrust, automatic: Bool = false) {
+    guard Self.enabled else { return }
+    if permissions == nil { permissions = FocusDiagnosticPermissions(trust: trust) }
+    permissions?.request(automatic: automatic, mouseTapActive: monitoring?.tapActive == true)
   }
 
   func tapDisabled(reason: String) {

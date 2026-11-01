@@ -12,6 +12,7 @@
     "maxCaptureLength": 100000,
     "calls": [
       "diagnostics.state",
+      "diagnostics.prepare",
       "diagnostics.export",
       "app.startup",
       "window.show",
@@ -147,6 +148,30 @@
             "method": {
               "type": "string",
               "const": "diagnostics.state"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.prepare"
             },
             "params": {
               "type": "object",
@@ -5266,12 +5291,28 @@
     },
     "DiagnosticsStateResult": {
       "type": "object",
-      "required": ["enabled"],
+      "required": ["enabled", "accessibilityTrusted", "mouseTapActive"],
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "accessibilityTrusted": {
+          "type": "boolean"
+        },
+        "mouseTapActive": {
+          "type": "boolean"
         }
       },
+      "additionalProperties": false
+    },
+    "DiagnosticsPrepareParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsPrepareResult": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "DiagnosticsExportParams": {

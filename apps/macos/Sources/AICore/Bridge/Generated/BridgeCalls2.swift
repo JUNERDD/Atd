@@ -4,6 +4,24 @@
 
 import Foundation
 
+/// Params of the `app.setShowInDock` call.
+public struct AppSetShowInDockParams: Codable, Equatable, Sendable {
+  public let show: Bool
+
+  public init(show: Bool) {
+    self.show = show
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    show = try container.boolean(.show)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case show
+  }
+}
+
 /// Result of the `app.setShowInDock` call.
 public struct AppSetShowInDockResult: Codable, Equatable, Sendable {
   public let show: Bool
@@ -232,24 +250,3 @@ public typealias OnboardingSettleParams = NativeEmpty
 
 /// Result of the `onboarding.settle` call.
 public typealias OnboardingSettleResult = NativeEmpty
-
-/// Params of the `onboarding.close` call.
-public struct OnboardingCloseParams: Codable, Equatable, Sendable {
-  public let summon: Bool
-
-  public init(summon: Bool) {
-    self.summon = summon
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    summon = try container.boolean(.summon)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case summon
-  }
-}
-
-/// Result of the `onboarding.close` call.
-public typealias OnboardingCloseResult = NativeEmpty

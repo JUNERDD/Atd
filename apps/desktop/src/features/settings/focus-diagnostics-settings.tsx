@@ -30,7 +30,11 @@ export function FocusDiagnosticsSettings() {
           <Item asChild size="sm" className="settings-card-row">
             <li>
               <ItemContent className="min-w-[min(200px,100%)]">
-                <ItemTitle>{t('focusDiagnostics.title')}</ItemTitle>
+                <ItemTitle>
+                  {diagnostics.ready
+                    ? t('focusDiagnostics.title')
+                    : t('focusDiagnostics.permissionTitle')}
+                </ItemTitle>
                 <ItemDescription id="focus-diagnostics-description" className="whitespace-normal">
                   {t('focusDiagnostics.description')}
                 </ItemDescription>
@@ -56,6 +60,27 @@ export function FocusDiagnosticsSettings() {
               <ItemFooter className="min-w-0 items-start justify-start">
                 <p className="text-sm text-muted-foreground">{t('focusDiagnostics.privacy')}</p>
               </ItemFooter>
+              {!diagnostics.ready && (
+                <ItemFooter className="min-w-0 flex-wrap gap-2">
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    {t('focusDiagnostics.permissionHint')}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={diagnostics.preparing || busy}
+                    onClick={() => void diagnostics.preparePermissions()}
+                  >
+                    {t('focusDiagnostics.authorize')}
+                  </Button>
+                </ItemFooter>
+              )}
+              {diagnostics.permissionFailed && (
+                <ItemFooter role="alert" className="settings-inline-error">
+                  {t('focusDiagnostics.permissionFailed')}
+                </ItemFooter>
+              )}
               {diagnostics.status === 'saved' && (
                 <ItemFooter>
                   <output>{t('focusDiagnostics.saved')}</output>

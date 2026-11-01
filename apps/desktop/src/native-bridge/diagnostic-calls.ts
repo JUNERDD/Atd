@@ -5,8 +5,16 @@ import { Empty } from './primitives.ts';
 export const NativeDiagnosticCalls = {
   'diagnostics.state': {
     params: Empty,
-    result: Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
+    result: Type.Object(
+      {
+        enabled: Type.Boolean(),
+        accessibilityTrusted: Type.Boolean(),
+        mouseTapActive: Type.Boolean(),
+      },
+      { additionalProperties: false },
+    ),
   },
+  'diagnostics.prepare': { params: Empty, result: Empty },
   'diagnostics.export': {
     params: Empty,
     result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),

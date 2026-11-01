@@ -10,6 +10,18 @@ final class FocusDiagnosticMonitoring {
   private var tap: CFMachPort?
   private var source: CFRunLoopSource?
   private(set) var coverage: [String: JSONValue] = [:]
+  private var lastTapAccess: [Bool] = []
+
+  var tapActive: Bool { tap.map { CGEvent.tapIsEnabled(tap: $0) } ?? false }
+
+  func refreshPermission() {
+    let access = [CGPreflightListenEventAccess(), AXIsProcessTrusted()]
+    if access.contains(true), access != lastTapAccess {
+      if let tap { CGEvent.tapEnable(tap: tap, enable: true) } else { installTap() }
+    }
+    lastTapAccess = access
+    coverage["sessionMouseTap"] = .bool(tapActive)
+  }
 
   func start() {
     let mask: NSEvent.EventTypeMask = [
@@ -72,6 +84,7 @@ final class FocusDiagnosticMonitoring {
 
   private func installTap() {
     let allowed = CGPreflightListenEventAccess() || AXIsProcessTrusted()
+    lastTapAccess = [CGPreflightListenEventAccess(), AXIsProcessTrusted()]
     coverage["tapPermissionPresent"] = .bool(allowed)
     guard allowed else {
       coverage["sessionMouseTap"] = .bool(false)

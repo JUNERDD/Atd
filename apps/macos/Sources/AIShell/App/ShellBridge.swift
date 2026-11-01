@@ -138,6 +138,10 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .diagnosticsState:
       return try Self.encode(FocusDiagnostics.shared.state())
+    case .diagnosticsPrepare:
+      guard host.role == .settings else { throw BridgeError("Prepare diagnostics from Settings.") }
+      FocusDiagnostics.shared.preparePermissions(using: shell.trust)
+      return try Self.encode(NativeEmpty())
     case .diagnosticsExport:
       guard host.role == .settings else { throw BridgeError("Export diagnostics from Settings.") }
       return try Self.encode(

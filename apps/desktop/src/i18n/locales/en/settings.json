@@ -1130,6 +1130,10 @@
     "export": "Export diagnostic log",
     "exporting": "Exporting…",
     "saved": "Diagnostic log saved. Send the ZIP file to support.",
-    "failed": "The diagnostic log could not be saved. Try again and choose a writable folder."
+    "failed": "The diagnostic log could not be saved. Try again and choose a writable folder.",
+    "permissionTitle": "Complete authorization before reproducing",
+    "permissionHint": "Allow Accessibility in System Settings. If prompted, also allow Input Monitoring. Reopen this build if macOS requests it; then close System Settings and reproduce the issue. You can still export a partial log.",
+    "authorize": "Complete authorization",
+    "permissionFailed": "Could not open System Settings. Open Privacy & Security to allow Accessibility and any requested Input Monitoring."
   }
 }

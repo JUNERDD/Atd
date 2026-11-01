@@ -4,6 +4,27 @@
 
 import Foundation
 
+/// Params of the `onboarding.close` call.
+public struct OnboardingCloseParams: Codable, Equatable, Sendable {
+  public let summon: Bool
+
+  public init(summon: Bool) {
+    self.summon = summon
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    summon = try container.boolean(.summon)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case summon
+  }
+}
+
+/// Result of the `onboarding.close` call.
+public typealias OnboardingCloseResult = NativeEmpty
+
 /// Params of the `userApp.open` call.
 public struct UserAppOpenParams: Codable, Equatable, Sendable {
   public let appId: String
@@ -246,6 +267,3 @@ public struct ViewOpenParams: Codable, Equatable, Sendable {
     case height
   }
 }
-
-/// Result of the `view.open` call.
-public typealias ViewOpenResult = NativeEmpty

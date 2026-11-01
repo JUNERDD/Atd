@@ -92,6 +92,10 @@ actor FocusDiagnosticArchive {
     If activation was requested, compare all four follow-ups, not only the immediate snapshot.
     A periodic sample reports elapsed time to reveal a stalled main run loop. Window notifications
     and workspace events expose focus loss, occlusion and Space/display changes.
+    snapshotMs measures observer overhead. permissions.request/changed mark authorization;
+    reproduce after those prompts close. Missing Accessibility opens the existing native guide;
+    Input Monitoring is requested only if Accessibility did not allow the passive mouse tap.
+    Screen Recording is not required: this recorder reads geometry, never screen pixels or titles.
     Unavailable monitors/AX reads and missing renderer events are coverage gaps, not proof of no input.
     windowAtPointer and CGEvent window fields are hit-test hints; native receipt proves delivery.
 

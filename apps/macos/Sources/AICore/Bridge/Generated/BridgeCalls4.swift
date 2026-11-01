@@ -4,6 +4,9 @@
 
 import Foundation
 
+/// Result of the `view.open` call.
+public typealias ViewOpenResult = NativeEmpty
+
 /// Params of the `shortcuts.set` call.
 public struct ShortcutsSetParams: Codable, Equatable, Sendable {
   public let registrations: [ShortcutRegistration]

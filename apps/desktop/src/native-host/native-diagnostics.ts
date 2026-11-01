@@ -48,5 +48,11 @@ export function nativeDiagnostics(native: NativeBridge): DiagnosticsBridge {
       /* An older shell has no diagnostic endpoint. */
     },
   );
-  return { state: () => state, export: () => native.call('diagnostics.export', {}) };
+  return {
+    state: () => native.call('diagnostics.state', {}),
+    prepare: async () => {
+      await native.call('diagnostics.prepare', {});
+    },
+    export: () => native.call('diagnostics.export', {}),
+  };
 }

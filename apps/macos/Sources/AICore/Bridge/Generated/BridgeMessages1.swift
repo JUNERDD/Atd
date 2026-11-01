@@ -35,6 +35,7 @@ public struct NativeEmpty: Codable, Equatable, Sendable {
 /// A page → Swift call with its typed params.
 public enum NativeCall: Equatable, Sendable {
   case diagnosticsState(DiagnosticsStateParams)
+  case diagnosticsPrepare(DiagnosticsPrepareParams)
   case diagnosticsExport(DiagnosticsExportParams)
   case appStartup(AppStartupParams)
   case windowShow(WindowShowParams)
@@ -103,6 +104,7 @@ public enum NativeCall: Equatable, Sendable {
   public var name: String {
     switch self {
     case .diagnosticsState: "diagnostics.state"
+    case .diagnosticsPrepare: "diagnostics.prepare"
     case .diagnosticsExport: "diagnostics.export"
     case .appStartup: "app.startup"
     case .windowShow: "window.show"

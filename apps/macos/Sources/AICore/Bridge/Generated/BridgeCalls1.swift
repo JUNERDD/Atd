@@ -10,20 +10,34 @@ public typealias DiagnosticsStateParams = NativeEmpty
 /// Result of the `diagnostics.state` call.
 public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   public let enabled: Bool
+  public let accessibilityTrusted: Bool
+  public let mouseTapActive: Bool
 
-  public init(enabled: Bool) {
+  public init(enabled: Bool, accessibilityTrusted: Bool, mouseTapActive: Bool) {
     self.enabled = enabled
+    self.accessibilityTrusted = accessibilityTrusted
+    self.mouseTapActive = mouseTapActive
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     enabled = try container.boolean(.enabled)
+    accessibilityTrusted = try container.boolean(.accessibilityTrusted)
+    mouseTapActive = try container.boolean(.mouseTapActive)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case enabled
+    case accessibilityTrusted
+    case mouseTapActive
   }
 }
+
+/// Params of the `diagnostics.prepare` call.
+public typealias DiagnosticsPrepareParams = NativeEmpty
+
+/// Result of the `diagnostics.prepare` call.
+public typealias DiagnosticsPrepareResult = NativeEmpty
 
 /// Params of the `diagnostics.export` call.
 public typealias DiagnosticsExportParams = NativeEmpty
@@ -236,23 +250,5 @@ public struct AppStateResult: Codable, Equatable, Sendable {
     case bottomRight
     case center
     case lastPosition
-  }
-}
-
-/// Params of the `app.setShowInDock` call.
-public struct AppSetShowInDockParams: Codable, Equatable, Sendable {
-  public let show: Bool
-
-  public init(show: Bool) {
-    self.show = show
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    show = try container.boolean(.show)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case show
   }
 }

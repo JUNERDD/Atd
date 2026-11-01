@@ -20,6 +20,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       switch method {
       case "diagnostics.state":
         call = try .diagnosticsState(container.value(.params, DiagnosticsStateParams.self))
+      case "diagnostics.prepare":
+        call = try .diagnosticsPrepare(container.value(.params, DiagnosticsPrepareParams.self))
       case "diagnostics.export":
         call = try .diagnosticsExport(container.value(.params, DiagnosticsExportParams.self))
       case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))
