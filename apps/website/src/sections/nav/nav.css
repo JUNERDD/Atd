@@ -14,9 +14,24 @@
   pointer-events: none;
 }
 
-/* A matte strip of smoked black, the content column's width, with a hairline rim. Inner parts keep
-   concentric corners: the 44 px key sits 4 px inside the 52 px strip. */
+/* A strip of smoked glass, the content column's width: the kit's one glass material (`.glass`:
+   blur, rim, sheen and its fallbacks), tinted black rather than gray so it stays the faceplate's
+   ink, with the page frosted through it. The tokens are set here because the site is dark whatever
+   the visitor's appearance, and the kit's dark numbers follow the system's. Its rim stays a
+   hairline no brighter than the plate's lines, catching light only at the corners, so the frost
+   reads rather than the border. Inner parts keep concentric corners: the 44 px key sits 4 px
+   inside the 52 px strip. */
 .nav__bar {
+  /* The kit's secondary ink stays readable when bright page content passes behind the bar. */
+  --fg-2: var(--secondary-label);
+  --glass-fill-color: var(--ink-0);
+  --glass-solid: var(--ink-0);
+  --glass-density: 72%;
+  --glass-saturate: 160%;
+  --glass-blur: 24px;
+  --glass-specular: var(--line-2);
+  --glass-specular2: var(--line-1);
+  --glass-rim: transparent;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -25,19 +40,7 @@
   padding: 4px;
   padding-inline-start: 14px;
   border-radius: calc(var(--r-part) + 4px);
-  background-color: rgb(0 0 0 / 0.72);
-  box-shadow:
-    inset 0 0 0 1px var(--line-1),
-    0 12px 32px -12px rgb(0 0 0 / 0.8);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  backdrop-filter: blur(20px) saturate(140%);
   pointer-events: auto;
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .nav__bar {
-    background-color: var(--ink-0);
-  }
 }
 
 .nav__brand {
@@ -112,10 +115,6 @@
 }
 
 @media (forced-colors: active) {
-  .nav__bar {
-    border: 1px solid CanvasText;
-  }
-
   .nav__link[aria-current]::before {
     background-color: CanvasText;
   }

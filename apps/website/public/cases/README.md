@@ -42,15 +42,16 @@ node scripts/render-website-cases.ts en --only=settings
 
 ## Earlier Figma scenes
 
-The showcase no longer loads these flat exports and scene layers; they remain source material.
+The showcase no longer loads these: the flat exports below and the scene layers that animated them
+are kept as source material.
 
-All nine PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
+All ten PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
 scene. Frames are in “W · Website · Interface scenes · shared desktop” (`2462:142863`).
 
 | File                       | Export frame  | Application design source                                                              |
 | -------------------------- | ------------- | -------------------------------------------------------------------------------------- |
 | `ui/selection-toolbar.png` | `2462:142864` | Selection and toolbar `1798:97448`, options menu `2711:186043`                         |
-| `ui/write-back.png`        | `2823:164824` | Command island `Phase=Done` in `2714:186710`                                           |
+| `ui/write-back.png`        | `2823:164824` | Command island `Phase=Writing` in `2714:186710`                                        |
 | `ui/mini-panel.png`        | `2462:142972` | Mini Panel Activity `3285:241539`, task popover `3288:66740` and pointer `2294:134080` |
 | `ui/screenshot.png`        | `2462:143105` | Annotated capture `1699:74894`                                                         |
 | `ui/main-panel.png`        | `2462:143430` | New-task panel `1:400`                                                                 |
@@ -58,6 +59,7 @@ scene. Frames are in “W · Website · Interface scenes · shared desktop” (`
 | `ui/settings.png`          | `2462:143808` | OpenAI connection editor in Settings `3385:199906`                                     |
 | `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                                           |
 | `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499`                           |
+| `ui/computer-use.png`      | `3536:208758` | Live pointer `2927:181650` filling a form, Mini Panel rail `3285:241539`               |
 
 The 0.10.0 refresh uses the current connected task-activity and provider editor components. The
 Mini Panel shows two running tasks and a synthetic approval request to write `release-notes.md`;
@@ -71,8 +73,9 @@ review frame, 4 pt below the capsule), with Replace the selected text as the sav
 write-back scene reuses the same source page with a context line and a rough draft line that is
 selected; the answer (`Written answer`, a frame in the page color over the draft) has replaced it,
 and the island at the bottom center, its bottom edge at y = 804 like the island review frames,
-says Written. The composer in the main panel and conversation shows Auto approval, the default for
-new installations.
+is writing: its ambient glow, spinner and Writing… label. Its sheet cuts those three into layers
+of their own for the archived choreography. The composer in the main panel and conversation shows
+Auto approval, the default for new installations.
 The common desktop comes from `2294:133952`, with its wallpaper, menu bar and Dock. The exported
 scenes reuse connected application components. The screenshot scene preserves the capture selection,
 annotations, controls and dimming while its duplicate desktop layers are hidden to reveal the shared
@@ -81,6 +84,9 @@ website scene stay aligned.
 User-message bubbles and Notes rows use the existing `glass/control-wash`
 variable so their fills retain the window's backdrop. The Notes settings icon binds to the local
 dark-theme `foreground` variable rather than the imported library's appearance.
+The computer-use scene shows Atd filling in a synthetic expense form in its own browser profile:
+the amount is typed, and the live pointer (`Filling in`, with the field's outline and no step
+badge) types the description while the Mini Panel rail stays at the right edge.
 The automation scene keeps the overview's connected components and routine task examples; failure
 examples remain in the original review frame. Its selected navigation and unread badge reuse the
 glass fills already shown in the other website scenes.
@@ -89,8 +95,8 @@ The shared glass switch pill binds its fill and edge to translucent color variab
 
 ## Scene layers
 
-The showcase does not show the flat PNGs: it stacks each scene's layers over one shared desktop
-(`layers/desktop.webp`) and animates them. The layers come from
+Before the clips, the showcase stacked each scene's layers over one shared desktop
+(`layers/desktop.webp`) and animated them. The layers come from
 “W · Website · Interface scene layers (matte exports)” (`2552:144525`), on the same page as the
 scenes. [`scripts/case-layers.json`](../../scripts/case-layers.json) lists, per scene, its layers
 bottom to top, their source nodes and their sheets. Each sheet row is a clone of the scene twice:
@@ -108,7 +114,7 @@ each layer's box, `src/content/case-layers.ts` and `src/sections/cases/case-laye
 recomposites the decoded files and prints each scene's error against Figma (a mean below 1/255;
 the remaining maximum is lossy WebP on the Dock icons).
 
-## Updating the showcase
+## Updating the Figma scenes
 
 1. Update the corresponding Figma scene, retaining the common canvas and desktop component. Keep
    small floating tools at their intended screen position and preserve full window bounds.
@@ -124,15 +130,17 @@ the remaining maximum is lossy WebP on the Dock icons).
    second export on white and [`scripts/unflatten-sheets.py`](../../scripts/unflatten-sheets.py)
    can recover transparency. A new or renamed layer also needs its entrance in
    `src/sections/cases/scenes.css`.
-4. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
-5. Verify all nine scenes and their entrances while scrolling through the pinned stage, both
-   directions, each scene stopped partway through its step, the bars' fill and their jumps, keyboard access, reduced motion and the phone,
-   landscape-phone and desktop layouts in both languages. Run the website lint, type check and
-   production build.
+4. Recompose all ten layer stacks over the shared desktop and compare their resting appearance
+   with the corresponding flat exports. Check image dimensions, alpha coverage, layer order and
+   positions. The archived choreography in `src/sections/cases/scenes.css` uses `data-play` to
+   start a scene and leaves its layers at rest under reduced motion; the current homepage does
+   not import it.
+5. Run the website lint, type check and production build. Verify and upload changed media using
+   the asset workflow in the [website README](../../README.md), including archived assets listed
+   by the build manifest.
 
-The scroll position, not a timer, decides the scene and how far its entrance has played: see
-“Interface showcase” in the [website README](../../README.md). A scene whose layers fail to load shows a localized message
-with a link to its flat export.
+These exports and layers are reference material. Updating them does not change the current
+showcase's video clips; update those through the films repository as described above.
 
 ## Archived recordings and Summon assets
 

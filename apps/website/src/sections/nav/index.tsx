@@ -7,7 +7,7 @@ import { useActiveSection } from './use-active-section';
 import './nav.css';
 
 /**
- * The page's control strip: a matte bar as wide as the content column, floating over the page. It
+ * The page's control strip: a glass bar as wide as the content column, floating over the page. It
  * carries the name, the section links (a status light marks the one being read), the language
  * switch and the download key, which leads to the download plate, where the visitor picks their
  * Mac's chip. Under it, the kit's scroll edge softly blurs content as it passes.
@@ -24,7 +24,7 @@ export function SiteNav() {
       </a>
       <div className="scroll-edge-top nav__edge" aria-hidden="true" />
       <header className="nav" data-reveal="drop" data-reveal-delay="420">
-        <nav className="nav__bar" aria-label={t.label}>
+        <nav className="nav__bar glass" aria-label={t.label}>
           <a className="nav__brand" href={langPath[lang]} aria-label={t.home}>
             <span className="nav__mark" aria-hidden="true" />
             <span className="nav__word" aria-hidden="true">
