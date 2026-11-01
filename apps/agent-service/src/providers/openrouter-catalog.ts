@@ -4,7 +4,7 @@ import type { Provider } from '@earendil-works/pi-ai';
 import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
 import { CatalogFailure, readCatalogJson } from './catalog-http.js';
 import { toServiceModel } from './catalog.js';
-import { publishedDefaultLevel } from './endpoint-capabilities.js';
+import { endpointCapabilities } from './endpoint-capabilities.js';
 import { uniqueModels } from './connection-view.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1';
@@ -130,11 +130,15 @@ export async function loadOpenRouterModels(
             cacheWrite: perMillion(rates.input_cache_write),
           };
         });
-      const reasoning =
-        entry.supported_parameters.includes('reasoning') ||
-        entry.supported_parameters.includes('include_reasoning');
+      const capabilities = endpointCapabilities(entry);
+      const reasoning = capabilities.reasoning ?? false;
       // Parse keeps the entry's `reasoning` object, which carries OpenRouter's default effort.
-      const defaultThinkingLevel = reasoning ? publishedDefaultLevel(entry) : undefined;
+      const defaultThinkingLevel = reasoning ? capabilities.defaultThinkingLevel : undefined;
+      // An OpenAI effort list is not an Anthropic token budget or adaptive-effort map.
+      const thinkingLevelMap = reasoning
+        ? ((api === 'openai-completions' ? capabilities.thinkingLevelMap : undefined) ??
+          model?.thinkingLevelMap)
+        : undefined;
       return [
         {
           id: entry.id,
@@ -142,7 +146,7 @@ export async function loadOpenRouterModels(
           api,
           baseUrl: api === 'anthropic-messages' ? 'https://openrouter.ai/api' : OPENROUTER_URL,
           reasoning,
-          ...(model?.thinkingLevelMap ? { thinkingLevelMap: model.thinkingLevelMap } : {}),
+          ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
           ...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
           input: entry.architecture.input_modalities.includes('image')
             ? ['text', 'image']

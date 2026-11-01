@@ -7,6 +7,13 @@ import { endpointCapabilities, type EndpointCapabilities } from './endpoint-capa
 import { lmStudioCapabilities } from './lm-studio-models.js';
 import { probeReader, serverRoot, type NativeProbe } from './local-probe.js';
 import { ollamaCapabilities } from './ollama-models.js';
+import {
+  bailianCapabilities,
+  bailianCatalogEndpoint,
+  bailianDirectory,
+  bailianProtocol,
+  supportsBailianMessages,
+} from './bailian.js';
 
 /**
  * Model discovery for OpenAI-compatible local and custom endpoints, which have no Pi directory
@@ -49,22 +56,29 @@ function discovered(
   entry: { id: string },
   native: EndpointCapabilities | undefined,
   maker: ServiceModelDefinition | undefined,
+  hosted: EndpointCapabilities = {},
 ): ServiceModelDefinition {
   // The native API is the server's own fuller description, so its facts win.
-  const declared = { ...endpointCapabilities(entry), ...native };
+  const declared = { ...hosted, ...endpointCapabilities(entry), ...native };
+  const api = bailianProtocol(connection.baseUrl) ?? 'openai-completions';
   const reasoning = declared.reasoning ?? maker?.reasoning ?? false;
   const contextWindow = declared.contextWindow ?? maker?.contextWindow ?? FALLBACK.contextWindow;
   // What a source names bounds the windows a user may pick; a fallback window bounds nothing.
   const maxContextWindow =
     declared.maxContextWindow ?? declared.contextWindow ?? maker?.contextWindow;
   // Other protocols name levels their own way (Gemini's `MINIMAL`), which no server accepts here.
-  const makerMap = maker && OPENAI_APIS.has(maker.api) ? maker.thinkingLevelMap : undefined;
+  const makerMap =
+    maker && (maker.api === api || (OPENAI_APIS.has(api) && OPENAI_APIS.has(maker.api)))
+      ? maker.thinkingLevelMap
+      : undefined;
   const thinkingLevelMap = reasoning ? (declared.thinkingLevelMap ?? makerMap) : undefined;
-  const defaultThinkingLevel = reasoning ? declared.defaultThinkingLevel : undefined;
+  const defaultThinkingLevel = reasoning
+    ? (declared.defaultThinkingLevel ?? maker?.defaultThinkingLevel)
+    : undefined;
   return {
     id: entry.id,
     name: entry.id,
-    api: 'openai-completions',
+    api,
     baseUrl: connection.baseUrl,
     reasoning,
     ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
@@ -93,19 +107,26 @@ function makerEntry(
   return makers.get(key) ?? makers.get(key.slice(key.lastIndexOf('/') + 1));
 }
 
-/** Only explicitly OpenAI-compatible endpoints use /models; other protocols use manual definitions. */
+/** Read /models on OpenAI endpoints or a known same-origin sibling; otherwise use manual models. */
 export async function discoverCompatibleModels(
   connection: ServiceConnection,
   auth: AuthResult,
 ): Promise<ServiceModelDefinition[]> {
   const customModels = connection.customModels ?? [];
-  if (customModels.some((model) => !['openai-completions', 'openai-responses'].includes(model.api)))
+  const catalogEndpoint = bailianCatalogEndpoint(connection.baseUrl);
+  if (
+    !catalogEndpoint &&
+    customModels.some((model) => !['openai-completions', 'openai-responses'].includes(model.api))
+  )
     return customModels;
   const headers: Record<string, string> =
     auth.auth.apiKey && auth.auth.apiKey !== 'unused'
       ? { Authorization: `Bearer ${auth.auth.apiKey}` }
       : {};
-  const value = await readCatalogJson(`${connection.baseUrl}/models`, headers);
+  const value = await readCatalogJson(
+    catalogEndpoint ?? `${connection.baseUrl.replace(/\/$/, '')}/models`,
+    headers,
+  );
   let result;
   try {
     result = parse(CatalogSchema, value);
@@ -118,6 +139,7 @@ export async function discoverCompatibleModels(
   // the maker's ids (`google/gemma-4-31b-it`) with a window the user loaded, not the hosted one.
   const makers =
     connection.provider === 'openai-compatible' ? await modelMakerDirectory() : new Map();
+  const hosted = await bailianDirectory(connection);
   // The first entry for an id wins; parse keeps each entry's undeclared fields for probing.
   const entries = new Map<string, { id: string }>();
   for (const entry of result.data) if (!entries.has(entry.id)) entries.set(entry.id, entry);
@@ -127,9 +149,17 @@ export async function discoverCompatibleModels(
   const native = probe
     ? await probe(probed, probeReader(serverRoot(connection.baseUrl), headers))
     : new Map<string, EndpointCapabilities>();
-  return [...entries.values()].map(
-    (entry) =>
-      customModels.find((model) => model.id === entry.id) ??
-      discovered(connection, entry, native.get(entry.id), makerEntry(makers, entry.id)),
-  );
+  return [...entries.values()]
+    .filter((entry) => !catalogEndpoint || supportsBailianMessages(entry.id))
+    .map(
+      (entry) =>
+        customModels.find((model) => model.id === entry.id) ??
+        discovered(
+          connection,
+          entry,
+          native.get(entry.id),
+          hosted?.get(entry.id.toLowerCase()) ?? makerEntry(makers, entry.id),
+          hosted ? bailianCapabilities(entry.id, bailianProtocol(connection.baseUrl)) : undefined,
+        ),
+    );
 }

@@ -8,7 +8,6 @@ import type { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError, UpstreamError } from '../errors.js';
 import { directoryModels, isLocalProvider, toServiceModel } from './catalog.js';
-import { uniqueModels } from './connection-view.js';
 import { contextOverrideFile, type ContextOverride } from './context-override.js';
 import { discoverCompatibleModels } from './discovery.js';
 import { LLAMA_PROVIDER, llamaProvider, migrateLlamaCatalog } from './llama.js';
@@ -21,6 +20,8 @@ import { inferenceError } from './inference-result.js';
 import type { ChatGPTLoginOptions } from './oauth-callback.js';
 import { CatalogFailure, catalogFailureReason } from './catalog-http.js';
 import { loadOpenRouterModels, openRouterProvider } from './openrouter-catalog.js';
+import { compatibleProvider } from './compatible-provider.js';
+import { compatibleModels } from './compatible-models.js';
 
 export interface ProviderStores {
   dataDir: string;
@@ -99,10 +100,7 @@ export async function connectionRuntime(
         name: connection.name,
         baseUrl: connection.baseUrl,
         api: 'openai-completions',
-        models: uniqueModels([
-          ...(connection.catalog ?? []),
-          ...(connection.customModels ?? []),
-        ]).map(endpointModel(connection.provider)),
+        models: await compatibleModels(connection),
       });
     } else if (
       connection.baseUrl &&
@@ -123,6 +121,7 @@ export async function connectionRuntime(
         chatgptUsage(stores, connection),
       );
     if (connection.provider === 'openrouter') provider = openRouterProvider(provider, connection);
+    if (connection.provider === 'openai-compatible') provider = compatibleProvider(provider);
     const { apiKey, oauth } = provider.auth;
     const options: Record<string, string> = {
       ...connection.options,
@@ -226,29 +225,6 @@ async function loadCatalog(
   if (result.aborted)
     throw new CatalogFailure('The model directory request timed out or was cancelled.');
   return models.getModels(connection.provider).map(toServiceModel);
-}
-
-/**
- * Servers whose Chat Completions request reads only `max_tokens`: Ollama silently drops Pi's
- * default `max_completion_tokens` (its request struct has no such field), and LM Studio documents
- * only `max_tokens`, so without this no output cap would apply.
- */
-const MAX_TOKENS_FIELD_SERVERS = new Set(['ollama', 'lm-studio']);
-
-/**
- * Pi reads an unknown base URL as OpenAI's own API and sends reasoning models their instructions
- * in the `developer` role, which generic servers and relays often reject. `system` is accepted
- * by every Chat Completions server, OpenAI's included, so custom endpoints always use it.
- */
-function endpointModel(provider: string) {
-  const maxTokensField = MAX_TOKENS_FIELD_SERVERS.has(provider) ? 'max_tokens' : undefined;
-  return (model: ServiceModelDefinition) =>
-    model.api === 'openai-completions'
-      ? {
-          ...model,
-          compat: { supportsDeveloperRole: false, ...(maxTokensField ? { maxTokensField } : {}) },
-        }
-      : model;
 }
 
 /** Pi's offline switch, read the way Pi reads it: 1, true or yes. */
