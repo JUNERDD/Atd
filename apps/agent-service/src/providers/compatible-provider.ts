@@ -8,19 +8,25 @@ import { isBailianEndpoint } from './bailian.js';
  */
 function payloadHook(next: StreamOptions['onPayload']): NonNullable<StreamOptions['onPayload']> {
   return async (payload, model) => {
-    if (
-      model.api === 'anthropic-messages' &&
-      isBailianEndpoint(model.baseUrl) &&
-      typeof payload === 'object' &&
-      payload !== null
-    ) {
-      const thinking: unknown = Reflect.get(payload, 'thinking');
+    if (isBailianEndpoint(model.baseUrl) && typeof payload === 'object' && payload !== null) {
+      if (model.api === 'anthropic-messages') {
+        const thinking: unknown = Reflect.get(payload, 'thinking');
+        if (
+          typeof thinking === 'object' &&
+          thinking !== null &&
+          Reflect.get(thinking, 'type') === 'adaptive'
+        )
+          Reflect.set(payload, 'thinking', { type: 'enabled' });
+      }
+      // Verification omits reasoning. Pi's qwen encoder turns that into false even when the
+      // model forbids off; GLM-5.3 rejects it. Preserve its always-on contract on this path too.
       if (
-        typeof thinking === 'object' &&
-        thinking !== null &&
-        Reflect.get(thinking, 'type') === 'adaptive'
+        model.api === 'openai-completions' &&
+        model.reasoning &&
+        model.thinkingLevelMap?.off === null &&
+        Reflect.get(payload, 'enable_thinking') === false
       )
-        Reflect.set(payload, 'thinking', { type: 'enabled' });
+        Reflect.set(payload, 'enable_thinking', true);
     }
     return next ? next(payload, model) : undefined;
   };

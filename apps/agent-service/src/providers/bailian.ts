@@ -240,7 +240,5 @@ export function bailianCompat(
     supportsStore: false,
     supportsDeveloperRole: false,
     supportsStrictMode: false,
-    // Older Qwen and third-party deployments do not accept max_completion_tokens.
-    maxTokensField: 'max_tokens',
   };
 }
