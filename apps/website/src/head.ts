@@ -1,5 +1,6 @@
+import { debugCopy } from './pages/debug/copy.ts';
 import { site } from './content/site.ts';
-import { htmlLang, LANGS, langPath, type Lang, type Localized } from './i18n/routes.ts';
+import { htmlLang, LANGS, pagePath, type Lang, type Localized, type Page } from './i18n/routes.ts';
 import { structuredData, structuredDataScript } from './structured-data.ts';
 
 interface HeadCopy {
@@ -42,16 +43,23 @@ function escapeAttr(value: string): string {
  * alternate language links, the Open Graph and X cards, and the structured data. `siteUrl` is the
  * production origin, without a trailing slash.
  */
-export function renderHead(lang: Lang, siteUrl: string): string {
-  const copy = headCopy[lang];
-  const url = `${siteUrl}${langPath[lang]}`;
+export function renderHead(lang: Lang, siteUrl: string, page: Page = 'home'): string {
+  const copy =
+    page === 'debug'
+      ? {
+          ...headCopy[lang],
+          title: `${debugCopy[lang].title} — Atd`,
+          description: debugCopy[lang].description,
+        }
+      : headCopy[lang];
+  const url = `${siteUrl}${pagePath(lang, page)}`;
   const image = `${siteUrl}/og.jpg`;
   const title = escapeAttr(copy.title);
   const description = escapeAttr(copy.description);
   const imageAlt = escapeAttr(copy.imageAlt);
   const alternates = LANGS.map(
     (other) =>
-      `<link rel="alternate" hreflang="${htmlLang[other]}" href="${siteUrl}${langPath[other]}" />`,
+      `<link rel="alternate" hreflang="${htmlLang[other]}" href="${siteUrl}${pagePath(other, page)}" />`,
   );
   const otherLocales = LANGS.filter((other) => other !== lang).map(
     (other) => `<meta property="og:locale:alternate" content="${headCopy[other].ogLocale}" />`,
@@ -59,12 +67,12 @@ export function renderHead(lang: Lang, siteUrl: string): string {
   const tags = [
     `<title>${title}</title>`,
     `<meta name="description" content="${description}" />`,
-    `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />`,
+    `<meta name="robots" content="${page === 'debug' ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />`,
     `<meta name="application-name" content="${site.name}" />`,
     `<meta name="apple-mobile-web-app-title" content="${site.name}" />`,
     `<link rel="canonical" href="${url}" />`,
     ...alternates,
-    `<link rel="alternate" hreflang="x-default" href="${siteUrl}${langPath.en}" />`,
+    `<link rel="alternate" hreflang="x-default" href="${siteUrl}${pagePath('en', page)}" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${site.name}" />`,
     `<meta property="og:title" content="${title}" />`,
@@ -82,9 +90,17 @@ export function renderHead(lang: Lang, siteUrl: string): string {
     `<meta name="twitter:description" content="${description}" />`,
     `<meta name="twitter:image" content="${image}" />`,
     `<meta name="twitter:image:alt" content="${imageAlt}" />`,
-    structuredDataScript(
-      structuredData(lang, siteUrl, { title: copy.title, description: copy.description, image }),
-    ),
+    ...(page === 'home'
+      ? [
+          structuredDataScript(
+            structuredData(lang, siteUrl, {
+              title: copy.title,
+              description: copy.description,
+              image,
+            }),
+          ),
+        ]
+      : []),
   ];
   return tags.join('\n    ');
 }

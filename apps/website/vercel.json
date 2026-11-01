@@ -7,6 +7,10 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
+    {
+      "source": "/downloads/debug.json",
+      "destination": "https://downloads.atd.best/debug/manifest.json"
+    },
     { "source": "/downloads/rc.json", "destination": "https://downloads.atd.best/rc.json" }
   ],
   "headers": [

@@ -1,0 +1,141 @@
+.debug-page {
+  min-block-size: 100dvh;
+}
+.debug-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 24px;
+}
+.debug-page__brand {
+  font-family: var(--font-dot);
+  font-size: 1.75rem;
+  font-weight: 800;
+  min-block-size: var(--hit);
+  display: flex;
+  align-items: center;
+}
+.debug-page__main {
+  max-inline-size: 960px;
+  padding-block: 48px 72px;
+  display: grid;
+  gap: 48px;
+}
+.debug-page__intro {
+  display: grid;
+  gap: 20px;
+}
+.debug-page__intro h1 {
+  font-size: var(--fs-h2);
+  font-weight: 650;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+}
+.debug-page__lede {
+  max-inline-size: 40rem;
+  color: var(--fg-2);
+  font-size: var(--fs-lede);
+}
+.debug-page__downloads {
+  display: grid;
+  gap: 24px;
+  border-block: 1px solid var(--line-2);
+  padding-block: 32px;
+}
+.debug-page__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 48px;
+}
+.debug-page__facts div {
+  display: grid;
+  gap: 4px;
+}
+.debug-page__facts dd {
+  overflow-wrap: anywhere;
+}
+.debug-page__installers {
+  display: grid;
+  gap: 24px;
+}
+.debug-page__installer {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 24px;
+  background: var(--plate);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-display);
+  min-inline-size: 0;
+}
+.debug-page__installer h2,
+.debug-page__instructions h2 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.debug-page__installer .btn-filled {
+  min-block-size: 48px;
+  white-space: normal;
+  text-align: center;
+}
+.debug-page__checksum {
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+.debug-page__checksum summary {
+  cursor: pointer;
+  min-block-size: var(--hit);
+  align-content: center;
+}
+.debug-page__checksum code {
+  display: block;
+  overflow-wrap: anywhere;
+  padding-block: 8px;
+  user-select: all;
+}
+.debug-page__status {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  min-block-size: 100px;
+  align-content: center;
+}
+.debug-page__instructions {
+  display: grid;
+  gap: 20px;
+  max-inline-size: 44rem;
+}
+.debug-page__instructions h2:not(:first-child) {
+  margin-block-start: 12px;
+}
+.debug-page__instructions ol {
+  display: grid;
+  gap: 16px;
+  padding-inline-start: 1.5em;
+  list-style: decimal;
+}
+.debug-page__instructions li {
+  padding-inline-start: 8px;
+}
+.debug-page__footer {
+  display: grid;
+  justify-items: start;
+  gap: 20px;
+  padding-block-start: 32px;
+  border-block-start: 1px solid var(--line-2);
+}
+.debug-page__footer .btn-bordered,
+.debug-page__status .btn-bordered {
+  min-block-size: var(--hit);
+}
+@media (width >= 700px) {
+  .debug-page__installers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (width < 700px) {
+  .debug-page__main {
+    padding-block-start: 24px;
+    gap: 32px;
+  }
+}
