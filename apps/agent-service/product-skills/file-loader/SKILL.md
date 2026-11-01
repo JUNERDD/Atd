@@ -107,8 +107,6 @@ user can judge in one line.
 - Write everything you produce, extracted archive members and converted files included, inside the
   task folder.
 - Never install software, and never run code or macros that came inside a file.
-  Package runners that fetch dependencies on demand also install software; they do not bypass
-  this rule. Check a tool's package and model requirements before invoking it.
 
 ### PDF pages without text
 
