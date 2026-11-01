@@ -44,27 +44,26 @@ actor FocusDiagnosticArchive {
       at: staging, withIntermediateDirectories: false,
       attributes: [.posixPermissions: 0o700])
     defer { try? manager.removeItem(at: staging) }
-    try current.write(to: staging.appending(path: "current.ndjson"))
-    try metadata.write(to: staging.appending(path: "manifest.json"))
+    // Write only the report's files directly into its own directory. Enumerating and moving
+    // staging children is unsafe: macOS may return /private/var URLs for a /var temp directory.
+    let payload = staging.appending(path: "report", directoryHint: .isDirectory)
+    try manager.createDirectory(at: payload, withIntermediateDirectories: false)
+    try current.write(to: payload.appending(path: "current.ndjson"))
+    try metadata.write(to: payload.appending(path: "manifest.json"))
     let previous = directory.appending(path: "previous.ndjson")
     if let size = try? previous.resourceValues(forKeys: [.fileSizeKey]).fileSize,
       size <= Self.byteLimit
     {
-      try manager.copyItem(at: previous, to: staging.appending(path: "previous.ndjson"))
+      try manager.copyItem(at: previous, to: payload.appending(path: "previous.ndjson"))
     }
     try Self.readme.write(
-      to: staging.appending(path: "README.txt"), atomically: true, encoding: .utf8)
+      to: payload.appending(path: "README.txt"), atomically: true, encoding: .utf8)
     let archive = staging.appending(path: "report.zip")
     let process = Process()
     process.executableURL = URL(filePath: "/usr/bin/ditto")
-    // Explicit files avoid including the output archive or unrelated logs in the report.
-    let payload = staging.appending(path: "report", directoryHint: .isDirectory)
-    try manager.createDirectory(at: payload, withIntermediateDirectories: false)
-    for file in try manager.contentsOfDirectory(at: staging, includingPropertiesForKeys: nil)
-    where file != payload {
-      try manager.moveItem(at: file, to: payload.appending(path: file.lastPathComponent))
-    }
-    process.arguments = ["-c", "-k", "--keepParent", payload.path, archive.path]
+    process.arguments = [
+      "-c", "-k", "--keepParent", "--norsrc", "--noextattr", "--noqtn", payload.path, archive.path,
+    ]
     process.standardOutput = FileHandle.nullDevice
     process.standardError = FileHandle.nullDevice
     try process.run()
