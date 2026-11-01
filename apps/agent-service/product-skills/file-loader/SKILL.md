@@ -97,7 +97,8 @@ Commands go through the user's approval setting, so one may ask them to confirm,
 nobody is watching it may be refused; make each command a single read-only step with a reason the
 user can judge in one line.
 
-- Use tools every Mac has. Apple's developer tools in `/usr/bin` (`python3`, `pip3`, `swift`,
+- Prefer tools every Mac has; other tools already installed can also help. Apple's developer
+  tools in `/usr/bin` (`python3`, `pip3`, `swift`,
   `git`, `make`, `clang`, `strings`, `otool` and others) and `java` are only placeholders on a Mac
   without them: running one opens an installer dialog instead of doing the work. `xcode-select -p`
   prints a path only when the developer tools are installed, and never opens a dialog; check it
@@ -106,6 +107,8 @@ user can judge in one line.
 - Write everything you produce, extracted archive members and converted files included, inside the
   task folder.
 - Never install software, and never run code or macros that came inside a file.
+  Package runners that fetch dependencies on demand also install software; they do not bypass
+  this rule. Check a tool's package and model requirements before invoking it.
 
 ### PDF pages without text
 
@@ -143,6 +146,40 @@ osascript -l JavaScript "<this skill's directory>/scripts/pdf-pages.js" "<file>"
 Without `bash`, for the pages still without text, tell the user which pages you could not read and
 what would help: a text-based export, or screenshots of those pages.
 
+### Audio and video
+
+These attachments arrive as descriptions, not as audio or video input you can hear or watch.
+Use available tools to inspect their content, and distinguish extracted frames, on-screen text,
+speech captions and recognized speech in your answer. Metadata describes the file, not its message.
+
+Choose evidence for the user's question. For an overview of a visually explained video, inspect
+timestamped frames and readable text across its duration, then examine gaps or transitions that
+matter. Read extracted images when the model takes images; otherwise use the OCR path above for
+their text. A visual overview does not require a transcript when the inspected content supports
+the answer; say when audio was not checked. Speech-focused material and requests for spoken words,
+translation of speech or a complete transcript still need audio evidence or speech captions with
+the required coverage. A few frames or a title card cannot substitute for that content.
+
+An audio track, nonzero volume or on-screen language does not establish that anyone is speaking,
+or which language they speak. Do not announce a voiceover or infer dialogue from these signals.
+Use transcription when spoken content matters to the answer, with an available tool whose handling
+of the media fits the user's authorization. Do not invent upload endpoints to work around missing
+local tools. If the needed capability is unavailable, report the missing evidence and what would
+make it accessible instead of building a transcription setup.
+
+Keep recognition outcomes distinct: a tool error means recognition failed; a successful empty
+result means no speech was recognized in the checked interval; repetitive or nonsensical text is
+not reliable dialogue. None of these alone proves silence, music-only audio or absence of speech
+throughout the file. Treat a credible speech-detection result as evidence only for its covered
+intervals, and do not fill gaps from expected wording.
+
+Before retrying, reassess whether speech is needed and what new evidence or concrete correction
+makes another attempt useful. Fixing a known input problem can justify a retry; an empty or
+unreliable transcript alone does not justify rerunning unchanged input or escalating through
+larger models. When the evidence already supports the requested answer, deliver it with its
+scope and remaining uncertainty. When essential speech remains inaccessible, give any useful
+partial findings and state that limitation rather than presenting a visual summary as complete.
+
 ## Format notes
 
 - **PDF**: cite page numbers from the markers. A PDF that needs a password cannot be opened; ask
@@ -177,8 +214,6 @@ what would help: a text-based export, or screenshots of those pages.
   `sips -s format jpeg -Z 4096 "<file>" --out "<folder inside the task folder>/<name>.jpg"`.
 - **Archives**: the description lists the first entries. List them all before extracting, extract
   only the members you need into the task folder, and read them there.
-- **Audio and video**: you cannot listen to or watch them. You can report their metadata, such as
-  duration, dimensions and codecs; a transcript needs a tool that makes one.
 - **Anything else**: identify it from its description or with
   [references/inspect.md](references/inspect.md), then tell the user what kind of file it is and
   what you can and cannot do with it.
