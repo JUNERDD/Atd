@@ -48,6 +48,14 @@ export const ModelDefinitionSchema = Type.Object(
     api: id,
     baseUrl: text,
     reasoning: Type.Boolean(),
+    reasoningControl: Type.Optional(
+      Type.Union([
+        Type.Literal('effort'),
+        Type.Literal('budget'),
+        Type.Literal('toggle'),
+        Type.Literal('fixed'),
+      ]),
+    ),
     thinkingLevelMap: Type.Optional(
       Type.Object({
         off: Type.Optional(Type.Union([Type.String(), Type.Null()])),
