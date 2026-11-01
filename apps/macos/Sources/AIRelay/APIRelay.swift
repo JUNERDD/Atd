@@ -31,20 +31,28 @@ final class APIRelay {
     async
   {
     guard responder.isLive else { return }
+    let diagnostic = RelayDiagnosticSpan(request, replayed: replayed)
     guard case .success(let endpoint) = await link.endpoint() else {
+      diagnostic?.finish("serviceUnavailable")
       return responder.error(
         status: RelayPolicy.unavailableStatus, "The agent service is not available.")
     }
     guard let matcher = await manifests.matcher(for: endpoint) else {
+      diagnostic?.finish("manifestUnavailable")
       return responder.error(
         status: RelayPolicy.unavailableStatus, "The agent service's routes are not available yet.")
     }
-    guard responder.isLive else { return }
+    guard responder.isLive else {
+      diagnostic?.finish("cancelled")
+      return
+    }
     guard matcher.decide(method: request.method, path: request.path) == .allow else {
+      diagnostic?.finish("denied")
       return responder.error(
         status: RelayPolicy.deniedStatus, "The renderer may not call this route.")
     }
     guard let url = endpoint.url(encodedPath: request.path.encoded, query: request.query) else {
+      diagnostic?.finish("invalidURL")
       return responder.error(status: RelayPolicy.deniedStatus, "The request URL is not valid.")
     }
     var upstream = URLRequest(url: url)
@@ -61,10 +69,12 @@ final class APIRelay {
 
     let exchange = UpstreamExchange(
       onResponse: { response in
+        diagnostic?.response(response.statusCode)
         let headers = response.stringHeaders
         let followUp = RelayPolicy.followUp(
           status: response.statusCode, headers: headers, replayed: replayed)
         if followUp == .refetchManifestAndReplay {
+          diagnostic?.finish("epochReplay")
           self.replay(request, responder: responder)
           return .discard
         }
@@ -72,11 +82,18 @@ final class APIRelay {
           status: response.statusCode, headers: RelayHeaders.forwardResponse(headers))
         return .stream
       },
-      onData: { responder.send($0) },
+      onData: {
+        diagnostic?.received($0.count)
+        responder.send($0)
+      },
       onComplete: { error in
+        diagnostic?.finish(error == nil ? "completed" : "failed", error: error)
         if let error { responder.fail(error) } else { responder.finish() }
       })
-    responder.onStop = { exchange.cancel() }
+    responder.onStop = {
+      diagnostic?.finish("cancelled")
+      exchange.cancel()
+    }
     exchange.start(upstream)
   }
 

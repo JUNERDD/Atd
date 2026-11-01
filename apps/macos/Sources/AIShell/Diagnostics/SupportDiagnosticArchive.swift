@@ -1,16 +1,16 @@
 import Foundation
 
 /// Disk work stays off AppKit. Keeps at most two 8 MiB traces; each belongs to one app launch.
-actor FocusDiagnosticArchive {
+actor SupportDiagnosticArchive {
   private let directory: URL
   private var prepared = false
   private var lastSequence = 0
   private(set) var writeFailed = false
   static let byteLimit = 8 * 1024 * 1024
 
-  init() {
+  init(profile: String) {
     directory = FileManager.default.homeDirectoryForCurrentUser
-      .appending(path: "Library/Logs/AtdFocusDiagnostics", directoryHint: .isDirectory)
+      .appending(path: "Library/Logs/AtdDiagnostics/\(profile)", directoryHint: .isDirectory)
   }
 
   func checkpoint(_ data: Data, sequence: Int) {
@@ -37,9 +37,9 @@ actor FocusDiagnosticArchive {
     } catch { writeFailed = true }
   }
 
-  func export(current: Data, metadata: Data, to destination: URL) throws {
+  func export(current: Data, metadata: Data, notes: String, to destination: URL) throws {
     let manager = FileManager.default
-    let staging = manager.temporaryDirectory.appending(path: "Atd-focus-\(UUID().uuidString)")
+    let staging = manager.temporaryDirectory.appending(path: "Atd-diagnostics-\(UUID().uuidString)")
     try manager.createDirectory(
       at: staging, withIntermediateDirectories: false,
       attributes: [.posixPermissions: 0o700])
@@ -56,7 +56,7 @@ actor FocusDiagnosticArchive {
     {
       try manager.copyItem(at: previous, to: payload.appending(path: "previous.ndjson"))
     }
-    try Self.readme.write(
+    try (Self.readme + "\n" + notes).write(
       to: payload.appending(path: "README.txt"), atomically: true, encoding: .utf8)
     let archive = staging.appending(path: "report.zip")
     let process = Process()
@@ -75,33 +75,27 @@ actor FocusDiagnosticArchive {
   }
 
   private static let readme = """
-    Atd focus diagnostic report, schema 1
+    Atd support diagnostic report, schema 2
 
-    current.ndjson: bounded trace of this app launch, ordered by sequence.
-    previous.ndjson: previous diagnostic launch, when available; use its own session ID.
-    manifest.json: build/system facts, recording coverage, counts and persistence status.
-    Every record has wall time, system uptime and a session ID. Mouse timestamps are uptime.
-    Cocoa coordinates are bottom-left; WindowServer/CGEvent coordinates are top-left.
+    current.ndjson: this launch, ordered by sequence; each record has a session, module, wall time
+    and monotonic uptime. previous.ndjson: previous launch of the SAME profile, if available.
+    manifest.json: exact build/profile, enabled collectors, event counts, coverage and losses.
+    Distinct sessions are never one continuous trace. Counts include evicted records.
 
-    Start at native.activation.request and its correlation ID; compare the delayed snapshots.
-    Compare mouse.tap -> mouse.local/global -> native.mouse.before/after -> renderer.pointerdown/click.
-    Check frontmost, axFocus, appActive, keyWindow and Spotlight/Dock windows independently.
-    If no native event arrived, compare the tap receiver hints, windowAtPointer, window layers,
-    ignoresMouse, alpha, active Space, modal windows and hitViewClass.
-    If activation was requested, compare all four follow-ups, not only the immediate snapshot.
-    A periodic sample reports elapsed time to reveal a stalled main run loop. Window notifications
-    and workspace events expose focus loss, occlusion and Space/display changes.
-    snapshotMs measures observer overhead. permissions.request/changed mark authorization;
-    reproduce after those prompts close. Missing Accessibility opens the existing native guide;
-    Input Monitoring is requested only if Accessibility did not allow the passive mouse tap.
-    Screen Recording is not required: this recorder reads geometry, never screen pixels or titles.
-    Unavailable monitors/AX reads and missing renderer events are coverage gaps, not proof of no input.
-    windowAtPointer and CGEvent window fields are hit-test hints; native receipt proves delivery.
+    Begin with manifest.json: check build, collectors, droppedRecords, encodingFailures and
+    checkpointFailed. Zero events or unavailable coverage do not prove the absence of a fault.
+    Match begin/result/end records by correlation within a session. Compare bridge, relay and
+    renderer evidence. runtime.sample and renderer heartbeat elapsed times reveal delayed loops;
+    snapshotMs measures observer overhead. A start without an end can also mean eviction or crash.
 
-    Recording is enabled only in a diagnostic build. Raw text, key presses, window titles,
-    conversation content, URLs, credentials, screenshots and service logs are never collected.
-    App bundle IDs, window geometry, mouse button events and OS permission states are included.
-    The trace retains at most 8 MiB / 3000 records per launch and checkpoints every five seconds.
-    Export freezes the in-memory trace before opening the save panel. Files stay local until shared.
+    The runtime profile covers shell/renderer lifecycle, native bridge calls, service endpoint
+    changes, relayed HTTP outcomes and stream connections. It does not collect service internals,
+    model requests, plugin internals or arbitrary console output. The focus profile adds window
+    system snapshots, AX focused application facts and mouse-only event monitors.
+
+    No chat contents, key presses, request bodies, URLs, tokens, window titles or screenshots.
+    Files stay local until explicitly shared. Two traces, each at most 8 MiB / 3000 records;
+    checkpoints every five seconds. A crash may lose the last checkpoint interval.
+    Export freezes evidence before the save dialog opens. No report is automatically uploaded.
     """
 }

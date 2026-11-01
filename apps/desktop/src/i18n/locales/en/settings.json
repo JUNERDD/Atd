@@ -1122,11 +1122,11 @@
       "unavailable": "Model unavailable. Reconnect or choose another."
     }
   },
-  "focusDiagnostics": {
+  "supportDiagnostics": {
     "group": "Diagnostics",
-    "title": "Window focus recording is on",
-    "description": "After reproducing the Apps window issue, export the log and send it to support. This build records automatically from launch.",
-    "privacy": "Includes app identities, mouse clicks, window states and permission status. No chat content, typed text or screenshots. The report is saved locally.",
+    "title": "Runtime recording is on",
+    "description": "Reproduce the issue, then export the log and send it to support. This diagnostic build records automatically from launch.",
+    "privacy": "Includes app versions, runtime states, request outcomes and timing. No chat content, typed text, request bodies or screenshots. The report is saved locally.",
     "export": "Export diagnostic log",
     "exporting": "Exporting…",
     "saved": "Diagnostic log saved. Send the ZIP file to support.",
@@ -1134,6 +1134,8 @@
     "permissionTitle": "Complete authorization before reproducing",
     "permissionHint": "Allow Accessibility in System Settings. If prompted, also allow Input Monitoring. Reopen this build if macOS requests it; then close System Settings and reproduce the issue. You can still export a partial log.",
     "authorize": "Complete authorization",
-    "permissionFailed": "Could not open System Settings. Open Privacy & Security to allow Accessibility and any requested Input Monitoring."
+    "permissionFailed": "Could not open System Settings. Open Privacy & Security to allow Accessibility and any requested Input Monitoring.",
+    "focusTitle": "Runtime and window focus recording is on",
+    "focusPrivacy": "Includes runtime states, request outcomes, app identities, mouse clicks, window states and permissions. No chat content, typed text, request bodies or screenshots. The report is saved locally."
   }
 }

@@ -10,11 +10,13 @@ public typealias DiagnosticsStateParams = NativeEmpty
 /// Result of the `diagnostics.state` call.
 public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   public let enabled: Bool
+  public let focusEnabled: Bool
   public let accessibilityTrusted: Bool
   public let mouseTapActive: Bool
 
-  public init(enabled: Bool, accessibilityTrusted: Bool, mouseTapActive: Bool) {
+  public init(enabled: Bool, focusEnabled: Bool, accessibilityTrusted: Bool, mouseTapActive: Bool) {
     self.enabled = enabled
+    self.focusEnabled = focusEnabled
     self.accessibilityTrusted = accessibilityTrusted
     self.mouseTapActive = mouseTapActive
   }
@@ -22,12 +24,14 @@ public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     enabled = try container.boolean(.enabled)
+    focusEnabled = try container.boolean(.focusEnabled)
     accessibilityTrusted = try container.boolean(.accessibilityTrusted)
     mouseTapActive = try container.boolean(.mouseTapActive)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case enabled
+    case focusEnabled
     case accessibilityTrusted
     case mouseTapActive
   }

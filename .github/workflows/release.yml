@@ -51,10 +51,11 @@ on:
         description: artifacts/rehearsal only; CFBundleVersion without '-' such as 0.9.0rc.3
         type: string
         required: false
-      focus_diagnostics:
-        description: artifacts only; record window focus and offer local log export in Settings
-        type: boolean
-        default: false
+      diagnostic_profile:
+        description: artifacts only; select support collectors and enable local log export
+        type: choice
+        options: [none, runtime, focus]
+        default: none
 
 permissions:
   contents: read
@@ -96,12 +97,16 @@ jobs:
           MODE: ${{ inputs.mode || 'release' }}
           INPUT_MARKETING_VERSION: ${{ inputs.marketing_version }}
           INPUT_BUILD_VERSION: ${{ inputs.build_version }}
-          FOCUS_DIAGNOSTICS: ${{ inputs.focus_diagnostics }}
+          DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'none' }}
         run: |
           output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          case "$DIAGNOSTIC_PROFILE" in
+            none|runtime|focus) ;;
+            *) echo "::error::Unknown diagnostic profile."; exit 1 ;;
+          esac
           semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
-          if [ "$FOCUS_DIAGNOSTICS" = "true" ] && [ "$MODE" != "artifacts" ]; then
-            echo "::error::Focus diagnostics are only allowed in artifacts mode."
+          if [ "$DIAGNOSTIC_PROFILE" != "none" ] && [ "$MODE" != "artifacts" ]; then
+            echo "::error::Diagnostic profiles are only allowed in artifacts mode."
             exit 1
           fi
           version=$(node -p "require('./apps/macos/package.json').version")
@@ -224,7 +229,7 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
-      FOCUS_DIAGNOSTICS: ${{ inputs.focus_diagnostics }}
+      DIAGNOSTIC_PROFILE: ${{ inputs.diagnostic_profile || 'none' }}
       # Not ARCH or MACHINE: tools the build runs read those from the environment.
       RELEASE_ARCH: ${{ matrix.arch }}
       RELEASE_MACHINE: ${{ matrix.machine }}
@@ -308,7 +313,7 @@ jobs:
         run: |
           args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION")
           if [ "$BUILD_VERSION" != "$VERSION" ]; then args+=(--build-version "$BUILD_VERSION"); fi
-          if [ "$FOCUS_DIAGNOSTICS" = "true" ]; then args+=(--focus-diagnostics); fi
+          if [ "$DIAGNOSTIC_PROFILE" != "none" ]; then args+=(--diagnostic-profile "$DIAGNOSTIC_PROFILE"); fi
           node apps/macos/scripts/build.mjs "${args[@]}"
       - name: Check the built app
         run: |
@@ -324,11 +329,11 @@ jobs:
           # Sparkle compares CFBundleVersion, the feed's sparkle:version; the widget shares it.
           check "$app" CFBundleShortVersionString "$VERSION"
           check "$app" CFBundleVersion "$BUILD_VERSION"
-          if [ "$FOCUS_DIAGNOSTICS" = "true" ]; then
-            check "$app" AtdFocusDiagnostics YES
+          if [ "$DIAGNOSTIC_PROFILE" != "none" ]; then
+            check "$app" AtdDiagnosticProfile "$DIAGNOSTIC_PROFILE"
             check "$app" AtdDiagnosticRevision "$GITHUB_SHA"
           else
-            check "$app" AtdFocusDiagnostics NO
+            check "$app" AtdDiagnosticProfile none
           fi
           for appex in "$app"/Contents/PlugIns/*.appex; do
             check "$appex" CFBundleVersion "$BUILD_VERSION"

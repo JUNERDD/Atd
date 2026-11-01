@@ -32,7 +32,7 @@ final class AppUpdater: NSObject {
   /// the build without updates.
   func start() {
     // A support build must keep its recorder instead of installing an ordinary update mid-repro.
-    guard !FocusDiagnostics.enabled else { return }
+    guard !SupportDiagnostics.enabled else { return }
     #if !DEBUG
       let driver = UpdateUserDriver(
         standard: SPUStandardUserDriver(hostBundle: .main, delegate: self))

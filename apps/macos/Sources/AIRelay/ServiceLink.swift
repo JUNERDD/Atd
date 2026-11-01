@@ -91,6 +91,7 @@ public final class ServiceLink {
   /// The endpoint current now (Debug re-reads it from disk).
   public func endpoint() async -> Result<ServiceEndpoint, ServiceUnavailable> {
     let resolved = await source.resolveEndpoint()
+    let previousStatus = latest.map(Self.diagnosticStatus)
     let previous = try? latest?.get()
     latest = resolved
     let current = try? resolved.get()
@@ -100,8 +101,31 @@ public final class ServiceLink {
       case (_?, nil): true
       case (let previous?, let current?): !previous.isSameInstance(as: current)
       }
+    let status = Self.diagnosticStatus(resolved)
+    if changed || status != previousStatus {
+      SupportDiagnosticEvents.record(
+        "service.endpoint",
+        details: [
+          "status": .string(status), "instanceChanged": .bool(changed),
+          "pid": current.map { .number(Double($0.pid)) } ?? .null,
+        ])
+    }
     if changed { for observer in observers.values { observer(current) } }
     return resolved
+  }
+
+  private static func diagnosticStatus(_ result: Result<ServiceEndpoint, ServiceUnavailable>)
+    -> String
+  {
+    switch result {
+    case .success: "available"
+    case .failure(.developmentServiceNotRunning): "developmentServiceNotRunning"
+    case .failure(.invalidEndpoint): "invalidEndpoint"
+    case .failure(.starting): "starting"
+    case .failure(.failed): "failed"
+    case .failure(.stoppedTooOften): "stoppedTooOften"
+    case .failure(.stopped): "stopped"
+    }
   }
 
   /// Runs `observer` whenever a known instance is replaced or disappears, with the new endpoint

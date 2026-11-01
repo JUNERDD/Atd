@@ -109,7 +109,7 @@ final class WebViewHost: NSObject {
   var isPageReady: Bool { outbox.pageReady }
 
   func pageDidBecomeReady() {
-    FocusDiagnostics.shared.record("webview.ready", details: ["role": .string(role.rawValue)])
+    SupportDiagnostics.shared.record("webview.ready", details: ["role": .string(role.rawValue)])
     act(outbox.pageDidBecomeReady())
   }
 
@@ -268,7 +268,7 @@ extension WebViewHost: WKNavigationDelegate, WKUIDelegate {
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    FocusDiagnostics.shared.record(
+    SupportDiagnostics.shared.record(
       "webview.processTerminated", details: ["role": .string(role.rawValue)])
     guard webView === self.webView else { return }
     Self.log.error("The \(self.role.rawValue) WebContent process terminated; rebuilding.")

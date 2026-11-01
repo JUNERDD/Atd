@@ -8,6 +8,7 @@ export const NativeDiagnosticCalls = {
     result: Type.Object(
       {
         enabled: Type.Boolean(),
+        focusEnabled: Type.Boolean(),
         accessibilityTrusted: Type.Boolean(),
         mouseTapActive: Type.Boolean(),
       },
@@ -27,6 +28,10 @@ export const NativeDiagnosticPosts = {
     {
       event: Type.Union([
         Type.Literal('ready'),
+        Type.Literal('error'),
+        Type.Literal('unhandledrejection'),
+        Type.Literal('resize'),
+        Type.Literal('heartbeat'),
         Type.Literal('pointerdown'),
         Type.Literal('pointerup'),
         Type.Literal('click'),
@@ -35,6 +40,9 @@ export const NativeDiagnosticPosts = {
         Type.Literal('visibilitychange'),
       ]),
       timestamp: Type.Number(),
+      width: Type.Number(),
+      height: Type.Number(),
+      elapsed: Type.Union([Type.Number(), Type.Null()]),
       hasFocus: Type.Boolean(),
       visible: Type.Boolean(),
       target: Type.Union([

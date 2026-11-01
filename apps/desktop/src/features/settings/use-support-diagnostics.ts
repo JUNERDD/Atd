@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-export function useFocusDiagnostics() {
+export function useSupportDiagnostics() {
   const bridge = window.desktop?.diagnostics;
   const [enabled, setEnabled] = useState(false);
+  const [focus, setFocus] = useState(false);
   const [ready, setReady] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [permissionFailed, setPermissionFailed] = useState(false);
@@ -15,7 +16,8 @@ export function useFocusDiagnostics() {
         (state) => {
           if (!current) return;
           setEnabled(state.enabled);
-          setReady(state.accessibilityTrusted && state.mouseTapActive);
+          setFocus(state.focusEnabled);
+          setReady(!state.focusEnabled || (state.accessibilityTrusted && state.mouseTapActive));
           if (state.enabled) timer = setTimeout(refresh, 2000);
         },
         () => {
@@ -50,5 +52,14 @@ export function useFocusDiagnostics() {
       setStatus('failed');
     }
   }
-  return { enabled, ready, preparing, permissionFailed, preparePermissions, status, exportReport };
+  return {
+    enabled,
+    focus,
+    ready,
+    preparing,
+    permissionFailed,
+    preparePermissions,
+    status,
+    exportReport,
+  };
 }

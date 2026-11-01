@@ -39,6 +39,20 @@ Ordinary checks reuse the user's existing dev profile without resetting onboardi
 
 Each fresh data directory otherwise starts the onboarding intro again. Within an explicitly isolated check sequence, reuse the prepared task-owned profile, or repeat this preparation for each new profile; do not seed or reset the user's profile to prepare these isolated checks. Keep the default onboarding state when first-run or onboarding behavior is what the task tests.
 
+## A reporter needs a separate diagnostic build
+
+Use [Support diagnostic builds](../../../apps/macos/DIAGNOSTICS.md) for the reusable build,
+collection and export path. Ordinary builds remain free of support recording and export UI.
+Choose `runtime` for shell/page/bridge/service-boundary evidence, or `focus` to add window and
+mouse/AX evidence. Confirm the suspected code paths are covered before sending a package;
+service internals and provider/plugin failures need their own observations.
+
+Reuse the shared report lifecycle and extend the owning collector. Record competing explanations,
+required events, expected permissions and known gaps. Deliver a signed artifacts-only build,
+verify the actual package and its exported report, and give the reporter one short sequence.
+Never infer success from an empty log or treat unavailable coverage as proof that no event occurred.
+The user's environment and launch authorization still follow AGENTS.md and current instructions.
+
 ## Read facts, not dumps
 
 - In the Web Inspector console, project the answer into a small value instead of dumping markup:

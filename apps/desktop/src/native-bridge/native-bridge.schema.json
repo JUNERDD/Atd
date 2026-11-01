@@ -2843,13 +2843,40 @@
             },
             "params": {
               "type": "object",
-              "required": ["event", "timestamp", "hasFocus", "visible", "target", "x", "y"],
+              "required": [
+                "event",
+                "timestamp",
+                "width",
+                "height",
+                "elapsed",
+                "hasFocus",
+                "visible",
+                "target",
+                "x",
+                "y"
+              ],
               "properties": {
                 "event": {
                   "anyOf": [
                     {
                       "type": "string",
                       "const": "ready"
+                    },
+                    {
+                      "type": "string",
+                      "const": "error"
+                    },
+                    {
+                      "type": "string",
+                      "const": "unhandledrejection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "resize"
+                    },
+                    {
+                      "type": "string",
+                      "const": "heartbeat"
                     },
                     {
                       "type": "string",
@@ -2879,6 +2906,22 @@
                 },
                 "timestamp": {
                   "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "elapsed": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "hasFocus": {
                   "type": "boolean"
@@ -5291,9 +5334,12 @@
     },
     "DiagnosticsStateResult": {
       "type": "object",
-      "required": ["enabled", "accessibilityTrusted", "mouseTapActive"],
+      "required": ["enabled", "focusEnabled", "accessibilityTrusted", "mouseTapActive"],
       "properties": {
         "enabled": {
+          "type": "boolean"
+        },
+        "focusEnabled": {
           "type": "boolean"
         },
         "accessibilityTrusted": {
@@ -8165,13 +8211,40 @@
     },
     "DiagnosticsPagePost": {
       "type": "object",
-      "required": ["event", "timestamp", "hasFocus", "visible", "target", "x", "y"],
+      "required": [
+        "event",
+        "timestamp",
+        "width",
+        "height",
+        "elapsed",
+        "hasFocus",
+        "visible",
+        "target",
+        "x",
+        "y"
+      ],
       "properties": {
         "event": {
           "anyOf": [
             {
               "type": "string",
               "const": "ready"
+            },
+            {
+              "type": "string",
+              "const": "error"
+            },
+            {
+              "type": "string",
+              "const": "unhandledrejection"
+            },
+            {
+              "type": "string",
+              "const": "resize"
+            },
+            {
+              "type": "string",
+              "const": "heartbeat"
             },
             {
               "type": "string",
@@ -8201,6 +8274,22 @@
         },
         "timestamp": {
           "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "elapsed": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "hasFocus": {
           "type": "boolean"

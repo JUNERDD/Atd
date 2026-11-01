@@ -35,6 +35,11 @@ final class BridgeMessageHandler: NSObject, WKScriptMessageHandler {
     do {
       bridge.receive(try JSONDecoder().decode(JsMessage.self, from: data), from: host)
     } catch {
+      SupportDiagnostics.shared.record(
+        "bridge.refused", module: "bridge",
+        details: [
+          "role": .string(host.role.rawValue), "document": .number(Double(host.document)),
+        ])
       let reason = Self.describe(error)
       Self.log.error("Refused a bridge message: \(reason, privacy: .public)")
       guard let call = try? JSONDecoder().decode(CallHead.self, from: data), call.type == "call"

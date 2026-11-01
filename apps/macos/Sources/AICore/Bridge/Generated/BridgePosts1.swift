@@ -8,6 +8,9 @@ import Foundation
 public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
   public let event: Event
   public let timestamp: Double
+  public let width: Double
+  public let height: Double
+  public let elapsed: Double?
   public let hasFocus: Bool
   public let visible: Bool
   public let target: Target
@@ -15,11 +18,14 @@ public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
   public let y: Double?
 
   public init(
-    event: Event, timestamp: Double, hasFocus: Bool, visible: Bool, target: Target, x: Double?,
-    y: Double?
+    event: Event, timestamp: Double, width: Double, height: Double, elapsed: Double?,
+    hasFocus: Bool, visible: Bool, target: Target, x: Double?, y: Double?
   ) {
     self.event = event
     self.timestamp = timestamp
+    self.width = width
+    self.height = height
+    self.elapsed = elapsed
     self.hasFocus = hasFocus
     self.visible = visible
     self.target = target
@@ -31,6 +37,9 @@ public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     event = try container.value(.event, Event.self)
     timestamp = try container.number(.timestamp)
+    width = try container.number(.width)
+    height = try container.number(.height)
+    elapsed = try container.nullable(.elapsed) { try container.number($0) }
     hasFocus = try container.boolean(.hasFocus)
     visible = try container.boolean(.visible)
     target = try container.value(.target, Target.self)
@@ -42,6 +51,9 @@ public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(event, forKey: .event)
     try container.encode(timestamp, forKey: .timestamp)
+    try container.encode(width, forKey: .width)
+    try container.encode(height, forKey: .height)
+    try container.encode(elapsed, forKey: .elapsed)
     try container.encode(hasFocus, forKey: .hasFocus)
     try container.encode(visible, forKey: .visible)
     try container.encode(target, forKey: .target)
@@ -52,6 +64,9 @@ public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case event
     case timestamp
+    case width
+    case height
+    case elapsed
     case hasFocus
     case visible
     case target
@@ -61,6 +76,10 @@ public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
 
   public enum Event: String, Codable, Equatable, Sendable {
     case ready
+    case error
+    case unhandledrejection
+    case resize
+    case heartbeat
     case pointerdown
     case pointerup
     case click

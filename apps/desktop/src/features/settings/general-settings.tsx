@@ -17,7 +17,7 @@ import { ShortcutConflictHint } from './shortcut-conflict-hint';
 import { ShortcutRow } from './shortcut-row';
 import { useShortcutSettings } from './use-shortcut-settings';
 import { DevelopmentSyncSettings } from './development-sync-settings';
-import { FocusDiagnosticsSettings } from './focus-diagnostics-settings';
+import { SupportDiagnosticsSettings } from './support-diagnostics-settings';
 
 const IN_APP_SHORTCUTS = [
   {
@@ -69,7 +69,7 @@ export function GeneralSettings({
       <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
         {import.meta.env.DEV && <DevelopmentSyncSettings />}
-        {desktopApp && <FocusDiagnosticsSettings />}
+        {desktopApp && <SupportDiagnosticsSettings />}
         {/* The color scheme and glows are the desktop app's: the shell mirrors them onto its windows. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-appearance-group">

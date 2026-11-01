@@ -1,43 +1,20 @@
 import AICore
 import AppKit
-import ApplicationServices
 
-/// Opt-in at build time, so shipped builds do not install monitors or touch diagnostic files.
+/// The window/input collector. All persistence and report lifecycle belong to SupportDiagnostics.
 final class FocusDiagnostics {
   static let shared = FocusDiagnostics()
-  static var enabled: Bool {
-    Bundle.main.object(forInfoDictionaryKey: "AtdFocusDiagnostics") as? String == "YES"
-  }
-
-  let session = UUID().uuidString
-  private let archive = FocusDiagnosticArchive()
+  static var enabled: Bool { SupportDiagnostics.profile == .focus }
   private var monitoring: FocusDiagnosticMonitoring?
   private var permissions: FocusDiagnosticPermissions?
-  private var timer: Timer?
-  private var records: [Data] = []
-  private var bytes = 0
-  private var sequence = 0
-  private var dropped = 0
-  private var encodingFailures = 0
-  private var counts: [String: Int] = [:]
-  private var lastTick = ProcessInfo.processInfo.systemUptime
-  private var lastCheckpoint = 0.0
-  private var exporting = false
-  private var exportCheckpoint: Task<Void, Never>?
   private var lastBurst = 0.0
+  var tapActive: Bool { monitoring?.tapActive == true }
+  var coverage: [String: JSONValue] { monitoring?.coverage ?? [:] }
 
   func start() {
     guard Self.enabled, monitoring == nil else { return }
     monitoring = FocusDiagnosticMonitoring()
     monitoring?.start()
-    record(
-      "session.start", details: ["environment": FocusDiagnosticSnapshot.environment()], system: true
-    )
-    let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-      MainActor.assumeIsolated { self?.tick() }
-    }
-    self.timer = timer
-    RunLoop.main.add(timer, forMode: .common)
   }
 
   @discardableResult
@@ -46,35 +23,16 @@ final class FocusDiagnostics {
     correlation: Int? = nil
   ) -> Int {
     guard Self.enabled else { return 0 }
-    sequence += 1
-    counts[name, default: 0] += 1
-    let started = ProcessInfo.processInfo.systemUptime
-    let snapshot = FocusDiagnosticSnapshot.read(system: system)
-    let value: JSONValue = .object([
-      "session": .string(session), "sequence": .number(Double(sequence)),
-      "wallTime": .string(Date.now.ISO8601Format()),
-      "uptime": .number(started), "event": .string(name),
-      "snapshotMs": .number((ProcessInfo.processInfo.systemUptime - started) * 1000),
-      "correlation": correlation.map { .number(Double($0)) } ?? .null,
-      "details": .object(details), "snapshot": snapshot,
-    ])
-    do {
-      var data = try JSONEncoder().encode(value)
-      data.append(0x0A)
-      guard data.count <= FocusDiagnosticArchive.byteLimit else {
-        dropped += 1
-        return sequence
-      }
-      while !records.isEmpty
-        && (records.count >= 3000 || bytes + data.count > FocusDiagnosticArchive.byteLimit)
-      {
-        bytes -= records.removeFirst().count
-        dropped += 1
-      }
-      records.append(data)
-      bytes += data.count
-    } catch { encodingFailures += 1 }
-    return sequence
+    return SupportDiagnostics.shared.record(
+      name, module: "focus", details: details,
+      snapshot: { FocusDiagnosticSnapshot.read(system: system) }, correlation: correlation)
+  }
+
+  func tick() {
+    guard Self.enabled else { return }
+    monitoring?.refreshPermission()
+    permissions?.refresh(mouseTapActive: tapActive)
+    record("focus.sample", system: true)
   }
 
   func mouse(_ event: NSEvent, stage: String) {
@@ -113,33 +71,6 @@ final class FocusDiagnostics {
     }
   }
 
-  private func tick() {
-    let now = ProcessInfo.processInfo.systemUptime
-    monitoring?.refreshPermission()
-    permissions?.refresh(mouseTapActive: monitoring?.tapActive == true)
-    record("sample", details: ["elapsed": .number(now - lastTick)], system: true)
-    lastTick = now
-    if now - lastCheckpoint >= 5 {
-      lastCheckpoint = now
-      let data = traceData()
-      let sequence = sequence
-      let archive = archive
-      exportCheckpoint = Task { await archive.checkpoint(data, sequence: sequence) }
-    }
-  }
-
-  private func traceData() -> Data {
-    var data = Data(capacity: bytes)
-    for record in records { data.append(record) }
-    return data
-  }
-
-  func state() -> DiagnosticsStateResult {
-    DiagnosticsStateResult(
-      enabled: Self.enabled, accessibilityTrusted: AXIsProcessTrusted(),
-      mouseTapActive: monitoring?.tapActive == true)
-  }
-
   func preparePermissions(using trust: AccessibilityTrust, automatic: Bool = false) {
     guard Self.enabled else { return }
     if permissions == nil { permissions = FocusDiagnosticPermissions(trust: trust) }
@@ -150,49 +81,13 @@ final class FocusDiagnostics {
     monitoring?.tapDisabled(reason: reason)
   }
 
-  func export(using panels: SystemPanels) async throws(BridgeError) -> Bool {
-    guard Self.enabled else {
-      throw BridgeError("Focus diagnostics are not enabled in this build.")
-    }
-    guard !exporting, !panels.isOpen else {
-      throw BridgeError("Another export or file dialog is open.")
-    }
-    exporting = true
-    defer { exporting = false }
-    record("export.freeze", system: true)
-    // Freeze before the save dialog changes activation, key window, level or mouse position.
-    let trace = traceData()
-    let frozenSequence = sequence
-    let frozenDropped = dropped
-    let frozenCounts = counts
-    let frozenRetained = records.count
-    let frozenEncodingFailures = encodingFailures
-    let frozenCoverage = monitoring?.coverage ?? [:]
-    let environment = FocusDiagnosticSnapshot.environment()
-    await exportCheckpoint?.value
-    await archive.checkpoint(trace, sequence: frozenSequence)
-    let manifest: JSONValue = .object([
-      "session": .string(session), "environment": environment,
-      "lastSequence": .number(Double(frozenSequence)),
-      "retainedRecords": .number(Double(frozenRetained)),
-      "droppedRecords": .number(Double(frozenDropped)),
-      "encodingFailures": .number(Double(frozenEncodingFailures)),
-      "eventCounts": .object(frozenCounts.mapValues { .number(Double($0)) }),
-      "coverage": .object(frozenCoverage),
-      "checkpointFailed": .bool(await archive.writeFailed),
-    ])
-    guard
-      let destination = await panels.chooseSaveLocation(
-        suggestedName: "Atd-focus-\(session.prefix(8)).zip", contentType: .zip)
-    else { return false }
-    do {
-      try await archive.export(
-        current: trace, metadata: JSONEncoder().encode(manifest), to: destination)
-      return true
-    } catch {
-      record("export.failed", details: ["code": .number(Double((error as NSError).code))])
-      throw BridgeError(
-        "The diagnostic report could not be saved. Choose a writable folder and try again.")
-    }
-  }
+  static let reportNotes = """
+    Focus collector: compare mouse.tap, mouse.local/global, native.mouse.before/after and
+    renderer.pointerdown/click. Correlate native.activation.request with all activation.followup
+    records. Read frontmost, axFocus, keyWindow and WindowServer independently.
+    Cocoa coordinates are bottom-left; WindowServer/CGEvent coordinates are top-left.
+    Receiver and windowAtPointer fields are hints; native receipt proves delivery.
+    Missing AX or event-tap coverage is not proof that no click occurred. Complete requested
+    Accessibility/Input Monitoring permission before reproduction. Screen Recording is not needed.
+    """
 }

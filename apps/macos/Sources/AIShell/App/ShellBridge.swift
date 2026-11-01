@@ -20,6 +20,7 @@ final class ShellBridge {
       receive(post, from: host)
     case .call(let id, let call):
       let document = host.document
+      let diagnostic = BridgeDiagnosticSpan(call: call, id: id, host: host)
       Task {
         let reply: SwiftMessage
         do throws(BridgeError) {
@@ -27,6 +28,7 @@ final class ShellBridge {
         } catch {
           reply = .error(id: id, message: String(error.message.prefix(2000)))
         }
+        diagnostic?.finish(reply)
         host.reply(reply, document: document)
       }
     }
@@ -35,10 +37,12 @@ final class ShellBridge {
   private func receive(_ post: NativePost, from host: WebViewHost) {
     switch post {
     case .diagnosticsPage(let params):
-      guard FocusDiagnostics.enabled, host.role == .panel || host.role == .settings else { return }
+      guard SupportDiagnostics.enabled, host.role == .panel || host.role == .settings else {
+        return
+      }
       if let value = try? JSONValue(encoding: params) {
-        FocusDiagnostics.shared.record(
-          "renderer.\(params.event.rawValue)",
+        SupportDiagnostics.shared.record(
+          "renderer.\(params.event.rawValue)", module: "renderer",
           details: [
             "role": .string(host.role.rawValue), "document": .number(Double(host.document)),
             "page": value,
@@ -137,7 +141,7 @@ final class ShellBridge {
       shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())
     case .diagnosticsState:
-      return try Self.encode(FocusDiagnostics.shared.state())
+      return try Self.encode(SupportDiagnostics.shared.state())
     case .diagnosticsPrepare:
       guard host.role == .settings else { throw BridgeError("Prepare diagnostics from Settings.") }
       FocusDiagnostics.shared.preparePermissions(using: shell.trust)
@@ -146,7 +150,7 @@ final class ShellBridge {
       guard host.role == .settings else { throw BridgeError("Export diagnostics from Settings.") }
       return try Self.encode(
         DiagnosticsExportResult(
-          saved: try await FocusDiagnostics.shared.export(using: shell.systemPanels)))
+          saved: try await SupportDiagnostics.shared.export(using: shell.systemPanels)))
     case .settingsClose:
       shell.closeSettings()
       return try Self.encode(NativeEmpty())

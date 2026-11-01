@@ -29,6 +29,10 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   private let events: Events
   private var task: URLSessionWebSocketTask?
   private var ended = false
+  private var diagnostic = 0
+  private var receivedFrames = 0
+  private var receivedBytes = 0
+  private var lastSample = 0.0
 
   init(endpoint: ServiceEndpoint, events: Events) {
     self.endpoint = endpoint
@@ -36,6 +40,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   }
 
   func start(session: URLSession = RelaySession.shared) {
+    diagnostic = SupportDiagnosticEvents.record("stream.begin")
     var request = URLRequest(url: endpoint.streamURL)
     request.setValue("Bearer \(endpoint.token)", forHTTPHeaderField: "Authorization")
     request.setValue(Self.streamProtocol, forHTTPHeaderField: "Sec-WebSocket-Protocol")
@@ -57,6 +62,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   /// Closes the connection; no event is reported afterwards.
   func close(code: UInt16, reason: String) {
     guard !ended else { return }
+    recordClose(code)
     ended = true
     let closeCode = URLSessionWebSocketTask.CloseCode(rawValue: Int(code)) ?? .normalClosure
     task?.cancel(with: closeCode, reason: Data(reason.utf8))
@@ -70,6 +76,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
         guard !self.ended else { return }
         switch result {
         case .success(.string(let text)):
+          self.recordReceive(text)
           self.events.onText(text)
           self.receiveNext()
         case .success(.data):
@@ -94,9 +101,34 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
 
   private func finish(_ code: UInt16, _ reason: String) {
     guard !ended else { return }
+    recordClose(code)
     ended = true
     task = nil
     events.onClose(code, reason)
+  }
+
+  private func recordReceive(_ text: String) {
+    guard diagnostic != 0 else { return }
+    receivedFrames += 1
+    receivedBytes += text.utf8.count
+    let now = ProcessInfo.processInfo.systemUptime
+    guard now - lastSample >= 5 else { return }
+    lastSample = now
+    SupportDiagnosticEvents.record(
+      "stream.sample",
+      details: [
+        "receivedFrames": .number(Double(receivedFrames)),
+        "receivedBytes": .number(Double(receivedBytes)),
+      ], correlation: diagnostic)
+  }
+
+  private func recordClose(_ code: UInt16) {
+    SupportDiagnosticEvents.record(
+      "stream.close",
+      details: [
+        "code": .number(Double(code)), "receivedFrames": .number(Double(receivedFrames)),
+        "receivedBytes": .number(Double(receivedBytes)),
+      ], correlation: diagnostic)
   }
 
   nonisolated func urlSession(
@@ -105,6 +137,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   ) {
     MainActor.assumeIsolated {
       guard !ended else { return }
+      SupportDiagnosticEvents.record("stream.open", correlation: diagnostic)
       events.onOpen()
       receiveNext()
     }
