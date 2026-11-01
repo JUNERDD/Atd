@@ -4,6 +4,42 @@
 
 import Foundation
 
+/// Result of the `app.setShowInDock` call.
+public struct AppSetShowInDockResult: Codable, Equatable, Sendable {
+  public let show: Bool
+
+  public init(show: Bool) {
+    self.show = show
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    show = try container.boolean(.show)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case show
+  }
+}
+
+/// Params of the `app.setOpenAtLogin` call.
+public struct AppSetOpenAtLoginParams: Codable, Equatable, Sendable {
+  public let open: Bool
+
+  public init(open: Bool) {
+    self.open = open
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    open = try container.boolean(.open)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case open
+  }
+}
+
 /// Result of the `app.setOpenAtLogin` call.
 public struct AppSetOpenAtLoginResult: Codable, Equatable, Sendable {
   public let open: Bool
@@ -217,45 +253,3 @@ public struct OnboardingCloseParams: Codable, Equatable, Sendable {
 
 /// Result of the `onboarding.close` call.
 public typealias OnboardingCloseResult = NativeEmpty
-
-/// Params of the `userApp.open` call.
-public struct UserAppOpenParams: Codable, Equatable, Sendable {
-  public let appId: String
-
-  public init(appId: String) {
-    self.appId = appId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-  }
-}
-
-/// Result of the `userApp.open` call.
-public typealias UserAppOpenResult = NativeEmpty
-
-/// Params of the `userApp.close` call.
-public struct UserAppCloseParams: Codable, Equatable, Sendable {
-  public let appId: String
-
-  public init(appId: String) {
-    self.appId = appId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-  }
-}
-
-/// Result of the `userApp.close` call.
-public typealias UserAppCloseResult = NativeEmpty

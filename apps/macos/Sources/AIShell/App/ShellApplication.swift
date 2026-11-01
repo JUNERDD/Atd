@@ -14,6 +14,7 @@ public enum ShellApplication {
     application.delegate = delegate
     // Info.plist sets LSUIElement, so no Dock icon flashes at launch.
     application.setActivationPolicy(.accessory)
+    FocusDiagnostics.shared.start()
     withExtendedLifetime(delegate) { application.run() }
   }
 }

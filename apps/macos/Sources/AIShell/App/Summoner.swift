@@ -47,6 +47,12 @@ final class Summoner {
   func summon(_ trigger: SummonTrigger, selectedText: String? = nil, held: HeldIntent? = nil)
     -> Bool
   {
+    FocusDiagnostics.shared.record(
+      "summon.request",
+      details: [
+        "panelIsKey": .bool(panel.isKey), "summoning": .bool(isSummoning),
+        "capturing": .bool(isCapturing()), "filePanelOpen": .bool(systemPanels.isOpen),
+      ])
     guard !isSummoning, !isCapturing() else { return false }
     let steps = SummonPolicy.steps(
       for: trigger,

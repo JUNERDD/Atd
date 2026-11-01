@@ -43,6 +43,7 @@ final class ShellWebView: WindowDraggingWebView {
 
   /// Records every press, then lets a drag region move the window or WebKit take it.
   override func mouseDown(with event: NSEvent) {
+    FocusDiagnostics.shared.mouse(event, stage: "webview.mouseDown")
     lastMouseDown = event
     super.mouseDown(with: event)
   }

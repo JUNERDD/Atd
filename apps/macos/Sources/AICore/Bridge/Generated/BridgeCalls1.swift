@@ -4,6 +4,48 @@
 
 import Foundation
 
+/// Params of the `diagnostics.state` call.
+public typealias DiagnosticsStateParams = NativeEmpty
+
+/// Result of the `diagnostics.state` call.
+public struct DiagnosticsStateResult: Codable, Equatable, Sendable {
+  public let enabled: Bool
+
+  public init(enabled: Bool) {
+    self.enabled = enabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    enabled = try container.boolean(.enabled)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case enabled
+  }
+}
+
+/// Params of the `diagnostics.export` call.
+public typealias DiagnosticsExportParams = NativeEmpty
+
+/// Result of the `diagnostics.export` call.
+public struct DiagnosticsExportResult: Codable, Equatable, Sendable {
+  public let saved: Bool
+
+  public init(saved: Bool) {
+    self.saved = saved
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    saved = try container.boolean(.saved)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case saved
+  }
+}
+
 /// Params of the `app.startup` call.
 public struct AppStartupParams: Codable, Equatable, Sendable {
   public let state: State
@@ -212,41 +254,5 @@ public struct AppSetShowInDockParams: Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case show
-  }
-}
-
-/// Result of the `app.setShowInDock` call.
-public struct AppSetShowInDockResult: Codable, Equatable, Sendable {
-  public let show: Bool
-
-  public init(show: Bool) {
-    self.show = show
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    show = try container.boolean(.show)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case show
-  }
-}
-
-/// Params of the `app.setOpenAtLogin` call.
-public struct AppSetOpenAtLoginParams: Codable, Equatable, Sendable {
-  public let open: Bool
-
-  public init(open: Bool) {
-    self.open = open
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    open = try container.boolean(.open)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case open
   }
 }

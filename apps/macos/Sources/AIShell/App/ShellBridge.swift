@@ -34,6 +34,16 @@ final class ShellBridge {
 
   private func receive(_ post: NativePost, from host: WebViewHost) {
     switch post {
+    case .diagnosticsPage(let params):
+      guard FocusDiagnostics.enabled, host.role == .panel || host.role == .settings else { return }
+      if let value = try? JSONValue(encoding: params) {
+        FocusDiagnostics.shared.record(
+          "renderer.\(params.event.rawValue)",
+          details: [
+            "role": .string(host.role.rawValue), "document": .number(Double(host.document)),
+            "page": value,
+          ])
+      }
     case .bridgeReady: host.pageDidBecomeReady()
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
     case .appearanceSet(let post): AppAppearance.shared.apply(post.appearance)
@@ -126,6 +136,13 @@ final class ShellBridge {
     case .settingsOpen(let params):
       shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())
+    case .diagnosticsState:
+      return try Self.encode(FocusDiagnostics.shared.state())
+    case .diagnosticsExport:
+      guard host.role == .settings else { throw BridgeError("Export diagnostics from Settings.") }
+      return try Self.encode(
+        DiagnosticsExportResult(
+          saved: try await FocusDiagnostics.shared.export(using: shell.systemPanels)))
     case .settingsClose:
       shell.closeSettings()
       return try Self.encode(NativeEmpty())

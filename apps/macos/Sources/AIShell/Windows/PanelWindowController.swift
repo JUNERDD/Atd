@@ -78,6 +78,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   func setPinned(_ pinned: Bool) {
     panel.isFloatingPanel = pinned
     panel.level = pinned ? .floating : .normal
+    FocusDiagnostics.shared.record("panel.pinned", details: ["pinned": .bool(pinned)])
   }
 
   /// Floats below system panels (open and save) while one is open; returns the level to restore.
@@ -109,21 +110,25 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   func show() {
+    FocusDiagnostics.shared.record("panel.show.before")
     if panel.isMiniaturized { panel.deminiaturize(nil) }
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
     panel.orderFrontRegardless()
     panel.makeKey()
+    FocusDiagnostics.shared.record("panel.show.after")
     onVisibilityChange?(true)
   }
 
   func hide() {
+    FocusDiagnostics.shared.record("panel.hide.before")
     let wasKey = panel.isKeyWindow
     userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
     if wasKey { onGaveUpKey?() }
     onVisibilityChange?(false)
+    FocusDiagnostics.shared.record("panel.hide.after")
   }
 
   /// Takes the panel off screen for a capture session and returns what puts it back as it was.
@@ -244,9 +249,20 @@ final class ShellPanel: NSPanel {
     // Keep activation out of makeKey/show so hotkey summons and typing stay non-activating.
     switch event.type {
     case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-      if canBecomeKey { NSApp.activate() }
+      FocusDiagnostics.shared.mouse(event, stage: "native.mouse.before")
+      if canBecomeKey {
+        let attempt = FocusDiagnostics.shared.record("native.activation.request")
+        NSApp.activate()
+        FocusDiagnostics.shared.record("native.activation.return", correlation: attempt)
+        FocusDiagnostics.shared.burst(correlation: attempt, activation: true)
+      }
     default: break
     }
     super.sendEvent(event)
+    switch event.type {
+    case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+      FocusDiagnostics.shared.mouse(event, stage: "native.mouse.after")
+    default: break
+    }
   }
 }

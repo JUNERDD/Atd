@@ -1121,5 +1121,15 @@
       "search": "Search image-capable models",
       "unavailable": "Model unavailable. Reconnect or choose another."
     }
+  },
+  "focusDiagnostics": {
+    "group": "Diagnostics",
+    "title": "Window focus recording is on",
+    "description": "After reproducing the Apps window issue, export the log and send it to support. This build records automatically from launch.",
+    "privacy": "Includes app identities, mouse clicks, window states and permission status. No chat content, typed text or screenshots. The report is saved locally.",
+    "export": "Export diagnostic log",
+    "exporting": "Exporting…",
+    "saved": "Diagnostic log saved. Send the ZIP file to support.",
+    "failed": "The diagnostic log could not be saved. Try again and choose a writable folder."
   }
 }

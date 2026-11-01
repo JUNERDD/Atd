@@ -163,6 +163,7 @@ export interface ViewsBridge {
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
  */
 export interface DesktopBridge {
+  readonly diagnostics?: import('./diagnostics-contract').DiagnosticsBridge;
   /** The OS as a Node platform name. */
   readonly platform: string;
   /** Pauses native shortcuts until the returned release runs. Absent in renderer-only tests. */

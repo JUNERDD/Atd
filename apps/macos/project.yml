@@ -19,6 +19,8 @@ settings:
     # Sparkle compares CFBundleVersion with an update's `sparkle:version`, so the build number
     # follows the release version instead of staying constant.
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
+    ATD_FOCUS_DIAGNOSTICS: 'NO'
+    ATD_DIAGNOSTIC_REVISION: ''
     # Sparkle feeds (Info.plist SUFeedURL and AtdArm64FeedURL). Each architecture has its own feed,
     # because an appcast can restrict an item to arm64 but not to x86_64: scripts/build.mjs points
     # x64 builds at appcast-x64.xml. The arm64 feed is where AppUpdater moves an x64 build running
@@ -146,6 +148,8 @@ targets:
         CFBundleLocalizations: [en, zh-Hans]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdFocusDiagnostics: $(ATD_FOCUS_DIAGNOSTICS)
+        AtdDiagnosticRevision: $(ATD_DIAGNOSTIC_REVISION)
         LSApplicationCategoryType: public.app-category.productivity
         # Widget taps (`<scheme>://apps/<appId>?route=<route>`, WidgetLink) and the Finder Sync
         # extension's `<scheme>://finder` (FinderHandoff), checked by the shell before it opens

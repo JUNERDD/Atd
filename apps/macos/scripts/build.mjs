@@ -4,7 +4,7 @@
  * `pnpm dev` runs) and Release (`build:release`, after `bundle` staged the service pack):
  *
  *   node scripts/build.mjs --configuration <Debug|Release> [--arch <arm64|x64>]
- *     [--marketing-version <v>] [--build-version <v>] [--dry-run]
+ *     [--marketing-version <v>] [--build-version <v>] [--focus-diagnostics] [--dry-run]
  *
  * It regenerates the Xcode project with XcodeGen and runs xcodebuild into
  * DerivedData/Build/Products/<Configuration>/Atd.app. The checked-in Package.resolved is copied into
@@ -58,6 +58,7 @@ function readOptions() {
         arch: { type: 'string' },
         'marketing-version': { type: 'string' },
         'build-version': { type: 'string' },
+        'focus-diagnostics': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
       },
       strict: true,
@@ -92,13 +93,17 @@ function readOptions() {
     arch: parsed.arch,
     marketingVersion,
     buildVersion,
+    focusDiagnostics: parsed['focus-diagnostics'],
     dryRun: parsed['dry-run'],
   };
 }
 
 /** The xcodebuild arguments for one configuration and architecture. */
-function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion }) {
+function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion, focusDiagnostics }) {
   const xcodeArch = MACHO_ARCHS[arch];
+  const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: packageRoot, encoding: 'utf8' });
+  if (focusDiagnostics && (revision.status !== 0 || !/^[a-f0-9]{40}\s*$/.test(revision.stdout)))
+    fail('A diagnostic build requires a Git revision for its report.');
   return [
     '-project',
     'AI.xcodeproj',
@@ -114,6 +119,8 @@ function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion })
     '-onlyUsePackageVersionsFromResolvedFile',
     // Also covers the AIMac package targets, whose Release builds otherwise include both slices.
     `ARCHS=${xcodeArch}`,
+    `ATD_FOCUS_DIAGNOSTICS=${focusDiagnostics ? 'YES' : 'NO'}`,
+    ...(focusDiagnostics ? [`ATD_DIAGNOSTIC_REVISION=${revision.stdout.trim()}`] : []),
     ...(arch === 'x64' ? [`ATD_SPARKLE_FEED_URL=${X64_FEED_URL}`] : []),
     ...(marketingVersion === undefined ? [] : [`MARKETING_VERSION=${marketingVersion}`]),
     ...(buildVersion === undefined ? [] : [`CURRENT_PROJECT_VERSION=${buildVersion}`]),

@@ -18,6 +18,10 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       let method = try container.string(.method)
       let call: NativeCall
       switch method {
+      case "diagnostics.state":
+        call = try .diagnosticsState(container.value(.params, DiagnosticsStateParams.self))
+      case "diagnostics.export":
+        call = try .diagnosticsExport(container.value(.params, DiagnosticsExportParams.self))
       case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))
       case "window.show": call = try .windowShow(container.value(.params, WindowShowParams.self))
       case "window.hide": call = try .windowHide(container.value(.params, WindowHideParams.self))
@@ -143,6 +147,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       let method = try container.string(.method)
       let post: NativePost
       switch method {
+      case "diagnostics.page":
+        post = try .diagnosticsPage(container.value(.params, DiagnosticsPagePost.self))
       case "bridge.ready": post = try .bridgeReady(container.value(.params, BridgeReadyPost.self))
       case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
       case "appearance.set":

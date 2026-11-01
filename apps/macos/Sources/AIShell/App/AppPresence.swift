@@ -31,7 +31,9 @@ final class AppPresence {
     let policy: NSApplication.ActivationPolicy = show ? .regular : .accessory
     guard NSApp.activationPolicy() != policy else { return }
     let focused = NSApp.keyWindow
+    FocusDiagnostics.shared.record("presence.policy.before", details: ["regular": .bool(show)])
     NSApp.setActivationPolicy(policy)
+    FocusDiagnostics.shared.record("presence.policy.after", details: ["regular": .bool(show)])
     if !show, restoreFocus, let focused, focused.isVisible {
       NSApp.activate()
       focused.makeKeyAndOrderFront(nil)

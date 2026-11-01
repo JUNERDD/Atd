@@ -49,6 +49,7 @@ import { nativeSpeech } from './native-speech';
 import { nativeToolbar } from './native-toolbar';
 import { nativeAbout, nativeUpdate } from './native-update';
 import { nativeViews } from './native-views';
+import { nativeDiagnostics } from './native-diagnostics';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -251,6 +252,7 @@ export async function installNativeHost(
   });
   const openLink = async (url: string) => void (await native.call('link.open', { url }));
   const bridge: DesktopBridge = {
+    diagnostics: nativeDiagnostics(native),
     platform: 'darwin',
     beginShortcutRecording: nativeShortcutRecording(native),
     settings: settings.bridge,

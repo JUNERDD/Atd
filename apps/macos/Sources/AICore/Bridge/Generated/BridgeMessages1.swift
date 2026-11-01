@@ -34,6 +34,8 @@ public struct NativeEmpty: Codable, Equatable, Sendable {
 
 /// A page → Swift call with its typed params.
 public enum NativeCall: Equatable, Sendable {
+  case diagnosticsState(DiagnosticsStateParams)
+  case diagnosticsExport(DiagnosticsExportParams)
   case appStartup(AppStartupParams)
   case windowShow(WindowShowParams)
   case windowHide(WindowHideParams)
@@ -100,6 +102,8 @@ public enum NativeCall: Equatable, Sendable {
   /// The contract name.
   public var name: String {
     switch self {
+    case .diagnosticsState: "diagnostics.state"
+    case .diagnosticsExport: "diagnostics.export"
     case .appStartup: "app.startup"
     case .windowShow: "window.show"
     case .windowHide: "window.hide"
@@ -168,6 +172,7 @@ public enum NativeCall: Equatable, Sendable {
 
 /// A page → Swift one-way post with its typed params.
 public enum NativePost: Equatable, Sendable {
+  case diagnosticsPage(DiagnosticsPagePost)
   case bridgeReady(BridgeReadyPost)
   case languageSet(LanguageSetPost)
   case appearanceSet(AppearanceSetPost)
@@ -187,6 +192,7 @@ public enum NativePost: Equatable, Sendable {
   /// The contract name.
   public var name: String {
     switch self {
+    case .diagnosticsPage: "diagnostics.page"
     case .bridgeReady: "bridge.ready"
     case .languageSet: "language.set"
     case .appearanceSet: "appearance.set"

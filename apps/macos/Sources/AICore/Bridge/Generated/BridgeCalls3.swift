@@ -4,6 +4,48 @@
 
 import Foundation
 
+/// Params of the `userApp.open` call.
+public struct UserAppOpenParams: Codable, Equatable, Sendable {
+  public let appId: String
+
+  public init(appId: String) {
+    self.appId = appId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+  }
+}
+
+/// Result of the `userApp.open` call.
+public typealias UserAppOpenResult = NativeEmpty
+
+/// Params of the `userApp.close` call.
+public struct UserAppCloseParams: Codable, Equatable, Sendable {
+  public let appId: String
+
+  public init(appId: String) {
+    self.appId = appId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+  }
+}
+
+/// Result of the `userApp.close` call.
+public typealias UserAppCloseResult = NativeEmpty
+
 /// Params of the `userApp.widgetPreview` call.
 public struct UserAppWidgetPreviewParams: Codable, Equatable, Sendable {
   public let appId: String
@@ -207,63 +249,3 @@ public struct ViewOpenParams: Codable, Equatable, Sendable {
 
 /// Result of the `view.open` call.
 public typealias ViewOpenResult = NativeEmpty
-
-/// Params of the `shortcuts.set` call.
-public struct ShortcutsSetParams: Codable, Equatable, Sendable {
-  public let registrations: [ShortcutRegistration]
-  public let selectionWanted: Bool
-
-  public init(registrations: [ShortcutRegistration], selectionWanted: Bool) {
-    self.registrations = registrations
-    self.selectionWanted = selectionWanted
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    registrations = try container.array(
-      .registrations, of: ShortcutRegistration.self, maxItems: 256)
-    selectionWanted = try container.boolean(.selectionWanted)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case registrations
-    case selectionWanted
-  }
-}
-
-/// Result of the `shortcuts.set` call.
-public struct ShortcutsSetResult: Codable, Equatable, Sendable {
-  public let results: [ShortcutResult]
-
-  public init(results: [ShortcutResult]) {
-    self.results = results
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    results = try container.array(.results, of: ShortcutResult.self, maxItems: 256)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case results
-  }
-}
-
-/// Params of the `capture` call.
-public struct CaptureParams: Codable, Equatable, Sendable {
-  public init() {}
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    try container.literal(.source, "selection")
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode("selection", forKey: .source)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case source
-  }
-}

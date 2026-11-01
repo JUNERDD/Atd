@@ -4,6 +4,81 @@
 
 import Foundation
 
+/// Params of the `diagnostics.page` post.
+public struct DiagnosticsPagePost: Codable, Equatable, Sendable {
+  public let event: Event
+  public let timestamp: Double
+  public let hasFocus: Bool
+  public let visible: Bool
+  public let target: Target
+  public let x: Double?
+  public let y: Double?
+
+  public init(
+    event: Event, timestamp: Double, hasFocus: Bool, visible: Bool, target: Target, x: Double?,
+    y: Double?
+  ) {
+    self.event = event
+    self.timestamp = timestamp
+    self.hasFocus = hasFocus
+    self.visible = visible
+    self.target = target
+    self.x = x
+    self.y = y
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    event = try container.value(.event, Event.self)
+    timestamp = try container.number(.timestamp)
+    hasFocus = try container.boolean(.hasFocus)
+    visible = try container.boolean(.visible)
+    target = try container.value(.target, Target.self)
+    x = try container.nullable(.x) { try container.number($0) }
+    y = try container.nullable(.y) { try container.number($0) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(event, forKey: .event)
+    try container.encode(timestamp, forKey: .timestamp)
+    try container.encode(hasFocus, forKey: .hasFocus)
+    try container.encode(visible, forKey: .visible)
+    try container.encode(target, forKey: .target)
+    try container.encode(x, forKey: .x)
+    try container.encode(y, forKey: .y)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case event
+    case timestamp
+    case hasFocus
+    case visible
+    case target
+    case x
+    case y
+  }
+
+  public enum Event: String, Codable, Equatable, Sendable {
+    case ready
+    case pointerdown
+    case pointerup
+    case click
+    case focus
+    case blur
+    case visibilitychange
+  }
+
+  public enum Target: String, Codable, Equatable, Sendable {
+    case input
+    case textarea
+    case button
+    case link
+    case editable
+    case other
+  }
+}
+
 /// Params of the `bridge.ready` post.
 public typealias BridgeReadyPost = NativeEmpty
 
@@ -134,125 +209,6 @@ public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
       y = try container.number(.y)
       width = try container.number(.width)
       height = try container.number(.height)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
-  }
-}
-
-/// Params of the `onboarding.surface` post.
-public struct OnboardingSurfacePost: Codable, Equatable, Sendable {
-  public let rect: Rect?
-  public let radius: Double
-  public let fade: Double
-
-  public init(rect: Rect?, radius: Double, fade: Double) {
-    self.rect = rect
-    self.radius = radius
-    self.fade = fade
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
-    radius = try container.number(.radius, minimum: 0)
-    fade = try container.number(.fade, minimum: 0)
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(rect, forKey: .rect)
-    try container.encode(radius, forKey: .radius)
-    try container.encode(fade, forKey: .fade)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rect
-    case radius
-    case fade
-  }
-
-  public struct Rect: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x, minimum: 0)
-      y = try container.number(.y, minimum: 0)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
-  }
-}
-
-/// Params of the `onboarding.selection` post.
-public struct OnboardingSelectionPost: Codable, Equatable, Sendable {
-  public let rect: Rect?
-  public let text: String
-
-  public init(rect: Rect?, text: String) {
-    self.rect = rect
-    self.text = text
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
-    text = try container.string(.text, maxLength: 2_000)
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(rect, forKey: .rect)
-    try container.encode(text, forKey: .text)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rect
-    case text
-  }
-
-  public struct Rect: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x, minimum: 0)
-      y = try container.number(.y, minimum: 0)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {

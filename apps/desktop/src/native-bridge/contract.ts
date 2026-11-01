@@ -12,7 +12,9 @@
  * message bound to `DELIVER_ARGUMENT`. The delivery function is synchronous.
  */
 import { Type, type TSchema } from 'typebox';
+import { NativeOnboardingPosts } from './onboarding-posts.ts';
 import { NativeCalls } from './calls.ts';
+import { NativeDiagnosticPosts } from './diagnostic-calls.ts';
 import {
   CommandArgumentsSchema,
   NativeCommandOptionsEvents,
@@ -46,22 +48,11 @@ const DragRectSchema = Type.Object(
   { additionalProperties: false },
 );
 
-/** A rectangle the welcome guide reports, in CSS pixels from the web view's top-left. */
-const GuideRectSchema = Type.Object(
-  {
-    x: Type.Number({ minimum: 0 }),
-    y: Type.Number({ minimum: 0 }),
-    width: Type.Number({ minimum: 0 }),
-    height: Type.Number({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
-
-/** Longest text `onboarding.selection` takes; the practice area's sample is far shorter. */
-export const MAX_PRACTICE_SELECTION_LENGTH = 2000;
+export { MAX_PRACTICE_SELECTION_LENGTH } from './onboarding-posts.ts';
 
 /** Posts: JS → Swift one-way messages; Swift sends no reply. */
 export const NativePosts = {
+  ...NativeDiagnosticPosts,
   /** The page installed its delivery function; Swift flushes what it queued until now. */
   'bridge.ready': Empty,
   ...NativePreferencePosts,
@@ -74,39 +65,7 @@ export const NativePosts = {
     { rects: Type.Array(DragRectSchema, { maxItems: 64 }) },
     { additionalProperties: false },
   ),
-  /**
-   * The welcome guide's glass surface in CSS pixels from the web view's top-left, and its corner
-   * radius; the shell lays the window material (the panel's and Settings' glass) under it. The
-   * opening page sends its whole box (radius 0); the card takes the glass over by sending its own
-   * once its entrance is at rest, then on every resize, and `null` once the guide starts closing
-   * and on teardown. `fade` is how many seconds the glass takes to fade in when the post shows
-   * hidden glass, or out when it is `null` (eased in and out); shown glass moves at once. The
-   * shell takes it only from the guide's own web view.
-   */
-  'onboarding.surface': Type.Object(
-    {
-      rect: Type.Union([GuideRectSchema, Type.Null()]),
-      radius: Type.Number({ minimum: 0 }),
-      fade: Type.Number({ minimum: 0 }),
-    },
-    { additionalProperties: false },
-  ),
-  /**
-   * The welcome guide's practice selection: the bounding box of text selected in its practice
-   * area, in CSS pixels from the web view's top-left, and that text. The shell shows the real
-   * selection toolbar beside it (while the toolbar is on and the app is trusted for
-   * Accessibility), and its Ask Atd and commands take this text as the selection. `null` hides
-   * that toolbar: sent when the selection collapses or leaves the practice text, on a key, a
-   * scroll or a step change, once the guide starts closing and on teardown. The shell takes it
-   * only from the guide's own web view.
-   */
-  'onboarding.selection': Type.Object(
-    {
-      rect: Type.Union([GuideRectSchema, Type.Null()]),
-      text: Text(MAX_PRACTICE_SELECTION_LENGTH),
-    },
-    { additionalProperties: false },
-  ),
+  ...NativeOnboardingPosts,
   /** Opens a virtual socket: Swift connects one real socket to the service for it. */
   'socket.open': Type.Object(
     { socketId: Type.String({ minLength: 1, maxLength: 64 }), path: Type.Literal('/v1/stream') },
