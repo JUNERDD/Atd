@@ -141,6 +141,18 @@ export async function modelMakerDirectory(): Promise<Map<string, ServiceModelDef
   return byId;
 }
 
+/** Protocol-specific SDK hints for custom models; ids alone cannot select an effort encoder. */
+export async function protocolModelDirectory(): Promise<Map<string, Model<Api>>> {
+  const byId = new Map<string, Model<Api>>();
+  const models = await getDirectory();
+  for (const provider of MODEL_MAKERS)
+    for (const model of models.getModels(provider)) {
+      const key = `${model.api}:${model.id.toLowerCase()}`;
+      if (!byId.has(key)) byId.set(key, model);
+    }
+  return byId;
+}
+
 /** Pi providers plus locals; a failed directory read is retryable, not a partial success. */
 export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
   try {
