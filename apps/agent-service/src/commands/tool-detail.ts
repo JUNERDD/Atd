@@ -57,6 +57,11 @@ function parameterLine(parameter: CommandParameter): string {
   return `${parameter.label} · {{argument.${parameter.key}}} · ${parameter.type}`;
 }
 
+/** The adjustment suggestions a review offers, quoted, or `none`. */
+function adjustmentList(adjustments: readonly string[] | undefined): string {
+  return adjustments?.length ? adjustments.map((item) => `"${item}"`).join(', ') : 'none';
+}
+
 function toolList(tools: readonly string[]): string {
   return tools.length ? tools.join(', ') : 'none';
 }
@@ -109,6 +114,9 @@ export function createDetail(command: ServiceCommandFull): string {
       `Description: ${command.description || 'none'}`,
       `Input: ${inputSummary(command.input)}`,
       `Answer: ${outputSummary(command.output)}`,
+      ...(command.adjustments?.length
+        ? [`Adjustment suggestions: ${adjustmentList(command.adjustments)}`]
+        : []),
       'Shortcuts:',
       ...(command.shortcuts.length
         ? command.shortcuts.map((shortcut) => `- ${shortcutLine(shortcut)}`)
@@ -152,6 +160,8 @@ export function updateDetail(previous: ServiceCommandFull, next: ServiceCommandF
     lines.push(`Input: ${inputSummary(previous.input)} → ${inputSummary(next.input)}`);
   if (outputSummary(previous.output) !== outputSummary(next.output))
     lines.push(`Answer: ${outputSummary(previous.output)} → ${outputSummary(next.output)}`);
+  const [before, after] = [adjustmentList(previous.adjustments), adjustmentList(next.adjustments)];
+  if (before !== after) lines.push(`Adjustment suggestions: ${before} → ${after}`);
   if (JSON.stringify(previous.shortcuts) !== JSON.stringify(next.shortcuts))
     lines.push('Shortcuts:', ...shortcutChanges(previous.shortcuts, next.shortcuts));
   if (JSON.stringify(previous.parameters) !== JSON.stringify(next.parameters))

@@ -11,8 +11,7 @@ import SwiftUI
 /// it past it (``IslandFadingScroll``). The footer has the key hints and
 /// Open in Atd beside Copy, and, while the person's focus is a field that can take text
 /// (``IslandModel/answerOffer``), Insert, with Replace beside it while that field has a
-/// selection; the primary of them carries the Return keycap. They come and go in a fade as the
-/// focus moves. The command's name and the answer are user data, shown untranslated; the name is
+/// selection (``IslandWriteButtons``). They come and go in a fade as the focus moves. The command's name and the answer are user data, shown untranslated; the name is
 /// cut with an ellipsis.
 ///
 /// `width` nil lays the card out at its ideal width and `height` nil with the answer at its
@@ -22,6 +21,7 @@ struct IslandAnswerCard: View {
   let command: String
   let answer: String
   let note: String?
+  let offer: AnswerWriteOffer?
   var width: Double?
   var height: Double?
 
@@ -38,6 +38,15 @@ struct IslandAnswerCard: View {
       )
       .accessibilityElement(children: .contain)
       .accessibilityLabel(Text(verbatim: model.labels.answer(command)))
+  }
+
+  var widthProbe: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      top
+      IslandAnswerText(text: answer)
+      footer.widthProbe
+    }
+    .padding(IslandMetrics.cardPadding)
   }
 
   /// The title (with the note), the answer and the footer, stacked; measured, the answer shows
@@ -83,47 +92,42 @@ struct IslandAnswerCard: View {
     .frame(height: IslandMetrics.headerHeight)
   }
 
-  private var footer: some View {
-    let labels = model.labels
-    return HStack(spacing: 10) {
-      IslandKeyHint(keys: "⌘C", label: labels.copy)
-      IslandKeyHint(keys: "esc", label: labels.close)
-      Spacer(minLength: 8)
-      HStack(spacing: IslandMetrics.gap) {
-        IslandTextButton(title: labels.openInAtd, tooltip: labels.openInAtdTooltip) {
-          model.act(.open)
-        }
-        IslandTextButton(title: labels.copy, rest: 0.08, action: { model.act(.copy) }) {
-          EmptyView()
-        }
-        if let offer = model.answerOffer {
-          write(.cursor, offer)
-          if offer.replaces { write(.selection, offer) }
-        }
-      }
-      .animation(.easeOut(duration: 0.2), value: model.answerOffer)
-    }
-    .padding(.leading, 4)
-    .frame(height: IslandMetrics.footerHeight)
+  var footer: IslandResultFooter {
+    IslandResultFooter(model: model, offer: offer)
   }
 }
 
-extension IslandAnswerCard {
-  /// Insert (`cursor`) or Replace (`selection`) into the field the person's focus is in, its
-  /// tooltip and VoiceOver name naming the app, each with the keys that perform it
-  /// (``AnswerWriteOffer/keys(for:)``); the primary one (``AnswerWriteOffer/primary``) has the
-  /// Run button's fill.
-  fileprivate func write(_ mode: TextWriteParams.Mode, _ offer: AnswerWriteOffer) -> some View {
+/// The answer and review cards' Insert, and Replace beside it while the focused field has a
+/// selection, writing into the field the person's focus is in. Insert writes after the selection
+/// while there is one (``AnswerWriteOffer/insert``), at the focus otherwise. Each names the app
+/// in its tooltip and VoiceOver name and shows the keys that perform it
+/// (``AnswerWriteOffer/keys(for:)``); the primary one (``AnswerWriteOffer/primary``) has the
+/// Run button's fill.
+struct IslandWriteButtons: View {
+  let model: IslandModel
+  let offer: AnswerWriteOffer
+  var showsKeys = true
+
+  var body: some View {
+    HStack(spacing: IslandMetrics.gap) {
+      button(offer.insert)
+      if offer.replaces { button(.selection) }
+    }
+  }
+
+  private func button(_ mode: TextWriteParams.Mode) -> some View {
     let labels = model.labels
     let replace = mode == .selection
-    let tooltip = replace ? labels.replace(in: offer.app) : labels.insert(in: offer.app)
-    let primary = offer.primary == mode
+    let tooltip =
+      replace
+      ? labels.replace(in: offer.app)
+      : offer.replaces ? labels.insertAfter(in: offer.app) : labels.insert(in: offer.app)
     return IslandTextButton(
-      title: replace ? labels.replace : labels.insert, tooltip: tooltip, rest: primary ? 0.08 : 0,
+      title: replace ? labels.replace : labels.insert,
+      tooltip: tooltip + " " + offer.keys(for: mode),
+      rest: offer.primary == mode ? 0.08 : 0, keys: showsKeys ? offer.keys(for: mode) : nil,
       action: { model.act(.write(mode)) }
-    ) {
-      IslandKeycap(symbol: offer.keys(for: mode))
-    }
+    )
     .accessibilityLabel(Text(verbatim: tooltip))
     .transition(.opacity)
   }
@@ -142,6 +146,7 @@ struct IslandAnswerNote: View {
       .truncationMode(.tail)
       .fixedSize(horizontal: false, vertical: true)
       .padding(.horizontal, IslandMetrics.rowPadding)
+      .frame(maxWidth: IslandMetrics.resultTextWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
       .help(text)
   }
@@ -158,6 +163,7 @@ struct IslandAnswerText: View {
       .textSelection(.enabled)
       .fixedSize(horizontal: false, vertical: true)
       .padding(.horizontal, IslandMetrics.rowPadding)
+      .frame(maxWidth: IslandMetrics.resultTextWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
@@ -169,21 +175,24 @@ extension IslandType {
 
 extension IslandController {
   /// The answer card's rest size: as wide as its widest part (title, note, the answer's longest
-  /// line, footer) within ``IslandMetrics/cardWidth(ideal:)``, and as tall as its note and its
+  /// line, footer) within ``resultCardWidth(ideal:)``, and as tall as its note and its
   /// answer wrap to at that width, up to the island's largest shape
   /// (``IslandMetrics/answerCardHeight(note:answer:)``).
   func measureAnswer(command: String, answer: String, note: String?) -> IslandMeasure {
     let sample = String(answer.prefix(IslandAnswerCard.measuredLength))
-    let card = IslandAnswerCard(model: model, command: command, answer: sample, note: note)
-    let width = IslandMetrics.cardWidth(
-      ideal: NSHostingView(rootView: card.fixedSize()).fittingSize.width)
+    let card = IslandAnswerCard(
+      model: model, command: command, answer: sample, note: note, offer: model.answerOffer)
+    let width = resultCardWidth(
+      ideal: NSHostingView(rootView: card.widthProbe.fixedSize()).fittingSize.width)
     let inner = width - IslandMetrics.cardPadding * 2
     let noteHeight = note.map { Self.height(of: IslandAnswerNote(text: $0), width: inner) } ?? 0
     let answerHeight = Self.height(of: IslandAnswerText(text: sample), width: inner)
+    let footerHeight = Self.height(of: card.footer, width: inner)
     return IslandMeasure(
       size: WindowSize(
         width: width,
-        height: IslandMetrics.answerCardHeight(note: noteHeight, answer: answerHeight)))
+        height: IslandMetrics.answerCardHeight(
+          note: noteHeight, answer: answerHeight, footer: footerHeight)))
   }
 
   /// The height `view` takes laid out `width` points wide, wrapping as it needs.

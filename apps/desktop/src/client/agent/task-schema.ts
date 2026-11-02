@@ -99,6 +99,8 @@ export const RunSnapshotSchema = Type.Object(
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     tools: Type.Array(ToolIdSchema),
     memory: Type.Boolean(),
+    /** The run's prompt came from a saved command, including a replacement of that prompt. */
+    fromCommand: Type.Optional(Type.Literal(true)),
     /**
      * The registered computer targets the run may act on, in the background (the host may finish
      * a step on an app in the foreground, `ComputerDelivery`); absent without computer use.

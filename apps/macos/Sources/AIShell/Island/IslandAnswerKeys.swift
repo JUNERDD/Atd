@@ -8,8 +8,8 @@ import Carbon.HIToolbox
 /// the selection is copied then, the usual way. Both arrive as key presses or, ⌘C usually, as
 /// key equivalents ahead of the menus (``IslandWindow/onKeyEquivalent``); every other key goes
 /// on as usual. Return performs the primary write; ⌘Return and ⌥⌘Return are hot keys held while
-/// the card offers a write (``holdWriteKeys(_:)``), so they work from the field the person
-/// clicked into as well.
+/// the card (or the review card) offers a write (``holdWriteKeys(_:)``), so they work from the
+/// field the person clicked into as well.
 ///
 /// Unlike the options card, the answer card stays when the window gives up the keyboard (a
 /// click in another app): it never goes by itself, and a click on it takes the keyboard again.
@@ -18,13 +18,13 @@ extension CommandProgressController {
     answerFocus.onChange = { [weak self] offer in self?.answerOfferChanged(offer) }
     island.onKeyEquivalent = { [weak self] event in
       guard let self else { return false }
-      return answerKey(event) || composeKeyEquivalent(event)
+      return reviewKey(event) || answerKey(event) || composeKeyEquivalent(event)
     }
   }
 
-  /// True when the answer card took `event`.
+  /// True when the answer card took `event`; the review card reads its own (``reviewKey(_:)``).
   func answerKey(_ event: NSEvent) -> Bool {
-    guard state.isAnswering, event.type == .keyDown else { return false }
+    guard state.isAnswering, !state.isReviewing, event.type == .keyDown else { return false }
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     if Int(event.keyCode) == kVK_Escape, modifiers.isEmpty {
       guard let target = state.shown?.target else { return false }

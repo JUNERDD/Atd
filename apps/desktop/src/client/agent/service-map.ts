@@ -136,6 +136,7 @@ function mapRunSnapshot(run: ServiceRun): RunSnapshot {
     // service-side snapshot tools without a desktop policy entry.
     tools: run.snapshot.tools.filter((tool): tool is ToolId => DESKTOP_TOOL_IDS.has(tool)),
     memory: run.snapshot.memory,
+    ...(run.snapshot.fromCommand ? { fromCommand: true as const } : {}),
     ...(run.snapshot.computer
       ? { computer: { bindingIds: [...run.snapshot.computer.bindingIds] } }
       : {}),

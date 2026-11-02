@@ -127,9 +127,9 @@ struct IslandComposeCard: View {
           model.composeEvent(.open)
         }
         .disabled(!canRun)
-        IslandTextButton(title: labels.run, rest: 0.08, action: { model.composeEvent(.run) }) {
-          IslandKeycap(symbol: "↩")
-        }
+        IslandTextButton(
+          title: labels.run, rest: 0.08, keys: "↩", action: { model.composeEvent(.run) }
+        )
         .disabled(!canRun)
       }
       // Without text or a file there is nothing to run or open with.

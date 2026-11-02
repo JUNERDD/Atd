@@ -4,6 +4,145 @@
 
 import Foundation
 
+/// Result of the `commandProgress.show` call.
+public typealias CommandProgressShowResult = NativeEmpty
+
+/// Params of the `text.writeFocused` call.
+public struct TextWriteFocusedParams: Codable, Equatable, Sendable {
+  public let mode: Mode
+  public let text: String
+  public let typing: Bool
+  public let animation: Bool
+
+  public init(mode: Mode, text: String, typing: Bool, animation: Bool) {
+    self.mode = mode
+    self.text = text
+    self.typing = typing
+    self.animation = animation
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    mode = try container.value(.mode, Mode.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+    typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case mode
+    case text
+    case typing
+    case animation
+  }
+
+  public enum Mode: String, Codable, Equatable, Sendable {
+    case selection
+    case afterSelection
+    case cursor
+  }
+}
+
+/// Result of the `text.writeFocused` call.
+public enum TextWriteFocusedResult: Codable, Equatable, Sendable {
+  case ok(Ok)
+  case notOk(NotOk)
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Discriminator.self)
+    switch try container.decode(Bool.self, forKey: .ok) {
+    case true: self = try .ok(Ok(from: decoder))
+    case false: self = try .notOk(NotOk(from: decoder))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .ok(let value): try value.encode(to: encoder)
+    case .notOk(let value): try value.encode(to: encoder)
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case ok
+  }
+
+  public struct Ok: Codable, Equatable, Sendable {
+    public init() {}
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, true)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(true, forKey: .ok)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+    }
+  }
+
+  public struct NotOk: Codable, Equatable, Sendable {
+    public let reason: Reason
+
+    public init(reason: Reason) {
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, false)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(false, forKey: .ok)
+      try container.encode(reason, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case notTrusted
+      case targetGone
+      case targetChanged
+      case noSelection
+      case secureInput
+      case failed
+      case interrupted
+      case unsupportedSelection
+    }
+  }
+}
+
+/// Params of the `commandProgress.hide` call.
+public struct CommandProgressHideParams: Codable, Equatable, Sendable {
+  public let target: String
+
+  public init(target: String) {
+    self.target = target
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case target
+  }
+}
+
+/// Result of the `commandProgress.hide` call.
+public typealias CommandProgressHideResult = NativeEmpty
+
 /// Params of the `commandOptions.set` call.
 public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
   public let commands: [Command]
@@ -85,179 +224,3 @@ public struct AppAboutResult: Codable, Equatable, Sendable {
 
 /// Params of the `notifications.state` call.
 public typealias NotificationsStateParams = NativeEmpty
-
-/// Result of the `notifications.state` call.
-public struct NotificationsStateResult: Codable, Equatable, Sendable {
-  public let preferences: Preferences
-  public let permission: Permission
-
-  public init(preferences: Preferences, permission: Permission) {
-    self.preferences = preferences
-    self.permission = permission
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    preferences = try container.value(.preferences, Preferences.self)
-    permission = try container.value(.permission, Permission.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case preferences
-    case permission
-  }
-
-  public struct Preferences: Codable, Equatable, Sendable {
-    public let finished: Finished
-    public let attention: Bool
-    public let sound: Bool
-    public let previews: Bool
-
-    public init(finished: Finished, attention: Bool, sound: Bool, previews: Bool) {
-      self.finished = finished
-      self.attention = attention
-      self.sound = sound
-      self.previews = previews
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      finished = try container.value(.finished, Finished.self)
-      attention = try container.boolean(.attention)
-      sound = try container.boolean(.sound)
-      previews = try container.boolean(.previews)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case finished
-      case attention
-      case sound
-      case previews
-    }
-
-    public enum Finished: String, Codable, Equatable, Sendable {
-      case never
-      case whenAway
-      case always
-    }
-  }
-
-  public enum Permission: String, Codable, Equatable, Sendable {
-    case notDetermined
-    case denied
-    case allowed
-  }
-}
-
-/// Params of the `notifications.set` call.
-public struct NotificationsSetParams: Codable, Equatable, Sendable {
-  public let finished: Finished?
-  public let attention: Bool?
-  public let sound: Bool?
-  public let previews: Bool?
-
-  public init(finished: Finished?, attention: Bool?, sound: Bool?, previews: Bool?) {
-    self.finished = finished
-    self.attention = attention
-    self.sound = sound
-    self.previews = previews
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    finished = try container.optional(.finished) { try container.value($0, Finished.self) }
-    attention = try container.optional(.attention) { try container.boolean($0) }
-    sound = try container.optional(.sound) { try container.boolean($0) }
-    previews = try container.optional(.previews) { try container.boolean($0) }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encodeIfPresent(finished, forKey: .finished)
-    try container.encodeIfPresent(attention, forKey: .attention)
-    try container.encodeIfPresent(sound, forKey: .sound)
-    try container.encodeIfPresent(previews, forKey: .previews)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case finished
-    case attention
-    case sound
-    case previews
-  }
-
-  public enum Finished: String, Codable, Equatable, Sendable {
-    case never
-    case whenAway
-    case always
-  }
-}
-
-/// Result of the `notifications.set` call.
-public struct NotificationsSetResult: Codable, Equatable, Sendable {
-  public let preferences: Preferences
-  public let permission: Permission
-
-  public init(preferences: Preferences, permission: Permission) {
-    self.preferences = preferences
-    self.permission = permission
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    preferences = try container.value(.preferences, Preferences.self)
-    permission = try container.value(.permission, Permission.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case preferences
-    case permission
-  }
-
-  public struct Preferences: Codable, Equatable, Sendable {
-    public let finished: Finished
-    public let attention: Bool
-    public let sound: Bool
-    public let previews: Bool
-
-    public init(finished: Finished, attention: Bool, sound: Bool, previews: Bool) {
-      self.finished = finished
-      self.attention = attention
-      self.sound = sound
-      self.previews = previews
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      finished = try container.value(.finished, Finished.self)
-      attention = try container.boolean(.attention)
-      sound = try container.boolean(.sound)
-      previews = try container.boolean(.previews)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case finished
-      case attention
-      case sound
-      case previews
-    }
-
-    public enum Finished: String, Codable, Equatable, Sendable {
-      case never
-      case whenAway
-      case always
-    }
-  }
-
-  public enum Permission: String, Codable, Equatable, Sendable {
-    case notDetermined
-    case denied
-    case allowed
-  }
-}
-
-/// Params of the `notifications.openSystemSettings` call.
-public typealias NotificationsOpenSystemSettingsParams = NativeEmpty
-
-/// Result of the `notifications.openSystemSettings` call.
-public typealias NotificationsOpenSystemSettingsResult = NativeEmpty

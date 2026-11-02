@@ -19,6 +19,7 @@ import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { SettingsStore } from '../settings/store.js';
+import { withCanonicalAdjustments } from './adjustments.js';
 import { withoutLegacySelection } from './legacy-selection.js';
 import { assertShortcutsFree, withCanonicalShortcuts } from './shortcuts.js';
 import { validateCommandSave } from './templates.js';
@@ -105,8 +106,9 @@ function withShortcutList(command: ServiceCommand): ServiceCommand {
  * guard (next-version edits, never a hot-swap: accepted runs already froze
  * their resolved instructions). Unknown extension fields round-trip.
  * Every write stores canonical shortcuts no app action or enabled command's
- * shortcut holds, with ids unique across the store (`shortcuts.ts`), for
- * routes and the Agent's tool alike.
+ * shortcut holds, with ids unique across the store (`shortcuts.ts`), and
+ * canonical adjustment suggestions (`adjustments.ts`), for routes and the
+ * Agent's tool alike.
  * Legacy `skills`/`roleId` keys are folded into instructions on load and on
  * every write (`legacy-selection.ts`), and a command stored before placements
  * or outputs existed gets its default placement or output on load (`withAddedPlacement`,
@@ -243,7 +245,7 @@ export class CommandStore {
         thinkingLevel: 'inherit',
         tools: [],
         memory: 'inherit',
-        ...withCanonicalShortcuts(draft),
+        ...withCanonicalAdjustments(withCanonicalShortcuts(draft)),
         migratedAt: null,
       }),
     );
@@ -282,7 +284,7 @@ export class CommandStore {
     expectedRevision: number,
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
-    command = withCanonicalShortcuts(withoutLegacySelection(command));
+    command = withCanonicalAdjustments(withCanonicalShortcuts(withoutLegacySelection(command)));
     validateCommandSave(command);
     return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);

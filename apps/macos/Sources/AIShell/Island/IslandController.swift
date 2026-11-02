@@ -16,7 +16,7 @@ import SwiftUI
 /// the work area, and a double-click puts it back. Shapes stand on the same bottom edge
 /// (``IslandMetrics/rest(_:)``), so the card grows up out of the capsule.
 ///
-/// The owner decides what shows (``show(_:)``, ``exit()``) and when the window may take the
+/// The owner decides what shows (``show(_:inPlace:)``, ``exit()``) and when the window may take the
 /// keyboard (``setKeyCapable(_:)``, the options card and the answer card).
 final class IslandController: NSObject, NSWindowDelegate {
   let model = IslandModel()
@@ -73,8 +73,9 @@ final class IslandController: NSObject, NSWindowDelegate {
   }
 
   /// Shows `next`: entering when nothing shows, changed in place when the same kind shows (a
-  /// summary arriving, the language), else morphed into from what shows.
-  func show(_ next: IslandContent) {
+  /// summary arriving, the language), else morphed into from what shows. `inPlace` keeps content
+  /// at its own size without bounce for direct edits; asynchronous updates retain the spring.
+  func show(_ next: IslandContent, inPlace: Bool = false) {
     let target = measure(next)
     generation += 1
     if !window.isVisible {
@@ -82,7 +83,7 @@ final class IslandController: NSObject, NSWindowDelegate {
     } else if exiting {
       turnBack(next, size: target)
     } else if let content, content.kind == next.kind {
-      update(next, size: target)
+      update(next, size: target, inPlace: inPlace)
     } else {
       replace(next, size: target, leavingCard: model.card)
     }
@@ -111,6 +112,7 @@ final class IslandController: NSObject, NSWindowDelegate {
     generation += 1
     let token = generation
     window.ignoresMouseEvents = true
+    for index in model.layers.indices { model.layers[index].scales = true }
     let duration = IslandChoreography.exitDuration
     if !model.reduceMotion {
       model.shape = model.shape.scaled(
@@ -128,6 +130,7 @@ final class IslandController: NSObject, NSWindowDelegate {
   private func turnBack(_ next: IslandContent, size measured: IslandMeasure) {
     exiting = false
     window.ignoresMouseEvents = false
+    for index in model.layers.indices { model.layers[index].scales = true }
     let entrance = SelectionToolbarEntrance.self
     fade(
       to: 1, duration: model.reduceMotion ? entrance.reducedMotionFade : entrance.fadeDuration,
@@ -224,19 +227,20 @@ final class IslandController: NSObject, NSWindowDelegate {
   }
 
   /// The same kind of content changes in place; the shape follows a change of size, on the
-  /// expand springs, or for the compose card, which resizes under the person's typing and
-  /// attaching, and the answer card, whose write actions follow the person's focus, without
-  /// bounce and with its content moving at its own size (``IslandChoreography/inPlace``).
-  private func update(_ next: IslandContent, size measured: IslandMeasure) {
+  /// expand springs. Direct edits (including the compose card's typing and attachments) keep
+  /// content at its own size without bounce. A write offer arriving asynchronously must keep
+  /// scaling with the shape, including when it retargets an entrance still in flight.
+  private func update(_ next: IslandContent, size measured: IslandMeasure, inPlace: Bool = false) {
     let target = measured.size
     guard let index = model.layers.firstIndex(where: { $0.id == activeLayer }) else {
       return replace(next, size: measured, leavingCard: model.card)
     }
     model.layers[index].content = next
     model.layers[index].limits = measured.limits
+    model.layers[index].answerOffer = model.answerOffer
     guard target != size else { return }
     model.layers[index].rest = IslandMetrics.rest(target)
-    let inPlace = next.kind == .compose || next.kind == .answer
+    let inPlace = inPlace || next.kind == .compose
     model.layers[index].scales = !inPlace
     let resize = inPlace ? IslandChoreography.inPlace : IslandChoreography.resize
     morph(
@@ -268,7 +272,7 @@ final class IslandController: NSObject, NSWindowDelegate {
       IslandLayer(
         id: nextLayer, content: content, rest: IslandMetrics.rest(measured.size),
         presence: MiniPanelPresence(shown: false, motion: IslandChoreography.content),
-        limits: measured.limits))
+        limits: measured.limits, answerOffer: model.answerOffer))
     activeLayer = nextLayer
     return nextLayer
   }

@@ -11,11 +11,18 @@ import Foundation
 /// going by itself after ``doneDuration``; a `notice` opens the run in the panel and goes by
 /// itself after ``noticeDuration``; an `answer` card, shown where the answer could not be
 /// written, opens the run in the panel or copies the answer (`copied`, the shell's own, going
-/// like `done`) and stays until it is acted on or replaced; the `compose` card, shown where a
+/// like `done`) and stays until it is acted on or replaced; with a ``Review`` (the command's
+/// answer waits for review) it is the review card, which also asks the page for another version
+/// (`regenerate`, `adjust`), steps between versions (`version`), stops a pending one (`stop`) and
+/// tells the page once it goes by itself (`close`); the `compose` card, shown where a
 /// command was launched with nothing selected, asks for the text (and, when the command takes
 /// files, the attachments) that stand in for the selection, and runs, opens or cancels with them.
 /// The options card, the answer card and the compose card take the keyboard (``takesKeyboard``).
 public struct CommandProgressState: Equatable, Sendable {
+  /// What the review card shows besides the answer: the original, the answer's changes, the
+  /// versions, the version's options, the command's adjustments and a pending version.
+  public typealias Review = CommandProgressShowParams.State.Answer.Review
+
   public enum Phase: Equatable, Sendable {
     /// The run is going: the command's name, and the values it runs with when it has options
     /// to change.
@@ -31,9 +38,10 @@ public struct CommandProgressState: Equatable, Sendable {
     case done
     /// The run ended without writing its answer: why, in the page's words.
     case notice(message: String)
-    /// The run's answer, which could not be written: the command's name, the answer as the run
-    /// gave it, and why it was not written (the page's words; nil: nothing said).
-    case answer(command: String, answer: String, note: String?)
+    /// The run's answer, which could not be written or waits for review: the command's name,
+    /// the answer as the run gave it, why it was not written (the page's words; nil: nothing
+    /// said), and the review, which makes the card the review card.
+    case answer(command: String, answer: String, note: String?, review: Review? = nil)
     /// The answer card's answer is on the clipboard.
     case copied
   }
@@ -76,7 +84,8 @@ public struct CommandProgressState: Equatable, Sendable {
       guard !command.isEmpty, !trimmed(answer.answer).isEmpty else { return nil }
       let note = answer.note.map(trimmed)
       return .answer(
-        command: command, answer: answer.answer, note: note?.isEmpty == false ? note : nil)
+        command: command, answer: answer.answer, note: note?.isEmpty == false ? note : nil,
+        review: answer.review)
     }
   }
 
@@ -115,12 +124,21 @@ public struct CommandProgressState: Equatable, Sendable {
   /// The answer the answer card shows, which its Copy puts on the clipboard (the shell then
   /// shows `copied`); nil while no answer card is up.
   public var answerShown: String? {
-    if case .answer(_, let answer, _) = shown?.phase { return answer }
+    if case .answer(_, let answer, _, _) = shown?.phase { return answer }
     return nil
   }
 
-  /// The answer card is up.
+  /// The answer card is up, the review card included.
   public var isAnswering: Bool { answerShown != nil }
+
+  /// The review the review card shows; nil while no review card is up.
+  public var reviewShown: Review? {
+    if case .answer(_, _, _, let review?) = shown?.phase { return review }
+    return nil
+  }
+
+  /// The review card is up.
+  public var isReviewing: Bool { reviewShown != nil }
 
   /// The compose card is up: its field, attachments and keys drive it.
   public var isComposing: Bool {
@@ -150,14 +168,19 @@ public struct CommandProgressState: Equatable, Sendable {
   /// values changed) leaves the card as it is. Change keeps the run on screen
   /// until the page shows its options; Run turns the card into the run it starts, until the page
   /// shows that run's own progress.
+  ///
+  /// On the review card, Regenerate and Adjust (with what the card staged, `adjust`) ask for a
+  /// version while it takes one (``Review/takesVersion``), Version shows another of the versions
+  /// (`version`) while none is pending, and Stop stops the pending one; each leaves the card as it is until the page shows the outcome. Close takes
+  /// the card away.
   public mutating func press(
     _ action: CommandProgressActionEvent.Action, arguments: CommandArguments? = nil,
-    compose: CommandProgressActionEvent.Compose? = nil
+    compose: CommandProgressActionEvent.Compose? = nil,
+    adjust: CommandProgressActionEvent.Adjust? = nil, version: Int? = nil
   ) -> CommandProgressActionEvent? {
     guard let shown else { return nil }
     let target = shown.target
-    let event = CommandProgressActionEvent(
-      target: target, action: action, arguments: nil, compose: nil)
+    let event = Self.event(target, action)
     switch (action, shown.phase) {
     case (.cancel, .working), (.open, .notice), (.open, .answer), (.cancel, .choose),
       (.cancel, .compose):
@@ -168,30 +191,57 @@ public struct CommandProgressState: Equatable, Sendable {
     case (.run, .choose(let command, _, _)):
       guard let arguments else { return nil }
       show(target: target, phase: .working(command: command))
-      return CommandProgressActionEvent(
-        target: target, action: .run, arguments: arguments, compose: nil)
+      return Self.event(target, .run, arguments: arguments)
     case (.pick, .choose):
       guard let arguments else { return nil }
-      return CommandProgressActionEvent(
-        target: target, action: .pick, arguments: arguments, compose: nil)
+      return Self.event(target, .pick, arguments: arguments)
     case (.edit, .choose):
       guard let arguments else { return nil }
       hide(target: target)
-      return CommandProgressActionEvent(
-        target: target, action: .edit, arguments: arguments, compose: nil)
+      return Self.event(target, .edit, arguments: arguments)
     case (.run, .compose(let command, _)):
       guard let compose else { return nil }
       show(target: target, phase: .working(command: command))
-      return CommandProgressActionEvent(
-        target: target, action: .run, arguments: nil, compose: compose)
+      return Self.event(target, .run, compose: compose)
     case (.open, .compose):
       guard let compose else { return nil }
       hide(target: target)
-      return CommandProgressActionEvent(
-        target: target, action: .open, arguments: nil, compose: compose)
+      return Self.event(target, .open, compose: compose)
+    case (.regenerate, .answer(_, _, _, let review?)) where review.takesVersion:
+      return event
+    case (.adjust, .answer(_, _, _, let review?)) where review.takesVersion:
+      guard let adjust else { return nil }
+      return Self.event(target, .adjust, adjust: adjust)
+    case (.version, .answer(_, _, _, let review?)) where review.pending == nil:
+      guard let version, version != review.version, (1...review.count).contains(version) else {
+        return nil
+      }
+      return Self.event(target, .version, version: version)
+    case (.stop, .answer(_, _, _, let review?)) where review.pending != nil:
+      return event
+    case (.close, .answer(_, _, _, .some)):
+      hide(target: target)
+      return event
     default:
       return nil
     }
+  }
+
+  /// What tells the page that the review card of `target` went for good other than through its
+  /// own close (Copy, a write that went in or stopped partway, a shortcut's press over it), so
+  /// the page lets the review go.
+  public static func closing(target: String) -> CommandProgressActionEvent {
+    event(target, .close)
+  }
+
+  private static func event(
+    _ target: String, _ action: CommandProgressActionEvent.Action,
+    arguments: CommandArguments? = nil, compose: CommandProgressActionEvent.Compose? = nil,
+    adjust: CommandProgressActionEvent.Adjust? = nil, version: Int? = nil
+  ) -> CommandProgressActionEvent {
+    CommandProgressActionEvent(
+      target: target, action: action, arguments: arguments, compose: compose, adjust: adjust,
+      version: version)
   }
 
   private static func trimmed(_ text: String) -> String {

@@ -26,7 +26,8 @@ import { CommandStore } from './store.js';
  * transforms ask for no reasoning (`off`), which keeps them fast and cheap, while the others take
  * the connection's default level. Transforms whose result does not depend on who the user is
  * leave memory out. Translating and polishing rework the selected text, so their answers replace
- * it (an app that cannot take text shows the answer to copy instead); the other answers are meant
+ * it (an app that cannot take text shows the answer to copy instead), and they carry adjustment
+ * suggestions for the review card once the user turns on review; the other answers are meant
  * to be read, not to change the text they came from, and stay in the conversation.
  *
  * Their words follow the language the clients show (`starter-copy.ts`) until the user saves them.
@@ -115,7 +116,11 @@ function stored(draft: CommandCreate): ServiceCommand {
   return CommandStore.storable(CommandStore.compose(draft));
 }
 
-/** The words of a stored command, to compare with a starter's copy. */
+/**
+ * The words of a stored command, to compare with a starter's copy. Its adjustment suggestions are
+ * left out, so a starter seeded before it had any still reads as shipped and takes the current
+ * ones; an edit in Settings or by the Agent raises the revision, which keeps the user's.
+ */
 function wordsOf(command: ServiceCommand) {
   const { name, description, instructions } = command;
   return {

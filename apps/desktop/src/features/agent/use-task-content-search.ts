@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { TaskSearchHit } from '@atd/agent-contracts';
+import type { TaskSearchHit, TaskSearchQuery } from '@atd/agent-contracts';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { queryClient } from '../../lib/query-client';
 import { agentApi } from './use-agent';
@@ -30,7 +30,11 @@ const NO_HITS: ReadonlyMap<string, TaskSearchHit> = new Map();
  * loads, so rows do not drop out between keystrokes; a refetch for the same query is not pending,
  * which keeps the status line still while tasks run. Failures show in place, never as a toast.
  */
-export function useTaskContentSearch(query: string, tasks: AgentTask[]): TaskContentSearch {
+export function useTaskContentSearch(
+  query: string,
+  tasks: AgentTask[],
+  commands: NonNullable<TaskSearchQuery['commands']> = 'all',
+): TaskContentSearch {
   const active = Array.from(query).length >= MIN_QUERY_LENGTH && tasks.length > 0;
   const [debounced, setDebounced] = useState(query);
   useEffect(() => {
@@ -44,11 +48,12 @@ export function useTaskContentSearch(query: string, tasks: AgentTask[]): TaskCon
   const settled = debounced === query;
   const { data, isError } = useQuery(
     {
-      queryKey: ['taskContentSearch', debounced, newest, tasks.length],
-      // The answer names its query, so a placeholder from an earlier one never reads as current.
+      queryKey: ['taskContentSearch', debounced, commands, newest, tasks.length],
+      // The answer names its query and scope so a placeholder never reads as the new tab's answer.
       queryFn: async () => ({
         query: debounced,
-        response: await agentApi().searchTasks({ query: debounced, limit: HIT_LIMIT }),
+        commands,
+        response: await agentApi().searchTasks({ query: debounced, limit: HIT_LIMIT, commands }),
       }),
       enabled: active && settled,
       placeholderData: keepPreviousData,
@@ -58,9 +63,10 @@ export function useTaskContentSearch(query: string, tasks: AgentTask[]): TaskCon
   );
   if (!active) return { hits: NO_HITS, pending: false, failed: false };
   const failed = settled && isError;
+  const sameScope = data?.commands === commands;
   return {
-    hits: new Map(data?.response.hits.map((hit) => [hit.taskId, hit])),
-    pending: !failed && data?.query !== query,
+    hits: sameScope ? new Map(data.response.hits.map((hit) => [hit.taskId, hit])) : NO_HITS,
+    pending: !failed && (!sameScope || data?.query !== query),
     failed,
   };
 }

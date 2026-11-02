@@ -35,10 +35,11 @@ import { useTurnSpeech } from './use-turn-speech';
 
 /**
  * The action bar that closes a settled turn, below everything the turn shows (tool activity, a
- * stop note and approval banners included): Copy for the final answer `answer`, applying it to the
- * app a command ran from (`TurnApplyButton`), Regenerate on the task's last turn, Read aloud, Fork,
- * the last turn's toggle for its suggested next steps (`NextStepsToggle`), and a More menu with the
- * exports, Share and Remember, then the commands placed on turn actions, which run on the answer.
+ * stop note and approval banners included): Copy for the final answer `answer`, writing a command's
+ * answer where the person's focus is now (`TurnApplyButton`), Regenerate on the task's last turn,
+ * Read aloud, Fork, the last turn's toggle for its suggested next steps (`NextStepsToggle`), and a
+ * More menu with the exports, Share and Remember, then the commands placed on turn actions, which
+ * run on the answer.
  * Only what applies is listed, and nothing renders when nothing does. The last turn's bar always
  * shows; an earlier turn's appears on hover or keyboard focus (`data-reveal`) in space it always
  * keeps.

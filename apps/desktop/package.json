@@ -1,6 +1,6 @@
 {
   "name": "@atd/desktop",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "private": true,
   "description": "A quiet desktop task panel, built from Figma.",
   "author": "JUNERDD",
@@ -44,6 +44,7 @@
     "@uiw/react-codemirror": "4.25.12",
     "@vitejs/plugin-react": "6.1.2",
     "@ziloen/remark-math": "catalog:",
+    "diff": "catalog:",
     "hast-util-from-dom": "5.0.1",
     "hast-util-to-mdast": "10.1.2",
     "i18next": "26.5.11",

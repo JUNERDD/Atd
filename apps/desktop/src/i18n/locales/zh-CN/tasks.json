@@ -244,13 +244,14 @@
     "cancel": "取消",
     "deleteAction": "删除任务",
     "taskGone": "该任务已被删除。",
-    "emptyDescription": "通过命令或消息开始的任务会显示在这里。",
+    "emptyDescription": "你发起的对话会显示在这里。命令执行记录可在“命令执行”中查看。",
     "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
     "noModel": "未使用模型",
     "view": {
-      "label": "排序与分组",
+      "label": "视图选项",
       "groupBy": "分组方式",
       "sortBy": "排序方式",
+      "showCommandTasksInAll": "在“全部”中显示命令执行",
       "groups": {
         "date": "日期",
         "status": "状态",
@@ -296,9 +297,14 @@
       "pinned": "置顶",
       "active": "进行中",
       "failed": "失败",
+      "commands": "命令执行",
       "automated": "自动运行"
     },
     "filterEmpty": {
+      "all": {
+        "title": "还没有普通对话",
+        "description": "命令记录可在“命令执行”中查看，也可在视图选项中开启“在‘全部’中显示命令执行”。"
+      },
       "pinned": {
         "title": "没有置顶的任务",
         "description": "在任务的菜单中选择置顶，它就会固定在列表顶部。"
@@ -310,6 +316,10 @@
       "failed": {
         "title": "没有失败的任务",
         "description": "最近一次运行失败或被中断的任务会显示在这里。"
+      },
+      "commands": {
+        "title": "还没有命令执行记录",
+        "description": "通过已保存命令发起的任务会显示在这里，包括快捷键和自动化触发的执行。"
       },
       "automated": {
         "title": "没有自动运行的任务",
@@ -535,6 +545,7 @@
     "copied": "回答已复制到剪贴板。",
     "replaceIn": "在 {{app}} 中替换",
     "insertIn": "插入到 {{app}}",
+    "insertAfterIn": "插入到 {{app}} 选中文字之后",
     "refused": {
       "notTrusted": "未获得控制应用的权限，回答已改为复制到剪贴板。",
       "targetGone": "已无法访问 {{app}} 中的输入框，回答已改为复制到剪贴板。",
@@ -559,6 +570,9 @@
       "stopped": "{{command}} 已停止。",
       "startFailed": "{{command}} 无法开始运行。",
       "empty": "{{command}} 没有可写入的回答。"
+    },
+    "review": {
+      "failed": "{{command}} 没能生成新版本。"
     }
   },
   "toolRow": {

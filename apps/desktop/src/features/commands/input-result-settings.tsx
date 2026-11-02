@@ -19,6 +19,7 @@ import {
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
+import { AdjustmentsRow } from './adjustments-row';
 import { FieldError } from './field-error';
 import { InputOptions } from './input-options';
 import { OutputField } from './output-field';
@@ -37,9 +38,21 @@ const SOURCE_LABELS = {
 } as const satisfies Record<Source, string>;
 
 /**
+ * Whether some run of `command` waits for review: one with the command's own output, or one from a
+ * shortcut whose output override reviews a write-back. Either shows the command's adjustment
+ * suggestions on its review card.
+ */
+function reviewsSomewhere(command: CommandDefinition): boolean {
+  const outputs = [command.output, ...command.shortcuts.flatMap(({ output }) => output ?? [])];
+  return outputs.some((output) => writesBack(output.action) && output.review);
+}
+
+/**
  * What a run reads and where its answer goes, as one editor group: the input source beside the
- * result, then the input options, the review switch of a write-back, and notes on what the shell
- * does around the run. The result offers only the actions this input can serve: the ones on the
+ * result, then the input options, the review switch of a write-back with the adjustment
+ * suggestions the review card offers, shown while any run reviews (`reviewsSomewhere`), and notes
+ * on what the shell does around the run. Turning review off keeps the suggestions for when it is
+ * on again. The result offers only the actions this input can serve: the ones on the
  * selection (`actsOnSelection`) need a command that reads it, so they are left out until it does,
  * and an input change that stops reading the selection returns such a result to the conversation.
  * A command that takes the selection, run from its shortcut with nothing selected, asks for the
@@ -67,6 +80,7 @@ export function InputResultSettings({
   const ids = useId();
   const { action, review } = command.output;
   const writeBack = writesBack(action);
+  const reviewed = reviewsSomewhere(command);
   const notes = [
     command.input.source === 'selection' &&
       t(actsOnSelection(action) ? 'io.composeCursorNote' : 'io.composeNote'),
@@ -151,18 +165,26 @@ export function InputResultSettings({
           onOpenChange={onOptionsOpenChange}
         />
       </div>
-      {writeBack && (
+      {(writeBack || reviewed) && (
         <Card size="sm" className="settings-card">
           <ItemGroup>
-            <SettingsSwitchRow
-              id="command-output-review"
-              title={t('output.review.title')}
-              description={t('output.review.description')}
-              checked={review}
-              onCheckedChange={(checked) =>
-                onChange({ ...command, output: { ...command.output, review: checked } })
-              }
-            />
+            {writeBack && (
+              <SettingsSwitchRow
+                id="command-output-review"
+                title={t('output.review.title')}
+                description={t('output.review.description')}
+                checked={review}
+                onCheckedChange={(checked) =>
+                  onChange({ ...command, output: { ...command.output, review: checked } })
+                }
+              />
+            )}
+            {reviewed && (
+              <AdjustmentsRow
+                value={command.adjustments ?? []}
+                onChange={(adjustments) => onChange({ ...command, adjustments })}
+              />
+            )}
           </ItemGroup>
         </Card>
       )}

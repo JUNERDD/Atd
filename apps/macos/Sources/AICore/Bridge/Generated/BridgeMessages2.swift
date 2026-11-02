@@ -80,6 +80,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "text.write": call = try .textWrite(container.value(.params, TextWriteParams.self))
       case "commandProgress.show":
         call = try .commandProgressShow(container.value(.params, CommandProgressShowParams.self))
+      case "text.writeFocused":
+        call = try .textWriteFocused(container.value(.params, TextWriteFocusedParams.self))
       case "commandProgress.hide":
         call = try .commandProgressHide(container.value(.params, CommandProgressHideParams.self))
       case "commandOptions.set":
@@ -219,6 +221,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case taskOpen(TaskOpenEvent)
   case taskQueueWithdrawn(TaskQueueWithdrawnEvent)
   case commandProgressAction(CommandProgressActionEvent)
+  case textWriteOffer(TextWriteOfferEvent)
   case commandOptionsPicked(CommandOptionsPickedEvent)
 
   /// The contract name.
@@ -247,6 +250,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .taskOpen: "task.open"
     case .taskQueueWithdrawn: "task.queueWithdrawn"
     case .commandProgressAction: "commandProgress.action"
+    case .textWriteOffer: "text.writeOffer"
     case .commandOptionsPicked: "commandOptions.picked"
     }
   }
@@ -276,6 +280,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .taskOpen(let payload): try payload.encode(to: encoder)
     case .taskQueueWithdrawn(let payload): try payload.encode(to: encoder)
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
+    case .textWriteOffer(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
     }
   }

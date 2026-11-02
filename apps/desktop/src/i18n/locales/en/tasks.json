@@ -244,13 +244,14 @@
     "cancel": "Cancel",
     "deleteAction": "Delete task",
     "taskGone": "That task was deleted.",
-    "emptyDescription": "Tasks you start from a command or a message appear here.",
+    "emptyDescription": "Conversations you start appear here. Command runs have their own tab.",
     "noMatchesDescription": "Check the spelling or try a different search.",
     "noModel": "No model",
     "view": {
-      "label": "Sort and group",
+      "label": "View options",
       "groupBy": "Group by",
       "sortBy": "Sort by",
+      "showCommandTasksInAll": "Show command runs in All",
       "groups": {
         "date": "Date",
         "status": "Status",
@@ -296,9 +297,14 @@
       "pinned": "Pinned",
       "active": "Active",
       "failed": "Failed",
+      "commands": "Command runs",
       "automated": "Automated"
     },
     "filterEmpty": {
+      "all": {
+        "title": "No conversations yet",
+        "description": "Find command runs in their own tab, or show them here by turning on “Show command runs in All” in View options."
+      },
       "pinned": {
         "title": "No pinned tasks",
         "description": "Pin a task from its menu to keep it at the top of the list."
@@ -310,6 +316,10 @@
       "failed": {
         "title": "No failed tasks",
         "description": "Tasks whose last run failed or was interrupted appear here."
+      },
+      "commands": {
+        "title": "No command runs yet",
+        "description": "Tasks started by a saved command appear here, including runs from shortcuts and automations."
       },
       "automated": {
         "title": "No automated tasks",
@@ -535,6 +545,7 @@
     "copied": "Answer copied to the clipboard.",
     "replaceIn": "Replace in {{app}}",
     "insertIn": "Insert in {{app}}",
+    "insertAfterIn": "Insert after the selection in {{app}}",
     "refused": {
       "notTrusted": "App control access is off, so the answer was copied instead.",
       "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
@@ -559,6 +570,9 @@
       "stopped": "{{command}} was stopped.",
       "startFailed": "{{command}} couldn't start.",
       "empty": "{{command}} had no answer to write."
+    },
+    "review": {
+      "failed": "{{command}} couldn't make a new version."
     }
   },
   "toolRow": {

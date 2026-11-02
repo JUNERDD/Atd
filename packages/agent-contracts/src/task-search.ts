@@ -11,6 +11,8 @@ export const TaskSearchQuerySchema = Type.Object(
     query: Type.String({ minLength: 1, maxLength: 200 }),
     /** Most tasks returned; defaults to 100. */
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })),
+    /** Scope by whether the task's first run came from a command; defaults to all tasks. */
+    commands: Type.Optional(Type.Enum(['all', 'exclude', 'only'])),
   },
   { additionalProperties: false },
 );

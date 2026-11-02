@@ -31,34 +31,18 @@ extension ShellController {
       openScreenRecordingSettings: { [weak self] in self?.screenRecording.openSystemSettings() })
   }
 
-  /// The answer card's Insert or Replace: the app the person works in takes the keyboard back
-  /// from the card, its focused field is captured afresh as a summon captures it, and the
-  /// answer is written there as `text.write` writes, with the person's typing settings.
+  /// The answer card's Insert (at the cursor, or after a selection) or Replace: the app the
+  /// person works in, frontmost since the island never activates Atd, takes the keyboard back
+  /// from the card and gets the answer in its focused field, captured afresh
+  /// (``write(_:mode:into:typing:animation:)``), with the person's typing settings.
   func writeAnswer(_ answer: String, mode: TextWriteParams.Mode) async -> AnswerWriteOutcome {
     let front = NSWorkspace.shared.frontmostApplication.flatMap {
       $0 == NSRunningApplication.current ? nil : $0
     }
-    let app = front?.localizedName ?? front?.bundleIdentifier ?? ""
-    func refused(_ reason: TextWriteResult.NotOk.Reason) -> AnswerWriteOutcome {
-      AnswerWriteOutcome(result: .notOk(.init(reason: reason)), app: app)
-    }
-    guard SelectionReader.isTrusted else { return refused(.notTrusted) }
-    guard let front, await TextWriter.bringForward(front, reassert: true) else {
-      return refused(.targetGone)
-    }
-    // Replace is an explicit selection action too. Opaque editors need the same copy fallback
-    // as a command launch; an AX-only capture would lose both the text and its cell type here.
-    let selection = mode == .selection ? await summoner.readSelection() : .unread
-    guard let target = await summoner.writeTargets.capture(after: selection) else {
-      return refused(.targetGone)
-    }
-    guard target.writable else { return refused(.failed) }
     let writeTargets = summoner.writeTargets
-    let result = await writeText(
-      TextWriteParams(
-        target: target.id, mode: mode, text: answer, typing: writeTargets.typesAnswers,
-        animation: writeTargets.animatesTyping))
-    return AnswerWriteOutcome(result: result, app: target.app)
+    return await write(
+      answer, mode: mode, into: front, typing: writeTargets.typesAnswers,
+      animation: writeTargets.animatesTyping)
   }
 
   /// A card closed (the options card without running, the answer card): the field the command

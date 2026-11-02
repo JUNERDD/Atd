@@ -21,7 +21,9 @@ import Carbon.HIToolbox
 ///   and shows "Copied" until ``CommandProgressState/doneDuration`` passes, Open hands the run to
 ///   the panel, and close only dismisses; while the person's focus is a field that can take text,
 ///   Insert and Replace write the answer there (``writeAnswer(_:)``); it stays until it is acted
-///   on or replaced;
+///   on or replaced; with a review it is the review card (``IslandReviewCard``, its keys and
+///   staging in ``reviewKey(_:)``), which asks the page for versions and tells it `close` once it
+///   goes by itself;
 /// - compose: a command launched with nothing selected asks for its text, and attachments when
 ///   it takes files, as a card that takes the keyboard (``IslandComposeCard``, its keys in
 ///   ``composeKey(_:)``, attaching through ``ComposeAttachments``): Run turns it into the run as
@@ -63,6 +65,11 @@ final class CommandProgressController: NSObject {
   let arbiter: DeviceArbiter
   /// The answer card's write hot keys, held while it offers a write (``holdWriteKeys(_:)``).
   var writeKeys: [UInt32] = []
+  /// The target whose review card an Insert or Replace took away while its write runs: a refused
+  /// write brings that card back with what it staged (``prepareReview(_:target:)``).
+  var writingReview: String?
+  /// The review cards the page was told to let go, and the one it will be once its notice goes.
+  var reviewClosings = ReviewClosings()
 
   init(
     _ panel: WebViewHost, toolbar: SelectionToolbarController,
@@ -80,6 +87,7 @@ final class CommandProgressController: NSObject {
     wireCard()
     wireAnswerCard()
     wireComposeCard()
+    wireReviewCard()
   }
 
   /// Shows `params.state` for its target, replacing the island of another target; one of the
@@ -88,6 +96,7 @@ final class CommandProgressController: NSObject {
     guard let phase = CommandProgressState.phase(params.state) else {
       throw BridgeError("The progress has nothing to show.")
     }
+    if isStaleReview(phase, target: params.target) { return }
     present(target: params.target, phase: phase)
   }
 
@@ -118,6 +127,7 @@ final class CommandProgressController: NSObject {
   func showPress(command: String) {
     if let shown = state.shown, state.givesWayToPress {
       let keyboard = state.takesKeyboard
+      if state.isReviewing { send(CommandProgressState.closing(target: shown.target)) }
       state.hide(target: shown.target)
       sync(leavingCard: keyboard ? shown.target : nil)
     }
@@ -166,6 +176,7 @@ final class CommandProgressController: NSObject {
     if case .compose = phase, !state.isComposing || state.shown?.target != target {
       island.model.compose = ComposeDraft()
     }
+    prepareReview(phase, target: target)
     pressing = false
     state.show(target: target, phase: phase)
     timer += 1
@@ -186,7 +197,10 @@ final class CommandProgressController: NSObject {
     case .writing: .writing
     case .done: .done
     case .notice(let message): .notice(message: message)
-    case .answer(let command, let answer, let note):
+    case .answer(let command, _, _, .some) where island.model.cardStages: .choose(command: command)
+    case .answer(let command, let answer, let note, let review?):
+      .review(command: command, answer: answer, note: note, review: review)
+    case .answer(let command, let answer, let note, nil):
       .answer(command: command, answer: answer, note: note)
     case .copied: .copied
     case .compose(let command, let attach): .compose(command: command, attach: attach)
@@ -212,7 +226,7 @@ final class CommandProgressController: NSObject {
     case .change: press(.change)
     case .dismiss:
       guard let shown = state.shown else { return }
-      hide(target: shown.target)
+      if state.isReviewing { press(.close) } else { hide(target: shown.target) }
     case .copy: copyAnswer()
     case .write(let mode): writeAnswer(mode)
     }
@@ -226,23 +240,16 @@ final class CommandProgressController: NSObject {
   }
 
   /// A shortcut pressed while a card has the keyboard closes it, giving the keyboard back: the
-  /// options card and the compose card cancel their command, the answer card only goes.
+  /// options card and the compose card cancel their command, the review card closes, the answer
+  /// card only goes.
   func closeCard() {
     if state.isChoosing || state.isComposing {
       press(.cancel)
+    } else if state.isReviewing {
+      press(.close)
     } else if let shown = state.shown, state.isAnswering {
       hide(target: shown.target)
     }
-  }
-
-  /// Copy on the answer card: the whole answer goes on the clipboard as plain text, and the
-  /// card turns into "Copied", giving the keyboard back to the target's field. While another
-  /// write holds the clipboard the card stays as it is.
-  func copyAnswer() {
-    guard let target = state.shown?.target, let answer = state.answerShown,
-      arbiter.writeClipboard(answer)
-    else { return }
-    present(target: target, phase: .copied)
   }
 
   /// Sends `action` for the island shown, with the options card's values for Run and Edit, or
@@ -258,16 +265,31 @@ final class CommandProgressController: NSObject {
     guard let event = state.press(action, arguments: arguments, compose: compose) else { return }
     timer += 1
     let panelTakes = action == .edit || action == .open
+    // Open on an interrupted review write's notice hands the review over instead of closing it.
+    if panelTakes { reviewClosings.notice = nil }
     sync(leavingCard: returning && !panelTakes ? choosing : nil)
     if choosing != nil { island.setKeyCapable(false) }
     if let shown = state.shown { island.show(content(shown.phase)) } else { island.exit() }
-    panel.send(.commandProgressAction(event), scope: .document)
+    send(event)
   }
 
-  /// The options card's choices or toggles changed to `arguments` (every value it shows): the
-  /// page remembers them at once, and the card stays as it is.
-  func picked(_ arguments: CommandArguments) {
-    guard let event = state.press(.pick, arguments: arguments) else { return }
+  /// Sends `action` when the island shown offers it, the island staying as it is: the options
+  /// card's changed values (`pick` with every value it shows, which the page remembers at once)
+  /// and the review card's requests. False when it offers nothing for it.
+  @discardableResult
+  func request(
+    _ action: CommandProgressActionEvent.Action, arguments: CommandArguments? = nil,
+    adjust: CommandProgressActionEvent.Adjust? = nil, version: Int? = nil
+  ) -> Bool {
+    guard let event = state.press(action, arguments: arguments, adjust: adjust, version: version)
+    else { return false }
+    send(event)
+    return true
+  }
+
+  /// Sends `event` to the page, the island staying as it is.
+  func send(_ event: CommandProgressActionEvent) {
+    noteSent(event)
     panel.send(.commandProgressAction(event), scope: .document)
   }
 
@@ -275,6 +297,7 @@ final class CommandProgressController: NSObject {
   /// while a card is up and given back to `leavingCard`'s field once it is gone. A registration
   /// that fails leaves the close button as the only way to cancel.
   private func sync(leavingCard: String?) {
+    settleReviewNotice()
     if state.takesKeyboard {
       island.setKeyCapable(true)
     } else if let leavingCard {
@@ -296,9 +319,16 @@ final class CommandProgressController: NSObject {
     }
   }
 
-  /// Escape: the answer card closes, as its close button does; a working run is cancelled.
+  /// Escape: a card's field composing text hands it to the input method; the review card's
+  /// options sheet goes back a step, and the review card peels a layer (``peelReview()``); the
+  /// answer card closes, as its close button does; a working run is cancelled.
   private func escapePressed() {
-    if let shown = state.shown, state.isAnswering {
+    if forwardEscapeToInputMethod() { return }
+    if reviewSheetOpen {
+      sheetEscape()
+    } else if state.isReviewing {
+      peelReview()
+    } else if let shown = state.shown, state.isAnswering {
       hide(target: shown.target)
     } else {
       press(.cancel)

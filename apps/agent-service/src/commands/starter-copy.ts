@@ -2,12 +2,15 @@ import type { AppLanguage, CommandParameter } from '@atd/agent-contracts';
 
 /**
  * The words of each starter command in every app language: what the user reads and edits (name,
- * description, instructions, parameter labels) and what the model reads (instructions and the
- * enum values they quote). The rest of a starter is the same in every language (`starters.ts`).
+ * description, instructions, parameter labels, adjustment suggestions) and what the model reads
+ * (instructions, the enum values they quote and the suggestions a review sends). The rest of a
+ * starter is the same in every language (`starters.ts`).
  *
  * A stored starter counts as unmodified only while its copy equals one of these, so changing a
  * shipped text leaves every starter seeded with the old one as it is; keep the English copy as
- * the earlier releases seeded it unless that is intended.
+ * the earlier releases seeded it unless that is intended. Adjustment suggestions do not count
+ * (`starters.ts`): the starters that rework the selection (translating, polishing) offer a few
+ * for the review card, and an unmodified one takes the current ones.
  */
 
 export const STARTER_IDS = [
@@ -27,6 +30,7 @@ export interface StarterCopy {
   description: string;
   instructions: string;
   parameters?: CommandParameter[];
+  adjustments?: string[];
 }
 
 /** A required enum parameter whose option values are the phrases the instructions read. */
@@ -75,12 +79,14 @@ const EN: Record<StarterId, StarterCopy> = {
         'Spanish',
       ]),
     ],
+    adjustments: ['More natural', 'More formal', 'More casual', 'Keep terms untranslated'],
   },
   polish: {
     name: 'Polish writing',
     description: 'Make the selected writing clear and natural.',
     instructions:
       'Improve the clarity, grammar and flow of the text below while keeping its meaning, voice, language and formatting. Return only the revised text.\n\n{{input}}',
+    adjustments: ['Shorter', 'More formal', 'Friendlier', 'Fewer changes'],
   },
   summarize: {
     name: 'Summarize',
@@ -167,12 +173,14 @@ const ZH_CN: Record<StarterId, StarterCopy> = {
         '西班牙语',
       ]),
     ],
+    adjustments: ['更自然', '更正式', '更口语化', '术语保留原文'],
   },
   polish: {
     name: '润色文字',
     description: '让选中的文字更清晰、更自然。',
     instructions:
       '在保留原意、文风、语言和格式的前提下，改进下面文本的清晰度、语法和行文流畅度。只返回修改后的文本。\n\n{{input}}',
+    adjustments: ['更简洁', '更正式', '更亲切', '改动更少'],
   },
   summarize: {
     name: '总结',

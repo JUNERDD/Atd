@@ -91,6 +91,7 @@ export class NativeBridge {
     'task.queueWithdrawn': new Set(),
     'commandProgress.action': new Set(),
     'commandOptions.picked': new Set(),
+    'text.writeOffer': new Set(),
     'computer.state': new Set(),
     'shortcuts.changed': new Set(),
   };

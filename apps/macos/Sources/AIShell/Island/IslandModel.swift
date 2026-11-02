@@ -15,6 +15,9 @@ enum IslandContent: Equatable {
   case notice(message: String)
   /// The answer card (``IslandAnswerCard``): a run's answer that could not be written.
   case answer(command: String, answer: String, note: String?)
+  /// The review card (``IslandReviewCard``, its draft in ``IslandModel/review``): an answer that
+  /// waits for review, with its original, changes, versions and options.
+  case review(command: String, answer: String, note: String?, review: CommandProgressState.Review)
   /// The answer card's answer went to the clipboard.
   case copied
   /// The compose card (``IslandComposeCard``, its draft in ``IslandModel/compose``) of the named
@@ -23,11 +26,11 @@ enum IslandContent: Equatable {
 
   /// Content of the same kind changes in place; another kind replaces it through a morph.
   enum Kind {
-    case press, working, choose, writing, done, notice, answer, copied, compose
+    case press, working, choose, writing, done, notice, answer, review, copied, compose
 
-    /// A card (the options card, the answer card, the compose card), with the card's corner
-    /// rather than a capsule's.
-    var isCard: Bool { self == .choose || self == .answer || self == .compose }
+    /// A card (the options card, the answer card, the review card, the compose card), with the
+    /// card's corner rather than a capsule's.
+    var isCard: Bool { [.choose, .answer, .review, .compose].contains(self) }
   }
 
   var kind: Kind {
@@ -39,6 +42,7 @@ enum IslandContent: Equatable {
     case .done: .done
     case .notice: .notice
     case .answer: .answer
+    case .review: .review
     case .copied: .copied
     case .compose: .compose
     }
@@ -56,11 +60,14 @@ struct IslandLayer: Identifiable, Equatable {
   var presence: MiniPanelPresence
   /// How wide a capsule's texts may grow (``IslandMetrics/CapsuleLimits``).
   var limits = IslandMetrics.CapsuleLimits()
+  /// The write offer this layer was measured with. A departing answer keeps its footer even
+  /// after the focus watch stops or the next card gets a different offer.
+  var answerOffer: AnswerWriteOffer?
   /// The card a leaving options card shows, frozen as it left, so it never draws the page that
   /// replaces it while it fades.
   var card: OptionsCard?
-  /// The content scales with its shape as it follows it; off while the compose card resizes in
-  /// place (``IslandChoreography/inPlace``), on again once it leaves.
+  /// The content scales with its shape as it follows it; off while direct edits resize it in
+  /// place (``IslandChoreography/inPlace``), on again once it leaves or reverses its exit.
   var scales = true
 }
 
@@ -93,15 +100,16 @@ struct IslandShape: Equatable {
 enum IslandAction: Equatable {
   /// The working capsule's × (or Escape, which the progress controller holds).
   case cancel
-  /// The notice's Open, and the answer card's.
+  /// The notice's Open, and the answer and review cards'.
   case open
-  /// The notice's × and the answer card's (or Escape on the card).
+  /// The notice's × and the answer and review cards' (or Escape on the answer card).
   case dismiss
-  /// The answer card's Copy (or ⌘C on it).
+  /// The answer and review cards' Copy (or ⌘C on them).
   case copy
   /// The working capsule's values chip.
   case change
-  /// The answer card's Insert (`cursor`) or Replace (`selection`), or Return on it.
+  /// The answer and review cards' Insert (``AnswerWriteOffer/insert``) or Replace (`selection`),
+  /// or their keys.
   case write(TextWriteParams.Mode)
 }
 
@@ -176,6 +184,8 @@ struct IslandLabels: Equatable {
   var composeScrollLeft = ""
   var composeScrollRight = ""
   var composeOpenSystemSettings = ""
+  /// The review card's copy, and the options sheet's Done.
+  var review = IslandReviewLabels()
 
   static func current() -> IslandLabels {
     let strings = ShellStrings.shared
@@ -207,7 +217,8 @@ struct IslandLabels: Equatable {
       composeScreenRecording: strings.text(.commandComposeScreenRecording),
       composeScrollLeft: strings.text(.commandComposeScrollLeft),
       composeScrollRight: strings.text(.commandComposeScrollRight),
-      composeOpenSystemSettings: strings.text(.commandComposeOpenSystemSettings))
+      composeOpenSystemSettings: strings.text(.commandComposeOpenSystemSettings),
+      review: .current())
   }
 
   /// What VoiceOver reads for a working run of `command`.
@@ -228,6 +239,11 @@ struct IslandLabels: Equatable {
   /// Insert's tooltip and VoiceOver name, naming the app the field is in.
   func insert(in app: String) -> String {
     ShellStrings.shared.text(.commandProgressInsertIn, app)
+  }
+
+  /// Insert's tooltip and VoiceOver name while the field has a selection, which it writes after.
+  func insertAfter(in app: String) -> String {
+    ShellStrings.shared.text(.commandProgressInsertAfterIn, app)
   }
 
   /// Replace's tooltip and VoiceOver name, naming the app the field is in.
@@ -263,6 +279,14 @@ final class IslandModel {
   var answerOffer: AnswerWriteOffer?
   /// The compose card's text and attachments, kept while the card shows for one target.
   var compose = ComposeDraft()
+  /// What the review card staged, kept while it shows for one target.
+  var review = ReviewDraft()
+  /// The review card's chip the keyboard highlights, as an index into its row
+  /// (``ReviewChip/row(_:adjustments:)``); nil while the keys go to its field.
+  var reviewChip: Int?
+  /// The options card is the review card's options sheet: its button is Done, which stages its
+  /// values for the next version instead of running.
+  var cardStages = false
   /// A card has the keyboard: the options card's filter field or the compose card's text field
   /// takes focus.
   var cardIsKey = false
@@ -273,5 +297,6 @@ final class IslandModel {
   @ObservationIgnored var act: (IslandAction) -> Void = { _ in }
   @ObservationIgnored var cardEvent: (IslandCardEvent) -> Void = { _ in }
   @ObservationIgnored var composeEvent: (IslandComposeEvent) -> Void = { _ in }
+  @ObservationIgnored var reviewEvent: (IslandReviewEvent) -> Void = { _ in }
   @ObservationIgnored var drag: (IslandDrag) -> Void = { _ in }
 }

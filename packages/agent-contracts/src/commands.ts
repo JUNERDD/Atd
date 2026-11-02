@@ -174,6 +174,18 @@ export const CommandSkillRefSchema = Type.Object(
 );
 export type CommandSkillRef = Static<typeof CommandSkillRefSchema>;
 
+export const MAX_COMMAND_ADJUSTMENTS = 8;
+export const MAX_COMMAND_ADJUSTMENT_LENGTH = 40;
+/**
+ * Short adjustments the command suggests for its answer while it waits for review (`output.review`):
+ * the island's review card offers them as chips, sent with what the person typed as the next
+ * version's instruction ("More formal", "Shorter"). Omitted or empty: the card offers none.
+ */
+export const CommandAdjustmentsSchema = Type.Array(
+  Type.String({ minLength: 1, maxLength: MAX_COMMAND_ADJUSTMENT_LENGTH }),
+  { maxItems: MAX_COMMAND_ADJUSTMENTS, uniqueItems: true },
+);
+
 /**
  * Full round-trippable command: core identity plus editor fields. Skills, subagents, MCP servers
  * and conversations are written into `instructions` as tokens (`instruction-tokens.ts`), so the
@@ -193,6 +205,7 @@ export const ServiceCommandFullSchema = Type.Object({
   placement: CommandPlacementSchema,
   output: CommandOutputSchema,
   parameters: Type.Array(CommandParameterSchema, { maxItems: 20 }),
+  adjustments: Type.Optional(CommandAdjustmentsSchema),
   model: CommandModelSchema,
   /** The reasoning level the command asks for, independent of its model (`CommandThinkingLevel`). */
   thinkingLevel: CommandThinkingLevelSchema,
@@ -231,6 +244,7 @@ export const CommandCreateSchema = Type.Object({
   /** Omitted: `defaultCommandOutput()`. */
   output: Type.Optional(CommandOutputSchema),
   parameters: Type.Optional(Type.Array(CommandParameterSchema, { maxItems: 20 })),
+  adjustments: Type.Optional(CommandAdjustmentsSchema),
   model: Type.Optional(CommandModelSchema),
   /** Omitted: `inherit`, the connection's default level. */
   thinkingLevel: Type.Optional(CommandThinkingLevelSchema),

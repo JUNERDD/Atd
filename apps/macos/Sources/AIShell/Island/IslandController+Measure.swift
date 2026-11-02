@@ -11,15 +11,31 @@ struct IslandMeasure: Equatable {
 /// Measuring the island's contents, synchronously and before anything shows, so the first frame
 /// of a shape is already its content's size.
 extension IslandController {
+  /// Result cards fit their current display as well as the island's width limit. The anchor
+  /// owns the display while visible; a fresh appearance follows the pointer, as placement does.
+  func resultCardWidth(ideal: Double) -> Double {
+    let width = min(
+      max(ideal.rounded(.up), IslandMetrics.minCardWidth), IslandMetrics.maxShape.width)
+    let point = anchor ?? NSEvent.mouseLocation
+    guard let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main
+    else { return width }
+    let available = screen.visibleFrame.width - SelectionToolbarPlacement.margin * 2
+    return min(width, max(available, 1))
+  }
+
   /// The rest size of `content`: a capsule as wide as its row, never wider than
   /// ``IslandMetrics/maxShape`` (its values chip, then its command name, then a notice's message
   /// give way: ``IslandMetrics/CapsuleLimits/fitting(overflow:command:summary:message:)``); the
   /// card as wide as its widest row or footer within bounds and as tall as its rows make room
-  /// for; the answer card as ``measureAnswer(command:answer:note:)`` has it, the compose card as
+  /// for; the answer card as ``measureAnswer(command:answer:note:)`` has it, the review card as
+  /// ``measureReview(command:answer:note:review:)``, the compose card as
   /// ``measureCompose(command:attach:)`` does.
   func measure(_ content: IslandContent) -> IslandMeasure {
     if case .answer(let command, let answer, let note) = content {
       return measureAnswer(command: command, answer: answer, note: note)
+    }
+    if case .review(let command, let answer, let note, let review) = content {
+      return measureReview(command: command, answer: answer, note: note, review: review)
     }
     if case .compose(let command, let attach) = content {
       return measureCompose(command: command, attach: attach)
@@ -56,7 +72,7 @@ extension IslandController {
       command = IslandShimmer.width(of: name, limit: IslandMetrics.maxCommandWidth)
       summary = values
     case .notice(let text): message = text
-    case .choose, .answer, .compose, .writing, .done, .copied: break
+    case .choose, .answer, .review, .compose, .writing, .done, .copied: break
     }
     let limits = IslandMetrics.CapsuleLimits.fitting(
       overflow: natural - limit, command: command,
