@@ -129,6 +129,19 @@ export type TextWriteResult = CallResult<'text.write'>;
  * the ones it refused, by basename and reason; both are empty when the user cancelled.
  */
 export type PickedFiles = CallResult<'files.pick'>;
+/** What the panel's write buttons offer where the person's focus is now (`text.writeOffer`). */
+export type WriteOffer = NonNullable<EventPayload<'text.writeOffer'>['offer']>;
+export type FocusedWriteRequest = CallParams<'text.writeFocused'>;
+/**
+ * The panel's writes where the person's focus is now, only in the panel's page under the shell:
+ * the shell's latest offer (null while that focus cannot take text or the panel is hidden), and a
+ * write the shell captures that field for afresh, answering as `text.write` does.
+ */
+export interface FocusWriteBridge {
+  offer: () => WriteOffer | null;
+  onOffer: (listener: () => void) => () => void;
+  write: (request: FocusedWriteRequest) => Promise<TextWriteResult>;
+}
 /** What the progress HUD shows (`commandProgress.show` in the native bridge). */
 export type CommandProgressState = CallParams<'commandProgress.show'>['state'];
 /**
@@ -306,6 +319,8 @@ export interface AgentBridge {
   onExtensionSession: (listener: (session: ExtensionSession) => void) => () => void;
   /** Present only in the panel's page under the native shell. */
   light?: LightCommandBridge;
+  /** Present only in the panel's page under the native shell. */
+  focusWrite?: FocusWriteBridge;
   /**
    * Remembers `values` as where command `commandId`'s next run starts, without running it (the
    * person changed them on its input step or options card). Present under the native shell.

@@ -31,6 +31,7 @@ import { nativeComputer } from './native-computer';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
+import { nativeFocusWrite } from './native-focus-write';
 import { nativeFolders } from './native-folders';
 import { nativeMiniPanel } from './native-mini-panel';
 import { nativeNotifications } from './native-notifications';
@@ -79,6 +80,7 @@ export async function installNativeHost(
   const onSelectionAsk =
     surface === 'panel' ? nativeHeldRequest(native, 'selection.ask') : undefined;
   const onNewTask = surface === 'panel' ? nativeHeldRequest(native, 'task.new') : undefined;
+  const focusWrite = surface === 'panel' ? nativeFocusWrite(native) : undefined;
   // Native task navigation and withdrawn queues wait for the panel's view to subscribe.
   const taskEvents = surface === 'panel' ? nativeTaskEvents(native) : {};
   const connection = new NativeConnection({
@@ -277,6 +279,7 @@ export async function installNativeHost(
       rememberArguments: (commandId, values, shortcutId) =>
         commands.remember(commandId, values, shortcutId),
       ...(surface === 'panel' ? { light: nativeLightCommand(native, requests) } : {}),
+      ...(focusWrite ? { focusWrite } : {}),
     },
     service: createServiceBridge(
       async (request) => {

@@ -135,12 +135,19 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
   public let action: Action
   public let arguments: CommandArguments?
   public let compose: Compose?
+  public let adjust: Adjust?
+  public let version: Int?
 
-  public init(target: String, action: Action, arguments: CommandArguments?, compose: Compose?) {
+  public init(
+    target: String, action: Action, arguments: CommandArguments?, compose: Compose?,
+    adjust: Adjust?, version: Int?
+  ) {
     self.target = target
     self.action = action
     self.arguments = arguments
     self.compose = compose
+    self.adjust = adjust
+    self.version = version
   }
 
   public init(from decoder: any Decoder) throws {
@@ -151,6 +158,10 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
       try container.value($0, CommandArguments.self)
     }
     compose = try container.optional(.compose) { try container.value($0, Compose.self) }
+    adjust = try container.optional(.adjust) { try container.value($0, Adjust.self) }
+    version = try container.optional(.version) {
+      try container.integer($0, minimum: 1, maximum: 20)
+    }
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -159,6 +170,8 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     try container.encode(action, forKey: .action)
     try container.encodeIfPresent(arguments, forKey: .arguments)
     try container.encodeIfPresent(compose, forKey: .compose)
+    try container.encodeIfPresent(adjust, forKey: .adjust)
+    try container.encodeIfPresent(version, forKey: .version)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -166,6 +179,8 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     case action
     case arguments
     case compose
+    case adjust
+    case version
   }
 
   public enum Action: String, Codable, Equatable, Sendable {
@@ -175,6 +190,11 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
     case run
     case edit
     case pick
+    case regenerate
+    case adjust
+    case version
+    case stop
+    case close
   }
 
   public struct Compose: Codable, Equatable, Sendable {
@@ -197,26 +217,38 @@ public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
       case files
     }
   }
-}
 
-/// Payload of the `commandOptions.picked` event.
-public struct CommandOptionsPickedEvent: Codable, Equatable, Sendable {
-  public let id: String
-  public let arguments: CommandArguments
+  public struct Adjust: Codable, Equatable, Sendable {
+    public let text: String
+    public let adjustments: [String]
+    public let arguments: CommandArguments?
 
-  public init(id: String, arguments: CommandArguments) {
-    self.id = id
-    self.arguments = arguments
-  }
+    public init(text: String, adjustments: [String], arguments: CommandArguments?) {
+      self.text = text
+      self.adjustments = adjustments
+      self.arguments = arguments
+    }
 
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    id = try container.string(.id, minLength: 1, maxLength: 128)
-    arguments = try container.value(.arguments, CommandArguments.self)
-  }
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      text = try container.string(.text, maxLength: 2_000)
+      adjustments = try container.array(.adjustments, of: String.self, maxItems: 8)
+      arguments = try container.optional(.arguments) {
+        try container.value($0, CommandArguments.self)
+      }
+    }
 
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case id
-    case arguments
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(text, forKey: .text)
+      try container.encode(adjustments, forKey: .adjustments)
+      try container.encodeIfPresent(arguments, forKey: .arguments)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case text
+      case adjustments
+      case arguments
+    }
   }
 }

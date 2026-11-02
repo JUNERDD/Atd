@@ -4,27 +4,33 @@
 /// ``IslandMetrics/footerHeight``); between them, the note under the title and the answer, which
 /// scrolls inside the card once the card would be taller than ``IslandMetrics/maxShape``.
 extension IslandMetrics {
+  /// Keep the established reading measure when the footer needs a wider card. This includes
+  /// the text's row padding; narrower displays still propose their own available width.
+  public static let resultTextWidth = maxCardWidth - cardPadding * 2
   /// The note under the title wraps to at most this many lines.
   public static let maxNoteLines = 2
   /// Between the note and the answer.
   public static let noteGap = 2.0
 
   /// The card's height for a note `note` points tall (0 without one) and an answer `answer`
-  /// points tall: everything shown, up to ``maxShape``'s height.
-  public static func answerCardHeight(note: Double, answer: Double) -> Double {
-    min((answerChrome(note: note) + max(answer, 0)).rounded(.up), maxShape.height)
+  /// points tall and a measured single-row `footer`: everything shown, up to
+  /// ``maxShape``'s height.
+  public static func answerCardHeight(
+    note: Double, answer: Double, footer: Double = footerHeight
+  ) -> Double {
+    min((answerChrome(note: note, footer: footer) + max(answer, 0)).rounded(.up), maxShape.height)
   }
 
   /// How tall the answer may show before it scrolls, under a note `note` points tall.
-  public static func answerRoom(note: Double) -> Double {
-    maxShape.height - answerChrome(note: note)
+  public static func answerRoom(note: Double, footer: Double = footerHeight) -> Double {
+    maxShape.height - answerChrome(note: note, footer: footer)
   }
 
   /// Everything but the answer: the padding, the title row, the note, the gaps either side of
   /// the answer and the footer.
-  private static func answerChrome(note: Double) -> Double {
+  private static func answerChrome(note: Double, footer: Double) -> Double {
     cardPadding * 2 + headerHeight + (note > 0 ? note + noteGap : 0) + sectionGap * 2
-      + footerHeight
+      + max(footer, footerHeight)
   }
 }
 
@@ -62,11 +68,12 @@ public struct AnswerOverflow: Equatable, Sendable {
   }
 }
 
-/// What the answer card offers to write where the person's focus is now: Insert at the focus
-/// while it is a field that can take text, and Replace as well while that field has a selection.
-/// The primary action, which ⌘Return performs (and Return, while the card has the keyboard), is
-/// Replace when it shows, else Insert. `app` is the app the field is in, named in the actions' tooltips and in
-/// a refusal's note.
+/// What the answer card offers to write where the person's focus is now: Insert while it is a
+/// field that can take text, and Replace as well while that field has a selection. Insert never
+/// overwrites a selection: it writes right after one (``insert``), at the focus otherwise. The
+/// primary action, which ⌘Return performs (and Return, while the answer card has the keyboard),
+/// is Replace when it shows, else Insert. `app` is the app the field is in, named in the actions'
+/// tooltips and in a refusal's note.
 public struct AnswerWriteOffer: Equatable, Sendable {
   public let app: String
   public let replaces: Bool
@@ -76,13 +83,16 @@ public struct AnswerWriteOffer: Equatable, Sendable {
     self.replaces = replaces
   }
 
+  /// The write Insert performs: after the field's selection while it has one, else at the focus.
+  public var insert: TextWriteParams.Mode { replaces ? .afterSelection : .cursor }
+
   /// The write the primary key performs: over the selection, or at the focus.
   public var primary: TextWriteParams.Mode { replaces ? .selection : .cursor }
 
   /// The answer card's write keys. Inserting needs the person's focus in another app's field,
   /// which takes the keyboard from the card, so both are hot keys held while the card offers a
   /// write and work wherever the focus is; plain Return also performs the primary write while the
-  /// card has the keyboard.
+  /// answer card has the keyboard.
   public enum Key: Sendable {
     /// ⌘Return: the primary write.
     case primary
@@ -94,8 +104,13 @@ public struct AnswerWriteOffer: Equatable, Sendable {
   public func write(for key: Key) -> TextWriteParams.Mode? {
     switch key {
     case .primary: primary
-    case .insert: replaces ? .cursor : nil
+    case .insert: replaces ? insert : nil
     }
+  }
+
+  /// Whether the card offers `mode` now: Insert's, or Replace while it shows.
+  public func offers(_ mode: TextWriteParams.Mode) -> Bool {
+    mode == insert || (replaces && mode == .selection)
   }
 
   /// The keys that perform `mode`, as its button shows them: one keycap, as the card's ⌘C hint

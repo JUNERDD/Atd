@@ -3,8 +3,10 @@ import AppKit
 import SwiftUI
 
 /// The options card (``OptionsCard``) the island grows into: the mini panel's commands card
-/// (18 pt corner, 28 pt rows on 8 pt washes) with a title, a filter field for a long list, and a
-/// footer of key hints beside the Run button. Keys reach the card through its window
+/// (18 pt corner, 28 pt rows on 8 pt washes, ``IslandMetrics/rowGap`` apart, as the selection
+/// toolbar's More menu spaces its rows) with a title, a filter field for a long list, and a
+/// footer of key hints beside the Run button, which reads Done where the card is the review
+/// card's options sheet (``IslandModel/cardStages``) and keeps the values for the next version. Keys reach the card through its window
 /// (``IslandController``), the pointer through its rows; both change the card through the
 /// model, so the highlight is one and the same. Option labels and values are user data, shown
 /// untranslated and cut with an ellipsis.
@@ -69,7 +71,7 @@ struct IslandCard: View {
   @ViewBuilder private var rows: some View {
     let rows = card.rows
     let shown = width == nil ? rows.indices : card.visible
-    VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: IslandMetrics.rowGap) {
       ForEach(Array(shown), id: \.self) { index in
         IslandCardRow(
           model: model, row: rows[index], index: index,
@@ -77,8 +79,7 @@ struct IslandCard: View {
       }
     }
     .frame(
-      height: width == nil ? nil : Double(card.capacity) * IslandMetrics.rowHeight,
-      alignment: .top)
+      height: width == nil ? nil : IslandMetrics.rowsHeight(card.capacity), alignment: .top)
   }
 
   private var footer: some View {
@@ -101,9 +102,10 @@ struct IslandCard: View {
       }
       Spacer(minLength: 8)
       if !isDrillDown {
-        IslandTextButton(title: labels.run, rest: 0.08, action: { model.cardEvent(.run) }) {
-          IslandKeycap(symbol: "↩")
-        }
+        IslandTextButton(
+          title: model.cardStages ? labels.review.done : labels.run, rest: 0.08, keys: "↩",
+          action: { model.cardEvent(.run) }
+        )
       }
     }
     .padding(.leading, 4)

@@ -9,15 +9,21 @@ import Carbon.HIToolbox
 /// beep. While the field has marked text, every key belongs to the input method, so Return and
 /// the digits confirm a composition instead of running.
 ///
+/// The review card's options sheet is the same card, with Done for Run: Done (Return, or a pick
+/// of a lone choice's value) takes the values back to the review card for its next version
+/// (``closeReviewSheet(staging:)``), Escape goes back to it without them, and an input option,
+/// which only the panel fills, hands the review to the panel as Open does.
+///
 /// The options card closes without running when the window gives up the keyboard to another
-/// window (a click in another app): that app keeps the keyboard it took. The compose card stays
+/// window (a click in another app): that app keeps the keyboard it took; the review card's sheet
+/// stays, as the review card does. The compose card stays
 /// with its draft instead, as the answer card does, so the person can copy something from that
 /// app and come back to paste it: a click on the card gives it the keyboard again.
 extension CommandProgressController {
   func wireCard() {
     island.onKeyDown = { [weak self] event in
       guard let self else { return false }
-      return answerKey(event) || composeKey(event) || cardKey(event)
+      return reviewKey(event) || answerKey(event) || composeKey(event) || cardKey(event)
     }
     island.onScroll = { [weak self] event in self?.cardScroll(event) ?? false }
     island.onResignKey = { [weak self] in
@@ -27,8 +33,11 @@ extension CommandProgressController {
     island.model.cardEvent = { [weak self] event in self?.cardEvent(event) }
   }
 
+  /// The options card is up: the `choose` phase's, or the review card's options sheet.
+  private var showsCard: Bool { state.isChoosing || reviewSheetOpen }
+
   private func cardKey(_ event: NSEvent) -> Bool {
-    guard state.isChoosing, var card = island.model.card else { return false }
+    guard showsCard, var card = island.model.card else { return false }
     let field = island.editingField
     if field?.hasMarkedText() == true { return false }
     guard let key = Self.key(event) else { return field == nil }
@@ -44,7 +53,7 @@ extension CommandProgressController {
   }
 
   private func cardEvent(_ event: IslandCardEvent) {
-    guard state.isChoosing, var card = island.model.card else { return }
+    guard showsCard, var card = island.model.card else { return }
     switch event {
     case .hover(let row):
       card.hover(row)
@@ -63,24 +72,36 @@ extension CommandProgressController {
     }
   }
 
-  /// Shows `card`. A change of its choices or toggles goes to the page at once (``picked(_:)``),
-  /// which remembers it whether or not the card then runs; where the answer goes is never
-  /// remembered, so a change of it alone sends nothing.
+  /// Shows `card`. While choosing, a change of its choices or toggles goes to the page at once
+  /// (``request(_:arguments:adjust:version:)``), which remembers it whether or not the card then runs; where the answer
+  /// goes is never remembered, so a change of it alone sends nothing. The review card's sheet
+  /// sends nothing: its values wait for the review card to send them.
   private func update(_ card: OptionsCard) {
     let shown = island.model.card?.arguments
     island.updateCard(card)
     let values = card.arguments
-    if let shown, shown.choices != values.choices || shown.toggles != values.toggles {
-      picked(values)
+    if state.isChoosing, let shown,
+      shown.choices != values.choices || shown.toggles != values.toggles
+    {
+      request(.pick, arguments: values)
     }
+  }
+
+  /// Escape on the review card's options sheet, which the Escape hot key brings here.
+  func sheetEscape() {
+    guard reviewSheetOpen, var card = island.model.card else { return }
+    let response = card.handle(.escape)
+    update(card)
+    if case .outcome(let outcome) = response { finish(outcome, card: card) }
   }
 
   /// A scroll over the card moves its rows a row at a time.
   private func cardScroll(_ event: NSEvent) -> Bool {
-    guard state.isChoosing, var card = island.model.card else { return false }
+    guard showsCard, var card = island.model.card else { return false }
     let points =
       event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 10
-    let rows = Int((-points / IslandMetrics.rowHeight).rounded())
+    let pitch = IslandMetrics.rowHeight + IslandMetrics.rowGap
+    let rows = Int((-points / pitch).rounded())
     guard rows != 0 else { return true }
     card.scroll(by: rows)
     update(card)
@@ -88,6 +109,14 @@ extension CommandProgressController {
   }
 
   private func finish(_ outcome: OptionsCard.Outcome, card: OptionsCard) {
+    if reviewSheetOpen {
+      switch outcome {
+      case .run: closeReviewSheet(staging: card.options)
+      case .close: closeReviewSheet(staging: nil)
+      case .edit: press(.open)
+      }
+      return
+    }
     switch outcome {
     case .run(let arguments): press(.run, arguments: arguments)
     case .edit(let arguments): press(.edit, arguments: arguments)

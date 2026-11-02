@@ -66,8 +66,13 @@ private struct IslandLayerView: View {
         width: rest.width)
     } else if case .answer(let command, let answer, let note) = layer.content {
       IslandAnswerCard(
-        model: model, command: command, answer: answer, note: note, width: rest.width,
+        model: model, command: command, answer: answer, note: note, offer: layer.answerOffer,
+        width: rest.width,
         height: rest.height)
+    } else if case .review(let command, let answer, let note, let review) = layer.content {
+      IslandReviewCard(
+        model: model, command: command, answer: answer, note: note, review: review,
+        offer: layer.answerOffer, active: active, width: rest.width, height: rest.height)
     } else if case .compose(let command, let attach) = layer.content {
       IslandComposeCard(
         model: model, command: command, attach: attach, active: active, width: rest.width,

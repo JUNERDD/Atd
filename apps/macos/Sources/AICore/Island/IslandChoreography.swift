@@ -66,6 +66,8 @@ public enum IslandMetrics {
   public static let cardRadius = 18.0
   public static let cardPadding = 6.0
   public static let rowHeight = 28.0
+  /// Between the card's rows, as between the rows of the selection toolbar's More menu.
+  public static let rowGap = SelectionToolbarMenuLayout.rowGap
   public static let rowRadius = 8.0
   public static let rowPadding = 8.0
   /// The card's title row and its filter field.
@@ -97,9 +99,14 @@ public enum IslandMetrics {
   /// The card's height for `rows` visible rows (at least one: the no-match row stands in), with
   /// a filter field or without.
   public static func cardHeight(rows: Int, filter: Bool) -> Double {
-    let shown = Double(min(max(rows, 1), maxVisibleRows))
-    return cardPadding * 2 + headerHeight + (filter ? filterHeight + sectionGap : 0)
-      + shown * rowHeight + sectionGap + footerHeight
+    cardPadding * 2 + headerHeight + (filter ? filterHeight + sectionGap : 0)
+      + rowsHeight(min(max(rows, 1), maxVisibleRows)) + sectionGap + footerHeight
+  }
+
+  /// How tall `rows` of the card's rows stand, ``rowGap`` apart.
+  public static func rowsHeight(_ rows: Int) -> Double {
+    let count = Double(max(rows, 0))
+    return count * rowHeight + max(count - 1, 0) * rowGap
   }
 
   /// The card's width for content that would take `ideal` points.

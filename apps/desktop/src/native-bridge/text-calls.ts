@@ -13,6 +13,7 @@ import {
   CommandOptionsSchema,
   CommandOutputOptionSchema,
 } from './command-options.ts';
+import { CommandReviewSchema, MAX_REVIEW_VERSIONS, ReviewAdjustSchema } from './command-review.ts';
 import { NativeFileRefSchema } from './file-calls.ts';
 import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH } from './primitives.ts';
 
@@ -57,6 +58,27 @@ export const ComposedInputSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+/** How a write went (`text.write`, `text.writeFocused`): in, or refused for `reason`. */
+const TextWriteResultSchema = Type.Union([
+  Type.Object({ ok: Type.Literal(true) }, { additionalProperties: false }),
+  Type.Object(
+    {
+      ok: Type.Literal(false),
+      reason: Type.Union([
+        Type.Literal('notTrusted'),
+        Type.Literal('targetGone'),
+        Type.Literal('targetChanged'),
+        Type.Literal('noSelection'),
+        Type.Literal('secureInput'),
+        Type.Literal('failed'),
+        Type.Literal('interrupted'),
+        Type.Literal('unsupportedSelection'),
+      ]),
+    },
+    { additionalProperties: false },
+  ),
+]);
 
 export const NativeTextCalls = {
   /**
@@ -103,25 +125,7 @@ export const NativeTextCalls = {
       },
       { additionalProperties: false },
     ),
-    result: Type.Union([
-      Type.Object({ ok: Type.Literal(true) }, { additionalProperties: false }),
-      Type.Object(
-        {
-          ok: Type.Literal(false),
-          reason: Type.Union([
-            Type.Literal('notTrusted'),
-            Type.Literal('targetGone'),
-            Type.Literal('targetChanged'),
-            Type.Literal('noSelection'),
-            Type.Literal('secureInput'),
-            Type.Literal('failed'),
-            Type.Literal('interrupted'),
-            Type.Literal('unsupportedSelection'),
-          ]),
-        },
-        { additionalProperties: false },
-      ),
-    ]),
+    result: TextWriteResultSchema,
   },
   /**
    * Shows the progress HUD of a command that runs without the panel and writes its answer back (a
@@ -152,8 +156,15 @@ export const NativeTextCalls = {
    * shown) takes Return. A press writes the answer into that field as `text.write` would
    * (`cursor` or `selection`, with the `typing.set` settings), showing writing and then done, and
    * the card goes; a refused write brings the card back with why, and one that stopped partway
-   * puts the whole answer on the clipboard and says so in a notice. One HUD shows at a time: a show for another target replaces it, one for the same target
-   * changes it in place. Only the panel's page may call it.
+   * puts the whole answer on the clipboard and says so in a notice. With `review` (the
+   * command's answer waits for review, `command-review.ts`) the answer card is the review card:
+   * it also shows the original and the answer's changes, steps between versions (`version`),
+   * offers Regenerate (`regenerate`), stops a pending version (`stop`), and takes an adjustment
+   * (typed text, chosen suggestions, changed options, all staged on the card until it is sent,
+   * `adjust`); none of these takes the card away, and the page answers each with a show. While
+   * a field has a selection the card's Insert writes after it (`afterSelection`) rather than at
+   * the focus. One HUD shows at a time: a show for another target replaces it, one for the same
+   * target changes it in place. Only the panel's page may call it.
    */
   'commandProgress.show': {
     params: Type.Object(
@@ -198,6 +209,7 @@ export const NativeTextCalls = {
               command: Type.String({ minLength: 1, maxLength: 200 }),
               answer: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }),
               note: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
+              review: Type.Optional(CommandReviewSchema),
             },
             { additionalProperties: false },
           ),
@@ -206,6 +218,31 @@ export const NativeTextCalls = {
       { additionalProperties: false },
     ),
     result: Empty,
+  },
+  /**
+   * Writes `text` where the person's focus is now, as the answer card's Insert and Replace do
+   * (the panel's own write buttons, which follow `text.writeOffer`): into the focused field of the
+   * frontmost app other than Atd, or of the last one while Atd is frontmost, captured afresh at
+   * the press rather than restored from a recorded target. `cursor` writes at the focus,
+   * `selection` over its selection, `afterSelection` right after it; `typing` and `animation` as
+   * `text.write`. It refuses as `text.write` does: `targetGone` when there is no such app or
+   * field, `noSelection` for a selection mode where the field has none, and so on.
+   */
+  'text.writeFocused': {
+    params: Type.Object(
+      {
+        mode: Type.Union([
+          Type.Literal('selection'),
+          Type.Literal('afterSelection'),
+          Type.Literal('cursor'),
+        ]),
+        text: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }),
+        typing: Type.Boolean(),
+        animation: Type.Boolean(),
+      },
+      { additionalProperties: false },
+    ),
+    result: TextWriteResultSchema,
   },
   /**
    * Takes the progress HUD of `target` off the screen; the HUD of another target stays.
@@ -239,9 +276,13 @@ export const NativeTextEvents = {
    * (with `arguments`, every value the card shows) or `edit` (an input option handed to the panel)
    * in `choose`, and `pick` (with `arguments`) whenever the card's choices or toggles change there,
    * the card staying up, so the page remembers them at once; `run` (Return or its Run button) or `open` (Open in Atd) with `compose` in
-   * `compose`, or `cancel` (Escape or its close button). After `change` the page shows `choose`
-   * for the same target; after `pick` the card is still up; after any other action the HUD is
-   * already gone. Sent to the panel only.
+   * `compose`, or `cancel` (Escape or its close button). On the review card: `regenerate`
+   * (↻ or ⌘R), `adjust` (with `adjust`, what the card staged), `version` (with `version`, the
+   * one to show) and, while a version is pending, `stop`; `close` once the review card went away
+   * on its own (closed, copied, or written, whatever the write's outcome), so the page lets the
+   * review go. After `change` the page shows `choose` for the same target; after `pick` and the
+   * review card's other actions the card is still up; after any other action the HUD is already
+   * gone. Sent to the panel only.
    */
   'commandProgress.action': Type.Object(
     {
@@ -253,9 +294,35 @@ export const NativeTextEvents = {
         Type.Literal('run'),
         Type.Literal('edit'),
         Type.Literal('pick'),
+        Type.Literal('regenerate'),
+        Type.Literal('adjust'),
+        Type.Literal('version'),
+        Type.Literal('stop'),
+        Type.Literal('close'),
       ]),
       arguments: Type.Optional(CommandArgumentsSchema),
       compose: Type.Optional(ComposedInputSchema),
+      adjust: Type.Optional(ReviewAdjustSchema),
+      version: Type.Optional(Type.Integer({ minimum: 1, maximum: MAX_REVIEW_VERSIONS })),
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * What the panel's write buttons offer where the person's focus is now, as the answer card's
+   * Insert and Replace follow it (`AnswerFocusWatch`): `offer` while that focus is a field that
+   * can take text, in `app`, with `replaces` while it has a selection; absent while it cannot.
+   * The focus followed is the frontmost app's other than Atd, or the last one's while Atd is
+   * frontmost. Sent to the panel once it is shown and on every change while it shows; only
+   * whether the field takes text and has a selection is read, never its text.
+   */
+  'text.writeOffer': Type.Object(
+    {
+      offer: Type.Optional(
+        Type.Object(
+          { app: Type.String({ minLength: 1, maxLength: 255 }), replaces: Type.Boolean() },
+          { additionalProperties: false },
+        ),
+      ),
     },
     { additionalProperties: false },
   ),

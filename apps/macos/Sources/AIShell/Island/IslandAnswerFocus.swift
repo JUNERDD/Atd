@@ -2,18 +2,21 @@ import AICore
 import AppKit
 import ApplicationServices
 
-/// Follows where the person's focus is while the answer card is on screen, so the card offers
-/// Insert (and Replace) only while that focus is a field that can take text
-/// (``AnswerWriteOffer``). The island is a non-activating panel, so the app the person works in
-/// stays frontmost even while the card has the keyboard: the watch follows the frontmost app
-/// other than Atd (`NSWorkspace` activations) and, in it, an `AXObserver` on the application
-/// element for focus and selection changes, which AppKit delivers on the main run loop. An app
-/// whose observer cannot be made is asked again every ``pollInterval`` instead.
+/// Follows where the person's focus is while a write offer is on screen, so it offers Insert (and
+/// Replace) only while that focus is a field that can take text (``AnswerWriteOffer``): the
+/// island's answer card, and the task panel's write buttons (``PanelFocus``). The island is a
+/// non-activating panel, so the app the person works in stays frontmost even while the card has
+/// the keyboard: the watch follows the frontmost app other than Atd (`NSWorkspace` activations)
+/// and, in it, an `AXObserver` on the application element for focus and selection changes, which
+/// AppKit delivers on the main run loop. An app whose observer cannot be made is asked again
+/// every ``pollInterval`` instead.
 ///
-/// Each change is read off the main thread under ``readLimit`` (``AnswerFocusProbe``), and a
-/// later change drops an earlier read. Only whether the focused element can take text and
-/// whether it has a non-empty selection are read, never its text. Atd frontmost, a secure field,
-/// no Accessibility or a read that times out offer nothing.
+/// While Atd itself is frontmost the watch follows the app ``whileAtdFrontmost`` names, whose
+/// focused field keeps its focus in the background; without one (the island's) it offers nothing
+/// then. Each change is read off the main thread under ``readLimit`` (``AnswerFocusProbe``), and
+/// a later change drops an earlier read. Only whether the focused element can take text and
+/// whether it has a non-empty selection are read, never its text. A secure field, no
+/// Accessibility or a read that times out offer nothing.
 final class AnswerFocusWatch {
   /// The offer changed: nil while the focus cannot take text.
   var onChange: ((AnswerWriteOffer?) -> Void)?
@@ -27,8 +30,15 @@ final class AnswerFocusWatch {
   private var generation = 0
   private var poll: Task<Void, Never>?
 
+  /// The app to follow while Atd is frontmost; nil follows none then.
+  private let whileAtdFrontmost: (() -> NSRunningApplication?)?
+
   static let readLimit: Duration = .milliseconds(400)
   static let pollInterval: Duration = .seconds(1)
+
+  init(whileAtdFrontmost: (() -> NSRunningApplication?)? = nil) {
+    self.whileAtdFrontmost = whileAtdFrontmost
+  }
 
   /// Starts following the focus; a running watch carries on.
   func start() {
@@ -51,10 +61,14 @@ final class AnswerFocusWatch {
     publish(nil)
   }
 
-  /// The frontmost app changed: its focus is the one to follow, unless it is Atd itself.
+  /// The frontmost app changed: its focus is the one to follow, unless it is Atd itself, whose
+  /// stand-in (``whileAtdFrontmost``) is followed then.
   private func follow() {
-    let app = NSWorkspace.shared.frontmostApplication
-    guard running, let app, app.processIdentifier != getpid(), SelectionReader.isTrusted else {
+    var app = NSWorkspace.shared.frontmostApplication
+    if app?.processIdentifier == getpid() { app = whileAtdFrontmost?() }
+    guard running, let app, app.processIdentifier != getpid(), !app.isTerminated,
+      SelectionReader.isTrusted
+    else {
       observe(nil)
       return publish(nil)
     }

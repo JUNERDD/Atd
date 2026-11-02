@@ -48,7 +48,7 @@ struct TaskActivityActions: View {
           title: labels.text(.activityOpenConversation),
           tooltip: labels.format(.activityOpenConversationTooltip, item.conversationTitle),
           rest: 0.08, action: { model.open(item.key) }
-        ) { EmptyView() }
+        )
         .accessibilityLabel(labels.format(.activityOpenConversationTooltip, item.conversationTitle))
         .accessibilityIdentifier(identifier("open"))
         .transition(.identity)
@@ -67,7 +67,7 @@ struct TaskActivityActions: View {
       title: labels.primaryTitle(item),
       tooltip: labels.format(.activityOpenTaskTooltip, item.title), rest: 0.08,
       action: { model.open(item.key) }
-    ) { EmptyView() }
+    )
     .accessibilityLabel(
       labels.format(.activityOpenAccessibility, labels.primaryTitle(item), item.conversationTitle)
     )
@@ -87,7 +87,7 @@ struct TaskActivityActions: View {
         IslandTextButton(
           title: labels.text(.activityViewScreen), tooltip: tooltip, rest: 0.08,
           action: { model.monitor(item.key) }
-        ) { EmptyView() }
+        )
         .opacity(item.canShowPreview ? 1 : 0.4)
       } else {
         TaskActivityTextAction(title: labels.text(.activityViewScreen), tooltip: tooltip) {

@@ -30,7 +30,9 @@ enum IslandType {
 ///
 /// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
 /// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
-/// for the names below; the attach control and its menu use the panel composer's glyphs.
+/// for the names below; the attach control and its menu use the panel composer's glyphs. The
+/// review card's `refresh-cw` and `sliders-horizontal` carry the paths of the installed
+/// `lucide-react` 1.61.0 (ISC); its `chevron-down` is the task activity's set.
 enum IslandIcons {
   static let attach = "plus"
   static let screenshot = "camera"
@@ -40,6 +42,9 @@ enum IslandIcons {
   static let warning = "triangle-alert"
   static let scrollLeft = "chevron-left"
   static let scrollRight = "chevron-right"
+  static let regenerate = "refresh-cw"
+  static let options = "sliders-horizontal"
+  static let expand = "chevron-down"
 
   /// The glyph `name` at `side` points for a menu item: a copy, so the shared image keeps its
   /// own size.
@@ -114,11 +119,14 @@ private struct IslandWashLabel<Outline: InsettableShape>: View {
   }
 }
 
-/// A round button of the toolbars' size with a 16 pt glyph in the label colour, as the HUD's
-/// close button was; named `label` for VoiceOver and its tooltip.
+/// A round button of the toolbars' size (or `side`) with a 16 pt glyph in the label colour, as the
+/// HUD's close button was; named `label` for VoiceOver and, unless `tooltip` says more (its keys),
+/// for its tooltip.
 struct IslandIconButton: View {
   let glyph: String
   let label: String
+  var tooltip: String?
+  var side = IslandMetrics.controlSide
   let action: () -> Void
   @State private var hovered = false
   @Environment(\.isEnabled) private var isEnabled
@@ -126,26 +134,25 @@ struct IslandIconButton: View {
   var body: some View {
     Button(action: action) {
       IslandGlyph(name: glyph)
-        .frame(width: IslandMetrics.controlSide, height: IslandMetrics.controlSide)
+        .frame(width: side, height: side)
     }
     .buttonStyle(IslandWashStyle(shape: Circle(), hovered: hovered))
     .foregroundStyle(.primary)
     .onHover { hovered = $0 }
     .pointerStyle(isEnabled ? .link : nil)
-    .help(label)
+    .help(tooltip ?? label)
     .accessibilityLabel(Text(verbatim: label))
   }
 }
 
-/// A labelled button as the toolbars draw one: the label type, 10 pt in from each end, a
-/// control's height, on the toolbars' capsule washes; `rest` gives it a fill at rest (the
-/// options card's Run).
-struct IslandTextButton<Trailing: View>: View {
+/// A labelled capsule with an optional shortcut. The shortcut's trailing inset equals its
+/// vertical inset, keeping the two capsules concentric; plain labels keep 10 pt at both ends.
+struct IslandTextButton: View {
   let title: String
   var tooltip: String?
   var rest = 0.0
+  var keys: String?
   let action: () -> Void
-  @ViewBuilder var trailing: () -> Trailing
   @State private var hovered = false
   @Environment(\.isEnabled) private var isEnabled
 
@@ -153,9 +160,12 @@ struct IslandTextButton<Trailing: View>: View {
     Button(action: action) {
       HStack(spacing: 6) {
         Text(verbatim: title).font(IslandType.label).lineLimit(1)
-        trailing()
+        if let keys { IslandKeycap(symbol: keys) }
       }
-      .padding(.horizontal, 10)
+      .padding(.leading, 10)
+      .padding(
+        .trailing, keys == nil ? 10 : (IslandMetrics.controlSide - GlassHUDPieces.keycapHeight) / 2
+      )
       .frame(height: IslandMetrics.controlSide)
     }
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered, rest: rest))
@@ -163,12 +173,6 @@ struct IslandTextButton<Trailing: View>: View {
     .onHover { hovered = $0 }
     .pointerStyle(isEnabled ? .link : nil)
     .help(tooltip ?? title)
-  }
-}
-
-extension IslandTextButton where Trailing == EmptyView {
-  init(title: String, tooltip: String? = nil, action: @escaping () -> Void) {
-    self.init(title: title, tooltip: tooltip, action: action) { EmptyView() }
   }
 }
 

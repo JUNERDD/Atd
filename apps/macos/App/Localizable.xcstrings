@@ -1189,6 +1189,24 @@
         }
       }
     },
+    "commandOptions.done" : {
+      "comment" : "Options sheet opened from the review card: button (Return) that keeps the values for the next version without running",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
     "commandOptions.edit" : {
       "comment" : "Options menu row that opens the command's input page in the panel to fill in a text or number option",
       "extractionState" : "manual",
@@ -1711,6 +1729,24 @@
         }
       }
     },
+    "commandProgress.insertAfterIn" : {
+      "comment" : "Command island answer and review cards: tooltip of Insert while the focused field has a selection, which writes right after it; %@ is the app the field is in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insert after the selection in %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "插入到 %@ 选中文字之后"
+          }
+        }
+      }
+    },
     "commandProgress.insertIn" : {
       "comment" : "Command island answer card: tooltip of Insert; %@ is the app the field is in (the panel's wording)",
       "extractionState" : "manual",
@@ -1995,6 +2031,332 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在写入…"
+          }
+        }
+      }
+    },
+    "commandReview.key.input" : {
+      "comment" : "Command island review footer: Up returns from the option chips to the adjustment input",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入"
+          }
+        }
+      }
+    },
+    "commandReview.key.options" : {
+      "comment" : "Command island review footer: Down moves from the adjustment input to the option chips",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选项"
+          }
+        }
+      }
+    },
+    "commandReview.key.select" : {
+      "comment" : "Command island review footer: Space toggles a highlighted chip or opens its options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        }
+      }
+    },
+    "commandReview.limit" : {
+      "comment" : "Command island review card: placeholder and tooltips once the review has as many versions as it may make, so it makes no more; %lld is that limit",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reached the limit of %lld versions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已达到 %lld 个版本上限"
+          }
+        }
+      }
+    },
+    "commandReview.next" : {
+      "comment" : "Command island review card: button that shows the next version of the answer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一个版本"
+          }
+        }
+      }
+    },
+    "commandReview.original" : {
+      "comment" : "Command island review card: label above the text the command read in place of the selection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原文"
+          }
+        }
+      }
+    },
+    "commandReview.pending.adjust" : {
+      "comment" : "Command island review card: status while an adjusted version is being made",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjusting…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在调整…"
+          }
+        }
+      }
+    },
+    "commandReview.pending.options" : {
+      "comment" : "Command island review card: status while the command runs with the changed options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running with new options…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在按新参数运行…"
+          }
+        }
+      }
+    },
+    "commandReview.pending.regenerate" : {
+      "comment" : "Command island review card: status while the command runs again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regenerating…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在重新生成…"
+          }
+        }
+      }
+    },
+    "commandReview.placeholder" : {
+      "comment" : "Command island review card: placeholder of the field that asks for an adjustment of the answer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjust it, e.g. “make it gentler”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续调整，例如“语气更委婉”"
+          }
+        }
+      }
+    },
+    "commandReview.placeholder.staged" : {
+      "comment" : "Command island review card: placeholder of the empty adjust field while changes are staged; %#@changes@ is how many",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@changes@ — press ↩ to run, or add a note"
+          },
+          "substitutions" : {
+            "changes" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg change"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg changes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有 %#@changes@，按 ↩ 运行；也可以再补充一句"
+          },
+          "substitutions" : {
+            "changes" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 项改动"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "commandReview.previous" : {
+      "comment" : "Command island review card: button that shows the previous version of the answer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一个版本"
+          }
+        }
+      }
+    },
+    "commandReview.regenerate" : {
+      "comment" : "Command island review card: button (and its tooltip, with ⌘R) that runs the command again with the same input and options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regenerate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新生成"
+          }
+        }
+      }
+    },
+    "commandReview.send" : {
+      "comment" : "Command island review card: sends the typed and staged adjustments to make the next version",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送"
+          }
+        }
+      }
+    },
+    "commandReview.showChanges" : {
+      "comment" : "Command island review card: switch beside the original that marks the answer's insertions and deletions against it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示修改"
+          }
+        }
+      }
+    },
+    "commandReview.stop" : {
+      "comment" : "Command island review card: Esc key hint that stops the version being made",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
           }
         }
       }

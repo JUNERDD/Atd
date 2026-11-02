@@ -535,6 +535,7 @@
     "copied": "Answer copied to the clipboard.",
     "replaceIn": "Replace in {{app}}",
     "insertIn": "Insert in {{app}}",
+    "insertAfterIn": "Insert after the selection in {{app}}",
     "refused": {
       "notTrusted": "App control access is off, so the answer was copied instead.",
       "targetGone": "The field in {{app}} is gone, so the answer was copied instead.",
@@ -559,6 +560,9 @@
       "stopped": "{{command}} was stopped.",
       "startFailed": "{{command}} couldn't start.",
       "empty": "{{command}} had no answer to write."
+    },
+    "review": {
+      "failed": "{{command}} couldn't make a new version."
     }
   },
   "toolRow": {

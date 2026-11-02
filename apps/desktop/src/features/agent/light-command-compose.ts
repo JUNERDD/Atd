@@ -9,13 +9,8 @@ import {
   withComposedInput,
   withoutSelectionNotice,
 } from '../../client/agent/command-prepare';
-import {
-  isLightLaunch,
-  startLightRun,
-  supersedeLightRun,
-  type LightHost,
-  type LightLaunch,
-} from './light-command';
+import { startLightRun, supersedeLightRun, type LightHost } from './light-command';
+import { isLightLaunch, type LightLaunch } from './light-command-run';
 import { actOnLightAction, chooseLightRun, dropLightChoice } from './light-command-choose';
 
 /** A launch whose compose card waits for its answer, under the card's island key. */
@@ -70,9 +65,9 @@ export function composeLightRun(
  * `composed` as a light launch keyed by the card, when it is one: a launch that recorded no field
  * gets the card's key as a target nothing is written to (`writable` false; such a target is
  * never written to or named), so a write-back still runs without the panel and its answer shows
- * on the island's answer card. Null when the launch does not run light (its answer goes to the
- * conversation or the clipboard, or it is reviewed first), so a run in the panel never carries
- * the stand-in target.
+ * on the island's answer card (or its review card). Null when the launch does not run light (its
+ * answer goes to the conversation or the clipboard), so a run in the panel never carries the
+ * stand-in target.
  */
 function islandLaunch(composed: PreparedCommand, key: string): LightLaunch | null {
   const launch = composed.target

@@ -3,10 +3,11 @@ import { followLightRun, type LightHost } from './light-command';
 import { actOnIslandAction } from './light-command-compose';
 
 /**
- * Wires light command runs (`light-command.ts`), their options card (`light-command-choose.ts`)
- * and the compose card of a launch with nothing selected (`light-command-compose.ts`) to the
- * panel: presses on the shell's progress HUD, and a run that asks the person something, show the
- * run or the command's input step in the panel through `host`.
+ * Wires light command runs (`light-command.ts`), the review card of one whose answer waits for
+ * review (`light-review.ts`), their options card (`light-command-choose.ts`) and the compose card
+ * of a launch with nothing selected (`light-command-compose.ts`) to the panel: presses on the
+ * shell's progress HUD, and a run that asks the person something, show the run or the command's
+ * input step in the panel through `host`.
  * Mounted once, by the panel's launch channel.
  */
 export function useLightCommands(host: LightHost): void {

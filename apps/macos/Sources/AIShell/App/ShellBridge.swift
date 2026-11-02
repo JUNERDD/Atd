@@ -156,6 +156,12 @@ final class ShellBridge {
       return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
     case .textWrite(let params):
       return try Self.encode(await shell.writeText(params))
+    // The panel's write buttons follow the focus `text.writeOffer` reports only to the panel.
+    case .textWriteFocused(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can write where the focus is.")
+      }
+      return try Self.encode(await shell.writeFocused(params))
     case .commandProgressShow(let params):
       guard host === shell.panelHost else {
         throw BridgeError("Only the task panel can show command progress.")

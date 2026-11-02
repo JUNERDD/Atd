@@ -182,6 +182,9 @@ catalogs:
     croner:
       specifier: 10.0.1
       version: 10.0.1
+    diff:
+      specifier: 9.0.0
+      version: 9.0.0
     http-proxy-agent:
       specifier: 9.1.0
       version: 9.1.0
@@ -482,6 +485,9 @@ importers:
       '@ziloen/remark-math':
         specifier: 'catalog:'
         version: 0.1.2(supports-color@10.2.2)
+      diff:
+        specifier: 'catalog:'
+        version: 9.0.0
       hast-util-from-dom:
         specifier: 5.0.1
         version: 5.0.1

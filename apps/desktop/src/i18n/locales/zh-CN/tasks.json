@@ -535,6 +535,7 @@
     "copied": "回答已复制到剪贴板。",
     "replaceIn": "在 {{app}} 中替换",
     "insertIn": "插入到 {{app}}",
+    "insertAfterIn": "插入到 {{app}} 选中文字之后",
     "refused": {
       "notTrusted": "未获得控制应用的权限，回答已改为复制到剪贴板。",
       "targetGone": "已无法访问 {{app}} 中的输入框，回答已改为复制到剪贴板。",
@@ -559,6 +560,9 @@
       "stopped": "{{command}} 已停止。",
       "startFailed": "{{command}} 无法开始运行。",
       "empty": "{{command}} 没有可写入的回答。"
+    },
+    "review": {
+      "failed": "{{command}} 没能生成新版本。"
     }
   },
   "toolRow": {

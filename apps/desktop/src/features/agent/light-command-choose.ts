@@ -13,12 +13,11 @@ import { outputOption, withOutputAction } from '../../client/agent/run-output';
 import {
   actOnProgress,
   changeLightRun,
-  isLightLaunch,
   startLightRun,
   supersedeLightRun,
   type LightHost,
-  type LightLaunch,
 } from './light-command';
+import { isLightLaunch, type LightLaunch } from './light-command-run';
 
 /**
  * The light launch whose options card the progress HUD shows, kept until the card answers for its
@@ -83,7 +82,7 @@ function withPicks(launch: LightLaunch, picked: CommandArguments | undefined): P
 /**
  * The options card's answer for `launch`: `run` runs it with the picked values when they make it
  * ready (else its input step shows them, where the person completes it), light while its answer
- * is still written back unreviewed, else in the panel as any launch that runs as-is; `edit` shows
+ * still goes back into its field, else in the panel as any launch that runs as-is; `edit` shows
  * its input step with them, never running it; `cancel` (the card closed) drops it. Whatever does
  * not run light hides the island first, since the shell keeps a working state up after the card's
  * run or edit. Other actions do not belong to the card and leave it waiting.

@@ -4,6 +4,15 @@ import Testing
 
 @Suite("Command progress HUD")
 struct CommandProgressStateTests {
+  static func event(
+    _ target: String, _ action: CommandProgressActionEvent.Action,
+    arguments: CommandArguments? = nil
+  ) -> CommandProgressActionEvent {
+    CommandProgressActionEvent(
+      target: target, action: action, arguments: arguments, compose: nil, adjust: nil,
+      version: nil)
+  }
+
   @Test("A show for another target replaces the capsule; a hide for another target leaves it")
   func oneCapsule() {
     var state = CommandProgressState()
@@ -37,14 +46,14 @@ struct CommandProgressStateTests {
     let cancel = state.press(.cancel)
     #expect(
       cancel
-        == CommandProgressActionEvent(target: "a", action: .cancel, arguments: nil, compose: nil))
+        == Self.event("a", .cancel))
     #expect(state.shown == nil)
     state.show(target: "b", phase: .notice(message: "Failed."))
     let cancelOnNotice = state.press(.cancel)
     #expect(cancelOnNotice == nil)
     let open = state.press(.open)
     #expect(
-      open == CommandProgressActionEvent(target: "b", action: .open, arguments: nil, compose: nil))
+      open == Self.event("b", .open))
     let again = state.press(.open)
     #expect(again == nil)
   }
@@ -119,19 +128,19 @@ struct CommandProgressStateTests {
   func answerPhase() {
     typealias Answer = CommandProgressShowParams.State.Answer
     let answer = CommandProgressShowParams.State.answer(
-      Answer(command: " Fix \n", answer: "  Fixed.\n", note: " Not editable. "))
+      Answer(command: " Fix \n", answer: "  Fixed.\n", note: " Not editable. ", review: nil))
     #expect(
       CommandProgressState.phase(answer)
         == .answer(command: "Fix", answer: "  Fixed.\n", note: "Not editable."))
     let silent = CommandProgressShowParams.State.answer(
-      Answer(command: "Fix", answer: "Fixed.", note: " \n "))
+      Answer(command: "Fix", answer: "Fixed.", note: " \n ", review: nil))
     #expect(
       CommandProgressState.phase(silent) == .answer(command: "Fix", answer: "Fixed.", note: nil))
     let blankAnswer = CommandProgressShowParams.State.answer(
-      Answer(command: "Fix", answer: " \n\t ", note: nil))
+      Answer(command: "Fix", answer: " \n\t ", note: nil, review: nil))
     #expect(CommandProgressState.phase(blankAnswer) == nil)
     let blankCommand = CommandProgressShowParams.State.answer(
-      Answer(command: "  ", answer: "Fixed.", note: nil))
+      Answer(command: "  ", answer: "Fixed.", note: nil, review: nil))
     #expect(CommandProgressState.phase(blankCommand) == nil)
   }
 
@@ -143,7 +152,7 @@ struct CommandProgressStateTests {
     for action in [CommandProgressActionEvent.Action.cancel, .change, .run, .edit] {
       #expect(state.press(action) == nil)
     }
-    #expect(state.press(.open) == .init(target: "a", action: .open, arguments: nil, compose: nil))
+    #expect(state.press(.open) == Self.event("a", .open))
     #expect(state.shown == nil && state.answerShown == nil)
     state.show(target: "a", phase: .copied)
     #expect(state.answerShown == nil && state.press(.open) == nil)
@@ -188,23 +197,23 @@ struct CommandProgressStateTests {
     #expect(state.press(.change) == nil)
     state.show(target: "a", phase: .working(command: "Fix", summary: "Formal"))
     #expect(
-      state.press(.change) == .init(target: "a", action: .change, arguments: nil, compose: nil))
+      state.press(.change) == Self.event("a", .change))
     #expect(state.shown?.phase == .working(command: "Fix", summary: "Formal"))
     let values = CommandArguments(output: nil, choices: ["tone": "casual"], toggles: [:])
     state.show(target: "a", phase: Self.choosing)
     #expect(state.press(.run) == nil)
     #expect(
       state.press(.run, arguments: values)
-        == .init(target: "a", action: .run, arguments: values, compose: nil))
+        == Self.event("a", .run, arguments: values))
     #expect(state.shown?.phase == .working(command: "Fix"))
     state.show(target: "a", phase: Self.choosing)
     #expect(
       state.press(.edit, arguments: values)
-        == .init(target: "a", action: .edit, arguments: values, compose: nil))
+        == Self.event("a", .edit, arguments: values))
     #expect(state.shown == nil)
     state.show(target: "a", phase: Self.choosing)
     #expect(
-      state.press(.cancel) == .init(target: "a", action: .cancel, arguments: nil, compose: nil))
+      state.press(.cancel) == Self.event("a", .cancel))
     #expect(state.shown == nil)
   }
 
@@ -284,9 +293,10 @@ struct CommandProgressStateTests {
 
   @Test("The card is as tall as its rows make room for and as wide as its content, in bounds")
   func cardSize() {
-    #expect(IslandMetrics.cardHeight(rows: 2, filter: false) == 12 + 28 + 56 + 4 + 32)
+    // Rows stand 2 pt apart, as the selection toolbar's More menu rows.
+    #expect(IslandMetrics.cardHeight(rows: 2, filter: false) == 12 + 28 + 56 + 2 + 4 + 32)
     #expect(IslandMetrics.cardHeight(rows: 0, filter: true) == 12 + 28 + 32 + 28 + 4 + 32)
-    #expect(IslandMetrics.cardHeight(rows: 40, filter: false) == 12 + 28 + 224 + 4 + 32)
+    #expect(IslandMetrics.cardHeight(rows: 40, filter: false) == 12 + 28 + 224 + 14 + 4 + 32)
     #expect(IslandMetrics.cardWidth(ideal: 120) == IslandMetrics.minCardWidth)
     #expect(IslandMetrics.cardWidth(ideal: 333.2) == 334)
     #expect(IslandMetrics.cardWidth(ideal: 900) == IslandMetrics.maxCardWidth)

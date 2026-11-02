@@ -195,6 +195,18 @@ public struct OptionsCard: Equatable, Sendable {
     scroll = min(max(scroll + delta, 0), last)
   }
 
+  /// The values under the card went from `old` to `new` (another version landed while it shows):
+  /// an option the card still shows as it was takes its new value; one changed on the card keeps
+  /// the card's. The page, the highlight and the filter stay.
+  public mutating func rebase(from old: [CommandOption], to new: [CommandOption]) {
+    options = options.map { option in
+      guard old.first(where: { $0.key == option.key }) == option,
+        let now = new.first(where: { $0.key == option.key })
+      else { return option }
+      return now
+    }
+  }
+
   /// The filter field changed: the first match is highlighted.
   public mutating func setFilter(_ text: String) {
     guard text != filter else { return }
@@ -308,14 +320,14 @@ extension OptionsCard {
 
 extension CommandOption {
   /// A choice set to `value`; any other option as it is.
-  fileprivate func choosing(_ value: String) -> CommandOption {
+  func choosing(_ value: String) -> CommandOption {
     guard case .choice(let choice) = self else { return self }
     return .choice(
       .init(key: choice.key, label: choice.label, value: value, options: choice.options))
   }
 
   /// A toggle set to `value`; any other option as it is.
-  fileprivate func setting(_ value: Bool) -> CommandOption {
+  func setting(_ value: Bool) -> CommandOption {
     guard case .toggle(let toggle) = self else { return self }
     return .toggle(.init(key: toggle.key, label: toggle.label, value: value))
   }

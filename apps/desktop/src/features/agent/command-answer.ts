@@ -24,7 +24,7 @@ const WRITE_MODES: Record<CommandWriteAction, TextWriteRequest['mode']> = {
  * The user's typing settings for a write: typing and its animation. A settings read that fails must
  * not hold the answer back, so the write then follows the defaults.
  */
-async function typingSettings(): Promise<Pick<TextWriteRequest, 'typing' | 'animation'>> {
+export async function typingSettings(): Promise<Pick<TextWriteRequest, 'typing' | 'animation'>> {
   try {
     const settings = await readSettingsSnapshot();
     return { typing: settings.commandTyping, animation: settings.commandTypingAnimation };

@@ -186,11 +186,13 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
       public let command: String
       public let answer: String
       public let note: String?
+      public let review: Review?
 
-      public init(command: String, answer: String, note: String?) {
+      public init(command: String, answer: String, note: String?, review: Review?) {
         self.command = command
         self.answer = answer
         self.note = note
+        self.review = review
       }
 
       public init(from decoder: any Decoder) throws {
@@ -201,6 +203,7 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         note = try container.optional(.note) {
           try container.string($0, minLength: 1, maxLength: 500)
         }
+        review = try container.optional(.review) { try container.value($0, Review.self) }
       }
 
       public func encode(to encoder: any Encoder) throws {
@@ -209,6 +212,7 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         try container.encode(command, forKey: .command)
         try container.encode(answer, forKey: .answer)
         try container.encodeIfPresent(note, forKey: .note)
+        try container.encodeIfPresent(review, forKey: .review)
       }
 
       private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -216,31 +220,107 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         case command
         case answer
         case note
+        case review
+      }
+
+      public struct Review: Codable, Equatable, Sendable {
+        public let source: String?
+        public let changes: [Change]?
+        public let version: Int
+        public let count: Int
+        public let options: [CommandOption]
+        public let summary: String?
+        public let adjustments: [String]
+        public let pending: Pending?
+
+        public init(
+          source: String?, changes: [Change]?, version: Int, count: Int, options: [CommandOption],
+          summary: String?, adjustments: [String], pending: Pending?
+        ) {
+          self.source = source
+          self.changes = changes
+          self.version = version
+          self.count = count
+          self.options = options
+          self.summary = summary
+          self.adjustments = adjustments
+          self.pending = pending
+        }
+
+        public init(from decoder: any Decoder) throws {
+          let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+          source = try container.optional(.source) {
+            try container.string($0, minLength: 1, maxLength: 100_000)
+          }
+          changes = try container.optional(.changes) {
+            try container.array($0, of: Change.self, minItems: 1, maxItems: 4_000)
+          }
+          version = try container.integer(.version, minimum: 1, maximum: 20)
+          count = try container.integer(.count, minimum: 1, maximum: 20)
+          options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+          summary = try container.optional(.summary) {
+            try container.string($0, minLength: 1, maxLength: 200)
+          }
+          adjustments = try container.array(.adjustments, of: String.self, maxItems: 8)
+          pending = try container.optional(.pending) { try container.value($0, Pending.self) }
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+          var container = encoder.container(keyedBy: CodingKeys.self)
+          try container.encodeIfPresent(source, forKey: .source)
+          try container.encodeIfPresent(changes, forKey: .changes)
+          try container.encode(version, forKey: .version)
+          try container.encode(count, forKey: .count)
+          try container.encode(options, forKey: .options)
+          try container.encodeIfPresent(summary, forKey: .summary)
+          try container.encode(adjustments, forKey: .adjustments)
+          try container.encodeIfPresent(pending, forKey: .pending)
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+          case source
+          case changes
+          case version
+          case count
+          case options
+          case summary
+          case adjustments
+          case pending
+        }
+
+        public struct Change: Codable, Equatable, Sendable {
+          public let kind: Kind
+          public let text: String
+
+          public init(kind: Kind, text: String) {
+            self.kind = kind
+            self.text = text
+          }
+
+          public init(from decoder: any Decoder) throws {
+            let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+            kind = try container.value(.kind, Kind.self)
+            text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+          }
+
+          private enum CodingKeys: String, CodingKey, CaseIterable {
+            case kind
+            case text
+          }
+
+          public enum Kind: String, Codable, Equatable, Sendable {
+            case same
+            case insert
+            case delete
+          }
+        }
+
+        public enum Pending: String, Codable, Equatable, Sendable {
+          case regenerate
+          case adjust
+          case options
+        }
       }
     }
   }
 }
-
-/// Result of the `commandProgress.show` call.
-public typealias CommandProgressShowResult = NativeEmpty
-
-/// Params of the `commandProgress.hide` call.
-public struct CommandProgressHideParams: Codable, Equatable, Sendable {
-  public let target: String
-
-  public init(target: String) {
-    self.target = target
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    target = try container.string(.target, minLength: 1, maxLength: 128)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case target
-  }
-}
-
-/// Result of the `commandProgress.hide` call.
-public typealias CommandProgressHideResult = NativeEmpty

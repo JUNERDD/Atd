@@ -187,7 +187,7 @@
     "cardNote": "If that app can’t take text there, the answer shows in a card for you to copy.",
     "review": {
       "title": "Review before applying",
-      "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
+      "description": "The answer waits on the island, where you can regenerate or adjust it before writing it in."
     },
     "adjustments": {
       "title": "Adjustment suggestions",

@@ -135,10 +135,15 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // context menu, goes to the user.
   // Version 9 distinguishes spreadsheet regions from text for selection write-back.
   // Version 10 names the app-control permission in both current and earlier macOS settings.
-  skill('create-command', 10, [
+  // Version 11 says that a write-back under review waits on the island's review card, where the
+  // user regenerates, adjusts and steps between versions before writing it, and adds the command's
+  // adjustment suggestions (`adjustments`): the card's chips, at most eight of up to 40
+  // characters, which the Agent writes for a command that reviews and an update keeps when left out.
+  skill('create-command', 11, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
     '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
+    '42c6c0fbf5744db29f638249ecdde4e939dedb3612a098b83cd01989e00d89c8', // v0.10.0
   ]),
   // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
   // asks through ask_user only when an automation runs, what each run produces and, for work that

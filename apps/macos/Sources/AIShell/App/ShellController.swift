@@ -57,6 +57,8 @@ public final class ShellController {
     }, arbiter: deviceArbiter)
   /// Command shortcuts' presses and releases, which hold for a command's options.
   lazy var shortcutHolds = makeShortcutHolds()
+  /// Where the panel's write buttons write (`text.writeOffer`, `text.writeFocused`).
+  let panelFocus: PanelFocus
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
   let miniPanel: MiniPanelController
   lazy var taskActivity = ShellTaskActivity(shell: self)
@@ -89,6 +91,7 @@ public final class ShellController {
     let bridge = ShellBridge()
     let panelHost = WebViewHost(role: .panel, fragment: nil, services: services, bridge: bridge)
     self.panelHost = panelHost
+    panelFocus = PanelFocus(host: panelHost)
     let panel = PanelWindowController(
       host: panelHost, pinned: defaults.bool(forKey: Self.pinnedKey))
     self.panel = panel
@@ -185,6 +188,7 @@ public final class ShellController {
       // A command the page took to the panel ends its shortcut's press capsule.
       if visible { self?.commandProgress.panelShown() }
       if visible { self?.taskActivity.readShownConversation() }
+      self?.panelFocus.panelVisible(visible)
       self?.notificationsPanelVisibility(visible)
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }

@@ -73,6 +73,7 @@ public enum NativeCall: Equatable, Sendable {
   case filesSave(FilesSaveParams)
   case textWrite(TextWriteParams)
   case commandProgressShow(CommandProgressShowParams)
+  case textWriteFocused(TextWriteFocusedParams)
   case commandProgressHide(CommandProgressHideParams)
   case commandOptionsSet(CommandOptionsSetParams)
   case appAbout(AppAboutParams)
@@ -139,6 +140,7 @@ public enum NativeCall: Equatable, Sendable {
     case .filesSave: "files.save"
     case .textWrite: "text.write"
     case .commandProgressShow: "commandProgress.show"
+    case .textWriteFocused: "text.writeFocused"
     case .commandProgressHide: "commandProgress.hide"
     case .commandOptionsSet: "commandOptions.set"
     case .appAbout: "app.about"

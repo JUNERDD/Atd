@@ -4,8 +4,36 @@
 
 import Foundation
 
-/// Result of the `computer.prepareApplication` call.
-public enum ComputerPrepareApplicationResult: Codable, Equatable, Sendable {
+/// Params of the `computer.prepareBrowser` call.
+public struct ComputerPrepareBrowserParams: Codable, Equatable, Sendable {
+  public let label: String
+  public let startUrl: String
+  public let allowedOrigins: [String]
+
+  public init(label: String, startUrl: String, allowedOrigins: [String]) {
+    self.label = label
+    self.startUrl = startUrl
+    self.allowedOrigins = allowedOrigins
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    label = try container.string(.label, minLength: 1, maxLength: 120)
+    startUrl = try container.string(
+      .startUrl, minLength: 1, maxLength: 2_048, pattern: "^https?://")
+    allowedOrigins = try container.array(
+      .allowedOrigins, of: String.self, minItems: 1, maxItems: 20)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case label
+    case startUrl
+    case allowedOrigins
+  }
+}
+
+/// Result of the `computer.prepareBrowser` call.
+public enum ComputerPrepareBrowserResult: Codable, Equatable, Sendable {
   case ok(Ok)
   case notOk(NotOk)
 
@@ -123,136 +151,24 @@ public enum ComputerPrepareApplicationResult: Codable, Equatable, Sendable {
   }
 }
 
-/// Params of the `computer.openProfile` call.
-public struct ComputerOpenProfileParams: Codable, Equatable, Sendable {
-  public let bindingId: String
+/// Params of the `computer.prepareApplication` call.
+public struct ComputerPrepareApplicationParams: Codable, Equatable, Sendable {
+  public let label: String
+  public let bundleId: String
 
-  public init(bindingId: String) {
-    self.bindingId = bindingId
+  public init(label: String, bundleId: String) {
+    self.label = label
+    self.bundleId = bundleId
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    bindingId = try container.string(
-      .bindingId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    label = try container.string(.label, minLength: 1, maxLength: 120)
+    bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case bindingId
-  }
-}
-
-/// Result of the `computer.openProfile` call.
-public typealias ComputerOpenProfileResult = NativeEmpty
-
-/// Params of the `computer.authorizeAutomation` call.
-public struct ComputerAuthorizeAutomationParams: Codable, Equatable, Sendable {
-  public let automationId: String
-  public let expectedRevision: Int
-
-  public init(automationId: String, expectedRevision: Int) {
-    self.automationId = automationId
-    self.expectedRevision = expectedRevision
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    automationId = try container.string(
-      .automationId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-    expectedRevision = try container.integer(.expectedRevision, minimum: 1)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case automationId
-    case expectedRevision
-  }
-}
-
-/// Result of the `computer.authorizeAutomation` call.
-public enum ComputerAuthorizeAutomationResult: Codable, Equatable, Sendable {
-  case approved(Approved)
-  case notApproved(NotApproved)
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(Bool.self, forKey: .approved) {
-    case true: self = try .approved(Approved(from: decoder))
-    case false: self = try .notApproved(NotApproved(from: decoder))
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .approved(let value): try value.encode(to: encoder)
-    case .notApproved(let value): try value.encode(to: encoder)
-    }
-  }
-
-  private enum Discriminator: String, CodingKey {
-    case approved
-  }
-
-  public struct Approved: Codable, Equatable, Sendable {
-    public let grantId: String
-    public let version: Int
-
-    public init(grantId: String, version: Int) {
-      self.grantId = grantId
-      self.version = version
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, true)
-      grantId = try container.string(
-        .grantId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-      version = try container.integer(.version, minimum: 1)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(true, forKey: .approved)
-      try container.encode(grantId, forKey: .grantId)
-      try container.encode(version, forKey: .version)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-      case grantId
-      case version
-    }
-  }
-
-  public struct NotApproved: Codable, Equatable, Sendable {
-    public let reason: Reason
-
-    public init(reason: Reason) {
-      self.reason = reason
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.approved, false)
-      reason = try container.value(.reason, Reason.self)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(false, forKey: .approved)
-      try container.encode(reason, forKey: .reason)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case approved
-      case reason
-    }
-
-    public enum Reason: String, Codable, Equatable, Sendable {
-      case cancelled
-      case changed
-      case notQualified
-      case unavailable
-      case busy
-    }
+    case label
+    case bundleId
   }
 }

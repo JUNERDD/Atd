@@ -39,7 +39,10 @@ export interface SettledCommandRun {
 
 interface Tracked {
   run: CommandRun;
-  /** Whether the answer still acts by itself once the run completes (copy, or an unreviewed write). */
+  /**
+   * Whether the answer still acts by itself once the run completes: copy, an unreviewed write, or
+   * a light run's answer, which the island writes or shows for review.
+   */
   pending: boolean;
   /**
    * The run's transcript as the stream patches it, followed only while `pending`: patches arrive
@@ -61,14 +64,20 @@ function changed() {
  * Remembers the run a command submit started (the newest run of the task `detail` describes) when
  * its answer goes somewhere: on the clipboard, or into the app the launch recorded (`target`). A
  * write-back without a target leaves the answer in the conversation, so it is not remembered.
+ * `light` marks a run on the island (a light launch's, or a version of its review), whose end the
+ * island reports even under review, since its review card shows the answer.
  */
-export function trackCommandRun(prepared: PreparedCommand, detail: TaskDetail): void {
+export function trackCommandRun(
+  prepared: PreparedCommand,
+  detail: TaskDetail,
+  light = false,
+): void {
   const { output } = prepared;
   const target = writesBack(output.action) ? (prepared.target ?? null) : null;
   if (output.action !== 'copy' && !target) return;
   const run = detail.task.runs.at(-1);
   if (!run || runs.has(run.id)) return;
-  const pending = (output.action === 'copy' || !output.review) && isActive(run.status);
+  const pending = (output.action === 'copy' || !output.review || light) && isActive(run.status);
   runs.set(run.id, {
     run: { taskId: detail.task.id, runId: run.id, output, target },
     pending,
