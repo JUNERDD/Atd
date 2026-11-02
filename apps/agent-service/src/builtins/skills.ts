@@ -7,11 +7,10 @@ import { backupDir, clearWorkDir, installDirAtomic, present } from './install-di
 import {
   BUILTIN_SKILLS,
   builtinSkillsTemplateDir,
-  builtinStatus,
-  reconcileAction,
   type BuiltinEntry,
   type BuiltinStatus,
 } from './manifest.js';
+import { builtinStatus, reconcileAction } from './reconcile.js';
 import {
   clearBackupNotice,
   readInstallState,

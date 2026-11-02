@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { InstallRecord } from './state.js';
 
 /**
  * Built-in resources the service writes into user-editable locations, and the versions it has
@@ -12,7 +11,8 @@ import type { InstallRecord } from './state.js';
  * untouched copy upgrades on its own: one whose install record still matches it, or, without a
  * record, one equal to a released version. Any other copy is the user's: an edit of the content
  * this build ships is kept; one based on other content is, for a product skill, backed up and
- * replaced (builtins/skills.ts), and for the default role kept with an update offered to restore.
+ * replaced (builtins/skills.ts), and for the default role kept with an update offered to restore;
+ * builtins/reconcile.ts decides which applies to a copy.
  * Fingerprints come from builtins/fingerprint.ts; for a released skill,
  * fingerprint its directory as `git archive <tag>` extracts it.
  */
@@ -40,9 +40,6 @@ export interface BuiltinStatus {
   status: BuiltinState;
   backupPath?: string;
 }
-
-/** What reconciling one resource does. */
-export type ReconcileAction = 'install' | 'record' | 'keep' | 'none';
 
 function skill(name: string, version: number, history: string[]): BuiltinEntry {
   return { id: `skill:${name}`, kind: 'skill', name, version, history };
@@ -303,48 +300,4 @@ export function isBuiltinSkill(name: string): boolean {
  */
 export function builtinSkillsTemplateDir(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'product-skills');
-}
-
-/**
- * Decides what reconciling a copy does. Absent → install. Equal to the shipped content → record
- * it. Unmodified since the recorded install, or (without a record) equal to a shipped version →
- * install the shipped version over it. Anything else is the user's → keep it, and leave it to
- * the caller to replace an outdated one (see the module comment).
- */
-export function reconcileAction(
-  entry: BuiltinEntry,
-  copy: string | null,
-  latest: string,
-  recorded: InstallRecord | undefined,
-): ReconcileAction {
-  if (copy === null) return 'install';
-  if (copy === latest)
-    return recorded?.fingerprint === latest && recorded.version === entry.version
-      ? 'none'
-      : 'record';
-  const unmodified = recorded ? copy === recorded.fingerprint : entry.history.includes(copy);
-  return unmodified ? 'install' : 'keep';
-}
-
-/**
- * Status of a copy after reconciling: `current` when it holds the shipped content; otherwise the
- * user changed it. When the user edited the content this build ships (its recorded base is the
- * shipped fingerprint) that is `modified`; when the shipped content differs from their base (or
- * there is no record) it is `update_available`. Comparing fingerprints, not `version`, keeps the
- * status right even when shipped content changes without a version bump.
- */
-export function builtinStatus(
-  entry: BuiltinEntry,
-  copy: string,
-  latest: string,
-  recorded: InstallRecord | undefined,
-): BuiltinStatus {
-  const status: BuiltinState =
-    copy === latest
-      ? 'current'
-      : recorded?.fingerprint !== latest
-        ? 'update_available'
-        : 'modified';
-  const backupPath = recorded?.backupPath;
-  return { id: entry.id, version: entry.version, status, ...(backupPath ? { backupPath } : {}) };
 }

@@ -1,11 +1,7 @@
 import type { RoleRecord, RolesFile } from '../skills/roles.js';
 import { roleFingerprint } from './fingerprint.js';
-import {
-  DEFAULT_ROLE_BUILTIN,
-  builtinStatus,
-  reconcileAction,
-  type BuiltinStatus,
-} from './manifest.js';
+import { DEFAULT_ROLE_BUILTIN, type BuiltinStatus } from './manifest.js';
+import { builtinStatus, reconcileAction } from './reconcile.js';
 import type { InstallRecord } from './state.js';
 
 /**
