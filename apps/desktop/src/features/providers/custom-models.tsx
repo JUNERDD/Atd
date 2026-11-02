@@ -110,7 +110,7 @@ export function CustomModels({
               // A discovered level map names efforts in its own protocol's terms, so it does not
               // carry over to another protocol.
               onValueChange={(api) => {
-                const { thinkingLevelMap: _discarded, ...rest } = model;
+                const { thinkingLevelMap: _discarded, reasoningControl: _control, ...rest } = model;
                 onChange(models.map((item, i) => (i === index ? { ...rest, api } : item)));
               }}
             >

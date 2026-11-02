@@ -24,6 +24,15 @@ export const ServiceModelDefinitionSchema = Type.Object(
     api: Type.String({ minLength: 1, maxLength: 256 }),
     baseUrl: Type.String({ maxLength: 2048 }),
     reasoning: Type.Boolean(),
+    /** An endpoint's declared control, retained separately from the model's reasoning ability. */
+    reasoningControl: Type.Optional(
+      Type.Union([
+        Type.Literal('effort'),
+        Type.Literal('budget'),
+        Type.Literal('toggle'),
+        Type.Literal('fixed'),
+      ]),
+    ),
     thinkingLevelMap: Type.Optional(
       Type.Object({
         off: Type.Optional(Type.Union([Type.String(), Type.Null()])),

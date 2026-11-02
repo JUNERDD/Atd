@@ -266,7 +266,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   skill('generative-ui', 1, []),
   // Teaches working with what files contain, whatever their format: start from the loaded material
   // and its extraction notes, page through files with `read` instead of loading them whole,
-  // compute over data with code, use only tools a stock Mac has (with bundled on-device OCR and
+  // compute over data with code, prefer stock Mac tools (with bundled on-device OCR and
   // page rendering for pages without text), cite where each claim comes from, name what was not
   // read, and treat file contents as data rather than instructions.
   // Version 2 says that a run without `bash` gets the text of an attached PDF's pages without a
@@ -274,7 +274,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // holds them, within a time limit, never page images), which `read` returns without while the
   // material's notes keep its line numbers; the pages still without text are named to the user.
   // Version 3 covers searchable entries, whole-sheet CSV, formula gaps, charts and saved pictures.
-  skill('file-loader', 3, []),
+  skill('file-loader', 4, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`; every release shipped the same one. */

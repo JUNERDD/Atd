@@ -105,7 +105,11 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     : undefined;
   const selected =
     thinkingLevel && !levels.includes(thinkingLevel) ? (levels[0] ?? thinkingLevel) : thinkingLevel;
-  const effortText = selected ? t(`thinkingLevels.levels.${selected}`) : null;
+  const effortText = selected
+    ? definition?.reasoningControl === 'fixed'
+      ? t('modelConfig.modelDefault')
+      : t(`thinkingLevels.levels.${selected}`)
+    : null;
   const effortDisabled = !model || loading || levels.length < 2;
   const scoped = scopeLabel !== undefined;
   const summary = { model: displayName, contextSize: contextText, effort: effortText ?? '' };

@@ -92,35 +92,38 @@ function reasoningOf(entry: object, declaredEfforts: readonly string[]): boolean
   // OpenRouter describes reasoning as an object; Anthropic-style entries nest a boolean.
   const capability = at(entry, ['capabilities', 'reasoning']);
   const flag = at(entry, ['reasoning']);
+  // Explicit negative capabilities must not inherit the maker's reasoning flag or stale hints.
+  for (const value of [
+    flag,
+    at(entry, ['supports_reasoning']),
+    capability,
+    at(entry, ['capabilities', 'thinking', 'supported']),
+  ])
+    if (typeof value === 'boolean') return value;
   const positive =
     declaredEfforts.length > 0 ||
-    flag === true ||
     (typeof flag === 'object' && flag !== null) ||
-    at(entry, ['supports_reasoning']) === true ||
-    at(entry, ['capabilities', 'thinking', 'supported']) === true ||
-    capability === true ||
     strings(at(entry, ['capabilities'])).some(
       (name) => name === 'thinking' || name === 'reasoning',
     ) ||
     strings(at(entry, ['supported_parameters'])).some((name) => REASONING_PARAMETERS.has(name));
   if (positive) return true;
-  if (flag === false || at(entry, ['supports_reasoning']) === false) return false;
   return undefined;
 }
 
 /**
  * Pi's levels from the server's effort names, so the effort menu offers only what it accepts.
- * Without `none`, `off` stays unmapped: choosing it sends no effort and the server's own default
- * applies. Names Pi has no level for are dropped; none recognized leaves Pi's default levels.
+ * Without `none`, `off` is unavailable: omitting effort can enable the server's default reasoning.
+ * Unknown names do not become selectable Pi levels. No declaration leaves the fallback intact.
  */
 export function effortLevelMap(
   declared: readonly string[],
 ): EndpointCapabilities['thinkingLevelMap'] {
   const names = new Set(declared);
-  if (!EFFORT_LEVELS.some((level) => names.has(level))) return undefined;
+  if (!names.size) return undefined;
   const map: NonNullable<EndpointCapabilities['thinkingLevelMap']> = {};
   for (const level of EFFORT_LEVELS) map[level] = names.has(level) ? level : null;
-  if (names.has('none')) map.off = 'none';
+  map.off = names.has('none') ? 'none' : null;
   return map;
 }
 
@@ -158,6 +161,9 @@ export function endpointCapabilities(entry: object): EndpointCapabilities {
   const maxTokens = tokenCount(entry, OUTPUT_PATHS);
   const thinkingLevelMap = reasoning ? effortLevelMap(declaredEfforts) : undefined;
   const defaultThinkingLevel = reasoning ? publishedDefaultLevel(entry) : undefined;
+  // A documented disabled default can be selected by omitting effort, without inventing a
+  // `none` value the endpoint did not advertise. An enabled default needs an explicit off value.
+  if (thinkingLevelMap?.off === null && defaultThinkingLevel === 'off') delete thinkingLevelMap.off;
   return {
     ...(contextWindow ? { contextWindow } : {}),
     ...(maxTokens ? { maxTokens } : {}),
