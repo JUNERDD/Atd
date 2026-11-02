@@ -28,6 +28,7 @@ export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition
     placement: { ...command.placement },
     output: { ...command.output },
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
+    ...(command.adjustments === undefined ? {} : { adjustments: [...command.adjustments] }),
     model: { ...command.model },
     thinkingLevel: command.thinkingLevel,
     tools: [...command.tools],
@@ -46,6 +47,7 @@ export function toServiceCommand({
     ...command,
     shortcuts: structuredClone(command.shortcuts),
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
+    ...(command.adjustments === undefined ? {} : { adjustments: [...command.adjustments] }),
     tools: [...command.tools],
   };
 }
@@ -63,6 +65,7 @@ export function toCommandCreate(command: CommandDefinition): CommandCreate {
     placement: { ...command.placement },
     output: { ...command.output },
     parameters: command.parameters.map((parameter) => ({ ...parameter })),
+    ...(command.adjustments === undefined ? {} : { adjustments: [...command.adjustments] }),
     model: { ...command.model },
     thinkingLevel: command.thinkingLevel,
     tools: [...command.tools],

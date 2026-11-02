@@ -189,6 +189,15 @@
       "title": "应用前确认",
       "description": "回答先留在对话中，点击其“在…中替换”或“插入到…”按钮后再写入。"
     },
+    "adjustments": {
+      "title": "调整建议",
+      "description": "审阅时在灵动岛显示为快捷选项，可多选后一起运行。",
+      "placeholder": "输入一项建议，按回车添加",
+      "removeLabel": "移除“{{name}}”",
+      "duplicate": "已有“{{name}}”这项建议。",
+      "full": "一个命令最多提供 {{max}} 项建议，请先移除一项再添加。",
+      "tooLong": "每项建议最多 {{max}} 个字符。"
+    },
     "savedTitle": "{{title}}（默认）",
     "needsTarget": "从这里运行不会写回，回答保留在对话中。写回需要通过命令快捷键或选择文字工具栏从其他 App 运行。",
     "needsSelection": "此命令不读取选中的文字，回答将保留在对话中。"

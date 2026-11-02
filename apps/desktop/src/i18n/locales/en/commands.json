@@ -189,6 +189,15 @@
       "title": "Review before applying",
       "description": "The answer waits in the conversation until you write it with its Replace in or Insert in button."
     },
+    "adjustments": {
+      "title": "Adjustment suggestions",
+      "description": "Shown as quick options on the island's review card; pick any and run them together.",
+      "placeholder": "Type a suggestion and press Return",
+      "removeLabel": "Remove “{{name}}”",
+      "duplicate": "“{{name}}” is already a suggestion.",
+      "full": "A command can offer up to {{max}} suggestions. Remove one to add another.",
+      "tooLong": "Keep each suggestion to {{max}} characters or fewer."
+    },
     "savedTitle": "{{title}} (default)",
     "needsTarget": "Nothing is written back from here: the answer stays in the conversation. Writing back needs a run from another app, through the command's shortcut or the selection toolbar.",
     "needsSelection": "This command doesn't read the selected text, so the answer stays in the conversation."

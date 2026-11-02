@@ -1,7 +1,10 @@
 import { Type, type Static } from 'typebox';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import {
+  CommandAdjustmentsSchema,
   Identifier,
+  MAX_COMMAND_ADJUSTMENT_LENGTH,
+  MAX_COMMAND_ADJUSTMENTS,
   MAX_RUN_REFERENCES,
   MAX_RUN_SKILLS,
   parse,
@@ -10,6 +13,7 @@ import {
 } from '@atd/agent-contracts';
 import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
+import { withCanonicalAdjustments } from './adjustments.js';
 import { CommandStore } from './store.js';
 import { validateCommandSave } from './templates.js';
 import { createDetail, updateDetail } from './tool-detail.js';
@@ -53,12 +57,20 @@ const OutputField = Type.Optional({
     "What happens with the answer when a run finishes; it always also stays in the conversation. action: panel (only the conversation), replaceSelection (written over the selected text), insertAfterSelection (written right after it), insertAtCursor (typed at the cursor of the app the command ran from) or copy (put on the clipboard). replaceSelection and insertAfterSelection need a command that reads the selection (input.source selection or input.selection true). Write-backs apply to runs from the command's shortcut or the selection toolbar; a command that reads the selection, run from its shortcut with nothing selected, asks the user for the text and puts an answer meant for the selection at the cursor, and where the app cannot take text the answer shows in a card to copy. review: for the three write-backs, true holds the answer in the conversation until the user applies it, so runs from the shortcut or the toolbar open the panel instead of writing the answer back in place; leave it false unless the user asks to check answers before they land. Omit output to keep the current one; a new command keeps the answer in the conversation. A save whose output acts on the selection of a command that does not read it is refused, also when an input change strands the stored output, so send output whenever you change input.",
 });
 
+/** The adjustment suggestions field, described for the model that writes it. */
+const AdjustmentsField = Type.Optional({
+  ...CommandAdjustmentsSchema,
+  description: `Short adjustment suggestions for the answer, offered as chips on the island's review card, which shows only for runs under review (output.review on, for the command or the shortcut that ran it); the user picks any of them, optionally with typed text, to make the next version. At most ${MAX_COMMAND_ADJUSTMENTS}, unique, each at most ${MAX_COMMAND_ADJUSTMENT_LENGTH} characters, phrased as the change the user would ask for, in the user's language. Omit to keep the current ones; [] removes them.`,
+});
+
 /**
  * What the Agent may author; identity, enabled state, model and placement stay with the stored
  * command: a create takes the default placement of its input source, an update keeps the current
  * one. The output is the Agent's to set because where the answer goes is part of what the user
  * asks a command to do; an omitted output keeps the stored one (the default for a create), and a
  * save refuses an output the input cannot serve (`validateCommandSave`) instead of resetting it.
+ * The adjustment suggestions a review offers belong to the same answer, so they are the Agent's
+ * too; omitted, they stay as stored (none for a create).
  * The model is the user's choice in Settings, but the reasoning level is a property of the task
  * the command does, so the Agent may set it, for the command and for each of its shortcuts; a
  * shortcut's model override is the user's too and survives an update by shortcut id.
@@ -71,6 +83,7 @@ const CommandFieldsSchema = Type.Object(
     input: InputField,
     output: OutputField,
     parameters: Fields.parameters,
+    adjustments: AdjustmentsField,
     tools: Fields.tools,
     memory: Fields.memory,
     thinkingLevel: ThinkingLevelField,
@@ -183,11 +196,13 @@ async function save(store: CommandStore, call: SaveCall, approve: ApproveSave) {
     throw new Error(
       'This command changed. Read the latest revision, then apply your change again.',
     );
-  const next = parse(ServiceCommandFullSchema, {
-    ...previous,
-    ...call.fields,
-    shortcuts: mergeShortcuts(previous.shortcuts, call.fields.shortcuts),
-  });
+  const next = withCanonicalAdjustments(
+    parse(ServiceCommandFullSchema, {
+      ...previous,
+      ...call.fields,
+      shortcuts: mergeShortcuts(previous.shortcuts, call.fields.shortcuts),
+    }),
+  );
   validateCommandSave(next);
   await store.assertShortcutsFree(next);
   await approve({

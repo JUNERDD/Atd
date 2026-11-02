@@ -8,8 +8,9 @@ import { defaultArguments } from './templates.js';
  * model, reasoning level and memory flag, and whose command it is. A computer grant keeps it, so
  * an automation's `revision` is not the only guard: editing the command it runs voids the grant,
  * and a launch that expects a fingerprint refuses a command that changed since the fire froze it
- * (commands/launch.ts `expectedFingerprint`). `revision`, name, placement, output, shortcuts and
- * remembered arguments are left out: they never change what an unattended run does.
+ * (commands/launch.ts `expectedFingerprint`). `revision`, name, placement, output, adjustment
+ * suggestions, shortcuts and remembered arguments are left out: they never change what an
+ * unattended run does.
  */
 export function commandFingerprint(command: ServiceCommandFull): string {
   const content = {

@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import {
+  CommandAdjustmentsSchema,
   CommandOutputSchema,
   CommandPlacementSchema,
   CommandShortcutSchema,
@@ -129,6 +130,11 @@ export const CommandSchema = Type.Object(
     /** What happens with the run's answer (`CommandOutput` in `@atd/agent-contracts`). */
     output: CommandOutputSchema,
     parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
+    /**
+     * Adjustment suggestions the island's review card offers while an answer waits for review
+     * (`CommandAdjustmentsSchema` in `@atd/agent-contracts`). Omitted or empty: none.
+     */
+    adjustments: Type.Optional(CommandAdjustmentsSchema),
     model: ModelPolicySchema,
     /**
      * The reasoning level the command asks for, whichever model runs it; `inherit` leaves the
@@ -162,6 +168,7 @@ export const CommandFieldsSchema = Type.Object(
     instructions: CommandSchema.properties.instructions,
     input: CommandSchema.properties.input,
     parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
+    adjustments: Type.Optional(CommandAdjustmentsSchema),
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: CommandSchema.properties.memory,
     thinkingLevel: Type.Optional(CommandThinkingLevelSchema),

@@ -29,9 +29,16 @@ import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 
-/** A command as the unsaved-changes check compares it: allowed tools are a set, not a list. */
+/**
+ * A command as the unsaved-changes check compares it: allowed tools are a set, not a list, and no
+ * adjustment suggestions read the same whether the list is empty or absent.
+ */
 function comparable(command: CommandDefinition): string {
-  return JSON.stringify({ ...command, tools: command.tools.toSorted() });
+  return JSON.stringify({
+    ...command,
+    tools: command.tools.toSorted(),
+    adjustments: command.adjustments ?? [],
+  });
 }
 
 export function CommandEditor({
