@@ -124,9 +124,10 @@ export function searchTasks(
   query: TaskSearchQuery,
   fetchImpl?: typeof fetch,
 ): Promise<TaskSearchResponse> {
-  const { query: text, limit } = parse(TaskSearchQuerySchema, query);
+  const { query: text, limit, commands } = parse(TaskSearchQuerySchema, query);
   const params = new URLSearchParams({ query: text });
   if (limit !== undefined) params.set('limit', String(limit));
+  if (commands !== undefined) params.set('commands', commands);
   return manageRequest(
     options,
     `/v1/tasks/search?${params.toString()}`,

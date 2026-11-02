@@ -19,9 +19,9 @@ export interface TaskSearchDeps {
 }
 
 /**
- * History search (`GET /v1/tasks/search`) over every task in the ledger, side chats included.
- * Tasks are visited most recently updated first and the search stops once one more than `limit`
- * matched, so older sessions are read only when the newer ones do not fill the page.
+ * History search (`GET /v1/tasks/search`) over tasks in the requested command scope, side chats
+ * included. Tasks are visited most recently updated first and the search stops once one more than
+ * `limit` matched, so older sessions are read only when the newer ones do not fill the page.
  */
 export class TaskSearch {
   private readonly text: TaskSearchText;
@@ -43,6 +43,9 @@ export class TaskSearch {
     const hits: TaskSearchHit[] = [];
     let visited = 0;
     for (const task of ordered) {
+      const fromCommand = task.runs[0]?.snapshot.fromCommand === true;
+      if (query.commands === 'exclude' && fromCommand) continue;
+      if (query.commands === 'only' && !fromCommand) continue;
       const messages = await this.text.messages(task, this.deps.live(task.id));
       const hit = matchTask(task.id, messages, terms);
       if (hit) {

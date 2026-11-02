@@ -14,12 +14,17 @@ export const HistoryViewSchema = Type.Object(
   {
     group: Type.Enum(HISTORY_GROUPS),
     sort: Type.Enum(HISTORY_SORTS),
+    showCommandTasksInAll: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
 export type HistoryView = Static<typeof HistoryViewSchema>;
 
-export const DEFAULT_HISTORY_VIEW: HistoryView = { group: 'date', sort: 'updated' };
+export const DEFAULT_HISTORY_VIEW: HistoryView = {
+  group: 'date',
+  sort: 'updated',
+  showCommandTasksInAll: false,
+};
 
 /**
  * What a task's last run says about it, coarser than the run status: the groups the status
@@ -74,16 +79,33 @@ export function modelNameOf(task: AgentTask): string | null {
 }
 
 /**
- * Which tasks the history's tabs show: every task, the pinned ones, the ones still running or
- * waiting for the person, the failed ones, or the ones an automation or an app started.
+ * All follows the view's command visibility preference; the other tabs independently select
+ * pinned, active, failed, command-started, or automated tasks.
  */
-export const HISTORY_FILTERS = ['all', 'pinned', 'active', 'failed', 'automated'] as const;
+export const HISTORY_FILTERS = [
+  'all',
+  'pinned',
+  'active',
+  'failed',
+  'commands',
+  'automated',
+] as const;
 export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
-export function matchesFilter(task: AgentTask, filter: HistoryFilter): boolean {
+/** The first run fixes the task's category, including legacy snapshots that kept the command. */
+export function isCommandTask(task: AgentTask): boolean {
+  const snapshot = task.runs[0]?.snapshot;
+  return snapshot !== undefined && (snapshot.fromCommand === true || snapshot.command !== null);
+}
+
+export function matchesFilter(
+  task: AgentTask,
+  filter: HistoryFilter,
+  showCommandTasksInAll = false,
+): boolean {
   switch (filter) {
     case 'all':
-      return true;
+      return showCommandTasksInAll || !isCommandTask(task);
     case 'pinned':
       return task.pinned === true;
     case 'active': {
@@ -92,6 +114,8 @@ export function matchesFilter(task: AgentTask, filter: HistoryFilter): boolean {
     }
     case 'failed':
       return statusGroupOf(task) === 'failed';
+    case 'commands':
+      return isCommandTask(task);
     case 'automated':
       return originGroupOf(task) !== 'personal';
   }

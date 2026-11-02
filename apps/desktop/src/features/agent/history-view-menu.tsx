@@ -2,7 +2,9 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -12,7 +14,7 @@ import {
 import { IconButton } from '../../components/icon-button';
 import { HISTORY_GROUPS, HISTORY_SORTS, type HistoryView } from './history-view';
 
-/** The history list's sort and group: one trigger beside the search, a radio list for each. */
+/** The history list's grouping, sorting and visibility preferences beside the search. */
 export function HistoryViewMenu({
   view,
   onChange,
@@ -58,6 +60,17 @@ export function HistoryViewMenu({
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuCheckboxItem
+            checked={view.showCommandTasksInAll === true}
+            onCheckedChange={(checked) =>
+              onChange({ ...view, showCommandTasksInAll: checked === true })
+            }
+          >
+            {t('history.view.showCommandTasksInAll')}
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

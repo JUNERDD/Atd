@@ -3,9 +3,12 @@ import { readPersistedRecord, usePersistRecord } from '../../lib/persisted-recor
 import { DEFAULT_HISTORY_VIEW, HistoryViewSchema, type HistoryView } from './history-view';
 
 const PREFIX = 'history.';
-const OPTIONS = { isEmpty: () => false };
+const OPTIONS = {
+  isEmpty: () => false,
+  restore: (view: HistoryView): HistoryView => ({ ...DEFAULT_HISTORY_VIEW, ...view }),
+};
 
-/** The sort and group the history list was left with; they outlive the page. */
+/** The history list's grouping, sorting, and visibility preferences outlive the page. */
 export function useHistoryView(): [HistoryView, (view: HistoryView) => void] {
   const [saved, setSaved] = useState(() => readPersistedRecord(PREFIX, HistoryViewSchema, OPTIONS));
   usePersistRecord(PREFIX, saved, OPTIONS);
