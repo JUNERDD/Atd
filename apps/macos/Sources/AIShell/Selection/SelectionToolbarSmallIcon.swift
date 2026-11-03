@@ -2,20 +2,20 @@ import AICore
 import AppKit
 import QuartzCore
 
-/// The small icon an admitted selection brings up first when the toolbar's `smallIcon` setting
-/// asks for one (``SelectionToolbarIconMode``): a ``side``-point circle of the capsule's glass
+/// The small icon an admitted selection brings up first when the toolbar's `smallIcon` setting asks
+/// for one (``SelectionToolbarIconMode``): a ``side``-point circle of the capsule's glass
 /// (``AnnotationGlassBar`` round a single ``AnnotationToolbarButton``, without padding) showing the
-/// toolbar's Ask glyph. ``SelectionToolbarPanel`` places it by the pointer rule, keeping room
-/// for the toolbar (``SelectionToolbarPlacement/iconFrame(side:toolbarHeight:selection:pointer:displays:)``),
-/// and shows it in the toolbar's own window, so whatever dismisses the toolbar dismisses the icon
-/// too.
+/// toolbar's Ask glyph. ``SelectionToolbarPanel`` places it by the pointer rule, keeping room for
+/// the toolbar
+/// (``SelectionToolbarPlacement/iconFrame(side:toolbarHeight:selection:pointer:displays:)``), and
+/// shows it in the toolbar's own window, so whatever dismisses the toolbar dismisses the icon too.
 ///
 /// It asks to grow into the toolbar (``onExpand``) on a click in either mode, and in the `hover`
 /// mode once the pointer has rested on it for ``rest``; leaving it sooner starts the wait over, so
 /// a pointer passing over it never grows it. In the `click` mode a press that travels drags it
 /// instead (``onDrag``), and the toolbar then grows out of it where it was dropped; the `hover`
-/// mode's icon stays put, since resting on it grows it. Atd stays inactive while the icon shows, so its
-/// tracking areas are unreliable: the toolbar's hover (``SelectionToolbarHover``) washes it and
+/// mode's icon stays put, since resting on it grows it. Atd stays inactive while the icon shows, so
+/// its tracking areas are unreliable: the toolbar's hover (``SelectionToolbarHover``) washes it and
 /// sets the cursor, and reports the view under the pointer on every frame (``pointerAt(_:)``).
 @MainActor
 final class SelectionToolbarSmallIcon: NSObject {
