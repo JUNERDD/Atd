@@ -10,7 +10,9 @@ import {
   type ModelSelection,
   type NextStepClick,
   type SelectionToolbarActivation,
+  type SelectionToolbarIconMode,
   type SelectionToolbarKey,
+  type SelectionToolbarPosition,
   type SelectionToolbarSettings,
   type ViewInitiative,
 } from '@atd/agent-contracts';
@@ -55,7 +57,9 @@ export type {
   ExcludedApp,
   NextStepClick,
   SelectionToolbarActivation,
+  SelectionToolbarIconMode,
   SelectionToolbarKey,
+  SelectionToolbarPosition,
   SelectionToolbarSettings,
   ViewInitiative,
 };
@@ -68,7 +72,9 @@ export {
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
+  SELECTION_TOOLBAR_ICON_MODES,
   SELECTION_TOOLBAR_KEYS,
+  SELECTION_TOOLBAR_POSITIONS,
   VIEW_INITIATIVES,
 } from '@atd/agent-contracts';
 
@@ -94,6 +100,8 @@ export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
   activation: 'hold',
   activationKeys: ['option'],
   showHud: true,
+  smallIcon: 'off',
+  position: 'pointer',
 };
 
 /** Apps the selection toolbar can be kept away from (`SelectionToolbarSettingsSchema`). */

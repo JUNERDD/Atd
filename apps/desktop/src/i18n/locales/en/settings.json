@@ -92,6 +92,8 @@
       "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility device control data access",
       "selectionToolbarActivation": "hold key option command shift press twice toggle switch modifier activation trigger toolbar selection",
       "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
+      "selectionToolbarSmallIcon": "small icon compact minimal bubble dot button first click hover rest expand open full toolbar selection",
+      "selectionToolbarPosition": "position place placement location where appear show above below top bottom over under pointer cursor mouse near toolbar selection",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
@@ -244,6 +246,34 @@
     "hud": {
       "title": "Show status HUD",
       "description": "While the toolbar is on, a small HUD near the bottom of the screen says so. Drag it anywhere, or hide it until the next time you turn the toolbar on."
+    },
+    "smallIcon": {
+      "title": "Show first",
+      "label": "What a selection shows first",
+      "modes": {
+        "click": "Small icon, click to expand",
+        "hover": "Small icon, expand on hover",
+        "off": "Full toolbar"
+      },
+      "hints": {
+        "click": "Shows a small icon next to the pointer first. Click it to expand the toolbar; passing over it doesn't.",
+        "hover": "Shows a small icon next to the pointer first. Rest the pointer on it to expand the toolbar.",
+        "off": "Shows the full toolbar right away."
+      }
+    },
+    "position": {
+      "title": "Position",
+      "label": "Where the full toolbar appears",
+      "modes": {
+        "pointer": "Next to the pointer",
+        "above": "Above the selection",
+        "below": "Below the selection"
+      },
+      "hints": {
+        "pointer": "Centered on the pointer, on the side away from the selection, so it never covers the selected text.",
+        "above": "Centered above the selection, or below it when there's no room above.",
+        "below": "Centered below the selection, or above it when there's no room below."
+      }
     },
     "accessibility": {
       "title": "App control access needed",

@@ -95,6 +95,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case selectionToolbar = "selectionToolbar"
   case selectionToolbarAsk = "selectionToolbar.ask"
   case selectionToolbarAskTooltip = "selectionToolbar.ask.tooltip"
+  case selectionToolbarExpand = "selectionToolbar.expand"
   case selectionToolbarMore = "selectionToolbar.more"
   case selectionToolbarMoreTooltip = "selectionToolbar.more.tooltip"
   case selectionHudOn = "selectionHud.on"

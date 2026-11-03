@@ -92,6 +92,8 @@
       "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 设备控制 数据访问 辅助功能 selection toolbar",
       "selectionToolbarActivation": "按住 按键 连按 两次 开关 切换 修饰键 呼出 触发 方式 工具栏 选择 hold option command shift",
       "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
+      "selectionToolbarSmallIcon": "小图标 图标 先显示 选中后 点击 悬停 停留 展开 完整 工具栏 选择 small icon",
+      "selectionToolbarPosition": "出现位置 位置 显示 上方 下方 鼠标旁 鼠标 光标 选区 工具栏 选择 position",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
       "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
@@ -244,6 +246,34 @@
     "hud": {
       "title": "显示状态浮窗",
       "description": "工具栏开启时，屏幕底部会显示一个小浮窗提示。可拖到任意位置，也可隐藏到下次开启。"
+    },
+    "smallIcon": {
+      "title": "选中后先显示",
+      "label": "选中后先显示什么",
+      "modes": {
+        "click": "小图标，点击展开",
+        "hover": "小图标，悬停展开",
+        "off": "完整工具栏"
+      },
+      "hints": {
+        "click": "选中后先在旁边出现一个小图标，点一下才展开，鼠标路过不会展开。",
+        "hover": "选中后先在旁边出现一个小图标，鼠标停一下就展开成工具栏。",
+        "off": "选中后直接显示完整工具栏。"
+      }
+    },
+    "position": {
+      "title": "出现位置",
+      "label": "完整工具栏的出现位置",
+      "modes": {
+        "pointer": "鼠标旁",
+        "above": "选区上方",
+        "below": "选区下方"
+      },
+      "hints": {
+        "pointer": "以鼠标为中心，放在选区外侧，离手最近，也不会盖住选中的文字。",
+        "above": "在选区上方居中出现，上方放不下时改到下方。",
+        "below": "在选区下方居中出现，下方放不下时改到上方。"
+      }
     },
     "accessibility": {
       "title": "需要控制应用的权限",

@@ -39,6 +39,15 @@ final class AnnotationToolbarButton: NSButton {
   /// on every frame and sets ``isHovered`` and the cursor itself.
   var followsPointer = true
 
+  /// Set for a button that can also be moved (the selection toolbar's small icon): a press that
+  /// travels ``dragThreshold`` or more reports a drag here, as a press on the bar's surface does
+  /// (``AnnotationGlassBar/Drag``), and clicks nothing; one released sooner clicks.
+  var onDrag: ((AnnotationGlassBar.Drag) -> Void)?
+  /// How far a press travels, in points, before it drags rather than clicks.
+  static let dragThreshold: CGFloat = 4
+  /// Where the press went down, on screen, and whether it has become a drag (``onDrag``).
+  private var press: (start: CGPoint, dragging: Bool)?
+
   /// The pointer is over the button: a light wash, unless it is pressed or disabled.
   var isHovered = false {
     didSet {
@@ -100,6 +109,43 @@ final class AnnotationToolbarButton: NSButton {
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  // MARK: Dragging
+
+  /// A button that can be moved tracks its own press instead of AppKit's click loop, which would
+  /// keep the drag to itself.
+  override func mouseDown(with event: NSEvent) {
+    guard onDrag != nil, isEnabled else { return super.mouseDown(with: event) }
+    press = (NSEvent.mouseLocation, false)
+    isHighlighted = true
+  }
+
+  override func mouseDragged(with event: NSEvent) {
+    guard let onDrag, let press else { return super.mouseDragged(with: event) }
+    // Measured on screen, as the bar measures its drags: the window moves under the pointer.
+    let point = NSEvent.mouseLocation
+    if !press.dragging {
+      guard hypot(point.x - press.start.x, point.y - press.start.y) >= Self.dragThreshold
+      else { return }
+      self.press?.dragging = true
+      isHighlighted = false
+      onDrag(.began)
+    }
+    onDrag(.moved(CGVector(dx: point.x - press.start.x, dy: press.start.y - point.y)))
+    NSCursor.closedHand.set()
+  }
+
+  override func mouseUp(with event: NSEvent) {
+    guard onDrag != nil, let press else { return super.mouseUp(with: event) }
+    self.press = nil
+    isHighlighted = false
+    if press.dragging {
+      // Still over the button, where the toolbar's hover shows the pointing hand.
+      NSCursor.pointingHand.set()
+    } else {
+      sendAction(action, to: target)
+    }
+  }
 
   // MARK: Drawing
 

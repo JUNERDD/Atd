@@ -57,10 +57,11 @@ struct SelectionToolbarTests {
     let settings = SelectionToolbarSettings(
       ToolbarSetParams(
         enabled: true, activation: .hold, activationKeys: [.option, .shift, .option],
-        showHud: false,
+        showHud: false, smallIcon: .hover, position: .below,
         excludedBundleIds: ["a", "a", "b"], commands: [.init(id: "c1", name: "Translate")]))
     #expect(settings.activation == SelectionActivation(mode: .hold, keys: [.option, .shift]))
     #expect(!settings.showHud)
+    #expect(settings.smallIcon == .hover && settings.position == .below)
     #expect(settings.excludedBundleIds == ["a", "b"])
     #expect(settings.commands == [.init(id: "c1", name: "Translate")])
   }
@@ -83,7 +84,7 @@ struct SelectionToolbarTests {
     -> ScreenRect?
   {
     SelectionToolbarPlacement.frame(
-      size: size, selection: selection, pointer: pointer, displays: displays)
+      size: size, selection: selection, pointer: pointer, position: .above, displays: displays)
   }
 
   @Test("Centered 8 pt above the selection")

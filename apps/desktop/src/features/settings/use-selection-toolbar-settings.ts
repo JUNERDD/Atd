@@ -7,7 +7,9 @@ import {
   MAX_EXCLUDED_APPS,
   type ExcludedApp,
   type SelectionToolbarActivation,
+  type SelectionToolbarIconMode,
   type SelectionToolbarKey,
+  type SelectionToolbarPosition,
   type SelectionToolbarSettings,
   type SettingsSnapshot,
 } from '../../client/settings-contract';
@@ -35,8 +37,11 @@ export function activationAccelerator(keys: readonly SelectionToolbarKey[]): str
     .join('+');
 }
 
-/** Where an error shows: under the switch, the activation, the HUD switch, or the apps. */
-type ErrorOwner = 'toggle' | 'activation' | 'hud' | 'apps';
+/**
+ * Where an error shows: under the switch, the activation, the HUD switch, the small icon choice,
+ * the position choice, or the apps.
+ */
+type ErrorOwner = 'toggle' | 'activation' | 'hud' | 'smallIcon' | 'position' | 'apps';
 
 /**
  * `apps` added to `current` in pick order: an app already listed (by bundle id) stays where it is,
@@ -177,6 +182,10 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
     setActivation: (activation: SelectionToolbarActivation) =>
       void save('activation', { ...value, activation }),
     setShowHud: (showHud: boolean) => void save('hud', { ...value, showHud }),
+    setSmallIcon: (smallIcon: SelectionToolbarIconMode) =>
+      void save('smallIcon', { ...value, smallIcon }),
+    setPosition: (position: SelectionToolbarPosition) =>
+      void save('position', { ...value, position }),
     /** The activation keys record new keys (or stop recording). */
     recordingKeys: capture.recording,
     toggleRecording,

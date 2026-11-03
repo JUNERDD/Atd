@@ -2806,6 +2806,8 @@
                 "activation",
                 "activationKeys",
                 "showHud",
+                "smallIcon",
+                "position",
                 "excludedBundleIds",
                 "commands"
               ],
@@ -2852,6 +2854,38 @@
                 },
                 "showHud": {
                   "type": "boolean"
+                },
+                "smallIcon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "off"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    },
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    }
+                  ]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "pointer"
+                    },
+                    {
+                      "type": "string",
+                      "const": "above"
+                    },
+                    {
+                      "type": "string",
+                      "const": "below"
+                    }
+                  ]
                 },
                 "excludedBundleIds": {
                   "type": "array",
@@ -8427,6 +8461,8 @@
         "activation",
         "activationKeys",
         "showHud",
+        "smallIcon",
+        "position",
         "excludedBundleIds",
         "commands"
       ],
@@ -8473,6 +8509,38 @@
         },
         "showHud": {
           "type": "boolean"
+        },
+        "smallIcon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "off"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            },
+            {
+              "type": "string",
+              "const": "hover"
+            }
+          ]
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "pointer"
+            },
+            {
+              "type": "string",
+              "const": "above"
+            },
+            {
+              "type": "string",
+              "const": "below"
+            }
+          ]
         },
         "excludedBundleIds": {
           "type": "array",

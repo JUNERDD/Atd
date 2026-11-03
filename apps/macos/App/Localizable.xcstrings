@@ -5405,6 +5405,24 @@
         }
       }
     },
+    "selectionToolbar.expand" : {
+      "comment" : "VoiceOver label and tooltip of the small icon that grows into the selection toolbar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show selection toolbar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开选择文字工具栏"
+          }
+        }
+      }
+    },
     "selectionToolbar.more" : {
       "comment" : "VoiceOver label of the selection toolbar button listing the remaining commands",
       "extractionState" : "manual",

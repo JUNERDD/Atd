@@ -2,7 +2,8 @@
  * Calls of the native bridge (`contract.ts`): the JS → Swift requests Swift answers, with the
  * schemas their params and results use; the file calls and their records live in `file-calls.ts`,
  * the window and app presence calls in `window-calls.ts`, the command options in
- * `command-options.ts`, the app's identity and updates in `update-calls.ts`.
+ * `command-options.ts`, the app's identity and updates in `update-calls.ts`, the selection
+ * toolbar's in `selection-toolbar-calls.ts`.
  * Like the rest of the contract, the export script loads this file with Node's type stripping, so
  * it imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
  * erasable TypeScript syntax.
@@ -13,6 +14,7 @@ import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
+import { NativeSelectionToolbarCalls } from './selection-toolbar-calls.ts';
 import { NativeShortcutRecordingCalls } from './shortcut-recording.ts';
 import { NativeTextCalls } from './text-calls.ts';
 import { NativeUpdateCalls } from './update-calls.ts';
@@ -276,46 +278,7 @@ export const NativeCalls = {
     ),
     result: ApprovalRequestResultSchema,
   },
-  /**
-   * Replaces what the selection toolbar offers over text selected in other apps; the page pushes
-   * it whenever it changes. `commands`: the enabled commands that read the selection, in
-   * command-list order; clicking one captures the selection and sends `shortcut.command`.
-   * `activation` and `activationKeys` gate which selections bring it up
-   * (`SelectionToolbarSettingsSchema`); the shell owns the `toggle` mode's listening state, and
-   * shows its status HUD while it listens when `showHud` is set.
-   */
-  'toolbar.set': {
-    params: Type.Object(
-      {
-        enabled: Type.Boolean(),
-        activation: Type.Union([
-          Type.Literal('always'),
-          Type.Literal('hold'),
-          Type.Literal('toggle'),
-        ]),
-        activationKeys: Type.Array(
-          Type.Union([Type.Literal('option'), Type.Literal('command'), Type.Literal('shift')]),
-          { minItems: 1, maxItems: 3 },
-        ),
-        showHud: Type.Boolean(),
-        excludedBundleIds: Type.Array(Type.String({ minLength: 1, maxLength: 255 }), {
-          maxItems: 100,
-        }),
-        commands: Type.Array(
-          Type.Object(
-            {
-              id: Type.String({ minLength: 1, maxLength: 128 }),
-              name: Type.String({ minLength: 1, maxLength: 256 }),
-            },
-            { additionalProperties: false },
-          ),
-          { maxItems: 64 },
-        ),
-      },
-      { additionalProperties: false },
-    ),
-    result: Empty,
-  },
+  ...NativeSelectionToolbarCalls,
   /**
    * Shows the system's Accessibility trust prompt while the app is not trusted, and opens System
    * Settings › Privacy & Security › Accessibility. `accessibility.trust` reports the outcome.

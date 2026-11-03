@@ -20,6 +20,8 @@ export function toolbarParams(
     activation: settings.activation,
     activationKeys: settings.activationKeys,
     showHud: settings.showHud,
+    smallIcon: settings.smallIcon,
+    position: settings.position,
     excludedBundleIds: settings.excludedApps.map((app) => app.bundleId),
     commands: commands
       .filter((command) => offeredAt(command, 'selectionToolbar'))

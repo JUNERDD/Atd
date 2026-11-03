@@ -74,7 +74,7 @@ final class ToolbarOptionsCascade: NSObject {
     close()
     present(build, label: label) { size in
       SelectionToolbarMenuPlacement.frame(
-        size: size, anchor: ScreenRect(anchor), displays: Self.displays())
+        size: size, anchor: ScreenRect(anchor), displays: SelectionToolbarPanel.displays())
     }
     if isOpen { self.opener = opener }
   }
@@ -176,7 +176,7 @@ final class ToolbarOptionsCascade: NSObject {
     present(build, label: level.items[row].content?.title ?? "") { size in
       SelectionToolbarSubmenuPlacement.frame(
         size: size, row: ScreenRect(frame), parent: ScreenRect(parent),
-        displays: Self.displays())
+        displays: SelectionToolbarPanel.displays())
     }
     guard levels.count > index + 1 else { return }
     view.isActive = true
@@ -226,11 +226,5 @@ final class ToolbarOptionsCascade: NSObject {
       return
     }
     close()
-  }
-
-  private static func displays() -> [SelectionToolbarPlacement.Display] {
-    NSScreen.screens.map {
-      .init(frame: ScreenRect($0.frame), workArea: ScreenRect($0.visibleFrame))
-    }
   }
 }

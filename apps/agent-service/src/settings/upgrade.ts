@@ -117,13 +117,18 @@ function withAddedCommandTypingAnimation(file: unknown): unknown {
   return { ...file, settings: { ...settings, commandTypingAnimation } };
 }
 
-/** The selection toolbar starts on, over every app, for selections made while Option is held. */
+/**
+ * The selection toolbar starts on, over every app, for selections made while Option is held, and
+ * shows itself whole by the pointer.
+ */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
   enabled: true,
   excludedApps: [],
   activation: 'hold',
   activationKeys: ['option'],
   showHud: true,
+  smallIcon: 'off',
+  position: 'pointer',
 };
 
 /**

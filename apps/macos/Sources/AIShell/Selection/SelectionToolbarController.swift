@@ -110,7 +110,7 @@ final class SelectionToolbarController {
   /// The page's `toolbar.set`.
   func apply(_ settings: SelectionToolbarSettings) {
     self.settings = settings
-    panel.setCommands(settings.commands)
+    panel.configure(settings)
     hud.configure(enabled: settings.showHud, keys: settings.activation.keys)
     update()
   }
@@ -148,10 +148,17 @@ final class SelectionToolbarController {
     dismiss()
     practiceText = text
     let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+    // The pointer that ended the selection places the toolbar or its icon as over another app;
+    // one away from it (a keyboard selection) gives way to the selection's middle.
+    let line = SelectionToolbarPlacement.pointerLineHalfHeight * 2
+    let mouse = NSEvent.mouseLocation
+    let pointer =
+      selection.insetBy(dx: -line, dy: -line).contains(mouse)
+      ? mouse : CGPoint(x: selection.midX, y: selection.midY)
     // The panel takes Quartz bounds, as Accessibility reports them.
     panel.show(
       selection: CaptureCoordinates.flip(selection, primaryHeight: primaryHeight),
-      pointer: CGPoint(x: selection.midX, y: selection.midY))
+      pointer: pointer)
     practiceMoveMonitor = NSEvent.addLocalMonitorForEvents(
       matching: [.mouseMoved, .leftMouseDragged]
     ) { [weak self] event in

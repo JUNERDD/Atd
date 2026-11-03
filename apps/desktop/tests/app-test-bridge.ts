@@ -1,7 +1,11 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { FolderBridge } from '../src/client/contract';
-import type { SettingsItemLink, SettingsSnapshot } from '../src/client/settings-contract';
+import {
+  DEFAULT_SELECTION_TOOLBAR,
+  type SettingsItemLink,
+  type SettingsSnapshot,
+} from '../src/client/settings-contract';
 import type {
   AgentBridge,
   AgentEvent,
@@ -74,13 +78,7 @@ export function installBridge(extras?: {
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
-    selectionToolbar: {
-      enabled: true,
-      excludedApps: [],
-      activation: 'hold',
-      activationKeys: ['option'],
-      showHud: true,
-    },
+    selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
     commandTyping: true,
     commandTypingAnimation: true,
     viewInitiative: 'proactive',

@@ -7,6 +7,9 @@ import QuartzCore
 /// overshoot, and turns opaque within the first part of that so the glass never lingers
 /// half-faded. With Reduce Motion on it only fades in. There is no exit animation: the toolbar
 /// goes at once when the user acts or moves on.
+///
+/// The small icon (``SelectionToolbarSmallIcon``) enters the same way; the toolbar it grows into
+/// grows out of it instead (``SelectionToolbarMorph``).
 enum SelectionToolbarEntrance {
   /// Pace of the grow, in seconds (perceptual, like SwiftUI's spring duration).
   static let duration = 0.32
