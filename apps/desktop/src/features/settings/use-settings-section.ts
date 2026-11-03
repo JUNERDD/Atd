@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
 import { USER_PLUGIN_ID } from '../service/plugin-rows';
-import type { SettingsAutomationTarget, SettingsExtensionItem } from './settings-navigation';
+import type {
+  SettingsAutomationTarget,
+  SettingsExtensionItem,
+  SettingsPageTarget,
+  SettingsSearchPage,
+} from './settings-navigation';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
 /** A new settings window carries its editor or section target in the URL hash. */
@@ -50,6 +55,7 @@ export function useSettingsSection(
   const [extensionTarget, setExtensionTarget] = useState<
     (SettingsExtensionItem & { nonce: number }) | null
   >(null);
+  const [pageTarget, setPageTarget] = useState<SettingsPageTarget | null>(null);
   const [drawer, setDrawer] = useState<SettingsDrawerState>(null);
   // Every way into a section (the list, search, a link) mounts it on its first visit.
   if (!visited.includes(section)) setVisited([...visited, section]);
@@ -69,6 +75,13 @@ export function useSettingsSection(
     },
     [locked, section, leave],
   );
+  /**
+   * Asks the section `target` for one of its pages (null: its top-level page), as a search result
+   * does once `navigate` has shown it; see `SettingsPageTarget`.
+   */
+  const showPage = useCallback((target: SettingsSectionId, page: SettingsSearchPage | null) => {
+    setPageTarget((current) => ({ section: target, page, nonce: (current?.nonce ?? 0) + 1 }));
+  }, []);
   /**
    * Shows one command's editor; the task panel and plugin pages link to commands this way. Each
    * request has a new nonce, which the Commands section opens as a page of its history, so it
@@ -151,9 +164,11 @@ export function useSettingsSection(
     memoryTarget,
     automationTarget,
     extensionTarget,
+    pageTarget,
     drawer,
     setDrawer,
     navigate,
+    showPage,
     showCommand,
     showMemory,
     showAutomation,

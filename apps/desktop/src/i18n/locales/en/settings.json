@@ -110,7 +110,14 @@
       "computerApplication": "application app program window native mac",
       "computerTyping": "computer typing typewriter highlight animation input command",
       "computerVision": "vision model screen monitor sharing",
-      "computerCapture": "screen access capture recording consent prepare permission prompt"
+      "computerCapture": "screen access capture recording consent prepare permission prompt",
+      "panelBackground": "panel background backdrop fill surface transparency transparent opacity opaque translucent see-through tone tint color glass liquid glass blur readability heavy",
+      "panelTransparency": "transparency transparent opacity opaque translucent see-through solid alpha panel background",
+      "panelTone": "tone brightness dark light gray grey shade darkness lightness level panel background color",
+      "panelTint": "tint hue color colour accent blue purple green sand rose graphite neutral panel background",
+      "liquidGlass": "liquid glass variant regular clear material vibrancy",
+      "panelBlur": "blur blurry frosted frost sharp liquid glass desktop behind",
+      "panelRefraction": "refraction refract lens distortion bend edge liquid glass"
     }
   },
   "providers": {
@@ -217,6 +224,77 @@
   "general": {
     "title": "General",
     "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+  },
+  "panelBackground": {
+    "title": "Panel background",
+    "description": "The task panel, Settings and the floating surfaces share this background. The default is a measured recipe that keeps text readable over any desktop.",
+    "back": "Back to General",
+    "summary": {
+      "default": "Default · {{transparency}}% transparent",
+      "transparent": "{{value}}% transparent",
+      "tone": "Tone {{hex}}",
+      "clearGlass": "Clear glass",
+      "glassAdjusted": "Glass adjusted"
+    },
+    "groups": {
+      "background": "Background",
+      "glass": "Liquid Glass"
+    },
+    "scope": {
+      "dark": "Transparency and tone apply to the dark appearance. The light appearance keeps its own, which you can adjust while the app is light.",
+      "light": "Transparency and tone apply to the light appearance. The dark appearance keeps its own, which you can adjust while the app is dark."
+    },
+    "transparency": {
+      "title": "Background transparency",
+      "description": "How much of the desktop shows through; further right is more see-through. Code blocks follow.",
+      "solid": "Solid"
+    },
+    "tone": {
+      "title": "Background tone",
+      "description": "How dark or light the background is; further right is lighter."
+    },
+    "tint": {
+      "title": "Background tint",
+      "description": "Changes the hue only; the brightness stays.",
+      "options": {
+        "neutral": "Neutral",
+        "graphite": "Graphite",
+        "blue": "Blue",
+        "purple": "Purple",
+        "green": "Green",
+        "sand": "Sand",
+        "rose": "Rose",
+        "accent": "Accent color"
+      }
+    },
+    "variant": {
+      "title": "Glass variant",
+      "description": "Regular reads best; Clear shows more but needs a denser background.",
+      "options": {
+        "regular": "Regular",
+        "clear": "Clear"
+      }
+    },
+    "blur": {
+      "title": "Blur",
+      "description": "How much the desktop is blurred; at full, text behind can't be read."
+    },
+    "refractionWidth": {
+      "title": "Refraction width",
+      "description": "How wide the refracting band along the edge is."
+    },
+    "refractionStrength": {
+      "title": "Refraction strength",
+      "description": "How far that band bends what is behind; all the way left turns it off."
+    },
+    "system": "System",
+    "multiplier": "×{{value}}",
+    "percent": "{{value}}%",
+    "glassNote": "Blur and refraction adjust the system’s Liquid Glass through private macOS interfaces, so a macOS update may change how they look.",
+    "restoreDefaults": "Restore defaults",
+    "reset": "Reset to default",
+    "resetLabel": "Reset {{label}} to default",
+    "saveFailed": "The panel background could not be saved."
   },
   "selectionToolbar": {
     "title": "Selection toolbar",

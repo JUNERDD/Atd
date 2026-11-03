@@ -14,6 +14,7 @@ import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
 import { revealSettingsAnchor } from './reveal-settings-anchor';
+import type { SettingsSearchPage } from './settings-navigation';
 import { SettingsSearchField } from './settings-search-field';
 import {
   isSettingsFooterSection,
@@ -42,12 +43,15 @@ export function SettingsNavPanel({
   current,
   disabled,
   onNavigate,
+  onOpenPage,
 }: {
   current: SettingsSectionId;
   /** While a shortcut is being recorded, navigating away would drop the capture. */
   disabled: boolean;
   /** Shows a section; `then` runs once it is shown (see `SettingsNavigationContext`). */
   onNavigate: (section: SettingsSectionId, then?: () => void) => void;
+  /** Enters the shown section at a result's page, or at its top-level page (`SettingsPageTarget`). */
+  onOpenPage: (section: SettingsSectionId, page: SettingsSearchPage | null) => void;
 }) {
   const { t } = useTranslation('settings');
   const search = useCompositionQuery();
@@ -65,6 +69,9 @@ export function SettingsNavPanel({
     // navigation still runs so the drawer closes.
     onNavigate(result.section ?? current, () => {
       search.change('');
+      // A setting on a sub-page opens that page; any other returns a section with sub-pages to
+      // its top-level page.
+      if (result.section) onOpenPage(result.section, result.entry.page ?? null);
       revealSettingsAnchor(result.entry.anchor);
       // The result row unmounts with the query; without a control to focus, keep focus in the card.
       if (!result.entry.anchor) {

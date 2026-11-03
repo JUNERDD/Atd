@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
@@ -9,14 +9,27 @@ import { AppearanceRow } from './appearance-row';
 import { GlowEffectsRow } from './glow-effects-row';
 import { MiniPanelOpenRow } from './mini-panel-open-row';
 import { NotificationSettings } from './notification-settings';
+import { PanelBackgroundPage } from './panel-background-page';
+import { PanelBackgroundSummaryRow } from './panel-background-summary-row';
 import { PanelPlacementRow } from './panel-placement-row';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
+import type { SettingsPageTarget, SettingsSearchPage } from './settings-navigation';
 import { SettingsSwitchRow } from './settings-switch-row';
 import { ShortcutConflictHint } from './shortcut-conflict-hint';
 import { ShortcutRow } from './shortcut-row';
+import { usePanelBackground } from './use-panel-background';
+import { useSettingsPageHistory } from './use-settings-page-history';
 import { useShortcutSettings } from './use-shortcut-settings';
 import { DevelopmentSyncSettings } from './development-sync-settings';
+
+/** General's pages: the overview, and the panel background's page that its row opens. */
+const OVERVIEW = { page: 'overview' } as const;
+const PANEL_BACKGROUND = { page: 'panelBackground' } as const;
+type GeneralRoute = typeof OVERVIEW | typeof PANEL_BACKGROUND;
+const SEARCH_PAGES = {
+  panelBackground: PANEL_BACKGROUND,
+} as const satisfies Record<SettingsSearchPage, GeneralRoute>;
 
 const IN_APP_SHORTCUTS = [
   {
@@ -43,13 +56,19 @@ const IN_APP_SHORTCUTS = [
 
 export function GeneralSettings({
   snapshot,
+  activePage,
   onRecordingChange,
 }: {
   snapshot: SettingsSnapshot | null;
+  /** The latest search request for a page; each new nonce for General enters it there. */
+  activePage?: SettingsPageTarget | null;
   onRecordingChange: (recording: boolean) => void;
 }) {
   const { t } = useTranslation('settings');
   const settings = useShortcutSettings(snapshot);
+  const history = useSettingsPageHistory<GeneralRoute>(OVERVIEW);
+  // Here rather than on its page, so a save still running when the page closes ends in order.
+  const panelBackground = usePanelBackground(snapshot);
   // Only the desktop app registers global shortcuts and owns window preferences.
   const desktopApp = window.desktop !== undefined;
   const recording = settings.recording !== null;
@@ -63,12 +82,22 @@ export function GeneralSettings({
     return () => onRecordingChange(false);
   }, [onRecordingChange, recording]);
 
+  // A search result enters General at its page, or at the overview, once per request.
+  const [linked, setLinked] = useState<number | null>(null);
+  if (activePage?.section === 'general' && activePage.nonce !== linked) {
+    setLinked(activePage.nonce);
+    if (activePage.page) history.reset(SEARCH_PAGES[activePage.page]);
+    else history.reset();
+  }
+  if (history.route === PANEL_BACKGROUND) return <PanelBackgroundPage settings={panelBackground} />;
+
   return (
     <>
       <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
         {import.meta.env.DEV && <DevelopmentSyncSettings />}
-        {/* The color scheme and glows are the desktop app's: the shell mirrors them onto its windows. */}
+        {/* The color scheme, panel background and glows are the desktop app's: the shell mirrors
+            them onto its windows. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-appearance-group">
             <h3 id="settings-appearance-group" className="settings-section-title">
@@ -77,6 +106,10 @@ export function GeneralSettings({
             <Card size="sm" className="settings-card">
               <ItemGroup>
                 <AppearanceRow snapshot={snapshot} />
+                <PanelBackgroundSummaryRow
+                  settings={panelBackground}
+                  onOpen={() => history.open(PANEL_BACKGROUND)}
+                />
                 <GlowEffectsRow snapshot={snapshot} />
               </ItemGroup>
             </Card>

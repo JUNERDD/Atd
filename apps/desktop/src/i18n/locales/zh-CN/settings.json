@@ -110,7 +110,14 @@
       "computerApplication": "应用 程序 窗口 原生 application app",
       "computerTyping": "电脑操作 打字机 逐步输入 高亮 动画 command",
       "computerVision": "视觉 模型 画面 监看 共享",
-      "computerCapture": "屏幕访问 屏幕采集 屏幕录制 同意 准备 权限 弹窗 screen capture"
+      "computerCapture": "屏幕访问 屏幕采集 屏幕录制 同意 准备 权限 弹窗 screen capture",
+      "panelBackground": "面板背景 背景 底色 透明度 透明 不透明 半透明 深浅 色调 颜色 玻璃 液态玻璃 模糊 折射 太重 太暗 看不清",
+      "panelTransparency": "透明度 透明 不透明 半透明 实色 通透 背景",
+      "panelTone": "深浅 明暗 亮度 灰度 深色 浅色 底色 背景",
+      "panelTint": "色调 色相 颜色 强调色 蓝 紫 绿 沙 玫瑰 石墨 中性",
+      "liquidGlass": "液态玻璃 玻璃 变体 常规 透明 材质",
+      "panelBlur": "模糊 毛玻璃 磨砂 清晰 背后",
+      "panelRefraction": "折射 透镜 扭曲 弯折 边缘"
     }
   },
   "providers": {
@@ -217,6 +224,77 @@
   "general": {
     "title": "通用",
     "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
+  },
+  "panelBackground": {
+    "title": "面板背景",
+    "description": "任务面板、设置窗口和浮层共用这套背景。默认是实测得出的配方，在任何桌面上都能保持文字清晰。",
+    "back": "返回通用",
+    "summary": {
+      "default": "默认 · 透明度 {{transparency}}%",
+      "transparent": "透明度 {{value}}%",
+      "tone": "深浅 {{hex}}",
+      "clearGlass": "透明玻璃",
+      "glassAdjusted": "玻璃已调整"
+    },
+    "groups": {
+      "background": "背景",
+      "glass": "Liquid Glass"
+    },
+    "scope": {
+      "dark": "透明度和深浅只对深色外观生效；浅色外观另存一套，切换到浅色主题后即可调整。",
+      "light": "透明度和深浅只对浅色外观生效；深色外观另存一套，切换到深色主题后即可调整。"
+    },
+    "transparency": {
+      "title": "背景透明度",
+      "description": "背后桌面透出的程度，越往右越透。代码块随之变化。",
+      "solid": "实色"
+    },
+    "tone": {
+      "title": "背景深浅",
+      "description": "底色的明暗，越往右越浅。"
+    },
+    "tint": {
+      "title": "背景色调",
+      "description": "只改色相，明暗不变。",
+      "options": {
+        "neutral": "中性",
+        "graphite": "石墨",
+        "blue": "蓝",
+        "purple": "紫",
+        "green": "绿",
+        "sand": "沙",
+        "rose": "玫瑰",
+        "accent": "跟随强调色"
+      }
+    },
+    "variant": {
+      "title": "玻璃变体",
+      "description": "常规更易阅读；透明更通透，但底色要更厚。",
+      "options": {
+        "regular": "常规",
+        "clear": "透明"
+      }
+    },
+    "blur": {
+      "title": "模糊强度",
+      "description": "背后桌面的模糊程度，拉满后看不清背后的文字。"
+    },
+    "refractionWidth": {
+      "title": "折射边缘宽度",
+      "description": "边缘折射带的宽度。"
+    },
+    "refractionStrength": {
+      "title": "折射强度",
+      "description": "折射带弯折背后内容的程度；拖到最左即不折射。"
+    },
+    "system": "系统",
+    "multiplier": "×{{value}}",
+    "percent": "{{value}}%",
+    "glassNote": "模糊和折射通过 macOS 私有接口调整系统的 Liquid Glass，macOS 更新后效果可能有所变化。",
+    "restoreDefaults": "恢复默认",
+    "reset": "恢复默认",
+    "resetLabel": "将“{{label}}”恢复为默认",
+    "saveFailed": "无法保存面板背景。"
   },
   "selectionToolbar": {
     "title": "选择文字工具栏",
