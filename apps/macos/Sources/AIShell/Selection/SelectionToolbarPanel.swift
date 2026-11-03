@@ -26,7 +26,7 @@ final class SelectionToolbarPanel: NSObject {
   /// The transparent margin around the capsule.
   static let inset: CGFloat = 24
 
-  private let window = SelectionToolbarPanel.makeWindow()
+  private let window = ToolbarWindow.selectionToolbar()
   private var commands: [SelectionToolbarSettings.Command] = []
   /// The commands behind More, in order.
   private var overflow: [SelectionToolbarSettings.Command] = []
@@ -59,26 +59,6 @@ final class SelectionToolbarPanel: NSObject {
       self?.activeChevron = nil
       self?.options.reset()
     }
-  }
-
-  /// The toolbar's window, and its menu's: a borderless panel that draws nothing of its own,
-  /// stays up while Atd is inactive, and shows on every Space and beside full-screen apps
-  /// without joining the window cycle.
-  static func makeWindow() -> ToolbarWindow {
-    let window = ToolbarWindow(
-      contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
-      defer: true)
-    window.isOpaque = false
-    window.backgroundColor = .clear
-    window.hasShadow = false
-    window.level = .popUpMenu
-    window.hidesOnDeactivate = false
-    window.isReleasedWhenClosed = false
-    window.becomesKeyOnlyIfNeeded = true
-    window.collectionBehavior = [
-      .canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle,
-    ]
-    return window
   }
 
   var isVisible: Bool { window.isVisible }
@@ -310,14 +290,6 @@ final class SelectionToolbarPanel: NSObject {
 enum SelectionToolbarIcons {
   static let ask = "sparkles"
   static let more = "ellipsis"
-}
-
-/// A panel that never takes the keyboard: clicks act on its buttons, keys stay with the app
-/// that has the selection. Its glass keeps the capture toolbar's active edge all the same
-/// (``ActiveGlassPanel``).
-final class ToolbarWindow: ActiveGlassPanel {
-  override var canBecomeKey: Bool { false }
-  override var canBecomeMain: Bool { false }
 }
 
 extension NSRect {
