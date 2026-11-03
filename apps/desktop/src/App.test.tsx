@@ -18,6 +18,11 @@ function draftText(textbox: HTMLElement) {
   return editorDraft(composerView(textbox).state).text;
 }
 
+/** The task a new chat's first message created: the panel picks its id when it sends. */
+function submittedTaskId(api: ReturnType<typeof installBridge>['api']) {
+  return vi.mocked(api.submit).mock.calls[0]?.[0].taskId;
+}
+
 describe('task panel', () => {
   it('starts with the Figma empty state and disallows a whitespace-only task', async () => {
     const user = userEvent.setup();
@@ -159,7 +164,11 @@ describe('task panel', () => {
     await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
     await user.type(screen.getByRole('textbox'), 'Also buy milk{Enter}');
     await waitFor(() =>
-      expect(api.queueMessage).toHaveBeenCalledWith('test-task', 'Also buy milk', 'followUp'),
+      expect(api.queueMessage).toHaveBeenCalledWith(
+        submittedTaskId(api),
+        'Also buy milk',
+        'followUp',
+      ),
     );
     expect(draftText(screen.getByRole('textbox'))).toBe('');
   });
@@ -188,7 +197,9 @@ describe('task panel', () => {
     await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
     await user.type(screen.getByRole('textbox', { name: 'Task prompt' }), 'Ada{Enter}');
     await waitFor(() =>
-      expect(api.answer).toHaveBeenCalledWith('test-task', 'test-run', 'req-1', { answer: 'Ada' }),
+      expect(api.answer).toHaveBeenCalledWith(submittedTaskId(api), 'test-run', 'req-1', {
+        answer: 'Ada',
+      }),
     );
   });
 

@@ -17,6 +17,7 @@ interface ComposerConfigurationProps {
   onOpenSettings: () => void;
   taskId: string | null;
   task: AgentTask | null;
+  unsaved: boolean;
   /** The open task's context usage; the ring beside the model trigger hides without a task. */
   context: TaskContextState | null;
 }
@@ -28,6 +29,7 @@ export function ComposerConfiguration({
   onPolicyChange,
   taskId,
   task,
+  unsaved,
   context,
 }: ComposerConfigurationProps) {
   const { t } = useTranslation('panel');
@@ -36,7 +38,8 @@ export function ComposerConfiguration({
   return (
     <div className="composer-configuration" aria-label={t('configuration.label')}>
       <div className="composer-policy-group">
-        <PermissionTierControl taskId={taskId} task={task} />
+        {/* A chat the service has not created yet starts with the default tier, as a new one. */}
+        <PermissionTierControl taskId={unsaved ? null : taskId} task={task} />
         <MessageEntry taskId={taskId} />
       </div>
       <div className="composer-model-group">

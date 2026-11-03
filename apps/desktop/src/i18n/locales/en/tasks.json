@@ -37,6 +37,9 @@
     "failed": "The task could not finish",
     "unknown": "The outcome could not be established",
     "stopped": "Stopped",
+    "notSent": "Message not sent",
+    "retrySend": "Retry",
+    "discardUnsent": "Discard",
     "scrollToBottom": "Scroll to bottom"
   },
   "activity": {

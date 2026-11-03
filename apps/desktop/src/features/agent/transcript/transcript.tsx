@@ -9,6 +9,7 @@ import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
 import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
 import { useNextStepsOffer, type NextStepsHost } from '../next-steps/use-next-steps-offer';
+import { useOutgoingMessage } from '../outgoing-messages';
 import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import {
@@ -19,6 +20,7 @@ import {
 import { ConversationFind } from './conversation-find';
 import { artifactAnchorIds, indexRequests, sameIds } from './turns';
 import { ScrollJump } from './scroll-jump';
+import { outgoingTurn, pendingTurn } from './pending-turn';
 import { pendingPromptRun } from './run-prompt';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
@@ -97,8 +99,25 @@ export function Transcript({
     viewportRef,
     task.id,
   );
+  // The latest run before its prompt reaches the transcript: it closes the conversation as its
+  // own turn, so the turns above stay settled instead of borrowing its live header and note.
+  const pending = pendingPromptRun(task.runs, blocks);
+  // A follow-up on its way to the service closes the conversation after it.
+  const outgoing = useOutgoingMessage(task.id, task.runs);
+  const headRequest = requests[0];
+  const waiting = headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null;
+  // Both drawn turns show and navigate as messages at once; only the conversation's own turns
+  // load in batches.
+  const listed = useMemo(
+    () => [
+      ...turns,
+      ...(pending ? [pendingTurn(pending, waiting)] : []),
+      ...(outgoing ? [outgoingTurn(outgoing)] : []),
+    ],
+    [turns, pending, waiting, outgoing],
+  );
   const nav = usePromptNav({
-    turns,
+    turns: listed,
     runs: task.runs,
     fallback: t('conversation.yourMessage'),
     viewportRef,
@@ -136,10 +155,6 @@ export function Transcript({
   // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
   const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
   useQuoteReveal(messages, revealLayer);
-  // The latest run before its prompt reaches the transcript: it closes the conversation as its
-  // own turn, so the turns above stay settled instead of borrowing its live header and note.
-  const pending = pendingPromptRun(task.runs, blocks);
-  const headRequest = requests[0];
   const { compact, pending: compacting } = useCompactTask();
   const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
   const offer = useNextStepsOffer(task, live, nextSteps);
@@ -154,7 +169,8 @@ export function Transcript({
     taskId: task.id,
     title: task.title,
     runs: task.runs,
-    busy: live,
+    // A message on its way starts a run, which no edit of an earlier message may race.
+    busy: live || outgoing?.error === null,
     openTask: onOpenTask,
     remember: onRemember,
     runCommand: onCommand,
@@ -200,17 +216,15 @@ export function Transcript({
               <TaskViewsContext value={taskViews}>
                 <TurnList
                   key={task.id}
-                  turns={turns}
+                  turns={listed}
+                  drawnFrom={turns.length}
                   runs={task.runs}
                   artifacts={artifacts}
                   anchors={anchors}
                   requests={requestIndex}
                   live={live}
                   status={<StatusBar run={run} />}
-                  pending={pending}
-                  waiting={
-                    headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null
-                  }
+                  outgoing={outgoing}
                   firstVisible={firstVisible}
                   sentinel={sentinel}
                   loadEarlier={loadEarlier}

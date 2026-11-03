@@ -53,8 +53,9 @@ export interface ComposerProps {
   model: ModelReference | null;
   onOpenSettings: () => void;
   taskId?: string | null;
-  runId?: string | undefined;
   task?: AgentTask | null;
+  /** `taskId` is a new chat the service has not created yet, so it has no task (`task`) yet. */
+  unsaved?: boolean;
   requests?: PermissionRequest[];
   /** Capability consents apps wait on, answered in the HITL view of any conversation. */
   consents?: readonly AppCapabilityConsent[];
@@ -120,6 +121,7 @@ export function Composer({
   onPolicyChange,
   taskId = null,
   task = null,
+  unsaved = false,
   requests = [],
   consents,
   queue = EMPTY_QUEUE,
@@ -333,6 +335,7 @@ export function Composer({
           onPolicyChange={onPolicyChange}
           taskId={taskId}
           task={task}
+          unsaved={unsaved}
           context={context}
         />
       </form>

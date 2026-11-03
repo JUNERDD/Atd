@@ -154,6 +154,7 @@ export function App() {
   // different conversation's view.
   const newChat = useNewChat({
     sending: pending,
+    unsaved: current.unsaved,
     view,
     taskId,
     detail: current.detail,
@@ -188,7 +189,7 @@ export function App() {
                 view={view}
                 taskId={taskId}
                 title={title}
-                task={view === 'task' ? (current.detail?.task ?? null) : null}
+                task={view === 'task' && !current.unsaved ? (current.detail?.task ?? null) : null}
                 context={view === 'task' ? (current.detail?.context ?? null) : null}
                 onNewTask={newTask}
                 onToggleView={toggleView}
