@@ -175,6 +175,12 @@
         "description": "Never ask. Terminal commands and files outside the task folder run unattended."
       }
     },
+    "alwaysConfirm": {
+      "title": "Turn on Always allow?",
+      "description": "Every action will run without asking, including terminal commands and files outside the task folder. Use it only for work you trust.",
+      "cancel": "Cancel",
+      "confirm": "Always allow"
+    },
     "errors": {
       "save": "The permission setting could not be saved."
     },
