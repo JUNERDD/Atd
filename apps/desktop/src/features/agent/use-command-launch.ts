@@ -22,9 +22,9 @@ import { showPanel } from './use-panel-window';
  * shows its task (`openTask`) only when the run needs the person or they open it; a held shortcut
  * first offers a light launch's options in that HUD (`chooseLightRun`). A shell launch that found
  * nothing selected for a command working on the selection (`PreparedCommand.selectionMissing`)
- * leaves the panel hidden too: the HUD's compose card asks for the text, and the launch goes on
- * from its answer (`composeLightRun`). It also acts on the answers of the command runs the panel
- * started (`useCommandResults`).
+ * leaves the panel hidden too: the HUD's compose card asks for the text, after the options card
+ * for a held shortcut, and the launch goes on from its answer (`composeLightRun`). It also acts on
+ * the answers of the command runs the panel started (`useCommandResults`).
  */
 export function useCommandLaunch({
   submit,

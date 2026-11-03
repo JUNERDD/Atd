@@ -3,11 +3,12 @@ import type {
   LightCommandBridge,
   PreparedCommand,
 } from '../../client/agent/bridge';
-import { commandOptions, needsInput } from '../../client/agent/command-arguments';
+import { needsInput } from '../../client/agent/command-arguments';
 import {
   runsAsIs,
   withComposedInput,
   withoutSelectionNotice,
+  withoutSelectionWrite,
 } from '../../client/agent/command-prepare';
 import { startLightRun, supersedeLightRun, type LightHost } from './light-command';
 import { isLightLaunch, type LightLaunch } from './light-command-run';
@@ -17,7 +18,10 @@ import { actOnLightAction, chooseLightRun, dropLightChoice } from './light-comma
 interface Composing {
   key: string;
   launch: PreparedCommand;
-  /** The shell asked to offer the command's options first (its shortcut was held). */
+  /**
+   * The shell asked to offer the command's options first (its shortcut was held), and the island
+   * could not show them: the input step does once the card has the text.
+   */
   choose: boolean;
 }
 
@@ -35,6 +39,20 @@ function hideCard(key: string, light: LightCommandBridge | undefined): void {
 }
 
 /**
+ * `launch` as a light launch keyed by its island, when it is one: a launch that recorded no field
+ * gets the island's key as a target nothing is written to (`writable` false; such a target is
+ * never written to or named), so a write-back still runs without the panel and its answer shows
+ * on the island's answer card (or its review card). Null when the launch does not run light (its
+ * answer goes to the conversation or the clipboard, which take no target).
+ */
+function islandLaunch(launch: PreparedCommand, key: string): LightLaunch | null {
+  const keyed = launch.target
+    ? launch
+    : { ...launch, target: { id: key, app: '', writable: false } };
+  return isLightLaunch(keyed) ? keyed : null;
+}
+
+/**
  * Asks on the island for what a launch found nothing selected for
  * (`PreparedCommand.selectionMissing`): the compose card takes the text that stands in for the
  * selection, and screenshots or files when the command takes files. The card is keyed by the
@@ -42,19 +60,29 @@ function hideCard(key: string, light: LightCommandBridge | undefined): void {
  * hidden and as it was. Like a newer launch, it replaces whatever the island showed: the light run
  * there is cancelled (`supersedeLightRun`) and an options card waits no more. The launch waits for
  * the card's answer (`actOnIslandAction`).
+ *
+ * A held shortcut (`choose`) offers the options first, as it does with a selection: when its
+ * launch runs light and its text and number parameters have values, the options card shows
+ * (`chooseLightRun`) with the answer going in at the cursor, and its Run asks for the text next.
  */
 export function composeLightRun(
   launch: PreparedCommand,
   choose: boolean,
   light: LightCommandBridge,
 ): void {
+  const key = launch.target?.id ?? crypto.randomUUID();
+  const offered = choose ? islandLaunch(withoutSelectionWrite(launch), key) : null;
+  if (offered && !needsInput(offered.command, offered.input.arguments)) {
+    composing = null;
+    return chooseLightRun(offered, light);
+  }
   supersedeLightRun();
   dropLightChoice();
-  const waiting = { key: launch.target?.id ?? crypto.randomUUID(), launch, choose };
+  const waiting = { key, launch, choose };
   composing = waiting;
   const { name, input } = launch.command;
   light
-    .show(waiting.key, { phase: 'compose', command: name, attach: input.files })
+    .show(key, { phase: 'compose', command: name, attach: input.files })
     .catch((error: unknown) => {
       console.error('The compose card did not show:', error);
       if (composing === waiting) composing = null;
@@ -62,29 +90,14 @@ export function composeLightRun(
 }
 
 /**
- * `composed` as a light launch keyed by the card, when it is one: a launch that recorded no field
- * gets the card's key as a target nothing is written to (`writable` false; such a target is
- * never written to or named), so a write-back still runs without the panel and its answer shows
- * on the island's answer card (or its review card). Null when the launch does not run light (its
- * answer goes to the conversation or the clipboard), so a run in the panel never carries the
- * stand-in target.
- */
-function islandLaunch(composed: PreparedCommand, key: string): LightLaunch | null {
-  const launch = composed.target
-    ? composed
-    : { ...composed, target: { id: key, app: '', writable: false } };
-  return isLightLaunch(launch) ? launch : null;
-}
-
-/**
  * The compose card's answer for `waiting`, the island being already gone (a hide for its key is
- * harmless). `cancel` drops the launch. `run` goes on with what was composed: a held shortcut's
- * light launch offers its options first when the card can fill them; one that is ready runs light
- * when it can, else in the panel; one that still needs something (the text it requires, a value)
- * shows its input step with what was composed, as does a held shortcut's launch that does not run
- * light (its options are there). `open` shows the input step with what was composed. A `run` or
- * `open` without what was composed (the shell always sends it) runs nothing and shows the input
- * step. Other actions do not belong to the card and leave it waiting.
+ * harmless). `cancel` drops the launch. `run` goes on with what was composed: a launch that is
+ * ready runs light when it can, else in the panel; one that still needs something (the text it
+ * requires, a value) shows its input step with what was composed, as does a held shortcut's
+ * launch whose options the island could not show (they are there). `open` shows the input step
+ * with what was composed. A `run` or `open` without what was composed (the shell always sends it)
+ * runs nothing and shows the input step. Other actions do not belong to the card and leave it
+ * waiting.
  */
 function answerCompose(
   { key, launch, choose }: Composing,
@@ -96,21 +109,15 @@ function answerCompose(
   const light = bridge();
   if (action === 'cancel') return hideCard(key, light);
   const composed = compose ? withComposedInput(launch, compose) : withoutSelectionNotice(launch);
-  const lightLaunch = light ? islandLaunch(composed, key) : null;
-  if (action === 'run' && compose) {
+  if (action === 'run' && compose && runsAsIs(composed)) {
+    const lightLaunch = light ? islandLaunch(composed, key) : null;
     if (light && lightLaunch) {
-      const { command, input } = lightLaunch;
-      const fillable =
-        commandOptions(command, input.arguments).length > 0 &&
-        !needsInput(command, input.arguments);
-      if (choose && fillable) return chooseLightRun(lightLaunch, light);
-      if (runsAsIs(lightLaunch)) {
-        startLightRun(lightLaunch, light).catch((error: unknown) => {
-          console.error('The light command run failed:', error);
-        });
-        return;
-      }
-    } else if (!choose && runsAsIs(composed)) {
+      startLightRun(lightLaunch, light).catch((error: unknown) => {
+        console.error('The light command run failed:', error);
+      });
+      return;
+    }
+    if (!choose) {
       hideCard(key, light);
       return host.run(composed);
     }
@@ -122,9 +129,10 @@ function answerCompose(
 
 /**
  * A press on the progress HUD: the compose card's answer when the card of that target waits for
- * one, else the options card's or the light run's (`actOnLightAction`).
+ * one, else the options card's or the light run's (`actOnLightAction`), where an options card
+ * shown for a launch with nothing selected hands its launch back here to ask for the text.
  */
 export function actOnIslandAction(action: CommandProgressAction, host: LightHost): void {
   if (composing?.key === action.target) return answerCompose(composing, action, host);
-  actOnLightAction(action, host);
+  actOnLightAction(action, host, (chosen, light) => composeLightRun(chosen, false, light));
 }
