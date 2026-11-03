@@ -17,13 +17,13 @@ import SwiftUI
 /// keeps its own curve whichever change redraws it. Each piece is drawn in a fixed lane, and its
 /// glass, its clip and the content riding inside it all take one animated value, so each frame of
 /// an animation updates only render effects, never a layout or a view body; the clip moves as the
-/// glass does (``View/clippedGlass(in:)``), so the base fill and the content never
+/// glass does (``View/clippedGlass(in:clear:)``), so the base fill and the content never
 /// show outside the glass. Buttons and rows sit plain on the glass with neutral washes,
 /// never glass on glass; a state shows through shape and content alone.
 ///
 /// No piece carries a `glassEffectID`: none is ever inserted or removed, so no glass transition
 /// has anything to match. macOS 15 has no container (``Backport``): each piece stands on its
-/// own material (``View/clippedGlass(in:)``).
+/// own material (``View/clippedGlass(in:clear:)``).
 struct MiniPanelView: View {
   let model: MiniPanelModel
 

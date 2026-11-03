@@ -21,6 +21,7 @@ import { publishFileDrag } from '../lib/file-drag';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
+import { setSystemAppearance } from '../theme/panel-background/system-appearance';
 import { publishDragRegions } from './drag-regions';
 import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
@@ -238,6 +239,7 @@ export async function installNativeHost(
   native.on('window.active', ({ active }) => setWindowActive(active));
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
   native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
+  native.on('appearance.system', setSystemAppearance);
   if (surface === 'panel') {
     native.on('resources.imported', ({ resources, folders, failures }) =>
       publishImportedFiles({ files: resources, folders, failures }),

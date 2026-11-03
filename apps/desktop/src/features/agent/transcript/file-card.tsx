@@ -5,6 +5,7 @@ import { cn } from '@atd/ui/lib/utils';
 import { useColorScheme } from '../../../theme/color-scheme';
 import { CodeBlock, FLUSH_CODE_CLASS, FLUSH_CODE_CSS } from './code-block';
 import { codeCacheKey } from './code-cache-key';
+import { CODE_THEMES } from './code-theme';
 import { excerptPatch, parsePatch } from './pi-diff';
 import { ToolCard } from './tool-card';
 import './tool-code.css';
@@ -83,6 +84,7 @@ export function DiffView({
       className={cn('code-block-file', FLUSH_CODE_CLASS)}
       fileDiff={fileDiff}
       options={{
+        theme: CODE_THEMES,
         themeType,
         diffStyle: 'unified',
         diffIndicators: indicators ? 'classic' : 'none',

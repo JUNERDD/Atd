@@ -105,9 +105,13 @@ extension NSRect {
 /// (``NativeMaterialView``, Liquid Glass on macOS 26) behind a transparent web view, which stays
 /// off the glass's rim (``GlassRimClipView``).
 enum GlassBackground {
-  /// The window's content view.
+  /// The window's content view, for a window of the panel background (the task panel and
+  /// Settings): its glass takes the setting's variant, blur and refraction
+  /// (``GlassSurface/adoptWindow(_:page:)``), its page paints the fill.
   static func make(content: NSView) -> NSView {
-    material(content: content).view
+    let material = material(content: content)
+    GlassSurface.adoptWindow(material, page: content)
+    return material.view
   }
 
   /// The material itself, for an owner that pins its scheme later (``GlassSurface/pin(_:to:)``);

@@ -72,13 +72,17 @@ struct IslandGlyph: View {
 }
 
 /// A neutral wash in the label colour under a hovered or pressed control, with a visible edge
-/// under Increase Contrast.
+/// under Increase Contrast. `level` is the wash over the panel's old 80% fill; it strengthens over
+/// the thinner fill the Panel background setting resolves
+/// (``PanelBackground/wash(_:reduceTransparency:)``), so fields and selections stay visible.
 struct IslandWash<Outline: InsettableShape>: View {
   let level: Double
   let shape: Outline
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   var body: some View {
+    let level = PanelBackground.shared.wash(level, reduceTransparency: reduceTransparency)
     shape
       .fill(Color.primary.opacity(level))
       .overlay {

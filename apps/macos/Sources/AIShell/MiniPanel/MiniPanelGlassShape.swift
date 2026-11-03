@@ -8,7 +8,7 @@ import SwiftUI
 /// width and the corner) and length axis (y, height) can still move on their own springs: the
 /// animation splits the vector (``MiniPanelAxisAnimation``) for the content; the glass, whose
 /// shape `glassEffect(in:)` erases, and the clip, which takes it erased alike
-/// (``View/clippedGlass(in:)``), move as a whole on the length's.
+/// (``View/clippedGlass(in:clear:)``), move as a whole on the length's.
 nonisolated struct MiniPanelGlassRect: VectorArithmetic {
   var x = 0.0
   var y = 0.0

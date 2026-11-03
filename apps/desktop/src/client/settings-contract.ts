@@ -9,6 +9,9 @@ import {
   type ExcludedApp,
   type ModelSelection,
   type NextStepClick,
+  type PanelBackground,
+  type PanelGlassVariant,
+  type PanelTint,
   type SelectionToolbarActivation,
   type SelectionToolbarIconMode,
   type SelectionToolbarKey,
@@ -56,6 +59,9 @@ export type {
   AppLanguage,
   ExcludedApp,
   NextStepClick,
+  PanelBackground,
+  PanelGlassVariant,
+  PanelTint,
   SelectionToolbarActivation,
   SelectionToolbarIconMode,
   SelectionToolbarKey,
@@ -69,12 +75,17 @@ export {
   DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
+  DEFAULT_PANEL_BACKGROUND,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_ICON_MODES,
   SELECTION_TOOLBAR_KEYS,
   SELECTION_TOOLBAR_POSITIONS,
+  PANEL_GLASS_TUNING_RANGE,
+  PANEL_GLASS_VARIANTS,
+  PANEL_TINTS,
+  PANEL_TONE_RANGE,
   VIEW_INITIATIVES,
 } from '@atd/agent-contracts';
 
@@ -135,6 +146,8 @@ export interface SettingsSnapshot {
    * shell's surfaces alike; the service's default until it loads.
    */
   glowEffects: boolean;
+  /** The panel's and floating surfaces' fill and glass; the service's default until it loads. */
+  panelBackground: PanelBackground;
   /** Null reads screens with the task model; a selection uses a separate image model. */
   computerVisionModel: ModelSelection | null;
   shortcuts: ShortcutBindings;
@@ -252,6 +265,8 @@ export interface SettingsBridge {
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
   /** Shows or leaves out the decorative glows and the running-text shimmer everywhere. */
   setGlowEffects: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Replaces the whole panel background setting. */
+  setPanelBackground: (background: PanelBackground) => Promise<SettingsSnapshot>;
   setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;

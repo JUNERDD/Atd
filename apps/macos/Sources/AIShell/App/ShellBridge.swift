@@ -38,6 +38,7 @@ final class ShellBridge {
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
     case .appearanceSet(let post): AppAppearance.shared.apply(post.appearance)
     case .glowEffectsSet(let post): GlowEffects.shared.apply(post.enabled)
+    case .panelBackgroundSet(let post): PanelBackground.shared.apply(post)
     case .typingSet(let post):
       shell?.summoner.writeTargets.animatesTyping = post.animation
       shell?.summoner.writeTargets.typesAnswers = post.typing

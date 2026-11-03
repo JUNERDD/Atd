@@ -8,6 +8,7 @@ import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
 import { ToastHost } from '../../../components/toast';
 import { useAppLanguage } from '../../../i18n/use-app-language';
 import { useGlowEffects } from '../../../theme/glow-effects';
+import { usePanelSurfaces } from '../../../theme/panel-background/apply';
 import { useSettingsSnapshot } from '../../settings/use-settings';
 import { useAgent, useTaskDetail } from '../use-agent';
 import { viewPhase, viewStatus, viewTitle } from './view-call';
@@ -57,6 +58,7 @@ export function ViewWindow() {
   const { snapshot: settings } = useSettingsSnapshot();
   useAppLanguage(settings?.language);
   useGlowEffects(settings?.glowEffects);
+  usePanelSurfaces(settings?.panelBackground);
   const callId = target?.callId ?? null;
   const { detail } = useTaskDetail(target?.taskId ?? null);
   const gone = useTaskGone(target?.taskId ?? null);

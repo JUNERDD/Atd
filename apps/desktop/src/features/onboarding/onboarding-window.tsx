@@ -8,6 +8,7 @@ import { Card } from '@atd/ui/components/card';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
+import { usePanelSurfaces } from '../../theme/panel-background/apply';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { queryClient } from '../../lib/query-client';
 import '../settings/settings.css';
@@ -45,6 +46,7 @@ export function OnboardingWindow() {
   const { t } = useTranslation('onboarding');
   const { snapshot } = useSettingsSnapshot();
   useAppLanguage(snapshot?.language);
+  usePanelSurfaces(snapshot?.panelBackground);
   const bridge = window.desktop?.onboarding;
   const progress = useQuery(
     {

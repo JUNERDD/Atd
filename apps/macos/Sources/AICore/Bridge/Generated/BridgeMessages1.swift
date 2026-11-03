@@ -174,6 +174,7 @@ public enum NativePost: Equatable, Sendable {
   case languageSet(LanguageSetPost)
   case appearanceSet(AppearanceSetPost)
   case glowEffectsSet(GlowEffectsSetPost)
+  case panelBackgroundSet(PanelBackgroundSetPost)
   case typingSet(TypingSetPost)
   case windowDragRegions(WindowDragRegionsPost)
   case onboardingSurface(OnboardingSurfacePost)
@@ -193,6 +194,7 @@ public enum NativePost: Equatable, Sendable {
     case .languageSet: "language.set"
     case .appearanceSet: "appearance.set"
     case .glowEffectsSet: "glowEffects.set"
+    case .panelBackgroundSet: "panelBackground.set"
     case .typingSet: "typing.set"
     case .windowDragRegions: "window.dragRegions"
     case .onboardingSurface: "onboarding.surface"

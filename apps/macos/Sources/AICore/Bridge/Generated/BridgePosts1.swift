@@ -76,6 +76,118 @@ public struct GlowEffectsSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `panelBackground.set` post.
+public struct PanelBackgroundSetPost: Codable, Equatable, Sendable {
+  public let dark: Dark
+  public let light: Light
+  public let glass: Glass
+  public let blur: Double
+  public let refractionWidth: Double
+  public let refractionStrength: Double
+
+  public init(
+    dark: Dark, light: Light, glass: Glass, blur: Double, refractionWidth: Double,
+    refractionStrength: Double
+  ) {
+    self.dark = dark
+    self.light = light
+    self.glass = glass
+    self.blur = blur
+    self.refractionWidth = refractionWidth
+    self.refractionStrength = refractionStrength
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    dark = try container.value(.dark, Dark.self)
+    light = try container.value(.light, Light.self)
+    glass = try container.value(.glass, Glass.self)
+    blur = try container.number(.blur, minimum: 0.5, maximum: 2)
+    refractionWidth = try container.number(.refractionWidth, minimum: 0, maximum: 2)
+    refractionStrength = try container.number(.refractionStrength, minimum: 0, maximum: 2)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case dark
+    case light
+    case glass
+    case blur
+    case refractionWidth
+    case refractionStrength
+  }
+
+  public struct Dark: Codable, Equatable, Sendable {
+    public let red: Int
+    public let green: Int
+    public let blue: Int
+    public let alpha: Double
+    public let washScale: Double
+
+    public init(red: Int, green: Int, blue: Int, alpha: Double, washScale: Double) {
+      self.red = red
+      self.green = green
+      self.blue = blue
+      self.alpha = alpha
+      self.washScale = washScale
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      red = try container.integer(.red, minimum: 0, maximum: 255)
+      green = try container.integer(.green, minimum: 0, maximum: 255)
+      blue = try container.integer(.blue, minimum: 0, maximum: 255)
+      alpha = try container.number(.alpha, minimum: 0, maximum: 1)
+      washScale = try container.number(.washScale, minimum: 1, maximum: 4)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case red
+      case green
+      case blue
+      case alpha
+      case washScale
+    }
+  }
+
+  public struct Light: Codable, Equatable, Sendable {
+    public let red: Int
+    public let green: Int
+    public let blue: Int
+    public let alpha: Double
+    public let washScale: Double
+
+    public init(red: Int, green: Int, blue: Int, alpha: Double, washScale: Double) {
+      self.red = red
+      self.green = green
+      self.blue = blue
+      self.alpha = alpha
+      self.washScale = washScale
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      red = try container.integer(.red, minimum: 0, maximum: 255)
+      green = try container.integer(.green, minimum: 0, maximum: 255)
+      blue = try container.integer(.blue, minimum: 0, maximum: 255)
+      alpha = try container.number(.alpha, minimum: 0, maximum: 1)
+      washScale = try container.number(.washScale, minimum: 1, maximum: 4)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case red
+      case green
+      case blue
+      case alpha
+      case washScale
+    }
+  }
+
+  public enum Glass: String, Codable, Equatable, Sendable {
+    case regular
+    case clear
+  }
+}
+
 /// Params of the `typing.set` post.
 public struct TypingSetPost: Codable, Equatable, Sendable {
   public let typing: Bool
@@ -134,125 +246,6 @@ public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
       y = try container.number(.y)
       width = try container.number(.width)
       height = try container.number(.height)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
-  }
-}
-
-/// Params of the `onboarding.surface` post.
-public struct OnboardingSurfacePost: Codable, Equatable, Sendable {
-  public let rect: Rect?
-  public let radius: Double
-  public let fade: Double
-
-  public init(rect: Rect?, radius: Double, fade: Double) {
-    self.rect = rect
-    self.radius = radius
-    self.fade = fade
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
-    radius = try container.number(.radius, minimum: 0)
-    fade = try container.number(.fade, minimum: 0)
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(rect, forKey: .rect)
-    try container.encode(radius, forKey: .radius)
-    try container.encode(fade, forKey: .fade)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rect
-    case radius
-    case fade
-  }
-
-  public struct Rect: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x, minimum: 0)
-      y = try container.number(.y, minimum: 0)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
-  }
-}
-
-/// Params of the `onboarding.selection` post.
-public struct OnboardingSelectionPost: Codable, Equatable, Sendable {
-  public let rect: Rect?
-  public let text: String
-
-  public init(rect: Rect?, text: String) {
-    self.rect = rect
-    self.text = text
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
-    text = try container.string(.text, maxLength: 2_000)
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(rect, forKey: .rect)
-    try container.encode(text, forKey: .text)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rect
-    case text
-  }
-
-  public struct Rect: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x, minimum: 0)
-      y = try container.number(.y, minimum: 0)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {

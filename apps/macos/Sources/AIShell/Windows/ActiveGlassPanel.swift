@@ -12,6 +12,16 @@ import AppKit
 /// `NSGlassEffectView` has no `state` like `NSVisualEffectView`'s. Overriding `isKeyWindow`
 /// does not reach the glass. An AppKit that stops asking simply never calls this, and the glass
 /// falls back to its inactive look.
+///
+/// Every such panel is one of the floating glass surfaces, so its whole content takes the panel
+/// background's blur and refraction (``GlassTuner``); none holds a page whose glass would have to
+/// stay the system's.
 class ActiveGlassPanel: NSPanel {
   @objc func _hasActiveAppearance() -> Bool { true }
+
+  override var contentView: NSView? {
+    didSet {
+      if let contentView { GlassTuner.shared.track(contentView) }
+    }
+  }
 }
