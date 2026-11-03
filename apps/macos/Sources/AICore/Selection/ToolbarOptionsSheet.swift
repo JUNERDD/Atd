@@ -80,11 +80,16 @@ public struct ToolbarOptionsSheet: Equatable, Sendable {
   }
 }
 
-/// When a menu row's submenu opens and closes under a resting or moving pointer, polled on every
-/// display frame (the toolbar's hover): a row with a submenu opens it after ``openDelay`` of
-/// rest; once one is open, moving onto another row closes it (or swaps in that row's submenu)
-/// only after ``closeDelay``, so a pointer crossing other rows on its way into the submenu does
-/// not lose it. Being in the submenu, or away from the menu altogether, keeps it as it is.
+/// When a menu row's submenu opens and closes under a moving pointer, polled on every display
+/// frame (the toolbar's hover). As in native menus, the submenu follows the row under the pointer
+/// at once: a row with a submenu opens it, and once one is open another row swaps in its own (or,
+/// without one, closes it). Only the pointer's way into the open submenu holds it: while each
+/// step heads there, the rows it crosses wait, and after its last such step they wait
+/// ``holdDelay`` more, so a pause on the way in does not lose it either; a step elsewhere ends
+/// the hold. Being in the submenu, or away from the menu altogether, keeps it as it is.
+///
+/// A step heads into the submenu (as menu aim judges it) when, carried on to the submenu's edge
+/// facing it, it meets that edge within the submenu's height, give or take ``aimSlack``.
 public struct ToolbarOptionsSubmenuIntent: Equatable, Sendable {
   /// Where the pointer is, for this menu.
   public enum Pointer: Equatable, Sendable {
@@ -103,32 +108,37 @@ public struct ToolbarOptionsSubmenuIntent: Equatable, Sendable {
     case close
   }
 
-  public static let openDelay = 0.09
-  public static let closeDelay = 0.18
+  /// How long after its last step into the open submenu a pointer resting on another row keeps it.
+  public static let holdDelay = 0.18
+  /// How far the pointer moves, in points, before its path counts as a step.
+  public static let aimStep = 2.0
+  /// How far past the submenu's top and bottom a step may meet its edge and still head into it,
+  /// in points: a hand's path toward it wobbles.
+  public static let aimSlack = 16.0
 
   /// The row whose submenu is open.
   public private(set) var openRow: Int?
-  /// The row the pointer rests on that would change the submenu, and since when.
-  private var pending: Pending?
-
-  private struct Pending: Equatable, Sendable {
-    let row: Int
-    let since: Double
-  }
+  /// When the pointer last stepped into the open submenu, while no step elsewhere has followed.
+  private var heading: Double?
+  /// Where the pointer's last step ended, on screen.
+  private var trail: CGPoint?
 
   public init() {}
 
-  /// The pointer is at `pointer` at `now` (seconds, any monotonic clock): the change to make,
-  /// if any.
-  public mutating func update(_ pointer: Pointer, at now: Double) -> Change? {
-    guard case .row(let row, let opens) = pointer, row != openRow else {
-      pending = nil
-      return nil
+  /// The pointer is at `pointer` at `now` (seconds, any monotonic clock), at `location` on
+  /// screen, with the open submenu's frame `submenu` (nil while none is open): the change to
+  /// make, if any.
+  public mutating func update(
+    _ pointer: Pointer, at now: Double, location: CGPoint, submenu: CGRect?
+  ) -> Change? {
+    switch step(to: location, toward: submenu) {
+    case true?: heading = now
+    case false?: heading = nil
+    case nil: break
     }
-    if pending?.row != row { pending = Pending(row: row, since: now) }
-    let delay = openRow == nil ? Self.openDelay : Self.closeDelay
-    guard let pending, now - pending.since >= delay else { return nil }
-    self.pending = nil
+    guard case .row(let row, let opens) = pointer, row != openRow else { return nil }
+    if openRow != nil, let heading, now - heading < Self.holdDelay { return nil }
+    heading = nil
     if opens {
       openRow = row
       return .open(row)
@@ -141,12 +151,42 @@ public struct ToolbarOptionsSubmenuIntent: Equatable, Sendable {
   /// A click opened row `row`'s submenu at once.
   public mutating func opened(_ row: Int) {
     openRow = row
-    pending = nil
+    heading = nil
   }
 
   /// The submenu closed by other means (a value was picked in it).
   public mutating func closed() {
     openRow = nil
-    pending = nil
+    heading = nil
+  }
+
+  /// Whether the pointer, now at `location`, took a step into `submenu` (true) or elsewhere
+  /// (false); nil when it took none. Movements shorter than ``aimStep`` add up until they make
+  /// one, so a pointer at rest takes none.
+  private mutating func step(to location: CGPoint, toward submenu: CGRect?) -> Bool? {
+    guard let start = trail else {
+      trail = location
+      return nil
+    }
+    guard hypot(location.x - start.x, location.y - start.y) >= Self.aimStep else { return nil }
+    trail = location
+    return submenu.map { Self.heads(from: start, to: location, into: $0) } ?? false
+  }
+
+  /// Whether the step from `start` to `end`, carried on, meets the edge of `submenu` that faces
+  /// it within the submenu's height and ``aimSlack``.
+  static func heads(from start: CGPoint, to end: CGPoint, into submenu: CGRect) -> Bool {
+    let edge: CGFloat
+    if end.x <= submenu.minX {
+      edge = submenu.minX
+    } else if end.x >= submenu.maxX {
+      edge = submenu.maxX
+    } else {
+      return false
+    }
+    let dx = end.x - start.x
+    guard dx != 0, (edge - end.x) / dx >= 0 else { return false }
+    let y = end.y + (edge - end.x) * (end.y - start.y) / dx
+    return y >= submenu.minY - Self.aimSlack && y <= submenu.maxY + Self.aimSlack
   }
 }

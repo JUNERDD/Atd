@@ -21,10 +21,11 @@ struct ToolbarMenuItem {
 /// so rows show new values in place while every panel stays where it is.
 ///
 /// Submenus follow the pointer through the toolbar's hover frames (``pointerAt(_:)``), timed by
-/// ``ToolbarOptionsSubmenuIntent`` per panel: resting on a row with a submenu opens it, moving to
-/// another row closes it after a grace period unless the pointer reaches the submenu; a click on
-/// such a row opens it at once. A row whose submenu is open keeps its wash. The cascade is mouse
-/// only and closes as a whole: whatever hides the toolbar or closes its menu closes every panel.
+/// ``ToolbarOptionsSubmenuIntent`` per panel: the submenu follows the row under the pointer at
+/// once, opening, swapping or closing, except while the pointer is on its way into the open
+/// submenu; a click on a row with a submenu opens it too. A row whose submenu is open keeps its
+/// wash. The cascade is mouse only and closes as a whole: whatever hides the toolbar or closes its
+/// menu closes every panel.
 final class ToolbarOptionsCascade: NSObject {
   /// The cascade closed entirely, by any path.
   var onClose: (() -> Void)?
@@ -129,7 +130,8 @@ final class ToolbarOptionsCascade: NSObject {
       } else {
         pointer = .away
       }
-      switch level.intent.update(pointer, at: now) {
+      let submenu = levels.indices.contains(index + 1) ? levels[index + 1].menu.surface : nil
+      switch level.intent.update(pointer, at: now, location: point, submenu: submenu) {
       case .open(let row): return openSubmenu(of: index, row: row)
       case .close: return truncate(to: index + 1)
       case nil: continue
