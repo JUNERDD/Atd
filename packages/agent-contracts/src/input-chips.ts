@@ -3,7 +3,7 @@ import { ApplicationReferenceSchema } from './application-reference.js';
 import { Identifier } from './identifiers.js';
 import { McpServerIdSchema } from './mcp.js';
 import { MemoryTargetSchema } from './memory.js';
-import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
+import { MAX_QUOTE_CHARS, quoteLabel, QuoteSourceSchema } from './quotes.js';
 import { SkillName } from './skills.js';
 import { SubagentNameSchema } from './subagents.js';
 
@@ -91,3 +91,54 @@ export const InputChipRangeSchema = Type.Object(
   { additionalProperties: false },
 );
 export type InputChipRange = Static<typeof InputChipRangeSchema>;
+
+/** The name a chip shows in the composer and the transcript. */
+function inputChipName(chip: InputChip): string {
+  switch (chip.kind) {
+    case 'file':
+    case 'folder':
+    case 'agent':
+    case 'skill':
+    case 'command':
+    case 'application':
+      return chip.name;
+    case 'task':
+    case 'memory':
+      return chip.title;
+    case 'mcpServer':
+      return chip.serverId;
+    case 'quote':
+      return quoteLabel(chip.text);
+  }
+}
+
+/** Submitted text as the user reads it, on one line: every chip's token spelled by its name. */
+export function readableInputText({
+  text,
+  chips,
+}: {
+  text: string;
+  chips?: readonly InputChipRange[] | undefined;
+}): string {
+  if (!chips?.length) return text;
+  let spelled = '';
+  let at = 0;
+  for (const { from, to, chip } of chips) {
+    spelled += text.slice(at, from) + inputChipName(chip);
+    at = to;
+  }
+  return (spelled + text.slice(at)).replace(/\s+/g, ' ');
+}
+
+/**
+ * The title a task starts with, from its first run's input and hidden instructions: its text
+ * (so `/skill:x explain` reads `x explain`), else its instructions, else a generic name. The
+ * service names new tasks with it, and the panel names a conversation it opened before the
+ * service created the task, so the title holds when it does.
+ */
+export function newTaskTitle(
+  input: Parameters<typeof readableInputText>[0],
+  instructions: string,
+): string {
+  return readableInputText(input).trim().slice(0, 120) || instructions.slice(0, 120) || 'New task';
+}

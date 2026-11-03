@@ -1,10 +1,4 @@
-import {
-  quoteLabel,
-  type InputChip,
-  type InputChipRange,
-  type RunSnapshot,
-  type TaskInput,
-} from '@atd/agent-contracts';
+import type { TaskInput } from '@atd/agent-contracts';
 
 /**
  * Chip ranges must lie inside `text`, ascending and without overlap, or clients could not draw the
@@ -20,52 +14,4 @@ export function checkChipRanges(input: TaskInput): void {
       );
     end = to;
   });
-}
-
-/** The name a chip shows in the composer and the transcript. */
-function chipName(chip: InputChip): string {
-  switch (chip.kind) {
-    case 'file':
-    case 'folder':
-    case 'agent':
-    case 'skill':
-    case 'command':
-    case 'application':
-      return chip.name;
-    case 'task':
-    case 'memory':
-      return chip.title;
-    case 'mcpServer':
-      return chip.serverId;
-    case 'quote':
-      return quoteLabel(chip.text);
-  }
-}
-
-/** `text` as the user reads it: every chip's token replaced with the chip's name. */
-function spellChips(text: string, chips: readonly InputChipRange[]): string {
-  let spelled = '';
-  let at = 0;
-  for (const { from, to, chip } of chips) {
-    spelled += text.slice(at, from) + chipName(chip);
-    at = to;
-  }
-  return spelled + text.slice(at);
-}
-
-/**
- * A new task's title: its text (with chips, spelled by name on one line, so
- * `/skill:x explain` reads `x explain`), else its instruction, else a generic name.
- */
-export function taskTitle(snapshot: RunSnapshot): string {
-  return (
-    readableInputText(snapshot.input).trim().slice(0, 120) ||
-    snapshot.instructions.slice(0, 120) ||
-    'New task'
-  );
-}
-
-/** Initial user text for naming a task, with composer chips expressed by their visible names. */
-export function readableInputText({ text, chips }: TaskInput): string {
-  return chips?.length ? spellChips(text, chips).replace(/\s+/g, ' ') : text;
 }

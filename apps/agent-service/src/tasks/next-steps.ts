@@ -1,6 +1,7 @@
 import { Compile } from 'typebox/compile';
 import {
   errorMessage,
+  readableInputText,
   RunStatusDataSchema,
   type AgentTask,
   type MessageUsage,
@@ -16,7 +17,6 @@ import type { EventLog } from '../event-log.js';
 import type { Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
 import type { ServicePaths } from '../storage.js';
-import { readableInputText } from './input-chips.js';
 import { UsedRequestError } from './next-steps-parse.js';
 import type { NextStepMaterial } from './next-steps-model.js';
 
