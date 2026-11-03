@@ -3,6 +3,7 @@ import { PermissionTierSchema } from './confirms.js';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
 import { NextStepClickSchema } from './next-steps.js';
+import { PanelBackgroundSchema } from './panel-background.js';
 import { ModelSelectionSchema } from './task.js';
 import { ViewInitiativeSchema } from './views.js';
 
@@ -193,6 +194,8 @@ export const UserSettingsSchema = Type.Object(
      * HUD's and mini panel's working light) and shimmers running text (`DEFAULT_GLOW_EFFECTS`).
      */
     glowEffects: Type.Boolean(),
+    /** The panel's and floating surfaces' fill and glass (`DEFAULT_PANEL_BACKGROUND`). */
+    panelBackground: PanelBackgroundSchema,
     /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
     summaryTitles: Type.Boolean(),
     /** Null follows the current task model; a selection is only for read-only screen analysis. */
@@ -249,6 +252,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
     glowEffects: Type.Optional(Type.Boolean()),
+    panelBackground: Type.Optional(PanelBackgroundSchema),
     summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
     permissionTier: Type.Optional(PermissionTierSchema),

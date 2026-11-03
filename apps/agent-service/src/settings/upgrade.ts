@@ -3,6 +3,7 @@ import {
   DEFAULT_GLOW_EFFECTS,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
+  DEFAULT_PANEL_BACKGROUND,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -15,17 +16,30 @@ import {
  * stores every field.
  */
 export function upgradeSettingsFile(raw: unknown): unknown {
-  return withAddedTaskPreferences(
-    withAddedVisionModel(
-      withAddedAppearance(
-        withAddedCommandTypingAnimation(
-          withAddedCommandTyping(
-            withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+  return withAddedPanelBackground(
+    withAddedTaskPreferences(
+      withAddedVisionModel(
+        withAddedAppearance(
+          withAddedCommandTypingAnimation(
+            withAddedCommandTyping(
+              withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+            ),
           ),
         ),
       ),
     ),
   );
+}
+
+/** A file written before the panel background setting existed takes the measured recipe. */
+function withAddedPanelBackground(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return {
+    ...file,
+    settings: { panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND), ...settings },
+  };
 }
 
 /**
