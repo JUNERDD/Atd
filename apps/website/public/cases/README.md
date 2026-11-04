@@ -7,8 +7,8 @@ clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../sr
 
 `clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
 and `zh`. They are a reviewed snapshot of renders from the films repository
-([atd-films](https://github.com/JUNERDD/atd-films), source commit `f8df512` from
-[PR #4](https://github.com/JUNERDD/atd-films/pull/4)), made with the same Remotion stack and
+([atd-films](https://github.com/JUNERDD/atd-films), source commit `4b5b27e` from
+[PR #5](https://github.com/JUNERDD/atd-films/pull/5)), made with the same Remotion stack and
 product kit as the tour films; ordinary website work does not render them.
 `src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings film,
 `src/films/case-settings/`), the hold on its last frame, a camera of its own where the film's shot
@@ -17,9 +17,9 @@ from the render's `lang` input.
 
 Each clip holds one framing for the whole case: it starts once the film's camera has landed, ends
 before the film moves on, and keeps every window it shows whole, so no frame cuts through an
-interface or whips between shots. The panel clips frame the notes window and the panel together,
-or the panel alone; the Mini Panel clip stays on the screen's edge. The result rests on screen
-before the clip fades out.
+interface or whips between shots. The panel clips frame the notes window and the panel together;
+the main panel's opens wider, so the ⌘⇧Space keys stand over the wallpaper. The Mini Panel clip
+stays on the screen's edge. The result rests on screen before the clip fades out.
 
 | Clip                | Source                                                                  |
 | ------------------- | ----------------------------------------------------------------------- |
