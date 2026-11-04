@@ -283,13 +283,14 @@
   gap: 8px;
 }
 /* The frame (a ScrollArea root) owns shape, fill and the height cap; the viewport inherits the cap
-   so a long message scrolls inside the rounded fill. The cap ends mid-line on purpose, so the cut
-   reads as more content even before the scrollbar appears. */
+   so a long message scrolls inside the rounded fill. The fill is the panel's raised wash, which
+   lets the panel show through. The cap ends mid-line on purpose, so the cut reads as more content
+   even before the scrollbar appears. */
 .message-bubble-frame {
   max-width: min(304px, 90%);
   max-height: 300px;
   border-radius: 20px;
-  background: var(--muted);
+  background: var(--ata-surface-raised-wash);
 }
 .message-bubble-viewport {
   max-height: inherit;
@@ -374,12 +375,17 @@
 .code-block diffs-container:not(.code-block-flush) {
   --diffs-light-bg: var(--ata-code-surface);
   --diffs-dark-bg: var(--ata-code-surface);
+  /* Pierre mixes its line numbers from the text and that background, which fades them on the
+     translucent well; the documented override gives them the well's own color instead. */
+  --diffs-fg-number-override: var(--ata-code-line-number);
 }
 /*
  * The hover actions (download, copy) stand on a scrim of the code surface that fades in from the
- * left, so a line running under them fades out instead of crossing the icons. The scrim shows
- * while an action does: on hover or focus, or while one shows its feedback (`data-feedback`).
- * Only the buttons take the pointer, so the code under the fade stays selectable.
+ * left, so a line running under them recedes instead of crossing the icons at full strength; the
+ * scrim is as translucent as the well, so it dims such a line rather than hiding it. The scrim
+ * shows while an action does: on hover or focus, or while one shows its feedback
+ * (`data-feedback`). Only the buttons take the pointer, so the code under the fade stays
+ * selectable.
  */
 .code-block-actions {
   position: absolute;
@@ -463,6 +469,11 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+/* The header row takes the panel's raised wash in place of Streamdown's `bg-muted/80` (a utility
+   in a cascade layer, which this unlayered rule outranks). */
+.markdown [data-streamdown='table-header'] {
+  background-color: var(--ata-surface-raised-wash);
 }
 /* A mermaid diagram: Streamdown's block, with the transcript's copy action in its header row. The
    frame takes the block's place in the message flow, so the block drops its own margin. */
@@ -1147,7 +1158,7 @@
   background: none;
   cursor: pointer;
 }
-/* An attached file (`attachment-file.tsx`): an opaque card in the message's content layer with the
+/* An attached file (`attachment-file.tsx`): a card in the message's content layer with the
    bubble's fill and no border, so it reads as part of the sent message; the tile and the two text
    lines are both 36px, so the card is 52px with its 8px inset. It hugs its name up to the
    bubble's width cap. Hover answers only a fine pointer; a press lands at once and eases back on
@@ -1155,18 +1166,18 @@
 .user-context-file {
   width: auto;
   max-width: min(304px, 100%);
-  background-color: var(--muted);
+  background-color: var(--ata-surface-raised-wash);
   text-align: start;
   cursor: pointer;
   transition: background-color 200ms ease-out;
 }
 @media (hover: hover) and (pointer: fine) {
   .user-context-file:hover {
-    background-color: color-mix(in oklab, var(--foreground) 6%, var(--muted));
+    background-color: color-mix(in oklab, var(--foreground) 6%, var(--ata-surface-raised-wash));
   }
 }
 .user-context-file:active {
-  background-color: color-mix(in oklab, var(--foreground) 10%, var(--muted));
+  background-color: color-mix(in oklab, var(--foreground) 10%, var(--ata-surface-raised-wash));
   transition-duration: 0s;
 }
 /* The kind tile, concentric with the card: the card's 18px radius less its 8px inset. It centres

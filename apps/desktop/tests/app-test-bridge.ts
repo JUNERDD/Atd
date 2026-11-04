@@ -1,7 +1,11 @@
 import { vi } from 'vitest';
-import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
+import { DEFAULT_PANEL_BACKGROUND, DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { FolderBridge } from '../src/client/contract';
-import type { SettingsItemLink, SettingsSnapshot } from '../src/client/settings-contract';
+import {
+  DEFAULT_SELECTION_TOOLBAR,
+  type SettingsItemLink,
+  type SettingsSnapshot,
+} from '../src/client/settings-contract';
 import type {
   AgentBridge,
   AgentEvent,
@@ -64,6 +68,7 @@ export function installBridge(extras?: {
     language: 'en',
     appearance: null,
     glowEffects: true,
+    panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND),
     computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
@@ -74,13 +79,7 @@ export function installBridge(extras?: {
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
-    selectionToolbar: {
-      enabled: true,
-      excludedApps: [],
-      activation: 'hold',
-      activationKeys: ['option'],
-      showHud: true,
-    },
+    selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
     commandTyping: true,
     commandTypingAnimation: true,
     viewInitiative: 'proactive',
@@ -116,8 +115,9 @@ export function installBridge(extras?: {
     }),
     submit: vi.fn(async (request) => {
       const now = new Date().toISOString();
+      // The service creates a new task under the id the panel picked, as it does in the app.
       const task = {
-        id: 'test-task',
+        id: request.taskId ?? 'test-task',
         title: request.input.text || 'Attached context',
         createdAt: now,
         updatedAt: now,
@@ -307,6 +307,7 @@ export function installBridge(extras?: {
         writeSettings({ appearance }),
       ),
       setGlowEffects: vi.fn(async (glowEffects) => writeSettings({ glowEffects })),
+      setPanelBackground: vi.fn(async (panelBackground) => writeSettings({ panelBackground })),
       saveShortcuts: vi.fn(async () => settings),
       setComputerVisionModel: vi.fn(async (computerVisionModel) =>
         writeSettings({ computerVisionModel }),

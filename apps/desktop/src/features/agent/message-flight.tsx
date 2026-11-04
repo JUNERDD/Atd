@@ -3,10 +3,10 @@ import { useReducedMotion } from 'motion/react';
 import type { ComposerContent } from '../../components/composer-content';
 import { canAnimate } from '../../lib/spring-timing';
 
-/** A new chat's sent message: on its way, landed in the conversation it opened, or refused. */
+/** A new chat's sent message: on its way, or landing in the conversation it opened. */
 export interface Flight {
   content: ComposerContent;
-  outcome: 'sending' | 'opened' | 'refused';
+  outcome: 'sending' | 'opened';
 }
 
 /** The draft begins dissolving as soon as Send is pressed, independently of the response. */
@@ -32,16 +32,34 @@ function run(
 }
 
 /**
+ * Keeps the copy within the composer's glass as the glass takes the pill's shape under it
+ * (`useComposerDispatch`): the glass's top edge clips the copy's rows as it comes down, so no row
+ * shows above the glass while it fades. The glass's spring belongs to the composer, so the clip
+ * follows the edge as drawn, each frame, until the copy goes.
+ */
+function keepInGlass(copy: HTMLElement, root: HTMLElement | null): (() => void) | undefined {
+  const surface = root?.querySelector('.composer-surface');
+  if (!surface || !canAnimate(copy)) return;
+  let frame = 0;
+  const follow = () => {
+    const edge = surface.getBoundingClientRect().top - copy.getBoundingClientRect().top;
+    copy.style.clipPath = edge > 0 ? `inset(${edge}px 0 0 0)` : '';
+    frame = requestAnimationFrame(follow);
+  };
+  follow();
+  return () => cancelAnimationFrame(frame);
+}
+
+/**
  * A new chat's sent message on its way from the composer to its turn (`useNewChat`): a still copy
  * of the draft, taken where it showed, over the panel body (`root`) and above the composer, which
  * hides its own text under it in the same commit.
  *
- * It fades in place as soon as the send starts, before the surface can shrink. The unchanged live
- * draft stays hidden until acceptance or refusal. Once the conversation mounts, the welcome and
- * conversation dissolve together, with the bubble already at its final size and position. A
- * replacement page joins the same fade. A refused send drops the copy immediately as the composer
- * shows its unchanged draft again. `onSourceHidden`
- * releases the composer after the draft fades; `onDone` ends the handoff once the page has appeared.
+ * It fades in place as soon as the send starts, while the composer keeps its own text hidden and,
+ * once the send opens its conversation, the glass shrinks under it (`keepInGlass`). Once the
+ * conversation mounts, which a message's send does at once, the welcome and conversation dissolve
+ * together, with the bubble already at its final size and position. A replacement page joins the same fade. `onSourceHidden` releases the composer after
+ * the draft fades; `onDone` ends the handoff once the page has appeared.
  */
 export function MessageFlight({
   flight,
@@ -59,6 +77,7 @@ export function MessageFlight({
   const source = useRef<Animation | null>(null);
   const { content, outcome } = flight;
   const sourceHidden = useEffectEvent(onSourceHidden);
+  const clip = useEffectEvent((element: HTMLDivElement) => keepInGlass(element, root));
   const fadeSource = useEffectEvent((element: HTMLDivElement) => {
     if (!canAnimate(element)) {
       sourceHidden();
@@ -96,17 +115,18 @@ export function MessageFlight({
     element.scrollTop = content.scrollTop;
     const scroller = content.node.querySelector('.cm-scroller');
     if (scroller) scroller.scrollLeft = content.scrollLeft;
-    return fadeSource(element);
+    const stopFade = fadeSource(element);
+    const stopClip = clip(element);
+    return () => {
+      stopFade?.();
+      stopClip?.();
+    };
   }, [content]);
 
   // What happens once the send has an outcome, read with the latest props: the effect below runs
   // it once per outcome, and its cleanup stops whatever it started.
   const settle = useEffectEvent((copy: HTMLDivElement): (() => void) | undefined => {
     if (!root || !canAnimate(copy)) {
-      onDone();
-      return;
-    }
-    if (outcome === 'refused') {
       onDone();
       return;
     }

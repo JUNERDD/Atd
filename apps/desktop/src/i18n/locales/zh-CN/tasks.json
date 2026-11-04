@@ -37,6 +37,9 @@
     "failed": "任务未能完成",
     "unknown": "结果未知",
     "stopped": "已停止",
+    "notSent": "消息未发送",
+    "retrySend": "重试",
+    "discardUnsent": "舍弃",
     "scrollToBottom": "滚动到底部"
   },
   "activity": {

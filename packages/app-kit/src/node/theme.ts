@@ -59,7 +59,11 @@ const APPEARANCES = {
   light: { selector: ':root', page: opaque(parseHex('#ffffff')) },
   dark: { selector: '.dark', page: opaque(parseHex('#171a1f')) },
 } as const;
-/** The panel fill over glass that shows `desktop` (`--ata-surface-panel` in `@atd/ui`). */
+/**
+ * The fill over glass that shows `desktop`: a glass app's `--ata-surface-panel`, which
+ * `GLASS_RULES` keeps at #181818 and 80% rather than the task panel's lighter, user-adjustable
+ * fill, so this model stays the page the accent is fitted to.
+ */
 const panelOver = (desktop: string) => quantize(over(parseHex('#181818'), 0.8, parseHex(desktop)));
 /**
  * A glass window's dark page, which is not `--background`: the panel fill over whatever desktop
@@ -85,16 +89,24 @@ const HOVER_ALPHA = 0.8;
 const STEP = 0.0005;
 
 /**
- * A glass window's page (`window.surface: "glass"`). `#root` paints the task panel's one fill,
- * `--ata-surface-panel`: translucent over the window's glass, opaque under Reduce transparency
- * (`data-reduced-transparency`, which the shell writes). Not `html` or `body`: WebKit propagates
- * their background to the canvas, where it paints a translucent color twice over the transparent
- * web view, and a background an app gives them only shows through this fill. `.atd-titlebar` is
- * the page's first row on the native title bar, as the renderer's panel header: 52 px high, with
- * 88 px of leading inset that clear the traffic lights. Both rules sit in cascade layers, so an
- * app's own unlayered rule replaces them whatever its specificity.
+ * A glass window's page (`window.surface: "glass"`). `#root` paints `--ata-surface-panel`:
+ * translucent over the window's glass, opaque under Reduce transparency
+ * (`data-reduced-transparency`, which the shell writes). `@atd/ui` reads it from the
+ * `--ata-panel-fill-*` properties, which the task panel derives from its Panel background setting;
+ * an app never takes that setting, so these rules keep the fill `panelOver` models. Not `html` or
+ * `body`: WebKit propagates their background to the canvas, where it paints a translucent color
+ * twice over the transparent web view, and a background an app gives them only shows through this
+ * fill. `.atd-titlebar` is the page's first row on the native title bar, as the renderer's panel
+ * header: 52 px high, with 88 px of leading inset that clear the traffic lights. Both rules sit in
+ * cascade layers, so an app's own unlayered rule replaces them whatever its specificity.
  */
 const GLASS_RULES = `@layer base {
+  :root {
+    --ata-panel-fill-dark: rgb(24 24 24 / 80%);
+    --ata-panel-fill-light: rgb(248 248 248 / 80%);
+    --ata-panel-fill-opaque-dark: rgb(24 24 24);
+    --ata-panel-fill-opaque-light: rgb(248 248 248);
+  }
   #root {
     min-height: 100dvh;
     background-color: var(--ata-surface-panel);

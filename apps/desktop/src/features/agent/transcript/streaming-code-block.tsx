@@ -4,6 +4,7 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
 import { useColorScheme, type ColorScheme } from '../../../theme/color-scheme';
 import { CODE_CSS, CodeFile } from './code-block';
+import { CODE_THEMES } from './code-theme';
 import { CopyButton } from './copy-button';
 import { CodeDownloadButton } from './download-button';
 import { codeSource } from './selection-toolbar/code-sources';
@@ -43,6 +44,7 @@ function openFeed(
   });
   const renderer = new FileStream({
     lang: language,
+    theme: CODE_THEMES,
     themeType,
     overflow: 'scroll',
     onPostRender: onRender,

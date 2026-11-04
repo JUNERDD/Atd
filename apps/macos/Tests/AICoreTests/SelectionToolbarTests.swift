@@ -57,10 +57,11 @@ struct SelectionToolbarTests {
     let settings = SelectionToolbarSettings(
       ToolbarSetParams(
         enabled: true, activation: .hold, activationKeys: [.option, .shift, .option],
-        showHud: false,
+        showHud: false, smallIcon: .hover, position: .below,
         excludedBundleIds: ["a", "a", "b"], commands: [.init(id: "c1", name: "Translate")]))
     #expect(settings.activation == SelectionActivation(mode: .hold, keys: [.option, .shift]))
     #expect(!settings.showHud)
+    #expect(settings.smallIcon == .hover && settings.position == .below)
     #expect(settings.excludedBundleIds == ["a", "b"])
     #expect(settings.commands == [.init(id: "c1", name: "Translate")])
   }
@@ -83,7 +84,7 @@ struct SelectionToolbarTests {
     -> ScreenRect?
   {
     SelectionToolbarPlacement.frame(
-      size: size, selection: selection, pointer: pointer, displays: displays)
+      size: size, selection: selection, pointer: pointer, position: .above, displays: displays)
   }
 
   @Test("Centered 8 pt above the selection")
@@ -297,27 +298,37 @@ struct SelectionToolbarTests {
       bare.singleChoice?.options.map(\.label) == ["Panel (default)", "Cursor", "Copy"])
   }
 
-  @Test(
-    "A submenu opens after 90 ms of rest and survives the way into it; another row takes 180 ms")
+  @Test("A submenu follows the row under the pointer at once, and only the way into it holds it")
   func submenuIntent() {
+    // The menu's rows lie left of x 190; the open submenu beside them.
+    let submenu = CGRect(x: 200, y: 100, width: 150, height: 120)
     var intent = ToolbarOptionsSubmenuIntent()
-    #expect(intent.update(.row(0, opens: true), at: 0) == nil)
-    #expect(intent.update(.row(0, opens: true), at: 0.05) == nil)
-    #expect(intent.update(.row(0, opens: true), at: 0.09) == .open(0))
-    // Crossing row 1 on the way into the submenu keeps it.
-    #expect(intent.update(.row(1, opens: true), at: 0.2) == nil)
-    #expect(intent.update(.inSubmenu, at: 0.3) == nil)
-    #expect(intent.update(.away, at: 1) == nil)
+    func update(
+      _ pointer: ToolbarOptionsSubmenuIntent.Pointer, _ now: Double, _ x: Double, _ y: Double
+    )
+      -> ToolbarOptionsSubmenuIntent.Change?
+    {
+      intent.update(
+        pointer, at: now, location: CGPoint(x: x, y: y),
+        submenu: intent.openRow == nil ? nil : submenu)
+    }
+    #expect(update(.row(0, opens: true), 0, 100, 205) == .open(0))
+    // Crossing row 1 on the way into the submenu keeps it, past a pause shorter than 180 ms.
+    #expect(update(.row(1, opens: true), 0.02, 150, 180) == nil)
+    #expect(update(.row(1, opens: true), 0.15, 150, 180) == nil)
+    #expect(update(.inSubmenu, 0.2, 210, 160) == nil)
+    #expect(update(.away, 1, 400, 400) == nil)
     #expect(intent.openRow == 0)
-    // Resting on another row swaps the submenu, on a row without one closes it.
-    #expect(intent.update(.row(1, opens: true), at: 2) == nil)
-    #expect(intent.update(.row(1, opens: true), at: 2.2) == .open(1))
-    #expect(intent.update(.row(2, opens: false), at: 3) == nil)
-    #expect(intent.update(.row(2, opens: false), at: 3.2) == .close)
+    // Moving down the menu swaps the submenu at once; a row without one closes it.
+    #expect(update(.row(1, opens: true), 2, 100, 178) == .open(1))
+    #expect(update(.row(2, opens: false), 2.02, 100, 150) == .close)
     #expect(intent.openRow == nil)
+    // A longer pause on the way in lets the row under the pointer have it.
+    #expect(update(.row(0, opens: true), 3, 100, 205) == .open(0))
+    #expect(update(.row(1, opens: true), 3.02, 150, 180) == nil)
+    #expect(update(.row(1, opens: true), 3.25, 150, 180) == .open(1))
     intent.opened(2)
     intent.closed()
-    #expect(intent.update(.row(2, opens: false), at: 4) == nil)
-    #expect(intent.update(.row(2, opens: false), at: 5) == nil)
+    #expect(update(.row(2, opens: false), 4, 100, 150) == nil)
   }
 }

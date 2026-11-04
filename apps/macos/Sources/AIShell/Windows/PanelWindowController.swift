@@ -56,7 +56,11 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.becomesKeyOnlyIfNeeded = false
     panel.isReleasedWhenClosed = false
     panel.isExcludedFromWindowsMenu = true
-    panel.collectionBehavior = [.fullScreenNone, .moveToActiveSpace]
+    // A summon moves the panel to the active Space, and auxiliary lets that be another app's
+    // full-screen Space; without it the panel stays on a desktop Space behind the full-screen
+    // app whatever its level. Auxiliary also keeps the panel itself out of full screen, where
+    // its glass would have nothing behind it.
+    panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
     panel.contentView = GlassBackground.make(content: host.container)
     panel.delegate = self
     applyMinimumSize(display.workArea)

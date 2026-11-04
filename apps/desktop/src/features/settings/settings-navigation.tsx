@@ -1,4 +1,20 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
+import type { SettingsSectionId } from './settings-sections';
+
+/** A sub-page the settings search opens before revealing a setting on it. */
+export type SettingsSearchPage = 'panelBackground';
+
+/**
+ * The page a search result enters its section at: `page`, or the section's top-level page when
+ * null. Each request has a new nonce, which a section with sub-pages (General) follows once by
+ * resetting its page history there; the others ignore it.
+ */
+export interface SettingsPageTarget {
+  section: SettingsSectionId;
+  page: SettingsSearchPage | null;
+  nonce: number;
+}
+
 /**
  * Shows a settings section. `then` runs once the section is shown, which waits for the user's
  * answer when an editor with unsaved changes would be left (`useSettingsUnsavedChanges`); it never

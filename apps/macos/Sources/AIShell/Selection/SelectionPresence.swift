@@ -25,7 +25,9 @@ nonisolated struct SelectionPresence: Sendable {
 
   let pid: pid_t
 
-  func probe() -> SelectionProbe {
+  /// A toolbar gesture supplies its starting point in Quartz screen coordinates. Focus-only
+  /// checks (such as the answer card's write target) do not depend on the pointer.
+  func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
     Self.wakeWebContent(app)
@@ -40,7 +42,10 @@ nonisolated struct SelectionPresence: Sendable {
 
     let surface = SelectionSurface(focused)
     if let probe = textProbe(focused) { return probe }
-    if surface.selectedCellContainer() != nil { return .cells }
+    if let table = surface.selectedCellContainer() {
+      if let origin, !gestureTargets(table, at: origin, in: app) { return .none }
+      return .cells
+    }
     // Some editors focus a wrapper and expose the text selection on a child or ancestor.
     // Keep this search local and bounded, as SelectionReader does for an explicit read.
     let deadline = ContinuousClock.now + .milliseconds(150)
@@ -58,6 +63,30 @@ nonisolated struct SelectionPresence: Sendable {
     }
     return surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
       ? .unmeasured : .none
+  }
+
+  /// Clicking blank space or a menu can leave another view focused. Its retained cell
+  /// selection is not evidence about this gesture; require its start to hit the same table.
+  private func gestureTargets(_ table: AXUIElement, at pointer: CGPoint, in app: AXUIElement)
+    -> Bool
+  {
+    var hit: AXUIElement?
+    guard
+      AXUIElementCopyElementAtPosition(app, Float(pointer.x), Float(pointer.y), &hit) == .success,
+      var current = hit
+    else { return false }
+    let deadline = ContinuousClock.now + .milliseconds(150)
+    // Hit testing can land much deeper than the focused cell. Bound the walk by time and
+    // the window boundary, not by the number of wrappers inside that cell.
+    while ContinuousClock.now < deadline {
+      if CFEqual(current, table) { return true }
+      AXUIElementSetMessagingTimeout(current, Self.messagingTimeout)
+      let role: String? = Self.copy(current, kAXRoleAttribute)
+      if role == kAXWindowRole || role == kAXApplicationRole { return false }
+      guard let parent: AXUIElement = Self.copy(current, kAXParentAttribute) else { return false }
+      current = parent
+    }
+    return false
   }
 
   private func textProbe(_ element: AXUIElement) -> SelectionProbe? {
@@ -167,7 +196,10 @@ extension SelectionPresence {
 
   /// Checks off the main thread and gives up after `limit`, a net under the per-message
   /// timeouts; a late answer is dropped.
-  static func check(pid: pid_t, limit: Duration = .milliseconds(300)) async -> SelectionProbe {
+  static func check(pid: pid_t, gestureAt origin: CGPoint, limit: Duration = .milliseconds(300))
+    async
+    -> SelectionProbe
+  {
     let claimed = busy.withLock { busy in
       guard !busy else { return false }
       busy = true
@@ -178,7 +210,7 @@ extension SelectionPresence {
     return await Deadline.value(within: limit, fallback: .none) {
       await withCheckedContinuation { continuation in
         queue.async {
-          let probe = presence.probe()
+          let probe = presence.probe(gestureAt: origin)
           busy.withLock { $0 = false }
           continuation.resume(returning: probe)
         }

@@ -17,6 +17,7 @@ import { CommandSettings } from '../commands/command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
+import { usePanelSurfaces } from '../../theme/panel-background/apply';
 import '../agent/agent.css';
 import { AboutSettings } from './about-settings';
 import { AgentSettings } from './agent-settings';
@@ -77,9 +78,11 @@ export function SettingsWindow() {
     memoryTarget,
     automationTarget,
     extensionTarget,
+    pageTarget,
     drawer,
     setDrawer,
     navigate,
+    showPage,
     showCommand,
     showMemory,
     showAutomation,
@@ -95,6 +98,7 @@ export function SettingsWindow() {
   const bridge = window.desktop?.settings;
   const currentSection = findSettingsSection(section) ?? settingsSections[0];
   useAppLanguage(snapshot?.language);
+  usePanelSurfaces(snapshot?.panelBackground);
 
   // The sections share one scroller: each opens at its top, unless a search reveal scrolls later.
   const viewport = useRef<HTMLDivElement>(null);
@@ -143,7 +147,12 @@ export function SettingsWindow() {
     );
   }
   const navPanel = (
-    <SettingsNavPanel current={section} disabled={recording} onNavigate={navigate} />
+    <SettingsNavPanel
+      current={section}
+      disabled={recording}
+      onNavigate={navigate}
+      onOpenPage={showPage}
+    />
   );
   return (
     <TooltipProvider delayDuration={300}>
@@ -268,6 +277,7 @@ export function SettingsWindow() {
                                 'general',
                                 <GeneralSettings
                                   snapshot={snapshot}
+                                  activePage={pageTarget}
                                   onRecordingChange={setRecording}
                                 />,
                               )}

@@ -47,6 +47,7 @@ export * from './tool-names.js';
 export * from './views.js';
 export * from './view-protocol.js';
 export * from './workspace.js';
+export * from './panel-background.js';
 export * from './shortcuts.js';
 export * from './plugins.js';
 export * from './app-identity.js';

@@ -240,15 +240,18 @@ private struct MiniPanelGlyphPress: ViewModifier {
 
 /// A control's hover or press wash: a neutral fill in the label color, with a visible 1 pt edge
 /// under Increase Contrast, which adds none to custom fills. It reads the pointer's control and
-/// the press itself, so they redraw it alone.
+/// the press itself, so they redraw it alone. Its level strengthens over the thinner fill the
+/// Panel background setting resolves (``PanelBackground/wash(_:reduceTransparency:)``).
 struct MiniPanelWash<Outline: InsettableShape>: View {
   let control: MiniPanelControl
   let model: MiniPanelModel
   let shape: Outline
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   var body: some View {
-    let level = model.washLevel(control)
+    let level = PanelBackground.shared.wash(
+      model.washLevel(control), reduceTransparency: reduceTransparency)
     shape
       .fill(Color.primary.opacity(level))
       .overlay {

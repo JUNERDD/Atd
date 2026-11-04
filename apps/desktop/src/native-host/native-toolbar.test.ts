@@ -10,6 +10,8 @@ const settings: SelectionToolbarSettings = {
   activation: 'hold',
   activationKeys: ['option'],
   showHud: true,
+  smallIcon: 'click',
+  position: 'above',
 };
 
 /** A shell that answers every `toolbar.set` and records what it took. */
@@ -46,6 +48,8 @@ describe('selection toolbar push', () => {
       activation: 'hold',
       activationKeys: ['option'],
       showHud: true,
+      smallIcon: 'click',
+      position: 'above',
       excludedBundleIds: ['com.apple.Terminal'],
       commands: [
         { id: 'translate', name: 'Translate selection' },

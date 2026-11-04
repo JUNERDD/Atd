@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { TaskRun } from '@atd/agent-contracts';
+import { readableInputText, type TaskRun } from '@atd/agent-contracts';
 import { withInferencePurpose } from '../providers/chatgpt-usage.js';
 import { inferenceError } from '../providers/inference-result.js';
 import { openRunModel } from '../run-model.js';
 import type { ServicePaths } from '../storage.js';
-import { readableInputText } from './input-chips.js';
 
 const TITLE_PROMPT = `Write a concise conversation title summarizing the user's initial intent.
 Use the same language as the user's request. Prefer 3–8 words, or a similarly brief phrase in languages without spaces.

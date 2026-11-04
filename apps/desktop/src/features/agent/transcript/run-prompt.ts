@@ -3,13 +3,12 @@ import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
 
 /** Pending-bubble text before the first user block arrives: instruction first. */
 export function pendingMessageText(snapshot: RunSnapshot): string {
-  return (
-    snapshot.instructions ||
-    snapshot.input.text ||
-    snapshot.input.files.map((file) => file.name).join(', ') ||
-    snapshot.command?.name ||
-    ''
-  );
+  return snapshot.instructions || inputMessageText(snapshot.input) || snapshot.command?.name || '';
+}
+
+/** A sent input's bubble text before its prompt block arrives: its text, else its files. */
+export function inputMessageText(input: RunSnapshot['input']): string {
+  return input.text || input.files.map((file) => file.name).join(', ');
 }
 
 /**

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AutomationDraft, FolderRef, PermissionTier } from '@atd/agent-contracts';
 import { Card } from '@atd/ui/components/card';
@@ -10,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@atd/ui/components/select';
+import { cn } from '@atd/ui/lib/utils';
+import { AlwaysAllowDialog } from '../settings/always-allow-dialog';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { SettingsGroup } from '../settings/settings-group';
 import { chosenTools, PROMPT_TOOLS, withTools, type DraftPatch } from './automation-draft';
@@ -44,6 +47,7 @@ export function PermissionFields({
   const { t } = useTranslation('automations');
   const { t: tCommon } = useTranslation('common');
   const { t: tSettings } = useTranslation('settings');
+  const [confirmingAlways, setConfirmingAlways] = useState(false);
   const { policy, action } = draft;
   const set = (next: AutomationDraft['policy']) => onChange({ ...draft, policy: next });
   const tools = chosenTools(policy);
@@ -69,19 +73,24 @@ export function PermissionFields({
               value={policy.permissionTier}
               onValueChange={(value) => {
                 const tier = TIERS.find((item) => item === value);
-                if (tier) set({ ...policy, permissionTier: tier });
+                if (tier === 'always') setConfirmingAlways(true);
+                else if (tier) set({ ...policy, permissionTier: tier });
               }}
             >
               <SelectTrigger
                 id="automation-tier"
-                className="w-full"
+                className={cn('w-full', policy.permissionTier === 'always' && 'text-destructive')}
                 aria-describedby="automation-tier-note"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {TIERS.map((tier) => (
-                  <SelectItem key={tier} value={tier}>
+                  <SelectItem
+                    key={tier}
+                    value={tier}
+                    variant={tier === 'always' ? 'destructive' : 'default'}
+                  >
                     {tSettings(`permissions.tiers.${tier}.label`)}
                   </SelectItem>
                 ))}
@@ -139,6 +148,11 @@ export function PermissionFields({
           error={problems.text('folders')}
         />
       </div>
+      <AlwaysAllowDialog
+        open={confirmingAlways}
+        onOpenChange={setConfirmingAlways}
+        onConfirm={() => set({ ...policy, permissionTier: 'always' })}
+      />
     </SettingsGroup>
   );
 }

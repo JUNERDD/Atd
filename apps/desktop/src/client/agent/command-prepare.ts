@@ -152,28 +152,36 @@ export function withoutSelectionNotice(prepared: PreparedCommand): PreparedComma
 }
 
 /**
+ * `prepared`, launched with nothing selected, with an answer meant to go over or after the
+ * selection going in at the cursor for this run instead: the shell refuses a selection write on a
+ * target that recorded no selection.
+ */
+export function withoutSelectionWrite(prepared: PreparedCommand): PreparedCommand {
+  const { action } = prepared.output;
+  if (!actsOnSelection(action)) return prepared;
+  return { ...prepared, output: { ...prepared.output, action: 'insertAtCursor' } };
+}
+
+/**
  * A launch whose selection was missing, with what the person composed in its place on the
  * island: `text` stands in for the selection (`withCapture`, captured now), and `files` join the
- * input's files, each once, up to the attachment limit. Nothing was selected, so an answer meant
- * to go over or after the selection goes in at the cursor for this run (the shell refuses a
- * selection write on a target that recorded no selection), and the launch is marked `composed`.
+ * input's files, each once, up to the attachment limit. Nothing was selected, so the answer goes
+ * in at the cursor (`withoutSelectionWrite`), and the launch is marked `composed`.
  */
 export function withComposedInput(
   prepared: PreparedCommand,
   { text, files }: ComposedInput,
 ): PreparedCommand {
-  const settled = withoutSelectionNotice(prepared);
+  const settled = withoutSelectionWrite(withoutSelectionNotice(prepared));
   const input = withCapture(settled.input, 'selection', {
     text,
     capturedAt: new Date().toISOString(),
   });
   const byId = new Map(input.files.map((file) => [file.id, file]));
   for (const file of files) if (!byId.has(file.id)) byId.set(file.id, file);
-  const { action } = settled.output;
   return {
     ...settled,
     composed: true,
     input: { ...input, files: [...byId.values()].slice(0, MAX_ATTACHMENTS) },
-    output: { ...settled.output, action: actsOnSelection(action) ? 'insertAtCursor' : action },
   };
 }

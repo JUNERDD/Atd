@@ -45,6 +45,7 @@ final class WebViewHost: NSObject {
   private var backlog = FrameBacklog()
   private var crashes: [ContinuousClock.Instant] = []
   private var reduceTransparency: ReduceTransparencyObserver?
+  private var systemAppearance: SystemAppearanceObserver?
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
 
   init(role: WebViewRole, fragment: String?, services: ShellServices, bridge: ShellBridge) {
@@ -62,6 +63,11 @@ final class WebViewHost: NSObject {
     reduceTransparency = ReduceTransparencyObserver { [weak self] reduce in
       self?.setState(.accessibilityReduceTransparency(.init(reduce: reduce)))
     }
+    // Likewise `appearance.system`, the accent color and Liquid Glass the page derives its panel
+    // background from.
+    systemAppearance = SystemAppearanceObserver { [weak self] facts in
+      self?.setState(.appearanceSystem(facts))
+    }
   }
 
   func load() {
@@ -71,6 +77,8 @@ final class WebViewHost: NSObject {
   func close() {
     reduceTransparency?.stop()
     reduceTransparency = nil
+    systemAppearance?.stop()
+    systemAppearance = nil
     tearDown()
   }
 

@@ -7,6 +7,7 @@ import {
 } from '@pierre/diffs/react';
 import type { WorkerPoolManager } from '@pierre/diffs/worker';
 import { useCallback, useSyncExternalStore, type ReactNode } from 'react';
+import { CODE_THEMES } from './code-theme';
 
 /**
  * Two workers, and a cache of 16 highlighted files and 16 diffs (pierre keeps one per kind),
@@ -23,11 +24,12 @@ const POOL_OPTIONS: WorkerPoolOptions = {
 };
 
 /**
- * Pierre's defaults, which `File` and `FileDiff` also apply on the main thread (the `pierre-dark`
- * and `pierre-light` themes, `word-alt` line diffs), so a body looks the same on either path. No
- * `langs`: a grammar loads when a file first needs it, never all of them up front.
+ * The panel's code theme (`CODE_THEMES`), which every body also names for the main thread, and
+ * pierre's other defaults (`word-alt` line diffs), so a body looks the same on either path; a body
+ * given the pool takes the pool's theme. No `langs`: a grammar loads when a file first needs it,
+ * never all of them up front.
  */
-const HIGHLIGHTER_OPTIONS: WorkerInitializationRenderOptions = {};
+const HIGHLIGHTER_OPTIONS: WorkerInitializationRenderOptions = { theme: CODE_THEMES };
 
 /**
  * jsdom (the tests) has no `Worker`, and a pool started there fails with an unhandled rejection;

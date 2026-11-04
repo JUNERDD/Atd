@@ -1,6 +1,13 @@
 import type { RunReference } from '@atd/agent-contracts';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import type { RunPolicy } from '../../client/agent/run-policy';
+import { messageOf } from '../../lib/errors';
+import {
+  discardOutgoing,
+  putOutgoing,
+  settleOutgoing,
+  type OutgoingMessage,
+} from './outgoing-messages';
 
 /**
  * The panel's send (`useTaskPanel`'s `submit`): the bound conversation's draft, or a command
@@ -45,4 +52,50 @@ export async function sendSettling(
   } finally {
     settle();
   }
+}
+
+/** What an optimistic send reports back to the panel, around each attempt. */
+export interface OptimisticHooks {
+  /** The service took the message; its run's detail. */
+  sent: (detail: TaskDetail) => void;
+  /** A retry starts; the first attempt began with the send itself. */
+  begin: () => void;
+  /** An attempt ended, accepted or not. */
+  settle: () => void;
+  /** The person discarded the message the service did not take. */
+  discarded?: (() => void) | undefined;
+}
+
+/**
+ * Sends a message optimistically (`outgoing-messages.ts`): its conversation shows `message` as
+ * sent before `send` answers. A refusal or an unreachable service shows on the message, with a
+ * retry that sends the same request again, instead of being thrown, so it resolves null then.
+ */
+export function sendOptimistic(
+  message: Omit<OutgoingMessage, 'error' | 'retry' | 'discard'>,
+  send: () => Promise<TaskDetail>,
+  hooks: OptimisticHooks,
+): Promise<TaskDetail | null> {
+  const retry = () => {
+    hooks.begin();
+    void attempt();
+  };
+  const discard = () => {
+    discardOutgoing(message.taskId, message.id);
+    hooks.discarded?.();
+  };
+  async function attempt(): Promise<TaskDetail | null> {
+    putOutgoing({ ...message, error: null, retry, discard });
+    try {
+      const detail = await send();
+      hooks.sent(detail);
+      return detail;
+    } catch (error) {
+      settleOutgoing({ ...message, error: messageOf(error), retry, discard });
+      return null;
+    } finally {
+      hooks.settle();
+    }
+  }
+  return attempt();
 }

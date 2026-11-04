@@ -1255,3 +1255,100 @@
   font-size: 13px;
   line-height: 20px;
 }
+/* General › Panel background (panel-background-*.tsx). The summary row opens its sub-page through
+ * the button under its content (`open-row`); its swatch and chevron only show the state, so the
+ * pointer passes through them to that button. */
+.settings-panel-summary.open-row [data-slot='item-actions'] {
+  pointer-events: none;
+}
+/* The card clips its rows at its edges, so the row's focus ring draws inside it. */
+.settings-card .settings-panel-summary > .open-row-button:focus-visible {
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+/* The current fill over a colorful backdrop, so the row shows how see-through it is. */
+.settings-panel-swatch {
+  --settings-panel-swatch-backdrop: linear-gradient(135deg, #ff6b5a, #ffd23f 45%, #3dd6ff);
+  flex-shrink: 0;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(var(--panel-swatch-fill), var(--panel-swatch-fill)),
+    var(--settings-panel-swatch-backdrop);
+  box-shadow: inset 0 0 0 1px var(--ata-border-subtle);
+}
+.settings-panel-chevron {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--ata-text-secondary);
+}
+/* A slider with its value beside it; the value keeps one width, so the slider never moves. */
+.settings-panel-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-panel-slider > [data-slot='slider'] {
+  width: 132px;
+}
+.settings-panel-slider-value {
+  min-width: 56px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* The tint swatches: native radios drawn as color dots, one line of eight at full width. The
+ * padding holds the selection ring, which sits outside each dot. */
+.settings-panel-tints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 232px;
+  padding: 4px;
+}
+.settings-panel-tint {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--panel-tint-swatch);
+  box-shadow: inset 0 0 0 1px var(--ata-border-subtle);
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+}
+/* Follows the system accent color, so it shows the multicolor dot rather than one hue. */
+.settings-panel-tint[data-tint='accent'] {
+  --settings-panel-accent-swatch: conic-gradient(
+    #ff3b30,
+    #ffcc00,
+    #34c759,
+    #007aff,
+    #af52de,
+    #ff3b30
+  );
+  background: var(--settings-panel-accent-swatch);
+}
+.settings-panel-tint:checked {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+.settings-panel-tint:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow:
+    inset 0 0 0 1px var(--ata-border-subtle),
+    0 0 0 7px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+.settings-panel-tint:checked:focus-visible {
+  outline-color: var(--foreground);
+}
+.settings-panel-tint:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

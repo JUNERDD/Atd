@@ -1,9 +1,21 @@
 import Foundation
 
+/// What an admitted selection brings up first, whatever the activation (`toolbar.set`'s
+/// `smallIcon`): the whole toolbar, or a small icon by the pointer that grows into the toolbar
+/// where it stands. A click on the icon grows it in either icon mode.
+public enum SelectionToolbarIconMode: Equatable, Sendable {
+  /// The whole toolbar, placed by the setting's ``SelectionToolbarPosition``.
+  case off
+  /// The icon; only a click grows it.
+  case click
+  /// The icon; it grows once the pointer rests on it, never as the pointer passes over it.
+  case hover
+}
+
 /// What the page pushed for the selection toolbar (`toolbar.set`): whether it is on, which
-/// selections bring it up, whether the `toggle` mode shows its status HUD, the apps it stays out
-/// of, and the commands it offers (the enabled commands that read the selection, in command-list
-/// order).
+/// selections bring it up, whether the `toggle` mode shows its status HUD, whether a small icon
+/// stands in for it first and where it appears, the apps it stays out of, and the commands it
+/// offers (the enabled commands that read the selection, in command-list order).
 public struct SelectionToolbarSettings: Equatable, Sendable {
   public struct Command: Equatable, Sendable {
     public let id: String
@@ -18,26 +30,44 @@ public struct SelectionToolbarSettings: Equatable, Sendable {
   public var enabled: Bool
   public var activation: SelectionActivation
   public var showHud: Bool
+  public var smallIcon: SelectionToolbarIconMode
+  /// Where the whole toolbar appears when it comes up at once (``smallIcon`` off).
+  public var position: SelectionToolbarPosition
   public var excludedBundleIds: Set<String>
   public var commands: [Command]
 
   public init(
     enabled: Bool, activation: SelectionActivation, showHud: Bool,
+    smallIcon: SelectionToolbarIconMode, position: SelectionToolbarPosition,
     excludedBundleIds: Set<String>, commands: [Command]
   ) {
     self.enabled = enabled
     self.activation = activation
     self.showHud = showHud
+    self.smallIcon = smallIcon
+    self.position = position
     self.excludedBundleIds = excludedBundleIds
     self.commands = commands
   }
 
   public init(_ params: ToolbarSetParams) {
+    let smallIcon: SelectionToolbarIconMode =
+      switch params.smallIcon {
+      case .off: .off
+      case .click: .click
+      case .hover: .hover
+      }
+    let position: SelectionToolbarPosition =
+      switch params.position {
+      case .pointer: .pointer
+      case .above: .above
+      case .below: .below
+      }
     self.init(
       enabled: params.enabled,
       activation: SelectionActivation(
         mode: params.activation, keys: Set(params.activationKeys)),
-      showHud: params.showHud,
+      showHud: params.showHud, smallIcon: smallIcon, position: position,
       excludedBundleIds: Set(params.excludedBundleIds),
       commands: params.commands.map { Command(id: $0.id, name: $0.name) })
   }

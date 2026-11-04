@@ -4,6 +4,8 @@ import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
+import { selectionToolbarSearchEntries } from './selection-toolbar-search-entries';
+import type { SettingsSearchPage } from './settings-navigation';
 import type { SettingsSectionId } from './settings-sections';
 
 /** The namespaces whose existing copy the index reuses; `settings` is the default one. */
@@ -21,6 +23,8 @@ export interface SettingsSearchEntry {
   section: SettingsSectionId | null;
   /** The `data-settings-anchor` to reveal; without one the section page opens at its top. */
   anchor?: string;
+  /** The section's sub-page the anchor is on, which opens first. */
+  page?: SettingsSearchPage;
   /** Replaces the section's icon in the results. */
   icon?: LucideIcon;
   label: SearchKey;
@@ -143,38 +147,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.miniPanelOpenOn',
   },
   ...notificationSearchEntries,
-  {
-    id: 'selection-toolbar',
-    section: 'general',
-    anchor: 'settings-selection-toolbar',
-    label: 'selectionToolbar.enabled',
-    description: 'selectionToolbar.enabledDescription',
-    keywords: 'search.keywords.selectionToolbar',
-  },
-  {
-    id: 'selection-toolbar-activation',
-    section: 'general',
-    anchor: 'settings-selection-toolbar-activation',
-    label: 'selectionToolbar.activation.title',
-    description: 'selectionToolbar.activation.description',
-    keywords: 'search.keywords.selectionToolbarActivation',
-  },
-  {
-    id: 'selection-toolbar-hud',
-    section: 'general',
-    anchor: 'settings-selection-toolbar-hud',
-    label: 'selectionToolbar.hud.title',
-    description: 'selectionToolbar.hud.description',
-    keywords: 'search.keywords.selectionToolbarHud',
-  },
-  {
-    id: 'selection-toolbar-apps',
-    section: 'general',
-    anchor: 'settings-selection-toolbar-apps',
-    label: 'selectionToolbar.excluded.title',
-    description: 'selectionToolbar.excluded.description',
-    keywords: 'search.keywords.selectionToolbarApps',
-  },
+  ...selectionToolbarSearchEntries,
   {
     id: 'shortcuts-restore-defaults',
     section: 'general',

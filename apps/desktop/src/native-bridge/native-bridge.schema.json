@@ -80,6 +80,7 @@
       "language.set",
       "appearance.set",
       "glowEffects.set",
+      "panelBackground.set",
       "typing.set",
       "window.dragRegions",
       "onboarding.surface",
@@ -96,6 +97,7 @@
       "window.active",
       "window.visibility",
       "accessibility.reduceTransparency",
+      "appearance.system",
       "shortcut.command",
       "shortcut.screenshot",
       "resources.imported",
@@ -2806,6 +2808,8 @@
                 "activation",
                 "activationKeys",
                 "showHud",
+                "smallIcon",
+                "position",
                 "excludedBundleIds",
                 "commands"
               ],
@@ -2852,6 +2856,38 @@
                 },
                 "showHud": {
                   "type": "boolean"
+                },
+                "smallIcon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "off"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    },
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    }
+                  ]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "pointer"
+                    },
+                    {
+                      "type": "string",
+                      "const": "above"
+                    },
+                    {
+                      "type": "string",
+                      "const": "below"
+                    }
+                  ]
                 },
                 "excludedBundleIds": {
                   "type": "array",
@@ -3107,6 +3143,126 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "panelBackground.set"
+            },
+            "params": {
+              "type": "object",
+              "required": [
+                "dark",
+                "light",
+                "glass",
+                "blur",
+                "refractionWidth",
+                "refractionStrength"
+              ],
+              "properties": {
+                "dark": {
+                  "type": "object",
+                  "required": ["red", "green", "blue", "alpha", "washScale"],
+                  "properties": {
+                    "red": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "green": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "blue": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "alpha": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "washScale": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 4
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "light": {
+                  "type": "object",
+                  "required": ["red", "green", "blue", "alpha", "washScale"],
+                  "properties": {
+                    "red": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "green": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "blue": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "alpha": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "washScale": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 4
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "glass": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "regular"
+                    },
+                    {
+                      "type": "string",
+                      "const": "clear"
+                    }
+                  ]
+                },
+                "blur": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 2
+                },
+                "refractionWidth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "refractionStrength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
                 }
               },
               "additionalProperties": false
@@ -3641,6 +3797,35 @@
               "required": ["reduce"],
               "properties": {
                 "reduce": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "appearance.system"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["accentColor", "liquidGlass"],
+              "properties": {
+                "accentColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-f]{6}$"
+                },
+                "liquidGlass": {
                   "type": "boolean"
                 }
               },
@@ -8427,6 +8612,8 @@
         "activation",
         "activationKeys",
         "showHud",
+        "smallIcon",
+        "position",
         "excludedBundleIds",
         "commands"
       ],
@@ -8473,6 +8660,38 @@
         },
         "showHud": {
           "type": "boolean"
+        },
+        "smallIcon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "off"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            },
+            {
+              "type": "string",
+              "const": "hover"
+            }
+          ]
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "pointer"
+            },
+            {
+              "type": "string",
+              "const": "above"
+            },
+            {
+              "type": "string",
+              "const": "below"
+            }
+          ]
         },
         "excludedBundleIds": {
           "type": "array",
@@ -8640,6 +8859,104 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PanelBackgroundSetPost": {
+      "type": "object",
+      "required": ["dark", "light", "glass", "blur", "refractionWidth", "refractionStrength"],
+      "properties": {
+        "dark": {
+          "type": "object",
+          "required": ["red", "green", "blue", "alpha", "washScale"],
+          "properties": {
+            "red": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "green": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "blue": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "alpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "washScale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "additionalProperties": false
+        },
+        "light": {
+          "type": "object",
+          "required": ["red", "green", "blue", "alpha", "washScale"],
+          "properties": {
+            "red": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "green": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "blue": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "alpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "washScale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "additionalProperties": false
+        },
+        "glass": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "regular"
+            },
+            {
+              "type": "string",
+              "const": "clear"
+            }
+          ]
+        },
+        "blur": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        },
+        "refractionWidth": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "refractionStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
         }
       },
       "additionalProperties": false
@@ -8925,6 +9242,20 @@
       "required": ["reduce"],
       "properties": {
         "reduce": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppearanceSystemEvent": {
+      "type": "object",
+      "required": ["accentColor", "liquidGlass"],
+      "properties": {
+        "accentColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$"
+        },
+        "liquidGlass": {
           "type": "boolean"
         }
       },

@@ -85,17 +85,21 @@ public struct ToolbarSetParams: Codable, Equatable, Sendable {
   public let activation: Activation
   public let activationKeys: [ActivationKey]
   public let showHud: Bool
+  public let smallIcon: SmallIcon
+  public let position: Position
   public let excludedBundleIds: [String]
   public let commands: [Command]
 
   public init(
     enabled: Bool, activation: Activation, activationKeys: [ActivationKey], showHud: Bool,
-    excludedBundleIds: [String], commands: [Command]
+    smallIcon: SmallIcon, position: Position, excludedBundleIds: [String], commands: [Command]
   ) {
     self.enabled = enabled
     self.activation = activation
     self.activationKeys = activationKeys
     self.showHud = showHud
+    self.smallIcon = smallIcon
+    self.position = position
     self.excludedBundleIds = excludedBundleIds
     self.commands = commands
   }
@@ -107,6 +111,8 @@ public struct ToolbarSetParams: Codable, Equatable, Sendable {
     activationKeys = try container.array(
       .activationKeys, of: ActivationKey.self, minItems: 1, maxItems: 3)
     showHud = try container.boolean(.showHud)
+    smallIcon = try container.value(.smallIcon, SmallIcon.self)
+    position = try container.value(.position, Position.self)
     excludedBundleIds = try container.array(.excludedBundleIds, of: String.self, maxItems: 100)
     commands = try container.array(.commands, of: Command.self, maxItems: 64)
   }
@@ -116,6 +122,8 @@ public struct ToolbarSetParams: Codable, Equatable, Sendable {
     case activation
     case activationKeys
     case showHud
+    case smallIcon
+    case position
     case excludedBundleIds
     case commands
   }
@@ -130,6 +138,18 @@ public struct ToolbarSetParams: Codable, Equatable, Sendable {
     case option
     case command
     case shift
+  }
+
+  public enum SmallIcon: String, Codable, Equatable, Sendable {
+    case off
+    case click
+    case hover
+  }
+
+  public enum Position: String, Codable, Equatable, Sendable {
+    case pointer
+    case above
+    case below
   }
 
   public struct Command: Codable, Equatable, Sendable {

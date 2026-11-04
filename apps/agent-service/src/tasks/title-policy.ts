@@ -1,5 +1,4 @@
-import type { TaskInput } from '@atd/agent-contracts';
-import { readableInputText } from './input-chips.js';
+import { readableInputText, type TaskInput } from '@atd/agent-contracts';
 
 /** Short plain requests already make useful titles, regardless of the language they use. */
 const DIRECT_TITLE_MAX_CODE_POINTS = 40;

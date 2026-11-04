@@ -92,6 +92,8 @@
       "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 设备控制 数据访问 辅助功能 selection toolbar",
       "selectionToolbarActivation": "按住 按键 连按 两次 开关 切换 修饰键 呼出 触发 方式 工具栏 选择 hold option command shift",
       "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
+      "selectionToolbarSmallIcon": "小图标 图标 先显示 选中后 点击 悬停 停留 展开 完整 工具栏 选择 small icon",
+      "selectionToolbarPosition": "出现位置 位置 显示 上方 下方 鼠标旁 鼠标 光标 选区 工具栏 选择 position",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
       "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
@@ -108,7 +110,14 @@
       "computerApplication": "应用 程序 窗口 原生 application app",
       "computerTyping": "电脑操作 打字机 逐步输入 高亮 动画 command",
       "computerVision": "视觉 模型 画面 监看 共享",
-      "computerCapture": "屏幕访问 屏幕采集 屏幕录制 同意 准备 权限 弹窗 screen capture"
+      "computerCapture": "屏幕访问 屏幕采集 屏幕录制 同意 准备 权限 弹窗 screen capture",
+      "panelBackground": "面板背景 背景 底色 透明度 透明 不透明 半透明 深浅 色调 颜色 玻璃 液态玻璃 模糊 折射 太重 太暗 看不清",
+      "panelTransparency": "透明度 透明 不透明 半透明 实色 通透 背景",
+      "panelTone": "深浅 明暗 亮度 灰度 深色 浅色 底色 背景",
+      "panelTint": "色调 色相 颜色 强调色 蓝 紫 绿 沙 玫瑰 石墨 中性",
+      "liquidGlass": "液态玻璃 玻璃 变体 常规 透明 材质",
+      "panelBlur": "模糊 毛玻璃 磨砂 清晰 背后",
+      "panelRefraction": "折射 透镜 扭曲 弯折 边缘"
     }
   },
   "providers": {
@@ -175,6 +184,12 @@
         "description": "不再询问。终端命令和任务文件夹外的文件将在无人值守下运行。"
       }
     },
+    "alwaysConfirm": {
+      "title": "开启“始终允许”？",
+      "description": "所有操作都将不经询问直接执行，包括终端命令和任务文件夹外的文件。请仅在你信任的工作中使用。",
+      "cancel": "取消",
+      "confirm": "始终允许"
+    },
     "errors": {
       "save": "无法保存权限设置。"
     },
@@ -210,6 +225,77 @@
     "title": "通用",
     "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
   },
+  "panelBackground": {
+    "title": "面板背景",
+    "description": "任务面板、设置窗口和浮层共用这套背景。默认是实测得出的配方，在任何桌面上都能保持文字清晰。",
+    "back": "返回通用",
+    "summary": {
+      "default": "默认 · 透明度 {{transparency}}%",
+      "transparent": "透明度 {{value}}%",
+      "tone": "深浅 {{hex}}",
+      "clearGlass": "透明玻璃",
+      "glassAdjusted": "玻璃已调整"
+    },
+    "groups": {
+      "background": "背景",
+      "glass": "Liquid Glass"
+    },
+    "scope": {
+      "dark": "透明度和深浅只对深色外观生效；浅色外观另存一套，切换到浅色主题后即可调整。",
+      "light": "透明度和深浅只对浅色外观生效；深色外观另存一套，切换到深色主题后即可调整。"
+    },
+    "transparency": {
+      "title": "背景透明度",
+      "description": "背后桌面透出的程度，越往右越透。代码块随之变化。",
+      "solid": "实色"
+    },
+    "tone": {
+      "title": "背景深浅",
+      "description": "底色的明暗，越往右越浅。"
+    },
+    "tint": {
+      "title": "背景色调",
+      "description": "只改色相，明暗不变。",
+      "options": {
+        "neutral": "中性",
+        "graphite": "石墨",
+        "blue": "蓝",
+        "purple": "紫",
+        "green": "绿",
+        "sand": "沙",
+        "rose": "玫瑰",
+        "accent": "跟随强调色"
+      }
+    },
+    "variant": {
+      "title": "玻璃变体",
+      "description": "常规更易阅读；透明更通透，但底色要更厚。",
+      "options": {
+        "regular": "常规",
+        "clear": "透明"
+      }
+    },
+    "blur": {
+      "title": "模糊强度",
+      "description": "背后桌面的模糊程度，拉满后看不清背后的文字。"
+    },
+    "refractionWidth": {
+      "title": "折射边缘宽度",
+      "description": "边缘折射带的宽度。"
+    },
+    "refractionStrength": {
+      "title": "折射强度",
+      "description": "折射带弯折背后内容的程度；拖到最左即不折射。"
+    },
+    "system": "系统",
+    "multiplier": "×{{value}}",
+    "percent": "{{value}}%",
+    "glassNote": "模糊和折射通过 macOS 私有接口调整系统的 Liquid Glass，macOS 更新后效果可能有所变化。",
+    "restoreDefaults": "恢复默认",
+    "reset": "恢复默认",
+    "resetLabel": "将“{{label}}”恢复为默认",
+    "saveFailed": "无法保存面板背景。"
+  },
   "selectionToolbar": {
     "title": "选择文字工具栏",
     "enabled": "选中文字时显示工具栏",
@@ -238,6 +324,34 @@
     "hud": {
       "title": "显示状态浮窗",
       "description": "工具栏开启时，屏幕底部会显示一个小浮窗提示。可拖到任意位置，也可隐藏到下次开启。"
+    },
+    "smallIcon": {
+      "title": "选中后先显示",
+      "label": "选中后先显示什么",
+      "modes": {
+        "click": "小图标，点击展开",
+        "hover": "小图标，悬停展开",
+        "off": "完整工具栏"
+      },
+      "hints": {
+        "click": "选中后先在旁边出现一个小图标，点一下才展开，鼠标路过不会展开。",
+        "hover": "选中后先在旁边出现一个小图标，鼠标停一下就展开成工具栏。",
+        "off": "选中后直接显示完整工具栏。"
+      }
+    },
+    "position": {
+      "title": "出现位置",
+      "label": "完整工具栏的出现位置",
+      "modes": {
+        "pointer": "鼠标旁",
+        "above": "选区上方",
+        "below": "选区下方"
+      },
+      "hints": {
+        "pointer": "以鼠标为中心，放在选区外侧，离手最近，也不会盖住选中的文字。",
+        "above": "在选区上方居中出现，上方放不下时改到下方。",
+        "below": "在选区下方居中出现，下方放不下时改到上方。"
+      }
     },
     "accessibility": {
       "title": "需要控制应用的权限",

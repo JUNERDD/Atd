@@ -1,12 +1,12 @@
-import type {
-  AgentTask,
-  PermissionTier,
-  RunComputer,
-  RunSnapshot,
-  RunTrigger,
-  TaskOrigin,
+import {
+  newTaskTitle,
+  type AgentTask,
+  type PermissionTier,
+  type RunComputer,
+  type RunSnapshot,
+  type RunTrigger,
+  type TaskOrigin,
 } from '@atd/agent-contracts';
-import { taskTitle } from './input-chips.js';
 import { needsSummaryTitle } from './title-policy.js';
 
 /**
@@ -71,7 +71,7 @@ export function newTaskRecord(fields: {
   const { id, now, snapshot, tier, summaryTitles, sideChatOf, internal } = fields;
   return {
     id,
-    title: internal.title ?? taskTitle(snapshot),
+    title: internal.title ?? newTaskTitle(snapshot.input, snapshot.instructions),
     ...(summaryTitles &&
     internal.title === undefined &&
     internal.origin === undefined &&

@@ -151,6 +151,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         post = try .appearanceSet(container.value(.params, AppearanceSetPost.self))
       case "glowEffects.set":
         post = try .glowEffectsSet(container.value(.params, GlowEffectsSetPost.self))
+      case "panelBackground.set":
+        post = try .panelBackgroundSet(container.value(.params, PanelBackgroundSetPost.self))
       case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))
       case "window.dragRegions":
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
@@ -201,6 +203,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case windowActive(WindowActiveEvent)
   case windowVisibility(WindowVisibilityEvent)
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
+  case appearanceSystem(AppearanceSystemEvent)
   case shortcutCommand(ShortcutCommandEvent)
   case shortcutScreenshot(ShortcutScreenshotEvent)
   case resourcesImported(ResourcesImportedEvent)
@@ -230,6 +233,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .windowActive: "window.active"
     case .windowVisibility: "window.visibility"
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
+    case .appearanceSystem: "appearance.system"
     case .shortcutCommand: "shortcut.command"
     case .shortcutScreenshot: "shortcut.screenshot"
     case .resourcesImported: "resources.imported"
@@ -260,6 +264,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .windowActive(let payload): try payload.encode(to: encoder)
     case .windowVisibility(let payload): try payload.encode(to: encoder)
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
+    case .appearanceSystem(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
@@ -283,41 +288,5 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .textWriteOffer(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
     }
-  }
-}
-
-/// Everything Swift delivers: a call's result or error, or an event.
-public enum SwiftMessage: Encodable, Equatable, Sendable {
-  /// `value` must match the call's result schema; the page checks it.
-  case result(id: Int, value: JSONValue)
-  /// At most 2000 characters, which the page shows as is.
-  case error(id: Int, message: String)
-  case event(NativeEvent)
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    switch self {
-    case .result(let id, let value):
-      try container.encode("result", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(value, forKey: .value)
-    case .error(let id, let message):
-      try container.encode("error", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(message, forKey: .message)
-    case .event(let event):
-      try container.encode("event", forKey: .type)
-      try container.encode(event.name, forKey: .event)
-      try container.encode(event, forKey: .payload)
-    }
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case type
-    case id
-    case value
-    case message
-    case event
-    case payload
   }
 }

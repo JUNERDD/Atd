@@ -3,12 +3,14 @@ import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@atd/ui/components/label';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@atd/ui/components/item';
+import { cn } from '@atd/ui/lib/utils';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import {
   DEFAULT_PERMISSION_TIER,
   PERMISSION_TIERS,
   type PermissionTier,
 } from '../../client/agent/permission-schema';
+import { AlwaysAllowDialog } from './always-allow-dialog';
 import { SettingsHeading } from './settings-heading';
 import { useSettingsSectionExit } from './settings-navigation';
 
@@ -38,6 +40,7 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
   const bridge = window.desktop?.settings;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingAlways, setConfirmingAlways] = useState(false);
   useSettingsSectionExit(() => setError(null));
   // Without the bridge or a snapshot the tiers cannot change at all; while a save is in flight
   // the radios stay focusable and changes are ignored until it settles.
@@ -45,7 +48,13 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
   const value = snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER;
 
   function select(tier: PermissionTier) {
-    if (!bridge || unavailable || pending || tier === value) return;
+    if (unavailable || pending || tier === value) return;
+    if (tier === 'always') setConfirmingAlways(true);
+    else save(tier);
+  }
+
+  function save(tier: PermissionTier) {
+    if (!bridge) return;
     setPending(true);
     setError(null);
     void bridge.setPermissionTier(tier).then(
@@ -74,6 +83,7 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
       >
         {PERMISSION_TIERS.map((tier) => {
           const selected = value === tier;
+          const unattended = tier === 'always';
           const id = `settings-permission-${tier}`;
           return (
             <Item
@@ -96,8 +106,14 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
                     onChange={() => select(tier)}
                   />
                   <ItemContent>
-                    <ItemTitle className="whitespace-normal">{t(TIER_COPY[tier].label)}</ItemTitle>
-                    <ItemDescription className="whitespace-normal">
+                    <ItemTitle
+                      className={cn('whitespace-normal', unattended && 'text-destructive')}
+                    >
+                      {t(TIER_COPY[tier].label)}
+                    </ItemTitle>
+                    <ItemDescription
+                      className={cn('whitespace-normal', unattended && 'text-destructive/80')}
+                    >
                       {t(TIER_COPY[tier].description)}
                     </ItemDescription>
                   </ItemContent>
@@ -113,6 +129,11 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
           <span>{error}</span>
         </p>
       )}
+      <AlwaysAllowDialog
+        open={confirmingAlways}
+        onOpenChange={setConfirmingAlways}
+        onConfirm={() => save('always')}
+      />
     </section>
   );
 }

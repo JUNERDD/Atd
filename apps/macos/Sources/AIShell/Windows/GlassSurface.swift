@@ -7,8 +7,13 @@ import SwiftUI
 /// SwiftUI glass through ``SwiftUI/View/glassSurface(in:animation:)``, so a new surface
 /// cannot end up with the glass but without its fill and scheme. Like the panel's, it takes the
 /// app's light or dark scheme (``AppAppearance``, the user's Theme setting or the system's), and
-/// the glass carries the panel's base fill, `--ata-surface-panel` in `packages/ui/src/styles.css`,
-/// opaque under Reduce Transparency, as that token turns.
+/// the glass carries the panel's base fill as the Panel background setting resolves it for that
+/// scheme (``PanelBackground``, the page's `--ata-surface-panel`), opaque under Reduce
+/// Transparency, as that token turns. The setting also chooses the Liquid Glass variant (regular or
+/// clear) of these surfaces and of the page windows' glass (``adoptWindow(_:page:)``), and their
+/// blur and refraction (``GlassTuner``, which every AppKit glass made here is given). When the
+/// setting changes, the live AppKit glass takes it at once (``backgroundDidChange()``); SwiftUI
+/// glass reads it through observation.
 ///
 /// Telling the glass its scheme matters because Liquid Glass otherwise adapts to the brightness
 /// behind it: a newly made glass draws its first frame in its appearance's scheme and only
@@ -23,7 +28,7 @@ import SwiftUI
 ///
 /// On macOS 15 the material is `NSVisualEffectView` (``NativeMaterialView``), which does not adapt:
 /// it takes the pinned appearance directly. Its blur shows only through a thinner fill
-/// (``fillOpacity``).
+/// (``materialOpacity(_:)``), and it has no variant, blur or refraction to set.
 enum GlassSurface {
   /// Whether the surfaces take the dark scheme now: the app's (``AppAppearance/isDark``).
   static var isDark: Bool { AppAppearance.shared.isDark }
@@ -33,24 +38,35 @@ enum GlassSurface {
   static var colorScheme: ColorScheme { isDark ? .dark : .light }
 
   /// AppKit glass made by ``attach(_:content:)`` and still alive (``NativeMaterialView/view`` to
-  /// its content), told again whenever the app's scheme changes. Neither side is retained.
+  /// its content), told again whenever the app's scheme or the panel background changes. Neither
+  /// side is retained.
   private static let live = NSMapTable<NSView, NSView>.weakToWeakObjects()
+  /// The page windows' glass (``adoptWindow(_:page:)``), told the variant again whenever the
+  /// panel background changes. Not retained.
+  private static let windows = NSHashTable<NSView>.weakObjects()
 
-  /// `--ata-surface-panel` in the current scheme: `rgb(24 24 24 / 80%)` dark and
-  /// `rgb(248 248 248 / 80%)` light on Liquid Glass (``fillOpacity`` on macOS 15), opaque under
-  /// Reduce Transparency.
+  /// The panel's base fill in the current scheme, as the Panel background setting resolves it
+  /// (``PanelBackground/tone(dark:)``; the measured default is `rgb(24 24 24 / 60%)` dark and
+  /// `rgb(255 255 255 / 56%)` light), at ``materialOpacity(_:)`` over the material and opaque
+  /// under Reduce Transparency.
   static func fill(reduceTransparency: Bool) -> NSColor {
-    let level: CGFloat = (isDark ? 24 : 248) / 255
+    let tone = PanelBackground.shared.tone(dark: isDark)
     return NSColor(
-      srgbRed: level, green: level, blue: level, alpha: reduceTransparency ? 1 : fillOpacity)
+      srgbRed: CGFloat(tone.red) / 255, green: CGFloat(tone.green) / 255,
+      blue: CGFloat(tone.blue) / 255,
+      alpha: reduceTransparency ? 1 : materialOpacity(tone.alpha))
   }
 
-  /// The fill's opacity over the material. Liquid Glass takes the token's 80%. Over macOS 15's
-  /// `NSVisualEffectView` 80% would hide most of the blur, so it takes 50%, the first value: the
-  /// macOS 15 verification build judges it and the Sequoia design variant confirms it (plan M2,
-  /// M4).
-  private static var fillOpacity: CGFloat {
-    if #available(macOS 26, *) { 0.8 } else { 0.5 }
+  /// The fill's opacity over the material for the opacity the setting resolves, which is
+  /// measured on Liquid Glass and taken there as it is. macOS 15's `NSVisualEffectView` was not
+  /// measured: it keeps the relationship it had to Liquid Glass before the setting existed, 50%
+  /// where Liquid Glass took 80% (the first value, which the macOS 15 verification build judges
+  /// and the Sequoia design variant confirms, plan M2, M4). That ratio is carried over, not
+  /// measured; above 80% the opacity rises linearly to full, so the Solid setting stays solid.
+  private static func materialOpacity(_ opacity: Double) -> CGFloat {
+    if #available(macOS 26, *) { return opacity }
+    let carried = 0.5 / 0.8
+    return opacity <= 0.8 ? opacity * carried : 0.5 + (opacity - 0.8) * (0.5 / 0.2)
   }
 
   /// ``fill(reduceTransparency:)`` for SwiftUI.
@@ -80,28 +96,66 @@ enum GlassSurface {
   }
 
   /// Makes `content` the surface of `material`: the material's content, standing on the base
-  /// fill, with the material pinned to the app's scheme, now and after every change of it
-  /// (``schemeDidChange()``). The material does not clip its content, so `content`'s own layer
-  /// carries the fill and its rounding (``shape(_:content:cornerRadius:)``); `content` must
-  /// therefore leave its layer's background alone, which a scroll view does not (wrap one in a
-  /// plain view).
+  /// fill, with the material pinned to the app's scheme and in the panel background's variant,
+  /// now and after every change of either (``schemeDidChange()``, ``backgroundDidChange()``), its
+  /// blur and refraction tuned (``GlassTuner``). The material does not clip its content, so
+  /// `content`'s own layer carries the fill and its rounding (``shape(_:content:cornerRadius:)``);
+  /// `content` must therefore leave its layer's background alone, which a scroll view does not
+  /// (wrap one in a plain view).
   static func attach(_ material: NativeMaterialView, content: NSView) {
     content.wantsLayer = true
     material.contentView = content
     pin(material, to: appearance)
+    applyVariant(to: material.view)
     live.setObject(content, forKey: material.view)
+    // The content may hold a page (the generative view windows'), whose glass stays the system's.
+    GlassTuner.shared.track(material.view, skipping: content)
+  }
+
+  /// Makes `material` a page window's glass, the panel's or Settings', whose page paints the
+  /// fill itself: the glass takes the panel background's variant now and after every change of
+  /// it, and its blur and refraction are tuned (``GlassTuner``), without `page`, so the page's own
+  /// in-page glass stays the system's.
+  static func adoptWindow(_ material: NativeMaterialView, page: NSView) {
+    applyVariant(to: material.view)
+    windows.add(material.view)
+    GlassTuner.shared.track(material.view, skipping: page)
   }
 
   /// Pins every live AppKit glass to the app's new scheme and repaints its fill. The appearance
   /// owner calls it on every change of the scheme, before the next frame, so a surface on screen
   /// switches at once rather than through the glass's own adaptation, which stays off.
   static func schemeDidChange() {
-    let reduceTransparency = ReduceTransparencyObserver.isReduced
     for case let glass as NSView in live.keyEnumerator().allObjects {
       glass.appearance = appearance
-      live.object(forKey: glass)?.layer?.backgroundColor =
-        fill(reduceTransparency: reduceTransparency).cgColor
     }
+    repaint()
+  }
+
+  /// Gives every live AppKit glass the panel background's new fill and variant, the page
+  /// windows' glass its variant, and the tuner its factors. The setting's owner calls it on every
+  /// change (``PanelBackground/apply(_:)``).
+  static func backgroundDidChange() {
+    for glass in windows.allObjects { applyVariant(to: glass) }
+    repaint()
+    GlassTuner.shared.apply(PanelBackground.shared.tuning)
+  }
+
+  /// Paints every live AppKit glass's fill and variant as they stand now.
+  private static func repaint() {
+    let fill = fill(reduceTransparency: ReduceTransparencyObserver.isReduced).cgColor
+    for case let glass as NSView in live.keyEnumerator().allObjects {
+      applyVariant(to: glass)
+      live.object(forKey: glass)?.layer?.backgroundColor = fill
+    }
+  }
+
+  /// Sets the panel background's variant on `view` when it is Liquid Glass; macOS 15's material
+  /// has none. A new style makes the glass rebuild its layers, so it is set only when it changed.
+  private static func applyVariant(to view: NSView) {
+    guard #available(macOS 26, *), let glass = view as? NSGlassEffectView else { return }
+    let style: NSGlassEffectView.Style = PanelBackground.shared.clearGlass ? .clear : .regular
+    if glass.style != style { glass.style = style }
   }
 
   /// Rounds `material` and its attached `content` alike and paints the fill as the system's
@@ -117,22 +171,26 @@ enum GlassSurface {
 
 extension View {
   /// This content on the shell's glass surface (``GlassSurfaceFace``), clipped to `outline` and
-  /// on regular Liquid Glass of the same outline, which moves on `animation`, so the glass, its
-  /// base and its content are one shape on every frame and only the outline changes from frame to
-  /// frame. A glass container drops an opacity (as it drops a transform) set on the glass itself,
-  /// so a piece's glass goes only by its outline, its fill and content with it.
+  /// on Liquid Glass of the same outline in the panel background's variant, which moves on
+  /// `animation`, so the glass, its base and its content are one shape on every frame and only the
+  /// outline changes from frame to frame. A glass container drops an opacity (as it drops a
+  /// transform) set on the glass itself, so a piece's glass goes only by its outline, its fill and
+  /// content with it.
   func glassSurface(in outline: some Shape, animation: Animation?) -> some View {
-    modifier(GlassSurfaceFace())
-      .animation(animation) { $0.clippedGlass(in: outline) }
+    // Read here, in the body of the view the surface belongs to, which observation then redraws
+    // when the variant changes.
+    let clear = PanelBackground.shared.clearGlass
+    return modifier(GlassSurfaceFace())
+      .animation(animation) { $0.clippedGlass(in: outline, clear: clear) }
   }
 
-  /// This content clipped to `outline` and on regular Liquid Glass of the same outline, the two
-  /// moving as one: `glassEffect(in:)` erases its shape, so a change to it reaches the animation
-  /// as opaque data that moves as a whole, and the clip takes the shape erased the same way, so
-  /// the clip, and the surface fill and content inside it, never part from the glass's rim. A
-  /// clip given the shape itself would move per axis instead, and a fill inside it would slide
-  /// off the glass. Set inside the piece's scoped animation; bare, it is glass without the
-  /// surface, so pieces take it through ``glassSurface(in:animation:)``.
+  /// This content clipped to `outline` and on Liquid Glass of the same outline, regular or
+  /// `clear`, the two moving as one: `glassEffect(in:)` erases its shape, so a change to it
+  /// reaches the animation as opaque data that moves as a whole, and the clip takes the shape
+  /// erased the same way, so the clip, and the surface fill and content inside it, never part
+  /// from the glass's rim. A clip given the shape itself would move per axis instead, and a fill
+  /// inside it would slide off the glass. Set inside the piece's scoped animation; bare, it is
+  /// glass without the surface, so pieces take it through ``glassSurface(in:animation:)``.
   ///
   /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
   /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows
@@ -142,10 +200,10 @@ extension View {
   /// what the macOS 15 verification build checks (plan M2); should it not, the agreed fallback is
   /// a fill of the surface tokens inside the window with no desktop blur, keeping the morph and
   /// the interaction.
-  @ViewBuilder func clippedGlass(in outline: some Shape) -> some View {
+  @ViewBuilder func clippedGlass(in outline: some Shape, clear: Bool) -> some View {
     let shape = AnyShape(outline)
     if #available(macOS 26, *) {
-      clipShape(shape).glassEffect(.regular, in: shape)
+      clipShape(shape).glassEffect(clear ? .clear : .regular, in: shape)
     } else {
       clipShape(shape).background { SwiftUIGlassMaterial().clipShape(shape) }
     }

@@ -12,6 +12,7 @@
  * message bound to `DELIVER_ARGUMENT`. The delivery function is synchronous.
  */
 import { Type, type TSchema } from 'typebox';
+import { NativeAppearanceEvents } from './appearance-events.ts';
 import { NativeCalls } from './calls.ts';
 import {
   CommandArgumentsSchema,
@@ -170,14 +171,7 @@ export const NativeEvents = {
   'window.active': Type.Object({ active: Type.Boolean() }, { additionalProperties: false }),
   /** The panel hides at alpha 0 and keeps running, so the page pauses optional work meanwhile. */
   'window.visibility': Type.Object({ visible: Type.Boolean() }, { additionalProperties: false }),
-  /**
-   * The system's Reduce transparency setting, on load and whenever it changes. WebKit has no
-   * `prefers-reduced-transparency`, so glass turns opaque through this instead.
-   */
-  'accessibility.reduceTransparency': Type.Object(
-    { reduce: Type.Boolean() },
-    { additionalProperties: false },
-  ),
+  ...NativeAppearanceEvents,
   /**
    * A command shortcut or selection toolbar command fired; Swift already captured the selection.
    * `id`: the registration id of a command shortcut (`CommandShortcut.id`), which the page maps to

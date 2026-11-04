@@ -43,8 +43,10 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    // Before any window or web view exists, so the first frame is already in the user's scheme.
+    // Before any window or web view exists, so the first frame is already in the user's scheme
+    // and on the user's panel background.
     AppAppearance.shared.restore()
+    PanelBackground.shared.restore()
     let controller = ShellController(services: makeServices())
     self.controller = controller
     SingleInstance.observeLaterLaunches { [weak controller] in controller?.summon(.toggle) }

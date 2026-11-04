@@ -62,7 +62,7 @@ extension MiniPanelShapeMotion {
 ///
 /// The content gets the shape itself and moves per axis. `glassEffect(in:)` erases the shape it
 /// is given, so the glass's change arrives as opaque data, which moves as a whole on the length's
-/// spring; the clip takes the shape erased alike (``View/clippedGlass(in:)``), so the
+/// spring; the clip takes the shape erased alike (``View/clippedGlass(in:clear:)``), so the
 /// surface fill it bounds moves with the glass's rim rather than sliding off it per axis. Drawing the glass from a per-axis shape every frame instead (an animatable
 /// modifier) costs about 1 ms more of the main thread per frame, measured: SwiftUI interpolates
 /// the erased shape without updating the view graph.

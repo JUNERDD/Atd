@@ -206,7 +206,8 @@ export interface CommandLaunch {
    * The shell asked to offer the command's options first (its shortcut was held): a light launch
    * shows them in the progress HUD's options card and runs from there; any other launch shows
    * the command's input step. Never set together with `autoRun`. A launch whose selection is
-   * missing (`PreparedCommand.selectionMissing`) first asks for the text on the progress HUD.
+   * missing (`PreparedCommand.selectionMissing`) asks for the text on the progress HUD, after the
+   * options card when it shows one.
    */
   choose?: true;
 }

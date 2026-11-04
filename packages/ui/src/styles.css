@@ -10,20 +10,29 @@
 /* shadcn preset b27GcrRo: Rhea / Neutral / Inter / Lucide. `:root` carries the light theme and
    `.dark` the dark one; the page sets `.dark` on the root element from `prefers-color-scheme`
    (`apps/desktop/src/theme/color-scheme.ts`), which the shell drives from the appearance setting.
-   A nested `.dark` scope (the welcome guide's art) keeps the dark theme under any root. */
+   A nested `.dark` scope (the welcome guide's art) keeps the dark theme under any root.
+
+   The panel background: the fill every window paints over its native glass (Liquid Glass on
+   macOS 26, the visual effect material on macOS 15, the same token on both) and what stands on it.
+   The renderer derives both appearances' values from the panel background setting and sets them
+   on the root element as `--ata-panel-<part>-light` and `-dark`
+   (`apps/desktop/src/theme/panel-background/apply.ts`); each theme scope reads its own, so a
+   scheme switch or a nested `.dark` scope needs no new derivation. Until they are set, and on a
+   page that never sets them (a user app), each falls back to the measured recipe, the setting's
+   default: dark rgb(24 24 24 / 60%) and light rgb(255 255 255 / 56%) over regular glass. The
+   shell's floating glass (`GlassSurface`) takes the same fill through `panelBackground.set`. */
 :root {
   color-scheme: light;
-  /* One renderer-owned surface across platforms; native blur remains visible through the tint.
-     The shell's window splash mirrors both themes' values (and the opaque ones below). */
-  --ata-surface-panel: rgb(248 248 248 / 80%);
+  --ata-surface-panel: var(--ata-panel-fill-light, rgb(255 255 255 / 56%));
   --ata-backdrop-blur: 20px;
   /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
      fill), `--ata-glass-blur` (default: the shared backdrop blur) and `--ata-glass-shadow` for its
      fallback material, and `--ata-glass-material` for WebKit's system material (default
      `-apple-system-glass-material`; a quieter surface may take `-apple-system-glass-material-subdued`).
-     An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
+     An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one,
+     the panel's own opaque fill, so glass keeps one fill per theme there too. */
   --ata-glass-fill-inactive: rgb(252 252 252 / 96%);
-  --ata-glass-fill-opaque: rgb(248 248 248);
+  --ata-glass-fill-opaque: var(--ata-panel-fill-opaque-light, rgb(255 255 255));
   /* Glass controls (`glass-control`, `glass-state`): the fallback fill and shadow of control-sized
      glass. In light a control lifts as a white pill; in dark as the secondary fill. */
   --ata-glass-control-fill: rgb(255 255 255 / 72%);
@@ -41,8 +50,14 @@
   /* The hover wash of ghost controls and rows on the window surface, where the opaque `--muted`
      fill would all but match the light panel. */
   --ata-surface-ghost-hover: rgb(0 0 0 / 5%);
-  /* Secondary text and icons: at least 4.5:1 on the opaque panel in either theme. */
-  --ata-text-secondary: #6b6b6b;
+  /* Secondary text and icons over the panel fill, also `--muted-foreground` below: 4.5:1 over the
+     translucent fill on any desktop the glass shows, where the preset's grays fail, and over the
+     solid fill of any tone the setting offers. */
+  --ata-text-secondary: var(--ata-panel-text-secondary-light, #636363);
+  /* The user bubble's, its attachments' and the table header's wash: translucent over the panel,
+     where the opaque `--muted` read as a slab on the thinner fill. Not `--ata-surface-raised`
+     below, the opaque surface of an activity result card. */
+  --ata-surface-raised-wash: var(--ata-panel-raised-light, rgb(0 0 0 / 5%));
   --ata-syntax-variable: #2563eb;
   /* Figma text/match: search matches in lists, the composer's blue pulled away from the surface
      (darker in light, paler in dark). */
@@ -57,9 +72,12 @@
   --activity-connector: #d4d4d4;
   /* Figma surface/raised: the activity result card's own surface. */
   --ata-surface-raised: #ffffff;
-  /* Figma code/surface: a code block's own surface (the active `pierre` theme's background), which
-     the block's hover actions also stand on. */
-  --ata-code-surface: #ffffff;
+  /* Figma code/surface: a code block's own surface (the code theme's background), which the
+     block's hover actions also stand on: a well over the panel, as thin as the code theme's syntax
+     colors allow over the thinnest readable fill and thickening to opaque as the panel does. Its
+     line numbers take a color that reads over that well. */
+  --ata-code-surface: var(--ata-panel-code-surface-light, rgb(255 255 255 / 67%));
+  --ata-code-line-number: var(--ata-panel-code-line-number-light, #575757);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -72,7 +90,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* The panel's secondary text (`--ata-text-secondary`) in place of the preset's oklch(0.556 0 0). */
+  --muted-foreground: var(--ata-panel-text-secondary-light, #636363);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -97,9 +116,9 @@
 
 .dark {
   color-scheme: dark;
-  --ata-surface-panel: rgb(24 24 24 / 80%);
+  --ata-surface-panel: var(--ata-panel-fill-dark, rgb(24 24 24 / 60%));
   --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
-  --ata-glass-fill-opaque: rgb(24 24 24);
+  --ata-glass-fill-opaque: var(--ata-panel-fill-opaque-dark, rgb(24 24 24));
   --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
   --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
   --ata-material-settings-content: rgb(24 24 24 / 10%);
@@ -109,7 +128,8 @@
   /* Figma card/surface (dark): `bg-input/40`, the input's 15% white at 40%. */
   --ata-surface-card: color-mix(in oklab, var(--input) 40%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
-  --ata-text-secondary: #a1a1a1;
+  --ata-text-secondary: var(--ata-panel-text-secondary-dark, #b4b4b4);
+  --ata-surface-raised-wash: var(--ata-panel-raised-dark, rgb(255 255 255 / 8%));
   --ata-syntax-variable: #60a5fa;
   /* Figma text/match (#80b7fb). */
   --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, white);
@@ -118,7 +138,8 @@
   --ata-status-warning: #f59e0b;
   --activity-connector: #3c3c3c;
   --ata-surface-raised: #262626;
-  --ata-code-surface: #0a0a0a;
+  --ata-code-surface: var(--ata-panel-code-surface-dark, rgb(10 10 10 / 27%));
+  --ata-code-line-number: var(--ata-panel-code-line-number-dark, #a8a8a8);
   --background: #171a1f;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -130,7 +151,8 @@
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  /* In place of the preset's oklch(0.708 0 0), as in light. */
+  --muted-foreground: var(--ata-panel-text-secondary-dark, #b4b4b4);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
@@ -192,24 +214,25 @@
   --ata-radius-control: 8px;
 }
 
-/* Reduced transparency: the panel surface (and the popover fill that follows it) turns opaque. The
-   shell reports the setting as `data-reduced-transparency` (`window-state.ts`), since WebKit has no
+/* Reduced transparency: the panel surface (and the popover fill that follows it) turns opaque in
+   its own color, the setting's tone and tint. The shell reports the setting as
+   `data-reduced-transparency` (`window-state.ts`), since WebKit has no
    `prefers-reduced-transparency`; the media query covers engines that do. Each theme takes its own
    opaque surface; the dark rules follow the light ones and outrank them. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --ata-surface-panel: rgb(248 248 248);
+    --ata-surface-panel: var(--ata-panel-fill-opaque-light, rgb(255 255 255));
   }
   .dark {
-    --ata-surface-panel: rgb(24 24 24);
+    --ata-surface-panel: var(--ata-panel-fill-opaque-dark, rgb(24 24 24));
   }
 }
 :root[data-reduced-transparency='true'] {
-  --ata-surface-panel: rgb(248 248 248);
+  --ata-surface-panel: var(--ata-panel-fill-opaque-light, rgb(255 255 255));
 }
 :root.dark[data-reduced-transparency='true'],
 :root[data-reduced-transparency='true'] .dark {
-  --ata-surface-panel: rgb(24 24 24);
+  --ata-surface-panel: var(--ata-panel-fill-opaque-dark, rgb(24 24 24));
 }
 
 @theme inline {

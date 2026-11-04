@@ -10,7 +10,7 @@ import AppKit
 /// like the capsule's buttons.
 ///
 /// Its window never takes the keyboard or activates Atd, sits above the toolbar at the same
-/// level and joins every Space like it (``SelectionToolbarPanel/makeWindow()``), and reaches
+/// level and joins every Space like it (``ToolbarWindow/selectionToolbar()``), and reaches
 /// ``SelectionToolbarPanel/inset`` past the glass on every side, so the glass's shadow is never
 /// cut off; that margin is transparent. A list taller than the room scrolls; a scroll over it
 /// scrolls the list, one over another app still hides the toolbar.
@@ -21,7 +21,7 @@ final class SelectionToolbarMenu: NSObject {
   /// margin can lie over the toolbar or another panel of the cascade.
   var onPressOutside: ((NSPoint) -> Void)?
 
-  private let window = SelectionToolbarPanel.makeWindow()
+  private let window = ToolbarWindow.selectionToolbar()
   private let hover: SelectionToolbarHover
   private var rows: [any ToolbarHoverable] = []
   /// The glass on screen while the panel shows.
