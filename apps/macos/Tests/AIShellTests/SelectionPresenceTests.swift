@@ -87,7 +87,9 @@ private final class SelectionAXFixture {
     let pid = getpid()
     let point = cellPoint
     let identity = identity
-    let deadline = ContinuousClock.now + .seconds(2)
+    // The first AX publication shares the main thread with concurrent SwiftUI layout tests.
+    // Allow CI startup contention without relaxing either the identity or selection checks.
+    let deadline = ContinuousClock.now + .seconds(10)
     while ContinuousClock.now < deadline {
       let ready = await Task.detached { Self.isReady(pid: pid, point: point, identity: identity) }
         .value
