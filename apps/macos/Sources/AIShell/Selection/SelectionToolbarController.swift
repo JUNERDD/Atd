@@ -223,7 +223,9 @@ final class SelectionToolbarController {
   }
 
   private func handle(_ event: NSEvent) {
-    let pointer = NSEvent.mouseLocation
+    guard let location = event.cgEvent?.location else { return }
+    let pointer = CaptureCoordinates.flip(
+      location, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
     switch event.type {
     case .leftMouseDown:
       dismiss()
@@ -235,10 +237,14 @@ final class SelectionToolbarController {
         shift: event.modifierFlags.contains(.shift))
       let admitted = settings?.activation.admits(
         heldAtPress: heldAtPress, heldAtRelease: held(in: event), listening: listening.isOn)
+      // The press identifies the table even when a drag ends outside it. Without a recorded
+      // press, only the release can associate this gesture with a surface.
+      let origin = pressedAt ?? pointer
       pressedAt = nil
       heldAtPress = false
       if admitted == true {
-        schedule(at: pointer, immediately: event.clickCount < 2, cellsOnly: !selected)
+        schedule(
+          at: pointer, origin: origin, immediately: event.clickCount < 2, cellsOnly: !selected)
       }
     default:
       dismiss()
@@ -250,19 +256,22 @@ final class SelectionToolbarController {
     settings?.activation.isHeld(in: event.modifierFlags) ?? false
   }
 
-  private func schedule(at pointer: CGPoint, immediately: Bool, cellsOnly: Bool) {
+  private func schedule(at pointer: CGPoint, origin: CGPoint, immediately: Bool, cellsOnly: Bool) {
     pending?.cancel()
     watchInterruptions()
     let token = generation
     pending = Task { [weak self] in
       if immediately,
-        await self?.check(pointer: pointer, token: token, cellsOnly: cellsOnly) == true
+        await self?.check(pointer: pointer, origin: origin, token: token, cellsOnly: cellsOnly)
+          == true
       {
         return
       }
       try? await Task.sleep(for: Self.debounce)
       guard !Task.isCancelled else { return }
-      let shown = await self?.check(pointer: pointer, token: token, cellsOnly: cellsOnly) == true
+      let shown =
+        await self?.check(pointer: pointer, origin: origin, token: token, cellsOnly: cellsOnly)
+        == true
       if !shown, token == self?.generation { self?.stopWatchingInterruptions() }
     }
   }
@@ -283,12 +292,15 @@ final class SelectionToolbarController {
   /// The rules first, then Accessibility, then the toolbar if nothing newer happened meanwhile.
   /// True when the toolbar showed.
   @discardableResult
-  private func check(pointer: CGPoint, token: Int, cellsOnly: Bool) async -> Bool {
+  private func check(pointer: CGPoint, origin: CGPoint, token: Int, cellsOnly: Bool) async -> Bool {
     guard token == generation, let settings,
       let app = NSWorkspace.shared.frontmostApplication
     else { return false }
     guard SelectionToolbarRules.shouldProbe(context(of: app, settings)) else { return false }
-    let probe = await SelectionPresence.check(pid: app.processIdentifier)
+    let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+    let probe = await SelectionPresence.check(
+      pid: app.processIdentifier,
+      gestureAt: CaptureCoordinates.flip(origin, primaryHeight: primaryHeight))
     guard token == generation, monitor != nil,
       NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
       !cellsOnly || probe == .cells,

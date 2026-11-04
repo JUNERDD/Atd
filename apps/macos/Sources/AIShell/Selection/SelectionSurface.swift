@@ -37,14 +37,17 @@ nonisolated struct SelectionSurface {
 
   /// The nearest cell-based table that actually reports selected cells. A text editor inside
   /// a cell owns its text selection and must never inherit the surrounding grid selection.
-  /// Row-based file lists are not cell selections. This checks counts, never cell values.
+  /// Lists, outlines and thumbnail grids can also expose AXSelectedCells, but their selected
+  /// items are not spreadsheet regions. This checks roles and counts, never cell values.
   func selectedCellContainer() -> AXUIElement? {
     if role.map(WriteTargetWritability.textRoles.contains) == true { return nil }
     let deadline = ContinuousClock.now + .milliseconds(150)
     var current = self
     for _ in 0..<6 {
       guard ContinuousClock.now < deadline else { return nil }
+      if [kAXListRole, kAXOutlineRole, kAXGridRole].contains(current.role ?? "") { return nil }
       if current.attributes.contains("AXSelectedCells") {
+        guard current.role == kAXTableRole else { return nil }
         var count: CFIndex = 0
         if AXUIElementGetAttributeValueCount(
           current.element, "AXSelectedCells" as CFString, &count) == .success, count > 0
