@@ -17,7 +17,7 @@ Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversa
 
 [Website](https://atd.best) · GitHub download mirror: [Apple silicon](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg), [Intel](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-x64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
 
-[![Atd main panel on the desktop, with a new task, composer, model selector, and permission controls](apps/website/public/cases/ui/main-panel.png)](apps/website/public/cases/ui/main-panel.png)
+[![Atd main panel on the desktop: a new task with quick commands, All commands, Create app and My apps, the composer, its approval mode and the model](.github/readme/main-panel.jpg)](.github/readme/main-panel.jpg)
 
 _Interface preview of the main panel._
 
@@ -71,35 +71,43 @@ Use **Stop all** in Computer use settings to stop computer actions across tasks 
 
 ## Interface previews
 
-These images are **1440 × 900** interface previews exported from the UI designs, rather than captures of the running app. Together with the main panel above, they show nine interfaces. Click an image to open the full-size preview.
+These previews are cropped from **1440 × 900** interface scenes in the UI designs and exported at 2×; they are not captures of the running app. Together with the main panel above, they show ten interfaces. Click an image to open it at full size.
 
-### Selection and write-back
+### In place
 
-| Selection toolbar                                                                                                                                                                                                                                                                        | Write-back                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Selection toolbar above selected text, with Fix grammar's options open: show in the conversation, replace the selected text, insert after it, insert at the cursor, or copy](apps/website/public/cases/ui/selection-toolbar.png)](apps/website/public/cases/ui/selection-toolbar.png) | [![A rough draft line rewritten in place by a command, with the command island at the bottom of the screen showing Written](apps/website/public/cases/ui/write-back.png)](apps/website/public/cases/ui/write-back.png) |
-| Ask or run a command from a text selection, and choose where its answer goes.                                                                                                                                                                                                            | Run a command from its shortcut and the answer replaces the selection in place.                                                                                                                                        |
+| Selection toolbar                                                                                                                                                                                                                                            | Write-back                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Selection toolbar above selected text, with Fix grammar's options open: show in the conversation, replace the selected text, insert after it, insert at the cursor, or copy](.github/readme/selection-toolbar.jpg)](.github/readme/selection-toolbar.jpg) | [![A draft line rewritten in place by a command, with the command island at the bottom of the screen writing](.github/readme/write-back.jpg)](.github/readme/write-back.jpg) |
+| Ask or run a command from a text selection, and choose where its answer goes.                                                                                                                                                                                | Run a command from its shortcut and the answer replaces the selection in place.                                                                                              |
 
-### Quick actions and capture
+[![Screenshot of a report with arrows, step numbers, a note, a mosaic, and the annotation toolbar](.github/readme/screenshot.jpg)](.github/readme/screenshot.jpg)
 
-| Mini Panel                                                                                                                                                                | Screenshot tool                                                                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [![Expanded Mini Panel at the edge of the desktop with its saved-command menu](apps/website/public/cases/ui/mini-panel.png)](apps/website/public/cases/ui/mini-panel.png) | [![Screenshot selection with arrows, step numbers, mosaic, and annotation controls](apps/website/public/cases/ui/screenshot.png)](apps/website/public/cases/ui/screenshot.png) |
-| Open a task, capture the screen, or run a saved command.                                                                                                                  | Capture an area and mark the details that matter.                                                                                                                              |
+_Screenshot tool: capture an area and mark the details that matter._
 
-### Conversation and setup
+### Panel and conversation
 
-| Conversation                                                                                                                                                            | Models and settings                                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Conversation with a follow-up message, tool activity, response actions, and composer](apps/website/public/cases/ui/chat.png)](apps/website/public/cases/ui/chat.png) | [![Models settings with a navigation sidebar and ChatGPT, Anthropic, and LM Studio connections](apps/website/public/cases/ui/settings.png)](apps/website/public/cases/ui/settings.png) |
-| Read the result and keep working in the same task.                                                                                                                      | Configure providers, models, permissions, and preferences.                                                                                                                             |
+| Conversation                                                                                                                                | Mini Panel                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Conversation with a follow-up message, tool activity, response actions, and composer](.github/readme/chat.jpg)](.github/readme/chat.jpg) | [![Mini Panel at the edge of the screen with Active tasks open: a file write waiting for approval and two tasks in progress](.github/readme/mini-panel.jpg)](.github/readme/mini-panel.jpg) |
+| Read the result and keep working in the same task.                                                                                          | Follow running tasks and answer approvals from the edge of the screen.                                                                                                                      |
 
-### Your apps and automations
+### Apps and connections
 
-| My apps                                                                                                                                      | Automations                                                                                                                                                                                                                  |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![My apps alongside an independent Notes application window](apps/website/public/cases/ui/apps.png)](apps/website/public/cases/ui/apps.png) | [![Automations settings showing memory consolidation, a folder-triggered invoice workflow, scheduled tasks, and pause controls](apps/website/public/cases/ui/automations.png)](apps/website/public/cases/ui/automations.png) |
-| Turn an idea into an app you can open again.                                                                                                 | Scheduled tasks, folder workflows, and idle-time memory consolidation, with run status and a shared pause control.                                                                                                           |
+[![Atd's live pointer filling in an expense form in its own browser profile, with the Mini Panel at the edge of the screen](.github/readme/computer-use.jpg)](.github/readme/computer-use.jpg)
+
+_Computer use: with your permission, Atd works websites and apps with a pointer of its own._
+
+[![My apps alongside an independent Notes application window](.github/readme/apps.jpg)](.github/readme/apps.jpg)
+
+_My apps: turn an idea into an app you can open again._
+
+[![Automations settings showing memory consolidation, a folder-triggered invoice workflow, scheduled tasks, and pause controls](.github/readme/automations.jpg)](.github/readme/automations.jpg)
+
+_Automations: scheduled tasks, folder workflows, and idle-time memory consolidation, with run status and a shared pause control._
+
+[![Connect OpenAI in Settings: the ChatGPT plan tab, the consent and background-use switches, and Sign in to ChatGPT](.github/readme/settings.jpg)](.github/readme/settings.jpg)
+
+_Models and settings: connect a ChatGPT plan or API credentials, after agreeing to what the connection shares._
 
 ## Data and permissions
 

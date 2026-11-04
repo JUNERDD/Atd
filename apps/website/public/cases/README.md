@@ -7,22 +7,28 @@ clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../sr
 
 `clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
 and `zh`. They are a reviewed snapshot of renders from the films repository
-([atd-films](https://github.com/JUNERDD/atd-films), source commit
-`b0e6f5e` from [PR #3](https://github.com/JUNERDD/atd-films/pull/3)), made with
-the same Remotion stack and product kit as the tour films; ordinary website work does not render
-them. `src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings
-film, `src/films/case-settings/`), a closer framing where the film's own shot is too wide for the
-website's frame, and the poster's moment; the tour films take their language from the render's
-`lang` input.
+([atd-films](https://github.com/JUNERDD/atd-films), source commit `f8df512` from
+[PR #4](https://github.com/JUNERDD/atd-films/pull/4)), made with the same Remotion stack and
+product kit as the tour films; ordinary website work does not render them.
+`src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings film,
+`src/films/case-settings/`), the hold on its last frame, a camera of its own where the film's shot
+does not suit the website's frame, and the poster's moment; the tour films take their language
+from the render's `lang` input.
+
+Each clip holds one framing for the whole case: it starts once the film's camera has landed, ends
+before the film moves on, and keeps every window it shows whole, so no frame cuts through an
+interface or whips between shots. The panel clips frame the notes window and the panel together,
+or the panel alone; the Mini Panel clip stays on the screen's edge. The result rests on screen
+before the clip fades out.
 
 | Clip                | Source                                                                  |
 | ------------------- | ----------------------------------------------------------------------- |
 | `selection-toolbar` | Selection tour, Messages: Translate's options, Japanese                 |
 | `write-back`        | Selection tour, Compose: nothing selected, the compose card, the caret  |
-| `screenshot`        | Mini Panel tour: the capture, its annotations and the composer          |
+| `screenshot`        | Mini Panel tour: the selected region and its four annotations           |
 | `main-panel`        | Main panel tour: ⌘⇧Space, files dropped in, an @ mention, the request   |
 | `chat`              | Main panel tour: the run, its todos and subagents, an approval          |
-| `mini-panel`        | Mini Panel tour: Active tasks, Allow once, both tasks completed         |
+| `mini-panel`        | Mini Panel tour: the lit pill, Active tasks, Allow once, both completed |
 | `computer-use`      | Main panel tour: Atd's live pointer works the notes app and checks it   |
 | `apps`              | Main panel tour: Create app, the build and its card, My apps            |
 | `automations`       | Main panel tour: a next step becomes an automation                      |
@@ -60,6 +66,13 @@ scene. Frames are in “W · Website · Interface scenes · shared desktop” (`
 | `ui/apps.png`              | `2462:144114` | My apps `1866:88787` and Notes `2237:132814`                                           |
 | `ui/automations.png`       | `2476:144190` | Automations overview with memory consolidation `2419:156499`                           |
 | `ui/computer-use.png`      | `3536:208758` | Live pointer `2927:181650` filling a form, Mini Panel rail `3285:241539`               |
+
+The repository README shows crops of these scenes, exported at 2× from the same frames, as JPEGs in
+[`.github/readme/`](../../../../.github/readme/); they leave the scene files here untouched. On
+2026-11-04 the main panel and conversation scenes took the current panel: the 52 pt unified title
+bar with the native traffic lights, and the new task's quick commands with All commands, Create app
+and My apps (from `AP1.01`, `1866:106317`). Their flat exports here were refreshed; their layer
+sheets below predate it.
 
 The 0.10.0 refresh uses the current connected task-activity and provider editor components. The
 Mini Panel shows two running tasks and a synthetic approval request to write `release-notes.md`;

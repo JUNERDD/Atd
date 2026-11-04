@@ -89,8 +89,8 @@ export const cases = [
       zh: ['框出重点，', '说明更直观。'],
     },
     alt: {
-      en: 'From the Mini Panel, a screenshot frames part of meeting notes, then adds an arrow, a note, two step numbers and a mosaic, and the image goes into a new task.',
-      zh: '从迷你面板截图，框选会议纪要的一部分，加上箭头、文字、两个序号和马赛克，再把截图放进新任务。',
+      en: 'A screenshot frames part of meeting notes, then adds an arrow, a note, two step numbers and a mosaic.',
+      zh: '截图框选会议纪要的一部分，再加上箭头、文字、两个序号和马赛克。',
     },
   },
   {
@@ -143,8 +143,8 @@ export const cases = [
       zh: ['交出去的任务，', '都在这里跟进。'],
     },
     alt: {
-      en: 'The Mini Panel at the screen’s edge lights up; Active tasks lists a task that needs approval and one in progress, the request is allowed once, and both tasks end completed.',
-      zh: '屏幕边缘的迷你面板亮起，“活跃任务”列出一个待确认和一个进行中的任务，允许一次后两个任务都已完成。',
+      en: 'The lit Mini Panel at the screen’s edge opens; Active tasks lists a task that needs approval and one in progress, the request is allowed once, and both tasks end completed.',
+      zh: '点开屏幕边缘亮起的迷你面板，“活跃任务”列出一个待确认和一个进行中的任务，允许一次后两个任务都已完成。',
     },
   },
   {
