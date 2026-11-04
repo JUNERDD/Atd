@@ -87,8 +87,12 @@ let package = Package(
     .testTarget(name: "AICoreTests", dependencies: ["AICore"]),
     // Runs a real WKWebView against a local stub service; see RelayIntegrationTests.
     .testTarget(name: "AIRelayTests", dependencies: ["AIRelay", "AICore"]),
+    // AX needs its own AppKit event loop; keep its application lifecycle out of the parallel
+    // SwiftUI/WebKit tests. This executable is only a test dependency, never an app product.
+    .executableTarget(
+      name: "SelectionAXFixture", dependencies: ["AIShell"], path: "Tests/SelectionAXFixture"),
     // Real WKWebView checks of the private WebKit settings the shell depends on.
-    .testTarget(name: "AIShellTests", dependencies: ["AIShell"]),
+    .testTarget(name: "AIShellTests", dependencies: ["AIShell", "SelectionAXFixture"]),
   ],
   swiftLanguageModes: [.v6]
 )
