@@ -7,11 +7,11 @@ clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../sr
 
 `clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
 and `zh`. They are a reviewed snapshot of renders from the films repository
-([atd-films](https://github.com/JUNERDD/atd-films), source commit `4a5b05f` from
-[PR #6](https://github.com/JUNERDD/atd-films/pull/6); the screenshot, Mini Panel and settings
-clips, whose films that change leaves alone, are the renders of `4b5b27e` from
-[PR #5](https://github.com/JUNERDD/atd-films/pull/5)), made with the same Remotion stack and
-product kit as the tour films; ordinary website work does not render them.
+([atd-films](https://github.com/JUNERDD/atd-films), source commit `ccd1f85` from
+[PR #7](https://github.com/JUNERDD/atd-films/pull/7)), made with the same Remotion stack and
+product kit as the tour films; ordinary website work does not render them. Each clip is rendered
+in a single browser tab: frames shared among parallel tabs drew glass and scaled layers half a
+pixel apart, which the loop showed as flicker (the selection toolbar's label, the Mini Panel).
 `src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings film,
 `src/films/case-settings/`), the hold on its last frame, a camera of its own where the film's shot
 does not suit the website's frame, and the poster's moment; the tour films take their language
