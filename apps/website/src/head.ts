@@ -1,3 +1,4 @@
+import { blogCopy } from './pages/blog/copy.ts';
 import { debugCopy } from './pages/debug/copy.ts';
 import { site } from './content/site.ts';
 import { htmlLang, LANGS, pagePath, type Lang, type Localized, type Page } from './i18n/routes.ts';
@@ -38,25 +39,78 @@ function escapeAttr(value: string): string {
     .replaceAll('>', '&gt;');
 }
 
+function imageType(src: string): string {
+  if (src.endsWith('.webp')) return 'image/webp';
+  if (src.endsWith('.avif')) return 'image/avif';
+  if (src.endsWith('.png')) return 'image/png';
+  return 'image/jpeg';
+}
+
+/** What a blog post's page says about itself; its first highlight's image is its share image. */
+export interface PostHead {
+  title: string;
+  description: string;
+  /** The publishing day, `YYYY-MM-DD`. */
+  published: string;
+  image?: { src: string; width: number; height: number; alt: string };
+}
+
+/** The page's title and description: a post's own (when `post` is given), else its page's. */
+function pageCopy(lang: Lang, page: Page, post: PostHead | undefined): HeadCopy {
+  if (page === 'debug')
+    return {
+      ...headCopy[lang],
+      title: `${debugCopy[lang].title} — Atd`,
+      description: debugCopy[lang].description,
+    };
+  if (post)
+    return {
+      ...headCopy[lang],
+      title: blogCopy[lang].postTitle(post.title),
+      description: post.description,
+    };
+  if (page !== 'home')
+    return {
+      ...headCopy[lang],
+      title: blogCopy[lang].headTitle,
+      description: blogCopy[lang].headDescription,
+    };
+  return headCopy[lang];
+}
+
 /**
  * The `<head>` tags of one language's page: title, description, robots directives, canonical and
  * alternate language links, the Open Graph and X cards, and the structured data. `siteUrl` is the
- * production origin, without a trailing slash.
+ * production origin, without a trailing slash. A blog post passes `post`, which makes its card an
+ * article with its own image; without it (the dev server's head) a post takes the blog's copy.
  */
-export function renderHead(lang: Lang, siteUrl: string, page: Page = 'home'): string {
-  const copy =
-    page === 'debug'
-      ? {
-          ...headCopy[lang],
-          title: `${debugCopy[lang].title} — Atd`,
-          description: debugCopy[lang].description,
-        }
-      : headCopy[lang];
+export function renderHead(
+  lang: Lang,
+  siteUrl: string,
+  page: Page = 'home',
+  post?: PostHead,
+): string {
+  const copy = pageCopy(lang, page, post);
   const url = `${siteUrl}${pagePath(lang, page)}`;
-  const image = `${siteUrl}/og.jpg`;
+  const share = post?.image
+    ? {
+        url: `${siteUrl}${post.image.src}`,
+        type: imageType(post.image.src),
+        width: post.image.width,
+        height: post.image.height,
+        alt: post.image.alt,
+      }
+    : {
+        url: `${siteUrl}/og.jpg`,
+        type: 'image/jpeg',
+        width: 1200,
+        height: 630,
+        alt: copy.imageAlt,
+      };
+  const image = share.url;
   const title = escapeAttr(copy.title);
   const description = escapeAttr(copy.description);
-  const imageAlt = escapeAttr(copy.imageAlt);
+  const imageAlt = escapeAttr(share.alt);
   const alternates = LANGS.map(
     (other) =>
       `<link rel="alternate" hreflang="${htmlLang[other]}" href="${siteUrl}${pagePath(other, page)}" />`,
@@ -73,7 +127,12 @@ export function renderHead(lang: Lang, siteUrl: string, page: Page = 'home'): st
     `<link rel="canonical" href="${url}" />`,
     ...alternates,
     `<link rel="alternate" hreflang="x-default" href="${siteUrl}${pagePath('en', page)}" />`,
-    `<meta property="og:type" content="website" />`,
+    ...(post
+      ? [
+          `<meta property="og:type" content="article" />`,
+          `<meta property="article:published_time" content="${post.published}" />`,
+        ]
+      : [`<meta property="og:type" content="website" />`]),
     `<meta property="og:site_name" content="${site.name}" />`,
     `<meta property="og:title" content="${title}" />`,
     `<meta property="og:description" content="${description}" />`,
@@ -81,9 +140,9 @@ export function renderHead(lang: Lang, siteUrl: string, page: Page = 'home'): st
     `<meta property="og:locale" content="${copy.ogLocale}" />`,
     ...otherLocales,
     `<meta property="og:image" content="${image}" />`,
-    `<meta property="og:image:type" content="image/jpeg" />`,
-    `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:type" content="${share.type}" />`,
+    `<meta property="og:image:width" content="${share.width}" />`,
+    `<meta property="og:image:height" content="${share.height}" />`,
     `<meta property="og:image:alt" content="${imageAlt}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${title}" />`,

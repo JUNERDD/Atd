@@ -1,0 +1,445 @@
+/* The blog's pages. Both sit on one plate under the floating nav; what they hold is set on opaque
+   cards (the kit's `card` block), never glass, filled a shade above the plate like the rest of the
+   faceplate's parts, so the perforations stop at their edges. */
+.blog-card,
+.post__fixes {
+  --card-bg: var(--ink-2);
+}
+
+@media (prefers-contrast: more) {
+  .blog-card,
+  .post__fixes {
+    --card-bg: var(--ink-3);
+  }
+}
+
+/* The list: the heading lit in dots on the page's center line, then the posts as cards. */
+.blog {
+  padding-block: calc(var(--nav-top) + var(--nav-h) + round(clamp(72px, 10vw, 144px), 24px))
+    var(--section-pad);
+}
+
+.blog__inner {
+  display: grid;
+  justify-items: center;
+  gap: round(clamp(48px, 7vw, 96px), 24px);
+}
+
+.blog__intro {
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.blog__title {
+  --rv-dur: var(--dur-spring-smooth);
+  --rv-y: 12px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  line-height: var(--lh-display);
+  letter-spacing: var(--tr-display);
+}
+
+.blog__lede {
+  max-inline-size: 34rem;
+  font-size: var(--fs-lede);
+  line-height: 1.45;
+  color: var(--fg-2);
+  text-wrap: balance;
+}
+
+/* Cards fill as many columns as fit at 340 px or more; the newest post spans the row. */
+.blog__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 24px;
+  inline-size: 100%;
+}
+
+.blog__item[data-featured] {
+  grid-column: 1 / -1;
+}
+
+/* A post's card is one link. Its image is inset by the card's padding with the concentric corner
+   the kit derives; the text below it lines up with the image's edges plus a little air. A click
+   opens the post without a press: the card neither shrinks nor darkens under the pointer or a
+   finger, and under a fine pointer the hover fill simply stays through the click. */
+.blog-card {
+  --card-pad: 12px;
+  --press-scale: 1;
+  --press-fill: transparent;
+  block-size: 100%;
+  gap: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .blog-card {
+    --press-fill: var(--hover-fill);
+  }
+}
+
+.blog-card__media {
+  aspect-ratio: 16 / 10;
+  background-color: var(--ink-0);
+}
+
+.blog-card__body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 20px 12px 12px;
+}
+
+.blog-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.blog-card__release {
+  font-size: var(--fs-small);
+}
+
+.blog-card__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem);
+  font-weight: 650;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+  text-wrap: balance;
+}
+
+.blog-card__summary {
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-text);
+  color: var(--fg-2);
+}
+
+/* Wide, the featured card sets its image beside the text, larger, like a story's lead. */
+@media (width >= 900px) {
+  .blog__item[data-featured] .blog-card {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+  }
+
+  .blog__item[data-featured] .blog-card__body {
+    gap: 12px;
+    padding: 24px clamp(24px, 3vw, 40px);
+  }
+
+  .blog__item[data-featured] .blog-card__title {
+    font-size: clamp(1.75rem, 1rem + 1.4vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: var(--tr-display);
+  }
+
+  .blog__item[data-featured] .blog-card__summary {
+    font-size: var(--fs-lede);
+    line-height: 1.45;
+  }
+}
+
+/* A post: a centered header, then its body, the sections in one column (text at a reading
+   measure, images wider) with the contents above them. From 1100px the contents take a column of
+   their own beside the sections, and the header lines up with the text. */
+.post {
+  --post-text: 680px;
+  --post-wide: 1040px;
+  padding-block: calc(var(--nav-top) + var(--nav-h) + 24px) var(--section-pad);
+}
+
+.post__inner {
+  display: grid;
+  justify-items: center;
+  gap: round(clamp(56px, 7vw, 96px), 24px);
+}
+
+.post__bar,
+.post__body,
+.post__end {
+  inline-size: 100%;
+  max-inline-size: var(--post-wide);
+}
+
+/* The back button sits at the column's leading edge; its chevron lines up with the image below,
+   while the plain button's hover fill still pads it. */
+.post__back {
+  margin-inline-start: -12px;
+  padding-inline: 8px 14px;
+  gap: 2px;
+  font-size: var(--fs-small);
+}
+
+.post__hero {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  max-inline-size: 880px;
+  text-align: center;
+}
+
+/* The back button belongs to the header below it, closer than the column's other parts. */
+.post__bar + .post__hero {
+  margin-block-start: -24px;
+}
+
+.post__release {
+  font-size: clamp(1rem, 0.9rem + 0.4vw, 1.25rem);
+}
+
+.post__title {
+  --rv-dur: var(--dur-spring-smooth);
+  --rv-y: 12px;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 1.4rem + 4.4vw, 5rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: var(--tr-display);
+  text-wrap: balance;
+}
+
+.post__summary {
+  max-inline-size: 40rem;
+  font-size: var(--fs-lede);
+  line-height: 1.45;
+  color: var(--fg-2);
+  text-wrap: balance;
+}
+
+.post__body {
+  display: grid;
+  justify-items: center;
+  gap: round(clamp(48px, 6vw, 72px), 24px);
+}
+
+.post__main {
+  display: grid;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* The contents: each section's title on one track, the section being read lit on it. Links are
+   44 px tall for touch and compact under a mouse. */
+.post__toc {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  inline-size: 100%;
+  max-inline-size: var(--post-text);
+}
+
+.post__toc-title {
+  font-size: var(--fs-legend);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--fg-3);
+}
+
+.post__toc-list {
+  display: grid;
+  border-inline-start: 1px solid var(--line-2);
+}
+
+.post__toc-link {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--hit);
+  margin-inline-start: -1px;
+  padding: 6px 0 6px 16px;
+  border-inline-start: 2px solid transparent;
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--fg-3);
+  text-wrap: pretty;
+  transition:
+    color var(--dur-fast) linear,
+    border-color var(--dur-fast) linear;
+}
+
+.post__toc-link[aria-current] {
+  border-inline-start-color: var(--fg-1);
+  color: var(--fg-1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .post__toc-link {
+    min-block-size: 32px;
+  }
+
+  .post__toc-link:hover {
+    color: var(--fg-1);
+  }
+}
+
+/* A section: its heading and text at the reading measure, its image at the column's width.
+   Sections touch, their spacing inside each, so one is always under the reading line and the
+   contents never go dark between two. */
+.post__section {
+  display: grid;
+  justify-items: center;
+  gap: 32px;
+}
+
+.post__section + .post__section {
+  padding-block-start: round(clamp(56px, 7vw, 96px), 24px);
+}
+
+.post__copy {
+  display: grid;
+  gap: 16px;
+  inline-size: 100%;
+  max-inline-size: var(--post-text);
+}
+
+.post__heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.5rem);
+  font-weight: 700;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+  text-wrap: balance;
+}
+
+.post__text {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  line-height: 1.6;
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+
+/* An image sits like a screen set into the plate: the display's corner and hairline, on black
+   while it loads. Its width and height come from the file, so the box is reserved. */
+.post__shot,
+.post__fix-shot {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  background-color: var(--ink-0);
+}
+
+.post__shot {
+  border-radius: var(--r-display);
+  box-shadow:
+    0 0 0 1px var(--line-1),
+    0 32px 64px -32px rgb(0 0 0 / 0.9);
+}
+
+/* The fixes: a card of lines between hairlines, each hanging from an unlit LED; a fix that shows
+   what changed carries its image under its line. */
+.post__fixes {
+  inline-size: 100%;
+  max-inline-size: var(--post-text);
+  --card-pad: 4px 20px;
+  gap: 0;
+}
+
+.post__fix {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding-block: 14px;
+  padding-inline-start: 22px;
+  color: var(--fg-2);
+}
+
+.post__fix + .post__fix {
+  border-block-start: 1px solid var(--line-1);
+}
+
+.post__fix::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 4px;
+  inset-block-start: calc(14px + var(--lh-text) * 0.5em - 3px);
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background-color: var(--dot-mid);
+}
+
+.post__fix-shot {
+  border-radius: var(--corner-sm);
+  box-shadow: 0 0 0 1px var(--line-1);
+}
+
+@media (width >= 1100px) {
+  .post__bar,
+  .post__body,
+  .post__end {
+    max-inline-size: none;
+  }
+
+  .post__hero {
+    justify-self: stretch;
+    justify-items: start;
+    max-inline-size: none;
+    text-align: start;
+  }
+
+  .post__title {
+    max-inline-size: 15em;
+  }
+
+  .post__body {
+    grid-template-columns: minmax(0, 1fr) 13.5rem;
+    align-items: start;
+    justify-items: stretch;
+    column-gap: 64px;
+  }
+
+  .post__main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .post__section {
+    justify-items: start;
+  }
+
+  .post__toc {
+    position: sticky;
+    inset-block-start: calc(var(--nav-top) + var(--nav-h) + 40px);
+    grid-column: 2;
+    grid-row: 1;
+    max-block-size: calc(100dvh - var(--nav-top) - var(--nav-h) - 80px);
+    overflow-y: auto;
+  }
+}
+
+/* The end: the release in dots and one primary action, with the way back beside it. */
+.post__end {
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  padding-block-start: round(clamp(48px, 7vw, 96px), 24px);
+  border-block-start: 1px solid var(--line-1);
+  text-align: center;
+}
+
+.post__end-release {
+  font-size: clamp(2rem, 1.4rem + 2.4vw, 3.5rem);
+  line-height: 1;
+}
+
+.post__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+}
+
+.post__download > svg {
+  inline-size: 1.1em;
+  block-size: 1.1em;
+}
+
+/* PingFang's heaviest weight is semibold; asking for more would fall back to a synthetic bold. */
+:lang(zh) :is(.blog__title, .blog-card__title, .post__title, .post__heading) {
+  font-weight: 600;
+}

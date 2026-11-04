@@ -4,7 +4,10 @@ interface NavCopy {
   label: string;
   home: string;
   skip: string;
+  /** The home page's sections, as `#id` links. */
   links: { href: string; label: string }[];
+  /** The blog's link. */
+  blog: string;
   download: string;
   language: string;
 }
@@ -18,6 +21,7 @@ export const navCopy = {
       { href: '#cases', label: 'Features' },
       { href: '#features', label: 'Control' },
     ],
+    blog: 'Blog',
     download: 'Download',
     language: 'Change language',
   },
@@ -29,6 +33,7 @@ export const navCopy = {
       { href: '#cases', label: '功能' },
       { href: '#features', label: '掌控' },
     ],
+    blog: '博客',
     download: '下载',
     language: '切换语言',
   },

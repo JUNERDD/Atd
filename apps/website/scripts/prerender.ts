@@ -66,25 +66,27 @@ for (const route of entry.routes) {
   console.log(`prerendered ${route.lang} → dist/${route.dir === './' ? '' : route.dir}index.html`);
 }
 
-// Crawlers get the indexable language pages, each listing the others as alternates and English as the
-// default for any other language, as the pages' own hreflang links do.
+// Crawlers get the indexable pages in each language, each listing the same page's other languages as
+// alternates and its English version as the default for any other language, as the pages' own
+// hreflang links do.
 const indexedRoutes = entry.routes.filter((route) => route.indexable);
-const fallback = indexedRoutes.find((route) => route.lang === 'en');
-if (!fallback) throw new Error('The English page, the x-default alternate, is missing.');
-const alternates = [
-  ...indexedRoutes.map((route) => [route.hreflang, route.path]),
-  ['x-default', fallback.path],
-]
-  .map(
-    ([hreflang, path]) =>
-      `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${origin}${path}" />`,
-  )
-  .join('\n');
+function alternatesOf(page: (typeof indexedRoutes)[number]['page']): string {
+  const versions = indexedRoutes.filter((route) => route.page === page);
+  const fallback = versions.find((route) => route.lang === 'en');
+  if (!fallback) throw new Error(`The English ${page} page, the x-default alternate, is missing.`);
+  return [...versions.map((route) => [route.hreflang, route.path]), ['x-default', fallback.path]]
+    .map(
+      ([hreflang, path]) =>
+        `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${origin}${path}" />`,
+    )
+    .join('\n');
+}
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
   ...indexedRoutes.map(
-    (route) => `  <url>\n    <loc>${origin}${route.path}</loc>\n${alternates}\n  </url>`,
+    (route) =>
+      `  <url>\n    <loc>${origin}${route.path}</loc>\n${alternatesOf(route.page)}\n  </url>`,
   ),
   '</urlset>',
   '',

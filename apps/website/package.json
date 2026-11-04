@@ -20,11 +20,14 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.1.2",
+    "image-size": "2.0.4",
     "lucide-react": "catalog:",
     "radix-ui": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "typebox": "catalog:",
     "vite": "8.3.5",
-    "wrangler": "4.152.0"
+    "wrangler": "4.152.0",
+    "yaml": "2.9.1"
   }
 }
