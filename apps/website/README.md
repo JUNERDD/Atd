@@ -51,7 +51,7 @@ src/
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
-  lib/                 In-view, reduced-motion and hydration hooks, press feedback
+  lib/                 In-view, active-section, reduced-motion and hydration hooks, press feedback
   motion/              The reveal controller, text effects (decode, type) and the grid halo
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts

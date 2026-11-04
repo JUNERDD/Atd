@@ -3,7 +3,7 @@ import { useCopy, useLang } from '../../i18n/lang';
 import { langPath } from '../../i18n/routes';
 import { navCopy } from './copy';
 import { LanguageMenu } from './language-menu';
-import { useActiveSection } from './use-active-section';
+import { useActiveSection } from '../../lib/use-active-section';
 import './nav.css';
 
 /**
