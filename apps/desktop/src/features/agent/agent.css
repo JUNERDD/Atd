@@ -997,9 +997,15 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-/* Approval decisions sit at the form's bottom-right like the question Send/Skip pair. */
+/* Approval decisions sit at the form's bottom-right like the question Send/Skip pair. When they do
+   not all fit side by side, they stack instead of wrapping, each across the row in the same order,
+   so no decision is left alone on a second row (`HitlActions` measures the fit). */
 .approval-actions {
   justify-content: flex-end;
+}
+.approval-actions[data-stacked] {
+  flex-direction: column;
+  align-items: stretch;
 }
 .question-option {
   max-width: 100%;
