@@ -20,14 +20,16 @@ import Synchronization
 ///   ``prepare(pid:bundleURL:)`` does it ahead of time when an Electron app comes forward.
 ///
 /// Blocking; call it off the main thread.
-nonisolated struct SelectionPresence: Sendable {
+package nonisolated struct SelectionPresence: Sendable {
   static let messagingTimeout: Float = 0.1
 
   let pid: pid_t
 
+  package init(pid: pid_t) { self.pid = pid }
+
   /// A toolbar gesture supplies its starting point in Quartz screen coordinates. Focus-only
   /// checks (such as the answer card's write target) do not depend on the pointer.
-  func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
+  package func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
     Self.wakeWebContent(app)
