@@ -1,17 +1,26 @@
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
-import { htmlLang, LANGS, langPath, languageNames, rememberLang } from '../../i18n/routes';
+import {
+  htmlLang,
+  LANGS,
+  languageNames,
+  pagePath,
+  rememberLang,
+  type Page,
+} from '../../i18n/routes';
 import { footerCopy } from './copy';
 import './footer.css';
 
 /**
  * The last plate: the name in dot figures, the project links and the languages on one row, and the
- * small print under them. As it arrives the name decodes and the rest fades up.
+ * small print under them. The language links keep the visitor on the same page. As it arrives the
+ * name decodes and the rest fades up.
  */
-export function SiteFooter() {
+export function SiteFooter({ page }: { page: Page }) {
   const t = useCopy(footerCopy);
   const lang = useLang();
   const year = 2026;
+  const links = [t.repo, { href: pagePath(lang, 'blog'), label: t.blog }, t.issues];
 
   return (
     <footer className="footer plate">
@@ -22,7 +31,7 @@ export function SiteFooter() {
         </p>
         <nav className="footer__nav" aria-label={t.linksLabel} data-reveal="fade">
           <ul className="footer__links">
-            {t.links.map((link) => (
+            {links.map((link) => (
               <li key={link.href}>
                 <a className="footer__link" href={link.href}>
                   {link.label}
@@ -37,7 +46,7 @@ export function SiteFooter() {
               <li key={code}>
                 <a
                   className="footer__link"
-                  href={langPath[code]}
+                  href={pagePath(code, page)}
                   hrefLang={htmlLang[code]}
                   lang={htmlLang[code]}
                   aria-current={code === lang ? 'page' : undefined}

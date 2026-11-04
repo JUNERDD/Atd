@@ -1,7 +1,11 @@
 /** The site's languages. Each one is prerendered to its own route; English is the source language. */
 export const LANGS = ['en', 'zh'] as const;
 
-export type Page = 'home' | 'debug';
+/**
+ * A page of the site, which is also its path below the language's root: the home page, the blog's
+ * list of posts, one post (`blog/<slug>`), or the diagnostic downloads.
+ */
+export type Page = 'home' | 'blog' | `blog/${string}` | 'debug';
 
 export type Lang = (typeof LANGS)[number];
 
@@ -17,11 +21,20 @@ export const languageNames: Localized<string> = { en: 'English', zh: '简体中�
 export const langPath: Localized<string> = { en: '/', zh: '/zh' };
 
 export function pagePath(lang: Lang, page: Page): string {
-  return page === 'home' ? langPath[lang] : lang === 'en' ? '/debug' : '/zh/debug';
+  if (page === 'home') return langPath[lang];
+  return lang === 'en' ? `/${page}` : `/zh/${page}`;
 }
 
 export function pageFromPath(path: string): Page {
-  return /^\/(?:zh\/)?debug\/?$/.test(path) ? 'debug' : 'home';
+  const page = /^\/(?:zh\/)?(debug|blog(?:\/[a-z0-9-]+)?)\/?$/.exec(path)?.[1];
+  if (page === undefined) return 'home';
+  if (page === 'debug' || page === 'blog') return page;
+  return `blog/${page.slice('blog/'.length)}` as const;
+}
+
+/** The post a `blog/<slug>` page shows, or `null` for every other page. */
+export function postSlugOf(page: Page): string | null {
+  return page.startsWith('blog/') ? page.slice('blog/'.length) : null;
 }
 
 /** The localStorage key that records a visitor's explicit language choice. */

@@ -171,45 +171,39 @@ function readViewport(node: HTMLDivElement, watch: ViewportWatch): number {
 }
 
 /**
- * Overflow bits for a viewport, read through `useSyncExternalStore`. Scrolls, viewport resizes and
- * content resizes (Radix wraps the children in one element) recompute them after layout, so render
- * never reads layout; the snapshot is a small number, so unchanged reads never re-render. Mirrors
- * HeroUI's `useScrollShadow` state model (`data-top-scroll` / `data-bottom-scroll`). A reserved
- * lane narrows the content, which can only make it taller, so toggling a lane settles in one pass.
+ * Overflow bits for a viewport. Scrolls, viewport resizes and content resizes (Radix wraps the
+ * children in one element) recompute them after layout, so render never reads layout; the state is
+ * a small number, so unchanged reads bail out without rendering. Mirrors HeroUI's `useScrollShadow`
+ * state model (`data-top-scroll` / `data-bottom-scroll`). A reserved lane narrows the content,
+ * which can only make it taller, so toggling a lane settles in one pass.
+ *
+ * The watch starts in the layout phase, never in a passive effect: React runs passive effects after
+ * the first paint for any commit outside a discrete event (content that arrives from a load), which
+ * would paint that frame without its fade or lanes. Ancestors' layout effects may still move the
+ * scroll position after this one reads (the transcript pins to its end); the scroll event and the
+ * observer's first report both arrive before that frame paints, and re-read it. Bits for a watch
+ * that is off may go stale, which is harmless: every consumer is gated by the same flag.
  */
 function useViewportState(
   target: React.RefObject<HTMLDivElement | null>,
   { edges, overflowY, overflowX }: ViewportWatch,
 ): number {
-  const state = React.useRef(0);
-  const subscribe = React.useCallback(
-    (notify: () => void) => {
-      const node = target.current;
-      state.current = 0;
-      if (!node || !(edges || overflowY || overflowX)) return () => {};
-      const update = () => {
-        const next = readViewport(node, { edges, overflowY, overflowX });
-        if (next === state.current) return;
-        state.current = next;
-        notify();
-      };
-      update();
-      if (edges) node.addEventListener('scroll', update, { passive: true });
-      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
-      observer?.observe(node);
-      if (node.firstElementChild) observer?.observe(node.firstElementChild);
-      return () => {
-        node.removeEventListener('scroll', update);
-        observer?.disconnect();
-      };
-    },
-    [target, edges, overflowY, overflowX],
-  );
-  return React.useSyncExternalStore(
-    subscribe,
-    () => state.current,
-    () => 0,
-  );
+  const [state, setState] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const node = target.current;
+    if (!node || !(edges || overflowY || overflowX)) return;
+    const update = () => setState(readViewport(node, { edges, overflowY, overflowX }));
+    update();
+    if (edges) node.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(node);
+    if (node.firstElementChild) observer?.observe(node.firstElementChild);
+    return () => {
+      node.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, [target, edges, overflowY, overflowX]);
+  return state;
 }
 
 function ScrollBar({

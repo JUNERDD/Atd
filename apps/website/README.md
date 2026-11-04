@@ -1,8 +1,9 @@
 # Atd website
 
 The marketing site for Atd: a static site built with Vite and React 19, prerendered once per language, with a
-WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`. Support download
-pages live at `/debug` and `/zh/debug`.
+WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`. The blog lives at
+`/blog` and `/zh/blog`, one page per post, edited with a Git-based CMS ([Blog](#blog)). Support
+download pages live at `/debug` and `/zh/debug`.
 
 The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
 its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it come the
@@ -31,8 +32,8 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, plus both diagnostic routes, then `sitemap.xml` (only indexable pages,
-   with their hreflang alternates) and
+   `dist/zh/index.html`, plus the blog's list and posts and both diagnostic routes, then `sitemap.xml` (only
+   indexable pages, each with its own page's hreflang alternates) and
    `robots.txt`, and deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
@@ -51,14 +52,19 @@ src/
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
-  lib/                 In-view, reduced-motion and hydration hooks, press feedback
+  lib/                 In-view, active-section, reduced-motion and hydration hooks, press feedback
   motion/              The reveal controller, text effects (decode, type) and the grid halo
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
+  pages/<name>/        Pages other than the home page: the blog and the diagnostic downloads
   content/             Site facts (links, version), the interface scenes and archived captures
+  content/blog/        The blog's posts, one YAML file per language and release (the CMS's)
 public/
   cases/               Case clips, earlier interface images, archived recordings (cases/README.md)
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
+  media/blog/          Each post's images, one folder per release, served by Vercel
+admin/                 The blog's CMS (Sveltia CMS), served only by the dev server
+blog-content.ts        Validates the blog at build time and serves it as virtual:atd-blog
 ```
 
 ## Section layout
@@ -78,6 +84,95 @@ The features review (`2564:159329` desktop, `2564:159355` compact) composes the 
 heading with `Website / Feature channel` (Layout=Strip with Position Start, Middle, End;
 Layout=Compact), whose Pictogram property swaps among `Website / Feature pictogram` (one variant
 per capability).
+
+## Blog
+
+`/blog` (and `/zh/blog`) lists every post, newest first, as opaque cards (the kit's `card` block,
+filled `--ink-2`, never glass): each card is one link showing the post's first image, its release
+as a dot-matrix readout, the date, the title and the summary, with a hover fill under a mouse and
+no pressed state when clicked. The newest post spans the row and, from
+900px, sets its image beside the text; the rest fill as many 340px columns as fit. Each post is its
+own page at `/blog/atd-<version with dashes>` (`/blog/atd-0-10-6`; no dots, so Vercel's `cleanUrls`
+never reads one as a file extension): a back button, a centered header (release, title, summary,
+date), then the contents and the sections. The contents are the sections' titles as plain links on
+one track, with the section under the reading line lit (`aria-current="location"`); below 1100px
+they sit under the header, from 1100px in a column of their own that stays beside the text, and
+the header lines up with the text. Each highlight has its text at a 680px measure and its image
+wider; the fixes follow in a card, any of them with an image, and the page ends with one primary
+action, the release's installers on GitHub. A section's anchor is its English title in lowercase
+with dashes (`#choose-your-panel-background`), the same in both languages; the fixes are `#fixes`.
+
+The nav links to the blog after the home page's sections, marking it current on the list and on
+posts; the footer's links and language switch keep the visitor on the page they are reading. From
+another page the nav's section links and download key lead back to the home page's sections. A
+post's head tags make it an article (`og:type`, `article:published_time`) whose share image is its
+first highlight's.
+
+### Content
+
+The releases are files in this repository, edited with [Sveltia CMS](https://sveltiacms.app), a
+Git-based CMS that writes them in place. Each post announces one release and has one YAML file per language
+under `src/content/blog/<lang>/`, with the same file name in both:
+
+| Field        | In each language | Holds                                                             |
+| ------------ | ---------------- | ----------------------------------------------------------------- |
+| `version`    | The same         | The released version without a leading `v`, such as `0.10.6`      |
+| `date`       | The same         | The release day, `YYYY-MM-DD`                                     |
+| `title`      | Translated       | The release's headline                                            |
+| `summary`    | Translated       | One or two sentences under it                                     |
+| `highlights` | Translated       | `title`, `body` (a blank line starts a paragraph), `image`, `alt` |
+| `fixes`      | Translated       | `text`, and optionally `image` with its `alt`; optional           |
+
+`blog-content.ts` reads them at build time (the client and server builds alike) and fails the
+build, naming the file, when a file does not match `src/content/blog-schema.ts`, a post lacks a
+language or disagrees on its version, date or number of highlights, a version repeats, two English
+highlight titles give the same anchor, a fix has an image without its description (or the
+reverse), or an image is missing. It reads
+each image's size so the page reserves its box, formats the dates once so prerendered and hydrated
+pages agree, and serves the result as `virtual:atd-blog`; the validator never reaches the
+browser. On the dev server, edits reload the page.
+
+Images live in `public/media/blog/<release file name>/`, one per highlight and language, named
+`<highlight>.<lang>.webp`. A fix or a small improvement may carry one too, wherever seeing the
+change explains it better than the line alone; new features are not the only ones with images.
+They are served by Vercel, outside the R2 media pipeline, so a blog edit deploys without an
+upload. The 0.10.6 images are 1440 × 900 scenes of the real product UI with hand-drawn notes,
+designed in the project design file's `W · Website · Blog · 0.10.6 images` section
+(`3663:212419`), English and Chinese side by side, and exported at 1x as WebP (quality 85, the same
+setting the CMS applies to uploads).
+
+### Design
+
+The pages are designed in the project design file's `Website / Blog · Review · code-backed`
+section (`3685:8952`, on the Website page): the list and a post, each at Desktop (English, 1280)
+and Compact (Chinese, 320). They are built from `Website / Site nav`, `Website / Site footer`,
+`Website / Blog card` (Featured and Standard, with hover and focus), `Website / Post contents` and
+its `Website / Post contents link` (default, current and hover, for pointer and touch),
+`Website / Post fix` (an optional image), `Website / Plain button` and `Website / Download key`
+(an optional trailing arrow). Font sizes that the CSS scales with the viewport come from the
+`Website · Type scale` collection, whose Desktop and Compact modes hold the sizes at 1280 and 320.
+
+### Editing with the CMS
+
+1. Run `pnpm dev:website` and open <http://127.0.0.1:5180/admin/> in a Chromium browser (the
+   CMS's local mode needs the File System Access API).
+2. Choose **Work with Local Repository** and select the repository root. The CMS reads and writes the
+   files above in your working tree and never contacts GitHub, so no sign-in is needed.
+3. Add or edit a post in both languages, then review the diff and commit it on a branch for a pull
+   request, as for any change. `main` accepts only merged pull requests, so the CMS's GitHub sign-in
+   options, which would commit straight to it, are not used.
+
+`admin/` holds the CMS's page and its configuration (`config.yml`). Only the dev server serves it:
+the build's only input is the site's `index.html`, so the CMS never ships. The page loads one
+pinned version of the CMS from unpkg; to update it, change the version in `admin/index.html`, open
+the admin page and check that it still loads the posts. Keep `admin/config.yml` and
+`src/content/blog-schema.ts` in step when the fields change.
+
+The pages' own copy (heading, lede, labels and head tags) is in `src/pages/blog/copy.ts`.
+
+`vite preview` serves each prerendered page at its clean URL, as Vercel does (the
+`atd-preview-clean-urls` plugin in `vite.config.ts`), so `/blog/atd-0-10-6` previews the post rather
+than the home page's HTML.
 
 ## Header language menu
 
@@ -183,7 +278,7 @@ everything is simply shown.
 - Tokens live in `src/styles/tokens.css`; components use them instead of literal values.
 - The Apple web kit (`src/styles/apple-kit.css`) supplies the glass material, buttons, press and focus
   states, and motion tokens. It is generated, not edited; regenerate it with the apple-design skill:
-  `python3 .agents/skills/apple-design/scripts/build_kit.py base type glass states button motion scroll-edge --css apps/website/src/styles/apple-kit.css`.
+  `python3 .agents/skills/apple-design/scripts/build_kit.py base type glass states button motion scroll-edge card --css apps/website/src/styles/apple-kit.css`.
 - Two materials, both in `src/styles/base.css`: the plate (`.plate`, perforations registered to the plate,
   so the container's edges and the seams run between dots) and the display (`.display`, black glass with
   finer LEDs). What a display shows is drawn in dots. The nav is a matte strip, not glass.

@@ -10,21 +10,30 @@ import QuartzCore
 /// - Liquid Glass draws through a `CABackdropLayer` whose `glassBackground` filter holds the
 ///   inputs `inputBlurRadius`, `inputInnerRefractionHeight` and `inputInnerRefractionAmount`, in
 ///   AppKit's `NSGlassEffectView` and SwiftUI's `glassEffect` alike (measured on macOS 26.4).
-///   AppKit and SwiftUI write them again on resize and build a new layer on tint, appearance, focus
-///   or variant changes. So after each Core Animation commit (a main run loop observer ordered
-///   after Core Animation's own) the tuner reads every such filter under its roots back: a value
-///   it did not write is the system's new base, and the factor's value for it goes on top of it
-///   (``Factors/value(of:factor:base:)``).
+///   AppKit and SwiftUI set that layer's `filters` anew, at the system's values, on every resize
+///   and on every frame of an animated shape, and build a new layer on tint, appearance, focus or
+///   variant changes. They do it inside a Core Animation transaction they commit at once (AppKit's
+///   visually atomic changes, around SwiftUI's display list update too), so that frame reaches the
+///   screen before any run loop observer runs: corrected only afterwards, the floating surfaces'
+///   glass showed the system's blur on every frame of their springs. So the tuner observes each
+///   glass layer's `filters` (``observeFilters(of:)``) and tunes them from inside the setter, in
+///   the system's own transaction: a value it did not write is the system's new base, and the
+///   factor's value for it goes on top of it (``Factors/value(of:factor:base:)``).
+/// - After each Core Animation commit (a main run loop observer ordered after Core Animation's
+///   own) the tuner walks its roots for glass layers, tuning and observing those it has not seen;
+///   a new layer's first frame shows the system's values.
 /// - Only the roots given to ``track(_:skipping:)`` are tuned, each without its `skipping`
 ///   subtree: a page window's web view, whose in-page glass WebKit mirrors into this process and
-///   which stays the system's. A root counts while its window is on screen and not transparent.
+///   which stays the system's. A root counts while its window is on screen, transparent or not: a
+///   window ordered in transparent and drawn before it fades in (the command island, the resident
+///   panel) has its glass tuned and observed before its first visible frame.
 /// - Every private access is guarded: a filter is recognized by its `name` only on objects that
 ///   answer `name`, and an input is read through the layer's `filters.<name>.<input>` key path,
 ///   which reads nil for a filter or input that no longer exists; a nil read leaves the layer
 ///   alone, and only inputs that were read are written. An AppKit or SwiftUI that renames them
 ///   gets the system's glass, never a trap.
 /// - With every factor at 1 it does no work at all: no observer is installed. Returning to 1
-///   writes the system's values back where the tuner's still stand and removes the observer.
+///   writes the system's values back where the tuner's still stand and removes the observers.
 /// - macOS 26 only: macOS 15 has no Liquid Glass, and the tuner stays idle there.
 final class GlassTuner {
   static let shared = GlassTuner()
@@ -65,10 +74,12 @@ final class GlassTuner {
     }
   }
 
-  /// What the tuner last found and wrote on one glass layer, per input.
+  /// What the tuner last found and wrote on one glass layer, per input, and its observation of
+  /// the layer's filters, which ends with the record.
   private final class Record {
     var base: [String: Double] = [:]
     var written: [String: Double] = [:]
+    var observation: NSKeyValueObservation?
   }
 
   private struct Root {
@@ -87,7 +98,8 @@ final class GlassTuner {
 
   private var factors = Factors.system
   private var roots: [ObjectIdentifier: Root] = [:]
-  /// Per glass layer, weakly: a rebuilt layer starts from the system's values again.
+  /// Per glass layer, weakly: a rebuilt layer starts from the system's values again. Removing a
+  /// record ends its observation.
   private let records = NSMapTable<CALayer, Record>.weakToStrongObjects()
   private var observer: CFRunLoopObserver?
 
@@ -123,7 +135,7 @@ final class GlassTuner {
     self.observer = observer
   }
 
-  /// Removes the observer and writes the system's values back on every glass layer whose input
+  /// Removes the observers and writes the system's values back on every glass layer whose input
   /// still holds the tuner's value.
   private func stop() {
     if let observer {
@@ -152,9 +164,7 @@ final class GlassTuner {
         roots[id] = nil
         continue
       }
-      guard let window = view.window, window.isVisible, window.alphaValue > 0,
-        let layer = view.layer
-      else { continue }
+      guard let window = view.window, window.isVisible, let layer = view.layer else { continue }
       for glass in Self.glassLayers(in: layer, skipping: root.skip?.layer)
       where seen.insert(ObjectIdentifier(glass)).inserted {
         writes += tune(glass)
@@ -163,11 +173,31 @@ final class GlassTuner {
     Self.commit(writes)
   }
 
+  /// The filters the system has just set on an observed glass layer, tuned inside its setter, so
+  /// the writes join the transaction that carries the system's values.
+  private func filtersDidChange(on layer: CALayer) {
+    guard observer != nil else { return }
+    Self.commit(tune(layer))
+  }
+
+  /// Observes the filters the system sets on `layer` (``filtersDidChange(on:)``). A setter called
+  /// off the main thread is left to the next run loop pass.
+  private static func observeFilters(of layer: CALayer) -> NSKeyValueObservation {
+    layer.observe(\.filters) { observed, _ in
+      guard Thread.isMainThread else { return }
+      // The setter runs on the main thread, where `assumeIsolated` runs this synchronously: the
+      // layer never leaves it.
+      nonisolated(unsafe) let layer = observed
+      MainActor.assumeIsolated { GlassTuner.shared.filtersDidChange(on: layer) }
+    }
+  }
+
   /// The writes that put the factors' values on `layer`'s inputs, taking any value the tuner did
-  /// not write as the system's new base.
+  /// not write as the system's new base; a layer seen for the first time is observed from now on.
   private func tune(_ layer: CALayer) -> [Write] {
     let record = records.object(forKey: layer) ?? Record()
     records.setObject(record, forKey: layer)
+    if record.observation == nil { record.observation = Self.observeFilters(of: layer) }
     var writes: [Write] = []
     for (key, factor) in factors.inputs {
       guard let current = Self.read(key, on: layer) else { continue }

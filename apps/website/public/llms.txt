@@ -4,6 +4,7 @@
 
 - [Website (English)](/): a scroll through the app's interfaces, its features and the download
 - [Website (简体中文)](/zh): the same page in Simplified Chinese
+- [Blog](/blog) ([简体中文](/zh/blog)): release notes, newest first, one post per release with images of the changes
 - [Source on GitHub](https://github.com/JUNERDD/Atd): the native shell, the React UI and the agent service
 - [Download for Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg): the newest stable installer for Macs with Apple silicon (macOS 15 or later); saves as `Atd-<version>-arm64.dmg`
 - [Download for Intel](https://downloads.atd.best/latest/Atd-x64.dmg): the newest stable installer for Intel Macs (macOS 15 or later); saves as `Atd-<version>-x64.dmg`

@@ -1,0 +1,116 @@
+# Sveltia CMS configuration for the website's blog (https://sveltiacms.app/en/docs).
+#
+# Open http://127.0.0.1:5180/admin/ on the website's dev server in a Chromium browser, choose
+# "Work with Local Repository" and select the repository root. The CMS then reads and writes the
+# files below in your working tree; the backend is never contacted, so no sign-in is needed.
+# Review and commit the changes with Git, through a pull request like any other change.
+#
+# The build validates every file against src/content/blog-schema.ts; keep the two in step.
+backend:
+  name: github
+  repo: JUNERDD/Atd
+  branch: main
+
+# Paths are relative to the repository root.
+media_folder: /apps/website/public/media
+public_folder: /media
+
+# An optional field left empty is left out of the file rather than written as an empty value, so a
+# fix without an image has no image key at all, as the build's schema expects.
+output:
+  omit_empty_optional_fields: true
+
+# Uploaded raster images are stored as WebP, as the existing posts' are.
+media_libraries:
+  default:
+    config:
+      transformations:
+        raster_image:
+          format: webp
+          quality: 85
+
+i18n:
+  structure: multiple_folders
+  locales: [en, zh]
+  default_locale: en
+
+collections:
+  - name: blog
+    label: Blog
+    label_singular: Post
+    description: One post per release, in English and Chinese, at /blog/atd-<version> (0.10.6 → atd-0-10-6). Images live in a folder of their own per post.
+    folder: /apps/website/src/content/blog
+    extension: yml
+    format: yaml
+    create: true
+    i18n: true
+    identifier_field: version
+    slug: '{{version}}'
+    summary: '{{version}} · {{title}}'
+    sortable_fields: [date, version]
+    media_folder: /apps/website/public/media/blog/{{filename}}
+    public_folder: /media/blog/{{filename}}
+    fields:
+      - name: version
+        label: Version
+        hint: The released version without a leading v, such as 0.10.6.
+        widget: string
+        i18n: duplicate
+        pattern: ['^\d+\.\d+\.\d+$', 'Use a release version such as 0.10.6.']
+      - name: date
+        label: Publishing date
+        widget: datetime
+        type: date
+        picker_utc: true
+        i18n: duplicate
+      - name: title
+        label: Title
+        widget: string
+        i18n: true
+      - name: summary
+        label: Summary
+        hint: One or two sentences under the title, also shown in the blog's list.
+        widget: text
+        i18n: true
+      - name: highlights
+        label: Highlights
+        label_singular: Highlight
+        hint: Each highlight is a section of the post, its title above its image and text. Keep the same highlights in both languages; the English title names the section's anchor. Images are 1440 × 900, one per language.
+        widget: list
+        i18n: true
+        fields:
+          - name: title
+            label: Title
+            widget: string
+          - name: body
+            label: Text
+            hint: Plain text; a blank line starts a new paragraph.
+            widget: text
+          - name: image
+            label: Image
+            widget: image
+          - name: alt
+            label: Image description
+            hint: What the image shows, for readers who cannot see it.
+            widget: string
+      - name: fixes
+        label: Fixes
+        label_singular: Fix
+        hint: One line per fix or small improvement. Where seeing the change helps, add an image (1440 × 900, one per language) and its description; the two go together.
+        widget: list
+        i18n: true
+        required: false
+        summary: '{{fields.text}}'
+        fields:
+          - name: text
+            label: Text
+            widget: string
+          - name: image
+            label: Image
+            widget: image
+            required: false
+          - name: alt
+            label: Image description
+            hint: With an image, what it shows, for readers who cannot see it.
+            widget: string
+            required: false
