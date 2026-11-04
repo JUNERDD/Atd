@@ -7,7 +7,9 @@ clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../sr
 
 `clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
 and `zh`. They are a reviewed snapshot of renders from the films repository
-([atd-films](https://github.com/JUNERDD/atd-films), source commit `4b5b27e` from
+([atd-films](https://github.com/JUNERDD/atd-films), source commit `4a5b05f` from
+[PR #6](https://github.com/JUNERDD/atd-films/pull/6); the screenshot, Mini Panel and settings
+clips, whose films that change leaves alone, are the renders of `4b5b27e` from
 [PR #5](https://github.com/JUNERDD/atd-films/pull/5)), made with the same Remotion stack and
 product kit as the tour films; ordinary website work does not render them.
 `src/films/website-cases-plan.ts` there lists each case's span of a film (or the settings film,
@@ -68,7 +70,11 @@ scene. Frames are in “W · Website · Interface scenes · shared desktop” (`
 | `ui/computer-use.png`      | `3536:208758` | Live pointer `2927:181650` filling a form, Mini Panel rail `3285:241539`               |
 
 The repository README shows crops of these scenes, exported at 2× from the same frames, as JPEGs in
-[`.github/readme/`](../../../../.github/readme/); they leave the scene files here untouched. On
+[`.github/readme/`](../../../../.github/readme/); they leave the scene files here untouched. Images
+the README pairs in a table share one crop size (selection toolbar and write-back 1392 × 1044,
+conversation and Mini Panel 1072 × 1428, the Mini Panel's taking the conversation's box at the
+screen's right edge), so GitHub splits the table evenly and both show at one height; the full-width
+crops share a 1.6:1 ratio. On
 2026-11-04 the main panel and conversation scenes took the current panel: the 52 pt unified title
 bar with the native traffic lights, and the new task's quick commands with All commands, Create app
 and My apps (from `AP1.01`, `1866:106317`). Their flat exports here were refreshed; their layer
