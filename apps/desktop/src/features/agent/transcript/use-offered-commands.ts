@@ -1,6 +1,6 @@
 import { offeredAt } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../../client/agent/command-schema';
-import { useAgent } from '../use-agent';
+import { useAgentCommands } from '../use-agent';
 
 /**
  * Opens an offered command on `text` (selected answer text, or a turn's answer), which stands in
@@ -19,6 +19,6 @@ export type CommandOpener = (
  * settled turn's actions) in the command list's order: exactly those `offeredAt` admits.
  */
 export function useOfferedCommands(place: 'turnSelection' | 'turnActions'): CommandDefinition[] {
-  const commands = useAgent().snapshot?.commands ?? [];
+  const commands = useAgentCommands();
   return commands.filter((command) => offeredAt(command, place));
 }

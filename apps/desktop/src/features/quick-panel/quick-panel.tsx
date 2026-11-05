@@ -4,7 +4,7 @@ import type { RunPolicy } from '../../client/agent/run-policy';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
-import { useAgent } from '../agent/use-agent';
+import { useAgentCommands } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';
 import { QuickPanelSurface } from './quick-panel-surface';
@@ -85,7 +85,7 @@ export function QuickPanel({
     agents: open && mention !== null,
     mcp: open && mention !== null,
   });
-  const { snapshot } = useAgent();
+  const commands = useAgentCommands();
   const memories = useMemoryList(open && mention !== null);
   const applications = useApplicationList(open && mention !== null);
   const slashView = useSlashView({
@@ -110,7 +110,7 @@ export function QuickPanel({
     attachmentCount,
     agents: lists.agents,
     mcp: lists.mcp,
-    commands: snapshot?.commands ?? [],
+    commands,
     memories,
     applications,
     files: true,

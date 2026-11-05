@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { queryOptions, replaceEqualDeep, useQuery } from '@tanstack/react-query';
 import type { AgentSnapshot, TaskDetail, TaskState } from '../../client/agent/bridge';
 import { applyTranscriptPatch } from '../../client/agent/transcript-schema';
 import { showErrorToast } from '../../components/toast-store';
@@ -7,6 +7,9 @@ import i18n from '../../i18n';
 import { bridgeKeys, newerAgentSnapshot, wireAgentBridge } from '../../lib/bridge-cache';
 import { queryClient } from '../../lib/query-client';
 import { shareBlocks } from './share-blocks';
+
+const EMPTY_COMMANDS: AgentSnapshot['commands'] = [];
+const selectCommands = (snapshot: AgentSnapshot) => snapshot.commands;
 
 export function agentApi() {
   if (!window.desktop?.agent) throw new Error(i18n.t('panel:errors.openDesktopApp'));
@@ -46,8 +49,19 @@ export function useAgent(): { snapshot: AgentSnapshot | null } {
   return { snapshot: data ?? null };
 }
 
+/** The command list, notifying callers only when its selected data changes. */
+export function useAgentCommands(): AgentSnapshot['commands'] {
+  const { data } = useQuery({ ...agentSnapshotQuery(), select: selectCommands }, queryClient);
+  return data ?? EMPTY_COMMANDS;
+}
+
 function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {
-  return { ...detail, ...state, revision: detail.revision, blocks: detail.blocks };
+  return replaceEqualDeep(detail, {
+    ...detail,
+    ...state,
+    revision: detail.revision,
+    blocks: detail.blocks,
+  });
 }
 
 /**
