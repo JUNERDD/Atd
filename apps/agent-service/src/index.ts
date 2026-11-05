@@ -224,6 +224,7 @@ export async function createService(
     await computer.stopAll('shuttingDown');
     await manager.shutdown();
     await app.close();
+    capabilities.dispose();
     await McpAuthority.closeFor(config.paths.root);
     await PluginHost.closeFor(config.paths.root);
     await systemProxy.close();

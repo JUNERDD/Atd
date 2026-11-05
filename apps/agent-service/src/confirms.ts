@@ -17,6 +17,7 @@ export interface ConfirmWaiter {
   resolve: (answer: PermissionAnswer) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout> | null;
+  cleanup: () => void;
 }
 
 /** What a run's requests still waiting make its status (`ConfirmStore.runStatus`). */
@@ -87,9 +88,14 @@ export class ConfirmStore {
       draft.kind === 'confirmation' ? { ...draft, ...stamp } : { ...draft, ...stamp };
     // Marked before it is listed, so no sweep ever sees it unmarked.
     if (options.ownAnswerOnly) this.ownAnswerOnly.add(created.id);
-    await this.ledger.change((data) => {
-      data.pendingConfirms.push(created);
-    });
+    try {
+      await this.ledger.change((data) => {
+        data.pendingConfirms.push(created);
+      });
+    } catch (error) {
+      this.ownAnswerOnly.delete(created.id);
+      throw error;
+    }
     this.events.publish({
       taskId: created.taskId,
       runId: created.runId,
@@ -98,28 +104,27 @@ export class ConfirmStore {
       data: { request: created },
     });
     const answer = new Promise<PermissionAnswer>((resolve, reject) => {
+      const abort = () => {
+        this.takeWaiter(created.id)?.reject(new Error('Task stopped.'));
+        // A subagent can abort while its parent run keeps going, so no cancelRun follows.
+        void this.withdraw(created);
+      };
       const waiter: ConfirmWaiter = {
         request: created,
         resolve,
         reject,
         // `expire` logs its own write failure, so nothing awaits it.
         timer: setTimeout(() => void this.expire(created.id), CONFIRM_TTL_MS),
+        cleanup: () => {
+          if (waiter.timer) clearTimeout(waiter.timer);
+          signal?.removeEventListener('abort', abort);
+        },
       };
       waiter.timer?.unref?.();
       this.waiters.set(created.id, waiter);
-      signal?.addEventListener(
-        'abort',
-        () => {
-          this.waiters.delete(created.id);
-          this.ownAnswerOnly.delete(created.id);
-          if (waiter.timer) clearTimeout(waiter.timer);
-          reject(new Error('Task stopped.'));
-          // A subagent can abort while its parent run keeps going, so no cancelRun follows:
-          // withdraw this one request here or the desktop keeps showing it until expiry.
-          void this.withdraw(created);
-        },
-        { once: true },
-      );
+      signal?.addEventListener('abort', abort, { once: true });
+      // The ledger write may have outlived the caller's signal before the listener was installed.
+      if (signal?.aborted) abort();
     });
     options.listed?.();
     return answer;
@@ -176,10 +181,7 @@ export class ConfirmStore {
     await this.ledger.change((data) => {
       data.pendingConfirms = data.pendingConfirms.filter((item) => item.id !== live.id);
     });
-    const waiter = this.waiters.get(live.id);
-    this.waiters.delete(live.id);
-    this.ownAnswerOnly.delete(live.id);
-    if (waiter?.timer) clearTimeout(waiter.timer);
+    const waiter = this.takeWaiter(live.id);
     this.events.publish({
       taskId: live.taskId,
       runId: live.runId,
@@ -215,19 +217,18 @@ export class ConfirmStore {
 
   /** Cancels every pending request of a run (stop/drain); late replies go `gone`. */
   async cancelRun(taskId: string, runId: string, reason: string): Promise<void> {
-    const doomed = this.ledger.data.pendingConfirms.filter(
-      (item) => item.taskId === taskId && item.runId === runId,
-    );
-    if (!doomed.length) return;
-    const ids = new Set(doomed.map((item) => item.id));
+    let doomed: PermissionRequest[] = [];
     await this.ledger.change((data) => {
+      // A request may still be queued for persistence before it registers its waiter. Select
+      // inside the ledger queue so cancelling the run also includes those earlier writes.
+      doomed = data.pendingConfirms.filter(
+        (item) => item.taskId === taskId && item.runId === runId,
+      );
+      const ids = new Set(doomed.map((item) => item.id));
       data.pendingConfirms = data.pendingConfirms.filter((item) => !ids.has(item.id));
     });
     for (const request of doomed) {
-      const waiter = this.waiters.get(request.id);
-      this.waiters.delete(request.id);
-      this.ownAnswerOnly.delete(request.id);
-      if (waiter?.timer) clearTimeout(waiter.timer);
+      const waiter = this.takeWaiter(request.id);
       this.events.publish({
         taskId: request.taskId,
         runId: request.runId,
@@ -261,10 +262,16 @@ export class ConfirmStore {
     return dropped.length;
   }
 
-  private async expire(requestId: string): Promise<void> {
+  private takeWaiter(requestId: string): ConfirmWaiter | undefined {
     const waiter = this.waiters.get(requestId);
     this.waiters.delete(requestId);
     this.ownAnswerOnly.delete(requestId);
+    waiter?.cleanup();
+    return waiter;
+  }
+
+  private async expire(requestId: string): Promise<void> {
+    const waiter = this.takeWaiter(requestId);
     const live = this.ledger.data.pendingConfirms.find((item) => item.id === requestId);
     if (!live) return;
     try {

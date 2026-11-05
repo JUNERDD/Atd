@@ -16,6 +16,7 @@ import type { Logger } from './logging.js';
 export interface CapabilityWaiter {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
+  cleanup: () => void;
 }
 
 interface Registration {
@@ -34,6 +35,7 @@ const LEASE_MS = 5 * 60 * 1000;
 export class CapabilityRegistry {
   private readonly clients = new Map<string, Registration>();
   private readonly waiters = new Map<string, CapabilityWaiter>();
+  private disposed = false;
   /** Delivers `capability.request` frames to connected desktop clients. */
   deliver: (request: CapabilityRequest) => void = () => undefined;
 
@@ -53,6 +55,15 @@ export class CapabilityRegistry {
 
   unregister(clientId: string): void {
     this.clients.delete(clientId);
+  }
+
+  /** Ends in-memory requests; persisted requests remain available to startup recovery. */
+  dispose(): void {
+    this.disposed = true;
+    this.clients.clear();
+    for (const id of this.waiters.keys())
+      this.takeWaiter(id)?.reject(new Error('The service stopped.'));
+    this.deliver = () => undefined;
   }
 
   heartbeat(clientId: string): void {
@@ -104,18 +115,20 @@ export class CapabilityRegistry {
       .then(
         () =>
           new Promise<unknown>((resolve, reject) => {
-            this.waiters.set(created.id, { resolve, reject });
+            if (this.disposed) return reject(new Error('The service stopped.'));
+            const abort = () => this.takeWaiter(created.id)?.reject(new Error('Task stopped.'));
             const timer = setTimeout(() => void this.expire(created.id), CAPABILITY_TTL_MS);
             timer.unref?.();
-            signal?.addEventListener(
-              'abort',
-              () => {
-                this.waiters.delete(created.id);
+            this.waiters.set(created.id, {
+              resolve,
+              reject,
+              cleanup: () => {
                 clearTimeout(timer);
-                reject(new Error('Task stopped.'));
+                signal?.removeEventListener('abort', abort);
               },
-              { once: true },
-            );
+            });
+            signal?.addEventListener('abort', abort, { once: true });
+            if (signal?.aborted) return abort();
             this.events.publish({
               taskId: created.taskId,
               runId: created.runId,
@@ -143,8 +156,7 @@ export class CapabilityRegistry {
     await this.ledger.change((data) => {
       data.pendingCapabilities = data.pendingCapabilities.filter((item) => item.id !== live.id);
     });
-    const waiter = this.waiters.get(live.id);
-    this.waiters.delete(live.id);
+    const waiter = this.takeWaiter(live.id);
     this.events.publish({
       taskId: live.taskId,
       runId: live.runId,
@@ -166,8 +178,7 @@ export class CapabilityRegistry {
       data.pendingCapabilities = data.pendingCapabilities.filter((item) => !ids.has(item.id));
     });
     for (const request of doomed) {
-      const waiter = this.waiters.get(request.id);
-      this.waiters.delete(request.id);
+      const waiter = this.takeWaiter(request.id);
       this.events.publish({
         taskId: request.taskId,
         runId: request.runId,
@@ -201,9 +212,15 @@ export class CapabilityRegistry {
     return dropped.length;
   }
 
-  private async expire(requestId: string): Promise<void> {
+  private takeWaiter(requestId: string): CapabilityWaiter | undefined {
     const waiter = this.waiters.get(requestId);
     this.waiters.delete(requestId);
+    waiter?.cleanup();
+    return waiter;
+  }
+
+  private async expire(requestId: string): Promise<void> {
+    const waiter = this.takeWaiter(requestId);
     const live = this.pending().find((item) => item.id === requestId);
     if (!live) return;
     try {
