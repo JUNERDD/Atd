@@ -237,11 +237,17 @@ final class CaptureSession {
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    phase = .idle
     editor?.hide()
     editor = nil
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers.removeAll()
-    for overlay in overlays { overlay.window?.close() }
+    for overlay in overlays {
+      guard let window = overlay.window else { continue }
+      // AppKit may keep a closed window alive; its frozen pixels must end with this session.
+      window.contentView = nil
+      window.close()
+    }
     // The views and the desktop hold the frozen images, tens of megabytes per Retina display.
     overlays.removeAll()
     desktop = FrozenDesktop(quartzBounds: .zero)

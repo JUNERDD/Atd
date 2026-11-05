@@ -82,9 +82,10 @@ final class GlassTuner {
     var observation: NSKeyValueObservation?
   }
 
-  private struct Root {
-    weak var view: NSView?
+  private final class Root {
     weak var skip: NSView?
+
+    init(skip: NSView?) { self.skip = skip }
   }
 
   private struct Write {
@@ -97,7 +98,8 @@ final class GlassTuner {
   private static let nameSelector = NSSelectorFromString("name")
 
   private var factors = Factors.system
-  private var roots: [ObjectIdentifier: Root] = [:]
+  // Registrations end with their view even while system factors leave the tuner idle.
+  private let roots = NSMapTable<NSView, Root>.weakToStrongObjects()
   /// Per glass layer, weakly: a rebuilt layer starts from the system's values again. Removing a
   /// record ends its observation.
   private let records = NSMapTable<CALayer, Record>.weakToStrongObjects()
@@ -106,7 +108,7 @@ final class GlassTuner {
   /// Tunes the glass under `root`, leaving `skip`'s subtree alone, for as long as `root` lives.
   /// Neither is retained; tracking costs nothing while every factor is 1.
   func track(_ root: NSView, skipping skip: NSView? = nil) {
-    roots[ObjectIdentifier(root)] = Root(view: root, skip: skip)
+    roots.setObject(Root(skip: skip), forKey: root)
   }
 
   /// Takes `factors` for every tracked glass from now on.
@@ -159,12 +161,10 @@ final class GlassTuner {
     guard observer != nil else { return }
     var seen = Set<ObjectIdentifier>()
     var writes: [Write] = []
-    for (id, root) in roots {
-      guard let view = root.view else {
-        roots[id] = nil
-        continue
-      }
-      guard let window = view.window, window.isVisible, let layer = view.layer else { continue }
+    for case let view as NSView in roots.keyEnumerator().allObjects {
+      guard let root = roots.object(forKey: view), let window = view.window, window.isVisible,
+        let layer = view.layer
+      else { continue }
       for glass in Self.glassLayers(in: layer, skipping: root.skip?.layer)
       where seen.insert(ObjectIdentifier(glass)).inserted {
         writes += tune(glass)
