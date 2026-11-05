@@ -263,12 +263,6 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case computerBrowserChromeMissingMessage = "computerBrowser.chromeMissing.message"
   case computerBrowserChromeMissingDownload = "computerBrowser.chromeMissing.download"
 
-  case captureHintIdle = "capture.hint.idle"
-  case captureHintSelected = "capture.hint.selected"
-  case captureHintAccessibility = "capture.hint.accessibility"
-  case captureHintRecall = "capture.hint.recall"
-  case captureHintWindowsOnly = "capture.hint.windowsOnly"
-  case captureHintAllDisplays = "capture.hint.allDisplays"
   case captureToolbar = "capture.toolbar"
   case captureToolbarMove = "capture.toolbar.move"
   case captureStyleBar = "capture.styleBar"

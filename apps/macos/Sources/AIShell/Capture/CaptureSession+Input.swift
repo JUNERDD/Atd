@@ -169,7 +169,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .idle:
       commit(model.settled((pointer?.overlay ?? overlay).bounds))
     case .selected(let rect):
-      let display = model.settled(primaryOverlay(for: rect)?.bounds ?? overlay.bounds)
+      let display = wholeDisplay(holding: rect, fallback: overlay.bounds)
       move(to: rect == display ? model.settled(model.bounds) : display)
     case .pressing, .creating, .adjusting:
       break

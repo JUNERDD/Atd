@@ -147,7 +147,7 @@ final class CaptureSession {
     panel.orderFrontRegardless()
     overlays.append(view)
     view.show(area: nil, handles: false)
-    view.showHints(hintTexts(on: view))
+    view.showHints(hintLines(on: view))
   }
 
   /// Every display is frozen: the overlay under the pointer takes the keyboard and the

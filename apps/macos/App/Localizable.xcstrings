@@ -434,91 +434,199 @@
       }
     },
     "capture.hint.allDisplays" : {
-      "comment" : "Capture overlay hint shown with more than one display; pressing ⌘A on a whole display selects every display",
+      "comment" : "Capture overlay hint line, shown after the ⌘A keycap once a whole display is selected and there is more than one display; selects every display",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌘A again for every screen"
+            "value" : "All screens"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "再按 ⌘A 选择所有屏幕"
+            "value" : "所有屏幕"
           }
         }
       }
     },
-    "capture.hint.idle" : {
-      "comment" : "Hint at the bottom of the capture overlay before an area is selected",
+    "capture.hint.back" : {
+      "comment" : "Capture overlay hint line, shown after the Esc keycap once an area is selected: goes back to picking",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Click a highlighted area or drag to select · Scroll for a larger area · ⌘A for the whole screen · Esc to cancel"
+            "value" : "Back"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "点击高亮区域或拖动选择 · 滚动切换更大区域 · ⌘A 选择整个屏幕 · Esc 取消"
+            "value" : "返回"
+          }
+        }
+      }
+    },
+    "capture.hint.cancel" : {
+      "comment" : "Capture overlay hint line, shown after the Esc keycap before an area is selected: ends the capture",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "capture.hint.confirm" : {
+      "comment" : "Capture overlay hint line, shown after the Return keycap once an area is selected: confirms the capture",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确认"
+          }
+        }
+      }
+    },
+    "capture.hint.elements" : {
+      "comment" : "Capture overlay hint line, shown after the W keycap while element detection is limited to windows; W toggles it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detect elements again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复识别元素"
+          }
+        }
+      }
+    },
+    "capture.hint.pick" : {
+      "comment" : "Capture overlay hint line, before an area is selected: how to pick one (no key)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click or drag to select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击或拖动选择"
           }
         }
       }
     },
     "capture.hint.recall" : {
-      "comment" : "Capture overlay hint shown while a previous area exists on this display; R commits it",
+      "comment" : "Capture overlay hint line, shown after the R keycap while a previous area exists on this display; R commits it",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "R to reuse the last area"
+            "value" : "Reuse last area"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "R 复用上次区域"
+            "value" : "复用上次区域"
           }
         }
       }
     },
-    "capture.hint.selected" : {
-      "comment" : "Hint at the bottom of the capture overlay once an area is selected",
+    "capture.hint.resize" : {
+      "comment" : "Capture overlay hint line, once an area is selected: its edges and handles resize it (no key)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drag the edges to resize · Return to confirm · Esc to go back"
+            "value" : "Drag the edges to resize"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拖动边缘调整大小 · 回车确认 · Esc 返回"
+            "value" : "拖动边缘调整大小"
+          }
+        }
+      }
+    },
+    "capture.hint.screen" : {
+      "comment" : "Capture overlay hint line, shown after the ⌘A keycap: selects the display under the pointer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whole screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整个屏幕"
+          }
+        }
+      }
+    },
+    "capture.hint.scroll" : {
+      "comment" : "Capture overlay hint line, before an area is selected: the scroll wheel walks to larger or smaller areas (no key)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll for a larger area"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动切换更大区域"
           }
         }
       }
     },
     "capture.hint.windowsOnly" : {
-      "comment" : "Capture overlay hint shown while element detection is limited to windows; W toggles it",
+      "comment" : "Capture overlay hint line status, shown while element detection is limited to windows (no key)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Windows only · W to detect elements again"
+            "value" : "Windows only"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅识别窗口 · 按 W 恢复识别元素"
+            "value" : "仅识别窗口"
           }
         }
       }
