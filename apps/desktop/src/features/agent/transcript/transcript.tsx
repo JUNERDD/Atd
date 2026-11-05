@@ -176,7 +176,6 @@ export function Transcript({
     openTask: onOpenTask,
     remember: onRemember,
     runCommand: onCommand,
-    nextSteps: offer,
   };
   // Each view's data, folded from the whole transcript: a later turn's update reaches a view card
   // in a settled turn, which the adapter keeps as it was.
@@ -225,6 +224,7 @@ export function Transcript({
                   anchors={anchors}
                   requests={requestIndex}
                   live={live}
+                  nextSteps={offer}
                   status={<StatusBar run={run} />}
                   outgoing={outgoing}
                   firstVisible={firstVisible}

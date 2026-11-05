@@ -1,8 +1,7 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { createContext, use, useId, useMemo, useRef, useState } from 'react';
 import type { NextStep, NextStepClick } from '@atd/agent-contracts';
 import type { AgentTask, TaskRun } from '../../../client/agent/task-schema';
 import { showErrorToast } from '../../../components/toast-store';
-import { useTaskTurns } from '../transcript/turn-context';
 import { agentApi } from '../use-agent';
 
 /**
@@ -102,8 +101,11 @@ export function useNextStepsOffer(
   }, [host, offered, task.id, hiddenRun, stoppingRuns, cardId, toggleId]);
 }
 
+/** Each keyed turn provides its own offer; historical turns keep a stable null value. */
+export const NextStepsContext = createContext<NextStepsOffer | null>(null);
+
 /** The transcript's offer when it belongs to this turn: the last one, opened by run `run`. */
 export function useTurnNextSteps(run: TaskRun | undefined, last: boolean): NextStepsOffer | null {
-  const offer = useTaskTurns()?.nextSteps;
+  const offer = use(NextStepsContext);
   return last && offer && run?.id === offer.runId ? offer : null;
 }

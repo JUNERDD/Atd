@@ -14,14 +14,26 @@ export function ComputerReviewNotices({
   steps: readonly ViewBlock[];
   runs: readonly TaskRun[];
 }) {
+  const candidates = computerReviewCalls(steps, runs);
+  if (candidates.length === 0) return null;
+  return <ComputerReviewCandidates candidates={candidates} runs={runs} />;
+}
+
+/** Only a turn with checkable computer actions reads task context and unresolved service facts. */
+function ComputerReviewCandidates({
+  candidates,
+  runs,
+}: {
+  candidates: ReturnType<typeof computerReviewCalls>;
+  runs: readonly TaskRun[];
+}) {
   const { t } = useTranslation('tasks');
   const turns = useTaskTurns();
-  const candidates = computerReviewCalls(steps, runs);
   const review = useComputerActionReview(
     turns?.taskId ?? '',
     candidates.flatMap((call) => call.actionIds),
     runs.map(({ id, status }) => `${id}:${status}`).join(','),
-    Boolean(turns) && candidates.length > 0,
+    Boolean(turns),
   );
   if (review.state === 'inactive') return null;
   const calls = unresolvedComputerCalls(candidates, review.actionIds);

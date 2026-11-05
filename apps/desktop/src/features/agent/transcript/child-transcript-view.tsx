@@ -53,7 +53,7 @@ function ChildTurns({
       artifacts={NO_ARTIFACTS}
       anchors={NO_ANCHORS}
       requests={requests}
-      live={live}
+      live={live && position === turns.length - 1}
       last={position === turns.length - 1}
       copyable={false}
       modelName={model}
