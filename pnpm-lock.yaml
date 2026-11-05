@@ -179,6 +179,9 @@ catalogs:
     agent-base:
       specifier: 9.0.0
       version: 9.0.0
+    aws4fetch:
+      specifier: 1.0.20
+      version: 1.0.20
     croner:
       specifier: 10.0.1
       version: 10.0.1
@@ -583,6 +586,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 6.1.2
         version: 6.1.2(@rolldown/plugin-babel@0.2.4(@babel/core@8.0.9)(@babel/runtime@7.29.7)(rolldown@1.2.15)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(babel-plugin-react-compiler@1.0.0)(oxc-transform-react@0.152.0)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+      aws4fetch:
+        specifier: 'catalog:'
+        version: 1.0.20
       image-size:
         specifier: 2.0.4
         version: 2.0.4
@@ -4797,6 +4803,9 @@ packages:
 
   avvio@9.3.0:
     resolution: {integrity: sha512-g2tQ7LE7oOSqDfwEm3M+ZCMTJc7KiZCdJ4UwyZJb5ckTKyYu50OYmvv0mCFXPuYXoM4zkSt8zM9XQ9KCvxA74A==}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   babel-plugin-react-compiler@1.0.0:
     resolution: {integrity: sha512-Ixm8tFfoKKIPYdCCKYTsqv+Fd4IJ0DQqMyEimo+pxUOMUR9cVPlwTrFt9Avu+3cb6Zp3mAzl+t1MrG2fxxKsxw==}
@@ -12297,6 +12306,8 @@ snapshots:
     dependencies:
       '@fastify/error': 4.2.0
       fastq: 1.20.3
+
+  aws4fetch@1.0.20: {}
 
   babel-plugin-react-compiler@1.0.0:
     dependencies:

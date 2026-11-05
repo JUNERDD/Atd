@@ -157,9 +157,7 @@ export function ProviderConnections({
                         <HighlightedText text={connection.name} ranges={nameRanges} />
                       </ItemTitle>
                       {isDefault && (
-                        <span className="provider-default-badge">
-                          {t('connections.defaultBadge')}
-                        </span>
+                        <Badge variant="secondary">{t('connections.defaultBadge')}</Badge>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">

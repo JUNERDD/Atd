@@ -25,6 +25,7 @@ function follows(event: StreamPosition, position: StreamPosition): boolean {
 /** The events of one task that arrived while one of its loads was in flight, in arrival order. */
 class Recording {
   readonly events: ServiceEvent[] = [];
+  invalidated = false;
   /** The newest event dropped to stay within `MAX_RECORDED`. */
   dropped: StreamPosition | null = null;
 
@@ -93,6 +94,9 @@ export class TaskLoads {
         // Synchronous from here through caching, so no event applies in between.
         this.stop(taskId, recording);
       }
+      // Metadata writes (such as cancelling suggestions) carry no replayable task event. A read
+      // predating their refresh must be repeated, including the detail returned to its caller.
+      if (recording.invalidated) continue;
       const state = seed(loaded);
       const events = recording.events.filter((event) => follows(event, loaded));
       const lost = recording.dropped !== null && follows(recording.dropped, loaded);
@@ -104,6 +108,12 @@ export class TaskLoads {
       this.positions.set(taskId, { summary: at, transcript });
       return result;
     }
+  }
+
+  /** Makes in-flight reads retry before they can publish or return superseded metadata. */
+  invalidate(taskId: string) {
+    const recordings = this.recordings.get(taskId);
+    if (recordings) for (const recording of recordings) recording.invalidated = true;
   }
 
   /** Records a stream event for each load of its task in flight. */

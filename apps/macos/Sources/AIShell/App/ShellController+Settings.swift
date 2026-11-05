@@ -1,4 +1,5 @@
 import AICore
+import AppKit
 
 /// Opening and closing the settings window, for the bridge (`settings.open`, `settings.close`)
 /// and for the shell's own menus and notifications.
@@ -8,7 +9,9 @@ extension ShellController {
   func openSettings(commandId: String?, section: String?) {
     // The settings window would activate and order in against the capture overlays.
     guard !screenshots.isCapturing else { return }
-    settings.onOpenChange = { [weak self] in self?.settingsOpenChanged() }
+    settings.onOpenChange = { [weak self] closingWindow in
+      self?.settingsOpenChanged(closingWindow: closingWindow)
+    }
     settings.open(
       fragment: SettingsWindowController.fragment(commandId: commandId, section: section),
       title: ShellStrings.shared.text(.windowSettingsTitle))
@@ -16,7 +19,7 @@ extension ShellController {
 
   func closeSettings() { settings.close() }
 
-  private func settingsOpenChanged() {
-    presence.applyDockVisibility(windowOpen: keepsDockIcon, restoreFocus: settings.isOpen)
+  private func settingsOpenChanged(closingWindow: NSWindow?) {
+    presence.applyDockVisibility(windowOpen: keepsDockIcon, closingWindow: closingWindow)
   }
 }

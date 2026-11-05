@@ -82,19 +82,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.provider-default-badge {
-  height: 20px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 8px;
-  border-radius: var(--radius-2xl);
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
-}
 /* The model trigger hugs its full summary (model, context, effort); a summary too long for the
    row's line moves the controls to their own line, where the model name truncates last. */
 .provider-model-controls {

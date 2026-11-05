@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   errorMessage,
   isActiveStatus,
@@ -30,7 +29,7 @@ import {
   taskSummary,
 } from './task-view.js';
 import { RunAcceptance } from './tasks/accept-run.js';
-import { heldMessageInput } from './tasks/held-queue.js';
+import { startHeldRun } from './tasks/held-queue.js';
 import { TaskSearch } from './tasks/search.js';
 import type { InternalSubmitOptions } from './tasks/submit-options.js';
 import type { TaskTitles } from './tasks/titles.js';
@@ -190,6 +189,11 @@ export class RunnerManager {
     await this.runnerFor(taskId).pending.add(text, mode);
   }
 
+  /** Stops the completed run's pending suggestions without stopping any conversation run. */
+  stopNextSteps(taskId: string, runId: string): Promise<void> {
+    return this.deps.ctx.nextSteps.cancelPending(taskId, runId);
+  }
+
   /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
     this.deps.titles.cancel(taskId);
@@ -318,29 +322,14 @@ export class RunnerManager {
     }
   }
 
-  /**
-   * Accepts the first message the task holds (tasks/held-queue.ts) as its next run, a plain message
-   * of the user's own as the panel would submit it; that run's full session takes the rest. The
-   * runner calls this before `runId` reports completed (task-runner.ts `beforeCompleted`), so the
-   * run is accepted behind it and the task never looks idle in between: a message the user sends
-   * meanwhile queues behind the held ones instead of starting a run that would answer it first.
-   * The run starts once `runId`'s execution ends (`start`). A message whose run is not accepted
-   * stays kept for the task's next run.
-   */
-  private async startHeld(taskId: string, runId: string): Promise<void> {
-    const held = this.runners.get(taskId)?.pending.held;
-    const text = held?.next();
-    if (!held || text === undefined) return;
-    const request = { operationId: randomUUID(), taskId, input: heldMessageInput(text) };
-    try {
-      await this.acceptance.accept(request, {}, runId);
-    } catch (error) {
-      held.putBack(text);
-      this.deps.log.warn('A kept message could not start its run.', {
-        taskId,
-        error: errorMessage(error),
-      });
-    }
+  private startHeld(taskId: string, runId: string): Promise<void> {
+    return startHeldRun(
+      this.runners.get(taskId)?.pending.held,
+      taskId,
+      runId,
+      this.acceptance,
+      this.deps.log,
+    );
   }
 }
 

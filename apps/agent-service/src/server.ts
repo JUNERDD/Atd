@@ -234,6 +234,15 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     async (request) => deps.manager.cancel(request.params.taskId, request.params.runId),
   );
 
+  app.post<{ Params: { taskId: string; runId: string } }>(
+    '/v1/tasks/:taskId/runs/:runId/next-steps/cancel',
+    RENDERER_ROUTE,
+    async (request) => {
+      await deps.manager.stopNextSteps(request.params.taskId, request.params.runId);
+      return { ok: true };
+    },
+  );
+
   app.post('/v1/confirms', RENDERER_ROUTE, async (request) => {
     const body = parse(ConfirmReplyRequestSchema, request.body);
     const live = deps.confirms.pending().find((item) => item.id === body.requestId);

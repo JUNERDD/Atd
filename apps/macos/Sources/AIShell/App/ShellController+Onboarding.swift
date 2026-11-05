@@ -13,17 +13,19 @@ extension ShellController {
     // The guide would activate and order in against the capture overlays.
     guard !isCapturingScreenshot else { return }
     trust.skipFirstLaunchPrompt()
-    onboarding.onOpenChange = { [weak self] in self?.onboardingOpenChanged() }
+    onboarding.onOpenChange = { [weak self] closingWindow in
+      self?.onboardingOpenChanged(closingWindow: closingWindow)
+    }
     // Shown first, so the panel hides without key status: hiding a key panel first would
     // deactivate the app just before the guide activates it.
     onboarding.open(title: ShellStrings.shared.text(.windowOnboardingTitle))
     if panel.isVisible, !isPinned { hidePanel() }
   }
 
-  private func onboardingOpenChanged() {
+  private func onboardingOpenChanged(closingWindow: NSWindow?) {
     let open = onboarding.host != nil
     trust.guideAsks = open
-    presence.applyDockVisibility(windowOpen: keepsDockIcon, restoreFocus: open)
+    presence.applyDockVisibility(windowOpen: keepsDockIcon, closingWindow: closingWindow)
     if !open { toolbar.hidePractice() }
   }
 

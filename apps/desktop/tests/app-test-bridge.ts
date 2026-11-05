@@ -10,7 +10,6 @@ import type {
   AgentBridge,
   AgentEvent,
   AgentSnapshot,
-  MemorySnapshot,
   PreparedCommand,
   TaskDetail,
 } from '../src/client/agent/bridge';
@@ -19,22 +18,13 @@ import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
 import type { PermissionRequest } from '../src/client/agent/permission-schema';
 import type { QueueState } from '../src/client/agent/transcript-schema';
 import { providerBridgeFixture } from './provider-bridge-fixture';
+import { memoryBridgeFixture } from './memory-bridge-fixture';
 
-/** Memory with nothing saved, as a fresh data directory has it. */
 /** The first fixture command, prepared as a launch with nothing captured. */
 function preparedFixture(): PreparedCommand {
   const command = fixtureCommands()[0]!;
   return { command, input: emptyInput(), output: { ...command.output }, notice: '' };
 }
-
-const noMemory = (): MemorySnapshot => ({
-  units: [],
-  proposals: [],
-  problems: [],
-  paused: false,
-  askFirst: false,
-  error: '',
-});
 
 /** Desktop bridge used by `App.test.tsx`; keep the TaskDetail shape aligned with the frozen contract. */
 export function installBridge(extras?: {
@@ -194,6 +184,7 @@ export function installBridge(extras?: {
     launch: vi.fn(async () => {}),
     prepareWithText: vi.fn(async () => preparedFixture()),
     stop: vi.fn(async () => ({ steering: [], followUp: [] })),
+    stopNextSteps: vi.fn(async () => {}),
     answer: vi.fn(async () => {}),
     queueMessage: vi.fn(async () => {}),
     replaceQueue: vi.fn(async () => {}),
@@ -217,19 +208,7 @@ export function installBridge(extras?: {
     copy: vi.fn(async () => {}),
     writeText: vi.fn(async () => ({ ok: true as const })),
     openLink: vi.fn(async () => {}),
-    memory: vi.fn(async () => noMemory()),
-    saveMemorySettings: vi.fn(async (settings) => ({ ...noMemory(), ...settings })),
-    createMemoryUnit: vi.fn(async () => {
-      throw new Error('Not used by this interaction');
-    }),
-    saveMemoryUnit: vi.fn(async () => {
-      throw new Error('Not used by this interaction');
-    }),
-    deleteMemoryUnit: vi.fn(async () => noMemory()),
-    toggleMemoryUnit: vi.fn(async () => noMemory()),
-    markMemoryUnitReviewed: vi.fn(async () => noMemory()),
-    acceptMemoryProposal: vi.fn(async () => ({ skill: null, snapshot: noMemory() })),
-    dismissMemoryProposal: vi.fn(async () => noMemory()),
+    ...memoryBridgeFixture(),
     childTranscript: vi.fn(async (taskId, childKey) => ({
       taskId,
       childKey,

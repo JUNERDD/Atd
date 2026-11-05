@@ -1,7 +1,10 @@
-import type { QueueState, TaskInput } from '@atd/agent-contracts';
+import { randomUUID } from 'node:crypto';
+import { errorMessage, type QueueState, type TaskInput } from '@atd/agent-contracts';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { ConflictError } from '../errors.js';
 import type { LiveState } from '../live-state.js';
+import type { Logger } from '../logging.js';
+import type { RunAcceptance } from './accept-run.js';
 import { withinQueue } from './queue-replace.js';
 
 /**
@@ -143,4 +146,29 @@ export function heldMessageInput(text: string): TaskInput {
     chips: [],
     folders: [],
   };
+}
+
+/**
+ * Accepts the first held message as the task's next run, a plain message as the panel would
+ * submit it; that run's full session takes the rest. The runner calls this before `runId` reports
+ * completed, so the task never looks idle in between: a message sent meanwhile queues behind
+ * the held ones. Dispatch starts the accepted run once `runId`'s execution ends. A message whose
+ * run is not accepted stays kept for the task's next run.
+ */
+export async function startHeldRun(
+  held: HeldQueue | undefined,
+  taskId: string,
+  runId: string,
+  acceptance: RunAcceptance,
+  log: Logger,
+): Promise<void> {
+  const text = held?.next();
+  if (!held || text === undefined) return;
+  const request = { operationId: randomUUID(), taskId, input: heldMessageInput(text) };
+  try {
+    await acceptance.accept(request, {}, runId);
+  } catch (error) {
+    held.putBack(text);
+    log.warn('A kept message could not start its run.', { taskId, error: errorMessage(error) });
+  }
 }

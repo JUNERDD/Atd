@@ -4,6 +4,7 @@ import { Button } from '@atd/ui/components/button';
 import type { TaskDetail } from '../../../client/agent/bridge';
 import type { FileRef, TaskRun } from '../../../client/agent/task-schema';
 import type { OutgoingMessage } from '../outgoing-messages';
+import type { NextStepsOffer } from '../next-steps/use-next-steps-offer';
 import type { AdaptedTurn } from './adapter';
 import { OutgoingFailure } from './outgoing-failure';
 import { createTurnArrivalHistory } from './turn-arrival';
@@ -28,6 +29,7 @@ export function TurnList({
   anchors,
   requests,
   live,
+  nextSteps,
   status,
   outgoing,
   firstVisible,
@@ -47,6 +49,8 @@ export function TurnList({
   anchors: Set<string>;
   requests: RequestIndex;
   live: boolean;
+  /** Only the last keyed turn receives the changing suggestion offer. */
+  nextSteps: NextStepsOffer | null;
   /** The latest run's terminal note, closing the conversation. */
   status: ReactNode;
   /**
@@ -84,10 +88,13 @@ export function TurnList({
         const position = firstVisible + index;
         const last = position === turns.length - 1;
         const sending = outgoing && last ? outgoing : undefined;
-        const note = outgoing
-          ? sending &&
-            sending.error !== null && <OutgoingFailure message={sending} error={sending.error} />
-          : last && status;
+        const note = !last ? null : outgoing ? (
+          outgoing.error !== null ? (
+            <OutgoingFailure message={outgoing} error={outgoing.error} />
+          ) : null
+        ) : (
+          status
+        );
         return (
           <TurnView
             key={turnKey(turn, invocations)}
@@ -99,7 +106,8 @@ export function TurnList({
             artifacts={artifacts}
             anchors={anchors}
             requests={requests}
-            live={sending ? sending.error === null : live}
+            live={last && (sending ? sending.error === null : live)}
+            nextSteps={last ? nextSteps : null}
             last={last}
             pending={position >= drawnFrom}
             status={note}

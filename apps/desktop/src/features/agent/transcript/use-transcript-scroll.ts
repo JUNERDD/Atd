@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type UIEvent } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type UIEvent } from 'react';
 import { followValue, type SpringOptions } from 'motion/react';
 import { anchorAt, endHold, holdInView, onHoldScroll, revealTop } from './scroll-anchor';
+import { listenForScrollIntent } from './transcript-scroll-intent';
 
 const NEAR_BOTTOM_PX = 16;
 /** A scroll event this close to the glide's last write is the glide's own echo. */
@@ -23,7 +24,12 @@ function isNearBottom(node: HTMLElement, offset = node.scrollTop): boolean {
 }
 
 function bottomOf(node: HTMLElement): number {
-  return node.scrollHeight - node.clientHeight;
+  return Math.max(0, node.scrollHeight - node.clientHeight);
+}
+
+/** WebKit rubber-banding can report offsets outside the scroll range. */
+function offsetOf(node: HTMLElement): number {
+  return Math.min(Math.max(0, node.scrollTop), bottomOf(node));
 }
 
 /** Where a glide is headed in the viewport, read again whenever layout moves it. */
@@ -41,6 +47,7 @@ function createGlide() {
   const y = followValue<number>(0, { type: 'spring', ...GLIDE });
   let viewport: HTMLElement | null = null;
   let written = 0;
+  let observed = 0;
   /**
    * How far holds have scrolled the view since the glide started. The spring keeps the offsets it
    * started in, so a carry moves the view without disturbing the motion.
@@ -52,6 +59,7 @@ function createGlide() {
     if (!viewport) return;
     viewport.scrollTop = value + carried;
     written = viewport.scrollTop;
+    observed = offsetOf(viewport);
   });
   y.on('animationComplete', () => {
     const done = rest;
@@ -59,6 +67,13 @@ function createGlide() {
     done?.();
   });
   return {
+    /** Reads reader movement since the last scroll event, programmatic write or carried hold. */
+    read(node: HTMLElement) {
+      const offset = offsetOf(node);
+      const moved = offset - observed;
+      observed = offset;
+      return moved;
+    },
     get running() {
       return y.isAnimating();
     },
@@ -78,6 +93,7 @@ function createGlide() {
       y.jump(node.scrollTop);
       // A jump to the value the spring already holds notifies no change, so no write records it.
       written = node.scrollTop;
+      observed = offsetOf(node);
       y.set(aim(node));
     },
     /**
@@ -86,7 +102,10 @@ function createGlide() {
      */
     follow(node: HTMLElement) {
       if (y.isAnimating()) y.set(aim(node) - carried);
-      else node.scrollTop = node.scrollHeight;
+      else {
+        node.scrollTop = node.scrollHeight;
+        observed = offsetOf(node);
+      }
     },
     /**
      * A hold scrolled the view by `moved`: the running glide moves along and re-aims at where its
@@ -105,37 +124,35 @@ function createGlide() {
     },
     stop() {
       rest = null;
+      viewport = null;
       y.stop();
     },
   };
 }
 
-export function useTranscriptScroll(revision: number) {
+export function useTranscriptScroll(revision: number, submissionId: string | null = null) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
+  const submitted = useRef(submissionId);
   // While it runs, the glide's intermediate scroll events sit above the bottom and must not read
   // as the reader leaving it, or the jump action would reappear mid-glide.
   const [glide] = useState(createGlide);
   const [showJump, setShowJump] = useState(false);
 
-  // Re-arm sticky follow without moving the view. Crossing back near the bottom must never
-  // yank the scroll position — only new revisions, resizes while pinned, and the explicit
-  // scroll-to-bottom action are allowed to write scrollTop.
-  const stick = () => {
-    pinned.current = true;
-    setShowJump(false);
-  };
-
   const pin = () => {
-    stick();
+    pinned.current = true;
     const node = viewportRef.current;
     if (!node) return;
+    endHold(node);
     // Reduced-motion users get the instant jump instead of the glide.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      glide.stop();
       node.scrollTop = node.scrollHeight;
+      glide.read(node);
     } else {
       glide.start(node);
     }
+    setShowJump(!isNearBottom(node, glide.heading(node)));
   };
 
   /**
@@ -162,6 +179,7 @@ export function useTranscriptScroll(revision: number) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       glide.stop();
       node.scrollTop = to(node);
+      glide.read(node);
       hold();
       return;
     }
@@ -187,26 +205,30 @@ export function useTranscriptScroll(revision: number) {
     return distance < 0 ? -1 : 1;
   };
 
-  const unpin = () => {
-    if (!pinned.current) return;
-    pinned.current = false;
-    setShowJump(true);
-  };
-
-  // Scroll position is the single owner of pinned/showJump. Do not add a wheel (or other
-  // intent) fast-path that unpins without a position check: inside the near-bottom zone it
-  // commits show while the trailing scroll event commits hide, which flickers per wheel tick.
-  // The glide is told apart by position too: a scroll away from its last write (a hold's scroll
-  // moves that write along) is the reader taking over, which ends it, and the same event's
-  // position then decides as usual. A reveal has decided already: its first frames still sit near
-  // the bottom it is leaving.
+  // Intent releases follow before a spring frame or streamed layout can erase native scrolling.
+  // Position alone owns the button: leaving follow within the near-bottom band never flashes it.
+  // Programmatic writes and anchor compensation record their offsets, so their queued scroll events
+  // cannot re-arm follow after an upward input or mistake streamed growth for reader movement.
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const node = event.currentTarget;
+    const moved = glide.read(node);
     if (glide.running && glide.isOverridden(node)) glide.stop();
-    if (glide.revealing) return;
-    if (isNearBottom(node)) stick();
-    else if (!glide.running) unpin();
+    if (glide.running) return;
+    const near = isNearBottom(node);
+    if (moved < 0) pinned.current = false;
+    else if (moved > 0) pinned.current = near;
+    if (!pinned.current) setShowJump(!near);
+    else setShowJump(false);
   };
+
+  // Sending is explicit intent to return to the conversation's end. The retained submission id
+  // survives acceptance and failure; a streamed patch or removal of the optimistic turn is not a send.
+  const onSubmit = useEffectEvent(pin);
+  useLayoutEffect(() => {
+    if (submitted.current === submissionId) return;
+    submitted.current = submissionId;
+    if (submissionId !== null) onSubmit();
+  }, [submissionId]);
 
   useLayoutEffect(() => {
     const node = viewportRef.current;
@@ -222,12 +244,19 @@ export function useTranscriptScroll(revision: number) {
   useEffect(() => {
     const node = viewportRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
+    let previousBottom = bottomOf(node);
     const observer = new ResizeObserver(() => {
+      const bottom = bottomOf(node);
+      const endMovedUp = bottom < previousBottom;
+      previousBottom = bottom;
       if (pinned.current || glide.revealing) {
         glide.follow(node);
-      } else if (isNearBottom(node)) {
-        pinned.current = true;
-        setShowJump(false);
+      } else {
+        // Only a layout that actually brings the end into view re-arms follow. The near-bottom
+        // tolerance hides the button, but cannot undo an upward input on the next streaming resize.
+        pinned.current = endMovedUp && bottom - node.scrollTop <= GLIDE_ECHO_PX;
+        if (pinned.current) glide.read(node);
+        setShowJump(!isNearBottom(node));
       }
     });
     observer.observe(node);
@@ -238,11 +267,25 @@ export function useTranscriptScroll(revision: number) {
 
   useEffect(() => {
     const node = viewportRef.current;
-    const stopCarrying = node ? onHoldScroll(node, (moved) => glide.carry(moved)) : undefined;
-    return () => {
-      stopCarrying?.();
+    if (!node) return;
+    const stopInput = listenForScrollIntent(node, (intent) => {
+      if (intent === 'up' && node.scrollTop <= 0 && !glide.running) return;
+      const near = isNearBottom(node);
       glide.stop();
-      if (node) endHold(node);
+      glide.read(node);
+      if (intent === 'release') pinned.current = bottomOf(node) - node.scrollTop <= GLIDE_ECHO_PX;
+      else pinned.current = intent === 'down' && near;
+      setShowJump(!near);
+    });
+    const stopCarrying = onHoldScroll(node, (moved) => {
+      glide.read(node);
+      glide.carry(moved);
+    });
+    return () => {
+      stopInput();
+      stopCarrying();
+      glide.stop();
+      endHold(node);
     };
   }, [glide]);
 

@@ -744,10 +744,6 @@
   color: var(--muted-foreground);
 }
 /* Extension sub-pages (add and details): form sections and detail blocks stack in one column. */
-.extension-page {
-  /* Opaque, because the file tree paints it behind a middle-truncation marker. */
-  --extension-detail-panel: color-mix(in oklab, var(--muted) 60%, var(--background));
-}
 .extension-page-body {
   display: flex;
   flex-direction: column;
@@ -761,7 +757,7 @@
   margin: 0;
   padding: 12px 16px;
   border-radius: var(--radius-xl);
-  background: var(--extension-detail-panel);
+  background: var(--ata-surface-raised-wash);
   font-size: 13px;
   line-height: 20px;
 }
@@ -823,8 +819,9 @@
   padding-block: 8px;
   overflow: hidden;
   border-right: 1px solid var(--border);
-  background: var(--extension-detail-panel);
-  --trees-bg-override: var(--extension-detail-panel);
+  /* Only the file tree needs an opaque backing for its middle-truncation marker. */
+  --trees-bg-override: color-mix(in oklab, var(--muted) 60%, var(--background));
+  background: var(--trees-bg-override);
   --trees-fg-override: var(--foreground);
   --trees-fg-muted-override: var(--muted-foreground);
   --trees-bg-muted-override: var(--muted);
@@ -909,7 +906,7 @@
   margin: 0;
   padding: 12px 16px;
   border-radius: var(--radius-xl);
-  background: var(--extension-detail-panel);
+  background: var(--ata-surface-raised-wash);
   font-size: 13px;
   line-height: 20px;
   list-style: none;
@@ -1066,6 +1063,35 @@
  * they take the row's cursor instead. */
 .settings-permission-option :is([data-slot='label'], input) {
   cursor: inherit;
+}
+/* Native dark radios paint an opaque well even on a translucent row. Own just the paint;
+ * the input keeps native grouping, arrow keys, focus and checked/disabled semantics. */
+.settings-permission-option input[type='radio'] {
+  appearance: none;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: 50%;
+  background: transparent;
+}
+.settings-permission-option input[type='radio']:checked {
+  border-color: var(--primary);
+  background: var(--primary-foreground);
+  box-shadow: inset 0 0 0 4px var(--primary);
+}
+.settings-permission-option input[type='radio']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.settings-permission-option input[type='radio']:disabled {
+  opacity: 0.5;
+}
+@media (forced-colors: active) {
+  .settings-permission-option input[type='radio'],
+  .settings-permission-option input[type='radio']:checked {
+    appearance: auto;
+    border: revert;
+    background: revert;
+    box-shadow: none;
+  }
 }
 /* Item only styles hover for links; an enabled option row fills like the other settings rows. */
 .settings-permission-option:hover:not([data-variant='muted'], :has(input:disabled)) {

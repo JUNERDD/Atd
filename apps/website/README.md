@@ -301,9 +301,12 @@ The Vercel project `atd-agent` is connected to `JUNERDD/Atd` with
   "skip unaffected projects" setting).
 - `vercel.json` sets the filtered install, the build, clean URLs without trailing slashes, long-lived
   caching for hashed assets, and security headers.
-- Vercel checks the media manifest after building. With `VITE_ASSET_BASE_URL` configured, missing
-  CDN objects or invalid delivery headers fail the deployment before it replaces the current site.
-  Upload new media before pushing a website change; then run `assets:check` as shown below.
+- Vercel publishes the build's media, then checks them. `assets:publish` uploads the keys the
+  `atd-assets` bucket lacks, with the R2 credentials described below, so a push that changes media
+  needs no manual upload or redeploy. With `VITE_ASSET_BASE_URL` configured, `assets:check` then
+  fails the deployment before it replaces the current site if a CDN object is missing or serves the
+  wrong headers. A build without the credentials (a fork's preview, a local build) skips the upload
+  and leaves the decision to the check.
 - The project variable `ENABLE_EXPERIMENTAL_COREPACK=1` makes Vercel use the repository's pinned pnpm
   (`packageManager` in the root `package.json`); the project runs Node.js 24.
 
@@ -322,9 +325,15 @@ brand images, icons and the Open Graph image stay on Vercel. Original media copi
 the built site, while the hashed media remain available for upload and local rollback builds.
 
 `dist/asset-manifest.json` records every media key, byte count, full SHA-256, MIME type and
-`public, max-age=31536000, immutable` policy. Authenticate using Wrangler's supported login or
-Cloudflare environment variables; do not store credentials in `VITE_*` or commit local auth files.
-Run these commands from the repository root, uploading and verifying before deploying a CDN build:
+`public, max-age=31536000, immutable` policy. Uploads go through the bucket's S3 API with an R2
+API token scoped to `atd-assets` alone: in the Cloudflare dashboard, R2 → Manage API tokens →
+Create Account API token, permission Object Read & Write, applied to `atd-assets` only. Store its
+Access Key ID and Secret Access Key, with the account ID, as the sensitive variables
+`R2_ASSETS_ACCESS_KEY_ID`, `R2_ASSETS_SECRET_ACCESS_KEY` and `R2_ASSETS_ACCOUNT_ID` in the Vercel
+project's Production and Preview environments. Wrangler cannot use such a token: object-level
+tokens work only with the S3 API, while Wrangler's object commands call the Cloudflare REST API,
+which would need an account-wide Admin token. Never put credentials in `VITE_*` or commit them.
+To publish by hand, export the same variables and run these from the repository root:
 
 ```sh
 SITE_URL=https://atd.best VITE_ASSET_BASE_URL=https://assets.atd.best pnpm --filter @atd/website build
@@ -333,8 +342,9 @@ pnpm --filter @atd/website assets:upload --bucket atd-assets
 pnpm --filter @atd/website assets:check --base https://assets.atd.best --origin https://atd.best --full
 ```
 
-Uploads validate local bytes and hashes before invoking the pinned Wrangler CLI and never delete
-objects. Delivery checks verify local hashes, remote size, MIME type, CORS, immutable caching and
+Uploads validate local bytes and hashes, ask the bucket which keys it already holds, upload only
+the others and never delete objects; a held key whose size differs fails instead of being
+overwritten. `--dry-run` lists what would be uploaded. Delivery checks verify local hashes, remote size, MIME type, CORS, immutable caching and
 byte-preserving video ranges; `--full` also compares every downloaded SHA-256. Configure bucket CORS
 for GET and HEAD from `https://atd.best` (and any explicitly supported preview origins), allowing
 Range and exposing Content-Length, Content-Range, Accept-Ranges and Cache-Control.
@@ -378,8 +388,10 @@ SITE_URL=https://atd.best VITE_ASSET_BASE_URL= pnpm --filter @atd/website build
 pnpm --filter @atd/website assets:check
 ```
 
-Build/public paths are implemented with Vite's supported plugin API, and uploads reuse
-[Cloudflare Wrangler](https://developers.cloudflare.com/r2/objects/upload-objects/) rather than custom authentication.
+Build/public paths are implemented with Vite's supported plugin API. Uploads sign their S3
+requests with [aws4fetch](https://developers.cloudflare.com/r2/examples/aws/aws4fetch/), the
+client Cloudflare documents for R2, rather than custom authentication; Wrangler still applies the
+bucket's CORS.
 
 ## Diagnostic downloads
 

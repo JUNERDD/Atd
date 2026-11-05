@@ -2,7 +2,6 @@ import { Fragment } from 'react';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { ChipToken } from '../../composer-editor/chip-content';
 import { revealQuote } from './selection-toolbar/quote-reveal';
-import { UserContext } from '../user-context';
 import { MessageBubble } from './message-bubble';
 import { composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
 
@@ -35,16 +34,11 @@ function SentText({ segments }: { segments: readonly SentSegment[] }) {
 }
 
 /**
- * A run's prompt: the context captured with the run above the bubble, and the message the way it
- * was composed, chips drawn as in the composer. `fallback` is the plain text shown when the run did
- * not prompt with its composed text (see `composedPrompt`).
+ * A run's prompt bubble as composed, chips drawn as in the composer. `fallback` is the plain text
+ * shown when the run did not prompt with its composed text (see `composedPrompt`). Attachments
+ * belong to `UserMessage`, which keeps them mounted when this bubble is replaced by the editor.
  */
 export function PromptMessage({ snapshot, fallback }: { snapshot: RunSnapshot; fallback: string }) {
   const composed = composedPrompt(snapshot);
-  return (
-    <>
-      <UserContext snapshot={snapshot} />
-      <MessageBubble>{composed ? <SentText segments={composed} /> : fallback}</MessageBubble>
-    </>
-  );
+  return <MessageBubble>{composed ? <SentText segments={composed} /> : fallback}</MessageBubble>;
 }

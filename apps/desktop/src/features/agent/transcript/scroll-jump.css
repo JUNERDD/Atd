@@ -1,0 +1,27 @@
+.scroll-jump-icon {
+  /* Optical centering of the downward arrow inside the small circular glass control. */
+  translate: -1px -1px;
+}
+
+/* The shared glass button owns material and clipping. Its state layer is at -1, so the light
+   stays below hover and focus feedback as well as the arrow; it adds no glass or outset effect. */
+.scroll-jump-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: scroll-jump-glow-in 0.4s ease-in-out;
+}
+
+@keyframes scroll-jump-glow-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-jump-glow {
+    animation-duration: 0.2s;
+  }
+}

@@ -119,6 +119,12 @@ extension CaptureSession {
     return overlays.first { $0.display.displayID == primary.id }
   }
 
+  /// The display holding most of `rect` as a selection, or `fallback` when none does: where
+  /// Select All takes a selection first.
+  func wholeDisplay(holding rect: CGRect, fallback: CGRect) -> CGRect {
+    model.settled(primaryOverlay(for: rect)?.bounds ?? fallback)
+  }
+
   /// "W × H" in points, plus the exported pixels when they differ (``ScreenshotRules``).
   private func sizeLabel(for rect: CGRect) -> String {
     let stitch = desktop.geometry.stitch(rect)

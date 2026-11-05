@@ -3,6 +3,7 @@ import { Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import { cn } from '@atd/ui/lib/utils';
+import { COMPUTER_TOOL } from '@atd/agent-contracts';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
@@ -23,7 +24,7 @@ import {
 import { ToolRowSummary } from './tool-row-summary';
 import { toolSummary } from './tool-summary';
 import { presentTarget } from './tool-target';
-import { useComputerRow } from './use-computer-row';
+import { useComputerRow, type ComputerRow } from './use-computer-row';
 
 /** Tools whose target is a file or search subject, shown as the read-style chip. */
 const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep', 'find', 'ls']);
@@ -38,15 +39,32 @@ const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep'
  * of different tools read differently at a glance; commands and patterns read in the code face.
  * A computer action the host completed in the foreground adds a Foreground tag at the same edge.
  */
-export function ToolBlock({
-  block,
-  confirmation,
-  forceOpen,
-}: {
+interface ToolBlockProps {
   block: BlockOf<'tool'>;
   confirmation?: ConfirmationRequest | undefined;
   forceOpen?: boolean;
-}) {
+}
+
+export function ToolBlock(props: ToolBlockProps) {
+  return props.block.name === COMPUTER_TOOL ? (
+    <ComputerToolBlock {...props} />
+  ) : (
+    <ToolRow {...props} computer={null} />
+  );
+}
+
+/** Only computer rows read task runs and the host's live computer progress. */
+function ComputerToolBlock(props: ToolBlockProps) {
+  const computer = useComputerRow(props.block);
+  return <ToolRow {...props} computer={computer} />;
+}
+
+function ToolRow({
+  block,
+  confirmation,
+  forceOpen,
+  computer,
+}: ToolBlockProps & { computer: ComputerRow | null }) {
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(Boolean(forceOpen));
   const expanded = Boolean(forceOpen) || open;
@@ -55,7 +73,6 @@ export function ToolBlock({
   const Icon = proxy ? Plug : toolIcon(block.name);
   const label = toolStepKey(block.name, block.args);
   // A computer call reads by its operation and the host's live phase (use-computer-row.ts).
-  const computer = useComputerRow(block);
   const title = computer?.title ?? (label ? t(label) : (proxy?.tool ?? block.name));
   // A published app reads by its name and version (`Daily notes · v3`); its card follows at the
   // turn's end with the turn's other saved items (artifact-cards.tsx).

@@ -241,6 +241,8 @@ export interface AgentBridge {
   submit: (request: Omit<SubmitRequest, 'action'>) => Promise<TaskDetail>;
   /** Stops the run; resolves with the queued messages Stop withdrew, never delivered. */
   stop: (taskId: string, runId: string) => Promise<QueueState>;
+  /** Stops pending suggestions for this run and publishes its updated task state before resolving. */
+  stopNextSteps: (taskId: string, runId: string) => Promise<void>;
   answer: (
     taskId: string,
     runId: string,

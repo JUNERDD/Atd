@@ -2,6 +2,7 @@ import { memo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
 import { NextStepsCard } from '../next-steps/next-steps-card';
+import { NextStepsContext, type NextStepsOffer } from '../next-steps/use-next-steps-offer';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
@@ -54,6 +55,7 @@ export const TurnView = memo(function TurnView({
   requests,
   live,
   last,
+  nextSteps = null,
   pending = false,
   copyable = true,
   modelName,
@@ -70,6 +72,8 @@ export const TurnView = memo(function TurnView({
   requests: RequestIndex;
   live: boolean;
   last: boolean;
+  /** Last-turn suggestions stay outside the task-wide action context. */
+  nextSteps?: NextStepsOffer | null;
   /** The run is accepted but its prompt has not reached the transcript yet. */
   pending?: boolean;
   /**
@@ -166,19 +170,21 @@ export const TurnView = memo(function TurnView({
           together above the actions instead of interrupting the stream; the approval only
           applies from the next message anyway. */}
       {settled && !pending && <McpApprovalBanners steps={activitySteps(turn.items)} />}
-      {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
-      {settled && !pending && copyable && (
-        <TurnActions
-          turn={turn}
-          run={run}
-          answer={lastAnswerText(
-            turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : [])),
-          )}
-          last={last}
-        />
-      )}
-      {/* The suggestions saved for the last turn's completed run, under its actions. */}
-      {settled && !pending && copyable && last && <NextStepsCard run={run} last={last} />}
+      <NextStepsContext value={nextSteps}>
+        {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
+        {settled && !pending && copyable && (
+          <TurnActions
+            turn={turn}
+            run={run}
+            answer={lastAnswerText(
+              turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : [])),
+            )}
+            last={last}
+          />
+        )}
+        {/* The suggestions saved for the last turn's completed run, under its actions. */}
+        {settled && !pending && copyable && last && <NextStepsCard run={run} last={last} />}
+      </NextStepsContext>
     </section>
   );
 });

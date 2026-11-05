@@ -12,7 +12,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   private(set) var host: WebViewHost?
   private let makeHost: (_ fragment: String) -> WebViewHost
   /// Runs after the window is created or released, before an opened window activates the app.
-  var onOpenChange: (() -> Void)?
+  /// On close, supplies the departing window while AppKit may still consider it key.
+  var onOpenChange: ((_ closingWindow: NSWindow?) -> Void)?
 
   init(makeHost: @escaping (_ fragment: String) -> WebViewHost) {
     self.makeHost = makeHost
@@ -52,7 +53,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     applyMinimumSize(workArea, to: window)
     self.window = window
     self.host = host
-    onOpenChange?()
+    onOpenChange?(nil)
     NSApp.activate()
     host.load()
     window.makeKeyAndOrderFront(nil)
@@ -85,11 +86,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   func close() { window?.close() }
 
   func windowWillClose(_ notification: Notification) {
+    let closingWindow = window
     host?.close()
     host = nil
     window?.delegate = nil
     window = nil
-    onOpenChange?()
+    onOpenChange?(closingWindow)
   }
 
   func windowDidBecomeKey(_ notification: Notification) {
