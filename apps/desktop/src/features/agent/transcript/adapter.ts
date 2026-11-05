@@ -297,21 +297,18 @@ function adaptActivity(
 }
 
 function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): AdaptedTurn {
-  const items: AdaptedItem[] = turn.items.map((item) =>
-    item.type === 'block' ? item : adaptActivity(item, requests),
-  );
-  const source = turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : item.blocks));
-  const head = turn.user ?? source[0];
-  const runId = head?.runId ?? '';
-  const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
-  // Standalone blocks carry no request but a waiting view's, which arrives with a new `run`.
-  const inputs = [
-    turn.id,
-    run,
-    turn.user,
-    ...items.map((item) => (item.type === 'block' ? item.block : item)),
-  ];
-  return reuseProjection(turnCache, head, inputs, () => {
+  const firstItem = turn.items[0];
+  const head = turn.user ?? (firstItem?.type === 'block' ? firstItem.block : firstItem?.blocks[0]);
+  const run = runs.find((candidate) => candidate.id === (head?.runId ?? '')) ?? runs[0];
+  // The folded turn changes with every source block or relevant request, including requests on
+  // standalone blocks. Only its run is needed beyond that stable input to adapt it.
+  return reuseProjection(turnCache, turn.first, [turn, run], () => {
+    const items: AdaptedItem[] = turn.items.map((item) =>
+      item.type === 'block' ? item : adaptActivity(item, requests),
+    );
+    const source = turn.items.flatMap((item) =>
+      item.type === 'block' ? [item.block] : item.blocks,
+    );
     const view = items.flatMap((item) =>
       item.type === 'block' ? [viewFor(item.block, requests)] : item.view,
     );
