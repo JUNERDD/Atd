@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Lightbulb, X } from 'lucide-react';
+import { ChevronRight, Lightbulb, Square, X } from 'lucide-react';
 import type { NextStep } from '@atd/agent-contracts';
 import {
   Item,
@@ -23,23 +23,23 @@ import './next-steps.css';
 /**
  * The way back to a hidden card on the last turn's action bar, before More, shown while the turn
  * has suggestions. Expanded while the card shows, so the same button also hides it. While the
- * suggestions are generated it already holds its place, as a disabled spinner, so the bar does
- * not shift when they arrive: the same button then turns into the toggle.
+ * suggestions are generated the same slot offers Stop; hover or keyboard focus reveals the stop
+ * icon in place of the spinner. Once they arrive, the button becomes the card's toggle.
  */
 export function NextStepsToggle({ offer }: { offer: NextStepsOffer }) {
   const { t } = useTranslation('tasks');
   if (offer.status === 'pending') {
-    // `aria-disabled`, not `disabled`: a disabled button takes no pointer or focus events, so its
-    // tooltip could never say what the spinner is waiting for. It has no action to block.
     return (
       <IconButton
         id={offer.toggleId}
-        label={t('nextSteps.preparing')}
-        aria-disabled
+        label={offer.stopping ? t('nextSteps.stopping') : t('nextSteps.stopPreparing')}
+        aria-disabled={offer.stopping}
         aria-busy
-        className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        onClick={() => void offer.stop()}
+        className="next-steps-stop aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         <Spinner />
+        <Square className="next-steps-stop-icon size-3 fill-current" aria-hidden />
       </IconButton>
     );
   }

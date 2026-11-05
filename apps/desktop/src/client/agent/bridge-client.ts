@@ -43,6 +43,7 @@ export function createAgentBridge(
       invoke({ action: 'preview', input, command, policy }),
     submit: (request) => invoke({ action: 'submit', ...request }),
     stop: (taskId, runId) => invoke({ action: 'stop', taskId, runId }),
+    stopNextSteps: (taskId, runId) => invoke({ action: 'stopNextSteps', taskId, runId }),
     answer: (taskId, runId, requestId, answer) =>
       invoke({ action: 'answer', taskId, runId, requestId, answer }),
     queueMessage: (taskId, text, mode) => invoke({ action: 'queueMessage', taskId, text, mode }),

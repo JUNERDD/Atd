@@ -1,7 +1,9 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import type { NextStep, NextStepClick } from '@atd/agent-contracts';
 import type { AgentTask, TaskRun } from '../../../client/agent/task-schema';
+import { showErrorToast } from '../../../components/toast-store';
 import { useTaskTurns } from '../transcript/turn-context';
+import { agentApi } from '../use-agent';
 
 /**
  * What the panel does with a suggestion's prompt. The follow-up actions apply only while `taskId`
@@ -33,6 +35,9 @@ export interface NextStepsOffer extends NextStepsHost {
   taskId: string;
   runId: string;
   status: 'pending' | 'ready';
+  /** The cancellation request is waiting for the service's authoritative task state. */
+  stopping: boolean;
+  stop: () => Promise<void>;
   /** Empty while `pending`. */
   items: NextStep[];
   open: boolean;
@@ -55,6 +60,8 @@ export function useNextStepsOffer(
   host: NextStepsHost | undefined,
 ): NextStepsOffer | null {
   const [hiddenRun, setHiddenRun] = useState<string | null>(null);
+  const [stoppingRuns, setStoppingRuns] = useState<ReadonlySet<string>>(() => new Set());
+  const stops = useRef(new Set<string>());
   const cardId = useId();
   const toggleId = useId();
   const suggestions = task.nextSteps;
@@ -71,13 +78,28 @@ export function useNextStepsOffer(
       taskId: task.id,
       runId,
       status: offered.status,
+      stopping: stoppingRuns.has(runId),
+      stop: async () => {
+        if (offered.status !== 'pending' || stops.current.has(runId)) return;
+        stops.current.add(runId);
+        setStoppingRuns(new Set(stops.current));
+        try {
+          await agentApi().stopNextSteps(task.id, runId);
+        } catch (error) {
+          showErrorToast(error);
+        } finally {
+          stops.current.delete(runId);
+          // Other conversations may also have a cancellation in flight after switching tasks.
+          setStoppingRuns(new Set(stops.current));
+        }
+      },
       items: offered.status === 'ready' ? offered.items : [],
       open: hiddenRun !== runId,
       setOpen: (open: boolean) => setHiddenRun(open ? null : runId),
       cardId,
       toggleId,
     };
-  }, [host, offered, task.id, hiddenRun, cardId, toggleId]);
+  }, [host, offered, task.id, hiddenRun, stoppingRuns, cardId, toggleId]);
 }
 
 /** The transcript's offer when it belongs to this turn: the last one, opened by run `run`. */

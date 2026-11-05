@@ -205,6 +205,8 @@ export class TaskClient<S> {
 
   /** Loads a task's summary (not its transcript) and publishes it. */
   async loadSummary(taskId: string): Promise<void> {
+    // A fresh metadata read supersedes pending reads even when the stream sequence did not move.
+    this.loads.invalidate(taskId);
     await this.loads.load(
       taskId,
       () => this.http().summary(taskId),

@@ -900,7 +900,8 @@
     "hide": "Hide suggestions",
     "showCard": "Show suggested next steps",
     "hideCard": "Hide suggested next steps",
-    "preparing": "Preparing suggestions…",
+    "stopPreparing": "Stop preparing suggestions",
+    "stopping": "Stopping suggestions…",
     "kinds": {
       "continue": "Continue here",
       "newTask": "New task",

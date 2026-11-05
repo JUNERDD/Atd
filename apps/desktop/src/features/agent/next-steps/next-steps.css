@@ -1,3 +1,13 @@
+.next-steps-stop > .next-steps-stop-icon {
+  display: none;
+}
+.next-steps-stop:not([aria-disabled='true']):is(:hover, :focus-visible) > [data-slot='spinner'] {
+  display: none;
+}
+.next-steps-stop:not([aria-disabled='true']):is(:hover, :focus-visible) > .next-steps-stop-icon {
+  display: block;
+}
+
 /*
  * The "Next steps" card under the last settled turn (next-steps-card.tsx): a quiet card on the
  * transcript's surface whose rows bleed close to its edge, so their icons line up under the header.

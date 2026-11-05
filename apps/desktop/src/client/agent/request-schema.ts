@@ -82,6 +82,7 @@ export const AgentRequestSchema = Type.Union([
     sideChatOf: Type.Optional(Identifier),
   }),
   Type.Object({ action: Type.Literal('stop'), taskId: Identifier, runId: Identifier }),
+  Type.Object({ action: Type.Literal('stopNextSteps'), taskId: Identifier, runId: Identifier }),
   Type.Object({
     action: Type.Literal('answer'),
     taskId: Identifier,

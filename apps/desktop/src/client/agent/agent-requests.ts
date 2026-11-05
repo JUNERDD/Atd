@@ -11,6 +11,7 @@ import { isMemoryRequest, runMemoryRequest } from './memory-manage';
 import type { Screenshot } from './screenshot-input';
 import {
   compactLiveTask,
+  confirmLiveRequest,
   deleteLiveTask,
   forkLiveTask,
   notConnected,
@@ -251,6 +252,10 @@ export class AgentRequests<S> {
         const { unsent } = await this.tasks.http().cancel(request.taskId, request.runId);
         return unsent;
       }
+      case 'stopNextSteps':
+        await this.tasks.http().cancelNextSteps(request.taskId, request.runId);
+        await this.tasks.loadSummary(request.taskId);
+        return null;
       case 'answer':
         return this.answer(request);
       // Queue edits publish through the service's `queue.update` event, like Pi's own deliveries.
@@ -330,20 +335,11 @@ export class AgentRequests<S> {
     const live = this.tasks.revisions.get(request.requestId);
     if (!live || live.taskId !== request.taskId || live.runId !== request.runId)
       throw new Error('This request expired. Review the current task.');
-    try {
-      await this.tasks.http().confirm({
-        requestId: request.requestId,
-        revision: live.revision,
-        answer: request.answer,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      if (message.includes('410') || message.toLowerCase().includes('no longer pending'))
-        throw new Error('This request expired. Review the current task.');
-      if (message.includes('409') || message.toLowerCase().includes('changed'))
-        throw new Error('The request changed. Refresh and answer the latest version.');
-      throw error;
-    }
+    await confirmLiveRequest(this.tasks.http(), {
+      requestId: request.requestId,
+      revision: live.revision,
+      answer: request.answer,
+    });
     return null;
   }
 }

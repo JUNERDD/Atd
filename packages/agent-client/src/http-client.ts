@@ -96,6 +96,16 @@ export class AgentHttpClient {
     );
   }
 
+  /** Stops pending suggested next steps for this run; completed suggestions remain available. */
+  cancelNextSteps(taskId: string, runId: string): Promise<{ ok: boolean }> {
+    return this.request(
+      `/v1/tasks/${encodeURIComponent(taskId)}/runs/${encodeURIComponent(runId)}/next-steps/cancel`,
+      'POST',
+      {},
+      (json) => parse(CapabilityOkSchema, json),
+    );
+  }
+
   confirm(body: ConfirmReplyRequest): Promise<ConfirmReplyResponse> {
     return this.request('/v1/confirms', 'POST', parse(ConfirmReplyRequestSchema, body), (json) =>
       parse(ConfirmReplyResponseSchema, json),
