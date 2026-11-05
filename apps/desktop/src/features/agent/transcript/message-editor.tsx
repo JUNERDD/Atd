@@ -4,26 +4,22 @@ import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Textarea } from '@atd/ui/components/textarea';
 import { isComposingKey } from '@atd/ui/lib/ime';
-import type { RunSnapshot } from '../../../client/agent/task-schema';
-import { UserContext } from '../user-context';
 
 /**
  * Edits a sent message in place of its bubble. ⌘↩ sends and Esc cancels; an IME composition keeps
- * both keys. Every file of the run stays listed above the field, chip files included, because the
- * resend keeps them all. `last` is false for an earlier message, which the note warns is replaced
- * together with everything after it. The owner closes the editor once a send succeeds.
+ * both keys. `UserMessage` keeps the run's attachments mounted above the field, chip files
+ * included, because the resend keeps them all. `last` is false for an earlier message, which the
+ * note warns is replaced together with everything after it. The owner closes the editor once a
+ * send succeeds.
  */
 export function MessageEditor({
   initialText,
-  snapshot,
   last,
   canSend,
   onCancel,
   onSend,
 }: {
   initialText: string;
-  /** The run whose prompt is edited; a queued follow-up has none and resends text only. */
-  snapshot: RunSnapshot | undefined;
   last: boolean;
   /** Whether `text` (with the run's files) is something to send. */
   canSend: (text: string) => boolean;
@@ -91,7 +87,6 @@ export function MessageEditor({
 
   return (
     <div className="message-editor">
-      {snapshot && <UserContext snapshot={snapshot} />}
       {/* The field grows with the text; past 240px the shared ScrollArea scrolls it, so the
           bar matches the transcript's. */}
       <ScrollArea
