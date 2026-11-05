@@ -354,6 +354,11 @@
 .markdown code {
   font-size: 12px;
 }
+/* Inline tags share the panel's translucent wash instead of Streamdown's opaque muted fill. */
+.markdown [data-streamdown='inline-code'] {
+  background: var(--ata-surface-raised-wash);
+  color: var(--foreground);
+}
 /* The project's code block (`@pierre/diffs`): a framed card whose actions sit on its corner. */
 .code-block {
   position: relative;
@@ -933,7 +938,6 @@
 .thinking-detail [data-streamdown='inline-code'] {
   padding: 1px 4px;
   border-radius: 4px;
-  background: color-mix(in oklab, var(--foreground) 6%, transparent);
   font-size: 12px;
 }
 /* Fenced code inside prose keeps a hairline frame so it stays apart from the sentences around

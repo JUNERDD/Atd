@@ -54,9 +54,9 @@
      translucent fill on any desktop the glass shows, where the preset's grays fail, and over the
      solid fill of any tone the setting offers. */
   --ata-text-secondary: var(--ata-panel-text-secondary-light, #636363);
-  /* The user bubble's, its attachments' and the table header's wash: translucent over the panel,
-     where the opaque `--muted` read as a slab on the thinner fill. Not `--ata-surface-raised`
-     below, the opaque surface of an activity result card. */
+  /* The content wash shared by user bubbles, attachments, table headers, inline code, keycaps and
+     secondary badges: translucent over the panel, where opaque preset fills read as slabs.
+     `--ata-surface-raised` below remains the opaque surface of an activity result card. */
   --ata-surface-raised-wash: var(--ata-panel-raised-light, rgb(0 0 0 / 5%));
   --ata-syntax-variable: #2563eb;
   /* Figma text/match: search matches in lists, the composer's blue pulled away from the surface
@@ -68,8 +68,6 @@
   /* Warning status, such as context usage nearing its limit; also used as text, so the light value
      keeps 4.5:1 on the panel. */
   --ata-status-warning: #b45309;
-  /* Figma activity/connector: the opaque rail shared by the activity tree. */
-  --activity-connector: #d4d4d4;
   /* Figma surface/raised: the activity result card's own surface. */
   --ata-surface-raised: #ffffff;
   /* Figma code/surface: a code block's own surface (the code theme's background), which the
@@ -136,7 +134,6 @@
   --ata-border-subtle: rgb(255 255 255 / 14%);
   --ata-status-progress: #22c55e;
   --ata-status-warning: #f59e0b;
-  --activity-connector: #3c3c3c;
   --ata-surface-raised: #262626;
   --ata-code-surface: var(--ata-panel-code-surface-dark, rgb(10 10 10 / 27%));
   --ata-code-line-number: var(--ata-panel-code-line-number-dark, #a8a8a8);
@@ -179,6 +176,8 @@
    resolves its own theme, including a `.dark` scope nested under a light root. */
 :root,
 .dark {
+  /* Figma activity/connector: the activity rail shares its title's secondary text color. */
+  --activity-connector: var(--muted-foreground);
   --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
   --ata-glass-shadow-default:
     0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
