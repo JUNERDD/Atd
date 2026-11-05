@@ -141,6 +141,13 @@ designed in the project design file's `W · Website · Blog · 0.10.6 images` se
 (`3663:212419`), English and Chinese side by side, and exported at 1x as WebP (quality 85, the same
 setting the CMS applies to uploads).
 
+The 0.10.7 images are in `project/3771:216085`, in the
+`W · Website · Blog · 0.10.7 images (2026-11-05)` section. The three scenes explain capture
+hints, reading earlier replies, and stopping suggestion preparation, with Chinese and English
+editions side by side. They retain the Tahoe Beach Dusk backdrop and use editable product
+components with handwritten notes. Export each 1440 × 900 frame at 1x, then encode WebP at
+quality 85; keep the localized alt text aligned with the scene.
+
 ### Design
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`
