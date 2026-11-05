@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { GLOW_STRENGTH } from './glow-field';
 
 const INCREASED_CONTRAST = '(prefers-contrast: more)';
@@ -9,7 +9,7 @@ const REDUCED_TRANSPARENCY = '(prefers-reduced-transparency: reduce)';
  * WebKit has no `prefers-reduced-transparency`, so the shell's report on the root element
  * (`window-state.ts`) counts as well as the media query.
  */
-function glowLevel(): number {
+function glowLevel(light: number, dark: number): number {
   const root = document.documentElement;
   const contrast = window.matchMedia(INCREASED_CONTRAST).matches
     ? GLOW_STRENGTH.increasedContrast
@@ -18,7 +18,7 @@ function glowLevel(): number {
     root.dataset.reducedTransparency === 'true' || window.matchMedia(REDUCED_TRANSPARENCY).matches
       ? GLOW_STRENGTH.reducedTransparency
       : 1;
-  const strength = root.classList.contains('dark') ? GLOW_STRENGTH.dark : GLOW_STRENGTH.light;
+  const strength = root.classList.contains('dark') ? dark : light;
   return strength * contrast * transparency;
 }
 
@@ -38,7 +38,11 @@ function subscribe(onChange: () => void) {
   };
 }
 
-/** The light's current strength; the component re-renders when a setting it depends on changes. */
-export function useGlowLevel(): number {
-  return useSyncExternalStore(subscribe, glowLevel);
+/** The surface's light strength, updated for the page's appearance and accessibility settings. */
+export function useGlowLevel({
+  light,
+  dark,
+}: { light: number; dark: number } = GLOW_STRENGTH): number {
+  const snapshot = useCallback(() => glowLevel(light, dark), [light, dark]);
+  return useSyncExternalStore(subscribe, snapshot);
 }

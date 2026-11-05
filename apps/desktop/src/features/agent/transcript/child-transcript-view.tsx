@@ -152,7 +152,7 @@ export function ChildTranscriptView({
           <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
-      <ScrollJump show={showJump} onJump={pin} />
+      <ScrollJump show={showJump} live={live} onJump={pin} />
       <SelectionToolbar
         root={messages}
         onQuote={onQuote}

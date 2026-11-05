@@ -9,7 +9,7 @@ import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
 import { TaskViewsContext, useViewSnapshots, type TaskViews } from '../generative-views/view-fold';
 import { useNextStepsOffer, type NextStepsHost } from '../next-steps/use-next-steps-offer';
-import { useOutgoingMessage } from '../outgoing-messages';
+import { useOutgoingMessage, useOutgoingSubmissionId } from '../outgoing-messages';
 import { adaptTranscript } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import {
@@ -91,8 +91,10 @@ export function Transcript({
   const nextAnchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
   const [anchors, setAnchors] = useState(nextAnchors);
   if (anchors !== nextAnchors && !sameIds(anchors, nextAnchors)) setAnchors(nextAnchors);
+  const submissionId = useOutgoingSubmissionId(task.id);
   const { viewportRef, showJump, pin, reveal, revealDirection, onScroll } = useTranscriptScroll(
     detail.revision,
+    submissionId,
   );
   const { firstVisible, sentinel, loadEarlier, include } = useEarlierTurns(
     turns.length,
@@ -262,7 +264,11 @@ export function Transcript({
         include={include}
         covered={covered}
       />
-      <ScrollJump show={showJump} onJump={pin} />
+      <ScrollJump
+        show={showJump && !covered}
+        live={run?.status === 'queued' || run?.status === 'running'}
+        onJump={pin}
+      />
       <SelectionToolbar
         root={messages}
         onQuote={onQuote}
