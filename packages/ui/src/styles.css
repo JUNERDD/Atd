@@ -176,8 +176,8 @@
    resolves its own theme, including a `.dark` scope nested under a light root. */
 :root,
 .dark {
-  /* Figma activity/connector: the activity rail shares its title's secondary text color. */
-  --activity-connector: var(--muted-foreground);
+  /* An opaque, quieter rail: the overlapping spine and curve must not stack alpha. */
+  --activity-connector: color-mix(in srgb, var(--muted-foreground) 45%, var(--background));
   --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
   --ata-glass-shadow-default:
     0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
