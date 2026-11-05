@@ -22,7 +22,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private(set) var host: WebViewHost?
   private let makeHost: () -> WebViewHost
   /// Runs after the host is created or released, before an opened guide activates the app.
-  var onOpenChange: (() -> Void)?
+  /// On close, supplies the departing window while AppKit may still consider it key.
+  var onOpenChange: ((_ closingWindow: NSWindow?) -> Void)?
 
   init(makeHost: @escaping () -> WebViewHost) {
     self.makeHost = makeHost
@@ -68,7 +69,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     self.surface = surface
     surfaceShown = false
     self.host = host
-    onOpenChange?()
+    onOpenChange?(nil)
     NSApp.activate()
     host.load()
     window.makeKeyAndOrderFront(nil)
@@ -89,13 +90,14 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   func close() { window?.close() }
 
   func windowWillClose(_ notification: Notification) {
+    let closingWindow = window
     host?.close()
     host = nil
     window?.delegate = nil
     window = nil
     surface = nil
     surfaceShown = false
-    onOpenChange?()
+    onOpenChange?(closingWindow)
   }
 
   /// The window's content: the guide's glass, with the transparent page over it filling the stage
