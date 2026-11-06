@@ -4,7 +4,7 @@
  * `pnpm dev` runs) and Release (`build:release`, after `bundle` staged the service pack):
  *
  *   node scripts/build.mjs --configuration <Debug|Release> [--arch <arm64|x64>]
- *     [--marketing-version <v>] [--build-version <v>] [--dry-run]
+ *     [--marketing-version <v>] [--build-version <v>] [--timing-summary] [--dry-run]
  *
  * It regenerates the Xcode project with XcodeGen and runs xcodebuild into
  * DerivedData/Build/Products/<Configuration>/Atd.app. The checked-in Package.resolved is copied into
@@ -58,6 +58,7 @@ function readOptions() {
         arch: { type: 'string' },
         'marketing-version': { type: 'string' },
         'build-version': { type: 'string' },
+        'timing-summary': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
       },
       strict: true,
@@ -92,12 +93,13 @@ function readOptions() {
     arch: parsed.arch,
     marketingVersion,
     buildVersion,
+    timingSummary: parsed['timing-summary'],
     dryRun: parsed['dry-run'],
   };
 }
 
 /** The xcodebuild arguments for one configuration and architecture. */
-function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion }) {
+function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion, timingSummary }) {
   const xcodeArch = MACHO_ARCHS[arch];
   return [
     '-project',
@@ -110,7 +112,8 @@ function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion })
     `platform=macOS,arch=${xcodeArch}`,
     '-derivedDataPath',
     'DerivedData',
-    '-quiet',
+    // Timing runs retain the compiler tasks as well as their summary, without logging script env.
+    ...(timingSummary ? ['-showBuildTimingSummary', '-hideShellScriptEnvironment'] : ['-quiet']),
     '-onlyUsePackageVersionsFromResolvedFile',
     // Also covers the AIMac package targets, whose Release builds otherwise include both slices.
     `ARCHS=${xcodeArch}`,
