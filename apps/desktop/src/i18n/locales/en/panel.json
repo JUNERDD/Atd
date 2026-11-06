@@ -11,6 +11,9 @@
     "updateDownloading": "Downloading version {{version}}…",
     "updateDownloadingPercent": "Downloading version {{version}} · {{percent}}%",
     "updatePreparing": "Preparing version {{version}}…",
+    "releaseNotes": "Release notes",
+    "releaseNotesTooltip": "View release notes for {{version}}",
+    "dismissReleaseNotes": "Hide this update notification",
     "loadingConversation": "Loading conversation…"
   },
   "find": {

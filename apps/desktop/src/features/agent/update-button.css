@@ -22,3 +22,61 @@
     transition: none;
   }
 }
+
+.release-notes-icon {
+  display: none;
+}
+
+/* The release notes prompt is the update button plus a dismiss badge on its top-right corner,
+   centered on the pill's end cap at 45 degrees (a 20px badge, 6px off each edge). It inverts the
+   theme's ink, a light disc in dark and a dark one in light, inside a 2px ring in the surface
+   color: the half beyond the pill contrasts with the header, and the ring cuts the half over the
+   pill from it. Hovering the prompt or focusing it from the keyboard reveals the badge; it never
+   resizes or moves the button, so the slot keeps the update button's footprint. Without a hover
+   (touch) it stays visible, and Reduce Motion keeps only the fade. */
+.release-notes-dismiss {
+  opacity: 0;
+  scale: 0.8;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease-out,
+    scale 120ms ease-out,
+    background-color 120ms ease-out;
+}
+.release-notes-prompt:hover .release-notes-dismiss,
+.release-notes-prompt:has(:focus-visible) .release-notes-dismiss {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .release-notes-dismiss {
+    opacity: 1;
+    scale: 1;
+    pointer-events: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .release-notes-dismiss {
+    scale: 1;
+  }
+}
+
+/* Compact headers keep the 28px control and the full accessible label while freeing title space. */
+@media (width < 480px) {
+  /* The extra prompt shares the narrow title bar without changing any control's hit area. */
+  .panel-header:has(.release-notes-prompt),
+  .header-controls:has(.release-notes-prompt) {
+    gap: var(--spacing);
+  }
+  .release-notes-button {
+    width: calc(var(--spacing) * 7);
+    padding-inline: 0;
+  }
+  .release-notes-icon {
+    display: block;
+  }
+  .release-notes-label {
+    display: none;
+  }
+}

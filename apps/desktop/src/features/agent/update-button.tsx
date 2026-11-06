@@ -5,21 +5,29 @@ import { Spinner } from '@atd/ui/components/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import type { AppUpdateState } from '../../client/contract';
 import { IconButton } from '../../components/icon-button';
+import { releaseNotesUrl } from '../updates/release-notes';
+import { ReleaseNotesPrompt } from '../updates/release-notes-prompt';
+import { usePendingReleaseNotes } from '../updates/use-release-notes';
 import './update-button.css';
 
 /**
- * The header's app update, shown only while one is under way. A download shows how far it got as
- * a ring, or a spinner while its size is unknown; preparing the download shows a spinner. The
+ * The header's app update takes precedence over the installed release's notes. A download shows
+ * how far it got as a ring, or a spinner while its size is unknown; preparing it shows a spinner. The
  * percent is not shown, only spoken: the accessible name carries it, the tooltip names the version.
  * Either opens the shell's own update window, with the details and Cancel. A ready update becomes
  * the restart into it, which the shell runs through its quit flow, so running tasks still get
  * their confirmation.
  */
 export function UpdateButton() {
-  const { t } = useTranslation('panel');
+  const { t, i18n } = useTranslation('panel');
   const [update, setUpdate] = useState<AppUpdateState>({ phase: 'idle' });
+  const releaseNotesVersion = usePendingReleaseNotes();
   useEffect(() => window.desktop?.update?.onState(setUpdate), []);
-  if (update.phase === 'idle') return null;
+  if (update.phase === 'idle') {
+    if (!releaseNotesVersion) return null;
+    const url = releaseNotesUrl(releaseNotesVersion, i18n.language);
+    return url ? <ReleaseNotesPrompt version={releaseNotesVersion} url={url} /> : null;
+  }
   if (update.phase === 'ready')
     return (
       <Tooltip>

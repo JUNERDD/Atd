@@ -11,6 +11,9 @@
     "updateDownloading": "正在下载 {{version}} 版本…",
     "updateDownloadingPercent": "正在下载 {{version}} 版本 · {{percent}}%",
     "updatePreparing": "正在准备 {{version}} 版本…",
+    "releaseNotes": "更新日志",
+    "releaseNotesTooltip": "查看 {{version}} 更新日志",
+    "dismissReleaseNotes": "隐藏本次更新提示",
     "loadingConversation": "正在加载对话…"
   },
   "find": {
