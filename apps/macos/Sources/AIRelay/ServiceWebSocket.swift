@@ -26,7 +26,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   static let streamProtocol = "ai.v1"
 
   let endpoint: ServiceEndpoint
-  private let events: Events
+  private var events: Events?
   private var task: URLSessionWebSocketTask?
   private var ended = false
 
@@ -58,6 +58,9 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   func close(code: UInt16, reason: String) {
     guard !ended else { return }
     ended = true
+    // The owner can retain this socket and be captured by its callbacks. A terminal socket
+    // must release that graph, including when no close callback is delivered to the owner.
+    events = nil
     let closeCode = URLSessionWebSocketTask.CloseCode(rawValue: Int(code)) ?? .normalClosure
     task?.cancel(with: closeCode, reason: Data(reason.utf8))
     task = nil
@@ -70,10 +73,10 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
         guard !self.ended else { return }
         switch result {
         case .success(.string(let text)):
-          self.events.onText(text)
+          self.events?.onText(text)
           self.receiveNext()
         case .success(.data):
-          self.events.onBinary()
+          self.events?.onBinary()
           self.receiveNext()
         case .success:
           self.receiveNext()
@@ -96,7 +99,9 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
     guard !ended else { return }
     ended = true
     task = nil
-    events.onClose(code, reason)
+    let onClose = events?.onClose
+    events = nil
+    onClose?(code, reason)
   }
 
   nonisolated func urlSession(
@@ -105,7 +110,7 @@ final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   ) {
     MainActor.assumeIsolated {
       guard !ended else { return }
-      events.onOpen()
+      events?.onOpen()
       receiveNext()
     }
   }

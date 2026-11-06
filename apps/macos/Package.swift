@@ -91,8 +91,11 @@ let package = Package(
     // SwiftUI/WebKit tests. This executable is only a test dependency, never an app product.
     .executableTarget(
       name: "SelectionAXFixture", dependencies: ["AIShell"], path: "Tests/SelectionAXFixture"),
+    .executableTarget(
+      name: "PanelFocusFixture", dependencies: ["AIShell"], path: "Tests/PanelFocusFixture"),
     // Real WKWebView checks of the private WebKit settings the shell depends on.
-    .testTarget(name: "AIShellTests", dependencies: ["AIShell", "SelectionAXFixture"]),
+    .testTarget(
+      name: "AIShellTests", dependencies: ["AIShell", "SelectionAXFixture", "PanelFocusFixture"]),
   ],
   swiftLanguageModes: [.v6]
 )

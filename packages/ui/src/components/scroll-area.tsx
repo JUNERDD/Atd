@@ -54,7 +54,14 @@ function ScrollAreaViewport({
   const setRefs = React.useCallback(
     (element: HTMLDivElement | null) => {
       node.current = element;
-      setRef(ref, element);
+      const cleanup = setRef(ref, element);
+      // React 19 ref callbacks may own resources through their returned cleanup. Forwarding only
+      // the node drops that cleanup, keeping observers of a removed viewport alive.
+      return () => {
+        node.current = null;
+        if (typeof cleanup === 'function') cleanup();
+        else setRef(ref, null);
+      };
     },
     [ref],
   );
@@ -140,7 +147,7 @@ function has(state: number, flag: number): boolean {
 /** Assigns a forwarded ref without the caller touching props inline. */
 function setRef(ref: React.Ref<HTMLDivElement> | undefined, node: HTMLDivElement | null) {
   if (typeof ref === 'function') {
-    ref(node);
+    return ref(node);
   } else if (ref) {
     ref.current = node;
   }

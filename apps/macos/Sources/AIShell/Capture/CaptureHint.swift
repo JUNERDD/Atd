@@ -13,10 +13,38 @@ struct CaptureHintSegment: Equatable {
 /// A hint line: its segments, left to right, on one plate.
 typealias CaptureHintLine = [CaptureHintSegment]
 
-/// A hint line on a dark rounded plate, keys as keycaps and segments set apart by a dot. The
-/// plate is as wide as its segments, which lose the highest ranks first until it fits
-/// `maxWidth`; it never takes the mouse.
+/// A hint line on the capture toolbar's native material, blurring the frozen screenshot within
+/// the overlay. Content stays above the shared fill; the entire badge leaves input to the overlay.
 final class CaptureHintBadge: NSView {
+  private let material = NativeMaterialView(.capsule(.withinWindow))
+  private var reduceTransparency: ReduceTransparencyObserver?
+
+  init(segments: CaptureHintLine, maxWidth: CGFloat) {
+    let content = CaptureHintContent(segments: segments, maxWidth: maxWidth)
+    super.init(frame: CGRect(origin: .zero, size: content.fittingSize))
+    GlassSurface.attach(material, content: content)
+    material.view.frame = bounds
+    material.view.autoresizingMask = [.width, .height]
+    GlassSurface.shape(material, content: content, cornerRadius: 6)
+    addSubview(material.view)
+    reduceTransparency = ReduceTransparencyObserver { [weak content] reduce in
+      content?.layer?.backgroundColor = GlassSurface.fill(reduceTransparency: reduce).cgColor
+    }
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+  isolated deinit { reduceTransparency?.stop() }
+
+  override var isFlipped: Bool { true }
+  override var fittingSize: NSSize { frame.size }
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Keys as keycaps and segments set apart by a dot. The highest ranks drop first until the
+/// line fits `maxWidth`; its measured size and typography do not depend on the native material.
+private final class CaptureHintContent: NSView {
   private let segments: [CaptureHintSegment]
 
   private static let labelFont = NSFont.systemFont(ofSize: 13)
@@ -40,15 +68,19 @@ final class CaptureHintBadge: NSView {
   override var fittingSize: NSSize { frame.size }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    needsDisplay = true
+  }
+
   override func draw(_ dirtyRect: NSRect) {
-    NSColor(white: 0, alpha: 0.72).setFill()
-    NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
     var x = Self.padding.width
     for (index, segment) in segments.enumerated() {
       if index > 0 {
         x += Self.separatorGap
         Self.draw(
-          Self.separator, font: Self.labelFont, color: NSColor(white: 1, alpha: 0.45), x: x,
+          Self.separator, font: Self.labelFont, color: NSColor.labelColor.withAlphaComponent(0.45),
+          x: x,
           in: bounds)
         x += Self.width(of: Self.separator, font: Self.labelFont) + Self.separatorGap
       }
@@ -56,15 +88,15 @@ final class CaptureHintBadge: NSView {
         let cap = CGRect(
           x: x, y: (bounds.height - Self.keyHeight) / 2, width: Self.keyWidth(key),
           height: Self.keyHeight)
-        NSColor(white: 1, alpha: 0.22).setFill()
+        NSColor.labelColor.withAlphaComponent(0.22).setFill()
         NSBezierPath(roundedRect: cap, xRadius: 4, yRadius: 4).fill()
         let textWidth = Self.width(of: key, font: Self.keyFont)
         Self.draw(
-          key, font: Self.keyFont, color: .white, x: cap.minX + (cap.width - textWidth) / 2,
+          key, font: Self.keyFont, color: .labelColor, x: cap.minX + (cap.width - textWidth) / 2,
           in: bounds)
         x += cap.width + Self.keyGap
       }
-      Self.draw(segment.label, font: Self.labelFont, color: .white, x: x, in: bounds)
+      Self.draw(segment.label, font: Self.labelFont, color: .labelColor, x: x, in: bounds)
       x += Self.width(of: segment.label, font: Self.labelFont)
     }
   }

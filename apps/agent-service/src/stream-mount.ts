@@ -20,10 +20,6 @@ export function registerStream(app: FastifyInstance, deps: ServerDeps): void {
     serviceId: deps.config.serviceId,
     epoch: deps.config.epoch,
   });
-  app.addHook('onClose', async () => {
-    activity.dispose();
-    steps.dispose();
-  });
   const hub = new StreamHub({
     systemProxy: deps.systemProxy,
     events: deps.events,
@@ -35,6 +31,11 @@ export function registerStream(app: FastifyInstance, deps: ServerDeps): void {
     status: () => taskStatusCounts(deps.ledger.data),
     onStatusInputs: (listener) => deps.ledger.onChanged(listener),
     log: deps.log,
+  });
+  app.addHook('onClose', async () => {
+    hub.dispose();
+    activity.dispose();
+    steps.dispose();
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
   registerStoreInvalidation(app, deps.config.paths, (frame) => hub.invalidate(frame));
