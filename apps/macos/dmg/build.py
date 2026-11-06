@@ -16,6 +16,8 @@ from mac_alias import (
 )
 from mac_alias.bookmark import kCFURLVolumeIsDiskImage, kCFURLVolumeIsInternal
 
+from dmg_process import Progress, run_dmg
+
 
 def fix_background_bookmark(mount_point):
     # mac-alias 2.2.2 marks every volume as internal. Finder cannot resolve the
@@ -40,19 +42,29 @@ def fix_background_bookmark(mount_point):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("app")
     parser.add_argument("background")
     parser.add_argument("layout")
     parser.add_argument("volume_name")
     parser.add_argument("output")
     args = parser.parse_args()
+    if not args.worker:
+        run_dmg(
+            Path(__file__).resolve(),
+            [args.app, args.background, args.layout, args.volume_name, args.output],
+        )
+        return
+
     mount_point = None
+    progress = Progress()
 
     def remember_mount(path, _settings):
         nonlocal mount_point
         mount_point = Path(path)
 
     def on_progress(info):
+        progress(info)
         # dmgbuild closes .DS_Store before this callback, then detaches and converts
         # the image. Exceptions here abort the build and dmgbuild unmounts it.
         if (
@@ -63,6 +75,7 @@ def main():
                 raise RuntimeError("dmgbuild did not provide the mounted image")
             fix_background_bookmark(mount_point)
             # Layout metadata must not invalidate the signed app that users install.
+            progress({"type": "operation::start", "operation": "codesign::verify"})
             subprocess.run(
                 [
                     "codesign",
@@ -72,7 +85,9 @@ def main():
                     str(mount_point / Path(args.app).name),
                 ],
                 check=True,
+                timeout=120,
             )
+            progress({"type": "operation::finished", "operation": "codesign::verify"})
 
     build_dmg(
         args.output,
@@ -81,6 +96,8 @@ def main():
         settings={"create_hook": remember_mount},
         defines={"app": args.app, "background": args.background, "layout": args.layout},
         callback=on_progress,
+        # dmgbuild retries failed detaches with backoff; the supervisor also bounds each call.
+        detach_retries=3,
     )
 
 

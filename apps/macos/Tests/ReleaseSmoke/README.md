@@ -1,7 +1,9 @@
 # Intel macOS 15 Release smoke tests
 
-The x64 row of `release.yml`'s existing `verify` job runs this suite on
-`macos-15-intel`, after verifying and copying the existing `dmg-x64` artifact.
+The x64 invocation of `release-architecture.yml`'s `verify` job runs this suite on
+`macos-15-intel`, after downloading the DMG by its producing job's artifact ID.
+`release.yml` calls this workflow independently for each architecture; packaging
+and verification can be rerun using the successful build's signed App archive.
 It uses that app's bundled Node and launches that exact Release app through
 LaunchServices. It does not rebuild, re-sign or alter the app, grant permissions,
 remove quarantine, or use Rosetta. A failed required assertion fails `verify`,
@@ -45,7 +47,7 @@ is the hosted VM. Unreached cases stay UNTESTED. Failures need triage against th
 logs as app, runner/environment, or test-harness failures; a timeout is not proof
 of an app defect. No case is silently skipped into success.
 
-The `intel-macos15-smoke-evidence` artifact retains TAP output, the driver build
+The `intel-macos15-smoke-evidence-<attempt>` artifact retains TAP output, the driver build
 log, reports, current service logs and relevant crash/native logs for seven days.
 A screenshot is attempted only with an **existing** screen-capture grant; absence
 is recorded, without changing TCC or presenting a consent request. Tokens are
@@ -64,7 +66,7 @@ mkdir -p tmp/release-smoke-validation
 xcrun swiftc -swift-version 6 -parse-as-library -target x86_64-apple-macos15.0 \
   apps/macos/Tests/ReleaseSmoke/AppDriver.swift \
   -o tmp/release-smoke-validation/app-driver-intel
-actionlint .github/workflows/release.yml
+actionlint .github/workflows/release.yml .github/workflows/release-architecture.yml
 ```
 
 `core-contract.test.mjs` validates the shared cases against a source-built service
