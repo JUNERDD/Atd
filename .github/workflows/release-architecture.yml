@@ -83,10 +83,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2.9.2
         id: rust-cache
         with:
+          # Start the branch experiment cold, then reuse the same key for its warm run.
+          # Main keeps its existing namespace; experiment writes require artifacts mode.
+          prefix-key: ${{ github.ref == 'refs/heads/ci/release-pipeline-performance' && 'v1-rust-benchmark' || 'v0-rust' }}
           shared-key: release-${{ inputs.arch }}-${{ steps.native-cache.outputs.context }}
           cache-bin: false
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          save-if: ${{ github.ref == 'refs/heads/main' || (github.ref == 'refs/heads/ci/release-pipeline-performance' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'artifacts') }}
       - run: pnpm install --frozen-lockfile
       # TCC records an Accessibility or Screen Recording grant with the app's designated
       # requirement. An ad hoc build's requirement is its cdhash, so every update dropped the
