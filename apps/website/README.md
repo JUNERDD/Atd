@@ -108,6 +108,13 @@ another page the nav's section links and download key lead back to the home page
 post's head tags make it an article (`og:type`, `article:published_time`) whose share image is its
 first highlight's.
 
+The desktop app's release-note links open the article for its installed stable version, in the
+app's language. A stable release therefore requires both articles to be deployed before its
+installer or update feeds are published. Verify that `/blog/atd-<version with dashes>` and
+`/zh/blog/atd-<version with dashes>` each return HTTP 200 and show the intended version, and
+preserve these URLs after publication. A release candidate has no article; the app does not
+offer a version-specific release-note link for it.
+
 ### Content
 
 The releases are files in this repository, edited with [Sveltia CMS](https://sveltiacms.app), a
