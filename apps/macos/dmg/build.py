@@ -16,6 +16,8 @@ from mac_alias import (
 )
 from mac_alias.bookmark import kCFURLVolumeIsDiskImage, kCFURLVolumeIsInternal
 
+from dmg_progress import Progress
+
 
 def fix_background_bookmark(mount_point):
     # mac-alias 2.2.2 marks every volume as internal. Finder cannot resolve the
@@ -47,12 +49,14 @@ def main():
     parser.add_argument("output")
     args = parser.parse_args()
     mount_point = None
+    progress = Progress()
 
     def remember_mount(path, _settings):
         nonlocal mount_point
         mount_point = Path(path)
 
     def on_progress(info):
+        progress(info)
         # dmgbuild closes .DS_Store before this callback, then detaches and converts
         # the image. Exceptions here abort the build and dmgbuild unmounts it.
         if (
@@ -63,6 +67,7 @@ def main():
                 raise RuntimeError("dmgbuild did not provide the mounted image")
             fix_background_bookmark(mount_point)
             # Layout metadata must not invalidate the signed app that users install.
+            progress({"type": "operation::start", "operation": "codesign::verify"})
             subprocess.run(
                 [
                     "codesign",
@@ -73,6 +78,7 @@ def main():
                 ],
                 check=True,
             )
+            progress({"type": "operation::finished", "operation": "codesign::verify"})
 
     build_dmg(
         args.output,

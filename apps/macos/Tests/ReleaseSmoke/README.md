@@ -90,7 +90,9 @@ candidate when `apps/macos/package.json` differs from its base version. The
 current version. Ordinary PRs with no version change and fork PRs keep their
 existing checks. The shared `release-candidate.yml` preserves the existing native
 build/DMG jobs, macOS 15 verification and Intel Release smoke checks. Candidate
-production runs alongside quality checks; the complete CI run must pass.
+production runs alongside quality checks; the complete CI run must pass. Xcode
+timing summaries and passive DMG phase logs are retained for seven days, including
+logs produced by failed runs.
 
 When the version bump reaches `main`, `release.yml` automatically finds the PR
 that introduced that exact commit, then its latest CI run for the PR head. It
@@ -109,13 +111,14 @@ that fails verification. `mode=artifacts` always builds fresh. The optional
 `candidate_run_id` still selects an explicit source; a PR source also takes
 `candidate_pr_number`, while a manual source requires the exact commit.
 
-To validate discovery without merging or publishing, pin a temporary branch at
-the successful PR's tested merge SHA and dispatch `release.yml` with only
-`mode=rehearsal`. It discovers the matching open PR and source CI, reuses the
-candidate, then creates, validates and deletes a draft. For a different commit
-with the identical tree, `candidate_pr_number` can provide a rehearsal-only
-hint; source-run discovery and all artifact checks still run. Neither rehearsal
-publishes or updates mirrors. An unmerged PR cannot be formally promoted.
+To validate reuse before merging or publishing, refresh the PR branch from main,
+wait for its complete CI, then dispatch `release.yml` on that branch with
+`mode=rehearsal` and `candidate_pr_number`. The branch and its tested merge commit
+must have the identical full tree; source-run discovery and all artifact checks
+still run. After merging, dispatch on main with only `mode=rehearsal` to validate
+automatic discovery without a PR hint. Both paths reuse the candidate, then
+create, validate and delete a draft. Neither publishes or updates mirrors, and
+neither needs an extra branch. An unmerged PR cannot be formally promoted.
 
 For 0.10.8, review diagnostics and candidate reuse as separate CI PRs before the
 final release PR. After the CI changes are approved and merged, update the
