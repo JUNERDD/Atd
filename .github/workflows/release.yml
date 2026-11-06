@@ -32,8 +32,10 @@ name: Release
 # branch can instead use `artifacts` (build, verify and sign both dmgs and feeds into one workflow
 # artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
 # under a throwaway tag that is checked and always deleted).
-# A release/rehearsal may promote a successful candidate_run_id at the exact same commit and
-# version. An opted-in PR CI source also requires candidate_pr_number and all its checks.
+# A release/rehearsal may promote a successful candidate_run_id at the same version and
+# complete repository tree. Manual sources also require the exact same commit. An opted-in
+# PR CI source requires candidate_pr_number and all its checks, preserving its tested SHA
+# even if GitHub creates a different final merge SHA for the identical tree.
 # Its immutable artifact and every required verification are checked before reuse;
 # the build, DMG and macOS 15 checks belong to the candidate run and are not repeated.
 on:
@@ -56,7 +58,7 @@ on:
         type: string
         required: false
       candidate_run_id:
-        description: release/rehearsal only; reuse a verified Release candidate at this exact commit and version
+        description: release/rehearsal only; reuse a verified candidate with this version and complete source tree
         type: string
         required: false
       candidate_pr_number:
@@ -95,12 +97,15 @@ jobs:
       build_version: ${{ steps.version.outputs.build_version }}
       build: ${{ steps.version.outputs.build }}
       publish: ${{ steps.version.outputs.publish }}
+      tree: ${{ steps.version.outputs.tree }}
       candidate-run-id: ${{ steps.candidate.outputs.run-id }}
       candidate-artifact-id: ${{ steps.candidate.outputs.artifact-id }}
       candidate-digest: ${{ steps.candidate.outputs.digest }}
       candidate-head-sha: ${{ steps.candidate.outputs.head-sha }}
       candidate-pr-number: ${{ steps.candidate.outputs.pr-number }}
       candidate-event: ${{ steps.candidate.outputs.event }}
+      candidate-source-commit: ${{ steps.candidate.outputs.source-commit }}
+      candidate-receipt-sha256: ${{ steps.candidate.outputs.receipt-sha256 }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -116,6 +121,7 @@ jobs:
           INPUT_BUILD_VERSION: ${{ inputs.build_version }}
         run: |
           output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          output tree "$(git rev-parse 'HEAD^{tree}')"
           semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           version=$(node -p "require('./apps/macos/package.json').version")
           if ! [[ "$version" =~ $semver ]]; then
@@ -275,6 +281,9 @@ jobs:
       CANDIDATE_HEAD_SHA: ${{ needs.version.outputs.candidate-head-sha }}
       CANDIDATE_PR_NUMBER: ${{ needs.version.outputs.candidate-pr-number }}
       CANDIDATE_EVENT: ${{ needs.version.outputs.candidate-event }}
+      SOURCE_COMMIT: ${{ needs.version.outputs.candidate-source-commit || github.sha }}
+      TARGET_TREE: ${{ needs.version.outputs.tree }}
+      CANDIDATE_RECEIPT_SHA256: ${{ needs.version.outputs.candidate-receipt-sha256 }}
     steps:
       - uses: actions/download-artifact@v8.0.0
         if: needs.version.outputs.candidate-artifact-id == ''
@@ -288,21 +297,24 @@ jobs:
           gh api "repos/$GH_REPO/actions/artifacts/$CANDIDATE_ARTIFACT_ID/zip" > "$archive"
           printf '%s  %s\n' "${CANDIDATE_DIGEST#sha256:}" "$archive" | sha256sum --check
           unzip -q "$archive" -d dist
-          echo "Reusing candidate run $CANDIDATE_RUN_ID, artifact $CANDIDATE_ARTIFACT_ID at $GITHUB_SHA; compilation and verification completed in the source run." >> "$GITHUB_STEP_SUMMARY"
+          echo "Reusing candidate run $CANDIDATE_RUN_ID, artifact $CANDIDATE_ARTIFACT_ID built at $SOURCE_COMMIT for release commit $GITHUB_SHA; complete source tree $TARGET_TREE matches." >> "$GITHUB_STEP_SUMMARY"
       - name: Check the artifact against its manifest
         run: |
+          if [ -n "$CANDIDATE_RUN_ID" ]; then
+            printf '%s  %s\n' "$CANDIDATE_RECEIPT_SHA256" dist/candidate-source.json | sha256sum --check
+          fi
           jq -e --arg run "${CANDIDATE_RUN_ID:-$GITHUB_RUN_ID}" \
             --arg head "${CANDIDATE_HEAD_SHA:-$GITHUB_SHA}" \
             --arg event "${CANDIDATE_EVENT:-$GITHUB_EVENT_NAME}" \
             --argjson pr "${CANDIDATE_PR_NUMBER:-0}" \
             '.schemaVersion == 1 and .repository == env.GITHUB_REPOSITORY and
-              .runId == $run and .commit == env.GITHUB_SHA and .headSha == $head and
+              .runId == $run and .commit == env.SOURCE_COMMIT and .tree == env.TARGET_TREE and .headSha == $head and
               .event == $event and .pullRequest == $pr' dist/candidate-source.json > /dev/null || {
             echo "::error::candidate-source.json does not identify the verified source run and commit."
             exit 1
           }
           jq -e --arg v "$VERSION" --arg b "$BUILD_VERSION" \
-            '.marketingVersion == $v and .buildVersion == $b and .commit == env.GITHUB_SHA' \
+            '.marketingVersion == $v and .buildVersion == $b and .commit == env.SOURCE_COMMIT' \
             dist/manifest.json > /dev/null || {
             echo "::error::manifest.json names another version or commit."
             exit 1
@@ -359,6 +371,9 @@ jobs:
           notes="Atd-$VERSION-arm64.dmg is the Apple silicon (arm64) build and Atd-$VERSION-x64.dmg the Intel (x64) build; both run on macOS 15 or later. The app is not signed with an Apple Developer ID and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies update themselves: on Apple silicon from 0.4.0 or later, on Intel from 0.9.0 or later."
           if [[ "$VERSION" == *-* ]]; then
             notes="$notes This is a prerelease: installed stable copies are not offered it, and it updates itself to the next stable release, not to later prereleases."
+          fi
+          if [ -n "$CANDIDATE_RUN_ID" ]; then
+            notes="$notes Built by candidate run $CANDIDATE_RUN_ID at $SOURCE_COMMIT; its complete source tree matches release commit $GITHUB_SHA."
           fi
           # The body precedes the generated notes, like `gh release create --notes --generate-notes`.
           gh api -X POST "repos/$GH_REPO/releases" \

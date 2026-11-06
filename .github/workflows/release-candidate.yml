@@ -125,6 +125,13 @@ jobs:
           cat dist/appcast.xml dist/appcast-x64.xml
       - name: Record the candidate source
         run: node apps/macos/scripts/release/write-candidate-source.mjs
+      - name: Upload the candidate source
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Atd-${{ inputs.marketing_version }}-source
+          path: dist/candidate-source.json
+          if-no-files-found: error
+          overwrite: true
       - uses: actions/upload-artifact@v7.0.1
         id: artifact
         with:

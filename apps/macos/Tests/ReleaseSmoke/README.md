@@ -89,7 +89,7 @@ their own approved credentials, permissions and acceptance criteria.
 An `artifacts` run creates a candidate through `release-candidate.yml` after both architectures pass their native
 build, DMG, macOS 15 verification and applicable smoke checks. A later manual
 `rehearsal` or `release` run can set `candidate_run_id` to that successful run.
-It must use the exact same commit, marketing version and build version. The
+Manual sources must use the exact same commit, marketing version and build version. The
 resolver checks the source repository, workflow, commit and each required job
 and step before selecting the immutable artifact ID and SHA-256 digest.
 
@@ -109,11 +109,16 @@ privileged follow-up executes fork code.
 
 For a PR source, promotion also takes `candidate_pr_number` and requires the
 whole CI run to pass, including code quality/production build and the macOS
-summary gate. It checks that the PR still names that head and merge commit.
+summary gate. It checks that the PR still names that head.
 GitHub's run/job `head_sha` names the PR branch head, while the default checkout
 and all PR checks use `GITHUB_SHA`, the synthetic merge commit. The immutable
-archive's `candidate-source.json` records both, the PR number and base SHA;
-promotion checks this receipt and the existing manifest before creating a draft.
+archive's `candidate-source.json` records both, the PR number, base SHA and full
+Git tree. A small separately digested source artifact lets the preflight inspect
+this receipt before downloading the installers. It verifies the tested commit's
+parents and tree against GitHub, then requires the release commit to have the
+identical complete repository tree, including versions, dependencies and workflows.
+The full archive must contain the same receipt, and its manifest keeps the real
+build commit. No app or manifest is rewritten to pretend it was built later.
 
 To rehearse without merging, pin a separate experimental branch at the exact
 successful PR merge SHA, then dispatch `release.yml` on that branch with
@@ -121,8 +126,12 @@ successful PR merge SHA, then dispatch `release.yml` on that branch with
 `candidate_pr_number=<PR number>`. The workflow creates, verifies and deletes a
 draft, and never publishes or mirrors it. An unmerged PR is accepted only for
 rehearsal. Formal release additionally requires a merged PR and the existing
-main/release-branch rules. Squash, rebase, a newer base or another commit can
-change the SHA: reuse then fails rather than publishing a different build.
+main/release-branch rules and the PR's actual merged commit as the release target.
+GitHub can create a different final merge SHA for unchanged content. The full
+tree comparison supports that case while preserving build provenance. A changed
+tree or version is rejected; equal branch names or a successful check alone are
+insufficient. A second experimental ref with the same tree and different commit
+metadata can exercise this case without merging the PR or modifying main.
 
 Measure PR checks, candidate production, recovery and promotion separately.
 Moving the build earlier does not reduce the end-to-end build-and-release
