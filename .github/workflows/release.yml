@@ -296,9 +296,16 @@ jobs:
       # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
       - name: Build the Release app
         run: |
-          args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION")
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION" --timing-summary)
           if [ "$BUILD_VERSION" != "$VERSION" ]; then args+=(--build-version "$BUILD_VERSION"); fi
-          node apps/macos/scripts/build.mjs "${args[@]}"
+          node apps/macos/scripts/build.mjs "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
+          {
+            echo "### Xcode timing: $RELEASE_ARCH"
+            echo '```text'
+            awk '/Build Timing Summary/{show=1} show' "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Check the built app
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app
@@ -355,7 +362,9 @@ jobs:
           python3 -m venv "$venv"
           "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
           dmg="Atd-$VERSION-$RELEASE_ARCH.dmg"
-          built=$(DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$APP" dist | tail -n 1)
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          built=$(DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$APP" dist \
+            2> >(tee "$RUNNER_TEMP/release-diagnostics/dmg.log" >&2) | tail -n 1)
           if ! [ "$built" -ef "dist/$dmg" ]; then
             echo "::error::package.mjs wrote $built, not dist/$dmg."
             exit 1
@@ -374,6 +383,15 @@ jobs:
           if-no-files-found: error
           # The dmg is already compressed.
           compression-level: 0
+          retention-days: 7
+
+      - name: Upload release diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-diagnostics-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-diagnostics/
+          if-no-files-found: warn
           retention-days: 7
 
   # The macOS 15 runners prove the signed installers run where the oldest supported system runs:
