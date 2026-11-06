@@ -24,6 +24,8 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   private var userMoving = false
   /// The shell itself is setting the frame, which never counts as the user's move.
   private var placing = false
+  private var isPinned = false
+  private var systemPanelOpen = false
   /// Called with the new visibility after every show and hide.
   var onVisibilityChange: ((Bool) -> Void)?
   /// Called when the panel is hidden while it held key status, to pass focus on.
@@ -81,18 +83,29 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   func setTitle(_ title: String) { panel.title = title }
 
   func setPinned(_ pinned: Bool) {
+    isPinned = pinned
     panel.isFloatingPanel = pinned
-    panel.level = pinned ? .floating : .normal
+    updateLevel()
   }
 
-  /// Floats below system panels (open and save) while one is open; returns the level to restore.
-  func lowerForSystemPanel() -> NSWindow.Level {
-    let level = panel.level
-    panel.level = .normal
-    return level
+  /// Keep open/save panels above the task panel even if AppKit changes key ownership meanwhile.
+  func lowerForSystemPanel() {
+    systemPanelOpen = true
+    updateLevel()
   }
 
-  func restoreLevel(_ level: NSWindow.Level) { panel.level = level }
+  func restoreAfterSystemPanel() {
+    systemPanelOpen = false
+    updateLevel()
+  }
+
+  private func updateLevel() {
+    // A summon borrows the keyboard without changing the frontmost app. Its normal windows
+    // can reorder on modifier keys, so the key panel needs priority until focus moves away.
+    // Pinning keeps that priority after blur; an open/save panel takes precedence over both.
+    let floats = isPinned || (isVisible && panel.isKeyWindow)
+    panel.level = !systemPanelOpen && floats ? .floating : .normal
+  }
 
   /// Where summons show the panel. A change applies from the next summon: a visible panel
   /// stays where it is.
@@ -119,6 +132,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.ignoresMouseEvents = false
     panel.orderFrontRegardless()
     panel.makeKey()
+    updateLevel()
     onVisibilityChange?(true)
   }
 
@@ -127,6 +141,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
+    updateLevel()
     if wasKey { onGaveUpKey?() }
     onVisibilityChange?(false)
   }
@@ -175,10 +190,12 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   func windowDidBecomeKey(_ notification: Notification) {
+    updateLevel()
     host.setState(.windowActive(.init(active: true)))
   }
 
   func windowDidResignKey(_ notification: Notification) {
+    updateLevel()
     host.setState(.windowActive(.init(active: false)))
   }
 

@@ -121,7 +121,8 @@ public final class ShellController {
     let computer = Self.makeComputer(host: computerHost, arbiter: arbiter, defaults: defaults)
     self.computer = computer
     let systemPanels = SystemPanels(
-      lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) },
+      lowerPanel: { panel.lowerForSystemPanel() },
+      restorePanel: { panel.restoreAfterSystemPanel() },
       arbiter: arbiter)
     self.systemPanels = systemPanels
     let capabilities = ShellCapabilities(

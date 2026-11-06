@@ -130,12 +130,12 @@ final class SystemPanels {
   }
   /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
   var onChange: ((_ open: Bool) -> Void)?
-  private let lowerPanel: () -> NSWindow.Level
-  private let restorePanel: (NSWindow.Level) -> Void
+  private let lowerPanel: () -> Void
+  private let restorePanel: () -> Void
   private let arbiter: DeviceArbiter
 
   init(
-    lowerPanel: @escaping () -> NSWindow.Level, restorePanel: @escaping (NSWindow.Level) -> Void,
+    lowerPanel: @escaping () -> Void, restorePanel: @escaping () -> Void,
     arbiter: DeviceArbiter
   ) {
     self.lowerPanel = lowerPanel
@@ -207,10 +207,10 @@ final class SystemPanels {
       let screen = try? arbiter.tryClaim([.interactiveScreen], owner: .user(.systemPanel))
     else { return false }
     isOpen = true
-    let level = lowerPanel()
+    lowerPanel()
     defer {
       isOpen = false
-      restorePanel(level)
+      restorePanel()
       screen.release()
     }
     NSApp.activate()
