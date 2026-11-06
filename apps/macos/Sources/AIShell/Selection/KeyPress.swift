@@ -1,22 +1,27 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Synthesized key presses, posted at the HID level so they reach the frontmost app. Posting
-/// needs Accessibility. Every event carries a private marker in its source user data, so an event
-/// monitor can tell them from the user's own (``isSynthesized(_:)``).
+/// Synthesized key presses, posted at the HID level so they reach the frontmost app. Each chord
+/// keeps its temporary modifiers in a private source instead of the shared hardware state.
+/// Posting needs Accessibility. Events carry a private marker so monitors can distinguish them
+/// from the user's own (``isSynthesized(_:)``).
 enum KeyPress {
   /// "ATDKEYPR" in ASCII: the marker in `eventSourceUserData`, which other posters leave at 0
   /// or set to their own value.
   private nonisolated static let marker: Int64 = 0x4154_444B_4559_5052
 
-  /// Presses and releases `code` with exactly `flags`, so modifiers still held from a shortcut
-  /// cannot turn the press into another one.
+  /// Presses `code` with exactly `flags`, then releases the key and the private source's modifiers.
+  /// Construct the complete pair first so allocation failure cannot leave a synthetic key held.
   static func post(_ code: CGKeyCode, flags: CGEventFlags) {
-    let source = CGEventSource(stateID: .hidSystemState)
-    for down in [true, false] {
-      guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
-      else { continue }
-      event.flags = flags
+    guard let source = CGEventSource(stateID: .privateState),
+      let press = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
+      let release = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
+    else {
+      return
+    }
+    press.flags = flags
+    release.flags = []
+    for event in [press, release] {
       event.setIntegerValueField(.eventSourceUserData, value: marker)
       event.post(tap: .cghidEventTap)
     }
