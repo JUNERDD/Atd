@@ -13,10 +13,17 @@ fn reopening_answers_from_the_saved_store_before_start() {
     let fixture = Fixture::new();
     let kept = fixture.write("Documents/ledger.md", "saved");
     let index = fixture.ready();
-    let saved_id = index.status().last_event_id;
-    assert_ne!(saved_id, 0);
+    let observed_id = index.status().last_event_id;
+    assert_ne!(observed_id, 0);
     index.close().unwrap();
     drop(index);
+
+    // Events may advance between the status read and close's final flush. Reopening must
+    // restore the durable checkpoint, not the earlier snapshot of the running watcher.
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.data.join("state.json")).unwrap()).unwrap();
+    let saved_id = saved["last_event_id"].as_u64().unwrap();
+    assert!(saved_id >= observed_id);
 
     let reopened = fixture.open();
     let status = reopened.status();
