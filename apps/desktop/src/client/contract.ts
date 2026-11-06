@@ -120,6 +120,12 @@ export interface UpdateBridge {
   show(): void;
   /** The update's state on every change and once on subscribe; returns the unsubscribe. */
   onState(listener: (state: AppUpdateState) => void): () => void;
+  /** The installed version's pending release-note reminder, replayed on subscribe; null when hidden. */
+  onReleaseNotes(listener: (version: string | null) => void): () => void;
+  /** Starts the reminder's lifetime after the header actually renders it in the visible panel. */
+  releaseNotesShown(version: string): void;
+  /** Hides that installed version's reminder after an explicit dismissal or successful link opening. */
+  dismissReleaseNotes(version: string): void;
 }
 
 /** The running app as the settings window's About page shows it. */
@@ -137,6 +143,8 @@ export interface AboutBridge {
   info(): Promise<AppAbout>;
   /** Checks for updates with the shell's own progress and result windows. */
   checkForUpdates(): void;
+  /** A successful release-note open from any window dismisses the installed version's reminder. */
+  dismissReleaseNotes(version: string): void;
 }
 
 /**

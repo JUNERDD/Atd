@@ -25,6 +25,9 @@ export const NativeUpdateCalls = {
   'app.about': { params: Empty, result: AppAboutSchema },
 };
 
+/** A marketing version, as the running bundle or the update's appcast displays it. */
+const UpdateVersion = Text(64);
+
 export const NativeUpdatePosts = {
   /**
    * Checks for updates as the app menu's Check for Updates does, with Sparkle's own progress and
@@ -37,10 +40,21 @@ export const NativeUpdatePosts = {
    * (which still asks before stopping running tasks). Ignored while no update is ready.
    */
   'update.install': Empty,
+  /**
+   * The header rendered this version's reminder while visible. Only the main panel may send
+   * this acknowledgement; the shell starts its persisted lifetime once, after validating the
+   * pending version, actual panel visibility and idle updater state.
+   */
+  'update.releaseNotesShown': Type.Object(
+    { version: UpdateVersion },
+    { additionalProperties: false },
+  ),
+  /** Hides a matching installed-version reminder, from its close button or an opened notes link. */
+  'update.dismissReleaseNotes': Type.Object(
+    { version: UpdateVersion },
+    { additionalProperties: false },
+  ),
 };
-
-/** The update an `update.state` other than `idle` is about, as its appcast displays it. */
-const UpdateVersion = Text(64);
 
 export const NativeUpdateEvents = {
   /**
@@ -68,4 +82,13 @@ export const NativeUpdateEvents = {
       { additionalProperties: false },
     ),
   ]),
+  /**
+   * The installed stable version's pending release-note reminder, independent of downloading
+   * the next update. Null after dismissal or expiration; an active update takes precedence in
+   * the header. The shell persists its lifetime and replays this state to each new panel page.
+   */
+  'update.releaseNotes': Type.Object(
+    { version: Type.Union([UpdateVersion, Type.Null()]) },
+    { additionalProperties: false },
+  ),
 };

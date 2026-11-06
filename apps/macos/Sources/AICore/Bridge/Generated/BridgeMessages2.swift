@@ -165,6 +165,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "update.check": post = try .updateCheck(container.value(.params, UpdateCheckPost.self))
       case "update.install":
         post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
+      case "update.releaseNotesShown":
+        post = try .updateReleaseNotesShown(
+          container.value(.params, UpdateReleaseNotesShownPost.self))
+      case "update.dismissReleaseNotes":
+        post = try .updateDismissReleaseNotes(
+          container.value(.params, UpdateDismissReleaseNotesPost.self))
       case "task.shown": post = try .taskShown(container.value(.params, TaskShownPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
       case "userApp.pinDrag":
@@ -216,6 +222,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityTrust(AccessibilityTrustEvent)
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
+  case updateReleaseNotes(UpdateReleaseNotesEvent)
   case computerState(ComputerStateEvent)
   case shortcutsChanged(ShortcutsChangedEvent)
   case socketFrames(SocketFramesEvent)
@@ -246,6 +253,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust: "accessibility.trust"
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
+    case .updateReleaseNotes: "update.releaseNotes"
     case .computerState: "computer.state"
     case .shortcutsChanged: "shortcuts.changed"
     case .socketFrames: "socket.frames"
@@ -277,6 +285,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
+    case .updateReleaseNotes(let payload): try payload.encode(to: encoder)
     case .computerState(let payload): try payload.encode(to: encoder)
     case .shortcutsChanged(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)

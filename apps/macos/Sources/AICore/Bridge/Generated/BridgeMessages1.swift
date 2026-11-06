@@ -183,6 +183,8 @@ public enum NativePost: Equatable, Sendable {
   case socketSend(SocketSendPost)
   case updateCheck(UpdateCheckPost)
   case updateInstall(UpdateInstallPost)
+  case updateReleaseNotesShown(UpdateReleaseNotesShownPost)
+  case updateDismissReleaseNotes(UpdateDismissReleaseNotesPost)
   case taskShown(TaskShownPost)
   case socketClose(SocketClosePost)
   case userAppPinDrag(UserAppPinDragPost)
@@ -203,6 +205,8 @@ public enum NativePost: Equatable, Sendable {
     case .socketSend: "socket.send"
     case .updateCheck: "update.check"
     case .updateInstall: "update.install"
+    case .updateReleaseNotesShown: "update.releaseNotesShown"
+    case .updateDismissReleaseNotes: "update.dismissReleaseNotes"
     case .taskShown: "task.shown"
     case .socketClose: "socket.close"
     case .userAppPinDrag: "userApp.pinDrag"

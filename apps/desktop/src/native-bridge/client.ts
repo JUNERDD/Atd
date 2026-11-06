@@ -83,6 +83,7 @@ export class NativeBridge {
     'accessibility.trust': new Set(),
     'screenRecording.trust': new Set(),
     'update.state': new Set(),
+    'update.releaseNotes': new Set(),
     'socket.frames': new Set(),
     'userApp.state': new Set(),
     'userApp.pins': new Set(),

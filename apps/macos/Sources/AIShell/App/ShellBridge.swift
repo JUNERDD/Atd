@@ -50,6 +50,10 @@ final class ShellBridge {
     case .socketClose(let post): host.pipe?.close(post)
     case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
+    case .updateReleaseNotesShown(let post):
+      guard host === shell?.panelHost else { return }
+      shell?.releaseNotesShown(version: post.version)
+    case .updateDismissReleaseNotes(let post): shell?.releaseNotes.dismiss(version: post.version)
     case .userAppPinDrag(let post): shell?.startPinDrag(post, from: host)
     // Only the panel's page decides which task the person is looking at.
     case .taskShown(let post):
@@ -196,7 +200,9 @@ final class ShellBridge {
       guard let url = ExternalLink.openable(params.url) else {
         throw BridgeError("Only web links can be opened.")
       }
-      NSWorkspace.shared.open(url)
+      guard NSWorkspace.shared.open(url) else {
+        throw BridgeError("The link could not be opened.")
+      }
       return try Self.encode(NativeEmpty())
     case .artifact(let params):
       return try Self.encode(

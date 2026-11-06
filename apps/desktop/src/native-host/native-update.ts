@@ -8,10 +8,16 @@ import type { NativeBridge } from '../native-bridge/client';
  */
 export function nativeUpdate(native: NativeBridge): UpdateBridge {
   let state: AppUpdateState = { phase: 'idle' };
+  let releaseNotesVersion: string | null = null;
   const listeners = new Set<(state: AppUpdateState) => void>();
+  const releaseNotesListeners = new Set<(version: string | null) => void>();
   native.on('update.state', (next) => {
     state = next;
     for (const listener of listeners) listener(state);
+  });
+  native.on('update.releaseNotes', ({ version }) => {
+    releaseNotesVersion = version;
+    for (const listener of releaseNotesListeners) listener(version);
   });
   return {
     install: () => native.post('update.install', {}),
@@ -22,6 +28,13 @@ export function nativeUpdate(native: NativeBridge): UpdateBridge {
       listener(state);
       return () => listeners.delete(listener);
     },
+    onReleaseNotes(listener) {
+      releaseNotesListeners.add(listener);
+      listener(releaseNotesVersion);
+      return () => releaseNotesListeners.delete(listener);
+    },
+    releaseNotesShown: (version) => native.post('update.releaseNotesShown', { version }),
+    dismissReleaseNotes: (version) => native.post('update.dismissReleaseNotes', { version }),
   };
 }
 
@@ -30,5 +43,6 @@ export function nativeAbout(native: NativeBridge): AboutBridge {
   return {
     info: () => native.call('app.about', {}),
     checkForUpdates: () => native.post('update.check', {}),
+    dismissReleaseNotes: (version) => native.post('update.dismissReleaseNotes', { version }),
   };
 }

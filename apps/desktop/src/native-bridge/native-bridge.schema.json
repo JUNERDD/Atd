@@ -89,6 +89,8 @@
       "socket.send",
       "update.check",
       "update.install",
+      "update.releaseNotesShown",
+      "update.dismissReleaseNotes",
       "task.shown",
       "socket.close",
       "userApp.pinDrag"
@@ -110,6 +112,7 @@
       "accessibility.trust",
       "screenRecording.trust",
       "update.state",
+      "update.releaseNotes",
       "computer.state",
       "shortcuts.changed",
       "socket.frames",
@@ -3570,6 +3573,58 @@
             },
             "method": {
               "type": "string",
+              "const": "update.releaseNotesShown"
+            },
+            "params": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "update.dismissReleaseNotes"
+            },
+            "params": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
               "const": "task.shown"
             },
             "params": {
@@ -4423,6 +4478,39 @@
                   "additionalProperties": false
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "update.releaseNotes"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -9131,6 +9219,28 @@
       "properties": {},
       "additionalProperties": false
     },
+    "UpdateReleaseNotesShownPost": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateDismissReleaseNotesPost": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
     "TaskShownPost": {
       "type": "object",
       "required": ["taskId"],
@@ -9673,6 +9783,24 @@
           "additionalProperties": false
         }
       ]
+    },
+    "UpdateReleaseNotesEvent": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ComputerStateEvent": {
       "type": "object",

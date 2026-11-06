@@ -38,6 +38,7 @@ public final class ShellController {
   /// Release builds' Sparkle updater; its download and a waiting update reach the panel as
   /// `update.state`.
   let updater = AppUpdater()
+  let releaseNotes: ReleaseNotesReminder
   let quitGuard: QuitGuard
   /// Accessibility trust; every page learns it as `accessibility.trust`.
   let trust: AccessibilityTrust
@@ -84,6 +85,7 @@ public final class ShellController {
     self.services = services
     self.defaults = defaults
     presence = AppPresence(defaults: defaults)
+    releaseNotes = ReleaseNotesReminder(defaults: defaults)
     let trust = AccessibilityTrust(defaults: defaults)
     self.trust = trust
     let screenRecording = ScreenRecordingTrust()
@@ -180,11 +182,9 @@ public final class ShellController {
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }
-    updater.onChange = { [weak self] in
-      guard let self else { return }
-      panelHost.setState(.updateState(updater.state))
-    }
+    wireUpdates()
     panel.onVisibilityChange = { [weak self, weak panelHost] visible in
+      self?.releaseNotes.panelVisibilityChanged(visible)
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
       // A command the page took to the panel ends its shortcut's press capsule.
       if visible { self?.commandProgress.panelShown() }
