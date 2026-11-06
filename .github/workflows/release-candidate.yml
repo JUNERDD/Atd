@@ -1,0 +1,440 @@
+name: Build a release candidate
+
+# Shared by release preparation and version-bump PR CI. This workflow cannot publish;
+# its caller's full check result must succeed before another run may promote its artifact.
+on:
+  workflow_call:
+    inputs:
+      marketing_version:
+        type: string
+        required: true
+      build_version:
+        type: string
+        required: true
+    outputs:
+      artifact-id:
+        value: ${{ jobs.collect.outputs.artifact-id }}
+    secrets:
+      RELEASE_SIGNING_P12:
+        required: true
+      RELEASE_SIGNING_P12_PASSWORD:
+        required: true
+      SPARKLE_ED_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # One native build per architecture from the same commit, version, bundle ID, signing
+  # certificate and Sparkle key; each runner checks out and installs on its own.
+  build:
+    name: Build ${{ matrix.arch }} ${{ inputs.marketing_version }}
+    strategy:
+      matrix:
+        include:
+          - { arch: arm64, machine: arm64, runner: macos-26 }
+          - { arch: x64, machine: x86_64, runner: macos-26-intel }
+    runs-on: ${{ matrix.runner }}
+    # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
+    # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ inputs.marketing_version }}
+      BUILD_VERSION: ${{ inputs.build_version }}
+      # Not ARCH or MACHINE: tools the build runs read those from the environment.
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_MACHINE: ${{ matrix.machine }}
+      # The SHA-1 of the self-signed release certificate. It is public: every signed app names it
+      # in its designated requirement.
+      RELEASE_SIGNING_SHA1: 2CB9D1EA2DA706E7C5B422E6A80AA48638FE83E9
+    steps:
+      # build.mjs builds only for the host's native architecture.
+      - name: Check the runner architecture
+        run: |
+          echo "$(uname -m), macOS $(sw_vers -productVersion)"
+          [ "$(uname -m)" = "$RELEASE_MACHINE" ]
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      # The project's Xcode, which the macos-26 and macos-26-intel images both carry.
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      # The service's file index is a Rust addon that `bundle` builds through turbo; with no
+      # argument, rustup installs the toolchain rust-toolchain.toml pins for the host.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install
+          cargo --version
+      - run: pnpm install --frozen-lockfile
+      # TCC records an Accessibility or Screen Recording grant with the app's designated
+      # requirement. An ad hoc build's requirement is its cdhash, so every update dropped the
+      # grants; this certificate makes it `identifier "com.junerdd.ai" and certificate leaf =
+      # H"<SHA-1>"`, the same for every release and both architectures. A different certificate
+      # drops every installed copy's grants once (StaleGrantRecovery asks again), so the step
+      # accepts only this one. `RELEASE_SIGNING_P12` is its base64 PKCS#12,
+      # `RELEASE_SIGNING_P12_PASSWORD` the password. The certificate is public
+      # (apps/macos/release-certificate.pem); only its private key is kept outside the repository,
+      # and apps/macos/scripts/restore-release-signing.mjs packs the two under a new password and
+      # sets both secrets again. codesign finds an identity only in a keychain on the search list;
+      # a self-signed certificate needs no trust settings to sign.
+      - name: Import the release signing certificate
+        env:
+          RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
+          RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_SIGNING_P12" ] || [ -z "$RELEASE_SIGNING_P12_PASSWORD" ]; then
+            echo "::error::The RELEASE_SIGNING_P12 secrets are missing; an ad hoc build would drop every installed copy's privacy grants."
+            exit 1
+          fi
+          keychain="$RUNNER_TEMP/release-signing.keychain-db"
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          p12="$RUNNER_TEMP/release-signing.p12"
+          printf '%s' "$RELEASE_SIGNING_P12" | base64 --decode > "$p12"
+          security import "$p12" -k "$keychain" -P "$RELEASE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign > /dev/null
+          rm "$p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+          # Ahead of the runner's own keychains, which stay on the list (xargs unquotes them).
+          security list-keychains -d user | xargs security list-keychains -d user -s "$keychain"
+          if ! security find-identity -p codesigning "$keychain" | grep -q "$RELEASE_SIGNING_SHA1"; then
+            echo "::error::RELEASE_SIGNING_P12 does not hold the release certificate $RELEASE_SIGNING_SHA1."
+            exit 1
+          fi
+          # project.yml signs with AI_CODE_SIGN_IDENTITY; the hash names an untrusted identity.
+          echo "AI_CODE_SIGN_IDENTITY=$RELEASE_SIGNING_SHA1" >> "$GITHUB_ENV"
+      # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
+      # add-on lock it embeds names this version's GitHub release assets.
+      - name: Bundle the service, the renderer and the add-ons
+        run: pnpm --filter @atd/macos bundle --marketing-version "$VERSION"
+      # build.mjs maps the architecture, sets the x64 feed URL and overrides the versions. The
+      # build version is passed only when it differs from the marketing version, as a prerelease's
+      # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
+      - name: Build the Release app
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION" --timing-summary)
+          if [ "$BUILD_VERSION" != "$VERSION" ]; then args+=(--build-version "$BUILD_VERSION"); fi
+          node apps/macos/scripts/build.mjs "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
+          {
+            echo "### Xcode timing: $RELEASE_ARCH"
+            echo '```text'
+            awk '/Build Timing Summary/{show=1} show' "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the built app
+        run: |
+          app=apps/macos/DerivedData/Build/Products/Release/Atd.app
+          echo "APP=$app" >> "$GITHUB_ENV"
+          check() {
+            built=$(/usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist")
+            if [ "$built" != "$3" ]; then
+              echo "::error::$(basename "$1")'s $2 is $built, not $3."
+              exit 1
+            fi
+          }
+          # Sparkle compares CFBundleVersion, the feed's sparkle:version; the widget shares it.
+          check "$app" CFBundleShortVersionString "$VERSION"
+          check "$app" CFBundleVersion "$BUILD_VERSION"
+          for appex in "$app"/Contents/PlugIns/*.appex; do
+            check "$appex" CFBundleVersion "$BUILD_VERSION"
+          done
+          executable="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          archs=$(lipo -archs "$executable")
+          if [ "$archs" != "$RELEASE_MACHINE" ]; then
+            echo "::error::The main executable holds '$archs', not $RELEASE_MACHINE."
+            exit 1
+          fi
+          codesign --verify --deep --strict "$app"
+          # Installed copies keep their privacy grants only under this exact requirement.
+          leaf=$(printf '%s' "$RELEASE_SIGNING_SHA1" | tr 'A-F' 'a-f')
+          expected="identifier \"com.junerdd.ai\" and certificate leaf = H\"$leaf\""
+          requirement=$(codesign -d -r- "$app" 2> /dev/null | sed -n 's/^designated => //p')
+          if [ "$requirement" != "$expected" ]; then
+            echo "::error::The app's designated requirement is '$requirement', not '$expected'."
+            exit 1
+          fi
+      # The lock inside the signed app must be the one the archives were packed with; the archives
+      # are then checked against it with the app's own Node.
+      - name: Check the add-ons against the app's lock
+        run: |
+          lock="$APP/Contents/Resources/agent-service/addons.lock.json"
+          node="$APP/Contents/Resources/node/bin/node"
+          cmp "$lock" tmp/addons-release/addons.lock.json
+          "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
+            --dir tmp/addons-release --arch "$RELEASE_ARCH"
+      # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon positions
+      # and the Applications link, written straight into the image's .DS_Store without driving
+      # Finder. build.py corrects its background bookmark before compression; dmgbuild is pinned
+      # by hash in its own virtual environment. package.mjs names the dmg after the app's version
+      # and its main executable's architecture. Packaging takes under 2 minutes, but hdiutil can
+      # hang silently on the image it attaches or detaches (once for 27 minutes on macos-26-intel;
+      # a rerun passed). dmgbuild retries a detach only when it fails and waits on hdiutil with no
+      # timeout, so the step fails fast here instead.
+      - name: Package the dmg
+        timeout-minutes: 10
+        run: |
+          venv="$RUNNER_TEMP/dmgbuild"
+          python3 -m venv "$venv"
+          "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
+          dmg="Atd-$VERSION-$RELEASE_ARCH.dmg"
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          built=$(DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$APP" dist \
+            2> >(tee "$RUNNER_TEMP/release-diagnostics/dmg.log" >&2) | tail -n 1)
+          if ! [ "$built" -ef "dist/$dmg" ]; then
+            echo "::error::package.mjs wrote $built, not dist/$dmg."
+            exit 1
+          fi
+          (cd dist && shasum -a 256 "$dmg" > "$dmg.sha256" && cat "$dmg.sha256")
+      # The lock pins each archive's digest, so the archives need no .sha256 files of their own.
+      - name: Stage the add-ons beside the dmg
+        run: |
+          cp tmp/addons-release/Atd-addon-*.tar.gz dist/
+          cp tmp/addons-release/addons.lock.json "dist/addons-$RELEASE_ARCH.lock.json"
+          ls -l dist
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: dmg-${{ matrix.arch }}
+          overwrite: true
+          path: dist/
+          if-no-files-found: error
+          # The dmg is already compressed.
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload release diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-diagnostics-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # The macOS 15 runners prove the signed installers run where the oldest supported system runs:
+  # the app is copied out of the read-only image and checked with its own Node.
+  verify:
+    name: Verify ${{ matrix.arch }} on ${{ matrix.runner }}
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            machine: arm64
+            runner: macos-15
+            feed: https://downloads.atd.best/appcast.xml
+          - arch: x64
+            machine: x86_64
+            runner: macos-15-intel
+            feed: https://downloads.atd.best/appcast-x64.xml
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ inputs.marketing_version }}
+      BUILD_VERSION: ${{ inputs.build_version }}
+      DMG: Atd-${{ inputs.marketing_version }}-${{ matrix.arch }}.dmg
+      RELEASE_MACHINE: ${{ matrix.machine }}
+    steps:
+      - name: Check the runner architecture
+        run: |
+          echo "$(uname -m), macOS $(sw_vers -productVersion)"
+          [ "$(uname -m)" = "$RELEASE_MACHINE" ]
+      # verify-app.mjs uses Node built-ins and the Command Line Tools only, so no install is needed.
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: dmg
+      - name: Check the dmg's digest
+        working-directory: dmg
+        run: shasum -a 256 -c "$DMG.sha256"
+      # The mount point must not contain a space; the volume name ("Atd <version>") does.
+      - name: Copy the app out of the dmg
+        run: |
+          mount="$RUNNER_TEMP/atd-dmg"
+          app="$RUNNER_TEMP/verify/Atd.app"
+          case "$mount$app" in *' '*)
+            echo "::error::$RUNNER_TEMP contains a space."
+            exit 1
+            ;;
+          esac
+          mkdir -p "$mount" "$(dirname "$app")"
+          hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dmg/$DMG"
+          ditto "$mount/Atd.app" "$app"
+          hdiutil detach "$mount"
+          echo "APP=$app" >> "$GITHUB_ENV"
+      - name: Verify the app
+        env:
+          FEED_URL: ${{ matrix.feed }}
+        run: |
+          for pair in "CFBundleShortVersionString=$VERSION" "CFBundleVersion=$BUILD_VERSION"; do
+            built=$(plutil -extract "${pair%%=*}" raw "$APP/Contents/Info.plist")
+            if [ "$built" != "${pair#*=}" ]; then
+              echo "::error::The app's ${pair%%=*} is $built, not ${pair#*=}."
+              exit 1
+            fi
+          done
+          codesign --verify --deep --strict "$APP"
+          key=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)
+          "$APP/Contents/Resources/node/bin/node" apps/macos/scripts/verify-app.mjs app \
+            --app "$APP" \
+            --feed-url "$FEED_URL" \
+            --arm64-feed-url https://downloads.atd.best/appcast.xml \
+            --public-ed-key "$key"
+      # The archives the app will download, checked on the oldest supported system against the
+      # lock the installed app carries: the app's Node runs the worker.
+      - name: Verify the add-ons
+        env:
+          ADDON_ARCH: ${{ matrix.arch }}
+        run: |
+          lock="$APP/Contents/Resources/agent-service/addons.lock.json"
+          node="$APP/Contents/Resources/node/bin/node"
+          cmp "$lock" "dmg/addons-$ADDON_ARCH.lock.json"
+          "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
+            --dir dmg --arch "$ADDON_ARCH"
+      # Reuse the verified x64 Release bundle. Only the test driver is compiled here; the app
+      # and its embedded service are neither rebuilt nor re-signed. A failure gates collect.
+      - name: Compile the Intel Release smoke driver
+        if: matrix.arch == 'x64'
+        env:
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          mkdir -p "$ATD_SMOKE_EVIDENCE"
+          xcrun swiftc -swift-version 6 -parse-as-library -target x86_64-apple-macos15.0 \
+            apps/macos/Tests/ReleaseSmoke/AppDriver.swift \
+            -o "$RUNNER_TEMP/atd-smoke-driver" 2>&1 | tee "$ATD_SMOKE_EVIDENCE/driver-build.log"
+      - name: Test Intel Release startup and core functions
+        if: matrix.arch == 'x64'
+        timeout-minutes: 8
+        env:
+          ATD_SMOKE_DRIVER: ${{ runner.temp }}/atd-smoke-driver
+          ATD_SMOKE_EVIDENCE: ${{ runner.temp }}/intel-macos15-smoke
+        run: |
+          set -o pipefail
+          "$APP/Contents/Resources/node/bin/node" --test --test-reporter=tap \
+            apps/macos/Tests/ReleaseSmoke/harness.test.mjs \
+            apps/macos/Tests/ReleaseSmoke/release-smoke.test.mjs \
+            2>&1 | tee "$ATD_SMOKE_EVIDENCE/tests.tap"
+      - name: Confirm smoke tests preserved the bundle signature
+        if: always() && matrix.arch == 'x64' && env.APP != ''
+        run: codesign --verify --deep --strict "$APP"
+      - name: Upload Intel macOS 15 smoke evidence
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: intel-macos15-smoke-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/intel-macos15-smoke/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
+  # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
+  collect:
+    name: Sign the update feeds for ${{ inputs.marketing_version }}
+    needs: verify
+    runs-on: macos-26
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+    env:
+      VERSION: ${{ inputs.marketing_version }}
+      BUILD_VERSION: ${{ inputs.build_version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: dmg
+      - name: Check the dmgs' digests
+        run: |
+          mkdir dist
+          for arch in arm64 x64; do
+            dmg="Atd-$VERSION-$arch.dmg"
+            (cd dmg && shasum -a 256 -c "$dmg.sha256")
+            mv "dmg/$dmg" "dmg/addons-$arch.lock.json" dist/
+          done
+          mv dmg/Atd-addon-*.tar.gz dist/
+          ls -l dist
+      - name: Download Sparkle's sign_update
+        env:
+          # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
+          SPARKLE: 2.10.1
+          SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
+        run: |
+          tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
+          curl -fsSL -o "$tools/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
+          echo "$SPARKLE_SHA256  $tools/sparkle.tar.xz" | shasum -a 256 -c -
+          tar -xf "$tools/sparkle.tar.xz" -C "$tools"
+          echo "SIGN_UPDATE=$tools/bin/sign_update" >> "$GITHUB_ENV"
+      # The public key the installed apps verify with: project.yml's, and the one each built app
+      # actually carries. feeds.mjs checks every enclosure against all three.
+      - name: Read the public EdDSA keys
+        run: |
+          {
+            echo "PROJECT_ED_KEY=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)"
+            for arch in arm64 x64; do
+              mount="$RUNNER_TEMP/atd-dmg-$arch"
+              mkdir -p "$mount"
+              hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dist/Atd-$VERSION-$arch.dmg" > /dev/null
+              key=$(plutil -extract SUPublicEDKey raw "$mount/Atd.app/Contents/Info.plist")
+              hdiutil detach "$mount" > /dev/null
+              if [ "$arch" = arm64 ]; then echo "ARM64_ED_KEY=$key"; else echo "X64_ED_KEY=$key"; fi
+            done
+          } >> "$GITHUB_ENV"
+      - name: Write and check the update feeds
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          node apps/macos/scripts/release/feeds.mjs \
+            --dir dist \
+            --marketing-version "$VERSION" \
+            --build-version "$BUILD_VERSION" \
+            --repo "$REPO" \
+            --commit "$GITHUB_SHA" \
+            --sign-update "$SIGN_UPDATE" \
+            --public-ed-key "project.yml=$PROJECT_ED_KEY" \
+            --public-ed-key "arm64 app=$ARM64_ED_KEY" \
+            --public-ed-key "x64 app=$X64_ED_KEY"
+          cat dist/appcast.xml dist/appcast-x64.xml
+      - name: Record the candidate source
+        run: node apps/macos/scripts/release/write-candidate-source.mjs
+      - name: Upload the candidate source
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Atd-${{ inputs.marketing_version }}-source
+          path: dist/candidate-source.json
+          if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@v7.0.1
+        id: artifact
+        with:
+          name: Atd-${{ inputs.marketing_version }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
