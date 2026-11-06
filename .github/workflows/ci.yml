@@ -75,11 +75,15 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       swift: ${{ steps.filter.outputs.swift }}
       rust: ${{ steps.filter.outputs.rust }}
       package: ${{ steps.filter.outputs.package }}
+      candidate: ${{ steps.candidate.outputs.enabled }}
+      marketing-version: ${{ steps.candidate.outputs.marketing-version }}
+      build-version: ${{ steps.candidate.outputs.build-version }}
     steps:
       - id: filter
         uses: dorny/paths-filter@v4.0.3
@@ -119,6 +123,37 @@ jobs:
               - Cargo.toml
               - Cargo.lock
               - rust-toolchain.toml
+
+      # Same-repository version bumps produce signed candidates; ordinary PRs skip the build.
+      # Keep pull_request's default merge checkout, matching all the ordinary PR checks.
+      - uses: actions/checkout@v7.0.1
+        if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.base_ref == 'main'
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Prepare the PR candidate
+        id: candidate
+        if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.base_ref == 'main'
+        run: node apps/macos/scripts/release/prepare-pr-candidate.mjs
+
+  # Build alongside the quality checks. The whole CI run, including its required checks,
+  # must pass before promotion; a successful candidate alone never authorizes release.
+  candidate:
+    name: PR release candidate
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.candidate == 'true'
+    uses: ./.github/workflows/release-candidate.yml
+    with:
+      marketing_version: ${{ needs.changes.outputs.marketing-version }}
+      build_version: ${{ needs.changes.outputs.build-version }}
+    secrets:
+      RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
+      RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+      SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
 
   # The Swift and Rust checks run as two parallel macOS jobs instead of one after the other.
   swift:
