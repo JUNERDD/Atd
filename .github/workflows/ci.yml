@@ -241,12 +241,13 @@ jobs:
 
   # Packages the Release app natively on Intel as the release workflow does, but unsigned (ad
   # hoc) and without secrets, then checks it with verify-app.mjs and the app's own Node. It runs
-  # on pull requests from release/ branches that touch the app's inputs and on manual runs; it is
-  # not part of the required summary check.
+  # on pull requests from release/ branches that touch the app's inputs and on manual runs. A
+  # signed candidate already covers these checks and macOS 15 smoke, so it replaces this job.
+  # The ad hoc rehearsal is not part of the required summary check.
   intel-package:
     name: Intel packaging rehearsal
     needs: changes
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'release/') && needs.changes.outputs.package == 'true')) }}
+    if: ${{ !cancelled() && needs.changes.outputs.candidate != 'true' && (github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'release/') && needs.changes.outputs.package == 'true')) }}
     runs-on: macos-26-intel
     steps:
       - name: Check the runner architecture
