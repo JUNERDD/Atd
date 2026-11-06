@@ -1,5 +1,5 @@
 version: '0.10.7'
-date: '2026-11-05'
+date: '2026-11-06'
 title: Read earlier replies without losing your place
 summary: Capture screenshots with clearer on-screen hints, read earlier replies while work continues, and stop preparing next-step suggestions you don't need.
 highlights:
@@ -23,10 +23,12 @@ highlights:
     image: /media/blog/0.10.7/stop-next-step-preparation.en.webp
     alt: A complete conversation window over the lake backdrop. The pointer hovers over the Stop button below the reply, showing the Stop preparing suggestions tooltip while the completed answer stays in place.
 fixes:
+  - text: Fixed an issue where, after opening Atd and typing in another app, returning to the panel could leave it unable to accept input or move behind other windows.
   - text: Attachments on sent messages stay visible when you enter or leave editing, without flickering or reloading.
   - text: With Show in Dock off and Atd in front, closing Settings or the getting-started guide keeps keyboard focus in another visible Atd window on the current desktop.
   - text: When approval choices no longer fit on one line, they stack in full-width rows in the same order, instead of leaving a single choice on a wrapped line.
   - text: Secondary buttons, tags, keycaps, tabs and inline code blend more naturally with translucent panels, as do permission choices.
   - text: Activity connector lines use softer colors.
   - text: Improved performance in long conversations as replies stream and tool or computer activity updates.
+  - text: Closed windows, finished screenshots and disconnected conversations now release resources more reliably during extended use.
   - text: The Return key in macOS shortcuts now appears as ↩, consistent with the other keyboard symbols.

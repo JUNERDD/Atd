@@ -87,6 +87,10 @@ struct GlassTunerTests {
     guard #available(macOS 26, *) else { return }
     defer { GlassTuner.shared.apply(.system) }
     func cycles(_ count: Int, factors: GlassTuner.Factors) async throws {
+      // An untracked window supplies this OS's native inputs without stopping custom tuning.
+      // The concealing radius is a target, not a cap on a larger system-provided radius.
+      let system = GlassTunerFixture()
+      defer { system.close() }
       var windows: [GlassWeakReference<NSWindow>] = []
       var views: [GlassWeakReference<NSView>] = []
       var layers: [GlassWeakReference<CALayer>] = []
@@ -102,11 +106,24 @@ struct GlassTunerTests {
         views.append(GlassWeakReference(fixture.glass))
         layers += found.map { GlassWeakReference($0) }
         fixture.glass.style = index.isMultiple(of: 2) ? .clear : .regular
+        system.glass.style = fixture.glass.style
         fixture.window.setContentSize(NSSize(width: 260, height: 180))
+        system.window.setContentSize(NSSize(width: 260, height: 180))
+        try await system.settle()
         try await fixture.settle()
-        for layer in GlassTunerFixture.layers(in: fixture.glass.layer) {
-          let radius = try #require(GlassTunerFixture.input("inputBlurRadius", on: layer))
-          #expect(radius > 0 && radius <= 20)
+        let bases = try GlassTunerFixture.layers(in: system.glass.layer).map { layer in
+          try #require(GlassTunerFixture.input("inputBlurRadius", on: layer))
+        }.sorted()
+        let radii = try GlassTunerFixture.layers(in: fixture.glass.layer).map { layer in
+          try #require(GlassTunerFixture.input("inputBlurRadius", on: layer))
+        }.sorted()
+        #expect(!bases.isEmpty)
+        #expect(radii.count == bases.count)
+        for (base, radius) in zip(bases, radii) {
+          #expect(base.isFinite && base > 0)
+          let target = max(base, GlassTuner.Factors.concealingBlurRadius)
+          let expected = base + (target - base) * (factors.blur - 1)
+          #expect(abs(radius - expected) < 0.0001)
         }
         fixture.close()
       }
