@@ -3,6 +3,7 @@
 // DMG jobs, macOS 15 checks and the Intel smoke checks must have actually passed.
 //
 // node resolve-candidate.mjs --repo <owner/repo> --run-id <id> --commit <sha> --version <v>
+// PR CI sources also require --pr <number>; --mode release requires that PR to be merged.
 // `gh` owns authentication. CI receives the selected ID and digest through GITHUB_OUTPUT.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
@@ -44,6 +45,34 @@ function checkJob(jobs, name, commit, steps) {
   return { id: job.id, name: job.name, attempt: job.run_attempt };
 }
 
+function sourceIdentity(run, repo, commit, prNumber, mode) {
+  if (run.path === '.github/workflows/release.yml' && run.event === 'workflow_dispatch') {
+    if (prNumber || run.head_sha !== commit)
+      fail('A manual candidate must match the requested commit and have no PR number.');
+    return { prefix: 'Build candidate / ', prNumber: 0 };
+  }
+  if (run.path !== '.github/workflows/ci.yml' || run.event !== 'pull_request')
+    fail('Source must be a manual Release candidate or an opted-in PR CI run.');
+  if (!/^[1-9]\d*$/.test(prNumber ?? '') || !Number.isSafeInteger(Number(prNumber)))
+    fail('A PR candidate requires --pr with its positive PR number.');
+  const pr = api(`repos/${repo}/pulls/${prNumber}`);
+  if (
+    pr.head?.repo?.id !== run.repository.id ||
+    pr.base?.repo?.id !== run.repository.id ||
+    pr.head.ref !== 'ci/release-pipeline-performance' ||
+    pr.base.ref !== 'main' ||
+    pr.head.ref !== run.head_branch ||
+    pr.head.sha !== run.head_sha ||
+    pr.merge_commit_sha !== commit
+  )
+    fail('PR identity, current head, or tested merge commit differs from the requested source.');
+  if (!pr.merged && (mode !== 'rehearsal' || pr.state !== 'open'))
+    fail('An unmerged PR candidate can only be rehearsed while its PR remains open.');
+  // run/job head_sha identifies the PR branch head. The archive's source receipt and manifest
+  // are checked against the actual tested merge commit before any draft is created.
+  return { prefix: 'PR release candidate / ', prNumber: Number(prNumber) };
+}
+
 function resolveCandidate() {
   const { values } = parseArgs({
     options: {
@@ -51,6 +80,8 @@ function resolveCandidate() {
       'run-id': { type: 'string' },
       commit: { type: 'string' },
       version: { type: 'string' },
+      pr: { type: 'string', default: '' },
+      mode: { type: 'string', default: 'rehearsal' },
     },
     strict: true,
   });
@@ -62,33 +93,39 @@ function resolveCandidate() {
   if (!commit || !/^[0-9a-f]{40}$/.test(commit)) fail('--commit must be a full SHA-1.');
   if (!version || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version))
     fail('--version must be semver.');
+  if (!['release', 'rehearsal'].includes(values.mode)) fail('--mode must be release or rehearsal.');
 
   const base = `repos/${repo}/actions/runs/${runId}`;
   const run = api(base);
   if (
     run.repository?.full_name?.toLowerCase() !== repo.toLowerCase() ||
     !Number.isSafeInteger(run.repository?.id) ||
-    run.head_repository?.id !== run.repository.id ||
-    run.path !== '.github/workflows/release.yml' ||
-    run.event !== 'workflow_dispatch'
+    run.head_repository?.id !== run.repository.id
   )
-    fail('Source must be a manual Release workflow run in this repository.');
+    fail('Source must belong to this repository, not a fork.');
   if (run.status !== 'completed' || run.conclusion !== 'success')
     fail(`Run ${runId} has not completed successfully.`);
-  if (run.head_sha !== commit)
-    fail(`Run ${runId} built ${run.head_sha}, not the requested commit ${commit}.`);
+  const source = sourceIdentity(run, repo, commit, values.pr, values.mode);
 
   const jobs = list(`${base}/jobs?filter=all`, 'jobs');
   const checks = [];
+  const check = (name, steps) => checkJob(jobs, name, run.head_sha, steps);
+  if (source.prNumber) {
+    checks.push(
+      check('Detect changed areas', ['Prepare the PR candidate']),
+      check('Code quality and production build', ['Run pnpm check']),
+      check('macOS desktop smoke test', ['Require the Swift and Rust checks']),
+    );
+  }
   for (const arch of ['arm64', 'x64']) {
     checks.push(
-      checkJob(jobs, `Release ${arch} / Build ${arch} ${version}`, commit, [
+      check(`${source.prefix}Release ${arch} / Build ${arch} ${version}`, [
         'Build the Release app',
         'Check the built app',
         "Check the add-ons against the app's lock",
       ]),
-      checkJob(jobs, `Release ${arch} / Package ${arch} DMG`, commit, ['Package the dmg']),
-      checkJob(jobs, `Release ${arch} / Verify ${arch} on macOS 15`, commit, [
+      check(`${source.prefix}Release ${arch} / Package ${arch} DMG`, ['Package the dmg']),
+      check(`${source.prefix}Release ${arch} / Verify ${arch} on macOS 15`, [
         "Check the dmg's digest",
         'Verify the app',
         'Verify the add-ons',
@@ -102,8 +139,9 @@ function resolveCandidate() {
     );
   }
   checks.push(
-    checkJob(jobs, `Sign the update feeds for ${version}`, commit, [
+    check(`${source.prefix}Sign the update feeds for ${version}`, [
       'Write and check the update feeds',
+      'Record the candidate source',
     ]),
   );
 
@@ -118,7 +156,7 @@ function resolveCandidate() {
     artifact.id <= 0 ||
     artifact.expired !== false ||
     artifact.workflow_run?.id !== Number(runId) ||
-    artifact.workflow_run.head_sha !== commit ||
+    artifact.workflow_run.head_sha !== run.head_sha ||
     artifact.workflow_run.repository_id !== run.repository.id ||
     artifact.workflow_run.head_repository_id !== run.repository.id ||
     !/^sha256:[0-9a-f]{64}$/.test(artifact.digest ?? '')
@@ -131,12 +169,16 @@ function resolveCandidate() {
     digest: artifact.digest,
     commit,
     version,
+    headSha: run.head_sha,
+    prNumber: source.prNumber,
+    event: run.event,
     checks,
   };
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(
       process.env.GITHUB_OUTPUT,
-      `run-id=${runId}\nartifact-id=${artifact.id}\ndigest=${artifact.digest}\n`,
+      `run-id=${runId}\nartifact-id=${artifact.id}\ndigest=${artifact.digest}\n` +
+        `head-sha=${run.head_sha}\npr-number=${source.prNumber}\nevent=${run.event}\n`,
     );
   }
   if (process.env.GITHUB_STEP_SUMMARY) {

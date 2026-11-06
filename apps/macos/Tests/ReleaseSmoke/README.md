@@ -2,7 +2,7 @@
 
 The x64 invocation of `release-architecture.yml`'s `verify` job runs this suite on
 `macos-15-intel`, after downloading the DMG by its producing job's artifact ID.
-`release.yml` calls this workflow independently for each architecture; packaging
+`release-candidate.yml` calls this workflow independently for each architecture; packaging
 and verification can be rerun using the successful build's signed App archive.
 It uses that app's bundled Node and launches that exact Release app through
 LaunchServices. It does not rebuild, re-sign or alter the app, grant permissions,
@@ -86,7 +86,7 @@ their own approved credentials, permissions and acceptance criteria.
 
 ## Reusing a verified candidate
 
-An `artifacts` run creates a candidate after both architectures pass their native
+An `artifacts` run creates a candidate through `release-candidate.yml` after both architectures pass their native
 build, DMG, macOS 15 verification and applicable smoke checks. A later manual
 `rehearsal` or `release` run can set `candidate_run_id` to that successful run.
 It must use the exact same commit, marketing version and build version. The
@@ -100,8 +100,31 @@ their validation are reused; they are not replaced by an unchecked success flag.
 Missing, expired, failed, mismatched or incompletely verified candidates fail
 without falling back to another artifact or silently rebuilding.
 
-An ordinary PR check is not a release candidate: the Intel packaging rehearsal
-uses ad hoc signing, and a PR merge ref may differ from the final release commit.
-Do not relax the commit/version checks to reuse it. Measure candidate build time
-and promotion time separately; moving the build earlier does not reduce the
-end-to-end build-and-release duration to the promotion duration.
+The PR experiment opts in only the same-repository `ci/release-pipeline-performance`
+branch targeting `main`. Its normal `CI` run invokes the same candidate workflow
+alongside the quality checks, with the existing release certificate and Sparkle
+key. Ordinary and fork PRs retain their existing checks; the ad hoc Intel
+packaging rehearsal is not a signed candidate. No `pull_request_target` or
+privileged follow-up executes fork code.
+
+For a PR source, promotion also takes `candidate_pr_number` and requires the
+whole CI run to pass, including code quality/production build and the macOS
+summary gate. It checks that the PR still names that head and merge commit.
+GitHub's run/job `head_sha` names the PR branch head, while the default checkout
+and all PR checks use `GITHUB_SHA`, the synthetic merge commit. The immutable
+archive's `candidate-source.json` records both, the PR number and base SHA;
+promotion checks this receipt and the existing manifest before creating a draft.
+
+To rehearse without merging, pin a separate experimental branch at the exact
+successful PR merge SHA, then dispatch `release.yml` on that branch with
+`mode=rehearsal`, `candidate_run_id=<CI run id>` and
+`candidate_pr_number=<PR number>`. The workflow creates, verifies and deletes a
+draft, and never publishes or mirrors it. An unmerged PR is accepted only for
+rehearsal. Formal release additionally requires a merged PR and the existing
+main/release-branch rules. Squash, rebase, a newer base or another commit can
+change the SHA: reuse then fails rather than publishing a different build.
+
+Measure PR checks, candidate production, recovery and promotion separately.
+Moving the build earlier does not reduce the end-to-end build-and-release
+duration to the promotion duration. The experiment adds a release candidate to
+one PR, not to every ordinary PR.

@@ -33,7 +33,8 @@ name: Release
 # artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
 # under a throwaway tag that is checked and always deleted).
 # A release/rehearsal may promote a successful candidate_run_id at the exact same commit and
-# version. Its immutable artifact and every required verification are checked before reuse;
+# version. An opted-in PR CI source also requires candidate_pr_number and all its checks.
+# Its immutable artifact and every required verification are checked before reuse;
 # the build, DMG and macOS 15 checks belong to the candidate run and are not repeated.
 on:
   push:
@@ -56,6 +57,10 @@ on:
         required: false
       candidate_run_id:
         description: release/rehearsal only; reuse a verified Release candidate at this exact commit and version
+        type: string
+        required: false
+      candidate_pr_number:
+        description: PR number when candidate_run_id is an opted-in PR CI run
         type: string
         required: false
 
@@ -83,6 +88,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
       mode: ${{ steps.version.outputs.mode }}
       marketing_version: ${{ steps.version.outputs.marketing_version }}
@@ -92,6 +98,9 @@ jobs:
       candidate-run-id: ${{ steps.candidate.outputs.run-id }}
       candidate-artifact-id: ${{ steps.candidate.outputs.artifact-id }}
       candidate-digest: ${{ steps.candidate.outputs.digest }}
+      candidate-head-sha: ${{ steps.candidate.outputs.head-sha }}
+      candidate-pr-number: ${{ steps.candidate.outputs.pr-number }}
+      candidate-event: ${{ steps.candidate.outputs.event }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -210,11 +219,12 @@ jobs:
           output publish false
           echo "$MODE run for $marketing_version (build $build_version); nothing is published." >> "$GITHUB_STEP_SUMMARY"
       - name: Resolve the verified release candidate
-        if: inputs.candidate_run_id != ''
+        if: inputs.candidate_run_id != '' || inputs.candidate_pr_number != ''
         id: candidate
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ inputs.candidate_run_id }}
+          SOURCE_PR: ${{ inputs.candidate_pr_number }}
           MODE: ${{ steps.version.outputs.mode }}
           VERSION: ${{ steps.version.outputs.marketing_version }}
         run: |
@@ -223,121 +233,31 @@ jobs:
             exit 1
           fi
           node apps/macos/scripts/release/resolve-candidate.mjs \
-            --repo "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID" --commit "$GITHUB_SHA" --version "$VERSION"
+            --repo "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID" --commit "$GITHUB_SHA" --version "$VERSION" \
+            --pr "$SOURCE_PR" --mode "$MODE"
 
-  # Each architecture owns build -> package -> verify, so a completed arm64 build does not
-  # wait for Intel to start verification. A failed DMG job can reuse its signed App artifact.
-  architecture:
-    name: Release ${{ matrix.arch }}
+  candidate:
+    name: Build candidate
     needs: version
     if: needs.version.outputs.build == 'true' && inputs.candidate_run_id == ''
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [arm64, x64]
-    uses: ./.github/workflows/release-architecture.yml
+    uses: ./.github/workflows/release-candidate.yml
     with:
-      arch: ${{ matrix.arch }}
       marketing_version: ${{ needs.version.outputs.marketing_version }}
       build_version: ${{ needs.version.outputs.build_version }}
     secrets:
       RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
       RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
-
-  # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
-  # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
-  collect:
-    name: Sign the update feeds for ${{ needs.version.outputs.marketing_version }}
-    needs: [version, architecture]
-    runs-on: macos-26
-    outputs:
-      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
-    env:
-      VERSION: ${{ needs.version.outputs.marketing_version }}
-      BUILD_VERSION: ${{ needs.version.outputs.build_version }}
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: .node-version
-      - uses: actions/download-artifact@v8.0.0
-        with:
-          pattern: dmg-*
-          merge-multiple: true
-          path: dmg
-      - name: Check the dmgs' digests
-        run: |
-          mkdir dist
-          for arch in arm64 x64; do
-            dmg="Atd-$VERSION-$arch.dmg"
-            (cd dmg && shasum -a 256 -c "$dmg.sha256")
-            mv "dmg/$dmg" "dmg/addons-$arch.lock.json" dist/
-          done
-          mv dmg/Atd-addon-*.tar.gz dist/
-          ls -l dist
-      - name: Download Sparkle's sign_update
-        env:
-          # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
-          SPARKLE: 2.10.1
-          SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
-        run: |
-          tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
-          curl -fsSL -o "$tools/sparkle.tar.xz" \
-            "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
-          echo "$SPARKLE_SHA256  $tools/sparkle.tar.xz" | shasum -a 256 -c -
-          tar -xf "$tools/sparkle.tar.xz" -C "$tools"
-          echo "SIGN_UPDATE=$tools/bin/sign_update" >> "$GITHUB_ENV"
-      # The public key the installed apps verify with: project.yml's, and the one each built app
-      # actually carries. feeds.mjs checks every enclosure against all three.
-      - name: Read the public EdDSA keys
-        run: |
-          {
-            echo "PROJECT_ED_KEY=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)"
-            for arch in arm64 x64; do
-              mount="$RUNNER_TEMP/atd-dmg-$arch"
-              mkdir -p "$mount"
-              hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dist/Atd-$VERSION-$arch.dmg" > /dev/null
-              key=$(plutil -extract SUPublicEDKey raw "$mount/Atd.app/Contents/Info.plist")
-              hdiutil detach "$mount" > /dev/null
-              if [ "$arch" = arm64 ]; then echo "ARM64_ED_KEY=$key"; else echo "X64_ED_KEY=$key"; fi
-            done
-          } >> "$GITHUB_ENV"
-      - name: Write and check the update feeds
-        env:
-          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
-          REPO: ${{ github.repository }}
-        run: |
-          node apps/macos/scripts/release/feeds.mjs \
-            --dir dist \
-            --marketing-version "$VERSION" \
-            --build-version "$BUILD_VERSION" \
-            --repo "$REPO" \
-            --commit "$GITHUB_SHA" \
-            --sign-update "$SIGN_UPDATE" \
-            --public-ed-key "project.yml=$PROJECT_ED_KEY" \
-            --public-ed-key "arm64 app=$ARM64_ED_KEY" \
-            --public-ed-key "x64 app=$X64_ED_KEY"
-          cat dist/appcast.xml dist/appcast-x64.xml
-      - uses: actions/upload-artifact@v7.0.1
-        id: artifact
-        with:
-          name: Atd-${{ needs.version.outputs.marketing_version }}
-          path: dist/
-          if-no-files-found: error
-          compression-level: 0
-          overwrite: true
+      SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
 
   # Builds the GitHub release as a draft, checks it by id and publishes it only when every check
   # passed. A rehearsal does the same under a throwaway tag and always deletes its draft.
   release:
     name: ${{ needs.version.outputs.mode == 'rehearsal' && 'Rehearse the release of' || 'Publish' }} v${{ needs.version.outputs.marketing_version }}
-    needs: [version, architecture, collect]
+    needs: [version, candidate]
     if: >-
       always() && !cancelled() && needs.version.result == 'success' &&
       (needs.version.outputs.publish == 'true' || needs.version.outputs.mode == 'rehearsal') &&
-      ((needs.architecture.result == 'success' && needs.collect.result == 'success') ||
+      (needs.candidate.result == 'success' ||
       needs.version.outputs.candidate-artifact-id != '')
     runs-on: ubuntu-latest
     permissions:
@@ -352,11 +272,14 @@ jobs:
       CANDIDATE_RUN_ID: ${{ needs.version.outputs.candidate-run-id }}
       CANDIDATE_ARTIFACT_ID: ${{ needs.version.outputs.candidate-artifact-id }}
       CANDIDATE_DIGEST: ${{ needs.version.outputs.candidate-digest }}
+      CANDIDATE_HEAD_SHA: ${{ needs.version.outputs.candidate-head-sha }}
+      CANDIDATE_PR_NUMBER: ${{ needs.version.outputs.candidate-pr-number }}
+      CANDIDATE_EVENT: ${{ needs.version.outputs.candidate-event }}
     steps:
       - uses: actions/download-artifact@v8.0.0
         if: needs.version.outputs.candidate-artifact-id == ''
         with:
-          artifact-ids: ${{ needs.collect.outputs.artifact-id }}
+          artifact-ids: ${{ needs.candidate.outputs.artifact-id }}
           path: dist
       - name: Download and verify the immutable candidate
         if: needs.version.outputs.candidate-artifact-id != ''
@@ -368,6 +291,16 @@ jobs:
           echo "Reusing candidate run $CANDIDATE_RUN_ID, artifact $CANDIDATE_ARTIFACT_ID at $GITHUB_SHA; compilation and verification completed in the source run." >> "$GITHUB_STEP_SUMMARY"
       - name: Check the artifact against its manifest
         run: |
+          jq -e --arg run "${CANDIDATE_RUN_ID:-$GITHUB_RUN_ID}" \
+            --arg head "${CANDIDATE_HEAD_SHA:-$GITHUB_SHA}" \
+            --arg event "${CANDIDATE_EVENT:-$GITHUB_EVENT_NAME}" \
+            --argjson pr "${CANDIDATE_PR_NUMBER:-0}" \
+            '.schemaVersion == 1 and .repository == env.GITHUB_REPOSITORY and
+              .runId == $run and .commit == env.GITHUB_SHA and .headSha == $head and
+              .event == $event and .pullRequest == $pr' dist/candidate-source.json > /dev/null || {
+            echo "::error::candidate-source.json does not identify the verified source run and commit."
+            exit 1
+          }
           jq -e --arg v "$VERSION" --arg b "$BUILD_VERSION" \
             '.marketingVersion == $v and .buildVersion == $b and .commit == env.GITHUB_SHA' \
             dist/manifest.json > /dev/null || {

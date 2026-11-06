@@ -1,0 +1,135 @@
+name: Build a release candidate
+
+# Shared by release preparation and the opted-in PR experiment. This workflow cannot publish;
+# its caller's full check result must succeed before another run may promote its artifact.
+on:
+  workflow_call:
+    inputs:
+      marketing_version:
+        type: string
+        required: true
+      build_version:
+        type: string
+        required: true
+    outputs:
+      artifact-id:
+        value: ${{ jobs.collect.outputs.artifact-id }}
+    secrets:
+      RELEASE_SIGNING_P12:
+        required: true
+      RELEASE_SIGNING_P12_PASSWORD:
+        required: true
+      SPARKLE_ED_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Each architecture owns build -> package -> verify, so a completed arm64 build does not
+  # wait for Intel to start verification. A failed DMG job can reuse its signed App artifact.
+  architecture:
+    name: Release ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+    uses: ./.github/workflows/release-architecture.yml
+    with:
+      arch: ${{ matrix.arch }}
+      marketing_version: ${{ inputs.marketing_version }}
+      build_version: ${{ inputs.build_version }}
+    secrets:
+      RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
+      RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+
+  # Signs both dmgs for Sparkle and writes both feeds and the manifest into one flat artifact,
+  # the source of the draft release and of mirror.mjs --source-dir. The Sparkle key stays here.
+  collect:
+    name: Sign the update feeds for ${{ inputs.marketing_version }}
+    needs: architecture
+    runs-on: macos-26
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+    env:
+      VERSION: ${{ inputs.marketing_version }}
+      BUILD_VERSION: ${{ inputs.build_version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v8.0.0
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: dmg
+      - name: Check the dmgs' digests
+        run: |
+          mkdir dist
+          for arch in arm64 x64; do
+            dmg="Atd-$VERSION-$arch.dmg"
+            (cd dmg && shasum -a 256 -c "$dmg.sha256")
+            mv "dmg/$dmg" "dmg/addons-$arch.lock.json" dist/
+          done
+          mv dmg/Atd-addon-*.tar.gz dist/
+          ls -l dist
+      - name: Download Sparkle's sign_update
+        env:
+          # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
+          SPARKLE: 2.10.1
+          SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
+        run: |
+          tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
+          curl -fsSL -o "$tools/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
+          echo "$SPARKLE_SHA256  $tools/sparkle.tar.xz" | shasum -a 256 -c -
+          tar -xf "$tools/sparkle.tar.xz" -C "$tools"
+          echo "SIGN_UPDATE=$tools/bin/sign_update" >> "$GITHUB_ENV"
+      # The public key the installed apps verify with: project.yml's, and the one each built app
+      # actually carries. feeds.mjs checks every enclosure against all three.
+      - name: Read the public EdDSA keys
+        run: |
+          {
+            echo "PROJECT_ED_KEY=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)"
+            for arch in arm64 x64; do
+              mount="$RUNNER_TEMP/atd-dmg-$arch"
+              mkdir -p "$mount"
+              hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "dist/Atd-$VERSION-$arch.dmg" > /dev/null
+              key=$(plutil -extract SUPublicEDKey raw "$mount/Atd.app/Contents/Info.plist")
+              hdiutil detach "$mount" > /dev/null
+              if [ "$arch" = arm64 ]; then echo "ARM64_ED_KEY=$key"; else echo "X64_ED_KEY=$key"; fi
+            done
+          } >> "$GITHUB_ENV"
+      - name: Write and check the update feeds
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          node apps/macos/scripts/release/feeds.mjs \
+            --dir dist \
+            --marketing-version "$VERSION" \
+            --build-version "$BUILD_VERSION" \
+            --repo "$REPO" \
+            --commit "$GITHUB_SHA" \
+            --sign-update "$SIGN_UPDATE" \
+            --public-ed-key "project.yml=$PROJECT_ED_KEY" \
+            --public-ed-key "arm64 app=$ARM64_ED_KEY" \
+            --public-ed-key "x64 app=$X64_ED_KEY"
+          cat dist/appcast.xml dist/appcast-x64.xml
+      - name: Record the candidate source
+        run: node apps/macos/scripts/release/write-candidate-source.mjs
+      - uses: actions/upload-artifact@v7.0.1
+        id: artifact
+        with:
+          name: Atd-${{ inputs.marketing_version }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
