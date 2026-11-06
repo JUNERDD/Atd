@@ -16,7 +16,7 @@ from mac_alias import (
 )
 from mac_alias.bookmark import kCFURLVolumeIsDiskImage, kCFURLVolumeIsInternal
 
-from dmg_process import Progress, run_dmg
+from dmg_progress import Progress
 
 
 def fix_background_bookmark(mount_point):
@@ -42,20 +42,12 @@ def fix_background_bookmark(mount_point):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("app")
     parser.add_argument("background")
     parser.add_argument("layout")
     parser.add_argument("volume_name")
     parser.add_argument("output")
     args = parser.parse_args()
-    if not args.worker:
-        run_dmg(
-            Path(__file__).resolve(),
-            [args.app, args.background, args.layout, args.volume_name, args.output],
-        )
-        return
-
     mount_point = None
     progress = Progress()
 
@@ -85,7 +77,6 @@ def main():
                     str(mount_point / Path(args.app).name),
                 ],
                 check=True,
-                timeout=120,
             )
             progress({"type": "operation::finished", "operation": "codesign::verify"})
 
@@ -96,8 +87,6 @@ def main():
         settings={"create_hook": remember_mount},
         defines={"app": args.app, "background": args.background, "layout": args.layout},
         callback=on_progress,
-        # dmgbuild retries failed detaches with backoff; the supervisor also bounds each call.
-        detach_retries=3,
     )
 
 
