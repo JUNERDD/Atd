@@ -83,3 +83,25 @@ and retain its DMG digest; do not substitute a freshly rebuilt app for a failing
 artifact. Replay the named case in the report on that same package and OS image,
 then compare its service/native/crash logs. Live-provider and UI/TCC testing need
 their own approved credentials, permissions and acceptance criteria.
+
+## Reusing a verified candidate
+
+An `artifacts` run creates a candidate after both architectures pass their native
+build, DMG, macOS 15 verification and applicable smoke checks. A later manual
+`rehearsal` or `release` run can set `candidate_run_id` to that successful run.
+It must use the exact same commit, marketing version and build version. The
+resolver checks the source repository, workflow, commit and each required job
+and step before selecting the immutable artifact ID and SHA-256 digest.
+
+The promotion downloads that exact artifact, checks the archive digest and the
+existing manifest/add-on checks, then uses the normal draft validation. A
+rehearsal deletes its draft without creating a release tag. Candidate builds and
+their validation are reused; they are not replaced by an unchecked success flag.
+Missing, expired, failed, mismatched or incompletely verified candidates fail
+without falling back to another artifact or silently rebuilding.
+
+An ordinary PR check is not a release candidate: the Intel packaging rehearsal
+uses ad hoc signing, and a PR merge ref may differ from the final release commit.
+Do not relax the commit/version checks to reuse it. Measure candidate build time
+and promotion time separately; moving the build earlier does not reduce the
+end-to-end build-and-release duration to the promotion duration.

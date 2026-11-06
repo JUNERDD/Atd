@@ -32,6 +32,9 @@ name: Release
 # branch can instead use `artifacts` (build, verify and sign both dmgs and feeds into one workflow
 # artifact; nothing is tagged, released or mirrored) or `rehearsal` (the same, then a draft release
 # under a throwaway tag that is checked and always deleted).
+# A release/rehearsal may promote a successful candidate_run_id at the exact same commit and
+# version. Its immutable artifact and every required verification are checked before reuse;
+# the build, DMG and macOS 15 checks belong to the candidate run and are not repeated.
 on:
   push:
     branches: [main]
@@ -49,6 +52,10 @@ on:
         required: false
       build_version:
         description: artifacts/rehearsal only; CFBundleVersion without '-' such as 0.9.0rc.3
+        type: string
+        required: false
+      candidate_run_id:
+        description: release/rehearsal only; reuse a verified Release candidate at this exact commit and version
         type: string
         required: false
 
@@ -73,12 +80,18 @@ jobs:
   version:
     name: Detect the version and mode
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       mode: ${{ steps.version.outputs.mode }}
       marketing_version: ${{ steps.version.outputs.marketing_version }}
       build_version: ${{ steps.version.outputs.build_version }}
       build: ${{ steps.version.outputs.build }}
       publish: ${{ steps.version.outputs.publish }}
+      candidate-run-id: ${{ steps.candidate.outputs.run-id }}
+      candidate-artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+      candidate-digest: ${{ steps.candidate.outputs.digest }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -196,13 +209,28 @@ jobs:
           output build true
           output publish false
           echo "$MODE run for $marketing_version (build $build_version); nothing is published." >> "$GITHUB_STEP_SUMMARY"
+      - name: Resolve the verified release candidate
+        if: inputs.candidate_run_id != ''
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.candidate_run_id }}
+          MODE: ${{ steps.version.outputs.mode }}
+          VERSION: ${{ steps.version.outputs.marketing_version }}
+        run: |
+          if [ "$MODE" = artifacts ]; then
+            echo "::error::artifacts builds a candidate; use rehearsal or release to promote candidate_run_id."
+            exit 1
+          fi
+          node apps/macos/scripts/release/resolve-candidate.mjs \
+            --repo "$GITHUB_REPOSITORY" --run-id "$SOURCE_RUN_ID" --commit "$GITHUB_SHA" --version "$VERSION"
 
   # Each architecture owns build -> package -> verify, so a completed arm64 build does not
   # wait for Intel to start verification. A failed DMG job can reuse its signed App artifact.
   architecture:
     name: Release ${{ matrix.arch }}
     needs: version
-    if: needs.version.outputs.build == 'true'
+    if: needs.version.outputs.build == 'true' && inputs.candidate_run_id == ''
     strategy:
       fail-fast: false
       matrix:
@@ -222,6 +250,8 @@ jobs:
     name: Sign the update feeds for ${{ needs.version.outputs.marketing_version }}
     needs: [version, architecture]
     runs-on: macos-26
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
@@ -291,6 +321,7 @@ jobs:
             --public-ed-key "x64 app=$X64_ED_KEY"
           cat dist/appcast.xml dist/appcast-x64.xml
       - uses: actions/upload-artifact@v7.0.1
+        id: artifact
         with:
           name: Atd-${{ needs.version.outputs.marketing_version }}
           path: dist/
@@ -303,21 +334,38 @@ jobs:
   release:
     name: ${{ needs.version.outputs.mode == 'rehearsal' && 'Rehearse the release of' || 'Publish' }} v${{ needs.version.outputs.marketing_version }}
     needs: [version, architecture, collect]
-    if: needs.version.outputs.publish == 'true' || needs.version.outputs.mode == 'rehearsal'
+    if: >-
+      always() && !cancelled() && needs.version.result == 'success' &&
+      (needs.version.outputs.publish == 'true' || needs.version.outputs.mode == 'rehearsal') &&
+      ((needs.architecture.result == 'success' && needs.collect.result == 'success') ||
+      needs.version.outputs.candidate-artifact-id != '')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     env:
       VERSION: ${{ needs.version.outputs.marketing_version }}
       BUILD_VERSION: ${{ needs.version.outputs.build_version }}
       MODE: ${{ needs.version.outputs.mode }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      CANDIDATE_RUN_ID: ${{ needs.version.outputs.candidate-run-id }}
+      CANDIDATE_ARTIFACT_ID: ${{ needs.version.outputs.candidate-artifact-id }}
+      CANDIDATE_DIGEST: ${{ needs.version.outputs.candidate-digest }}
     steps:
       - uses: actions/download-artifact@v8.0.0
+        if: needs.version.outputs.candidate-artifact-id == ''
         with:
-          name: Atd-${{ needs.version.outputs.marketing_version }}
+          artifact-ids: ${{ needs.collect.outputs.artifact-id }}
           path: dist
+      - name: Download and verify the immutable candidate
+        if: needs.version.outputs.candidate-artifact-id != ''
+        run: |
+          archive="$RUNNER_TEMP/candidate.zip"
+          gh api "repos/$GH_REPO/actions/artifacts/$CANDIDATE_ARTIFACT_ID/zip" > "$archive"
+          printf '%s  %s\n' "${CANDIDATE_DIGEST#sha256:}" "$archive" | sha256sum --check
+          unzip -q "$archive" -d dist
+          echo "Reusing candidate run $CANDIDATE_RUN_ID, artifact $CANDIDATE_ARTIFACT_ID at $GITHUB_SHA; compilation and verification completed in the source run." >> "$GITHUB_STEP_SUMMARY"
       - name: Check the artifact against its manifest
         run: |
           jq -e --arg v "$VERSION" --arg b "$BUILD_VERSION" \
