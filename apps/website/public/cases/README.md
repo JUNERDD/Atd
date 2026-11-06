@@ -73,12 +73,29 @@ The repository README shows crops of these scenes, exported at 2× from the same
 [`.github/readme/`](../../../../.github/readme/); they leave the scene files here untouched. Images
 the README pairs in a table share one crop size (selection toolbar and write-back 1392 × 1044,
 conversation and Mini Panel 1072 × 1428, the Mini Panel's taking the conversation's box at the
-screen's right edge), so GitHub splits the table evenly and both show at one height; the full-width
-crops share a 1.6:1 ratio. On
+screen's right edge). The README uses explicit 50% columns and full-width images so differing
+caption lengths cannot give the paired images different display heights. The full-width crops
+share a 1.6:1 ratio. On
 2026-11-04 the main panel and conversation scenes took the current panel: the 52 pt unified title
 bar with the native traffic lights, and the new task's quick commands with All commands, Create app
 and My apps (from `AP1.01`, `1866:106317`). Their flat exports here were refreshed; their layer
 sheets below predate it.
+
+On 2026-11-06 the README main-panel preview adopted the translucent keycap styling from
+`App / Kbd · Rhea` (`3739:74611`). The write-back preview now shows the connected review card
+(`3578:71891`, scene instance `3796:215483`): the original draft remains selected in its source
+app while the polished answer waits for review, adjustment, insertion or replacement. Its labels
+match the native English UI. The archived PNG and animation layers retain their earlier Writing
+state; they are not the current README preview.
+
+For these two README exports, export the complete scene at 2× before cropping, preserving the
+desktop wallpaper and glass backdrop. Crop coordinates below are in the 1440 × 900 scene; double
+them for the exported pixels. The matching Figma slices record the same bounds.
+
+| README image     | Scene         | Slice         | Crop x, y, width, height | Output pixels |
+| ---------------- | ------------- | ------------- | ------------------------ | ------------- |
+| `main-panel.jpg` | `2462:143430` | `3796:215560` | 298, 108, 1142, 714      | 2284 × 1428   |
+| `write-back.jpg` | `2823:164824` | `3796:215561` | 372, 300, 696, 522       | 1392 × 1044   |
 
 The 0.10.0 refresh uses the current connected task-activity and provider editor components. The
 Mini Panel shows two running tasks and a synthetic approval request to write `release-notes.md`;
@@ -89,7 +106,7 @@ the product translations, and sign-in stays disabled until consent is given.
 The selection scene's toolbar is the `Content=With options` variant: Fix grammar is a split button
 whose chevron has opened its answer destinations (`App / Toolbar options menu`, cloned from the
 review frame, 4 pt below the capsule), with Replace the selected text as the saved choice. The
-write-back scene reuses the same source page with a context line and a rough draft line that is
+archived write-back PNG and animation layers reuse the same source page with a context line and a rough draft line that is
 selected; the answer (`Written answer`, a frame in the page color over the draft) has replaced it,
 and the island at the bottom center, its bottom edge at y = 804 like the island review frames,
 is writing: its ambient glow, spinner and Writing… label. Its sheet cuts those three into layers

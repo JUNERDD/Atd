@@ -75,10 +75,20 @@ These previews are cropped from **1440 × 900** interface scenes in the UI desig
 
 ### In place
 
-| Selection toolbar                                                                                                                                                                                                                                            | Write-back                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Selection toolbar above selected text, with Fix grammar's options open: show in the conversation, replace the selected text, insert after it, insert at the cursor, or copy](.github/readme/selection-toolbar.jpg)](.github/readme/selection-toolbar.jpg) | [![A draft line rewritten in place by a command, with the command island at the bottom of the screen writing](.github/readme/write-back.jpg)](.github/readme/write-back.jpg) |
-| Ask or run a command from a text selection, and choose where its answer goes.                                                                                                                                                                                | Run a command from its shortcut and the answer replaces the selection in place.                                                                                              |
+<table>
+  <tr>
+    <th width="50%">Selection toolbar</th>
+    <th width="50%">Write-back</th>
+  </tr>
+  <tr>
+    <td width="50%"><a href=".github/readme/selection-toolbar.jpg"><img src=".github/readme/selection-toolbar.jpg" width="100%" alt="Selection toolbar above selected text, with Fix grammar's answer destinations open" /></a></td>
+    <td width="50%"><a href=".github/readme/write-back.jpg"><img src=".github/readme/write-back.jpg" width="100%" alt="Selected draft text above a Fix grammar review card, with the original, rewritten answer, adjustment suggestions, and Insert and Replace actions" /></a></td>
+  </tr>
+  <tr>
+    <td>Ask or run a command from a text selection, and choose where its answer goes.</td>
+    <td>Review and refine the answer, then replace the selection or insert it after the original.</td>
+  </tr>
+</table>
 
 [![Screenshot of a report with arrows, step numbers, a note, a mosaic, and the annotation toolbar](.github/readme/screenshot.jpg)](.github/readme/screenshot.jpg)
 
@@ -86,10 +96,20 @@ _Screenshot tool: capture an area and mark the details that matter._
 
 ### Panel and conversation
 
-| Conversation                                                                                                                                | Mini Panel                                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Conversation with a follow-up message, tool activity, response actions, and composer](.github/readme/chat.jpg)](.github/readme/chat.jpg) | [![Mini Panel at the edge of the screen with Active tasks open: a file write waiting for approval and two tasks in progress](.github/readme/mini-panel.jpg)](.github/readme/mini-panel.jpg) |
-| Read the result and keep working in the same task.                                                                                          | Follow running tasks and answer approvals from the edge of the screen.                                                                                                                      |
+<table>
+  <tr>
+    <th width="50%">Conversation</th>
+    <th width="50%">Mini Panel</th>
+  </tr>
+  <tr>
+    <td width="50%"><a href=".github/readme/chat.jpg"><img src=".github/readme/chat.jpg" width="100%" alt="Conversation with a follow-up message, tool activity, response actions, and composer" /></a></td>
+    <td width="50%"><a href=".github/readme/mini-panel.jpg"><img src=".github/readme/mini-panel.jpg" width="100%" alt="Mini Panel with Active tasks open: a file write waiting for approval and two tasks in progress" /></a></td>
+  </tr>
+  <tr>
+    <td>Read the result and keep working in the same task.</td>
+    <td>Follow running tasks and answer approvals from the edge of the screen.</td>
+  </tr>
+</table>
 
 ### Apps and connections
 
