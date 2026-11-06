@@ -1,7 +1,7 @@
 /**
  * The command HUD's flowing light (`IslandGlowField.swift` in the macOS shell) as a fragment shader
- * for Paper's `ShaderMount`, so the panel's wait for a reply shows the same field. The values below
- * mirror the shell's `IslandGlowField` and `IslandGlowStyle`; change both sides together.
+ * for Paper's `ShaderMount`, shared by the panel's waiting light and live scroll control. The
+ * values below mirror the shell's `IslandGlowField` and `IslandGlowStyle`; change both together.
  *
  * The shell draws a 6×4 `MeshGradient` with smoothed colors, 2.2 times the size of its box, and
  * shows a drifting crop of it so the field's edges never become the box's edges. Here a fragment
@@ -19,7 +19,8 @@
  * arrives instead of being uncovered. The bloom's coverage is the output's (premultiplied) alpha.
  * With `u_entry` off (Reduce Motion) the light is in from the start and keeps the clock's pace.
  *
- * The light's top is drawn here as well: a smootherstep falloff from `SOLID` to the box's top
+ * With `u_fullCoverage` on, the field fills a control's own outline, as in the mini panel. The
+ * waiting light's top is drawn here as well: a smootherstep falloff from `SOLID` to the box's top
  * edge, multiplied into the coverage. A linear ramp's slope jumps where it starts and where it
  * ends, and the eye reads each jump as a line (a Mach band); smootherstep's slope and curvature
  * are zero at both ends, so the light thins into the panel with no visible boundary. Raised to
@@ -85,6 +86,9 @@ uniform mediump vec2 u_resolution;
 uniform vec3 u_colors[24];
 // 1 while the light enters (the bloom and the field gathering); 0 when it is in from the start.
 uniform float u_entry;
+// A control's light fills its whole glass outline; the waiting panel keeps its bloom and falloff.
+// WebGL initializes an omitted uniform to zero, preserving the panel's existing coverage.
+uniform float u_fullCoverage;
 // Where the bloom starts: the composer's centre, in the box's units from its bottom left.
 uniform vec2 u_origin;
 // The light's strength (\`glowLevel\`), drawn here so the dither below lands at the final values.
@@ -183,7 +187,8 @@ void main() {
   float top = mix(1.0, clamp(u_retreatTarget, 0.04, 0.95), u_retreat);
   float falloff = pow(
     max(1.0 - smootherstep(SOLID * top, top, gl_FragCoord.y / resolution.y), 0.0), FALLOFF_POWER);
-  vec4 light = vec4(color, 1.0) * clamp(bloom * falloff, 0.0, 1.0) * u_level;
+  float coverage = u_fullCoverage > 0.0 ? 1.0 : clamp(bloom * falloff, 0.0, 1.0);
+  vec4 light = vec4(color, 1.0) * coverage * u_level;
   // A step of triangular noise per channel, faded out where the light is under a step.
   vec2 p = gl_FragCoord.xy;
   vec4 grain = vec4(tpdf(p), tpdf(p + 101.0), tpdf(p + 211.0), tpdf(p + 307.0));

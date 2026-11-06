@@ -37,7 +37,7 @@ export interface StreamDeps {
   /** The current root-task counts for `status` frames. */
   status: () => TaskStatusCounts;
   /** Registers a listener for every change that may move those counts. */
-  onStatusInputs: (listener: () => void) => void;
+  onStatusInputs: (listener: () => void) => () => void;
   log: Logger;
 }
 
@@ -71,20 +71,35 @@ interface Connection {
  */
 export class StreamHub {
   private readonly connections = new Set<Connection>();
+  private readonly unsubscribe: (() => void)[];
 
   constructor(private readonly deps: StreamDeps) {
-    deps.events.onPublish((event) =>
-      this.broadcast(event.taskId, () => JSON.stringify({ type: 'event', event })),
-    );
-    deps.capabilities.deliver = (request) => this.deliver(request);
-    // Progress is display state: pushed to the task's subscribers, never logged as an event.
-    deps.computer.progress.onProgress((progress) =>
-      this.broadcast(progress.taskId, () =>
-        JSON.stringify({ type: 'computer.progress', progress }),
+    const previous = deps.capabilities.deliver;
+    const deliver = (request: CapabilityRequest) => this.deliver(request);
+    deps.capabilities.deliver = deliver;
+    this.unsubscribe = [
+      deps.events.onPublish((event) =>
+        this.broadcast(event.taskId, () => JSON.stringify({ type: 'event', event })),
       ),
-    );
-    deps.onStatusInputs(() => this.statusChanged());
-    deps.activity.onChanged((snapshot) => this.activityChanged(snapshot));
+      // Progress is display state: pushed to the task's subscribers, never logged as an event.
+      deps.computer.progress.onProgress((progress) =>
+        this.broadcast(progress.taskId, () =>
+          JSON.stringify({ type: 'computer.progress', progress }),
+        ),
+      ),
+      deps.onStatusInputs(() => this.statusChanged()),
+      deps.activity.onChanged((snapshot) => this.activityChanged(snapshot)),
+      () => {
+        if (deps.capabilities.deliver === deliver) deps.capabilities.deliver = previous;
+      },
+    ];
+  }
+
+  /** Releases every source that captures this server's hub, even if its service handle survives. */
+  dispose(): void {
+    for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
+    for (const connection of this.connections) connection.socket.terminate();
+    this.connections.clear();
   }
 
   handle(socket: WebSocket): void {

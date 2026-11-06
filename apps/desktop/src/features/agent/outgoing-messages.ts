@@ -66,6 +66,15 @@ export function discardOutgoing(taskId: string, id: string) {
 }
 
 /**
+ * The latest local submission, including after its run takes over the optimistic turn. Consumers
+ * that react to sending must not mistake acceptance, failure or streamed patches for another send.
+ */
+export function useOutgoingSubmissionId(taskId: string): string | null {
+  const read = useCallback(() => outgoing.get(taskId)?.id ?? null, [taskId]);
+  return useSyncExternalStore(subscribe, read);
+}
+
+/**
  * Conversation `taskId`'s outgoing message until `runs` list its run, whose turn then shows it;
  * none without a conversation.
  */

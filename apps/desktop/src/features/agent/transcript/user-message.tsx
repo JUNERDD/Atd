@@ -4,6 +4,7 @@ import type { TaskRun } from '../../../client/agent/task-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { showErrorToast } from '../../../components/toast-store';
 import { agentApi } from '../use-agent';
+import { UserContext } from '../user-context';
 import { MessageBubble } from './message-bubble';
 import { MessageEditor } from './message-editor';
 import { PromptMessage } from './prompt-message';
@@ -15,8 +16,9 @@ import { UserMessageActions } from './user-message-actions';
  * A turn's user message: a run's prompt as composed (`run`), or a queued follow-up as plain text.
  * Under the bubble (`UserMessageActions`), Copy takes the message and Edit — enabled for a
  * persisted message of an idle task, disabled otherwise — swaps the bubble for an editor whose
- * Send replaces the message, branching the task before it. `copyable` is false in a subagent's view, which offers
- * no message actions.
+ * Send replaces the message, branching the task before it. Attachments stay mounted above both
+ * text modes, so editing never reloads their images. `copyable` is false in a subagent's view,
+ * which offers no message actions.
  */
 export function UserMessage({
   user,
@@ -67,10 +69,10 @@ export function UserMessage({
 
   return (
     <article className="user-message" aria-label={t('conversation.yourMessage')}>
+      {run && <UserContext snapshot={run.snapshot} />}
       {open ? (
         <MessageEditor
           initialText={editableText(user, run)}
-          snapshot={run?.snapshot}
           last={last}
           canSend={(text) => !task?.busy && canResend(text, run)}
           onCancel={close}

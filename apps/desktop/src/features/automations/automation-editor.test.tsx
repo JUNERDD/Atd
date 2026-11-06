@@ -25,6 +25,13 @@ async function openNewAutomation() {
   return user;
 }
 
+// Save and reload cases need filled fields, not a full form render per fixture character.
+// Keep the real focus and input path; the validation case below exercises an individual key.
+async function pasteField(user: ReturnType<typeof userEvent.setup>, name: string, text: string) {
+  await user.click(screen.getByRole('textbox', { name }));
+  await user.paste(text);
+}
+
 describe('automation editor', () => {
   it('checks the fields before saving a new automation', async () => {
     const automations = fakeAutomations([]);
@@ -35,8 +42,8 @@ describe('automation editor', () => {
     expect(screen.getByText('Enter a prompt.')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('aria-invalid', 'true');
     expect(automations.create).not.toHaveBeenCalled();
-    // A fixed field clears at once; the other keeps its problem until it is fixed.
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Morning brief');
+    // One keystroke clears this field; the other keeps its problem until it is fixed.
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'M');
     expect(screen.queryByText('Enter a name.')).not.toBeInTheDocument();
     expect(screen.getByText('Enter a prompt.')).toBeVisible();
   });
@@ -45,8 +52,8 @@ describe('automation editor', () => {
     const automations = fakeAutomations([]);
     renderSettings(automations);
     const user = await openNewAutomation();
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Morning brief');
-    await user.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Summarize my inbox.');
+    await pasteField(user, 'Name', 'Morning brief');
+    await pasteField(user, 'Prompt', 'Summarize my inbox.');
     await user.click(screen.getByRole('button', { name: 'Create automation' }));
     await waitFor(() =>
       expect(automations.create).toHaveBeenCalledWith(
@@ -120,8 +127,8 @@ describe('automation editor', () => {
     renderSettings(automations);
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Edit Morning brief' }));
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.type(name, ' daily');
+    await screen.findByRole('textbox', { name: 'Name' });
+    await pasteField(user, 'Name', ' daily');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(
       await screen.findByText(
@@ -231,7 +238,7 @@ describe('automation editor', () => {
     const automations = fakeAutomations([]);
     renderSettings(automations);
     const user = await openNewAutomation();
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tidy memory');
+    await pasteField(user, 'Name', 'Tidy memory');
     await user.click(screen.getByRole('tab', { name: 'Mac is idle' }));
     expect(screen.getByRole('combobox', { name: 'Idle for' })).toHaveTextContent('15 minutes');
     expect(screen.getByText(/^Runs at most once a day/)).toBeVisible();

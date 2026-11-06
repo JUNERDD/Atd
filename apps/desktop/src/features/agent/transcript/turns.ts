@@ -2,6 +2,7 @@ import { SHOW_UI_TOOL } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Artifact } from '../../../client/agent/task-schema';
 import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
+import { reuseProjection, type ProjectionCache } from './projection-cache';
 
 export type RequestIndex = Map<string, PermissionRequest>;
 
@@ -13,6 +14,8 @@ export type Turn = {
   id: string;
   user: BlockOf<'user'> | null;
   items: TurnItem[];
+  /** First raw block, including a block hidden from the rendered items. */
+  first: Block | undefined;
 };
 
 /**
@@ -117,6 +120,19 @@ function isIgnoredBlock(block: Block): boolean {
   return false;
 }
 
+const turnCache: ProjectionCache<Turn> = new WeakMap();
+
+function cachedTurn(blocks: Block[], requests: RequestIndex, index: number): Turn {
+  // A request can change a group's liveness without replacing its source block. The index also
+  // owns the id of a turn without a user message, so rewinds cannot keep an obsolete fallback id.
+  const fallbackIndex = blocks[0]?.kind === 'user' ? null : index;
+  const inputs = [
+    fallbackIndex,
+    ...blocks.flatMap((block) => [block, requestFor(block, requests)]),
+  ];
+  return reuseProjection(turnCache, blocks[0], inputs, () => foldTurn(blocks, requests, index));
+}
+
 export function deriveTurns(blocks: Block[], requests: RequestIndex): Turn[] {
   const groups: Block[][] = [];
   let current: Block[] = [];
@@ -128,7 +144,7 @@ export function deriveTurns(blocks: Block[], requests: RequestIndex): Turn[] {
     current.push(block);
   }
   if (current.length > 0) groups.push(current);
-  return groups.map((turnBlocks, index) => foldTurn(turnBlocks, requests, index));
+  return groups.map((turnBlocks, index) => cachedTurn(turnBlocks, requests, index));
 }
 
 function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn {
@@ -159,16 +175,21 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
     items.push({ type: 'block', block });
   });
   flush();
-  return { id: user?.id ?? `turn-${index}`, user, items };
+  return { id: user?.id ?? `turn-${index}`, user, items, first };
 }
 
 export function artifactAnchorIds(blocks: Block[], artifacts: Artifact[]): Set<string> {
   const runIds = new Set(artifacts.map((file) => file.runId));
+  const latest = new Map<string, Block>();
+  const latestAssistant = new Map<string, Block>();
+  for (const block of blocks) {
+    if (!runIds.has(block.runId)) continue;
+    latest.set(block.runId, block);
+    if (block.kind === 'assistant') latestAssistant.set(block.runId, block);
+  }
   const anchors = new Set<string>();
   for (const runId of runIds) {
-    const ofRun = blocks.filter((block) => block.runId === runId);
-    const lastAssistant = [...ofRun].reverse().find((block) => block.kind === 'assistant');
-    const anchor = lastAssistant ?? ofRun.at(-1);
+    const anchor = latestAssistant.get(runId) ?? latest.get(runId);
     if (anchor) anchors.add(anchor.id);
   }
   return anchors;

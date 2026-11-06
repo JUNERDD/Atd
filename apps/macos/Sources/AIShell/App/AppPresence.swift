@@ -18,24 +18,47 @@ final class AppPresence {
   }
 
   /// Recomputes from the latest preference when the guide or the settings window opens or
-  /// closes; the override is never saved. A closing window disables focus restoration because it
-  /// can still be key.
-  func applyDockVisibility(windowOpen: Bool, restoreFocus: Bool = true) {
-    Self.applyShowInDock(showInDock || windowOpen, restoreFocus: restoreFocus)
+  /// closes; the override is never saved. A closing window can still be key during
+  /// `windowWillClose`, so exclude it when preserving focus through a policy change.
+  func applyDockVisibility(windowOpen: Bool, closingWindow: NSWindow? = nil) {
+    Self.applyShowInDock(showInDock || windowOpen, closingWindow: closingWindow)
   }
 
   /// Info.plist starts the app as an agent (`LSUIElement`), so a hidden Dock icon never
   /// flashes at launch; showing it turns the app into a regular one at runtime. Becoming an
-  /// agent again deactivates the app, so the window the user was in comes back to the front.
-  private static func applyShowInDock(_ show: Bool, restoreFocus: Bool) {
+  /// agent again deactivates the app, so preserve the keyboard target or its surviving successor.
+  private static func applyShowInDock(_ show: Bool, closingWindow: NSWindow?) {
     let policy: NSApplication.ActivationPolicy = show ? .regular : .accessory
     guard NSApp.activationPolicy() != policy else { return }
-    let focused = NSApp.keyWindow
-    NSApp.setActivationPolicy(policy)
-    if !show, restoreFocus, let focused, focused.isVisible {
+    let focused = focusTarget(excluding: closingWindow)
+    guard NSApp.setActivationPolicy(policy) else { return }
+    if !show, let focused {
       NSApp.activate()
       focused.makeKeyAndOrderFront(nil)
     }
+  }
+
+  private static func focusTarget(excluding closingWindow: NSWindow?) -> NSWindow? {
+    // A background close must not activate the app, even when its non-activating task panel
+    // currently receives the keyboard while another application owns the menu bar.
+    if closingWindow != nil, !NSApp.isActive { return nil }
+    func isEligible(_ window: NSWindow) -> Bool {
+      window !== closingWindow && window.isVisible && !window.isMiniaturized
+        && window.canBecomeKey && window.alphaValue > 0 && !window.ignoresMouseEvents
+        && window.isOnActiveSpace
+    }
+    if let key = NSApp.keyWindow, isEligible(key) { return key }
+    // Closing the foreground window transfers focus within the app; the resident task panel's
+    // alpha-zero state must stay hidden.
+    guard closingWindow != nil else { return nil }
+    // `orderedWindows` is a scripting API that excludes panels. Window numbers include the
+    // task panel and preserve front-to-back order on the active Space.
+    for number in NSWindow.windowNumbers(options: []) ?? [] {
+      if let window = NSApp.window(withWindowNumber: number.intValue), isEligible(window) {
+        return window
+      }
+    }
+    return nil
   }
 
   /// Opening at login registers the app bundle with `SMAppService.mainApp`. The system's

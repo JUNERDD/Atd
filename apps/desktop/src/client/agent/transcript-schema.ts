@@ -319,14 +319,15 @@ export function applyTranscriptPatch(
   if (patch.snapshot) return { revision: patch.revision, blocks: patch.blocks };
   if (patch.revision !== current.revision + 1) return null;
   const removed = new Set(patch.removed);
-  const next = current.blocks.filter((block) => !removed.has(block.id));
-  const index = new Map(next.map((block, position) => [block.id, position]));
-  for (const block of patch.blocks) {
-    const position = index.get(block.id);
-    if (position === undefined) {
-      index.set(block.id, next.length);
-      next.push(block);
-    } else next[position] = block;
+  // A streaming patch usually changes one block. Index those changes, not the whole history,
+  // so every token does not allocate a map entry and tuple for every older block.
+  const changed = new Map(patch.blocks.map((block) => [block.id, block]));
+  const next: Block[] = [];
+  for (const block of current.blocks) {
+    if (removed.has(block.id)) continue;
+    next.push(changed.get(block.id) ?? block);
+    changed.delete(block.id);
   }
+  for (const block of changed.values()) next.push(block);
   return { revision: patch.revision, blocks: next };
 }

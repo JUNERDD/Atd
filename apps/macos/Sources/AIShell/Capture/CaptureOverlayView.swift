@@ -24,7 +24,7 @@ final class CaptureOverlayView: NSView {
   let annotationHost = AnnotationHostView()
   private let chrome: CaptureChromeView
   private let loupe: LoupeView
-  private var hints: [CaptureBadge] = []
+  private var hints: [CaptureHintBadge] = []
   /// Trackpads scroll in many small steps; the chain walks once per this many points.
   private var scrollAccumulator: CGFloat = 0
   private static let scrollStep: CGFloat = 12
@@ -77,13 +77,14 @@ final class CaptureOverlayView: NSView {
     loupe.isHidden = false
   }
 
-  /// Badges centred above the bottom edge, the first one lowest. When they would cover `avoid`
-  /// (a selection with its size label and bars around it), they move below the top edge
-  /// instead, and when that is covered too they are left out: the user is already working on a
-  /// selection that fills the display.
-  func showHints(_ texts: [String], avoiding avoid: CGRect? = nil) {
+  /// One badge per line, centred above the bottom edge, the first one lowest and none wider
+  /// than the display less its margins. When they would cover `avoid` (a selection with its
+  /// size label and bars around it), they move below the top edge instead, and when that is
+  /// covered too they are left out: the user is already working on a selection that fills the
+  /// display.
+  func showHints(_ lines: [CaptureHintLine], avoiding avoid: CGRect? = nil) {
     for hint in hints { hint.removeFromSuperview() }
-    hints = texts.map { CaptureBadge(text: $0, font: .systemFont(ofSize: 13)) }
+    hints = lines.map { CaptureHintBadge(segments: $0, maxWidth: bounds.width - 32) }
     let insets = window?.screen?.safeAreaInsets
     let bottom = stackedFrames(downFrom: nil, upFrom: bounds.maxY - (insets?.bottom ?? 0) - 28)
     let top = stackedFrames(downFrom: bounds.minY + (insets?.top ?? 0) + 28, upFrom: nil)

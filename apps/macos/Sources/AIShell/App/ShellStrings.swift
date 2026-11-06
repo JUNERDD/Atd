@@ -41,6 +41,10 @@ final class ShellStrings {
     table.localizedString(forKey: key.rawValue, value: nil, table: nil)
   }
 
+  func text(_ key: CaptureHintStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
   func text(_ key: ComputerMonitorStringKey, count: Int) -> String {
     String(format: text(key), locale: Locale(identifier: language.rawValue), count)
   }

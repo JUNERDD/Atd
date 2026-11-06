@@ -6,7 +6,7 @@
   padding: 0 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--input);
+  background: var(--ata-surface-raised-wash);
   color: var(--ata-syntax-variable);
   font-size: 12px;
   font-weight: 500;
@@ -38,7 +38,7 @@
   cursor: pointer;
 }
 .composer-chip[data-action]:hover {
-  background: var(--accent);
+  background: var(--ata-material-selected);
 }
 .composer-chip[data-action='reveal']:focus-visible {
   outline: none;

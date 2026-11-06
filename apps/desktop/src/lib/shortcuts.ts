@@ -96,7 +96,10 @@ export function recordedHotkeyToAccelerator(hotkey: HotkeyChord, platform: strin
   return [...modifiers, key].join('+');
 }
 
-/** The keycap labels of an accelerator; a double-tap shows its modifier twice (⌘ ⌘). */
+/**
+ * The keycap labels of an accelerator: macOS key symbols there (Return is ↩, as in its menus), words
+ * elsewhere. A double-tap shows its modifier twice (⌘ ⌘).
+ */
 export function shortcutKeys(accelerator: string, platform: string): string[] {
   const tapped = doubleTapModifier(accelerator);
   if (tapped) return shortcutKeys(tapped, platform).flatMap((label) => [label, label]);
@@ -108,7 +111,7 @@ export function shortcutKeys(accelerator: string, platform: string): string[] {
     Super: mac ? '⌘' : platform === 'win32' ? 'Win' : 'Super',
     Alt: mac ? '⌥' : 'Alt',
     Shift: mac ? '⇧' : 'Shift',
-    Enter: mac ? 'Return' : 'Enter',
+    Enter: mac ? '↩' : 'Enter',
     Escape: mac ? '⎋' : 'Esc',
     Up: '↑',
     Down: '↓',

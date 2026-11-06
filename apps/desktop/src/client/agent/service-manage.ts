@@ -7,11 +7,13 @@ import {
   previewTask,
   replaceQueue,
   type AgentClientOptions,
+  type AgentHttpClient,
 } from '@atd/agent-client';
 import {
   CompactRefusalSchema,
   snapshotToolsFor,
   type CompactRefusal,
+  type ConfirmReplyRequest,
   type ForkTaskRequest,
   type ForkTaskResponse,
   type PreviewTaskRequest,
@@ -173,6 +175,23 @@ export async function replaceLiveQueue(
     await replaceQueue(options, taskId, followUp);
   } catch (error) {
     manageError(error);
+  }
+}
+
+/** Sends a permission reply, preserving the review guidance for expired or changed requests. */
+export async function confirmLiveRequest(
+  http: AgentHttpClient,
+  body: ConfirmReplyRequest,
+): Promise<void> {
+  try {
+    await http.confirm(body);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('410') || message.toLowerCase().includes('no longer pending'))
+      throw new Error('This request expired. Review the current task.');
+    if (message.includes('409') || message.toLowerCase().includes('changed'))
+      throw new Error('The request changed. Refresh and answer the latest version.');
+    throw error;
   }
 }
 

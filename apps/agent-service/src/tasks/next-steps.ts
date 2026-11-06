@@ -14,7 +14,7 @@ import {
 import { finalAnswer } from '../automations/outcome.js';
 import { clip } from '../automations/prompt.js';
 import type { EventLog } from '../event-log.js';
-import type { Ledger } from '../ledger.js';
+import { LedgerNotFound, type Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
 import type { ServicePaths } from '../storage.js';
 import { UsedRequestError } from './next-steps-parse.js';
@@ -51,6 +51,7 @@ const RunStatusData = Compile(RunStatusDataSchema);
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface Job {
+  runId: string;
   abort: AbortController;
   done: Promise<void>;
 }
@@ -96,6 +97,27 @@ export class NextStepJobs {
     this.jobs.get(taskId)?.abort.abort();
   }
 
+  /** Withdraws only this run's pending suggestions; a saved answer remains available. */
+  async cancelPending(taskId: string, runId: string): Promise<void> {
+    const changed = await this.deps.ledger.change((data) => {
+      const task = data.tasks.find((item) => item.id === taskId);
+      if (!task) throw new LedgerNotFound('Task', taskId);
+      if (!task.runs.some((run) => run.id === runId)) throw new LedgerNotFound('Run', runId);
+      if (task.nextSteps?.runId !== runId || task.nextSteps.status !== 'pending') return false;
+      delete task.nextSteps;
+      return true;
+    });
+    if (!changed) return;
+    // Commit first: a failed write leaves the pending request running and retryable. A start
+    // before the commit is caught here; one after it sees no pending marker and cannot start.
+    // Settlement shares the ledger's queue, so it either saved ready first or sees this removal.
+    const current = this.jobs.get(taskId);
+    const cancelled = current?.runId === runId ? current : undefined;
+    cancelled?.abort.abort();
+    this.deps.notify(taskId);
+    await cancelled?.done;
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.unsubscribe();
@@ -117,6 +139,7 @@ export class NextStepJobs {
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(TIMED_OUT), NEXT_STEPS_TIMEOUT_MS);
     const job: Job = {
+      runId,
       abort,
       done: this.generate(task, run, abort.signal)
         .catch((error: unknown) => {
