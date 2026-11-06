@@ -2,6 +2,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { showErrorToast } from '../../components/toast-store';
+import { openReleaseNotes, releaseNotesUrl } from '../updates/release-notes';
 import { aboutLinks } from './about-links';
 import { useAppAbout } from './use-app-about';
 import './about-settings.css';
@@ -12,15 +13,16 @@ const NO_BREAK_SPACE = String.fromCharCode(0xa0);
 
 /**
  * Settings › About, laid out like a Mac app's About window: the app icon, name and running version
- * centered over the one action, Check for Updates, and three plain text links at the page's
- * bottom. The check opens the shell's own update windows; development builds never update, so
+ * centered over Check for Updates, with website and release-note links at the page's bottom.
+ * The check opens the shell's own update windows; development builds never update, so
  * there the button stays visible but disabled. Links open in the default browser, which their
  * up-right arrows announce.
  */
 export function AboutSettings() {
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
   const app = useAppAbout();
   const about = app.state === 'ready' ? app.about : null;
+  const notesUrl = about && releaseNotesUrl(about.version, i18n.language);
   // The renderer's build mode matches the shell's: only Debug apps load the dev server.
   const development = import.meta.env.DEV;
 
@@ -81,6 +83,22 @@ export function AboutSettings() {
             </a>
           </Button>
         ))}
+        {about && notesUrl && (
+          <Button asChild variant="link" size="sm">
+            <a
+              href={notesUrl}
+              title={notesUrl}
+              data-settings-anchor="about-release-notes"
+              onClick={(event) => {
+                event.preventDefault();
+                void openReleaseNotes(about.version, notesUrl).catch(showErrorToast);
+              }}
+            >
+              {t('about.releaseNotes')}
+              <ArrowUpRight data-icon="inline-end" aria-hidden />
+            </a>
+          </Button>
+        )}
       </nav>
     </div>
   );

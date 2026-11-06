@@ -1027,6 +1027,8 @@
     "versionOnly": "Version {{version}}",
     "versionUnavailable": "Version unavailable",
     "developmentVersion": "{{version}} · Development build",
+    "releaseNotes": "View release notes",
+    "releaseNotesKeywords": "release notes changelog changes version update",
     "updatesTitle": "Check for updates",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",

@@ -297,6 +297,13 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.mcp',
   },
   {
+    id: 'about-release-notes',
+    section: 'about',
+    anchor: 'about-release-notes',
+    label: 'about.releaseNotes',
+    keywords: 'about.releaseNotesKeywords',
+  },
+  {
     id: 'about-check-updates',
     section: 'about',
     anchor: 'about-check-updates',
