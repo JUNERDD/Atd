@@ -7,17 +7,22 @@ import Vision
 /// Text recognition for the screen-context attachment (decision F1): Vision's accurate
 /// recognizer over the raw selection (annotations would only add noise), with language
 /// correction and automatic language detection over Simplified and Traditional Chinese and
-/// English. Recognition never holds a capture up for long: past ``timeout`` the capture goes on
-/// without text.
+/// English. The raw selection still shows what the capture's mosaics hide, so callers pass those
+/// areas and the text under them is dropped from the answer. Recognition never holds a capture
+/// up for long: past ``timeout`` the capture goes on without text.
 nonisolated enum ScreenText {
   static let timeout = Duration.seconds(3)
   static let languages = ["zh-Hans", "zh-Hant", "en-US"].map { Locale.Language(identifier: $0) }
 
-  /// The text in `image` in reading order, or no lines when recognition fails or runs past
-  /// `timeout`. The work runs off the main actor; a timed-out request is cancelled and its late
-  /// answer dropped.
-  static func lines(in image: CGImage, timeout: Duration = timeout) async -> [String] {
-    ScreenContext.readingOrder(await boxes(in: image, timeout: timeout) ?? [])
+  /// The text in `image` in reading order, without any a `redacted` area overlaps (fractions of
+  /// the image, as ``ScreenContext/redactedAreas(of:selection:)`` gives them), or no lines when
+  /// recognition fails or runs past `timeout`. The work runs off the main actor; a timed-out
+  /// request is cancelled and its late answer dropped.
+  static func lines(in image: CGImage, hiding redacted: [CGRect], timeout: Duration = timeout)
+    async -> [String]
+  {
+    let boxes = await boxes(in: image, timeout: timeout) ?? []
+    return ScreenContext.readingOrder(ScreenContext.unredacted(boxes, hiding: redacted))
   }
 
   /// The pieces of text in `image` with their boxes (normalized, top-left origin) and
