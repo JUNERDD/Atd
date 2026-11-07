@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import {
   COMPUTER_ADDONS,
+  WPS_SELECTION_ADDON,
   errorMessage,
   type AddonErrorCode,
   type AddonPhase,
@@ -108,7 +109,7 @@ export class AddonRegistry {
 
   /** Every add-on this build knows: the lock's ids and the computer engines, none retired. */
   ids(): string[] {
-    const ids = new Set([...COMPUTER_ADDONS, ...this.catalog.ids]);
+    const ids = new Set([...COMPUTER_ADDONS, WPS_SELECTION_ADDON, ...this.catalog.ids]);
     return [...ids].filter((id) => !RETIRED_ADDONS.has(id)).sort();
   }
 

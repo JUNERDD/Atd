@@ -1,9 +1,11 @@
 import {
   AddonListResponseSchema,
   AddonResponseSchema,
+  WpsSelectionStatusSchema,
   parse,
   type AddonListResponse,
   type AddonResponse,
+  type WpsSelectionStatus,
 } from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
@@ -14,6 +16,20 @@ import type { AgentClientOptions } from './types.js';
  */
 
 const addonPath = (id: string, suffix = '') => `/v1/addons/${encodeURIComponent(id)}${suffix}`;
+
+/** Connection status, without document or selection metadata. */
+export function getWpsSelectionStatus(options: AgentClientOptions): Promise<WpsSelectionStatus> {
+  return manageRequest(options, '/v1/integrations/wps-selection/status', 'GET', undefined, (json) =>
+    parse(WpsSelectionStatusSchema, json),
+  );
+}
+
+/** Retries local registration after WPS has created its profile or a setup error is resolved. */
+export function reconnectWpsSelection(options: AgentClientOptions): Promise<WpsSelectionStatus> {
+  return manageRequest(options, '/v1/integrations/wps-selection/reconnect', 'POST', {}, (json) =>
+    parse(WpsSelectionStatusSchema, json),
+  );
+}
 
 /** Every add-on this build knows, with its install state. */
 export function getAddons(

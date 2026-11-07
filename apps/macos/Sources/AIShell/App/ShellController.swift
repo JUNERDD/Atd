@@ -152,7 +152,7 @@ public final class ShellController {
     summoner = Summoner(
       panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
       isCapturing: { screenshots.isCapturing }, arbiter: arbiter)
-    toolbar = SelectionToolbarController(trust: trust)
+    toolbar = SelectionToolbarController(trust: trust, services: services)
     miniPanel = MiniPanelController(defaults: defaults)
     // After the panel's web view: WebKit's static data store API needs one to exist.
     userApps = UserAppWindows(

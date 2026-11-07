@@ -86,5 +86,6 @@ export * from './computer-control.js';
 export * from './computer-screen.js';
 export * from './computer-http.js';
 export * from './addons.js';
+export * from './wps-selection.js';
 
 export * from './computer-access.js';

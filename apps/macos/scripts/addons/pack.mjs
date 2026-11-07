@@ -25,6 +25,7 @@ import { parseArgs } from 'node:util';
 import { nativeHostArch } from '../arch.mjs';
 import { EXECUTABLE_MODE, FILE_MODE, writeArchive } from './archive.mjs';
 import { browserPayload } from './browser.mjs';
+import { wpsSelectionPayload } from './wps-selection.mjs';
 import { ARCHIVE_PATTERN, LOCK_FILE, MANIFEST_FILE, archiveName, releaseUrls } from './layout.mjs';
 import { checkLock, checkManifest } from './schema.mjs';
 
@@ -75,7 +76,10 @@ export async function packAddons({ arch, outDir, urls }) {
   for (const name of await readdir(outDir))
     if (ARCHIVE_PATTERN.test(name) || name === LOCK_FILE) await rm(path.join(outDir, name));
   const addons = [];
-  for (const payload of [await browserPayload({ repoRoot })]) {
+  for (const payload of [
+    await browserPayload({ repoRoot }),
+    await wpsSelectionPayload({ repoRoot }),
+  ]) {
     const { bytes, unpackedSize } = archive(payload, arch);
     const artifact = { id: payload.id, version: payload.version, arch, sha256: sha256(bytes) };
     const file = path.join(outDir, archiveName(artifact));

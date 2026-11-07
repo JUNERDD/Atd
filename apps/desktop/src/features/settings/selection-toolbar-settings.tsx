@@ -18,6 +18,7 @@ import { SelectionToolbarActivationRows } from './selection-toolbar-activation';
 import { SelectionToolbarAppearanceRows } from './selection-toolbar-appearance';
 import { SettingsSwitchRow } from './settings-switch-row';
 import { useSelectionToolbarSettings } from './use-selection-toolbar-settings';
+import { WpsSelectionAddon } from '../addons/wps-selection-addon';
 
 /** An error under the row that caused it, announced when it appears. */
 function RowError({ text }: { text: string | undefined }) {
@@ -91,6 +92,7 @@ export function SelectionToolbarSettings({ snapshot }: { snapshot: SettingsSnaps
           )}
         </ItemGroup>
       </Card>
+      <WpsSelectionAddon />
       <Card
         size="sm"
         className="settings-card"

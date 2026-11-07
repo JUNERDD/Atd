@@ -38,7 +38,8 @@ nonisolated struct SelectionSurface {
   /// The nearest cell-based table that actually reports selected cells. A text editor inside
   /// a cell owns its text selection and must never inherit the surrounding grid selection.
   /// Lists, outlines and thumbnail grids can also expose AXSelectedCells, but their selected
-  /// items are not spreadsheet regions. This checks roles and counts, never cell values.
+  /// items are not spreadsheet regions. Native row-selection tables also derive read-only
+  /// selected cells from their writable row selection. Check capabilities, never cell values.
   func selectedCellContainer() -> AXUIElement? {
     if role.map(WriteTargetWritability.textRoles.contains) == true { return nil }
     let deadline = ContinuousClock.now + .milliseconds(150)
@@ -52,6 +53,8 @@ nonisolated struct SelectionSurface {
         if AXUIElementGetAttributeValueCount(
           current.element, "AXSelectedCells" as CFString, &count) == .success, count > 0
         {
+          let rowSelectionOnly = current.selectsRowsOnly
+          guard !rowSelectionOnly else { return nil }
           return current.element
         }
         return nil
@@ -63,6 +66,19 @@ nonisolated struct SelectionSurface {
       current = SelectionSurface(parent as! AXUIElement)
     }
     return nil
+  }
+
+  /// AppKit navigation tables expose selected cells even when only entire rows are selectable.
+  /// Requiring an answered capability check preserves custom cell-selection protocols without
+  /// inferring semantics from an app name, column count or the current selection's size.
+  private var selectsRowsOnly: Bool {
+    guard attributes.contains(kAXSelectedRowsAttribute) else { return false }
+    var rows: DarwinBoolean = false
+    var cells: DarwinBoolean = false
+    return AXUIElementIsAttributeSettable(element, kAXSelectedRowsAttribute as CFString, &rows)
+      == .success && rows.boolValue
+      && AXUIElementIsAttributeSettable(element, "AXSelectedCells" as CFString, &cells) == .success
+      && !cells.boolValue
   }
 
   private static let structuredAttributes: Set<String> = [

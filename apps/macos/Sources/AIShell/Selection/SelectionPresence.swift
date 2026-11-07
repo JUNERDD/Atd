@@ -30,6 +30,10 @@ package nonisolated struct SelectionPresence: Sendable {
   /// A toolbar gesture supplies its starting point in Quartz screen coordinates. Focus-only
   /// checks (such as the answer card's write target) do not depend on the pointer.
   package func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
+    probe(gestureAt: origin, wps: nil)
+  }
+
+  func probe(gestureAt origin: CGPoint?, wps: WpsSelectionEvidence?) -> SelectionProbe {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
     Self.wakeWebContent(app)
@@ -44,6 +48,7 @@ package nonisolated struct SelectionPresence: Sendable {
 
     let surface = SelectionSurface(focused)
     if let probe = textProbe(focused) { return probe }
+    if let wps, let probe = WpsSelectionProbe.probe(app: app, evidence: wps) { return probe }
     if let table = surface.selectedCellContainer() {
       if let origin, !gestureTargets(table, at: origin, in: app) { return .none }
       return .cells
@@ -198,7 +203,10 @@ extension SelectionPresence {
 
   /// Checks off the main thread and gives up after `limit`, a net under the per-message
   /// timeouts; a late answer is dropped.
-  static func check(pid: pid_t, gestureAt origin: CGPoint, limit: Duration = .milliseconds(300))
+  static func check(
+    pid: pid_t, gestureAt origin: CGPoint, wps: WpsSelectionEvidence? = nil,
+    limit: Duration = .milliseconds(300)
+  )
     async
     -> SelectionProbe
   {
@@ -212,7 +220,7 @@ extension SelectionPresence {
     return await Deadline.value(within: limit, fallback: .none) {
       await withCheckedContinuation { continuation in
         queue.async {
-          let probe = presence.probe(gestureAt: origin)
+          let probe = presence.probe(gestureAt: origin, wps: wps)
           busy.withLock { $0 = false }
           continuation.resume(returning: probe)
         }

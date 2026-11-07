@@ -306,7 +306,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerAutomationRoutes(app, deps.automations);
   registerComputerRoutes(app, deps.computer);
-  registerAddonRoutes(app, deps.addons);
+  registerAddonRoutes(app, {
+    dataDir: deps.config.paths.root,
+    addons: deps.addons,
+    settings: deps.settings,
+  });
   registerTaskNotices(app, deps);
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,

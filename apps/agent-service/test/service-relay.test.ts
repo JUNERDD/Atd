@@ -83,6 +83,7 @@ function isShellPath(pathPattern: string): boolean {
     pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/folders/register' ||
     pathPattern === '/v1/computer/bindings' ||
+    pathPattern === '/v1/integrations/wps-selection' ||
     pathPattern === '/v1/tasks/:taskId/views/:callId' ||
     pathPattern === '/v1/tasks/:taskId/views/:callId/widget' ||
     pathPattern === '/v1/stream'

@@ -42,11 +42,14 @@ export function AddonCard({
   title,
   description,
   icon = <Puzzle />,
+  children,
 }: {
   id: string;
   title: string;
   description: string;
   icon?: ReactNode;
+  /** Integration-specific connection status; install/remove behavior stays with this card. */
+  children?: ReactNode;
 }) {
   const { t } = useTranslation('addons');
   const card = useAddonCard(id);
@@ -134,6 +137,7 @@ export function AddonCard({
               </ItemTitle>
               <ItemDescription className="whitespace-normal">{description}</ItemDescription>
               <AddonDetail state={state} addon={card.addon} loadError={card.loadError} />
+              {children}
             </ItemContent>
             <ItemActions className="shrink-0">
               {action}
