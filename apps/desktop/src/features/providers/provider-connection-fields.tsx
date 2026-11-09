@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, TriangleAlert } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
@@ -22,6 +22,7 @@ import type {
   ProviderCatalogEntry,
 } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
+import { isInsecureEndpoint } from '../../client/providers/configuration';
 import type { ConnectionDraftPatch } from './use-provider-draft';
 import { CustomModels } from './custom-models';
 
@@ -138,6 +139,12 @@ export function ProviderConnectionFields({
                 onChange={(event) => change({ baseUrl: event.target.value })}
                 placeholder="https://your-provider.example/v1"
               />
+              {isInsecureEndpoint(draft.baseUrl) && (
+                <output className="provider-transport-warning">
+                  <TriangleAlert aria-hidden="true" />
+                  <span>{t('form.insecureHttpWarning')}</span>
+                </output>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

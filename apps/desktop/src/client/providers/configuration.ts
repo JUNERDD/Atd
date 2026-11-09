@@ -3,18 +3,27 @@ import type { ConnectionConfig } from './schema';
 import { CLOUD_FIELDS, isCustom } from './metadata';
 export { CLOUD_FIELDS, isCustom, isCloud, isAmbient, LOCAL_PROVIDERS } from './metadata';
 
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '[::1]' || /^127\.\d+\.\d+\.\d+$/.test(hostname);
+}
+
 export function endpoint(value: string): string {
   const source = value.trim();
   const url = new URL(source);
-  if (!/^https?:\/\//.test(source) || /[\s\\?#]/.test(source) || url.username || url.password)
+  if (!/^https?:\/\//.test(source)) throw new Error('Use an HTTP or HTTPS endpoint.');
+  if (/[\s\\?#]/.test(source) || url.username || url.password)
     throw new Error('Endpoints cannot contain credentials, queries or fragments.');
-  const local =
-    url.hostname === 'localhost' ||
-    url.hostname === '[::1]' ||
-    /^127\.\d+\.\d+\.\d+$/.test(url.hostname);
-  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local))
-    throw new Error('Use HTTPS, or HTTP with a loopback address.');
   return url.href.replace(/\/+$/, '');
+}
+
+/** Plain HTTP outside loopback is allowed, but the form warns before it is saved. */
+export function isInsecureEndpoint(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'http:' && !isLoopbackHost(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function validateConfig(config: ConnectionConfig) {
