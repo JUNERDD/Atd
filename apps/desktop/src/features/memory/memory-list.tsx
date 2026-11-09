@@ -24,6 +24,7 @@ const CARD_BATCH = 60;
 export function MemoryList({
   units,
   group = 'all',
+  totalUnits = units.length,
   query,
   busyIds,
   onClearSearch,
@@ -34,6 +35,8 @@ export function MemoryList({
 }: {
   units: readonly MemoryUnit[];
   group?: MemoryGroup;
+  /** Every memory, before the group filter; zero means there is nothing saved at all. */
+  totalUnits?: number;
   query: string;
   /**
    * The units being saved, turned on or off, or deleted, whose cards keep focus but ignore input;
@@ -57,7 +60,7 @@ export function MemoryList({
   const { count, sentinel } = useRevealMore(shown.length, CARD_BATCH, `${group}:${searched}`);
   if (!shown.length) {
     const searching = Boolean(searched.trim());
-    const filtered = group !== 'all';
+    const filtered = totalUnits > 0 && group !== 'all';
     return (
       <div className="settings-extension-empty">
         <Empty>

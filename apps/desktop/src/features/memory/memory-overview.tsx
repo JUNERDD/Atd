@@ -124,6 +124,7 @@ export function MemoryOverview({
                 <MemoryList
                   units={shown}
                   group={group}
+                  totalUnits={units.length}
                   query={search.query}
                   busyIds={writes.busyIds}
                   onClearSearch={onClearSearch}
