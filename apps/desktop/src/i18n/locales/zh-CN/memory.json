@@ -10,7 +10,7 @@
       "user": "用户画像",
       "preference": "偏好与事实",
       "correction": "纠正与经验",
-      "toolQuirk": "工具怪癖"
+      "toolQuirk": "工具偏好"
     },
     "learning": {
       "label": "自动学习",
@@ -63,7 +63,7 @@
       "insight": "心得",
       "preference": "偏好",
       "convention": "约定",
-      "tool-quirk": "工具特性"
+      "tool-quirk": "工具偏好"
     },
     "activation": {
       "core": {

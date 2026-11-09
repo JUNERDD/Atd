@@ -10,7 +10,7 @@
       "user": "User profile",
       "preference": "Preferences and facts",
       "correction": "Corrections and learnings",
-      "toolQuirk": "Tool quirks"
+      "toolQuirk": "Tool preferences"
     },
     "learning": {
       "label": "Learn automatically",
@@ -63,7 +63,7 @@
       "insight": "Insight",
       "preference": "Preference",
       "convention": "Convention",
-      "tool-quirk": "Tool quirk"
+      "tool-quirk": "Tool preferences"
     },
     "activation": {
       "core": {
