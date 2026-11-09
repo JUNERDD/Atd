@@ -347,6 +347,21 @@
   gap: 8px;
   padding: 4px 4px 16px;
 }
+.memory-filters {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 0 4px 8px;
+}
+.memory-filters [data-slot='toggle-group'] {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.memory-filter-count {
+  margin-left: 6px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
 
 .editor-heading {
   flex-shrink: 0;

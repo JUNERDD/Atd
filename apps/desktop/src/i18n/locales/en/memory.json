@@ -4,6 +4,14 @@
     "description": "Preferences that help the agent work the way you do.",
     "searchLabel": "Search memory",
     "searchPlaceholder": "Search memory…",
+    "groups": {
+      "label": "Filter memories",
+      "all": "All",
+      "user": "User profile",
+      "preference": "Preferences and facts",
+      "correction": "Corrections and learnings",
+      "toolQuirk": "Tool quirks"
+    },
     "learning": {
       "label": "Learn automatically",
       "description": "Save stable preferences and clear corrections as you work. When off, nothing new is saved, and the agent can still use saved memories."
@@ -37,8 +45,10 @@
       "delete": "Delete",
       "loading": "Loading memory…",
       "empty": "No saved memories yet. Share a lasting preference as you work.",
+      "emptyGroup": "No memories in this group yet.",
       "noMatches": "No memories match “{{query}}”",
-      "clearSearch": "Clear search"
+      "clearSearch": "Clear search",
+      "showAll": "Show all memories"
     },
     "source": {
       "user": "You",

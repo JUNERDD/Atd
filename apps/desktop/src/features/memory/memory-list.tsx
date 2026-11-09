@@ -8,6 +8,7 @@ import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { ListCardGrid } from '../../components/list-card';
 import { useRevealMore } from '../../components/use-reveal-more';
 import { MemoryCard } from './memory-card';
+import type { MemoryGroup } from './memory-groups';
 
 /** Cards mounted at first, and added each time the end of the grid nears the scroll viewport. */
 const CARD_BATCH = 60;
@@ -22,14 +23,17 @@ const CARD_BATCH = 60;
  */
 export function MemoryList({
   units,
+  group = 'all',
   query,
   busyIds,
   onClearSearch,
+  onClearFilter,
   onOpen,
   onToggle,
   onDelete,
 }: {
   units: readonly MemoryUnit[];
+  group?: MemoryGroup;
   query: string;
   /**
    * The units being saved, turned on or off, or deleted, whose cards keep focus but ignore input;
@@ -37,6 +41,7 @@ export function MemoryList({
    */
   busyIds: ReadonlySet<string>;
   onClearSearch: () => void;
+  onClearFilter?: () => void;
   onOpen: (unit: MemoryUnit) => void;
   onToggle: (unit: MemoryUnit, enabled: boolean) => void;
   onDelete: (unit: MemoryUnit) => void;
@@ -49,9 +54,10 @@ export function MemoryList({
     const match = matchFields(searched, { description, name, body });
     return match || !searched.trim() ? [{ unit, match }] : [];
   });
-  const { count, sentinel } = useRevealMore(shown.length, CARD_BATCH, searched);
+  const { count, sentinel } = useRevealMore(shown.length, CARD_BATCH, `${group}:${searched}`);
   if (!shown.length) {
-    const searching = units.length > 0;
+    const searching = Boolean(searched.trim());
+    const filtered = group !== 'all';
     return (
       <div className="settings-extension-empty">
         <Empty>
@@ -60,13 +66,15 @@ export function MemoryList({
             <EmptyTitle>
               {searching
                 ? t('memory.list.noMatches', { query: searched.trim() })
-                : t('memory.list.empty')}
+                : filtered
+                  ? t('memory.list.emptyGroup')
+                  : t('memory.list.empty')}
             </EmptyTitle>
           </EmptyHeader>
-          {searching && (
+          {(searching || (filtered && onClearFilter)) && (
             <EmptyContent>
-              <Button variant="outline" onClick={onClearSearch}>
-                {t('memory.list.clearSearch')}
+              <Button variant="outline" onClick={searching ? onClearSearch : onClearFilter}>
+                {searching ? t('memory.list.clearSearch') : t('memory.list.showAll')}
               </Button>
             </EmptyContent>
           )}

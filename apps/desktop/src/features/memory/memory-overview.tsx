@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MemoryProblem, MemoryProposal, MemoryUnit } from '@atd/agent-contracts';
@@ -12,6 +12,8 @@ import { LoadingPlaceholder } from '../../components/loading-placeholder';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { MemoryAddMenu } from './memory-add-menu';
+import { MemoryFilters } from './memory-filters';
+import { inMemoryGroup, memoryGroupCounts, type MemoryGroup } from './memory-groups';
 import { MemoryLearningFooter } from './memory-learning-footer';
 import { MemoryList } from './memory-list';
 import { MemorySuggestions } from './memory-suggestions';
@@ -70,7 +72,11 @@ export function MemoryOverview({
   onAccept: (proposal: MemoryProposal) => void;
 }) {
   const { t } = useTranslation('memory');
+  const [group, setGroup] = useState<MemoryGroup>('all');
   const unavailable = !snapshot || Boolean(snapshot.error);
+  const units = snapshot?.units ?? [];
+  const counts = memoryGroupCounts(units);
+  const shown = units.filter((unit) => inMemoryGroup(unit, group));
   return (
     <>
       <SettingsHeading
@@ -93,6 +99,9 @@ export function MemoryOverview({
         />
         <MemoryAddMenu paused={Boolean(snapshot?.paused)} unavailable={unavailable} onNew={onNew} />
       </SettingsHeading>
+      {snapshot && !snapshot.error && (
+        <MemoryFilters value={group} counts={counts} onChange={setGroup} />
+      )}
       {/* The panel owns the scrollbar; the heading and search stay put above it. */}
       <ScrollArea
         className="memory-scroll settings-page-scroll"
@@ -113,10 +122,12 @@ export function MemoryOverview({
               />
               {snapshot.error && !snapshot.units.length ? null : (
                 <MemoryList
-                  units={snapshot.units}
+                  units={shown}
+                  group={group}
                   query={search.query}
                   busyIds={writes.busyIds}
                   onClearSearch={onClearSearch}
+                  onClearFilter={() => setGroup('all')}
                   onOpen={onOpen}
                   // The switch flipping is the feedback; only a failure needs a message.
                   onToggle={writes.toggle}
