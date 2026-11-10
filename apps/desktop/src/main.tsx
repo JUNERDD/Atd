@@ -1,7 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ScrollShadowDefaultContext } from '@atd/ui/lib/scroll-shadow-context';
 import '@fontsource-variable/inter';
 import '@atd/ui/styles.css';
+import './window-scroll.css';
 import './styles.css';
 import i18n, { initialLanguageReady } from './i18n';
 import { LoadingPlaceholder } from './components/loading-placeholder';
@@ -67,9 +69,11 @@ async function renderWindow(native: NativeBridge) {
     );
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <React.Suspense fallback={fallback}>
-        <WindowRoot />
-      </React.Suspense>
+      <ScrollShadowDefaultContext.Provider value={windowKind !== 'panel'}>
+        <React.Suspense fallback={fallback}>
+          <WindowRoot />
+        </React.Suspense>
+      </ScrollShadowDefaultContext.Provider>
     </React.StrictMode>,
   );
 }

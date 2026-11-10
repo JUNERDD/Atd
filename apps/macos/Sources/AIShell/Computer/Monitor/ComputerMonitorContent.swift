@@ -16,7 +16,7 @@ final class ComputerMonitorContent: NSView {
   /// The enlarged source's id in focus mode, nil in grid mode.
   private(set) var focusedId: String?
 
-  private let scroll = NSScrollView()
+  private let scroll = FloatingNativeScrollView()
   private let grid = FlippedView()
   private let stage = ComputerMonitorStage()
   private let empty = ComputerMonitorEmptyView()
@@ -30,8 +30,6 @@ final class ComputerMonitorContent: NSView {
     super.init(frame: frame)
     wantsLayer = true
     scroll.drawsBackground = false
-    scroll.hasVerticalScroller = true
-    scroll.autohidesScrollers = true
     // The scroll view starts below the toolbar (``layout()``), so nothing scrolls under the
     // title bar and no inset is needed.
     scroll.automaticallyAdjustsContentInsets = false

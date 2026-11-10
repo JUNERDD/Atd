@@ -68,10 +68,8 @@ final class ConfirmationPrompter {
   /// The detail as selectable monospaced text, wrapped to the alert and scrolling beyond
   /// ``detailMaxHeight``.
   private static func detailView(_ text: String) -> NSView {
-    let scroll = NSScrollView(
+    let scroll = FloatingNativeScrollView(
       frame: NSRect(x: 0, y: 0, width: detailWidth, height: detailMaxHeight))
-    scroll.hasVerticalScroller = true
-    scroll.autohidesScrollers = true
     scroll.borderType = .bezelBorder
     let size = scroll.contentSize
     let view = NSTextView(frame: NSRect(origin: .zero, size: size))

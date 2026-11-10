@@ -127,8 +127,7 @@ struct TaskActivityTextAction<Trailing: View>: View {
     }
     .buttonStyle(TaskActivityTextActionStyle(hovered: hovered && isEnabled))
     .opacity(isEnabled ? 1 : 0.7)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .modifier(FloatingHover { hovered = $0 })
     .help(tooltip ?? title)
   }
 }

@@ -122,8 +122,7 @@ private struct TaskActivityChoice: View {
     .foregroundStyle(.primary)
     .opacity(isEnabled || busy != nil ? 1 : 0.55)
     .allowsHitTesting(busy == nil)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .modifier(FloatingHover(enabled: busy == nil) { hovered = $0 })
     .help(title)
     .accessibilityLabel(Text(verbatim: label))
     .task(id: busy != nil) {

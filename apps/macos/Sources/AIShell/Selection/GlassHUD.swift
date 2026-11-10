@@ -17,8 +17,7 @@ import AppKit
 ///   the bottom edge), changes in place without one, and fades out on ``exit()``;
 /// - timing: a show `lasting` a duration exits after it unless something showed meanwhile;
 /// - hover (``SelectionToolbarHover``): the button wash and pointing hand, the open hand on the
-///   grip; tracking pauses while the pointer rests away and the window's ``HoverWakeView``
-///   wakes it as the pointer comes near, so it never watches the pointer across other apps;
+///   grip; tracking pauses while the pointer rests away and wakes as the pointer approaches;
 /// - language: content shown until further notice is built again in a new shell language, a
 ///   timed one just runs out;
 /// - accessibility: the capsule is one group that reads the content's label.
@@ -143,9 +142,8 @@ final class GlassHUD: NSObject {
     let size = bar.fittingSize
     let capsule = NSRect(origin: dropped ?? home(size: size), size: size)
     let frame = clamped(capsule).insetBy(dx: -Self.inset, dy: -Self.inset)
-    let container = HoverWakeView(frame: NSRect(origin: .zero, size: frame.size))
+    let container = NSView(frame: NSRect(origin: .zero, size: frame.size))
     container.wantsLayer = true
-    container.onPointerNear = { [weak self] in self?.hover.pointerMoved() }
     bar.frame = container.bounds.insetBy(dx: Self.inset, dy: Self.inset)
     container.addSubview(bar)
     window.contentView = container
@@ -210,23 +208,4 @@ final class GlassHUD: NSObject {
       screen.map { .init(frame: ScreenRect($0.frame), workArea: ScreenRect($0.visibleFrame)) }
     }
   }
-}
-
-/// The content of a capsule window that stays up while the pointer is elsewhere (``GlassHUD``):
-/// reports the pointer entering it (the capsule or its margin), which wakes paused hover
-/// tracking. Entered events reach an inactive app late, which is fine for a wake-up; the
-/// tracking itself reads the pointer every frame.
-final class HoverWakeView: NSView {
-  var onPointerNear: (() -> Void)?
-
-  override func updateTrackingAreas() {
-    super.updateTrackingAreas()
-    for area in trackingAreas { removeTrackingArea(area) }
-    addTrackingArea(
-      NSTrackingArea(
-        rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-        owner: self))
-  }
-
-  override func mouseEntered(with event: NSEvent) { onPointerNear?() }
 }

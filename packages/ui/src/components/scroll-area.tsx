@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui';
 import { cn } from '@atd/ui/lib/utils';
+import { ScrollShadowDefaultContext } from '@atd/ui/lib/scroll-shadow-context';
 
 type ScrollOrientation = 'vertical' | 'horizontal' | 'both';
 
@@ -42,13 +43,13 @@ function ScrollAreaViewport({
   ref,
   orientation = 'vertical',
   gutter = 'auto',
-  scrollShadow = false,
+  scrollShadow,
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Viewport> & {
   orientation?: ScrollOrientation;
   gutter?: ScrollGutter;
-  /** Soft content fade at the scrolled edges revealing further content (vertical only). */
-  scrollShadow?: boolean;
+  /** Soft content fade at the scrolled edges; undefined inherits the host surface's default. */
+  scrollShadow?: boolean | undefined;
 }) {
   const node = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
@@ -67,7 +68,8 @@ function ScrollAreaViewport({
   );
   const scrollsY = orientation !== 'horizontal';
   const scrollsX = orientation !== 'vertical';
-  const shadows = scrollShadow && scrollsY;
+  const defaultShadow = React.useContext(ScrollShadowDefaultContext);
+  const shadows = (scrollShadow ?? defaultShadow) && scrollsY;
   const state = useViewportState(node, {
     edges: shadows,
     overflowY: gutter === 'auto' && scrollsY,
@@ -101,7 +103,7 @@ function ScrollArea({
   viewportProps,
   orientation = 'vertical',
   gutter = 'auto',
-  scrollShadow = false,
+  scrollShadow,
   ...props
 }: React.ComponentProps<typeof ScrollAreaRoot> & {
   viewportClassName?: string;
@@ -168,9 +170,12 @@ interface ViewportWatch {
 function readViewport(node: HTMLDivElement, watch: ViewportWatch): number {
   let state = 0;
   if (watch.edges) {
-    if (node.scrollTop > SHADOW_EDGE_PX) state |= MORE_ABOVE;
-    if (node.scrollTop + node.clientHeight < node.scrollHeight - SHADOW_EDGE_PX)
-      state |= MORE_BELOW;
+    const maxScroll = node.scrollHeight - node.clientHeight;
+    // Overscroll or a transient offset cannot reveal an edge when the content actually fits.
+    if (maxScroll > SHADOW_EDGE_PX) {
+      if (node.scrollTop > SHADOW_EDGE_PX) state |= MORE_ABOVE;
+      if (node.scrollTop < maxScroll - SHADOW_EDGE_PX) state |= MORE_BELOW;
+    }
   }
   if (watch.overflowY && node.offsetHeight < node.scrollHeight) state |= OVERFLOW_Y;
   if (watch.overflowX && node.offsetWidth < node.scrollWidth) state |= OVERFLOW_X;

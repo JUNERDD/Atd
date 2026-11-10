@@ -30,7 +30,6 @@ struct TaskActivityEntry: View {
     .onChange(of: model.entryInteractive) { _, allowed in
       if !allowed { model.entryPressed = false }
     }
-    .pointerStyle(.link)
     .accessibilityLabel(model.labels.text(.activityTitle))
     .accessibilityValue(
       model.labels.format(

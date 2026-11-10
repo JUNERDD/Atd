@@ -34,7 +34,6 @@ struct TaskActivityCard: View {
             .task(id: model.returning) { await bringBack(with: proxy) }
         }
       }
-      .scrollIndicators(.never)
       .scrollBounceBehavior(.basedOnSize)
       .frame(height: model.contentViewport)
       .id(model.page.map { "page/\($0.key.taskID)/\($0.key.runID)" } ?? "list")

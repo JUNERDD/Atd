@@ -100,8 +100,7 @@ struct TaskActivityRequestBox<Trailing: View>: View {
       }
       .buttonStyle(.plain)
       .foregroundStyle(.primary)
-      .onHover { hovered = $0 }
-      .pointerStyle(.link)
+      .modifier(FloatingHover { hovered = $0 })
       .help(labels.text(.activityDetails))
       trailing()
     }
@@ -156,8 +155,7 @@ struct TaskActivityLink: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(TaskActivityDecisionStyle(kind: .plain, hovered: hovered))
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover { hovered = $0 })
     .fixedSize()
   }
 }

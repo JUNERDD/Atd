@@ -53,9 +53,6 @@ final class SelectionToolbarController {
   /// Keys, scrolls and other buttons, watched only while a check is pending or the toolbar
   /// shows: each makes a check stale or hides the toolbar.
   private var interruptMonitor: Any?
-  /// Pointer moves over other apps, watched only while the toolbar shows: hover tracking pauses
-  /// while the pointer rests away from the toolbar and its menu, and needs a move to resume.
-  private var moveMonitor: Any?
   private var activationObserver: NSObjectProtocol?
   private var pressedAt: CGPoint?
   private var pressedTime: TimeInterval = 0
@@ -307,29 +304,16 @@ final class SelectionToolbarController {
     var bounds: CGRect?
     if case .selected(_, let rect) = probe { bounds = rect }
     panel.show(selection: bounds, pointer: pointer)
-    watchPointer()
     return true
   }
 
   // MARK: Dismissal
-
-  /// Wakes hover tracking on pointer moves over other apps; the pointer's distance from the
-  /// toolbar never dismisses it.
-  private func watchPointer() {
-    guard moveMonitor == nil else { return }
-    moveMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) {
-      [weak self] _ in
-      MainActor.assumeIsolated { self?.panel.pointerMoved() }
-    }
-  }
 
   /// Hides the toolbar and drops any check still running.
   private func dismiss() {
     generation += 1
     pending?.cancel()
     pending = nil
-    if let moveMonitor { NSEvent.removeMonitor(moveMonitor) }
-    moveMonitor = nil
     practice.clear()
     stopWatchingInterruptions()
     panel.hide()

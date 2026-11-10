@@ -192,12 +192,6 @@ final class SelectionToolbarPanel: NSObject {
     return (container, frame.y >= middle ?? frame.y)
   }
 
-  /// The pointer moved over another app (the controller's dismissal monitor), which wakes
-  /// hover tracking, for the capsule and the menu alike, if it paused.
-  func pointerMoved() {
-    hover.pointerMoved()
-  }
-
   /// Takes the toolbar and its menu off the screen.
   func hide() {
     hover.stop()

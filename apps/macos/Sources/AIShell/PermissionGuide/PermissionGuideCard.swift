@@ -72,7 +72,7 @@ final class PermissionGuideCard: NSView, NSDraggingSource {
     shape.stroke()
   }
 
-  override func resetCursorRects() { addCursorRect(bounds, cursor: .openHand) }
+  override func resetCursorRects() { addCursorRect(bounds, cursor: PointerRole.grab.cursor) }
 
   // The panel never activates Atd, so the first click already picks the card up.
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

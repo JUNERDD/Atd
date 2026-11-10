@@ -62,9 +62,23 @@ public struct AnswerOverflow: Equatable, Sendable {
     offset: Double, content: Double, container: Double, insetTop: Double = 0,
     insetBottom: Double = 0
   ) {
+    let minOffset = -insetTop
     let maxOffset = content + insetBottom - container
-    top = offset + insetTop > Self.tolerance
+    // Transforms can shift the reported offset while the document still fits its viewport.
+    // Such movement is not overflow and must not reveal a fade or a scroll indicator.
+    guard maxOffset - minOffset > Self.tolerance else { return }
+    top = offset > minOffset + Self.tolerance
     bottom = offset < maxOffset - Self.tolerance
+  }
+
+  /// Keep each active fade at its usual length when possible. In a very short viewport the
+  /// opaque edge yields first; if both edges fade they share the available space.
+  public func fadeLengths(for available: Double) -> (top: Double, bottom: Double) {
+    let size = max(0, available)
+    let length = min(Self.fadeHeight, size)
+    if size >= Self.fadeHeight * 2 { return (length, length) }
+    if top != bottom { return top ? (length, size - length) : (size - length, length) }
+    return (size / 2, size / 2)
   }
 }
 

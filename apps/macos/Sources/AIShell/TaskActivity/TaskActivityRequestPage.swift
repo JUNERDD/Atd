@@ -151,8 +151,7 @@ private struct TaskActivityDetailBox: View {
             shape: RoundedRectangle(cornerRadius: 6, style: .continuous), hovered: hovered)
         )
         .foregroundStyle(hovered ? Color.primary : Color.secondary)
-        .onHover { hovered = $0 }
-        .pointerStyle(.link)
+        .modifier(FloatingHover { hovered = $0 })
         .help(labels.text(copied ? .activityCopied : .activityCopy))
         .accessibilityLabel(Text(verbatim: labels.text(copied ? .activityCopied : .activityCopy)))
         .padding(3)

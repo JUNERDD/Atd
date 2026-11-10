@@ -3,12 +3,10 @@ import AppKit
 
 /// The welcome guide owns its text selection; no global monitor or AX read can observe it.
 /// Its page shows and hides the toolbar as the selection changes, with no dismissal monitor.
-/// Local pointer moves resume hover tracking over this app's windows. The controller retains
-/// the activation gate and hands this text to Ask Atd, which quotes it into a draft and sends
+/// The controller retains the activation gate and hands this text to Ask Atd, which quotes it into a draft and sends
 /// nothing. Practice commands only dismiss the toolbar, so the guide never spends tokens.
 final class SelectionToolbarPractice {
   private(set) var text: String?
-  private var moveMonitor: Any?
 
   func show(selection: CGRect, text: String, panel: SelectionToolbarPanel) {
     self.text = text
@@ -21,16 +19,9 @@ final class SelectionToolbarPractice {
       ? mouse : CGPoint(x: selection.midX, y: selection.midY)
     panel.show(
       selection: CaptureCoordinates.flip(selection, primaryHeight: primaryHeight), pointer: pointer)
-    moveMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) {
-      [weak panel] event in
-      MainActor.assumeIsolated { panel?.pointerMoved() }
-      return event
-    }
   }
 
   func clear() {
-    if let moveMonitor { NSEvent.removeMonitor(moveMonitor) }
-    moveMonitor = nil
     text = nil
   }
 }
