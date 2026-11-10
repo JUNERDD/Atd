@@ -11,7 +11,7 @@
   "unavailable": "暂不提供",
   "detail": {
     "size": "下载大小：{{size}}。",
-    "installed": "已安装 · 版本 {{version}}",
+    "installed": "已安装 · {{version}}",
     "outdated": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。",
     "outdatedSize": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。下载大小：{{size}}。",
     "unavailable": "当前版本的 Atd 未为你的 Mac 提供此组件。",
@@ -50,9 +50,8 @@
   "wps": {
     "label": "应用适配",
     "title": "WPS 表格选区",
-    "description": "选区变化且包含内容，或选中文字时显示工具栏。再次点击同一单元格不会触发。",
-    "connected": "已连接 WPS。",
-    "reopen": "请先保存文档，再退出并重新打开 WPS 以连接。",
-    "setupFailed": "WPS 适配设置失败。请先打开一次 WPS，再重试。"
+    "description": "选取表格内容，唤出工具栏。",
+    "reopen": "保存文档后，重启 WPS 以连接。",
+    "setupFailed": "设置失败，请打开 WPS 后重试。"
   }
 }

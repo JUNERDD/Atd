@@ -2,11 +2,18 @@ import { createContext, use, type ComponentProps, type ReactElement, type ReactN
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@atd/ui/components/context-menu';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
+import {
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@atd/ui/components/dropdown-menu';
 
 /**
  * The actions of a list item, written once and shown both by its More button and by a right-click
@@ -31,6 +38,22 @@ export function ItemMenuItem(
 
 export function ItemMenuSeparator() {
   return use(MenuKindContext) === 'context' ? <ContextMenuSeparator /> : <DropdownMenuSeparator />;
+}
+
+export function ItemMenuGroup({ children }: { children: ReactNode }) {
+  return use(MenuKindContext) === 'context' ? (
+    <ContextMenuGroup>{children}</ContextMenuGroup>
+  ) : (
+    <DropdownMenuGroup>{children}</DropdownMenuGroup>
+  );
+}
+
+export function ItemMenuLabel({ children }: { children: ReactNode }) {
+  return use(MenuKindContext) === 'context' ? (
+    <ContextMenuLabel>{children}</ContextMenuLabel>
+  ) : (
+    <DropdownMenuLabel>{children}</DropdownMenuLabel>
+  );
 }
 
 /**

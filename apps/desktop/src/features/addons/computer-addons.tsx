@@ -1,4 +1,3 @@
-import { Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { COMPUTER_BROWSER_ADDON } from '@atd/agent-contracts';
 import { AddonCard, AddonCardGroup } from './addon-card';
@@ -14,7 +13,6 @@ export function ComputerAddons() {
     <AddonCardGroup label={t('computer.label')}>
       <AddonCard
         id={COMPUTER_BROWSER_ADDON}
-        icon={<Globe />}
         title={t('computer.browser.title')}
         description={t('computer.browser.description')}
       />

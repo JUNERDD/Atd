@@ -11,7 +11,7 @@
   "unavailable": "Not offered",
   "detail": {
     "size": "Download size: {{size}}.",
-    "installed": "Installed · version {{version}}",
+    "installed": "Installed · {{version}}",
     "outdated": "Version {{installed}} is installed, but this version of Atd uses {{version}}.",
     "outdatedSize": "Version {{installed}} is installed, but this version of Atd uses {{version}}. Download size: {{size}}.",
     "unavailable": "This build of Atd does not offer it for your Mac.",
@@ -50,9 +50,8 @@
   "wps": {
     "label": "App integrations",
     "title": "WPS spreadsheet selection",
-    "description": "Shows the toolbar when a changed cell selection contains content, or when you select text. Clicking the same cell again does not show it.",
-    "connected": "Connected to WPS.",
-    "reopen": "Save your documents, then quit and reopen WPS to connect.",
-    "setupFailed": "The WPS integration could not be set up. Open WPS once, then try again."
+    "description": "Show the toolbar for selected spreadsheet content.",
+    "reopen": "Save your documents, then restart WPS to connect.",
+    "setupFailed": "Setup failed. Open WPS and try again."
   }
 }
