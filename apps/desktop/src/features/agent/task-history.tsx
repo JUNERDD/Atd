@@ -59,7 +59,13 @@ export function TaskHistory({
       : filter === 'all' && !view.showCommandTasksInAll
         ? 'exclude'
         : 'all';
-  const content = useTaskContentSearch(query, tasks, commandScope);
+  const captureScope =
+    filter === 'captures'
+      ? 'only'
+      : filter === 'all' && !view.showCaptureTasksInAll
+        ? 'exclude'
+        : 'all';
+  const content = useTaskContentSearch(query, tasks, commandScope, captureScope);
   // Sections are dated against when the history opened, so they hold still while it is browsed.
   const [now] = useState(() => new Date());
   function statusLabelOf(task: AgentTask) {
@@ -71,7 +77,8 @@ export function TaskHistory({
   // matches with that message, which shows only where it is why the task is listed (a title match
   // would mostly repeat itself); the view orders and sections them, never by relevance.
   const visible = tasks.flatMap((task): HistoryEntry[] => {
-    if (!matchesFilter(task, filter, view.showCommandTasksInAll)) return [];
+    if (!matchesFilter(task, filter, view.showCommandTasksInAll, view.showCaptureTasksInAll))
+      return [];
     const statusLabel = statusLabelOf(task);
     const match = matchFields(query, { title: task.title, status: statusLabel || undefined });
     const hit = query ? (content.hits.get(task.id) ?? null) : null;
@@ -208,7 +215,7 @@ function HistoryEmpty({
     icon = <SearchIcon />;
     title = t('history.noMatches', { query });
     description = t('history.noMatchesDescription');
-  } else if (tasks || filter === 'commands') {
+  } else if (tasks || filter === 'commands' || filter === 'captures') {
     icon = <ListFilter />;
     title = t(`history.filterEmpty.${filter}.title`);
     description = t(`history.filterEmpty.${filter}.description`);

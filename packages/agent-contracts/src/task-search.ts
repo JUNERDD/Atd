@@ -13,6 +13,8 @@ export const TaskSearchQuerySchema = Type.Object(
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })),
     /** Scope by whether the task's first run came from a command; defaults to all tasks. */
     commands: Type.Optional(Type.Enum(['all', 'exclude', 'only'])),
+    /** Scope by whether the first run came from a screenshot or recording; defaults to all. */
+    captures: Type.Optional(Type.Enum(['all', 'exclude', 'only'])),
   },
   { additionalProperties: false },
 );

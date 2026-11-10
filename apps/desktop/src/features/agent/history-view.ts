@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { isCaptureInput } from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../../client/agent/task-schema';
 import { daysAgo, historySections, type HistoryPeriod } from './history-sections';
 
@@ -15,6 +16,7 @@ export const HistoryViewSchema = Type.Object(
     group: Type.Enum(HISTORY_GROUPS),
     sort: Type.Enum(HISTORY_SORTS),
     showCommandTasksInAll: Type.Optional(Type.Boolean()),
+    showCaptureTasksInAll: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -24,6 +26,7 @@ export const DEFAULT_HISTORY_VIEW: HistoryView = {
   group: 'date',
   sort: 'updated',
   showCommandTasksInAll: false,
+  showCaptureTasksInAll: false,
 };
 
 /**
@@ -79,8 +82,8 @@ export function modelNameOf(task: AgentTask): string | null {
 }
 
 /**
- * All follows the view's command visibility preference; the other tabs independently select
- * pinned, active, failed, command-started, or automated tasks.
+ * All follows the view's command and capture visibility preferences; the other tabs independently
+ * select pinned, active, failed, command-started, capture-started, or automated tasks.
  */
 export const HISTORY_FILTERS = [
   'all',
@@ -88,6 +91,7 @@ export const HISTORY_FILTERS = [
   'active',
   'failed',
   'commands',
+  'captures',
   'automated',
 ] as const;
 export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
@@ -98,14 +102,24 @@ export function isCommandTask(task: AgentTask): boolean {
   return snapshot !== undefined && (snapshot.fromCommand === true || snapshot.command !== null);
 }
 
+/** Follow-up messages do not change a task's original capture category. */
+export function isCaptureTask(task: AgentTask): boolean {
+  const input = task.runs[0]?.snapshot.input;
+  return input !== undefined && isCaptureInput(input);
+}
+
 export function matchesFilter(
   task: AgentTask,
   filter: HistoryFilter,
   showCommandTasksInAll = false,
+  showCaptureTasksInAll = false,
 ): boolean {
   switch (filter) {
     case 'all':
-      return showCommandTasksInAll || !isCommandTask(task);
+      return (
+        (showCommandTasksInAll || !isCommandTask(task)) &&
+        (showCaptureTasksInAll || !isCaptureTask(task))
+      );
     case 'pinned':
       return task.pinned === true;
     case 'active': {
@@ -116,6 +130,8 @@ export function matchesFilter(
       return statusGroupOf(task) === 'failed';
     case 'commands':
       return isCommandTask(task);
+    case 'captures':
+      return isCaptureTask(task);
     case 'automated':
       return originGroupOf(task) !== 'personal';
   }

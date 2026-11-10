@@ -34,6 +34,7 @@ export function useTaskContentSearch(
   query: string,
   tasks: AgentTask[],
   commands: NonNullable<TaskSearchQuery['commands']> = 'all',
+  captures: NonNullable<TaskSearchQuery['captures']> = 'all',
 ): TaskContentSearch {
   const active = Array.from(query).length >= MIN_QUERY_LENGTH && tasks.length > 0;
   const [debounced, setDebounced] = useState(query);
@@ -48,12 +49,18 @@ export function useTaskContentSearch(
   const settled = debounced === query;
   const { data, isError } = useQuery(
     {
-      queryKey: ['taskContentSearch', debounced, commands, newest, tasks.length],
+      queryKey: ['taskContentSearch', debounced, commands, captures, newest, tasks.length],
       // The answer names its query and scope so a placeholder never reads as the new tab's answer.
       queryFn: async () => ({
         query: debounced,
         commands,
-        response: await agentApi().searchTasks({ query: debounced, limit: HIT_LIMIT, commands }),
+        captures,
+        response: await agentApi().searchTasks({
+          query: debounced,
+          limit: HIT_LIMIT,
+          commands,
+          captures,
+        }),
       }),
       enabled: active && settled,
       placeholderData: keepPreviousData,
@@ -63,7 +70,7 @@ export function useTaskContentSearch(
   );
   if (!active) return { hits: NO_HITS, pending: false, failed: false };
   const failed = settled && isError;
-  const sameScope = data?.commands === commands;
+  const sameScope = data?.commands === commands && data?.captures === captures;
   return {
     hits: sameScope ? new Map(data.response.hits.map((hit) => [hit.taskId, hit])) : NO_HITS,
     pending: !failed && (!sameScope || data?.query !== query),
