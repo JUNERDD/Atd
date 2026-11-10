@@ -7,8 +7,8 @@ import ApplicationServices
 /// - Every AX message is bounded by a 250 ms messaging timeout, so an unresponsive app
 ///   cannot stall a summon (the AX default is about 6 s). A timeout aborts the whole read and
 ///   counts as no selection.
-/// - The system-wide focused element comes first. It fails while an Electron app is
-///   frontmost, so the read then starts from the frontmost app's pid.
+/// - Focus is resolved inside the caller's frontmost external app. A nonactivating Atd panel
+///   can own system-wide keyboard focus while that external app remains frontmost.
 /// - Per element: `AXSelectedText`, then `AXSelectedTextRange` + `AXStringForRange`, then
 ///   `AXValue` sliced by the range, then the text-marker range web content uses. Elements:
 ///   the focused one, its first 20 children, then up to 10 ancestors.
@@ -51,20 +51,19 @@ nonisolated struct SelectionReader: Sendable {
   }
 
   func read() -> Outcome {
+    guard let frontmostPID, frontmostPID != ProcessInfo.processInfo.processIdentifier else {
+      return .none(.unknown)
+    }
     var read = Read()
     let systemWide = AXUIElementCreateSystemWide()
     // On the system-wide element this sets the default for every AXUIElement of the process.
     AXUIElementSetMessagingTimeout(systemWide, Self.messagingTimeout)
-    var focused: AXUIElement? = read.copy(systemWide, kAXFocusedUIElementAttribute)
-    if focused == nil {
-      // A failure here is the system-wide query, not a hung target.
-      read.aborted = false
-      guard let frontmostPID else { return .none(.unknown) }
-      let app = AXUIElementCreateApplication(frontmostPID)
-      AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
-      focused = read.copy(app, kAXFocusedUIElementAttribute)
-      if focused == nil, !read.aborted { focused = read.copy(app, kAXFocusedWindowAttribute) }
-    }
+    // A system-wide focus query can synchronously reenter our AppKit window on this worker
+    // before it even returns an AX handle. Resolve the external process before any AX read.
+    let app = AXUIElementCreateApplication(frontmostPID)
+    AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
+    var focused: AXUIElement? = read.copy(app, kAXFocusedUIElementAttribute)
+    if focused == nil, !read.aborted { focused = read.copy(app, kAXFocusedWindowAttribute) }
     guard let focused, !read.aborted else { return .none(read.aborted ? .unresponsive : .unknown) }
     if read.isSecure(focused) { return .none(.secureField) }
     // Copy preserves the app's row/column serialization. Never substitute the active cell's

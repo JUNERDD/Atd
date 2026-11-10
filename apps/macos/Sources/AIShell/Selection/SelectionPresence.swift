@@ -12,7 +12,7 @@ import Synchronization
 ///   (never on the system-wide element, which would change the default of every read).
 /// - A secure text field answers ``SelectionProbe/secureField`` before anything else is asked.
 /// - `AXSelectedTextRange` first; web content (WebKit, Chromium) reports its selection as a
-///   text-marker range, whose length and bounds it answers without the text.
+///   text-marker range, whose length, bounds and endpoint elements are read without the text.
 /// - Cell-based tables report selected cell identities. Opaque editors can supply only a Copy
 ///   menu hint (``SelectionEditMenu``); the action verifies that it really copies text.
 /// - Electron and Chromium build their web tree only once an assistive tool asks the
@@ -116,10 +116,89 @@ package nonisolated struct SelectionPresence: Sendable {
     if let marker: CFTypeRef = Self.copy(element, "AXSelectedTextMarkerRange"),
       let length: Int = Self.copy(element, "AXLengthForTextMarkerRange", marker), length > 0
     {
+      guard CFGetTypeID(marker) == AXTextMarkerRangeGetTypeID() else { return nil }
+      let range = marker as! AXTextMarkerRange
+      let start = AXTextMarkerRangeCopyStartMarker(range)
+      let end = AXTextMarkerRangeCopyEndMarker(range)
+      let collapsed = CFEqual(start, end)
+      let nonText = !collapsed && Self.selectsNonTextObject(start, end, in: element)
+      if collapsed || nonText {
+        return SelectionProbe.none
+      }
       let bounds: AXValue? = Self.copy(element, "AXBoundsForTextMarkerRange", marker)
       return .selected(length: length, bounds: bounds.flatMap(Self.rect))
     }
     return nil
+  }
+
+  /// Chromium gives empty objects a replacement character. Its trailing boundary can be
+  /// represented by the next node. Character navigation skips empty objects: two non-text
+  /// leaves that lead to the same anchored character position have no text between them.
+  /// Unknown metadata must not veto the application's positive marker length.
+  private static func selectsNonTextObject(
+    _ start: AXTextMarker, _ end: AXTextMarker, in element: AXUIElement
+  ) -> Bool {
+    let deadline = ContinuousClock.now + .milliseconds(100)
+    guard let first: CFTypeRef = copy(element, "AXUIElementForTextMarker", start),
+      CFGetTypeID(first) == AXUIElementGetTypeID(), ContinuousClock.now < deadline,
+      let last: CFTypeRef = copy(element, "AXUIElementForTextMarker", end),
+      CFGetTypeID(last) == AXUIElementGetTypeID()
+    else { return false }
+    let firstElement = first as! AXUIElement
+    let lastElement = last as! AXUIElement
+    guard isNonTextLeaf(firstElement, until: deadline),
+      isNonTextLeaf(lastElement, until: deadline)
+    else { return false }
+    for direction in ["AXNextTextMarkerForTextMarker", "AXPreviousTextMarkerForTextMarker"]
+    where ContinuousClock.now < deadline {
+      let first: CFTypeRef? = copy(element, direction, start)
+      let last: CFTypeRef? =
+        ContinuousClock.now < deadline ? copy(element, direction, end) : nil
+      let same = sameTextPosition(first, last, in: element, until: deadline)
+      if same { return true }
+    }
+    return false
+  }
+
+  private static func sameTextPosition(
+    _ first: CFTypeRef?, _ last: CFTypeRef?, in element: AXUIElement,
+    until deadline: ContinuousClock.Instant
+  ) -> Bool {
+    // Chromium can encode an out-of-document position as a marker. Resolve both owners
+    // before comparing positions, and never interpret offsets from different nodes.
+    guard let first, let last,
+      CFGetTypeID(first) == AXTextMarkerGetTypeID(), CFGetTypeID(last) == AXTextMarkerGetTypeID(),
+      ContinuousClock.now < deadline,
+      let firstOwner: CFTypeRef = copy(element, "AXUIElementForTextMarker", first),
+      CFGetTypeID(firstOwner) == AXUIElementGetTypeID(), ContinuousClock.now < deadline,
+      let lastOwner: CFTypeRef = copy(element, "AXUIElementForTextMarker", last),
+      CFGetTypeID(lastOwner) == AXUIElementGetTypeID(), CFEqual(firstOwner, lastOwner)
+    else { return false }
+    if CFEqual(first, last) { return true }
+    // Equivalent markers can differ in affinity or opaque serialization. The host orders
+    // the pair and measures a gap within one known node, without exposing its text.
+    guard ContinuousClock.now < deadline,
+      let gap: CFTypeRef = copy(
+        element, "AXTextMarkerRangeForUnorderedTextMarkers", [first, last] as CFArray),
+      CFGetTypeID(gap) == AXTextMarkerRangeGetTypeID(), ContinuousClock.now < deadline
+    else { return false }
+    let length: Int? = copy(element, "AXLengthForTextMarkerRange", gap)
+    return length == 0
+  }
+
+  private static func isNonTextLeaf(
+    _ owner: AXUIElement, until deadline: ContinuousClock.Instant
+  ) -> Bool {
+    guard ContinuousClock.now < deadline else { return false }
+    AXUIElementSetMessagingTimeout(owner, messagingTimeout)
+    let role: String? = copy(owner, kAXRoleAttribute)
+    guard role == kAXGroupRole || role == kAXImageRole, ContinuousClock.now < deadline else {
+      return false
+    }
+    // A group's or image's descendants can contain text; only a confirmed leaf is eligible.
+    var count: CFIndex = 0
+    let error = AXUIElementGetAttributeValueCount(owner, kAXChildrenAttribute as CFString, &count)
+    return error == .success && count == 0
   }
 
   /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`

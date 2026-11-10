@@ -155,8 +155,8 @@ final class WriteTargets {
   }
 }
 
-/// Reads the focused field the way ``SelectionReader`` finds it: the system-wide focused element,
-/// else the frontmost app's (Electron apps answer only there), each message bounded by the same
+/// Reads the focused field inside the frontmost external app, as ``SelectionReader`` does,
+/// rather than the system-wide focus that a nonactivating Atd card can own. Each message has the same
 /// 250 ms timeout. A timeout while finding or reading the field records nothing; one while
 /// asking whether it can take text only leaves that undecided (``AXWritability``). Blocking;
 /// call it off the main thread.
@@ -194,18 +194,19 @@ nonisolated struct WriteTargetReader: Sendable {
   }
 
   func read() -> Read? {
+    let ownPID = ProcessInfo.processInfo.processIdentifier
+    guard frontmostPID != ownPID else { return nil }
     do throws(AXFieldError) {
       let timeout = SelectionReader.messagingTimeout
       let systemWide = AXUIElementCreateSystemWide()
       AXUIElementSetMessagingTimeout(systemWide, timeout)
-      var focused: AXUIElement? = try? AXField.copy(systemWide, kAXFocusedUIElementAttribute)
-      if focused == nil {
-        let app = AXUIElementCreateApplication(frontmostPID)
-        AXUIElementSetMessagingTimeout(app, timeout)
-        focused = try Self.focusedElement(of: app)
-      }
+      let app = AXUIElementCreateApplication(frontmostPID)
+      AXUIElementSetMessagingTimeout(app, timeout)
+      let focused = try Self.focusedElement(of: app)
       var pid: pid_t = 0
-      guard let focused, AXUIElementGetPid(focused, &pid) == .success else { return nil }
+      guard let focused, AXUIElementGetPid(focused, &pid) == .success, pid != ownPID else {
+        return nil
+      }
       AXUIElementSetMessagingTimeout(focused, timeout)
       guard try !AXField.isSecure(focused) else { return nil }
       let surface = SelectionSurface(focused)
