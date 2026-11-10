@@ -62,11 +62,25 @@ const WIDGET_METADATA = 'Contents/Resources/Metadata.appintents/extract.actionsd
  * when the build lacks the widget extension's App Intents metadata. The caller makes sure no
  * instance of the app is running, since its bundle is replaced.
  */
-export async function installDevCopy({ builtApp, installedApp, bundleId, signal }) {
+export async function installDevCopy({
+  builtApp,
+  installedApp,
+  bundleId,
+  expectedIdentity,
+  signal,
+}) {
   if (signal?.aborted) return { installed: false, problem: 'Development session stopped.' };
   const widgetMetadata = existsSync(
     path.join(builtApp, STAGING, WIDGET_EXTENSION, WIDGET_METADATA),
   );
+  let identity;
+  try {
+    identity = signingIdentity(builtApp);
+    if (identity !== expectedIdentity)
+      throw new Error("The Debug build does not use the development session's signing identity.");
+  } catch (error) {
+    return { installed: false, indexed: false, widgetMetadata, problem: error.message };
+  }
   const since = logTimestamp(new Date(Date.now() - 1000));
   spawnSync(LSREGISTER, ['-u', builtApp], { stdio: 'ignore' });
   // WidgetKit and Finder keep the old copy's extension processes alive and keep using them after
@@ -79,7 +93,7 @@ export async function installDevCopy({ builtApp, installedApp, bundleId, signal 
   const problem =
     copy.error || copy.status !== 0
       ? `the build could not be copied to ${installedApp}`
-      : placeExtensions(installedApp, signingIdentity(builtApp));
+      : placeExtensions(installedApp, identity);
   if (problem) {
     // An unsigned or half-moved copy must not be found and registered later.
     rmSync(installedApp, { recursive: true, force: true });
@@ -146,9 +160,19 @@ function signingIdentity(app) {
   const dir = mkdtempSync(path.join(tmpdir(), 'atd-dev-signature-'));
   try {
     const prefix = path.join(dir, 'certificate');
-    spawnSync('codesign', ['-d', `--extract-certificates=${prefix}`, app], { stdio: 'ignore' });
+    const extract = spawnSync('codesign', ['-d', `--extract-certificates=${prefix}`, app], {
+      encoding: 'utf8',
+    });
+    if (extract.error || extract.status !== 0)
+      throw new Error(
+        `Could not read the Debug build's signing certificate: ${extract.stderr?.trim()}`,
+      );
     const leaf = `${prefix}0`;
-    if (!existsSync(leaf)) return '-';
+    if (!existsSync(leaf)) {
+      const details = spawnSync('codesign', ['-dvv', app], { encoding: 'utf8' });
+      if (details.status === 0 && /^Signature=adhoc$/m.test(details.stderr)) return '-';
+      throw new Error('The Debug build has no signing certificate and is not explicitly ad hoc.');
+    }
     return createHash('sha1').update(readFileSync(leaf)).digest('hex').toUpperCase();
   } finally {
     rmSync(dir, { recursive: true, force: true });

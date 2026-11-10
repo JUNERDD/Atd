@@ -11,7 +11,7 @@ export const nativeRootFiles = [
   'package.json',
   '.swift-format',
 ];
-export const nativeBuildScripts = ['build.mjs', 'arch.mjs'];
+export const nativeBuildScripts = ['build.mjs', 'arch.mjs', 'development-signing.mjs'];
 
 const generatedFiles = [
   'App/Info.plist',

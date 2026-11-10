@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { MACHO_ARCHS, nativeHostArch } from './arch.mjs';
 import { invalidateDevBuild } from './dev-cache.mjs';
+import { configureDevelopmentSigning } from './development-signing.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const X64_FEED_URL = 'https://downloads.atd.best/appcast-x64.xml';
@@ -156,7 +157,14 @@ if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
-if (options.configuration === 'Debug') invalidateDevBuild(packageRoot);
+if (options.configuration === 'Debug') {
+  try {
+    configureDevelopmentSigning();
+  } catch (error) {
+    fail(error.message);
+  }
+  invalidateDevBuild(packageRoot);
+}
 run('xcodegen', ['generate', '--quiet']);
 pinPackages();
 run('xcodebuild', args);

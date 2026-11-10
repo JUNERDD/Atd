@@ -25,12 +25,11 @@ settings:
     # under Rosetta. Plain values: `$(VAR:default=…)` would cut a URL at its first colon.
     ATD_SPARKLE_FEED_URL: https://downloads.atd.best/appcast.xml
     ATD_SPARKLE_ARM64_FEED_URL: https://downloads.atd.best/appcast.xml
-    # Ad hoc signing unless `AI_CODE_SIGN_IDENTITY` names an identity, until Developer ID signing
-    # and notarization land. Privacy grants (Screen Recording, Accessibility) follow an ad hoc
-    # build's cdhash, so every rebuild loses them; a build signed by a certificate keeps them
-    # across rebuilds signed by the same one. A local build may use e.g. `Apple Development`, with
-    # its team in `AI_DEVELOPMENT_TEAM`, which Xcode requires for Apple-issued identities;
-    # release.yml signs releases with the self-signed release certificate and sets no team.
+    # Local Debug builds resolve a persistent per-user certificate in development-signing.mjs
+    # before Xcode runs, so Screen Recording and Accessibility survive rebuilds. Explicit
+    # AI_CODE_SIGN_IDENTITY overrides it; Apple-issued identities also need AI_DEVELOPMENT_TEAM.
+    # CI and direct Xcode builds without an identity remain ad hoc. release.yml supplies the
+    # separate release certificate. Never weaken the designated requirement to retain grants.
     CODE_SIGN_IDENTITY: '$(AI_CODE_SIGN_IDENTITY:default=-)'
     DEVELOPMENT_TEAM: '$(AI_DEVELOPMENT_TEAM)'
     CODE_SIGN_STYLE: Manual
