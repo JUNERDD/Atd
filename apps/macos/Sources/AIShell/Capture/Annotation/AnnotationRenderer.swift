@@ -6,7 +6,11 @@ import AppKit
 /// y down (the flipped canvas, whose bounds are view points, or the export context after
 /// ``CaptureCoordinates/cropTransform(selection:scale:)``); Retina sharpness comes from the
 /// context's own pixel density.
-final class AnnotationRenderer {
+///
+/// Nonisolated, so an image too large to draw on the main actor (a long screenshot's kept range
+/// and its preview, ``CaptureExport/longScreenshotKept(_:kept:cover:)``) is drawn off it with a
+/// renderer of its own; one instance is still used from one context at a time.
+nonisolated final class AnnotationRenderer {
   private let mosaic = AnnotationMosaic()
 
   /// Highlighter ink: translucent and multiplied, so text under it stays readable and

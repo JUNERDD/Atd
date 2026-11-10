@@ -6,9 +6,9 @@ import CoreGraphics
 /// appears: element detection decides from it which app is under a point, because hit-testing
 /// the live screen would answer with the overlay. The screen-context attachment names the app
 /// and window under the selection from the same snapshot.
-struct WindowSnapshot {
+nonisolated struct WindowSnapshot: Sendable {
   /// One window, with what the screen-context attachment says about it.
-  struct Entry {
+  struct Entry: Sendable {
     let window: CaptureWindow
     /// `kCGWindowName`; readable with the Screen Recording grant a capture already has.
     let title: String?
@@ -54,14 +54,38 @@ struct WindowSnapshot {
 
   /// The app and window frontmost at `point` (Quartz): the app's localized name and the
   /// window's title, each nil when unknown.
-  func describe(at point: CGPoint) -> (app: String?, window: String?) {
+  @MainActor func describe(at point: CGPoint) -> (app: String?, window: String?) {
+    guard let entry = frontmost(at: point) else { return (nil, nil) }
+    let app = NSRunningApplication(processIdentifier: entry.window.pid)?.localizedName
+    return (app ?? entry.ownerName, entry.title)
+  }
+
+  /// The process of the window frontmost at `point` (Quartz), nil when none is there.
+  func pid(at point: CGPoint) -> pid_t? { frontmost(at: point)?.window.pid }
+
+  /// What a recording of `rect` (Quartz) shows: the frontmost window whose frame it is, to the
+  /// point, when it is exactly one, and the app of that window, else of the window frontmost at
+  /// its centre; each nil when unknown.
+  @MainActor func subject(of rect: CGRect) -> (
+    windowID: CGWindowID?, app: String?, bundleID: String?
+  ) {
+    let exact = entries.first { entry in
+      let frame = entry.window.quartzFrame
+      return abs(frame.minX - rect.minX) < 1 && abs(frame.minY - rect.minY) < 1
+        && abs(frame.width - rect.width) < 1 && abs(frame.height - rect.height) < 1
+    }
+    guard let entry = exact ?? frontmost(at: CGPoint(x: rect.midX, y: rect.midY)) else {
+      return (nil, nil, nil)
+    }
+    let app = NSRunningApplication(processIdentifier: entry.window.pid)
+    return (exact?.window.windowID, app?.localizedName ?? entry.ownerName, app?.bundleIdentifier)
+  }
+
+  private func frontmost(at point: CGPoint) -> Entry? {
     let windows = entries.map {
       ElementChain.Window(id: $0.window.windowID, pid: $0.window.pid, frame: $0.window.quartzFrame)
     }
-    guard let hit = ElementChain.topmostWindow(at: point, in: windows),
-      let entry = entries.first(where: { $0.window.windowID == hit.id })
-    else { return (nil, nil) }
-    let app = NSRunningApplication(processIdentifier: entry.window.pid)?.localizedName
-    return (app ?? entry.ownerName, entry.title)
+    guard let hit = ElementChain.topmostWindow(at: point, in: windows) else { return nil }
+    return entries.first { $0.window.windowID == hit.id }
   }
 }

@@ -137,6 +137,25 @@ public enum ElementChain {
     }
   }
 
+  /// The position in `chain` of the scroll area a long screenshot reads (decision D5): the
+  /// innermost `AXScrollArea` inside `window` whose frame, cut to the window, overlaps
+  /// `selection` by at least `minimumOverlap` both ways. A small inner one under the selection's
+  /// centre (a code block) gives way to the one around it. A web area's scroll area is its
+  /// parent, the next scroll area up the chain. Nil when none qualifies or the chain does not
+  /// reach `window`.
+  public static func scrollAreaIndex(
+    in chain: [Node], window: Window, selection: CGRect, minimumOverlap: CGFloat
+  ) -> Int? {
+    guard let boundary = verifiedBoundary(of: chain, in: window) else { return nil }
+    return chain[..<boundary].indices.first { index in
+      let node = chain[index]
+      guard node.role == "AXScrollArea", isUsable(node.frame) else { return false }
+      let overlap = node.frame.intersection(window.frame).intersection(selection)
+      return !overlap.isNull && overlap.width >= minimumOverlap
+        && overlap.height >= minimumOverlap
+    }
+  }
+
   /// Index of the first window or sheet in `chain` that is `window` itself. Anything beyond it
   /// is outside the window and ignored.
   private static func verifiedBoundary(of chain: [Node], in window: Window) -> Int? {

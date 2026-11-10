@@ -3,6 +3,9 @@ import { Type, type Static } from 'typebox';
 /**
  * What happens with a command run's final answer once the run completes. The answer always stays in
  * the conversation; the other actions also put it somewhere:
+ * - `card` shows it on the island's answer card over the app the command ran from, without opening
+ *   the panel: the person reads it there, then copies it, inserts it where their focus is, or opens
+ *   it in the conversation;
  * - `replaceSelection` writes it over the text that was selected in another app when the command
  *   ran (its shortcut or the selection toolbar);
  * - `insertAfterSelection` writes it right after that selection, keeping the selected text;
@@ -10,12 +13,14 @@ import { Type, type Static } from 'typebox';
  *   like typing (a selection there is replaced);
  * - `copy` puts it on the clipboard.
  *
- * The three write-back actions need the app the command ran from, which only a launch from another
- * app (a shortcut or the selection toolbar) records; any other launch leaves the answer in the
- * conversation, where it can still be copied.
+ * The answer card and the three write-back actions need the app the command ran from, which only a
+ * launch from another app (a shortcut, the selection toolbar or the screenshot toolbar) records;
+ * any other launch leaves the answer in the conversation, where it can still be copied
+ * (`answersInPlace`).
  */
 export const CommandOutputActionSchema = Type.Union([
   Type.Literal('panel'),
+  Type.Literal('card'),
   Type.Literal('replaceSelection'),
   Type.Literal('insertAfterSelection'),
   Type.Literal('insertAtCursor'),
@@ -28,7 +33,7 @@ export const CommandOutputSchema = Type.Object(
     action: CommandOutputActionSchema,
     /**
      * Write-back actions only: wait for the user to apply the answer from the conversation instead
-     * of writing it as soon as the run completes. Ignored by `panel` and `copy`.
+     * of writing it as soon as the run completes. Ignored by `panel`, `card` and `copy`.
      */
     review: Type.Boolean(),
   },
@@ -73,6 +78,18 @@ export function writesBack(action: CommandOutputAction): action is CommandWriteA
     action === 'insertAfterSelection' ||
     action === 'insertAtCursor'
   );
+}
+
+/** The actions whose answer lands where the command ran from: written there, or shown over it. */
+export type CommandInPlaceAction = CommandWriteAction | 'card';
+
+/**
+ * Whether `action` puts the answer where the command ran from: written into that app
+ * (`writesBack`) or shown on the island's answer card over it (`card`). Both need a launch from
+ * another app, which records where it ran; any other launch keeps the answer in the conversation.
+ */
+export function answersInPlace(action: CommandOutputAction): action is CommandInPlaceAction {
+  return action === 'card' || writesBack(action);
 }
 
 /** Whether `action` acts on the selection, so it is offered only to commands that read it. */

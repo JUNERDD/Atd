@@ -51,7 +51,17 @@ struct ShellLocalizationTests {
       ShellStringKey.allCases.map(\.rawValue)
       + ComputerMonitorStringKey.allCases.map(\.rawValue)
       + CaptureHintStringKey.allCases.map(\.rawValue)
+      + CaptureBarStringKey.allCases.map(\.rawValue)
+      + CaptureCommandsStringKey.allCases.map(\.rawValue)
       + TaskActivityStringKey.allCases.map(\.rawValue)
+      + RecordingOptionsStringKey.allCases.map(\.rawValue)
+      + RecordingIslandStringKey.allCases.map(\.rawValue)
+      + RecordingEngineStringKey.allCases.map(\.rawValue)
+      + RecordingOrchestrationStringKey.allCases.map(\.rawValue)
+      + LongScreenshotCaptureStringKey.allCases.map(\.rawValue)
+      + LongScreenshotChromeStringKey.allCases.map(\.rawValue)
+      + LongScreenshotResultStringKey.allCases.map(\.rawValue)
+      + LongScreenshotCardStringKey.allCases.map(\.rawValue)
     #expect(Set(catalog.strings.keys) == Set(keys))
     for (key, entry) in catalog.strings {
       for language in ShellLanguage.allCases {

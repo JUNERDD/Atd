@@ -41,11 +41,13 @@ extension ReviewChip {
 /// nothing without either, or while a version is pending); ⌘Return and ⌥⌘Return write, as on the
 /// answer card (``holdWriteKeys(_:)``); Escape peels one layer (``peelReview()``); ⌘R
 /// regenerates; ⌘K opens the options sheet, as the summary chip does, whenever the version has
-/// options; ⌘[ and ⌘] step to the previous and next version; ⌫ at the start of the field,
-/// with nothing selected, takes back the last staged change; ⌘C copies the whole answer unless
-/// the field or the answer has a selection, which it copies instead; ⌘V, ⌘X, ⌘A, ⌘Z and ⇧⌘Z edit
-/// the field, as on the compose card, since the card's window has them while another app keeps
-/// the menu bar.
+/// options; ⌘[ and ⌘] step to the previous and next version, and so do ⌘← and ⌘→ where the
+/// field's caret has nowhere to go that way (nothing selected, at its start or its end: always
+/// in an empty field), a key with no version that way going on to the field; ⌫ at the start of
+/// the field, with nothing selected, takes back the last staged change; ⌘C copies the whole
+/// answer unless the field or the answer has a selection, which it copies instead; ⌘V, ⌘X, ⌘A,
+/// ⌘Z and ⇧⌘Z edit the field, as on the compose card, since the card's window has them while
+/// another app keeps the menu bar. The pager's arrows name ⌘← and ⌘→ in their tooltips.
 ///
 /// The chip row is reached from the field without taking its caret, so the keys work whether or
 /// not the system's keyboard navigation is on (``chipKey(_:modifiers:)``): ↓ or Tab highlights
@@ -147,6 +149,10 @@ extension CommandProgressController {
       return true
     case (kVK_ANSI_LeftBracket, .command): step(by: -1)
     case (kVK_ANSI_RightBracket, .command): step(by: 1)
+    // Where the caret has nowhere to go that way, ⌘← and ⌘→ page as ⌘[ and ⌘] do.
+    case (kVK_LeftArrow, .command), (kVK_RightArrow, .command):
+      let back = code == kVK_LeftArrow
+      return !caretMoves(field, back: back) && step(by: back ? -1 : 1)
     default: return reviewCommand(event, modifiers: modifiers, field: field)
     }
     return true
@@ -256,10 +262,20 @@ extension CommandProgressController {
     remeasureReview()
   }
 
-  /// The previous or next version, while there is one and none is pending.
-  private func step(by delta: Int) {
-    guard let review = state.reviewShown else { return }
-    request(.version, version: review.version + delta)
+  /// The previous or next version, while there is one and none is pending; false when there is
+  /// none to show.
+  @discardableResult private func step(by delta: Int) -> Bool {
+    guard let review = state.reviewShown else { return false }
+    return request(.version, version: review.version + delta)
+  }
+
+  /// Whether ⌘← (`back`) or ⌘→ moves the field's caret: something is selected, or there is text
+  /// before or after the caret that way.
+  private func caretMoves(_ field: NSTextView?, back: Bool) -> Bool {
+    guard let field, field.isEditable else { return false }
+    let selected = field.selectedRange()
+    guard selected.length == 0 else { return true }
+    return back ? selected.location > 0 : selected.location < field.string.utf16.count
   }
 
   /// The card changes in place, its shape following the chips' rows and the original.

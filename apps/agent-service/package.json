@@ -40,6 +40,7 @@
     "@juicesharp/rpiv-todo": "2.15.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@napi-rs/keyring": "2.1.2",
+    "@silvia-odwyer/photon-node": "0.3.4",
     "@xmldom/xmldom": "0.8.15",
     "agent-base": "catalog:",
     "chardet": "2.2.0",

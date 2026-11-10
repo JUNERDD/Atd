@@ -149,7 +149,7 @@ export function validateCommandSave(command: ServiceCommandFull): void {
   const { action } = command.output;
   if (actsOnSelection(action) && !readsSelection(command.input))
     throw new TypeError(
-      `Output ${action} writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output action (insertAtCursor, copy or panel).`,
+      `Output ${action} writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output action (card, insertAtCursor, copy or panel).`,
     );
   validateShortcuts(command);
 }

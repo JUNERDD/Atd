@@ -23,7 +23,8 @@ extension ShellController {
       selectionListening: { [weak self] in self?.toolbar.isListening },
       setSelectionListening: { [weak self] on in self?.toolbar.setListening(on) },
       miniPanelShown: { [weak self] in self?.miniPanel.isShown ?? false },
-      setMiniPanelShown: { [weak self] shown in self?.miniPanel.setShown(shown) })
+      setMiniPanelShown: { [weak self] shown in self?.miniPanel.setShown(shown) },
+      showLastRecording: installedScreenRecording?.lastRecordingAction)
   }
 
   /// The status item follows the control stream: reachability, then the `status` counts.

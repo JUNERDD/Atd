@@ -97,12 +97,12 @@ struct IslandResultTests {
     #expect(controller.model.layers.last?.scales == true)
     #expect(controller.model.layers.last?.answerOffer == offer)
     #expect(controller.model.shape.frame.width < rest.width)
-    #expect(controller.window.ignoresMouseEvents)
+    #expect(!controller.window.acceptsPointerEvents)
 
     controller.model.answerOffer = offer
     controller.show(reviewContent())
     #expect(controller.model.layers.last?.scales == true)
-    #expect(!controller.window.ignoresMouseEvents)
+    #expect(controller.window.acceptsPointerEvents)
     try await Task.sleep(for: .milliseconds(250))
     #expect(controller.window.isVisible)
     #expect(controller.content?.kind == .review)

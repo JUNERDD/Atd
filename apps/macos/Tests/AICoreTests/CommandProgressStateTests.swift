@@ -180,7 +180,8 @@ struct CommandProgressStateTests {
 
   @Test("The answer card is as tall as its answer, up to the largest shape, then scrolls")
   func answerCardSize() {
-    let chrome = 12 + 28 + 8 + 32.0
+    // The grabber's strip and the bottom padding, the title row, the answer's gaps, the footer.
+    let chrome = 16 + 6 + 28 + 8 + 32.0
     #expect(IslandMetrics.answerCardHeight(note: 0, answer: 36) == chrome + 36)
     #expect(IslandMetrics.answerCardHeight(note: 15, answer: 36) == chrome + 15 + 2 + 36)
     #expect(IslandMetrics.answerCardHeight(note: 0, answer: 36.2) == chrome + 37)

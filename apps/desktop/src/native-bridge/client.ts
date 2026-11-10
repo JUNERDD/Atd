@@ -96,6 +96,9 @@ export class NativeBridge {
     'text.writeOffer': new Set(),
     'computer.state': new Set(),
     'shortcuts.changed': new Set(),
+    'recording.ask': new Set(),
+    'recording.askStop': new Set(),
+    'recording.askOpen': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

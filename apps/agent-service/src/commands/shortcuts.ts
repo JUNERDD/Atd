@@ -31,6 +31,7 @@ import { parameterError } from './templates.js';
 const APP_SHORTCUT_NAMES: Record<keyof ShortcutBindingsWire, string> = {
   togglePanel: 'Toggle panel',
   captureScreenshot: 'Capture screenshot',
+  recordScreen: 'Record screen',
   newConversation: 'New conversation',
   openSettings: 'Open settings',
   sendMessage: 'Send message',
@@ -136,7 +137,7 @@ export function validateShortcuts(command: ServiceCommandFull): void {
     const action = shortcut.output?.action;
     if (action && actsOnSelection(action) && !readsSelection(command.input))
       throw new TypeError(
-        `${named} sends its answer to ${action}, which writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output for the shortcut (insertAtCursor, copy or panel), or none to follow the command.`,
+        `${named} sends its answer to ${action}, which writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output for the shortcut (card, insertAtCursor, copy or panel), or none to follow the command.`,
       );
   }
 }
@@ -237,9 +238,11 @@ export function assertSettingsShortcutsFree(
   for (const [action, value] of Object.entries(next.shortcuts) as Array<
     [keyof ShortcutBindingsWire, string]
   >) {
+    // An action left without keys holds nothing.
     if (
+      value === '' ||
       effectiveAccelerator(value, process.platform) ===
-      effectiveAccelerator(previous.shortcuts[action], process.platform)
+        effectiveAccelerator(previous.shortcuts[action], process.platform)
     )
       continue;
     if (value === toolbarTap)

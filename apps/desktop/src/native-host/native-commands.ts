@@ -32,8 +32,11 @@ const SELECTION_ERRORS = {
   tooLong: 'input.errors.selectionTooLong',
 } as const satisfies Record<SelectionFailure, string>;
 
-/** A capture or edit result as the page's screenshot; null when the user cancelled. */
-function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
+/**
+ * A capture or edit result as the page's screenshot; null when the user cancelled or the capture
+ * became a recording.
+ */
+export function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
   if (result.ok)
     return { file: result.file, context: result.context, capturedAt: result.capturedAt };
   if (result.reason === 'notPermitted')
@@ -111,6 +114,23 @@ export class NativeCommands implements CommandCatalog {
     );
   }
 
+  /**
+   * Prepared like a shortcut launch (a failed capture becomes a notice), but the screenshot the
+   * command reads is `shot`, the capture that launched it, so no second capture opens.
+   */
+  async prepareWithScreenshot(
+    id: string,
+    shot: Screenshot,
+    overrides?: ArgumentValues,
+  ): Promise<PreparedCommand> {
+    return prepareCommand(
+      this.find(id),
+      { capture: (source) => this.capture(source), screenshot: async () => shot },
+      true,
+      overrides,
+    );
+  }
+
   /** Nothing selected (or only whitespace) rejects with a `SelectionMissingError`. */
   async capture(source: 'selection' | 'clipboard') {
     if (source === 'selection') {
@@ -127,9 +147,9 @@ export class NativeCommands implements CommandCatalog {
     return { text, capturedAt: new Date().toISOString() };
   }
 
-  /** The shell hides the panel while the user picks an area, a window or the screen. */
+  /** An image for this command's input; it cannot start another command or a recording. */
   async screenshot() {
-    return shotOf(await this.bridge.call('screenshot.capture', {}));
+    return shotOf(await this.bridge.call('screenshot.capture', { purpose: 'image' }));
   }
 
   /** Reopens an image attachment on the capture overlay; the result is a new resource. */

@@ -56,7 +56,20 @@ public struct CommandProgressState: Equatable, Sendable {
   /// How long "Written" stays before the island collapses.
   public static let doneDuration: Duration = .milliseconds(1500)
 
+  /// How long `phase` stays once it draws before it goes by itself: a notice
+  /// ``noticeDuration``, "Written" and "Copied" ``doneDuration``; nil for one that stays.
+  public static func lifetime(_ phase: Phase) -> Duration? {
+    switch phase {
+    case .notice: noticeDuration
+    case .done, .copied: doneDuration
+    case .working, .choose, .compose, .writing, .answer: nil
+    }
+  }
+
   public private(set) var shown: Shown?
+  /// What the shell's recording has on the island over the page's progress
+  /// (``Recording``, ``progressArrives()``); nil while it has nothing there.
+  public internal(set) var recording: Recording?
 
   public init() {}
 

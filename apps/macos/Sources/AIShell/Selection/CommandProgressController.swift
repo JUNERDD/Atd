@@ -44,10 +44,12 @@ final class CommandProgressController: NSObject {
   private let panel: WebViewHost
   let island = IslandController()
   let keys = CarbonHotKeys(signature: CommandProgressController.escapeSignature)
-  private(set) var state = CommandProgressState()
-  private var escape: UInt32?
+  /// Written by this controller and its recording gate (``CommandProgressController+Recording``).
+  var state = CommandProgressState()
+  /// Escape's registration while it belongs to the island.
+  var escape: UInt32?
   /// The press island shows, ahead of anything the page shows.
-  private var pressing = false
+  private(set) var pressing = false
   /// Bumped by every change, so a timer of an earlier one never acts on a later one.
   private var timer = 0
   /// Gives the keyboard back to the field the write target `target` names.
@@ -70,6 +72,10 @@ final class CommandProgressController: NSObject {
   var writingReview: String?
   /// The review cards the page was told to let go, and the one it will be once its notice goes.
   var reviewClosings = ReviewClosings()
+  /// The shell's screen recording and long screenshot, which share the island in turn (their
+  /// gate: ``CommandProgressController+Recording``).
+  lazy var recording = IslandRecording(progress: self)
+  lazy var longScreenshot = IslandLongScreenshot(progress: self)
 
   init(
     _ panel: WebViewHost, toolbar: SelectionToolbarController,
@@ -105,7 +111,7 @@ final class CommandProgressController: NSObject {
     let keyboard = state.takesKeyboard
     guard state.hide(target: target) else { return }
     sync(leavingCard: keyboard ? target : nil)
-    if !pressing { island.exit() }
+    if !pressing, state.drawsProgress { exitIsland() }
   }
 
   /// `text.write` is typing the answer for `target` in. Only over nothing or `target`'s own
@@ -125,6 +131,7 @@ final class CommandProgressController: NSObject {
   /// "Copied", an answer card, which gives the keyboard back) gives way; a run still working
   /// comes back if the page shows nothing for this launch.
   func showPress(command: String) {
+    guard progressMayShow() else { return }
     if let shown = state.shown, state.givesWayToPress {
       let keyboard = state.takesKeyboard
       if state.isReviewing { send(CommandProgressState.closing(target: shown.target)) }
@@ -157,7 +164,7 @@ final class CommandProgressController: NSObject {
     guard pressing else { return }
     pressing = false
     timer += 1
-    if let shown = state.shown { island.show(content(shown.phase)) } else { island.exit() }
+    drawProgress()
   }
 
   /// Shows `phase` for `target`. A card leaving gives the keyboard back to its target's field
@@ -180,13 +187,10 @@ final class CommandProgressController: NSObject {
     pressing = false
     state.show(target: target, phase: phase)
     timer += 1
-    island.show(content(phase))
+    let draws = progressMayShow()
+    if draws { island.show(content(phase)) }
     sync(leavingCard: state.takesKeyboard || !returningFocus ? nil : leaving)
-    switch phase {
-    case .notice: expire(target: target, after: CommandProgressState.noticeDuration)
-    case .done, .copied: expire(target: target, after: CommandProgressState.doneDuration)
-    default: break
-    }
+    if draws { expire() }
   }
 
   /// What the island shows for `phase`.
@@ -207,13 +211,17 @@ final class CommandProgressController: NSObject {
     }
   }
 
-  /// Takes the island of `target` away after `duration`, unless anything changed meanwhile.
-  private func expire(target: String, after duration: Duration) {
+  /// What shows goes by itself once its ``CommandProgressState/lifetime(_:)`` passes, counted
+  /// from now (it just drew), unless anything changed meanwhile.
+  func expire() {
+    timer += 1
+    guard let shown = state.shown, let lifetime = CommandProgressState.lifetime(shown.phase)
+    else { return }
     let token = timer
     Task { [weak self] in
-      try? await Task.sleep(for: duration)
-      guard let self, token == timer else { return }
-      hide(target: target)
+      try? await Task.sleep(for: lifetime)
+      guard let self, token == timer, state.drawsProgress else { return }
+      hide(target: shown.target)
     }
   }
 
@@ -236,14 +244,18 @@ final class CommandProgressController: NSObject {
   /// answer or compose card while its window is key (each stays up, without the keyboard, once
   /// the person moved on, or while a screenshot or the open panel attaches for the compose card).
   var cardHasKeyboard: Bool {
-    state.isChoosing || ((state.isAnswering || state.isComposing) && island.window.isKeyWindow)
+    guard state.drawsProgress else { return shellCardHasKeyboard }
+    return state.isChoosing
+      || ((state.isAnswering || state.isComposing) && island.window.isKeyWindow)
   }
 
   /// A shortcut pressed while a card has the keyboard closes it, giving the keyboard back: the
   /// options card and the compose card cancel their command, the review card closes, the answer
   /// card only goes.
   func closeCard() {
-    if state.isChoosing || state.isComposing {
+    if !state.drawsProgress {
+      closeShellCard()
+    } else if state.isChoosing || state.isComposing {
       press(.cancel)
     } else if state.isReviewing {
       press(.close)
@@ -269,7 +281,7 @@ final class CommandProgressController: NSObject {
     if panelTakes { reviewClosings.notice = nil }
     sync(leavingCard: returning && !panelTakes ? choosing : nil)
     if choosing != nil { island.setKeyCapable(false) }
-    if let shown = state.shown { island.show(content(shown.phase)) } else { island.exit() }
+    drawProgress()
     send(event)
   }
 
@@ -296,7 +308,8 @@ final class CommandProgressController: NSObject {
   /// Escape held exactly while a run is working or the answer card shows; the keyboard taken
   /// while a card is up and given back to `leavingCard`'s field once it is gone. A registration
   /// that fails leaves the close button as the only way to cancel.
-  private func sync(leavingCard: String?) {
+  func sync(leavingCard: String?) {
+    guard state.drawsProgress else { return yieldKeys() }
     settleReviewNotice()
     if state.takesKeyboard {
       island.setKeyCapable(true)

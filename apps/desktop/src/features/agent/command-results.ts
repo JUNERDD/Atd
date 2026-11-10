@@ -1,17 +1,12 @@
-import { writesBack, type CommandOutput } from '@atd/agent-contracts';
+import { answersInPlace, type CommandOutput } from '@atd/agent-contracts';
 import type {
   AgentEvent,
   PreparedCommand,
   TaskDetail,
   WriteTarget,
 } from '../../client/agent/bridge';
-import { isActive, type AgentTask, type RunStatus } from '../../client/agent/task-schema';
-import {
-  applyTranscriptPatch,
-  type Block,
-  type TranscriptPatch,
-} from '../../client/agent/transcript-schema';
-import { lastAnswerText } from './transcript/final-answer';
+import { isActive, type RunStatus } from '../../client/agent/task-schema';
+import { RunAnswer } from './run-answer';
 
 /** Command runs remembered at once, in this page only; the oldest is forgotten first. */
 const MAX_RUNS = 32;
@@ -49,10 +44,9 @@ interface Tracked {
    * while the page holds the task, so a run that settles after the page moved off it, or after a
    * patch was missed, has none and its answer only stays in the conversation.
    */
-  transcript: { revision: number; blocks: Block[] } | null;
+  answer: RunAnswer | null;
 }
 
-const EMPTY_TRANSCRIPT = { revision: 0, blocks: [] };
 const runs = new Map<string, Tracked>();
 const listeners = new Set<() => void>();
 
@@ -62,8 +56,9 @@ function changed() {
 
 /**
  * Remembers the run a command submit started (the newest run of the task `detail` describes) when
- * its answer goes somewhere: on the clipboard, or into the app the launch recorded (`target`). A
- * write-back without a target leaves the answer in the conversation, so it is not remembered.
+ * its answer goes somewhere: on the clipboard, or into or over the app the launch recorded
+ * (`target`: a write-back, or the island's answer card). Either without a target leaves the answer
+ * in the conversation, so it is not remembered.
  * `light` marks a run on the island (a light launch's, or a version of its review), whose end the
  * island reports even under review, since its review card shows the answer.
  */
@@ -73,7 +68,7 @@ export function trackCommandRun(
   light = false,
 ): void {
   const { output } = prepared;
-  const target = writesBack(output.action) ? (prepared.target ?? null) : null;
+  const target = answersInPlace(output.action) ? (prepared.target ?? null) : null;
   if (output.action !== 'copy' && !target) return;
   const run = detail.task.runs.at(-1);
   if (!run || runs.has(run.id)) return;
@@ -81,7 +76,7 @@ export function trackCommandRun(
   runs.set(run.id, {
     run: { taskId: detail.task.id, runId: run.id, output, target },
     pending,
-    transcript: pending ? { revision: detail.revision, blocks: detail.blocks } : null,
+    answer: pending ? new RunAnswer(detail, run.id) : null,
   });
   for (const runId of runs.keys()) {
     if (runs.size <= MAX_RUNS) break;
@@ -110,42 +105,20 @@ export function forgetCommandTarget(runId: string): void {
   changed();
 }
 
-function follow(patch: TranscriptPatch) {
-  for (const tracked of runs.values()) {
-    if (!tracked.pending || tracked.run.taskId !== patch.taskId) continue;
-    // A snapshot patch replaces whatever was followed, so it also recovers a missed patch.
-    const base = tracked.transcript ?? (patch.snapshot ? EMPTY_TRANSCRIPT : null);
-    tracked.transcript = base && applyTranscriptPatch(base, patch);
-  }
-}
-
-function settle(tasks: readonly AgentTask[]): SettledCommandRun[] {
+/**
+ * Follows remembered runs once per event. Failed, stopped, cancelled or invalid transcripts
+ * leave their answers in the conversation; only completed valid answers act by themselves.
+ */
+export function followCommandRuns(event: AgentEvent): SettledCommandRun[] {
   const settled: SettledCommandRun[] = [];
   for (const tracked of runs.values()) {
-    if (!tracked.pending) continue;
-    const task = tasks.find((item) => item.id === tracked.run.taskId);
-    const status = task?.runs.find((run) => run.id === tracked.run.runId)?.status;
-    if (status === undefined || isActive(status)) continue;
-    // Failed, stopped and cancelled runs leave their answer in the conversation.
-    const answer =
-      status === 'completed' && tracked.transcript
-        ? lastAnswerText(tracked.transcript.blocks, tracked.run.runId)
-        : '';
+    if (!tracked.pending || !tracked.answer) continue;
+    const status = tracked.answer.follow(event);
+    if (status === undefined) continue;
+    const answer = status === 'completed' && tracked.answer.valid ? tracked.answer.text : '';
     tracked.pending = false;
-    tracked.transcript = null;
+    tracked.answer = null;
     settled.push({ run: tracked.run, status, answer });
   }
   return settled;
-}
-
-/**
- * Follows one agent event for the remembered runs and returns the runs it ended whose answer was
- * still to act by itself, each once; those with an answer now act on it. Transcript patches update
- * the answer; task states and snapshots report run status.
- */
-export function followCommandRuns(event: AgentEvent): SettledCommandRun[] {
-  if (event.type === 'transcript') follow(event.patch);
-  else if (event.type === 'task') return settle([event.state.task]);
-  else if (event.type === 'snapshot') return settle(event.snapshot.tasks);
-  return [];
 }

@@ -572,7 +572,13 @@
       "failed": "{{command}} 未能完成。",
       "stopped": "{{command}} 已停止。",
       "startFailed": "{{command}} 无法开始运行。",
-      "empty": "{{command}} 没有可写入的回答。"
+      "empty": "{{command}} 没有可写入的回答。",
+      "emptyCopy": "{{command}} 没有可拷贝的回答。"
+    },
+    "ask": {
+      "title": "问 Atd",
+      "note": "你的问题：{{question}}",
+      "empty": "Atd 没有给出回答。"
     },
     "review": {
       "failed": "{{command}} 没能生成新版本。"

@@ -12,10 +12,13 @@ public struct ToolbarOptionsSheet: Equatable, Sendable {
   /// The options in parameter order, then where the answer goes, with their current values.
   public private(set) var options: [CommandOption]
 
-  public init(_ entry: CommandOptionsCatalog.Entry, names: CommandOutputChoice.Names) {
+  /// `cursor`: whether a field could take the answer at the cursor (``CommandOutputChoice``).
+  public init(
+    _ entry: CommandOptionsCatalog.Entry, names: CommandOutputChoice.Names, cursor: Bool = true
+  ) {
     id = entry.id
     name = entry.name
-    options = entry.options(names)
+    options = entry.options(names, cursor: cursor)
   }
 
   /// The command's only option when it is a choice (where the answer goes, for a command without

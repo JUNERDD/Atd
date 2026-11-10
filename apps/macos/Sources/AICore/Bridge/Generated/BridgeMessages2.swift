@@ -68,6 +68,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .screenshotCapture(container.value(.params, ScreenshotCaptureParams.self))
       case "screenshot.edit":
         call = try .screenshotEdit(container.value(.params, ScreenshotEditParams.self))
+      case "screenshotToolbar.set":
+        call = try .screenshotToolbarSet(container.value(.params, ScreenshotToolbarSetParams.self))
       case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
       case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
       case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))
@@ -135,6 +137,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
       case "shortcuts.recording":
         call = try .shortcutsRecording(container.value(.params, ShortcutsRecordingParams.self))
+      case "recording.answer":
+        call = try .recordingAnswer(container.value(.params, RecordingAnswerParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -233,6 +237,9 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case commandProgressAction(CommandProgressActionEvent)
   case textWriteOffer(TextWriteOfferEvent)
   case commandOptionsPicked(CommandOptionsPickedEvent)
+  case recordingAsk(RecordingAskEvent)
+  case recordingAskStop(RecordingAskStopEvent)
+  case recordingAskOpen(RecordingAskOpenEvent)
 
   /// The contract name.
   public var name: String {
@@ -264,6 +271,9 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .commandProgressAction: "commandProgress.action"
     case .textWriteOffer: "text.writeOffer"
     case .commandOptionsPicked: "commandOptions.picked"
+    case .recordingAsk: "recording.ask"
+    case .recordingAskStop: "recording.askStop"
+    case .recordingAskOpen: "recording.askOpen"
     }
   }
 
@@ -296,6 +306,9 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
     case .textWriteOffer(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
+    case .recordingAsk(let payload): try payload.encode(to: encoder)
+    case .recordingAskStop(let payload): try payload.encode(to: encoder)
+    case .recordingAskOpen(let payload): try payload.encode(to: encoder)
     }
   }
 }

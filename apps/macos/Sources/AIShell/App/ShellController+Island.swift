@@ -5,6 +5,24 @@ import AppKit
 /// through ``Summoner``, the cards handing the keyboard back to the field the command came from,
 /// and the compose card's attaching.
 extension ShellController {
+  /// Capture shortcuts stop the current recording before a summon can capture selection,
+  /// open overlays or close a card. A repeated screenshot shortcut copies its current selection.
+  /// Processing consumes repeated presses until it finishes.
+  func pressShortcut(_ id: String) {
+    let trigger = SummonTrigger(hotKeyID: id)
+    if trigger == .screenshot || trigger == .recordScreen,
+      let recording = installedScreenRecording, recording.isBusy
+    {
+      recording.stop()
+      return
+    }
+    if trigger == .screenshot, screenshots.isCapturing {
+      screenshots.copyFromShortcut()
+      return
+    }
+    shortcutHolds.pressed(id)
+  }
+
   func makeShortcutHolds() -> ShortcutHolds {
     ShortcutHolds(
       catalog: { [weak self] in self?.commandOptions ?? CommandOptionsCatalog() },
@@ -22,7 +40,7 @@ extension ShellController {
     ComposeAttachments(
       screenshot: { [weak self] () async throws(BridgeError) -> ScreenshotCaptureResult in
         guard let self else { return .notOk(.init(reason: .cancelled)) }
-        return try await captureScreenshot()
+        return try await captureScreenshotInput()
       },
       pickFiles: { [weak self] () async throws(BridgeError) -> ResourceImportResponse in
         guard let self else { return .empty }

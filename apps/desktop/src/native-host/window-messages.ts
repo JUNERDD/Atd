@@ -45,6 +45,7 @@ export type WindowMessage =
       type: 'shortcutState';
       panelAvailable: boolean;
       screenshotAvailable: boolean;
+      recordAvailable: boolean;
       /** As `AgentSnapshot.shortcutErrors` keys them. */
       errors: Record<string, string>;
     }

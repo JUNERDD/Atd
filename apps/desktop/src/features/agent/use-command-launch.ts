@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import { needsInput } from '../../client/agent/command-arguments';
 import { showErrorToast } from '../../components/toast-store';
+import { startLightCopy } from './light-capture';
 import { startLightRun } from './light-command';
 import { isLightLaunch } from './light-command-run';
 import { chooseLightRun } from './light-command-choose';
@@ -16,15 +17,17 @@ import { showPanel } from './use-panel-window';
  * shows the command input: `submit` starts its task, which the panel then shows. Any other launch,
  * and a run that cannot start (with its failure), shows the command's input page (`showInput`).
  * Either way the panel is revealed once the launched view is on screen. A light launch (one that
- * runs as-is and puts its answer back into the app it ran from, `isLightLaunch`) is the
- * exception: it leaves the panel hidden and as it was, and the shell's progress HUD reports it
+ * runs as-is and whose answer lands in or over the app it ran from: written back, or on the
+ * island's answer card, `isLightLaunch`) is the exception: it leaves the panel hidden and as it was, and the shell's progress HUD reports it
  * (an answer under review waits on the HUD's review card, never written by itself); the panel
  * shows its task (`openTask`) only when the run needs the person or they open it; a held shortcut
  * first offers a light launch's options in that HUD (`chooseLightRun`). A shell launch that found
  * nothing selected for a command working on the selection (`PreparedCommand.selectionMissing`)
  * leaves the panel hidden too: the HUD's compose card asks for the text, after the options card
- * for a held shortcut, and the launch goes on from its answer (`composeLightRun`). It also acts on
- * the answers of the command runs the panel started (`useCommandResults`).
+ * for a held shortcut, and the launch goes on from its answer (`composeLightRun`). A run the
+ * screenshot toolbar launched whose answer is copied (`CommandLaunch.fromCapture`) runs on the
+ * island as well, which confirms the copy (`startLightCopy`). It also acts on the answers of the
+ * command runs the panel started (`useCommandResults`).
  */
 export function useCommandLaunch({
   submit,
@@ -55,8 +58,14 @@ export function useCommandLaunch({
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    return bridge.onLaunch(({ prepared, autoRun: run, choose }) => {
+    return bridge.onLaunch(({ prepared, autoRun: run, choose, fromCapture }) => {
       const { light } = bridge;
+      if (light && fromCapture && run && prepared.output.action === 'copy') {
+        void startLightCopy(prepared, light).catch((error: unknown) => {
+          console.error('The light copy run failed:', error);
+        });
+        return;
+      }
       if (light && prepared.selectionMissing) {
         composeLightRun(prepared, choose === true, light);
         return;

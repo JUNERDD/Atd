@@ -11,15 +11,16 @@ import { changeAppLanguage, initialLanguageReady } from '../../i18n';
 import { MAX_REVIEW_VERSIONS } from '../../native-bridge/command-review';
 import { actOnProgress, settleLightRun, startLightRun, type LightHost } from './light-command';
 import { lightRuns, type LightLaunch } from './light-command-run';
+import { clearIsland, islandIdentity } from './island-owner';
 
 beforeEach(async () => {
   await initialLanguageReady;
   await changeAppLanguage('en');
-  lightRuns.current = null;
+  clearIsland();
   lightRuns.holding.clear();
 });
 afterEach(() => {
-  lightRuns.current = null;
+  clearIsland();
   lightRuns.holding.clear();
   delete window.desktop;
 });
@@ -103,10 +104,9 @@ it('regenerates, browses an older version and quotes it when adjusting', async (
   expect(request.input.chips).toEqual([
     expect.objectContaining({ chip: { kind: 'quote', text: 'Hello world' } }),
   ]);
-  expect(lightRuns.current?.review?.versions.map((v) => v.answer)).toEqual([
-    'Hello world',
-    'Second translation',
-  ]);
+  expect(islandIdentity()).toMatchObject({
+    review: { versions: [{ answer: 'Hello world' }, { answer: 'Second translation' }] },
+  });
 });
 
 it('waits for a stopped version to drain before starting its replacement', async () => {
@@ -122,10 +122,9 @@ it('waits for a stopped version to drain before starting its replacement', async
   h.settle('review-run-2', 'completed', 'Late discarded answer');
   await vi.waitFor(() => expect(lightRuns.holding.has('review-run-3')).toBe(true));
   h.settle('review-run-3', 'completed', 'Short answer');
-  expect(lightRuns.current?.review?.versions.map((v) => v.answer)).toEqual([
-    'Hello world',
-    'Short answer',
-  ]);
+  expect(islandIdentity()).toMatchObject({
+    review: { versions: [{ answer: 'Hello world' }, { answer: 'Short answer' }] },
+  });
 });
 
 it('closing during submit stops the late run and releases only after it ends', async () => {
@@ -162,7 +161,7 @@ it('a failed version keeps the previous answer and allows another attempt', asyn
       review: expect.objectContaining({ count: 1 }),
     }),
   );
-  expect(lightRuns.current?.review?.pending).toBeNull();
+  expect(islandIdentity()).toMatchObject({ review: { pending: null } });
   h.act('regenerate');
   await vi.waitFor(() => expect(lightRuns.holding.has('review-run-3')).toBe(true));
 });
@@ -194,5 +193,5 @@ it('makes no more than the supported number of versions', async () => {
   }
   h.act('regenerate');
   expect(h.light.submit).toHaveBeenCalledTimes(MAX_REVIEW_VERSIONS);
-  expect(lightRuns.current?.review?.pending).toBeNull();
+  expect(islandIdentity()).toMatchObject({ review: { pending: null } });
 });

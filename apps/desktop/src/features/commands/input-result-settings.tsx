@@ -5,6 +5,7 @@ import {
   defaultCommandOutput,
   readsSelection,
   writesBack,
+  type CommandPlace,
 } from '@atd/agent-contracts';
 import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
@@ -37,6 +38,12 @@ const SOURCE_LABELS = {
   none: 'input.sourceNone',
 } as const satisfies Record<Source, string>;
 
+/** The place a command goes on when the person switches its input to a source that place offers. */
+const SOURCE_PLACES: Partial<Record<Source, CommandPlace>> = {
+  selection: 'selectionToolbar',
+  screenshot: 'screenshotToolbar',
+};
+
 /**
  * Whether some run of `command` waits for review: one with the command's own output, or one from a
  * shortcut whose output override reviews a write-back. Either shows the command's adjustment
@@ -57,7 +64,8 @@ function reviewsSomewhere(command: CommandDefinition): boolean {
  * and an input change that stops reading the selection returns such a result to the conversation.
  * A command that takes the selection, run from its shortcut with nothing selected, asks for the
  * text on the island and puts a selection write-back at the cursor (`withComposedInput`); an
- * answer the app cannot take shows in the island's answer card.
+ * answer the app cannot take shows in the island's answer card, where an answer meant for a card
+ * always shows when the command runs from another app.
  */
 export function InputResultSettings({
   command,
@@ -86,6 +94,7 @@ export function InputResultSettings({
       t(actsOnSelection(action) ? 'io.composeCursorNote' : 'io.composeNote'),
     writeBack && t('output.writeBackNote'),
     writeBack && t('output.cardNote'),
+    action === 'card' && t('output.cardPlaceNote'),
   ].filter((note) => typeof note === 'string');
   /**
    * Applies an input change. An output that acts on the selection needs a command that reads it,
@@ -107,8 +116,9 @@ export function InputResultSettings({
     if (!next) return;
     // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
     // Switching to Selected text also puts the command on the selection toolbar over other apps,
-    // where a command that takes the selection as its input has always shown.
-    const toToolbar = next === 'selection' && command.input.source !== 'selection';
+    // where a command that takes the selection as its input has always shown, and switching to
+    // Screenshot puts it on the screenshot toolbar, where such a command shows by default.
+    const place = next === command.input.source ? undefined : SOURCE_PLACES[next];
     update(
       {
         ...command.input,
@@ -118,7 +128,7 @@ export function InputResultSettings({
         selection: command.input.selection || next === 'selection',
         clipboard: command.input.clipboard || next === 'clipboard',
       },
-      toToolbar ? { ...command.placement, selectionToolbar: true } : command.placement,
+      place ? { ...command.placement, [place]: true } : command.placement,
     );
   }
   return (

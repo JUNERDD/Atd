@@ -12,7 +12,9 @@ import {
   parse,
   parseShortcutBindings,
   UserSettingsSchema,
+  withTakenAddedShortcutsReleased,
   type ShortcutBindingsWire,
+  type ShortcutCommand,
   type PatchSettingsRequest,
   type PermissionTier,
   type SelectionToolbarSettings,
@@ -188,6 +190,22 @@ export class SettingsStore {
         { ...this.state.settings, ...withFirstTypingAnimation(this.state.settings, fields) },
         true,
       );
+    });
+  }
+
+  /**
+   * Leaves each application action an upgrade added without keys where they are already in use
+   * (`withTakenAddedShortcutsReleased` against `commands`, the stored ones), so the action never
+   * takes them from an older binding or command shortcut. The service's start runs it once the
+   * commands are known; it writes only on a change and leaves `initialized` as it was.
+   */
+  releaseTakenAddedShortcuts(commands: ReadonlyArray<ShortcutCommand>): Promise<SettingsResponse> {
+    return this.serialize(() => {
+      const { settings } = this.state;
+      const current = settings.shortcuts ?? DEFAULT_SHORTCUTS;
+      const next = withTakenAddedShortcutsReleased(current, commands, process.platform);
+      if (next === current) return this.current();
+      return this.write({ ...settings, shortcuts: next }, this.state.initialized);
     });
   }
 

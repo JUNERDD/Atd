@@ -243,8 +243,8 @@ struct SelectionToolbarTests {
   static let names = CommandOutputChoice.Names(
     label: "Answer",
     actions: [
-      .panel: "Panel", .replaceSelection: "Replace", .insertAfterSelection: "After",
-      .insertAtCursor: "Cursor", .copy: "Copy",
+      .panel: "Panel", .card: "Card", .replaceSelection: "Replace",
+      .insertAfterSelection: "After", .insertAtCursor: "Cursor", .copy: "Copy",
     ], saved: "%@ (default)")
   static let entry = CommandOptionsCatalog.Entry(
     id: "c1", name: "Translate",
@@ -295,7 +295,7 @@ struct SelectionToolbarTests {
     #expect(bare.singleChoice?.key == CommandOutputChoice.key)
     // Without the selection, the actions on it are left out; the saved one is the default.
     #expect(
-      bare.singleChoice?.options.map(\.label) == ["Panel (default)", "Cursor", "Copy"])
+      bare.singleChoice?.options.map(\.label) == ["Panel (default)", "Card", "Cursor", "Copy"])
   }
 
   @Test("A submenu follows the row under the pointer at once, and only the way into it holds it")

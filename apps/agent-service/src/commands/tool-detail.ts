@@ -28,6 +28,7 @@ const INPUT_SOURCES = {
 
 const OUTPUT_ACTIONS = {
   panel: 'kept in the conversation',
+  card: 'shown in a card over the app it ran from',
   replaceSelection: 'written over the selected text',
   insertAfterSelection: 'inserted after the selected text',
   insertAtCursor: 'inserted at the cursor',

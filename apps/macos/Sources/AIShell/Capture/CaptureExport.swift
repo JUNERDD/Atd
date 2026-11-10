@@ -1,4 +1,5 @@
 import AICore
+import AppKit
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
@@ -44,6 +45,26 @@ enum CaptureExport {
     context.scaleBy(x: 1, y: -1)
     editor.render(into: context, transform: stitch.transform)
     return context.makeImage().map { Rendered(image: $0, raw: raw, scale: stitch.scale) }
+  }
+
+  /// Puts the annotated screenshot on `pasteboard` at the display's full pixel size, as PNG and
+  /// TIFF (what most apps read), sized in points so it pastes at screen size.
+  static func copy(_ capture: CaptureConfirmation, to pasteboard: NSPasteboard) {
+    copy(capture.image, pixelScale: capture.pixelScale, to: pasteboard)
+  }
+
+  /// Puts `image` on `pasteboard` at its full pixel size, as PNG and TIFF, sized in points at
+  /// `pixelScale` pixels per point.
+  static func copy(_ cgImage: CGImage, pixelScale: CGFloat, to pasteboard: NSPasteboard) {
+    let image = NSBitmapImageRep(cgImage: cgImage)
+    image.size = NSSize(
+      width: CGFloat(cgImage.width) / pixelScale, height: CGFloat(cgImage.height) / pixelScale)
+    pasteboard.clearContents()
+    pasteboard.declareTypes([.png, .tiff], owner: nil)
+    if let png = image.representation(using: .png, properties: [:]) {
+      pasteboard.setData(png, forType: .png)
+    }
+    if let tiff = image.tiffRepresentation { pasteboard.setData(tiff, forType: .tiff) }
   }
 
   /// Writes `image` into `folder` under the screenshot's name and returns the file.
@@ -92,7 +113,7 @@ enum CaptureExport {
     }
   }
 
-  private nonisolated static func encode(_ image: CGImage, as attempt: ScreenshotAttempt)
+  nonisolated static func encode(_ image: CGImage, as attempt: ScreenshotAttempt)
     throws(ImageExportFailure) -> Data
   {
     // The first attempt is `ScreenshotRules.exportSize`, the size the selection's label shows.

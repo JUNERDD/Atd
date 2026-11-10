@@ -103,6 +103,14 @@ final class HotKeyRegistrar {
     if recording.isEmpty { _ = register(desired) }
   }
 
+  /// Hints describe an active registration, never an unavailable default or failed binding.
+  func displayLabel(for id: String) -> String? {
+    guard registered[id] != nil,
+      let accelerator = desired.first(where: { $0.id == id })?.accelerator
+    else { return nil }
+    return try? Accelerator.label(accelerator)
+  }
+
   /// Multiple recorders/windows can coexist; only releasing the last one restores shortcuts.
   func startRecording(owner: ObjectIdentifier, session: Int) {
     if recording.isEmpty { unregisterAll() }

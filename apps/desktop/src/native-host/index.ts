@@ -27,6 +27,8 @@ import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
 import { nativeAutomations } from './native-automations';
+import { nativeCapture } from './native-capture';
+import { nativeCaptureEvents } from './native-capture-events';
 import { nativeCommandOptions } from './native-command-options';
 import { nativeComputer } from './native-computer';
 import { NativeCommands } from './native-commands';
@@ -84,6 +86,7 @@ export async function installNativeHost(
   const focusWrite = surface === 'panel' ? nativeFocusWrite(native) : undefined;
   // Native task navigation and withdrawn queues wait for the panel's view to subscribe.
   const taskEvents = surface === 'panel' ? nativeTaskEvents(native) : {};
+  const captureEvents = surface === 'panel' ? nativeCaptureEvents(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -144,10 +147,11 @@ export async function installNativeHost(
     },
     (_page, event) => emit('changed', event),
   );
-  const shortcutsApplied = ({ panelAvailable, screenshotAvailable }: GlobalShortcutState) => {
+  const shortcutsApplied = (state: GlobalShortcutState) => {
     settings.setShell({
-      shortcutAvailable: panelAvailable,
-      screenshotShortcutAvailable: screenshotAvailable,
+      shortcutAvailable: state.panelAvailable,
+      screenshotShortcutAvailable: state.screenshotAvailable,
+      recordShortcutAvailable: state.recordAvailable,
     });
     requests.broadcast();
   };
@@ -315,7 +319,7 @@ export async function installNativeHost(
     ...nativeShellPreferences(native, settings),
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
-    screenshot: () => commands.screenshot(),
+    captureScreenshotInput: () => commands.screenshot(),
     editScreenshot: (resourceId) => commands.editScreenshot(resourceId),
     resource: async (resourceId) => {
       const { bytes, mime } = await downloadResource(connection.options(), resourceId);
@@ -325,9 +329,14 @@ export async function installNativeHost(
     share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
-    ...(surface === 'panel'
+    ...(captureEvents
       ? {
-          onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()),
+          capture: nativeCapture(
+            native,
+            commands,
+            (launch) => emit('launch', launch),
+            captureEvents,
+          ),
         }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),

@@ -166,9 +166,10 @@ function withAddedSelectionToolbar(file: unknown): unknown {
 }
 
 /**
- * A file written before an application shortcut action existed (`captureScreenshot`) stores
- * bindings without it; the missing actions take their defaults, so the file still reads and the
- * next write stores every action.
+ * A file written before an application shortcut action existed (`captureScreenshot`,
+ * `recordScreen`) stores bindings without it; the missing actions take their defaults, so the file
+ * still reads and the next write stores every action. Where an added action's default is already
+ * in use, the service's start leaves it without keys (`SettingsStore.releaseTakenAddedShortcuts`).
  */
 function withAddedShortcuts(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;

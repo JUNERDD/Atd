@@ -25,7 +25,11 @@ export const MAX_COMMAND_SHORTCUTS = 8;
  * Shell registration ids the application's own global shortcuts use. A command shortcut's id is
  * its registration id, so it can never take one of these.
  */
-export const RESERVED_SHORTCUT_IDS: readonly string[] = ['togglePanel', 'captureScreenshot'];
+export const RESERVED_SHORTCUT_IDS: readonly string[] = [
+  'togglePanel',
+  'captureScreenshot',
+  'recordScreen',
+];
 
 /**
  * One global shortcut of a command: an entry point that runs the command with a few of its

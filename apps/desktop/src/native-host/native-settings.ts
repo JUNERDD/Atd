@@ -42,7 +42,7 @@ import type { WindowMessages } from './window-messages';
 
 /**
  * The preferences the shell owns (the panel's placement null until `app.state` answers), whether
- * it holds the panel and screenshot shortcuts (null until the panel's first registration answer
+ * it holds the panel, screenshot and record-screen shortcuts (null until the panel's first registration answer
  * reaches this window), whether macOS trusts the app for Accessibility and lets it capture the
  * screen (each null until the shell's `accessibility.trust` or `screenRecording.trust` arrives),
  * and whether the mini panel shows and how it opens (null until the shell's first
@@ -52,6 +52,7 @@ export type ShellState = Omit<CallResult<'app.state'>, 'panelPlacement'> & {
   panelPlacement: CallResult<'app.state'>['panelPlacement'] | null;
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
+  recordShortcutAvailable: boolean | null;
   accessibilityTrusted: boolean | null;
   screenRecordingTrusted: boolean | null;
   miniPanelShown: boolean | null;
@@ -87,6 +88,7 @@ export function nativeSettings(
     panelPlacement: null,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
+    recordShortcutAvailable: null,
     accessibilityTrusted: null,
     screenRecordingTrusted: null,
     miniPanelShown: null,

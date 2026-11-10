@@ -29,7 +29,10 @@ struct IslandLoadingGlow: View {
       .animation(shape.animation) {
         $0.modifier(IslandGlowFollowEffect(drawn: shape.glass.rect, rest: rest))
       }
-      .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
+      .animation(nil) {
+        let shift = IslandMetrics.canvasShift(model.canvas)
+        return $0.offset(x: rest.minX + shift.x, y: rest.minY + shift.y)
+      }
       .allowsHitTesting(false)
       .accessibilityHidden(true)
   }

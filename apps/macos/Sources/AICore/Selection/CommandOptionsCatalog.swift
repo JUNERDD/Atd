@@ -22,9 +22,11 @@ public struct CommandOptionsCatalog: Equatable, Sendable {
       self.output = output
     }
 
-    /// Every option the menus show: the parameters', then where the answer goes.
-    public func options(_ names: CommandOutputChoice.Names) -> [CommandOption] {
-      CommandOutputChoice.appending(output, to: options, names: names)
+    /// Every option the menus show: the parameters', then where the answer goes (`cursor`:
+    /// whether a field could take it at the cursor, ``CommandOutputChoice``).
+    public func options(_ names: CommandOutputChoice.Names, cursor: Bool = true) -> [CommandOption]
+    {
+      CommandOutputChoice.appending(output, to: options, names: names, cursor: cursor)
     }
   }
 

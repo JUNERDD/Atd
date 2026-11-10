@@ -322,6 +322,9 @@ importers:
       '@napi-rs/keyring':
         specifier: 2.1.2
         version: 2.1.2
+      '@silvia-odwyer/photon-node':
+        specifier: 0.3.4
+        version: 0.3.4
       '@xmldom/xmldom':
         specifier: 0.8.15
         version: 0.8.15

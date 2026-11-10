@@ -1,0 +1,96 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSDesktopFolderUsageDescription" : {
+      "comment" : "Privacy prompt the first time an attached file is in the Desktop folder or a screen recording is saved there",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd reads a file in your Desktop folder only when you attach it, and saves a screen recording there only when you choose it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在你附加“桌面”中的文件时，Atd 才会读取它；仅在你选择保存到“桌面”时，Atd 才会把录屏存到那里。"
+          }
+        }
+      }
+    },
+    "NSDocumentsFolderUsageDescription" : {
+      "comment" : "Privacy prompt the first time an attached file is in the Documents folder or a screen recording is saved there",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd reads a file in your Documents folder only when you attach it, and saves a screen recording there only when you choose it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在你附加“文稿”中的文件时，Atd 才会读取它；仅在你选择保存到“文稿”时，Atd 才会把录屏存到那里。"
+          }
+        }
+      }
+    },
+    "NSDownloadsFolderUsageDescription" : {
+      "comment" : "Privacy prompt the first time an attached file is in the Downloads folder or a screen recording is saved there",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd reads a file in your Downloads folder only when you attach it, and saves a screen recording there only when you choose it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在你附加“下载”中的文件时，Atd 才会读取它；仅在你选择保存到“下载”时，Atd 才会把录屏存到那里。"
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy prompt the first time a screen recording records the microphone",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd records your microphone only while you record the screen with the microphone on, for the recording's sound and narration."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在你录屏并打开麦克风时，Atd 才会录制麦克风，用于录屏的声音和旁白。"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy prompt the first time a screen recording's narration is transcribed (on this Mac only)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd transcribes what you say in a screen recording on this Mac, so it can read your narration."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 会在这台 Mac 上转写你在录屏中说的话，以便读懂你的旁白。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

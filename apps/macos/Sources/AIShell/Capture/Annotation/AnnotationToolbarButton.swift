@@ -6,9 +6,11 @@ import AppKit
 /// concentrically), a wash on hover and a deeper one while pressed, the selected state, a
 /// dimmed disabled glyph, and the keyboard focus ring drawn inside the toolbar's padding.
 ///
-/// The selection toolbar uses the same control with a label (``init(label:image:width:action:)``):
-/// a capsule ``side`` points tall around a leading glyph and its text, with the same washes; its
-/// More menu stretches such buttons to one width as its rows.
+/// The selection toolbar uses the same control with a label
+/// (``init(label:image:width:selection:action:)``): a capsule ``side`` points tall around a
+/// leading glyph and its text, with the same washes; its More menu stretches such buttons to one
+/// width as its rows. A labelled button can say something else in place (``setLabel(_:image:)``)
+/// at the width it was given, so the row around it never shifts.
 ///
 /// A choice among several (tools, colours, strokes) reads as a selected radio button to
 /// VoiceOver, an on/off control (the text background) as a checkbox; the bars set
@@ -16,9 +18,23 @@ import AppKit
 final class AnnotationToolbarButton: NSButton {
   /// How the selected state shows: an accent fill under a white glyph (tools, stroke widths),
   /// or an accent ring around the glyph (colour swatches, which a fill would hide). `toggle` is
-  /// an on/off control that shows "on" like `fill`.
+  /// an on/off control that shows "on" like `fill`; `wash` one of a choice whose selected one
+  /// keeps the pressed wash (the capture bar's mode pair, which leaves the accent to the toolbar).
   enum Selection {
-    case fill, ring, toggle
+    case fill, ring, toggle, wash
+  }
+
+  /// Capture-only faces; other toolbar consumers keep the standard appearance. Feedback is
+  /// independent of `isEnabled`, so a successful, disabled action stays legible without repeating.
+  /// `primary` is a capsule's primary action (the ask bar's Send, the toolbar's confirm) in the
+  /// command cards' colours (the island's send buttons): filled with the label colour, its glyph
+  /// in the opposite one.
+  enum Presentation {
+    case standard, captureMode, primary, success, muted
+  }
+
+  var presentation: Presentation = .standard {
+    didSet { needsDisplay = true }
   }
 
   static let side: CGFloat = 28
@@ -30,14 +46,22 @@ final class AnnotationToolbarButton: NSButton {
 
   private let selection: Selection?
   /// The text and leading glyph of a labelled button, which draws them itself.
-  private let label: (text: String, image: NSImage?)?
+  private var label: (text: String, image: NSImage?)?
+  private var widthConstraint: NSLayoutConstraint?
   private var trackingArea: NSTrackingArea?
 
   /// Whether the button follows the pointer itself, through a tracking area and cursor rects.
-  /// Set before the button joins a window. The selection toolbar turns it off: its app stays
-  /// inactive, where tracking events arrive late or not at all, so the toolbar reads the pointer
-  /// on every frame and sets ``isHovered`` and the cursor itself.
-  var followsPointer = true
+  /// The selection toolbar turns it off: its app stays inactive, where tracking events arrive
+  /// late or not at all, so the toolbar reads the pointer on every frame instead. Ownership may
+  /// change after presentation; remove already-installed tracking and cursor rects as well.
+  var followsPointer = true {
+    didSet {
+      guard followsPointer != oldValue else { return }
+      isHovered = false
+      updateTrackingAreas()
+      window?.invalidateCursorRects(for: self)
+    }
+  }
 
   /// Set for a button that can also be moved (the selection toolbar's small icon): a press that
   /// travels ``dragThreshold`` or more reports a drag here, as a press on the bar's surface does
@@ -64,22 +88,25 @@ final class AnnotationToolbarButton: NSButton {
     }
   }
 
-  /// `selection` is nil for a plain action (undo, confirm…); `tint` colours an action's glyph.
-  /// The owner sets `target` once it exists.
-  init(selection: Selection?, tint: NSColor? = nil, action: Selector) {
+  /// `selection` is nil for a plain action (undo, confirm…). The owner sets `target` once it
+  /// exists.
+  init(selection: Selection?, action: Selector) {
     self.selection = selection
     label = nil
     super.init(frame: CGRect(x: 0, y: 0, width: Self.side, height: Self.side))
     configure(width: Self.side, action: action)
-    contentTintColor = tint
   }
 
   /// A labelled action: `image` (a template glyph drawn at ``Label/iconSide``) then `text`, cut
   /// with an ellipsis past ``Label/maxTextWidth``, ``Label/padding`` in from each end. `width`
   /// stretches it past its natural width (``Label/width(text:hasImage:)``) with the label still
   /// leading, as a menu row as wide as its longest sibling; nil keeps the natural width.
-  init(label text: String, image: NSImage?, width: CGFloat? = nil, action: Selector) {
-    selection = nil
+  /// `selection` is nil for an action, `wash` for one of a choice.
+  init(
+    label text: String, image: NSImage?, width: CGFloat? = nil, selection: Selection? = nil,
+    action: Selector
+  ) {
+    self.selection = selection
     label = (text, image)
     let width = width ?? Label.width(text: text, hasImage: image != nil)
     super.init(frame: CGRect(x: 0, y: 0, width: width, height: Self.side))
@@ -95,17 +122,31 @@ final class AnnotationToolbarButton: NSButton {
     focusRingType = .exterior
     self.action = action
     translatesAutoresizingMaskIntoConstraints = false
+    let widthConstraint = widthAnchor.constraint(equalToConstant: width)
+    self.widthConstraint = widthConstraint
     NSLayoutConstraint.activate([
-      widthAnchor.constraint(equalToConstant: width),
-      heightAnchor.constraint(equalToConstant: Self.side),
+      widthConstraint, heightAnchor.constraint(equalToConstant: Self.side),
     ])
+  }
+
+  /// A labelled button's new text and glyph, at `width` when given (nil keeps its width): the
+  /// owner reserves the widest of what it may say, so the label changes in place.
+  func setLabel(_ text: String, image: NSImage?, width: CGFloat? = nil) {
+    guard label != nil else { return }
+    label = (text, image)
+    if let width { widthConstraint?.constant = width }
+    setAccessibilityLabel(text)
+    needsDisplay = true
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
   override var isEnabled: Bool {
-    didSet { needsDisplay = true }
+    didSet {
+      needsDisplay = true
+      window?.invalidateCursorRects(for: self)
+    }
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -132,7 +173,7 @@ final class AnnotationToolbarButton: NSButton {
       onDrag(.began)
     }
     onDrag(.moved(CGVector(dx: point.x - press.start.x, dy: press.start.y - point.y)))
-    NSCursor.closedHand.set()
+    PointerRole.grabbing.cursor.set()
   }
 
   override func mouseUp(with event: NSEvent) {
@@ -141,7 +182,7 @@ final class AnnotationToolbarButton: NSButton {
     isHighlighted = false
     if press.dragging {
       // Still over the button, where the toolbar's hover shows the pointing hand.
-      NSCursor.pointingHand.set()
+      PointerRole.action.cursor.set()
     } else {
       sendAction(action, to: target)
     }
@@ -151,7 +192,20 @@ final class AnnotationToolbarButton: NSButton {
 
   override func draw(_ dirtyRect: NSRect) {
     let circle = capsule
-    if selection == .fill || selection == .toggle, isSelected {
+    if presentation == .primary {
+      // Lighter while hovered and pressed, as the island's send buttons; dimmed while disabled.
+      NSGraphicsContext.saveGraphicsState()
+      NSGraphicsContext.current?.cgContext.setAlpha(
+        !isEnabled ? 0.4 : isHighlighted ? 0.7 : isHovered ? 0.85 : 1)
+      NSColor.labelColor.setFill()
+      circle.fill()
+      NSGraphicsContext.restoreGraphicsState()
+    } else if selection == .wash, isSelected, isEnabled {
+      let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+      let opacity: CGFloat = presentation == .captureMode ? (dark ? 0.14 : 0.08) : 0.16
+      NSColor.labelColor.withAlphaComponent(opacity).setFill()
+      circle.fill()
+    } else if selection == .fill || selection == .toggle, isSelected {
       NSColor.controlAccentColor.withAlphaComponent(isHighlighted ? 0.8 : 1).setFill()
       circle.fill()
     } else if let wash {
@@ -159,24 +213,47 @@ final class AnnotationToolbarButton: NSButton {
       circle.fill()
     }
     if selection == .ring, isSelected {
-      let ring = NSBezierPath(ovalIn: bounds.insetBy(dx: 2, dy: 2))
+      let ring = NSBezierPath(ovalIn: bounds.insetBy(dx: 3, dy: 3))
       ring.lineWidth = 2
       NSColor.controlAccentColor.setStroke()
       ring.stroke()
     }
     if let label {
-      Label.draw(text: label.text, image: label.image, in: bounds, enabled: isEnabled)
+      // On the accent fill a label takes the white a lone glyph takes (``updateTint()``).
+      let onAccent = isSelected && (selection == .fill || selection == .toggle)
+      Label.draw(
+        text: label.text, image: label.image, in: bounds, enabled: isEnabled,
+        textColor: onAccent ? .white : presentation == .standard ? nil : colors.text,
+        imageColor: onAccent ? .white : presentation == .standard ? nil : colors.image)
     } else if let image, image.isTemplate {
       // Drawn here rather than tinted by AppKit, which dims a template image whenever the window
       // is not key (the selection toolbar's app never activates): glyphs take the label colour
       // of the toolbar's text in either toolbar, or the button's own tint.
-      let color = isEnabled ? contentTintColor ?? .labelColor : Self.disabledColor
       let rect = NSRect(
         x: bounds.midX - image.size.width / 2, y: bounds.midY - image.size.height / 2,
         width: image.size.width, height: image.size.height)
-      Label.tinted(image, color, size: image.size).draw(in: rect)
+      Label.tinted(image, colors.image, size: image.size).draw(in: rect)
     } else {
       super.draw(dirtyRect)
+    }
+  }
+
+  private var colors: (text: NSColor, image: NSColor) {
+    switch presentation {
+    case .success: return (.labelColor, .controlAccentColor)
+    case .muted: return (.secondaryLabelColor, .secondaryLabelColor)
+    case .captureMode where isEnabled:
+      let color: NSColor = isSelected ? .labelColor : .secondaryLabelColor
+      return (color, color)
+    case .primary:
+      let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+      let opposite: NSColor = dark ? .black : .white
+      return (opposite, opposite)
+    default:
+      return (
+        isEnabled ? .labelColor : Self.disabledColor,
+        isEnabled ? contentTintColor ?? .labelColor : Self.disabledColor
+      )
     }
   }
 
@@ -217,16 +294,18 @@ final class AnnotationToolbarButton: NSButton {
   }
 
   override func mouseEntered(with event: NSEvent) {
+    guard followsPointer else { return }
     isHovered = true
   }
 
   override func mouseExited(with event: NSEvent) {
+    guard followsPointer else { return }
     isHovered = false
   }
 
   override func resetCursorRects() {
     guard followsPointer else { return }
-    addCursorRect(bounds, cursor: .arrow)
+    addCursorRect(bounds, cursor: PointerRole(button: self).cursor)
   }
 
   // MARK: Focus and accessibility
@@ -241,61 +320,11 @@ final class AnnotationToolbarButton: NSButton {
     switch selection {
     case nil: super.accessibilityRole()
     case .toggle: .checkBox
-    case .fill, .ring: .radioButton
+    case .fill, .ring, .wash: .radioButton
     }
   }
 
   override func accessibilityValue() -> Any? {
     selection == nil ? super.accessibilityValue() : NSNumber(value: isSelected)
-  }
-}
-
-extension AnnotationToolbarButton {
-  /// The labelled button's metrics (visual spec, contracts §6) and drawing.
-  enum Label {
-    static let padding: CGFloat = 10
-    static let iconSide: CGFloat = 14
-    static let iconGap: CGFloat = 6
-    static let maxTextWidth: CGFloat = 160
-    static let font = NSFont.systemFont(ofSize: 13, weight: .medium)
-
-    static func width(text: String, hasImage: Bool) -> CGFloat {
-      let textWidth = min(ceil(text.size(withAttributes: [.font: font]).width), maxTextWidth)
-      return padding * 2 + (hasImage ? iconSide + iconGap : 0) + textWidth
-    }
-
-    /// The glyph tinted like the text (the label colour, as the capture toolbar's glyphs draw
-    /// in its key window), then the text on one line, cut with an ellipsis.
-    static func draw(text: String, image: NSImage?, in bounds: NSRect, enabled: Bool) {
-      let color = enabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
-      var x = bounds.minX + padding
-      if let image {
-        let icon = NSRect(
-          x: x, y: bounds.midY - iconSide / 2, width: iconSide, height: iconSide)
-        tinted(image, color, size: icon.size).draw(in: icon)
-        x += iconSide + iconGap
-      }
-      let style = NSMutableParagraphStyle()
-      style.lineBreakMode = .byTruncatingTail
-      let attributes: [NSAttributedString.Key: Any] = [
-        .font: font, .foregroundColor: color, .paragraphStyle: style,
-      ]
-      let height = ceil(font.ascender - font.descender + font.leading)
-      let rect = NSRect(
-        x: x, y: bounds.midY - height / 2, width: max(0, bounds.maxX - padding - x),
-        height: height)
-      NSAttributedString(string: text, attributes: attributes).draw(in: rect)
-    }
-
-    /// A template glyph in `color` at `size`; it draws in the appearance of the view being
-    /// drawn.
-    static func tinted(_ image: NSImage, _ color: NSColor, size: NSSize) -> NSImage {
-      NSImage(size: size, flipped: false) { rect in
-        image.draw(in: rect)
-        color.set()
-        rect.fill(using: .sourceAtop)
-        return true
-      }
-    }
   }
 }

@@ -124,6 +124,9 @@ test('an unmodified starter a version 1 seed added gets its shipped level', asyn
     'review-code': 'inherit',
     'summarize-files': 'inherit',
     'ask-screenshot': 'inherit',
+    'translate-screenshot': 'off',
+    'summarize-screenshot': 'off',
+    'screenshot-markdown': 'off',
   });
   // The seed's record stays as it was.
   const written = JSON.parse(await readFile(marker, 'utf8')) as Record<string, unknown>;

@@ -40,7 +40,7 @@ extension CommandProgressController {
   func answerOfferChanged(_ offer: AnswerWriteOffer?) {
     island.model.answerOffer = offer
     holdWriteKeys(offer)
-    guard let shown = state.shown, state.isAnswering else { return }
+    guard let shown = state.shown, state.isAnswering, state.drawsProgress else { return }
     island.show(content(shown.phase))
   }
 

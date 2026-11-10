@@ -10,9 +10,10 @@ import {
   withoutSelectionNotice,
   withoutSelectionWrite,
 } from '../../client/agent/command-prepare';
-import { startLightRun, supersedeLightRun, type LightHost } from './light-command';
+import { startLightRun, type LightHost } from './light-command';
 import { isLightLaunch, type LightLaunch } from './light-command-run';
-import { actOnLightAction, chooseLightRun, dropLightChoice } from './light-command-choose';
+import { chooseLightRun } from './light-command-choose';
+import { clearIsland, replaceIsland } from './island-owner';
 
 /** A launch whose compose card waits for its answer, under the card's island key. */
 interface Composing {
@@ -24,9 +25,6 @@ interface Composing {
    */
   choose: boolean;
 }
-
-/** The launch whose compose card the island shows; a newer card replaces it. */
-let composing: Composing | null = null;
 
 function bridge(): LightCommandBridge | undefined {
   return window.desktop?.agent?.light;
@@ -58,8 +56,8 @@ function islandLaunch(launch: PreparedCommand, key: string): LightLaunch | null 
  * selection, and screenshots or files when the command takes files. The card is keyed by the
  * launch's write target, or by a key of its own when the launch recorded none; the panel stays
  * hidden and as it was. Like a newer launch, it replaces whatever the island showed: the light run
- * there is cancelled (`supersedeLightRun`) and an options card waits no more. The launch waits for
- * the card's answer (`actOnIslandAction`).
+ * there is cancelled and an options card waits no more. The launch waits for
+ * the card's answer (`answerCompose`).
  *
  * A held shortcut (`choose`) offers the options first, as it does with a selection: when its
  * launch runs light and its text and number parameters have values, the options card shows
@@ -73,19 +71,21 @@ export function composeLightRun(
   const key = launch.target?.id ?? crypto.randomUUID();
   const offered = choose ? islandLaunch(withoutSelectionWrite(launch), key) : null;
   if (offered && !needsInput(offered.command, offered.input.arguments)) {
-    composing = null;
     return chooseLightRun(offered, light);
   }
-  supersedeLightRun();
-  dropLightChoice();
   const waiting = { key, launch, choose };
-  composing = waiting;
+  replaceIsland({
+    key,
+    identity: waiting,
+    act: (action, host) => answerCompose(waiting, action, host),
+    supersede: () => undefined,
+  });
   const { name, input } = launch.command;
   light
     .show(key, { phase: 'compose', command: name, attach: input.files })
     .catch((error: unknown) => {
       console.error('The compose card did not show:', error);
-      if (composing === waiting) composing = null;
+      clearIsland(waiting);
     });
 }
 
@@ -100,12 +100,13 @@ export function composeLightRun(
  * waiting.
  */
 function answerCompose(
-  { key, launch, choose }: Composing,
+  waiting: Composing,
   { action, compose }: CommandProgressAction,
   host: LightHost,
 ): void {
   if (action !== 'run' && action !== 'open' && action !== 'cancel') return;
-  composing = null;
+  const { key, launch, choose } = waiting;
+  clearIsland(waiting);
   const light = bridge();
   if (action === 'cancel') return hideCard(key, light);
   const composed = compose ? withComposedInput(launch, compose) : withoutSelectionNotice(launch);
@@ -125,14 +126,4 @@ function answerCompose(
   hideCard(key, light);
   host.showInput(composed);
   host.reveal();
-}
-
-/**
- * A press on the progress HUD: the compose card's answer when the card of that target waits for
- * one, else the options card's or the light run's (`actOnLightAction`), where an options card
- * shown for a launch with nothing selected hands its launch back here to ask for the text.
- */
-export function actOnIslandAction(action: CommandProgressAction, host: LightHost): void {
-  if (composing?.key === action.target) return answerCompose(composing, action, host);
-  actOnLightAction(action, host, (chosen, light) => composeLightRun(chosen, false, light));
 }

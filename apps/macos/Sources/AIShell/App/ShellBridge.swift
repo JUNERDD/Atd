@@ -155,8 +155,11 @@ final class ShellBridge {
     case .clipboardRead:
       let text = NSPasteboard.general.string(forType: .string) ?? ""
       return try Self.encode(ClipboardReadResult(text: text))
-    case .screenshotCapture:
-      return try Self.encode(await shell.captureScreenshot())
+    case .screenshotCapture(let params):
+      return try Self.encode(await Self.captureScreenshot(params, shell: shell))
+    case .screenshotToolbarSet(let params):
+      Self.setScreenshotToolbar(params, shell: shell)
+      return try Self.encode(NativeEmpty())
     case .screenshotEdit(let params):
       return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
     case .textWrite(let params):
@@ -221,6 +224,16 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .commandOptionsSet(let params):
       shell.applyCommandOptions(CommandOptionsCatalog(params))
+      return try Self.encode(NativeEmpty())
+    // The panel's page runs a recording's and a long screenshot's asks (`recording.ask`).
+    case .recordingAnswer(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can answer a recording's asks.")
+      }
+      switch params.source {
+      case .recording: Self.answerRecording(params, shell: shell)
+      case .screenshot: Self.answerLongScreenshot(params, shell: shell)
+      }
       return try Self.encode(NativeEmpty())
     case .accessibilityRequest:
       shell.trust.openSystemSettings()

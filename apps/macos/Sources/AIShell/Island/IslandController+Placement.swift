@@ -1,7 +1,7 @@
 import AICore
 import AppKit
 
-/// Where the island stands (``GlassHUDPlacement``), its grip's drag, and its window.
+/// Where the island stands (``GlassHUDPlacement``), its move handles' drag, and its window.
 extension IslandController {
   /// Fades the window to `alpha`, then runs `completion` on the main actor.
   func fade(
@@ -29,7 +29,10 @@ extension IslandController {
   func drag(_ drag: IslandDrag) {
     switch drag {
     case .began:
-      if let anchor { dragStart = (NSEvent.mouseLocation, anchor) }
+      if let anchor {
+        dragStart = (NSEvent.mouseLocation, anchor)
+        window.pointerHover.beginDrag(in: window)
+      }
     case .moved:
       guard let start = dragStart, let size else { return }
       let mouse = NSEvent.mouseLocation
@@ -40,8 +43,10 @@ extension IslandController {
       placeWindow()
     case .ended:
       dragStart = nil
+      window.pointerHover.endDrag()
     case .reset:
       dragStart = nil
+      window.pointerHover.endDrag()
       guard let size else { return }
       anchor = clamped(home(size), size: size)
       placeWindow(animate: true)
@@ -50,7 +55,7 @@ extension IslandController {
 
   func placeWindow(animate: Bool = false) {
     guard let anchor else { return }
-    let canvas = IslandMetrics.canvas
+    let canvas = model.canvas
     let frame = NSRect(
       x: anchor.x - canvas.width / 2, y: anchor.y - IslandMetrics.inset, width: canvas.width,
       height: canvas.height)
@@ -81,10 +86,11 @@ extension IslandController {
   }
 
   /// Takes the keyboard for a card, or returns it when the card gives it up
-  /// (``NSPanel/returnKeyboard()``), keeping the island's exit or replacement visible.
-  func setKeyCapable(_ capable: Bool) {
+  /// (``NSPanel/returnKeyboard()``), keeping the island's exit or replacement visible. A card
+  /// that is not `taking` the keyboard leaves it where it is: it takes it on a click.
+  func setKeyCapable(_ capable: Bool, taking: Bool = true) {
     window.keyCapable = capable
-    if capable, window.isVisible {
+    if capable, taking, window.isVisible {
       window.makeKey()
     } else if !capable {
       window.returnKeyboard()

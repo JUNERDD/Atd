@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
-  CommandInputSchema,
   defaultCommandOutput,
   defaultCommandPlacement,
   parse,
@@ -14,35 +13,19 @@ import {
   type ServiceCommandFull,
   type ServiceCommandsFile,
 } from '@atd/agent-contracts';
-import { Value } from 'typebox/value';
 import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { SettingsStore } from '../settings/store.js';
 import { withCanonicalAdjustments } from './adjustments.js';
 import { withoutLegacySelection } from './legacy-selection.js';
+import { withPlacement } from './placement.js';
 import { assertShortcutsFree, withCanonicalShortcuts } from './shortcuts.js';
 import { validateCommandSave } from './templates.js';
 
 /** The command store file; its path and format are persisted data and stay fixed. */
 function commandsFile(dataDir: string): string {
   return path.join(dataDir, 'commands.json');
-}
-
-/**
- * A command stored before placements existed has none: it takes the default of its input source
- * (`defaultCommandPlacement`), so it shows where it always did. Idempotent, and the same object
- * when the command has a placement or its input does not read as a command input, which the full
- * parse reports when the command is read.
- */
-function withAddedPlacement<T extends object>(command: T): T {
-  if (
-    'placement' in command ||
-    !('input' in command) ||
-    !Value.Check(CommandInputSchema, command.input)
-  )
-    return command;
-  return { ...command, placement: defaultCommandPlacement(command.input.source) };
 }
 
 /**
@@ -111,8 +94,8 @@ function withShortcutList(command: ServiceCommand): ServiceCommand {
  * Agent's tool alike.
  * Legacy `skills`/`roleId` keys are folded into instructions on load and on
  * every write (`legacy-selection.ts`), and a command stored before placements
- * or outputs existed gets its default placement or output on load (`withAddedPlacement`,
- * `withAddedOutput`), and one stored before commands had their own reasoning level gets the
+ * (or one of its places) or outputs existed gets its default placement or output on load
+ * (`withPlacement`, `withAddedOutput`), and one stored before commands had their own reasoning level gets the
  * level its fixed model pinned (`withOwnThinkingLevel`), and its single
  * shortcut becomes a list of one (`withShortcutList`). The load
  * keeps the revision: the folds are deterministic, so the file converges with
@@ -162,9 +145,7 @@ export class CommandStore {
       const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
       const commands = data.commands.map((command) =>
         withShortcutList(
-          withOwnThinkingLevel(
-            withAddedOutput(withAddedPlacement(withoutLegacySelection(command))),
-          ),
+          withOwnThinkingLevel(withAddedOutput(withPlacement(withoutLegacySelection(command)))),
         ),
       );
       if (data.version === 1) commands.sort((a, b) => a.name.localeCompare(b.name));

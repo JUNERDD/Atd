@@ -76,7 +76,8 @@ final class AnnotationGlassBar: NSView {
 
   init(
     groups: [[NSView]], blending: NSVisualEffectView.BlendingMode,
-    padding: CGFloat = AnnotationGlassBar.padding
+    padding: CGFloat = AnnotationGlassBar.padding,
+    dividerSpacing: (leading: CGFloat, trailing: CGFloat) = (6, 6)
   ) {
     self.groups = groups
     material = NativeMaterialView(.capsule(blending))
@@ -92,14 +93,18 @@ final class AnnotationGlassBar: NSView {
       var divider: NSView?
       if index > 0 {
         let line = Self.divider()
-        if let last = stack.arrangedSubviews.last { stack.setCustomSpacing(6, after: last) }
+        if let last = stack.arrangedSubviews.last {
+          stack.setCustomSpacing(dividerSpacing.leading, after: last)
+        }
         stack.addArrangedSubview(line)
-        stack.setCustomSpacing(6, after: line)
+        stack.setCustomSpacing(dividerSpacing.trailing, after: line)
         divider = line
       }
       dividers.append(divider)
       for view in group { stack.addArrangedSubview(view) }
     }
+    // At its content's size from the start, not zero: see ``restSize``.
+    stack.setFrameSize(stack.fittingSize)
     surface.addSubview(stack)
     GlassSurface.attach(material, content: surface)
     addSubview(material.view)
@@ -129,21 +134,33 @@ final class AnnotationGlassBar: NSView {
     clip.cornerRadius = radius
     surface.layer?.mask = outline == nil ? nil : clip
     // At its rest size whatever the glass's, so a change of shape never lays the row out again.
+    let rest = restSize
     stack.frame = NSRect(
-      x: (glass.width - bounds.width) / 2, y: (glass.height - bounds.height) / 2,
-      width: bounds.width, height: bounds.height)
-    stack.alphaValue = outline?.rowOpacity ?? 1
+      x: (glass.width - rest.width) / 2, y: (glass.height - rest.height) / 2,
+      width: rest.width, height: rest.height)
+    stack.alphaValue = bounds.isEmpty ? 0 : (outline?.rowOpacity ?? 1)
     // The controls scale on the row's own layer: on the surface's, the sublayer transform would
     // scale its mask too, and the fill with it. A sublayer transform acts about the layer's anchor
     // point, which AppKit puts at a view layer's origin, so the row's middle is measured from there.
     guard let layer = stack.layer else { return }
     let scale = outline?.rowScale ?? 1
     let pivot = CGPoint(
-      x: bounds.width * (0.5 - layer.anchorPoint.x), y: bounds.height * (0.5 - layer.anchorPoint.y))
+      x: rest.width * (0.5 - layer.anchorPoint.x), y: rest.height * (0.5 - layer.anchorPoint.y))
     var transform = CATransform3DMakeTranslation(pivot.x, pivot.y, 0)
     transform = CATransform3DScale(transform, scale, scale, 1)
     layer.sublayerTransform = CATransform3DTranslate(transform, -pivot.x, -pivot.y, 0)
   }
+
+  /// The row's size at rest: the bar's, or, before its owner first sizes it (a host may lay it
+  /// out at zero first), the row's own, unseen. The row never stands smaller than its controls:
+  /// Auto Layout would break their fixed sizes to fit it, and log each one it broke.
+  private var restSize: NSSize { bounds.isEmpty ? stack.fittingSize : bounds.size }
+
+  /// Keeps the glass, its fill and the controls on it in the dark scheme whatever the app's is,
+  /// for a bar standing over a dark backdrop, as the lightbox's own bars do (the long
+  /// screenshot's annotate mode). The shell's glass owner keeps it so
+  /// (``GlassSurface/pinDark(_:)``).
+  func pinDark() { GlassSurface.pinDark(material) }
 
   /// Has the row and every control on it drawn again.
   private func redrawRow() {
@@ -168,7 +185,7 @@ final class AnnotationGlassBar: NSView {
     }
     dragStart = NSEvent.mouseLocation
     onDrag(.began)
-    NSCursor.closedHand.set()
+    PointerRole.grabbing.cursor.set()
   }
 
   override func mouseDragged(with event: NSEvent) {
@@ -176,13 +193,13 @@ final class AnnotationGlassBar: NSView {
     // The pointer now, which is never older than the event being handled.
     let point = NSEvent.mouseLocation
     onDrag?(.moved(CGVector(dx: point.x - dragStart.x, dy: dragStart.y - point.y)))
-    NSCursor.closedHand.set()
+    PointerRole.grabbing.cursor.set()
   }
 
   override func mouseUp(with event: NSEvent) {
     guard dragStart != nil else { return }
     dragStart = nil
-    NSCursor.openHand.set()
+    PointerRole.grab.cursor.set()
   }
 
   /// Hides or shows group `index`; each divider then shows only with a visible group on both

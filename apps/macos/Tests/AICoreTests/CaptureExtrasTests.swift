@@ -66,6 +66,62 @@ struct CaptureExtrasTests {
     #expect(ScreenContext.readingOrder(boxes) == ["left\tright", "second", "third"])
   }
 
+  @Test("With a mosaic the context keeps only what cannot repeat what the mosaic hides")
+  func contextRedaction() {
+    let boxes = [
+      ScreenContext.TextBox(
+        text: "To: jane@example.com", box: CGRect(x: 0.1, y: 0.1, width: 0.5, height: 0.05)),
+      ScreenContext.TextBox(
+        text: "Quarterly plan", box: CGRect(x: 0.1, y: 0.3, width: 0.5, height: 0.05)),
+    ]
+    let open = ScreenContext(
+      app: "Mail", window: "Re: Jane's offer", element: Self.element, recognized: boxes,
+      hiding: [])
+    #expect(
+      open
+        == ScreenContext(
+          app: "Mail", window: "Re: Jane's offer", element: Self.element,
+          lines: ["To: jane@example.com", "Quarterly plan"]))
+    // The mosaic lies on the address alone; the title and the app could repeat it all the same.
+    let hidden = ScreenContext(
+      app: "Mail", window: "Re: Jane's offer", element: Self.element, recognized: boxes,
+      hiding: [CGRect(x: 0.2, y: 0.08, width: 0.1, height: 0.04)])
+    #expect(
+      hidden
+        == ScreenContext(
+          app: nil, window: nil,
+          element: .init(role: "AXButton", title: nil, value: nil, help: nil),
+          lines: ["Quarterly plan"]))
+  }
+
+  @Test("Random-looking tokens are flagged; identifiers, slugs, hashes and UUIDs are not")
+  func sensitiveTokens() {
+    for ordinary in [
+      "JIRA-1234-AddCaptureRecordingSupport", "testToolbarPlacementSlidesSideways2",
+      "How-to-Build-a-Capture-Tool-in-Swift-6", "3f786850e387550fdab836ed7e6dc881de23001b",
+      "550e8400-e29b-41d4-a716-446655440000", "Base64EncodedDataV2ForUserProfile1",
+      "HTTPServerConfigurationForIPv6Addresses", "iPhone15ProMaxScreenshotComparisonView",
+    ] {
+      let kinds = SensitiveText.matches(in: "see \(ordinary) here").map(\.kind)
+      #expect(!kinds.contains(.key), "\(ordinary)")
+    }
+    for random in ["q8Fz2LwN0vXr5TbK9mYc3HdJ7pGs1QaE6uRk4WnB", "Zx9Qw2Er4Ty6Ui8Op0As1Df3Gh5Jk7Lz"] {
+      #expect(SensitiveText.matches(in: "see \(random) here").map(\.kind) == [.key], "\(random)")
+    }
+    #expect(SensitiveText.matches(in: "mail jane.doe@example.com").map(\.kind) == [.email])
+  }
+
+  @Test("Of overlapping findings the longest, then the most specific, stands")
+  func sensitiveOverlap() throws {
+    let text = "Card 4111 1111 1111 1111 on file"
+    let matches = SensitiveText.matches(in: text)
+    #expect(matches.map(\.kind) == [.card])
+    #expect(text[try #require(matches.first).range] == "4111 1111 1111 1111")
+    // The data detector takes this whole card number for a phone number.
+    #expect(SensitiveText.matches(in: "Card 5555 5555 5555 4444").map(\.kind) == [.card])
+    #expect(!SensitiveText.matches(in: "Card 4111 1111 1111 1112").map(\.kind).contains(.card))
+  }
+
   @Test("The last region returns only on the display and frame it was taken on")
   func regionMemory() {
     var memory = CaptureRegionMemory()

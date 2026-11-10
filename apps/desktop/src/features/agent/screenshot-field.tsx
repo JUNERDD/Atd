@@ -59,7 +59,7 @@ export function ScreenshotField({
     else if (kept.length >= MAX_ATTACHMENTS) showErrorToast(t('input.attachLimit'));
     else
       void run(
-        () => desktop.screenshot(),
+        () => desktop.captureScreenshotInput(),
         (taken) => withScreenshot(input, taken),
       );
   }

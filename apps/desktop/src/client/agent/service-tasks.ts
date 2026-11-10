@@ -18,6 +18,7 @@ import {
 } from './service-map';
 import { applyTaskEvent } from './task-events';
 import { TaskLoads } from './task-replay';
+import { TaskRecovery } from './task-recovery';
 import { applySummaries } from './task-summaries';
 
 /** The slice of a service connection the task cache uses; desktop and web both provide it. */
@@ -64,6 +65,7 @@ export class TaskClient<S> {
   private readonly summarizing = new Map<string, Promise<void>>();
   /** Keeps loads in step with the stream events of their tasks. */
   readonly loads = new TaskLoads();
+  readonly recovery = new TaskRecovery();
 
   constructor(
     private readonly connection: TaskConnection,
@@ -92,6 +94,7 @@ export class TaskClient<S> {
   clear() {
     this.entries.clear();
     this.loads.clear();
+    this.recovery.clear();
     this.revisions.clear();
     this.holds.clear();
     this.children.clear();
@@ -155,6 +158,7 @@ export class TaskClient<S> {
   forget(taskId: string) {
     this.entries.delete(taskId);
     this.loads.forget(taskId);
+    this.recovery.forget(taskId);
     for (const [holder, held] of this.holds) if (held === taskId) this.holds.delete(holder);
     this.children.forgetTask(taskId);
   }
@@ -229,8 +233,10 @@ export class TaskClient<S> {
   /** Reloads a held task's snapshot and republishes it whole, transcript included. */
   reloadTranscript(taskId: string): Promise<void> {
     if (!this.held(taskId)) return Promise.resolve();
-    return this.once(this.reloading, taskId, async () =>
-      this.publishLoaded(await this.detail(taskId)),
+    return this.once(this.reloading, taskId, () =>
+      this.recovery.load(taskId, this.host, async () =>
+        this.publishLoaded(await this.detail(taskId)),
+      ),
     );
   }
 
@@ -289,7 +295,10 @@ export class TaskClient<S> {
 
   private unload(taskId: string) {
     const entry = this.entries.get(taskId);
-    if (entry && !this.held(taskId)) entry.transcript = null;
+    if (entry && !this.held(taskId)) {
+      entry.transcript = null;
+      this.recovery.forget(taskId);
+    }
   }
 
   private once(inFlight: Map<string, Promise<void>>, taskId: string, load: () => Promise<void>) {
@@ -303,18 +312,8 @@ export class TaskClient<S> {
   /** Republishes a freshly cached task, with its transcript as a snapshot patch when loaded. */
   private publishLoaded(detail: TaskDetail) {
     const taskId = detail.task.id;
+    this.recovery.publish(detail, !!this.entries.get(taskId)?.transcript, this.host);
     this.publishTask(taskId);
-    if (!this.entries.get(taskId)?.transcript) return;
-    this.host.emit({
-      type: 'transcript',
-      patch: {
-        taskId,
-        revision: detail.revision,
-        snapshot: true,
-        blocks: detail.blocks,
-        removed: [],
-      },
-    });
   }
 
   /** A per-task stream snapshot (a subscription naming tasks); malformed ones are skipped. */

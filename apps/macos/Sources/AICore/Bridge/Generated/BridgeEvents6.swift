@@ -69,3 +69,79 @@ public struct CommandOptionsPickedEvent: Codable, Equatable, Sendable {
     case arguments
   }
 }
+
+/// Payload of the `recording.ask` event.
+public struct RecordingAskEvent: Codable, Equatable, Sendable {
+  public let askId: String
+  public let source: Source
+  public let sourceId: String
+  public let question: String
+  public let files: [FileRef]
+
+  public init(askId: String, source: Source, sourceId: String, question: String, files: [FileRef]) {
+    self.askId = askId
+    self.source = source
+    self.sourceId = sourceId
+    self.question = question
+    self.files = files
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    askId = try container.string(.askId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    source = try container.value(.source, Source.self)
+    sourceId = try container.string(
+      .sourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    question = try container.string(.question, minLength: 1, maxLength: 100_000)
+    files = try container.array(.files, of: FileRef.self, maxItems: 10)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case askId
+    case source
+    case sourceId
+    case question
+    case files
+  }
+
+  public enum Source: String, Codable, Equatable, Sendable {
+    case recording
+    case screenshot
+  }
+}
+
+/// Payload of the `recording.askStop` event.
+public struct RecordingAskStopEvent: Codable, Equatable, Sendable {
+  public let askId: String
+
+  public init(askId: String) {
+    self.askId = askId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    askId = try container.string(.askId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case askId
+  }
+}
+
+/// Payload of the `recording.askOpen` event.
+public struct RecordingAskOpenEvent: Codable, Equatable, Sendable {
+  public let askId: String
+
+  public init(askId: String) {
+    self.askId = askId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    askId = try container.string(.askId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case askId
+  }
+}

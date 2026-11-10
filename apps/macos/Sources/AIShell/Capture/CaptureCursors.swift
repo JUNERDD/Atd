@@ -4,8 +4,9 @@ import AppKit
 // The capture overlay's cursors (decision D15) in one place. The session sets the selection's
 // (``CaptureSession``'s `overlay(_:cursorAt:)`): frame-resize over its handles and edge band,
 // an open hand inside it before a tool is chosen (closed while moving), the arrow outside it.
-// Over the bars, the arrow on a control and an open hand on the surface that drags them (closed
-// while dragging). The annotation canvas sets its own over the interior a tool claimed:
+// Over the bars, the pointing hand on an enabled button (``PointerRole``), the arrow on another
+// control and an open hand on the surface that drags them (closed while dragging). The
+// annotation canvas sets its own over the interior a tool claimed:
 //
 // | Under the pointer (or the gesture running)       | Cursor                        |
 // | ------------------------------------------------ | ----------------------------- |
@@ -15,6 +16,16 @@ import AppKit
 // | dragging an annotation                           | closed hand                   |
 // | text the text tool would open                    | I-beam                        |
 // | empty canvas: select / text / drawing tools      | arrow / I-beam / crosshair    |
+
+/// Full-screen tracking areas still receive events beneath separate menu windows. Only the
+/// front window under the pointer may set a hover cursor; an in-progress drag keeps its owner.
+@MainActor
+enum CaptureCursorOwnership {
+  static func ownsPointer(in window: NSWindow?, at point: CGPoint) -> Bool {
+    guard let window, window.isVisible else { return false }
+    return NSWindow.windowNumber(at: point, belowWindowWithWindowNumber: 0) == window.windowNumber
+  }
+}
 
 extension SelectionHandle {
   /// The system's frame-resize cursor for this handle.

@@ -271,6 +271,168 @@
         }
       }
     },
+    "capture.bar.copyScreenshot" : {
+      "comment" : "Capture bar hint after the registered screenshot shortcut keycap once a screenshot area is selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制截图"
+          }
+        }
+      }
+    },
+    "capture.bar.finishScreenshot" : {
+      "comment" : "Capture bar hint after the Return keycap once a screenshot area is selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成截图"
+          }
+        }
+      }
+    },
+    "capture.bar.label" : {
+      "comment" : "VoiceOver name of the capture overlay's bottom bar (mode switch and keys)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "捕获"
+          }
+        }
+      }
+    },
+    "capture.bar.modes" : {
+      "comment" : "VoiceOver name of the capture bar's Screenshot | Record switch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "捕获模式"
+          }
+        }
+      }
+    },
+    "capture.bar.pickElement" : {
+      "comment" : "Capture bar hint before an area is selected when element targeting is available and enabled, in either capture mode (no key); as long as capture.bar.pickWindow where possible",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click an element or drag to select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击元素或拖动选择"
+          }
+        }
+      }
+    },
+    "capture.bar.pickWindow" : {
+      "comment" : "Capture bar hint before an area is selected when targeting is limited to windows, by capability or user choice, in either capture mode (no key); as long as capture.bar.pickElement where possible",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click a window or drag to select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击窗口或拖动选择"
+          }
+        }
+      }
+    },
+    "capture.bar.record" : {
+      "comment" : "Capture bar mode button (⌘2): the session records the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏"
+          }
+        }
+      }
+    },
+    "capture.bar.screenshot" : {
+      "comment" : "Capture bar mode button (⌘1): the session takes a screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图"
+          }
+        }
+      }
+    },
+    "capture.bar.startRecording" : {
+      "comment" : "Capture bar hint after the Return keycap once an area to record is selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始录制"
+          }
+        }
+      }
+    },
     "capture.color.black" : {
       "comment" : "Annotation colour swatch",
       "extractionState" : "manual",
@@ -379,6 +541,296 @@
         }
       }
     },
+    "capture.commands.askDefault" : {
+      "comment" : "Default question sent when the screenshot's Ask field is empty",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is happening in this screenshot?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这张截图里发生了什么？"
+          }
+        }
+      }
+    },
+    "capture.commands.askPlaceholder" : {
+      "comment" : "Placeholder of the field that asks Atd about the screenshot (opened with /)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask about this screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就这张截图提问"
+          }
+        }
+      }
+    },
+    "capture.commands.askTooltip" : {
+      "comment" : "Tooltip of the screenshot command row's Ask Atd button, before its shortcut",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd about the screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就截图询问 Atd"
+          }
+        }
+      }
+    },
+    "capture.commands.copied" : {
+      "comment" : "Copy Text button's confirmation, shown in place of its label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制"
+          }
+        }
+      }
+    },
+    "capture.commands.copiedLines" : {
+      "comment" : "Copy Text button's tooltip and VoiceOver announcement after copying; the number of lines",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@lines@"
+          },
+          "substitutions" : {
+            "lines" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Copied %arg line of text"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Copied %arg lines of text"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@lines@"
+          },
+          "substitutions" : {
+            "lines" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已复制 %arg 行文字"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "capture.commands.copyText" : {
+      "comment" : "Screenshot command row button that copies the text recognized in the selection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制文字"
+          }
+        }
+      }
+    },
+    "capture.commands.copyTextTooltip" : {
+      "comment" : "Tooltip of the screenshot command row's Copy Text button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the text recognized in the selection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制选区里识别出的文字"
+          }
+        }
+      }
+    },
+    "capture.commands.customize" : {
+      "comment" : "Last row of the screenshot command row's More menu: opens Settings › Commands",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customize Screenshot Toolbar…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义截图工具栏…"
+          }
+        }
+      }
+    },
+    "capture.commands.label" : {
+      "comment" : "VoiceOver name of the screenshot's command row beside the selection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图命令"
+          }
+        }
+      }
+    },
+    "capture.commands.moreTooltip" : {
+      "comment" : "Tooltip and VoiceOver name of the screenshot command row's More button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多命令"
+          }
+        }
+      }
+    },
+    "capture.commands.noText" : {
+      "comment" : "Copy Text button in place of its label when no text was recognized",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有文字"
+          }
+        }
+      }
+    },
+    "capture.commands.noTextDetail" : {
+      "comment" : "Copy Text button's tooltip and VoiceOver announcement when no text was recognized",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No text was recognized in the selection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选区里没有识别出文字"
+          }
+        }
+      }
+    },
+    "capture.commands.runTooltip" : {
+      "comment" : "Tooltip of a command button on the screenshot command row; %@ is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run “%@” on the screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对截图运行“%@”"
+          }
+        }
+      }
+    },
+    "capture.commands.send" : {
+      "comment" : "Tooltip and VoiceOver name of the screenshot ask field's send button, before its key",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送"
+          }
+        }
+      }
+    },
     "capture.confirm" : {
       "comment" : "Annotation toolbar button: finish and use the screenshot",
       "extractionState" : "manual",
@@ -433,24 +885,6 @@
         }
       }
     },
-    "capture.hint.allDisplays" : {
-      "comment" : "Capture overlay hint line, shown after the ⌘A keycap once a whole display is selected and there is more than one display; selects every display",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All screens"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所有屏幕"
-          }
-        }
-      }
-    },
     "capture.hint.back" : {
       "comment" : "Capture overlay hint line, shown after the Esc keycap once an area is selected: goes back to picking",
       "extractionState" : "manual",
@@ -487,24 +921,6 @@
         }
       }
     },
-    "capture.hint.confirm" : {
-      "comment" : "Capture overlay hint line, shown after the Return keycap once an area is selected: confirms the capture",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "确认"
-          }
-        }
-      }
-    },
     "capture.hint.elements" : {
       "comment" : "Capture overlay hint line, shown after the W keycap while element detection is limited to windows; W toggles it",
       "extractionState" : "manual",
@@ -519,24 +935,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢复识别元素"
-          }
-        }
-      }
-    },
-    "capture.hint.pick" : {
-      "comment" : "Capture overlay hint line, before an area is selected: how to pick one (no key)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Click or drag to select"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "点击或拖动选择"
           }
         }
       }
@@ -559,24 +957,6 @@
         }
       }
     },
-    "capture.hint.resize" : {
-      "comment" : "Capture overlay hint line, once an area is selected: its edges and handles resize it (no key)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag the edges to resize"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拖动边缘调整大小"
-          }
-        }
-      }
-    },
     "capture.hint.screen" : {
       "comment" : "Capture overlay hint line, shown after the ⌘A keycap: selects the display under the pointer",
       "extractionState" : "manual",
@@ -595,24 +975,6 @@
         }
       }
     },
-    "capture.hint.scroll" : {
-      "comment" : "Capture overlay hint line, before an area is selected: the scroll wheel walks to larger or smaller areas (no key)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scroll for a larger area"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "滚动切换更大区域"
-          }
-        }
-      }
-    },
     "capture.hint.windowsOnly" : {
       "comment" : "Capture overlay hint line status, shown while element detection is limited to windows (no key)",
       "extractionState" : "manual",
@@ -627,6 +989,264 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "仅识别窗口"
+          }
+        }
+      }
+    },
+    "capture.redact.action" : {
+      "comment" : "Mosaic style bar button that covers every unmasked sensitive item in the selection; the number of items",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Cover %arg sensitive item"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Cover %arg sensitive items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "遮盖 %arg 处敏感信息"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "capture.redact.allCovered" : {
+      "comment" : "Auto-redact button, disabled, once every sensitive item is covered",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All covered"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已全部遮盖"
+          }
+        }
+      }
+    },
+    "capture.redact.done" : {
+      "comment" : "Auto-redact button's confirmation in place of its label; the number of items just covered",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Covered %arg item"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Covered %arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已遮盖 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "capture.redact.found" : {
+      "comment" : "Mosaic tool tooltip and VoiceOver addition while sensitive text is unmasked; the number of items",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg possible sensitive item found"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg possible sensitive items found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "检测到 %arg 处可能的敏感信息"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "capture.redact.none" : {
+      "comment" : "Auto-redact button, disabled, when no sensitive item was found",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No sensitive info found"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有识别到敏感信息"
+          }
+        }
+      }
+    },
+    "capture.redact.scanning" : {
+      "comment" : "Auto-redact button, disabled, while the selection's text is being recognized",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading text…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在识别文字…"
+          }
+        }
+      }
+    },
+    "capture.redact.tooltip" : {
+      "comment" : "Tooltip of the auto-redact button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find email addresses, phone numbers, keys and card numbers in the selection and cover each one"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别选区里的邮箱、电话号码、密钥和卡号，并逐个打码"
+          }
+        }
+      }
+    },
+    "capture.redact.undoHint" : {
+      "comment" : "Follows the auto-redact confirmation in its tooltip and VoiceOver announcement",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press ⌘Z to undo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按 ⌘Z 撤销"
           }
         }
       }
@@ -1545,6 +2165,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "回答完成后"
+          }
+        }
+      }
+    },
+    "commandOptions.output.card" : {
+      "comment" : "Answer destination in the command options menu and card: the answer shows on the island's answer card, to copy, insert or open",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show in a card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示在卡片中"
           }
         }
       }
@@ -3403,6 +4041,3024 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择要添加的文件夹"
+          }
+        }
+      }
+    },
+    "island.recording.actionWorking" : {
+      "comment" : "Accessibility value while a result-card footer action is running",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In progress"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在处理"
+          }
+        }
+      }
+    },
+    "island.recording.answering" : {
+      "comment" : "Answer slot title while a typed question is answered",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answering…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在回答…"
+          }
+        }
+      }
+    },
+    "island.recording.askDefault" : {
+      "comment" : "Question sent when the ask field is empty",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happens in this recording?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这段录屏里发生了什么？"
+          }
+        }
+      }
+    },
+    "island.recording.askLabel" : {
+      "comment" : "VoiceOver name of the result card's ask field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd About the Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就录屏询问 Atd"
+          }
+        }
+      }
+    },
+    "island.recording.askPlaceholder" : {
+      "comment" : "Placeholder of the result card's ask field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask something, like “Write reproduction steps”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问点什么，例如“写出复现步骤”"
+          }
+        }
+      }
+    },
+    "island.recording.attach" : {
+      "comment" : "Result card footer button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attach to Conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "附加到对话"
+          }
+        }
+      }
+    },
+    "island.recording.attachTooltip" : {
+      "comment" : "Tooltip of the result card's Attach",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attach to the Atd composer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "附加到 Atd 输入框"
+          }
+        }
+      }
+    },
+    "island.recording.capsule" : {
+      "comment" : "VoiceOver name of the recording capsule; %@ is the time recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen recording, %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在录屏，%@"
+          }
+        }
+      }
+    },
+    "island.recording.card" : {
+      "comment" : "VoiceOver name of the recording result card; %@ is its duration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen recording result, %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏结果，%@"
+          }
+        }
+      }
+    },
+    "island.recording.confirmDiscard" : {
+      "comment" : "Discard confirmation button that throws the recording away",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃"
+          }
+        }
+      }
+    },
+    "island.recording.copy" : {
+      "comment" : "Result card footer button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "island.recording.copyAnswer" : {
+      "comment" : "Answer slot copy button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制回答"
+          }
+        }
+      }
+    },
+    "island.recording.copyTooltip" : {
+      "comment" : "Tooltip of the result card's Copy",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the video file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制视频文件"
+          }
+        }
+      }
+    },
+    "island.recording.discard" : {
+      "comment" : "Recording capsule discard button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard This Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃这段录制"
+          }
+        }
+      }
+    },
+    "island.recording.discardQuestion" : {
+      "comment" : "Discard confirmation in the island; %@ is the time recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard this %@ recording?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃这段 %@ 的录制？"
+          }
+        }
+      }
+    },
+    "island.recording.failed" : {
+      "comment" : "Answer slot text when an ask failed without a message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd couldn't answer this."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 没能回答这个问题。"
+          }
+        }
+      }
+    },
+    "island.recording.fullScreen" : {
+      "comment" : "Result card timeline button that opens the recording's full screen preview",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Screen Preview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全屏预览"
+          }
+        }
+      }
+    },
+    "island.recording.fullScreenTooltip" : {
+      "comment" : "Tooltip of the result card's full screen preview button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full screen preview (double-click the video)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全屏预览（双击画面）"
+          }
+        }
+      }
+    },
+    "island.recording.keepRecording" : {
+      "comment" : "Discard confirmation button that goes back to recording",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续录制"
+          }
+        }
+      }
+    },
+    "island.recording.lightbox" : {
+      "comment" : "VoiceOver name of the recording's full screen preview",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen recording preview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏预览"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxBack" : {
+      "comment" : "Full screen preview button that goes back to the result card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回结果卡"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxBackTooltip" : {
+      "comment" : "Tooltip of the full screen preview's back button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to the card (Esc)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回结果卡（Esc）"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxHintBack" : {
+      "comment" : "Full screen preview hint after the esc keycap",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxHintPlay" : {
+      "comment" : "Full screen preview hint after the Space keycap",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxHintSeek" : {
+      "comment" : "Full screen preview hint after the left and right arrow keycaps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back or forward 1 second"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前后 1 秒"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxHintTrim" : {
+      "comment" : "Full screen preview hint after the I and O keycaps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set start / end"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设为起点 / 终点"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxPlayerHint" : {
+      "comment" : "Tooltip of the player in the recording's full screen preview",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to play, double-click to go back to the card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单击播放，双击返回结果卡"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxSteps" : {
+      "comment" : "Full screen preview top bar button that shows or hides the steps panel",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "步骤"
+          }
+        }
+      }
+    },
+    "island.recording.lightboxStepsTooltip" : {
+      "comment" : "Tooltip of the full screen preview's steps button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show or hide the steps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示或隐藏步骤"
+          }
+        }
+      }
+    },
+    "island.recording.micOff" : {
+      "comment" : "Recording capsule microphone toggle while recording the microphone; %@ is the device",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Off Microphone (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭麦克风（%@）"
+          }
+        }
+      }
+    },
+    "island.recording.micOn" : {
+      "comment" : "Recording capsule microphone toggle while the microphone is off; %@ is the device it turns on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn On Microphone (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开麦克风（%@）"
+          }
+        }
+      }
+    },
+    "island.recording.micOnDefault" : {
+      "comment" : "Recording capsule microphone toggle when no device is known",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn On Microphone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开麦克风"
+          }
+        }
+      }
+    },
+    "island.recording.nextAnswer" : {
+      "comment" : "Answer slot pager button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一个回答"
+          }
+        }
+      }
+    },
+    "island.recording.noNarration" : {
+      "comment" : "Note beside the steps title when the microphone was off",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No narration"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无旁白"
+          }
+        }
+      }
+    },
+    "island.recording.noNarrationTooltip" : {
+      "comment" : "Tooltip of the no-narration note",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone was off while recording, so there is no narration"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制时麦克风没有打开，所以没有旁白"
+          }
+        }
+      }
+    },
+    "island.recording.noSteps" : {
+      "comment" : "Steps list when nothing was detected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No actions were detected; Atd will only see the screen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有检测到操作，Atd 只会看到画面。"
+          }
+        }
+      }
+    },
+    "island.recording.openTooltip" : {
+      "comment" : "Tooltip of the answer slot's Open in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue this conversation in the Atd panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 面板里继续这次对话"
+          }
+        }
+      }
+    },
+    "island.recording.pager" : {
+      "comment" : "VoiceOver name of the answer pager; %1$@ is the answer shown, %2$@ how many",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer %1$@ of %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %1$@ 个回答，共 %2$@ 个"
+          }
+        }
+      }
+    },
+    "island.recording.pause" : {
+      "comment" : "Recording capsule and result card pause button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停"
+          }
+        }
+      }
+    },
+    "island.recording.paused" : {
+      "comment" : "Recording capsule status while paused",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已暂停"
+          }
+        }
+      }
+    },
+    "island.recording.play" : {
+      "comment" : "Result card play button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放"
+          }
+        }
+      }
+    },
+    "island.recording.playerHint" : {
+      "comment" : "Tooltip of the result card's player",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to play, double-click for full screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单击播放，双击全屏预览"
+          }
+        }
+      }
+    },
+    "island.recording.previousAnswer" : {
+      "comment" : "Answer slot pager button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous Answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一个回答"
+          }
+        }
+      }
+    },
+    "island.recording.processing" : {
+      "comment" : "Island status while the recording is processed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing the recording…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在整理录屏…"
+          }
+        }
+      }
+    },
+    "island.recording.question" : {
+      "comment" : "Answer slot title of a typed question; %@ is the question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Q: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问：%@"
+          }
+        }
+      }
+    },
+    "island.recording.quickAutomation" : {
+      "comment" : "Quick ask about a recording, sent as the question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create an automation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成自动化"
+          }
+        }
+      }
+    },
+    "island.recording.quickSteps" : {
+      "comment" : "Quick ask about a recording, sent as the question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write reproduction steps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写出复现步骤"
+          }
+        }
+      }
+    },
+    "island.recording.quickSummary" : {
+      "comment" : "Quick ask about a recording, sent as the question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summarize the steps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结操作"
+          }
+        }
+      }
+    },
+    "island.recording.rangeTooltip" : {
+      "comment" : "Tooltip of the range an answer was asked about",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The range kept when this was asked"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提问时保留的范围"
+          }
+        }
+      }
+    },
+    "island.recording.recording" : {
+      "comment" : "Recording capsule status while recording",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制中"
+          }
+        }
+      }
+    },
+    "island.recording.regenerate" : {
+      "comment" : "Answer slot button that asks again in place",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regenerate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新生成"
+          }
+        }
+      }
+    },
+    "island.recording.restore" : {
+      "comment" : "Result card button that keeps the whole recording again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原"
+          }
+        }
+      }
+    },
+    "island.recording.restoreTooltip" : {
+      "comment" : "Tooltip of the result card's Restore",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the whole recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复整段录屏"
+          }
+        }
+      }
+    },
+    "island.recording.resume" : {
+      "comment" : "Recording capsule resume button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
+    "island.recording.running" : {
+      "comment" : "Answer slot title while a quick ask runs; %@ is the quick ask",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running “%@”…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行“%@”…"
+          }
+        }
+      }
+    },
+    "island.recording.save" : {
+      "comment" : "Result card footer button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存"
+          }
+        }
+      }
+    },
+    "island.recording.saveTo" : {
+      "comment" : "Tooltip of the result card's Save; %@ is the folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save to “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存到“%@”"
+          }
+        }
+      }
+    },
+    "island.recording.saveTooltip" : {
+      "comment" : "Tooltip of the result card's Save when the folder is unknown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the kept range"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存保留的范围"
+          }
+        }
+      }
+    },
+    "island.recording.send" : {
+      "comment" : "Result card ask field's send button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送"
+          }
+        }
+      }
+    },
+    "island.recording.stepOutside" : {
+      "comment" : "Tooltip of a step outside the kept range",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outside the kept range; Atd won't read it"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不在保留范围内，Atd 不会读到"
+          }
+        }
+      }
+    },
+    "island.recording.steps" : {
+      "comment" : "Title of the steps beside the result card's player",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steps Atd Will Read"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 会读到的步骤"
+          }
+        }
+      }
+    },
+    "island.recording.stepsInfo" : {
+      "comment" : "Tooltip of the steps title's info glyph",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you ask or attach, Atd reads these steps in the kept range, the screen at each step and the narration. The video file itself is not sent to the model."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提问或附加到对话时，Atd 读取保留范围内的这些步骤、每一步的画面和旁白文字。视频文件本身不发给模型。"
+          }
+        }
+      }
+    },
+    "island.recording.stop" : {
+      "comment" : "Recording capsule stop button, and the answer slot's stop",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
+    },
+    "island.recording.stopRecording" : {
+      "comment" : "Recording capsule stop button tooltip, followed by its keys",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止录制"
+          }
+        }
+      }
+    },
+    "island.recording.stopped" : {
+      "comment" : "Mark at the end of an answer that was stopped",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已停止"
+          }
+        }
+      }
+    },
+    "island.recording.timeline" : {
+      "comment" : "VoiceOver name of the result card's timeline",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeline"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间线"
+          }
+        }
+      }
+    },
+    "island.recording.title" : {
+      "comment" : "Recording result card title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕录制"
+          }
+        }
+      }
+    },
+    "island.recording.trimEnd" : {
+      "comment" : "VoiceOver name of the trim's end handle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End of the Kept Range"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留范围的结束"
+          }
+        }
+      }
+    },
+    "island.recording.trimStart" : {
+      "comment" : "VoiceOver name of the trim's start handle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start of the Kept Range"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留范围的开始"
+          }
+        }
+      }
+    },
+    "island.recording.trimmed" : {
+      "comment" : "Result card title row once trimmed; %1$@ is the kept length, %2$@ the whole",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · Trimmed (from %2$@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · 已裁剪（原 %2$@）"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.bar.autoScroll" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (bar.autoScroll)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-scroll"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.bar.pauseScroll" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (bar.pauseScroll)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause scrolling"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.name" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (name)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.sizeLabel" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (sizeLabel)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Long screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · 长截图"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.tooltip.available" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (tooltip.available)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot: scroll to capture more"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图：滚动以截取更多"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.tooltip.checking" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (tooltip.checking)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot: looking for scrolling content"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图：正在识别可滚动的内容"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.tooltip.notScrollable" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (tooltip.notScrollable)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot: nothing in the selection scrolls"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图：选区里没有可滚动的内容"
+          }
+        }
+      }
+    },
+    "longScreenshot.capture.tooltip.spansDisplays" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (tooltip.spansDisplays)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot: the selection spans more than one display"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图：选区跨了多个显示器"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.annotate" : {
+      "comment" : "Long screenshot result card on the island (annotate)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标注"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.annotateTooltip" : {
+      "comment" : "Long screenshot result card on the island (annotateTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotate it in full screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在全屏预览里标注"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.askDefault" : {
+      "comment" : "Long screenshot result card on the island (askDefault)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What's in this long screenshot?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这张长图里有什么？"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.askLabel" : {
+      "comment" : "Long screenshot result card on the island (askLabel)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd About the Long Screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就长截图询问 Atd"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.askPlaceholder" : {
+      "comment" : "Long screenshot result card on the island (askPlaceholder)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask about this long screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就这张长图提问"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.back" : {
+      "comment" : "Long screenshot result card on the island (back)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回结果卡"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.backTooltip" : {
+      "comment" : "Long screenshot result card on the island (backTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to the card (Esc)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回结果卡（Esc）"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.card" : {
+      "comment" : "Long screenshot result card on the island (card)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot, %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图，%@"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.characters" : {
+      "comment" : "Long screenshot result card on the island (characters)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@characters@"
+          },
+          "substitutions" : {
+            "characters" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg character"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg characters"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@characters@"
+          },
+          "substitutions" : {
+            "characters" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 字"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.copy" : {
+      "comment" : "Long screenshot result card on the island (copy)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.copyTooltip" : {
+      "comment" : "Long screenshot result card on the island (copyTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the kept range as an image"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制保留范围内的长图"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.cover" : {
+      "comment" : "Long screenshot result card on the island (cover)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遮盖"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.coverKinds" : {
+      "comment" : "Long screenshot result card on the island (coverKinds)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遮盖 %@"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.coverTooltip" : {
+      "comment" : "Long screenshot result card on the island (coverTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pixelate each of them"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把这些内容逐个打码"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.done" : {
+      "comment" : "Long screenshot result card on the island (done)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.doneTooltip" : {
+      "comment" : "Long screenshot result card on the island (doneTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish annotating (Esc)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成标注（Esc）"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.fit" : {
+      "comment" : "Long screenshot result card on the island (fit)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适合宽度"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.hintScroll" : {
+      "comment" : "Long screenshot result card on the island (hintScroll)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.hintZoom" : {
+      "comment" : "Long screenshot result card on the island (hintZoom)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩放"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.keptHeight" : {
+      "comment" : "Long screenshot result card on the island (keptHeight)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ pt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ pt"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.kind.card" : {
+      "comment" : "Long screenshot result card on the island (kind.card)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@card@"
+          },
+          "substitutions" : {
+            "card" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card number"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card numbers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@card@"
+          },
+          "substitutions" : {
+            "card" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 个卡号"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.kind.email" : {
+      "comment" : "Long screenshot result card on the island (kind.email)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@email@"
+          },
+          "substitutions" : {
+            "email" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg email address"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg email addresses"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@email@"
+          },
+          "substitutions" : {
+            "email" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 个邮箱"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.kind.key" : {
+      "comment" : "Long screenshot result card on the island (kind.key)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@key@"
+          },
+          "substitutions" : {
+            "key" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg key"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg keys"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@key@"
+          },
+          "substitutions" : {
+            "key" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 个密钥"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.kind.phone" : {
+      "comment" : "Long screenshot result card on the island (kind.phone)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@phone@"
+          },
+          "substitutions" : {
+            "phone" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg phone number"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg phone numbers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@phone@"
+          },
+          "substitutions" : {
+            "phone" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 个电话号码"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.kindSeparator" : {
+      "comment" : "Long screenshot result card on the island (kindSeparator)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", "
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "、"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.lightbox" : {
+      "comment" : "Long screenshot result card on the island (lightbox)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Screen Preview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全屏预览"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.lightboxTooltip" : {
+      "comment" : "Long screenshot result card on the island (lightboxTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full screen preview (Space)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全屏预览（空格）"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.lines" : {
+      "comment" : "Long screenshot result card on the island (lines)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@lines@"
+          },
+          "substitutions" : {
+            "lines" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg line"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg lines"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@lines@"
+          },
+          "substitutions" : {
+            "lines" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 行"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.card.nextPage" : {
+      "comment" : "Long screenshot result card on the island (nextPage)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一页"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.noText" : {
+      "comment" : "Long screenshot result card on the island (noText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有文字"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.overview" : {
+      "comment" : "Long screenshot result card on the island (overview)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长图总览"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.page" : {
+      "comment" : "Long screenshot result card on the island (page)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %@ 页"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.pageOf" : {
+      "comment" : "Long screenshot result card on the island (pageOf)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %1$@ of %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %1$@ / %2$@ 页"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.preview" : {
+      "comment" : "Long screenshot result card on the island (preview)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot preview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图预览"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.previousPage" : {
+      "comment" : "Long screenshot result card on the island (previousPage)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous Page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一页"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.processing" : {
+      "comment" : "Long screenshot result card on the island (processing)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Processing the long screenshot…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在处理长截图…"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.quickKeyInfo" : {
+      "comment" : "Long screenshot result card on the island (quickKeyInfo)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find the key information"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找出关键信息"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.quickSummary" : {
+      "comment" : "Long screenshot result card on the island (quickSummary)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summarize the key points"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结要点"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.quickTable" : {
+      "comment" : "Long screenshot result card on the island (quickTable)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn it into a table"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理成表格"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.reads" : {
+      "comment" : "Long screenshot result card on the island (reads)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Atd Will Read"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 会读到的内容"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.readsInfo" : {
+      "comment" : "Long screenshot result card on the island (readsInfo)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you ask or attach, Atd reads the kept range page by page, with the text recognized on it. Covered parts aren't sent."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提问或附加到对话时，Atd 按页读取保留范围内的长图，并附上识别出的文字。遮盖的内容不会发送。"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.recognized" : {
+      "comment" : "Long screenshot result card on the island (recognized)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognized %1$@ and %2$@, sent with the image"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别出 %1$@、%2$@，随图一起发送"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.restoreTooltip" : {
+      "comment" : "Long screenshot result card on the island (restoreTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the whole long screenshot and undo covering and annotations"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复整张长图，撤销遮盖和标注"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.screens" : {
+      "comment" : "Long screenshot result card on the island (screens)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ screens"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 屏"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.sensitiveCovered" : {
+      "comment" : "Long screenshot result card on the island (sensitiveCovered)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Covered %@; they won't be sent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已遮盖 %@，不会发送"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.sensitiveFound" : {
+      "comment" : "Long screenshot result card on the island (sensitiveFound)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Found %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有 %@"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.title" : {
+      "comment" : "Long screenshot result card on the island (title)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long Screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.trimBottom" : {
+      "comment" : "Long screenshot result card on the island (trimBottom)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End of the Kept Range"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留范围的结束"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.trimEnd" : {
+      "comment" : "Long screenshot result card on the island (trimEnd)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结束 · %@"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.trimStart" : {
+      "comment" : "Long screenshot result card on the island (trimStart)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始 · %@"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.trimTop" : {
+      "comment" : "Long screenshot result card on the island (trimTop)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start of the Kept Range"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留范围的开始"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.trimmed" : {
+      "comment" : "Long screenshot result card on the island (trimmed)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trimmed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已裁剪"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.viewportTooltip" : {
+      "comment" : "Long screenshot result card on the island (viewportTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to scroll"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动以滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.zoomIn" : {
+      "comment" : "Long screenshot result card on the island (zoomIn)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom In"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.zoomOut" : {
+      "comment" : "Long screenshot result card on the island (zoomOut)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom Out"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩小"
+          }
+        }
+      }
+    },
+    "longScreenshot.card.zoomTooltip" : {
+      "comment" : "Long screenshot result card on the island (zoomTooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fit width or actual size (0)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适合宽度或实际大小（0）"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.autoScroll" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (autoScroll)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-scroll"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.bar" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (bar)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.captured" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (captured)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captured %@ screens"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已截取 %@ 屏"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.message.end" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (message.end)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reached the end of the page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已截到页面末尾"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.includeTail" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (includeTail)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include area below"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截取选区下方"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.includeTail.tooltip" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (includeTail.tooltip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the part of the page below the selection to the long screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把页面在选区下方露出的部分也截进长图"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.message.limit" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (message.limit)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reached the longest a long screenshot can be"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已达到长截图的长度上限"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.message.lost" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (message.lost)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolled too fast and missed a part. Scroll back a little"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚得太快，有一段没接上，往回滚一点"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.message.needsPermission" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (message.needsPermission)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-scroll needs app control access"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动滚动需要「允许控制应用」权限"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.message.start" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (message.start)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll inside the selection to keep capturing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在选区里滚动，继续截取"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.pauseScroll" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (pauseScroll)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause Scrolling"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停滚动"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.statusRow" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (statusRow)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot status"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图状态"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.strip" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (strip)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot preview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长图预览"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.strip.caption" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (strip.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ screens · %2$@ pt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 屏 · %2$@ pt"
+          }
+        }
+      }
+    },
+    "longScreenshot.chrome.strip.lost" : {
+      "comment" : "Long screenshot live phase: control bar, status row and preview strip beside the selection (strip.lost)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused at a gap"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没接上，暂停拼接"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.answerInterrupted" : {
+      "comment" : "Long screenshot result: feedback and processing (answerInterrupted)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The connection was interrupted. Ask again to continue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接已中断，请重新提问。"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.attached" : {
+      "comment" : "Long screenshot result: feedback and processing (attached)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已发送到对话"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.clipboardBusy" : {
+      "comment" : "Long screenshot result: feedback and processing (clipboardBusy)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The clipboard is in use; try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪贴板正被占用，请重试。"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.copied" : {
+      "comment" : "Long screenshot result: feedback and processing (copied)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.exportFailed" : {
+      "comment" : "Long screenshot result: feedback and processing (exportFailed)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The long screenshot couldn't be prepared."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法准备长截图。"
+          }
+        }
+      }
+    },
+    "longScreenshot.result.tooLarge" : {
+      "comment" : "Long screenshot result: feedback and processing (tooLarge)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The long screenshot is too large to send."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图太大，无法发送。"
           }
         }
       }
@@ -5383,6 +9039,1410 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要退出 Atd 吗？"
+          }
+        }
+      }
+    },
+    "recording.engine.countdown" : {
+      "comment" : "VoiceOver announcement when the countdown before a recording begins; %lld is the seconds left",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording starts in %lld seconds"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 秒后开始录制"
+          }
+        }
+      }
+    },
+    "recording.engine.error.display" : {
+      "comment" : "Recording error: the display being recorded went away",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The display being recorded is no longer available."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在录制的显示器已不可用。"
+          }
+        }
+      }
+    },
+    "recording.engine.error.export" : {
+      "comment" : "Recording error: the files for asking or attaching couldn't be prepared",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The recording's files couldn't be prepared."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法准备录屏的文件。"
+          }
+        }
+      }
+    },
+    "recording.engine.error.microphone" : {
+      "comment" : "Recording error: the microphone is not allowed; names the System Settings pane",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Atd in Microphone to record your voice."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“麦克风”中允许 Atd，以便录制你的声音。"
+          }
+        }
+      }
+    },
+    "recording.engine.error.recording" : {
+      "comment" : "Recording error: capturing or writing the recording failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The recording couldn't be made."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法完成录屏。"
+          }
+        }
+      }
+    },
+    "recording.engine.error.save" : {
+      "comment" : "Recording error: the recording couldn't be written to the chosen folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The recording couldn't be saved to that folder."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法将录屏保存到该文件夹。"
+          }
+        }
+      }
+    },
+    "recording.engine.error.screenRecording" : {
+      "comment" : "Recording error: Screen Recording is not allowed; names the System Settings pane as the permission guide does",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Atd in Screen & System Audio Recording to record the screen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“录屏与系统录音”中允许 Atd，以便录制屏幕。"
+          }
+        }
+      }
+    },
+    "recording.engine.export.videoTooLarge" : {
+      "comment" : "Note after attaching a recording whose video is over the attachment limit even compressed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The video is over the 64 MB attachment limit even compressed, so only its key frames and steps were attached."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频压缩后仍超过 64 MB 的附件上限，所以只附加了关键帧和步骤。"
+          }
+        }
+      }
+    },
+    "recording.engine.issue.microphoneNotInMovie" : {
+      "comment" : "Note on a recording whose microphone audio could not be added to the video; any recognized narration stays in the steps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone couldn't be added to the video. Any recognized narration is still in the steps."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法把麦克风的声音加入视频，已识别的旁白仍会保留在步骤中。"
+          }
+        }
+      }
+    },
+    "recording.engine.key.space" : {
+      "comment" : "Key badge and step label for the Space bar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空格"
+          }
+        }
+      }
+    },
+    "recording.engine.narration.failed" : {
+      "comment" : "Why a recording has no narration: transcription failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you said couldn't be transcribed, so there is no narration."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法转写录制时说的话，所以没有旁白。"
+          }
+        }
+      }
+    },
+    "recording.engine.narration.microphoneOff" : {
+      "comment" : "Why a recording has no narration: the microphone was off",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone was off while recording, so there is no narration."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制时麦克风没有打开，所以没有旁白。"
+          }
+        }
+      }
+    },
+    "recording.engine.narration.none" : {
+      "comment" : "Short note beside the recording's steps when it has no narration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No narration"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无旁白"
+          }
+        }
+      }
+    },
+    "recording.engine.narration.notAllowed" : {
+      "comment" : "Why a recording has no narration: Speech Recognition is not allowed; names the System Settings pane",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Atd in Speech Recognition to transcribe what you say while recording."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“语音识别”中允许 Atd，以便转写录制时说的话。"
+          }
+        }
+      }
+    },
+    "recording.engine.narration.unavailable" : {
+      "comment" : "Why a recording has no narration: no on-device speech recognition for the language",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Mac can't transcribe speech in this language on device, so there is no narration."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台 Mac 无法在本机转写这种语言，所以没有旁白。"
+          }
+        }
+      }
+    },
+    "recording.engine.processing" : {
+      "comment" : "Island status while a finished recording's steps, narration and key frames are prepared",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing the recording…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在整理录屏…"
+          }
+        }
+      }
+    },
+    "recording.engine.step.appSwitch" : {
+      "comment" : "Recording step: another app came to the front; %@ is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch to %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换到 %@"
+          }
+        }
+      }
+    },
+    "recording.engine.step.click" : {
+      "comment" : "Recording step: a click on a named element; %@ is its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击“%@”"
+          }
+        }
+      }
+    },
+    "recording.engine.step.clickPlain" : {
+      "comment" : "Recording step: a click on an element without a title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击"
+          }
+        }
+      }
+    },
+    "recording.engine.step.doubleClick" : {
+      "comment" : "Recording step: a double click on a named element; %@ is its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-click “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击“%@”"
+          }
+        }
+      }
+    },
+    "recording.engine.step.doubleClickPlain" : {
+      "comment" : "Recording step: a double click on an element without a title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-click"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击"
+          }
+        }
+      }
+    },
+    "recording.engine.step.keys" : {
+      "comment" : "Recording step: a shortcut or key press; %@ is the keys, such as ⌘S",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下 %@"
+          }
+        }
+      }
+    },
+    "recording.engine.step.narration" : {
+      "comment" : "Recording step: something the user said; %@ is the transcribed words",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”"
+          }
+        }
+      }
+    },
+    "recording.engine.step.rightClick" : {
+      "comment" : "Recording step: a right click on a named element; %@ is its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right-click “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右键点击“%@”"
+          }
+        }
+      }
+    },
+    "recording.engine.step.rightClickPlain" : {
+      "comment" : "Recording step: a right click on an element without a title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right-click"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右键点击"
+          }
+        }
+      }
+    },
+    "recording.engine.step.screenChange" : {
+      "comment" : "Recording step: what the recorded area shows changed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen changed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面变化"
+          }
+        }
+      }
+    },
+    "recording.engine.step.typing" : {
+      "comment" : "Recording step: characters typed in a row; %@ is the text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入“%@”"
+          }
+        }
+      }
+    },
+    "recording.engine.step.windowSwitch" : {
+      "comment" : "Recording step: the app in front focused another window; %@ is its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch to window “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换到窗口“%@”"
+          }
+        }
+      }
+    },
+    "recording.options.after" : {
+      "comment" : "Recording options menu row: what happens once the recording is processed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录完后"
+          }
+        }
+      }
+    },
+    "recording.options.after.attach" : {
+      "comment" : "After-recording value: the recording is attached to the panel's conversation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attach to Conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "附加到对话"
+          }
+        }
+      }
+    },
+    "recording.options.after.card" : {
+      "comment" : "After-recording value: the Island shows the recording's result card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Result Card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示结果卡"
+          }
+        }
+      }
+    },
+    "recording.options.after.save" : {
+      "comment" : "After-recording value: the movie is saved to the save location",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save to Folder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存到文件夹"
+          }
+        }
+      }
+    },
+    "recording.options.countdown" : {
+      "comment" : "Recording options menu row: the countdown before recording starts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Countdown"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "倒计时"
+          }
+        }
+      }
+    },
+    "recording.options.countdown.none" : {
+      "comment" : "Countdown value: recording starts at once",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
+    },
+    "recording.options.countdown.seconds" : {
+      "comment" : "Countdown value in seconds (3, 5 or 10)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Seconds"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 秒"
+          }
+        }
+      }
+    },
+    "recording.options.estimate" : {
+      "comment" : "Recording options menu row that only informs: about how large the movie gets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estimated Size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预计大小"
+          }
+        }
+      }
+    },
+    "recording.options.estimate.value" : {
+      "comment" : "Compact recording-options note: estimated movie size in megabytes per minute",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %lld MB/min"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预计约 %lld MB/分钟"
+          }
+        }
+      }
+    },
+    "recording.options.folder.desktop" : {
+      "comment" : "Save location: the user's Desktop folder, as Finder names it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desktop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "桌面"
+          }
+        }
+      }
+    },
+    "recording.options.folder.documents" : {
+      "comment" : "Save location: the user's Documents folder, as Finder names it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documents"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文稿"
+          }
+        }
+      }
+    },
+    "recording.options.folder.message" : {
+      "comment" : "Message of the open panel that chooses the recordings' save location",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose where to save recordings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择录屏的保存位置"
+          }
+        }
+      }
+    },
+    "recording.options.folder.movies" : {
+      "comment" : "Save location: the user's Movies folder, as Finder names it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movies"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影片"
+          }
+        }
+      }
+    },
+    "recording.options.folder.other" : {
+      "comment" : "Save location menu item that opens a folder panel to choose any folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他位置…"
+          }
+        }
+      }
+    },
+    "recording.options.folder.prompt" : {
+      "comment" : "Default button of the open panel that chooses the recordings' save location",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        }
+      }
+    },
+    "recording.options.frameRate" : {
+      "comment" : "Recording options menu row: frames per second",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frame Rate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帧率"
+          }
+        }
+      }
+    },
+    "recording.options.frameRate.value" : {
+      "comment" : "Frame rate value, such as 30 fps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fps"
+          }
+        }
+      }
+    },
+    "recording.options.microphone.none" : {
+      "comment" : "Sound menu item that records no microphone, listed above the microphones",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Microphone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不录制麦克风"
+          }
+        }
+      }
+    },
+    "recording.options.options" : {
+      "comment" : "Title of the record bar's Options menu button (kept short: two characters in Chinese)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选项"
+          }
+        }
+      }
+    },
+    "recording.options.quality" : {
+      "comment" : "Recording options menu row: the video's resolution",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quality"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画质"
+          }
+        }
+      }
+    },
+    "recording.options.quality.original" : {
+      "comment" : "Quality value: the region's own pixels",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original Resolution"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始分辨率"
+          }
+        }
+      }
+    },
+    "recording.options.quality.sharpest" : {
+      "comment" : "Quality submenu item: the original resolution, noting it is the sharpest",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Sharpest)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（最清晰）"
+          }
+        }
+      }
+    },
+    "recording.options.quality.smaller" : {
+      "comment" : "Quality submenu item: a quality name such as 720p, noting the smaller file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Smaller File)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（文件小）"
+          }
+        }
+      }
+    },
+    "recording.options.saveLocation" : {
+      "comment" : "Recording options menu row: the folder recordings are saved to",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存位置"
+          }
+        }
+      }
+    },
+    "recording.options.showClicks" : {
+      "comment" : "Recording options checkbox item: clicks are marked in the recording",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Mouse Clicks"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示点击"
+          }
+        }
+      }
+    },
+    "recording.options.showKeys" : {
+      "comment" : "Recording options checkbox item: pressed keys show as badges in the recording",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Keystrokes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示按键"
+          }
+        }
+      }
+    },
+    "recording.options.showPointer" : {
+      "comment" : "Recording options checkbox item: the pointer shows in the recording",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Mouse Pointer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示鼠标指针"
+          }
+        }
+      }
+    },
+    "recording.options.sound" : {
+      "comment" : "Title of the record bar's Sound menu button (kept short: two characters in Chinese) and name of its menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "声音"
+          }
+        }
+      }
+    },
+    "recording.options.sound.microphone" : {
+      "comment" : "Sound summary part: the microphone recorded, with the device's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "microphone (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麦克风（%@）"
+          }
+        }
+      }
+    },
+    "recording.options.sound.noMicrophone" : {
+      "comment" : "Sound summary part: no microphone is recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no microphone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不录麦克风"
+          }
+        }
+      }
+    },
+    "recording.options.sound.noSystemAudio" : {
+      "comment" : "Sound summary part: the system audio is not recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no system audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不录系统声音"
+          }
+        }
+      }
+    },
+    "recording.options.sound.summary" : {
+      "comment" : "Tooltip and VoiceOver label of the record bar's Sound button: the microphone part, then the system audio part",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound: %1$@, %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "声音：%1$@，%2$@"
+          }
+        }
+      }
+    },
+    "recording.options.sound.systemAudio" : {
+      "comment" : "Sound summary part: the system audio is recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "system audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制系统声音"
+          }
+        }
+      }
+    },
+    "recording.options.start" : {
+      "comment" : "Record bar button that starts recording the selection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始录制"
+          }
+        }
+      }
+    },
+    "recording.options.systemAudio" : {
+      "comment" : "Sound menu checkbox item that records what the Mac plays",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record System Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制系统声音"
+          }
+        }
+      }
+    },
+    "recording.options.title" : {
+      "comment" : "Accessibility label of the record bar beside a selection in record mode, tooltip of its Options button and name of its Options menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording Options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏选项"
+          }
+        }
+      }
+    },
+    "recording.orch.answerInterrupted" : {
+      "comment" : "Recording answer after the page connection was interrupted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The connection was interrupted. Ask again to continue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接已中断，请重新提问。"
+          }
+        }
+      }
+    },
+    "recording.orch.attached" : {
+      "comment" : "Recording attached to the conversation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已发送到对话"
+          }
+        }
+      }
+    },
+    "recording.orch.clipboardBusy" : {
+      "comment" : "Island status after Copy on a recording's result card when another action holds the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The clipboard is in use; try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪贴板正被占用，请重试。"
+          }
+        }
+      }
+    },
+    "recording.orch.copied" : {
+      "comment" : "Island status after Copy on a recording's result card put the video file on the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video copied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制视频"
+          }
+        }
+      }
+    },
+    "recording.orch.noMicrophone" : {
+      "comment" : "Island status when the recording capsule's microphone toggle finds no microphone to turn on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No microphone is connected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有连接麦克风"
+          }
+        }
+      }
+    },
+    "recording.orch.saved" : {
+      "comment" : "Island status after a recording was saved; %@ is the folder's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved to “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已保存到“%@”"
+          }
+        }
+      }
+    },
+    "recording.orch.screenBusy" : {
+      "comment" : "Island status when a recording cannot start because another action holds the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another action is using the screen; record again in a moment."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "另一个操作正在使用屏幕，请稍后再录制。"
+          }
+        }
+      }
+    },
+    "recording.orch.showLast" : {
+      "comment" : "Status menu item that shows the last recording's result card again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Last Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示上次录屏"
+          }
+        }
+      }
+    },
+    "recording.status.discard" : {
+      "comment" : "Recording menu bar item: discard, which asks first",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Recording…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃录制…"
+          }
+        }
+      }
+    },
+    "recording.status.pause" : {
+      "comment" : "Recording menu bar item: pause",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停录制"
+          }
+        }
+      }
+    },
+    "recording.status.paused" : {
+      "comment" : "Recording menu bar item tooltip while paused; %@ is the time recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording paused at %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制已暂停于 %@"
+          }
+        }
+      }
+    },
+    "recording.status.recording" : {
+      "comment" : "Recording menu bar item tooltip; %@ is the time recorded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在录制 %@"
+          }
+        }
+      }
+    },
+    "recording.status.resume" : {
+      "comment" : "Recording menu bar item: resume",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续录制"
+          }
+        }
+      }
+    },
+    "recording.status.stop" : {
+      "comment" : "Recording menu bar item: stop",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止录制"
           }
         }
       }

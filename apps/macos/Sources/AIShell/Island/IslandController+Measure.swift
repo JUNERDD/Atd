@@ -29,8 +29,11 @@ extension IslandController {
   /// card as wide as its widest row or footer within bounds and as tall as its rows make room
   /// for; the answer card as ``measureAnswer(command:answer:note:)`` has it, the review card as
   /// ``measureReview(command:answer:note:review:)``, the compose card as
-  /// ``measureCompose(command:attach:)`` does.
+  /// ``measureCompose(command:attach:)`` does, the recording's result card as
+  /// ``measureRecordingCard()`` does, the long screenshot's as ``measureLongScreenshotCard()``.
   func measure(_ content: IslandContent) -> IslandMeasure {
+    if case .recordingResult = content { return measureRecordingCard() }
+    if case .longScreenshotResult = content { return measureLongScreenshotCard() }
     if case .answer(let command, let answer, let note) = content {
       return measureAnswer(command: command, answer: answer, note: note)
     }
@@ -73,6 +76,8 @@ extension IslandController {
       summary = values
     case .notice(let text): message = text
     case .choose, .answer, .review, .compose, .writing, .done, .copied: break
+    case .recording, .recordingStatus, .recordingDiscard, .recordingResult: break
+    case .longScreenshotResult: break
     }
     let limits = IslandMetrics.CapsuleLimits.fitting(
       overflow: natural - limit, command: command,

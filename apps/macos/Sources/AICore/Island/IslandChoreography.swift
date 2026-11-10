@@ -62,7 +62,7 @@ public enum IslandMetrics {
   public static let meterWidth = 36.0
   public static let meterHeight = 4.0
 
-  // The options card.
+  // The options card, and every card after it.
   public static let cardRadius = 18.0
   public static let cardPadding = 6.0
   public static let rowHeight = 28.0
@@ -75,20 +75,31 @@ public enum IslandMetrics {
   public static let filterHeight = 28.0
   public static let footerHeight = 32.0
   public static let sectionGap = 4.0
+  /// The result cards' (the answer, review and recording cards) top strip, in place of their top
+  /// padding: the grabber that moves the island, Apple's sheet grabber, stands centred in it,
+  /// and the part of the strip ``grabberHitWidth`` wide around it takes the pointer.
+  public static let grabberStrip = 16.0
+  public static let grabberWidth = 36.0
+  public static let grabberHeight = 5.0
+  public static let grabberHitWidth = 96.0
+  /// A result card's padding above and below its contents: the grabber's strip and the padding.
+  public static let resultPadding = grabberStrip + cardPadding
   /// The card is as wide as its widest row or footer within these bounds.
   public static let minCardWidth = 300.0
   public static let maxCardWidth = 560.0
   /// More rows than this scroll inside the card.
   public static let maxVisibleRows = 8
 
-  /// The largest shape the island takes: the widest notice or card, the tallest card.
+  /// The largest shape the island's command contents take: the widest notice or card, the
+  /// tallest card. The recording's result card sizes itself, past it.
   public static let maxShape = WindowSize(width: 640, height: 400)
   /// Transparent room for the full Liquid Glass shadow and entrance overshoot. Its lower tail
   /// must fade out before reaching the window boundary, which clips everything drawn inside it.
   public static let inset = 64.0
 
-  /// The fixed canvas every shape is drawn in: the largest shape at its overshoot
-  /// (``MiniPanelChoreography/followLimit``) with ``inset`` around it.
+  /// The default canvas shapes are drawn in, and their coordinates: the largest shape at its
+  /// overshoot (``MiniPanelChoreography/followLimit``) with ``inset`` around it. Only the
+  /// recording's result card needs more (``canvas(fitting:)``).
   public static var canvas: WindowSize {
     let limit = MiniPanelChoreography.followLimit
     return WindowSize(

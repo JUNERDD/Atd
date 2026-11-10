@@ -572,7 +572,13 @@
       "failed": "{{command}} didn't finish.",
       "stopped": "{{command}} was stopped.",
       "startFailed": "{{command}} couldn't start.",
-      "empty": "{{command}} had no answer to write."
+      "empty": "{{command}} had no answer to write.",
+      "emptyCopy": "{{command}} had no answer to copy."
+    },
+    "ask": {
+      "title": "Ask Atd",
+      "note": "You asked: {{question}}",
+      "empty": "Atd had no answer."
     },
     "review": {
       "failed": "{{command}} couldn't make a new version."

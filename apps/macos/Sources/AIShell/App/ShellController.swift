@@ -32,6 +32,10 @@ public final class ShellController {
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
   let screenshots: ScreenshotTaker
+  /// Created when a recording-capable capture or recording route first needs it.
+  var installedScreenRecording: ScreenRecordingController?
+  /// Created with the screen recording, for the captures that can offer the long screenshot.
+  var installedLongScreenshots: LongScreenshotController?
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
@@ -162,21 +166,10 @@ public final class ShellController {
       services: services, files: .forMainBundle())
     notifications = Self.makeNotifications(services: services, defaults: defaults, panel: panel)
     systemActivity = Self.makeSystemActivity(services: services)
-    // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
-    // beneath the overlays, `hideWindows` on an unattended quit that skips it.
-    quitGuard = QuitGuard(
-      activeRuns: {
-        screenshots.cancel()
-        return await services.link.activeRunsForQuitGuard()
-      },
-      stopService: {
-        await computer.shutdown()
-        control.stop()
-        await services.stopForQuit()
-      },
-      hideWindows: {
-        screenshots.cancel()
-        for window in NSApp.windows { window.orderOut(nil) }
+    quitGuard = Self.makeQuitGuard(
+      services: services, computer: computer, control: control, screenshots: screenshots,
+      cancelRecording: { [weak bridge] in
+        bridge?.shell?.installedScreenRecording?.cancelForQuit()
       })
     bridge.shell = self
     speech.onChange = { [weak self] speaking in
@@ -215,6 +208,7 @@ public final class ShellController {
     }
     wireUserApps()
     wireMiniPanel()
+    wireScreenshots()
   }
 
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
@@ -223,7 +217,7 @@ public final class ShellController {
     launchPresentation = LaunchPresentation(revealPanel: revealPanel)
     registrar = HotKeyRegistrar(
       canWatchKeyboard: { [trust] in trust.isTrusted },
-      onPress: { [weak self] id in self?.shortcutHolds.pressed(id) },
+      onPress: { [weak self] id in self?.pressShortcut(id) },
       onRelease: { [weak self] id in self?.shortcutHolds.released(id) })
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },

@@ -150,6 +150,10 @@
       "title": "Selection toolbar in other apps",
       "description": "Runs on text you select in another app."
     },
+    "screenshotToolbar": {
+      "title": "Screenshot toolbar",
+      "description": "Runs on a screenshot you take with the screenshot shortcut."
+    },
     "turnSelection": {
       "title": "Selection toolbar in conversations",
       "description": "Runs on text you select in an answer."
@@ -158,7 +162,8 @@
       "title": "Turn actions",
       "description": "Runs on a turn’s answer, from its More actions menu."
     },
-    "unavailable": "To show this command in these places, have it read the selected text: set Input source to Selected text, or turn on the selected text variable in Input options."
+    "unavailable": "Text actions need selected text.",
+    "screenshotUnavailable": "Screenshot toolbar needs screenshot input."
   },
   "output": {
     "title": "Result",
@@ -166,6 +171,10 @@
     "panel": {
       "title": "Show in the conversation",
       "description": "The answer stays in the conversation."
+    },
+    "card": {
+      "title": "Show in a card",
+      "description": "Shows the answer in a card over the app you ran it from, to copy, insert or open."
     },
     "replaceSelection": {
       "title": "Replace the selected text",
@@ -183,8 +192,9 @@
       "title": "Copy to the clipboard",
       "description": "Also puts the answer on the clipboard."
     },
-    "writeBackNote": "Writes only when the command runs from another app, through its shortcut or the selection toolbar. Anywhere else, the answer stays in the conversation.",
+    "writeBackNote": "Writes only when the command runs from another app, through its shortcut or a toolbar. Anywhere else, the answer stays in the conversation.",
     "cardNote": "If that app can’t take text there, the answer shows in a card for you to copy.",
+    "cardPlaceNote": "Shows the card only when the command runs from another app, through its shortcut or a toolbar. Anywhere else, the answer stays in the conversation.",
     "review": {
       "title": "Review before applying",
       "description": "The answer waits on the island, where you can regenerate or adjust it before writing it in."
@@ -199,7 +209,7 @@
       "tooLong": "Keep each suggestion to {{max}} characters or fewer."
     },
     "savedTitle": "{{title}} (default)",
-    "needsTarget": "Nothing is written back from here: the answer stays in the conversation. Writing back needs a run from another app, through the command's shortcut or the selection toolbar.",
+    "needsTarget": "From here, the answer stays in the conversation. Writing it back or showing it in a card needs a run from another app, through the command's shortcut or a toolbar.",
     "needsSelection": "This command doesn't read the selected text, so the answer stays in the conversation."
   },
   "typing": {

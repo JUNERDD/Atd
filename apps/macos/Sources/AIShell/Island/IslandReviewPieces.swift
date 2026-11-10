@@ -60,7 +60,9 @@ struct IslandReviewLabels: Equatable {
 /// label colour beside the Original label and the text, in the hint type, cut to
 /// ``IslandMetrics/reviewSourceLines`` lines. Where the review has the answer's changes, the
 /// label row has the Show changes switch, and the text gives way while they show, since the
-/// marked answer then holds it.
+/// marked answer then holds it. Both come and go in place, on the spring the card's shape takes
+/// for the same change, so the answer under them never jumps (a version with changes after one
+/// without, or the switch itself).
 struct IslandReviewSource: View {
   let model: IslandModel
   let source: String
@@ -70,37 +72,41 @@ struct IslandReviewSource: View {
   var body: some View {
     let labels = model.labels.review
     let showing = changes && model.review.showsChanges
-    VStack(alignment: .leading, spacing: 2) {
+    let change = IslandChoreography.inPlace.length.animation
+    VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 8) {
         Text(verbatim: labels.original)
           .font(.system(size: 11, weight: .semibold))
           .foregroundStyle(.tertiary)
           .accessibilityAddTraits(.isHeader)
         Spacer(minLength: 8)
-        if changes {
-          Toggle(
-            isOn: Binding(
-              get: { model.review.showsChanges }, set: { model.reviewEvent(.showChanges($0)) })
-          ) {
-            Text(verbatim: labels.showChanges)
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(.secondary)
-          }
-          .toggleStyle(.switch)
-          .controlSize(.mini)
+        Toggle(
+          isOn: Binding(
+            get: { model.review.showsChanges }, set: { model.reviewEvent(.showChanges($0)) })
+        ) {
+          Text(verbatim: labels.showChanges)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.secondary)
         }
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .disabled(!changes)
+        .accessibilityHidden(!changes)
+        .islandRevealed(changes, clips: false, animation: change)
       }
-      if !showing {
-        Text(verbatim: source)
-          .font(IslandType.hint)
-          .foregroundStyle(.secondary)
-          .lineLimit(IslandMetrics.reviewSourceLines)
-          .truncationMode(.tail)
-          .fixedSize(horizontal: false, vertical: true)
-          .frame(
-            maxWidth: IslandMetrics.resultTextWidth - 9 - IslandMetrics.rowPadding * 2,
-            alignment: .leading)
-      }
+      Text(verbatim: source)
+        .font(IslandType.hint)
+        .foregroundStyle(.secondary)
+        .lineLimit(IslandMetrics.reviewSourceLines)
+        .truncationMode(.tail)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(
+          maxWidth: IslandMetrics.resultTextWidth - 9 - IslandMetrics.rowPadding * 2,
+          alignment: .leading
+        )
+        .padding(.top, 2)
+        .accessibilityHidden(showing)
+        .islandRevealed(!showing, animation: change)
     }
     .padding(.leading, 9)
     .padding(.vertical, 2)
@@ -168,8 +174,7 @@ struct IslandReviewChip: View {
     }
     .buttonStyle(IslandChipStyle(selected: selected, hovered: hovered, focused: focused))
     .foregroundStyle(.primary)
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover { hovered = $0 })
     .accessibilityAddTraits(selected ? .isSelected : [])
   }
 }
@@ -208,8 +213,7 @@ struct IslandReviewSummaryChip: View {
     }
     .buttonStyle(IslandChipStyle(selected: staged, hovered: hovered, focused: focused))
     .foregroundStyle(.primary)
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover { hovered = $0 })
     .help(label + " ⌘K")
     .accessibilityLabel(Text(verbatim: label))
     .accessibilityValue(Text(verbatim: summary))
@@ -270,8 +274,7 @@ struct IslandReviewSendButton: View {
     .buttonStyle(.plain)
     .disabled(!ready)
     .opacity(ready ? 1 : 0.4)
-    .onHover { hovered = $0 }
-    .pointerStyle(ready ? .link : nil)
+    .modifier(FloatingHover(enabled: ready) { hovered = $0 })
     .help(tooltip ?? label + " ↩")
     .accessibilityLabel(Text(verbatim: label))
   }

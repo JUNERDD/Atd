@@ -86,7 +86,8 @@ final class Summoner {
           }
           panelHost.send(.shortcutCommand(launch.event(target: target)))
           held?.delivered()
-        case .deliverScreenshot: panelHost.send(.shortcutScreenshot(.init()))
+        case .deliverScreenshot(let mode):
+          panelHost.send(.shortcutScreenshot(.init(mode: mode == .record ? .record : .screenshot)))
         case .deliverAsk: panelHost.send(.selectionAsk(.init()))
         }
       }

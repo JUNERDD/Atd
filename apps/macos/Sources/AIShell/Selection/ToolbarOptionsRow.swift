@@ -11,12 +11,13 @@ import AppKit
 /// so every mark and chevron shares one column and every detail ends at the same edge. A title
 /// keeps ``detailGap`` from the slot, as from a detail, so a checkmark reads as the column's
 /// rather than the title's. The title and the detail are cut with
-/// an ellipsis past their caps; the full text is the tooltip. The title's cap
-/// (``maxTitleWidth``) is wider than a capsule button's, since a menu stacks its rows and an
-/// answer destination's name runs longer than a command's.
+/// an ellipsis past their caps; the full text is the tooltip, unless the content names one
+/// (``Content/tip``). The title's cap (``maxTitleWidth``) is wider than a capsule button's, since
+/// a menu stacks its rows and an answer destination's name runs longer than a command's.
 ///
 /// Like the toolbar's buttons it never tracks the pointer itself: ``SelectionToolbarHover`` sets
-/// ``isHovered``. ``isActive`` keeps the hover wash while the row's submenu is open.
+/// ``isHovered``. ``isActive`` keeps the hover wash while the row's submenu is open. A note
+/// (``isNote``) has the same layout but only informs.
 final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
   struct Content: Equatable {
     enum Mark: Equatable {
@@ -36,6 +37,9 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
     var submenu = false
     /// An on/off option: VoiceOver reads a checkbox whose value is the mark.
     var toggle = false
+    /// The tooltip, when the row's text does not say enough (a folder's full path); nil shows
+    /// the title and the detail.
+    var tip: String?
   }
 
   static let maxTitleWidth: CGFloat = 240
@@ -44,6 +48,8 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
   static let maxDetailWidth: CGFloat = 160
   static let detailGap: CGFloat = 16
   static let detailFont = NSFont.systemFont(ofSize: 13)
+  static let compactNoteHeight: CGFloat = 17
+  private static let noteFont = NSFont.systemFont(ofSize: 11)
 
   var content: Content {
     didSet {
@@ -62,9 +68,21 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
     didSet { if isActive != oldValue { needsDisplay = true } }
   }
 
-  init(_ content: Content, width: CGFloat, action: Selector) {
+  /// A line that only informs: its text in the secondary colour, never washed, read as text. It is
+  /// disabled, so the hover, which follows enabled controls only, never puts it under the pointer
+  /// (the cursor stays the arrow), and it sends no action.
+  let isNote: Bool
+  private let compactNote: Bool
+
+  /// `note` makes the row a note (``isNote``).
+  init(
+    _ content: Content, width: CGFloat, action: Selector, note: Bool = false,
+    compactNote: Bool = false
+  ) {
     self.content = content
-    let side = AnnotationToolbarButton.side
+    isNote = note || compactNote
+    self.compactNote = compactNote
+    let side = compactNote ? Self.compactNoteHeight : AnnotationToolbarButton.side
     super.init(frame: NSRect(x: 0, y: 0, width: width, height: side))
     isBordered = false
     title = ""
@@ -74,6 +92,7 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
       widthAnchor.constraint(equalToConstant: width),
       heightAnchor.constraint(equalToConstant: side),
     ])
+    isEnabled = !isNote
     describe()
   }
 
@@ -87,8 +106,12 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
   }
 
   /// The row's natural width: its parts at their measured widths, text up to its caps.
-  static func width(_ content: Content) -> CGFloat {
+  static func width(_ content: Content, compactNote: Bool = false) -> CGFloat {
     let label = AnnotationToolbarButton.Label.self
+    if compactNote {
+      let widest = ([content.title] + content.reserved).map { measure($0, noteFont) }.max() ?? 0
+      return label.padding * 2 + min(widest, maxTitleWidth)
+    }
     let title = min(measure(content.title, label.font), maxTitleWidth)
     let detail = detailWidth(content)
     // The slot sits right after a detail, and as far from a bare title as a detail would.
@@ -116,12 +139,24 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
 
   override func draw(_ dirtyRect: NSRect) {
     let label = AnnotationToolbarButton.Label.self
+    if compactNote {
+      // A 15 pt line box above 2 pt bottom padding; the title is the entire note.
+      var rect = line(
+        x: label.padding, width: max(0, bounds.width - label.padding * 2), font: Self.noteFont)
+      rect.origin.y += 1
+      text(content.title, font: Self.noteFont, color: .secondaryLabelColor, alignment: .left)
+        .draw(in: rect)
+      return
+    }
     if isEnabled, let wash = isHighlighted ? 0.16 : (isHovered || isActive ? 0.09 : nil) {
       let radius = bounds.height / 2
       NSColor.labelColor.withAlphaComponent(wash).setFill()
       NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
     }
-    let color = isEnabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
+    let color =
+      isNote
+      ? NSColor.secondaryLabelColor
+      : isEnabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
     let x = bounds.minX + label.padding
     var trailing = bounds.maxX - label.padding
     if Self.hasSlot(content) {
@@ -169,15 +204,18 @@ final class ToolbarOptionsRow: NSButton, ToolbarHoverable {
 
   private func describe() {
     let detail = content.detail.flatMap { $0.isEmpty ? nil : $0 }
-    toolTip = detail.map { "\(content.title) — \($0)" } ?? content.title
+    toolTip = content.tip ?? detail.map { "\(content.title) — \($0)" } ?? content.title
     setAccessibilityLabel(detail.map { "\(content.title), \($0)" } ?? content.title)
-    setAccessibilityRole(content.toggle ? .checkBox : .menuItem)
-    setAccessibilitySelected(!content.toggle && content.mark == .check)
+    setAccessibilityRole(isNote ? .staticText : content.toggle ? .checkBox : .menuItem)
+    setAccessibilitySelected(!isNote && !content.toggle && content.mark == .check)
   }
 
   override func accessibilityValue() -> Any? {
     content.toggle ? NSNumber(value: content.mark == .check) : super.accessibilityValue()
   }
+
+  /// A note is text, not a dimmed control.
+  override func isAccessibilityEnabled() -> Bool { isNote || super.isAccessibilityEnabled() }
 }
 
 /// The hairline between an options menu's rows and its Run row.
@@ -199,67 +237,6 @@ final class ToolbarOptionsSeparator: NSView {
     let inset = AnnotationToolbarButton.Label.padding
     NSColor.separatorColor.setFill()
     NSRect(x: inset, y: floor(bounds.midY), width: bounds.width - inset * 2, height: 1).fill()
-  }
-}
-
-/// The options half of a split command button on the toolbar's capsule: a narrow capsule with a
-/// down chevron right after the command's own button, washed like it, and held in its pressed
-/// wash while its options menu is open (``isActive``). One that ends the capsule
-/// (``endsCapsule``) is as wide as the toolbar's square buttons, so its wash is a circle that
-/// nests in the capsule's round end like More's; a narrow capsule's tighter corners would not.
-final class ToolbarOptionsChevron: NSButton, ToolbarHoverable {
-  static let width: CGFloat = 20
-  /// The width of one that ends the capsule.
-  static let endingWidth = AnnotationToolbarButton.side
-
-  var endsCapsule = false {
-    didSet {
-      guard endsCapsule != oldValue else { return }
-      widthConstraint.constant = endsCapsule ? Self.endingWidth : Self.width
-      needsDisplay = true
-    }
-  }
-
-  var isHovered = false {
-    didSet { if isHovered != oldValue { needsDisplay = true } }
-  }
-
-  var isActive = false {
-    didSet { if isActive != oldValue { needsDisplay = true } }
-  }
-
-  private var widthConstraint: NSLayoutConstraint!
-
-  init(action: Selector) {
-    let side = AnnotationToolbarButton.side
-    super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: side))
-    isBordered = false
-    title = ""
-    self.action = action
-    translatesAutoresizingMaskIntoConstraints = false
-    widthConstraint = widthAnchor.constraint(equalToConstant: Self.width)
-    NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: side)])
-    setAccessibilityRole(.menuButton)
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-
-  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-  override var isHighlighted: Bool {
-    didSet { needsDisplay = true }
-  }
-
-  override func draw(_ dirtyRect: NSRect) {
-    if isEnabled, let wash = isHighlighted || isActive ? 0.16 : (isHovered ? 0.09 : nil) {
-      let radius = min(bounds.width, bounds.height) / 2
-      NSColor.labelColor.withAlphaComponent(wash).setFill()
-      NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
-    }
-    guard let chevron = ToolbarOptionsGlyphs.options else { return }
-    let color = isEnabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
-    ToolbarOptionsGlyphs.draw(chevron, color: color, centeredIn: bounds)
   }
 }
 

@@ -22,7 +22,12 @@ struct IslandCapsule: View {
       case .done: status(model.labels.done, running: false)
       case .copied: status(model.labels.copied, running: false)
       case .notice(let message): notice(message)
-      case .choose, .answer, .review, .compose: EmptyView()
+      case .recording: IslandRecordingCapsule(model: model)
+      case .recordingStatus(let message, let outcome):
+        IslandRecordingStatus(message: message, outcome: outcome)
+      case .recordingDiscard(let elapsed): IslandRecordingDiscard(model: model, elapsed: elapsed)
+      case .choose, .answer, .review, .compose, .recordingResult, .longScreenshotResult:
+        EmptyView()
       }
     }
     .frame(height: IslandMetrics.capsuleHeight)
@@ -181,8 +186,7 @@ private struct IslandChip: View {
         .frame(height: 22)
     }
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered, rest: 0.08))
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover { hovered = $0 })
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
     .accessibilityValue(Text(verbatim: summary))

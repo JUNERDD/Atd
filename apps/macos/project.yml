@@ -178,10 +178,18 @@ targets:
         # stay on screen until the person acts on them (ShellNotifier); the person can still pick
         # banners in System Settings › Notifications.
         NSUserNotificationAlertStyle: alert
-        # Shown the first time an attached file sits in one of these folders.
-        NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it.
-        NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it.
-        NSDownloadsFolderUsageDescription: Atd reads a file in your Downloads folder only when you attach it.
+        # Privacy prompts. App/InfoPlist.xcstrings translates them (keyed by these names, its English
+        # values the same as here), which the App target compiles into each language's
+        # InfoPlist.strings. The folder prompts show the first time an attached file sits in one of
+        # these folders, or a screen recording is saved to Desktop or Documents (Movies, the
+        # default, has no prompt). The microphone prompt shows the first time a recording records
+        # it, the speech prompt the first time a recording with microphone audio is transcribed (on
+        # this Mac only).
+        NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it, and saves a screen recording there only when you choose it.
+        NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it, and saves a screen recording there only when you choose it.
+        NSDownloadsFolderUsageDescription: Atd reads a file in your Downloads folder only when you attach it, and saves a screen recording there only when you choose it.
+        NSMicrophoneUsageDescription: Atd records your microphone only while you record the screen with the microphone on, for the recording's sound and narration.
+        NSSpeechRecognitionUsageDescription: Atd transcribes what you say in a screen recording on this Mac, so it can read your narration.
         # The Services entry (FinderService): selected files and folders go to the panel's
         # composer. macOS lists it under Services, in Finder and in other apps; the empty
         # NSRequiredContext enables it by default. ServicesMenu.xcstrings localizes the title

@@ -37,6 +37,7 @@ export const InputSchema = Type.Object(
       Type.Literal('selection'),
       Type.Literal('clipboard'),
       Type.Literal('screenshot'),
+      Type.Literal('recording'),
       Type.Literal('none'),
     ]),
     capturedAt: Type.String(),

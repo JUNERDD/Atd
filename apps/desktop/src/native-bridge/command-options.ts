@@ -67,6 +67,7 @@ export const CommandOptionsSchema = Type.Array(CommandOptionSchema, { maxItems: 
  */
 export const CommandOutputActionSchema = Type.Union([
   Type.Literal('panel'),
+  Type.Literal('card'),
   Type.Literal('replaceSelection'),
   Type.Literal('insertAfterSelection'),
   Type.Literal('insertAtCursor'),

@@ -17,7 +17,7 @@ import CoreImage.CIFilterBuiltins
 /// A backdrop composed of several displays is transparent in the gaps between them. Both forms
 /// weigh pixels by their alpha, so over a display they come out opaque, made of that display's
 /// pixels alone: a block or blur reaching into a gap never lets the pixels under it show through.
-final class AnnotationMosaic {
+nonisolated final class AnnotationMosaic {
   private struct BlurKey: Hashable {
     let x: Int, y: Int, width: Int, height: Int, radius: Int
   }
@@ -144,7 +144,7 @@ final class AnnotationMosaic {
 /// No noise is added: per-block noise (CleanShot X's randomization) makes flat areas read as a
 /// speckled checkerboard. Averages can still be matched against rendered text (Depix), so the
 /// Cover form is what hides text for certain.
-private final class BlockGrid {
+nonisolated private final class BlockGrid {
   let block: Int
   let columns: Int
   let rows: Int

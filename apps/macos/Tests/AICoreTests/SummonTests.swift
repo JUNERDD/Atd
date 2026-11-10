@@ -11,10 +11,12 @@ struct SummonTests {
     SummonContext(panelIsKey: key, filePanelOpen: filePanel, selectionWanted: wanted)
   }
 
-  @Test("The contract's reserved ids toggle the panel and screenshot; any other id is a command")
+  @Test(
+    "The contract's reserved ids toggle the panel, screenshot and record; any other is a command")
   func triggerFromID() {
     #expect(SummonTrigger(hotKeyID: "togglePanel") == .toggle)
     #expect(SummonTrigger(hotKeyID: "captureScreenshot") == .screenshot)
+    #expect(SummonTrigger(hotKeyID: "recordScreen") == .recordScreen)
     #expect(SummonTrigger(hotKeyID: "panel") == .command(CommandLaunch(id: "panel")))
   }
 
@@ -68,13 +70,26 @@ struct SummonTests {
   func screenshotDelivers() {
     #expect(
       SummonPolicy.steps(for: .screenshot, in: Self.context(key: true, wanted: true)) == [
-        .captureSelection, .deliverScreenshot,
+        .captureSelection, .deliverScreenshot(.screenshot),
       ])
     #expect(
       SummonPolicy.steps(for: .screenshot, in: Self.context()) == [
-        .clearSelection, .deliverScreenshot,
+        .clearSelection, .deliverScreenshot(.screenshot),
       ])
     #expect(SummonPolicy.steps(for: .screenshot, in: Self.context(filePanel: true)).isEmpty)
+  }
+
+  @Test("The record-screen shortcut takes the screenshot's steps, with the capture in record mode")
+  func recordScreenDelivers() {
+    #expect(
+      SummonPolicy.steps(for: .recordScreen, in: Self.context(key: true, wanted: true)) == [
+        .captureSelection, .deliverScreenshot(.record),
+      ])
+    #expect(
+      SummonPolicy.steps(for: .recordScreen, in: Self.context()) == [
+        .clearSelection, .deliverScreenshot(.record),
+      ])
+    #expect(SummonPolicy.steps(for: .recordScreen, in: Self.context(filePanel: true)).isEmpty)
   }
 
   @Test("Ask Atd always captures, then shows the panel and has the page quote the stash")

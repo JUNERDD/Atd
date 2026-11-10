@@ -28,6 +28,8 @@ public enum SummonTrigger: Equatable, Sendable {
   case toggle
   /// The screenshot shortcut.
   case screenshot
+  /// The record-screen shortcut: the same capture, opened in record mode.
+  case recordScreen
   /// A command's global shortcut, or a command of the mini panel.
   case command(CommandLaunch)
   /// The selection toolbar's Ask Atd.
@@ -35,16 +37,18 @@ public enum SummonTrigger: Equatable, Sendable {
   /// A command button (or More menu item) of the selection toolbar.
   case toolbarCommand(CommandLaunch)
 
-  /// The ids the page gives the panel toggle and the screenshot in its registration set
-  /// (`shortcuts.set`); the page reserves them, so no command uses them.
+  /// The ids the page gives the panel toggle, the screenshot and the screen recording in its
+  /// registration set (`shortcuts.set`); the page reserves them, so no command uses them.
   public static let panelToggleID = NativeBridgeContract.panelShortcutId
   public static let screenshotID = NativeBridgeContract.screenshotShortcutId
+  public static let recordScreenID = NativeBridgeContract.recordShortcutId
 
   /// The trigger of a pressed hot key registered under `id`.
   public init(hotKeyID id: String) {
     switch id {
     case Self.panelToggleID: self = .toggle
     case Self.screenshotID: self = .screenshot
+    case Self.recordScreenID: self = .recordScreen
     default: self = .command(CommandLaunch(id: id))
     }
   }
@@ -81,15 +85,16 @@ public enum SummonStep: Equatable, Sendable {
   /// Hand the command launch to the page, which prepares it and reveals the panel itself once
   /// the launched command shows, so a launch never flashes an unrelated page first.
   case deliverCommand(CommandLaunch)
-  /// Tell the page to take a screenshot: it captures with the panel out of the way, puts the
-  /// image in its composer and reveals the panel itself.
-  case deliverScreenshot
+  /// Tell the page to take a capture in `mode`: it captures with the panel out of the way and
+  /// acts on how the capture ended (the image in its composer, a command or question run on it,
+  /// or a recording the shell runs on its own), revealing the panel itself when it needs it.
+  case deliverScreenshot(CaptureMode)
   /// Tell the page (`selection.ask`) to put the stash in its composer as a quote and focus it.
   case deliverAsk
 }
 
-/// The summon flow of the panel toggle, screenshot and command shortcuts, with the selection
-/// model of grill decision Q9:
+/// The summon flow of the panel toggle, screenshot, record-screen and command shortcuts, with
+/// the selection model of grill decision Q9:
 /// - a key panel hides without capturing (toggle only);
 /// - summons are ignored while a file panel is open;
 /// - otherwise the selection is captured before the panel can take focus when some command
@@ -110,7 +115,9 @@ public enum SummonPolicy {
     case .toggle:
       return context.panelIsKey ? [.hidePanel] : [selection, .showPanel]
     case .screenshot:
-      return [selection, .deliverScreenshot]
+      return [selection, .deliverScreenshot(.screenshot)]
+    case .recordScreen:
+      return [selection, .deliverScreenshot(.record)]
     case .command(let launch):
       return [selection] + target + [.deliverCommand(launch)]
     case .ask:

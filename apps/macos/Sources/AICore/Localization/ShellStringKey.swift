@@ -184,6 +184,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   /// `%@` the destination's name.
   case commandOptionsOutputSaved = "commandOptions.output.saved"
   case commandOptionsOutputPanel = "commandOptions.output.panel"
+  case commandOptionsOutputCard = "commandOptions.output.card"
   case commandOptionsOutputReplaceSelection = "commandOptions.output.replaceSelection"
   case commandOptionsOutputInsertAfterSelection = "commandOptions.output.insertAfterSelection"
   case commandOptionsOutputInsertAtCursor = "commandOptions.output.insertAtCursor"

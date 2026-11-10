@@ -56,7 +56,7 @@
     "folderLimit": "Add at most {{max}} folders.",
     "editImage": "Edit {{name}}",
     "attachMenu": {
-      "screenshot": "Screenshot",
+      "screenshot": "Screenshot or recording",
       "upload": "Upload files",
       "folder": "Add folder…",
       "mention": "Mention files, conversations or tools…"

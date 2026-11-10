@@ -139,11 +139,18 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // user regenerates, adjusts and steps between versions before writing it, and adds the command's
   // adjustment suggestions (`adjustments`): the card's chips, at most eight of up to 40
   // characters, which the Agent writes for a command that reviews and an update keeps when left out.
-  skill('create-command', 11, [
+  // Version 12 adds the screenshot toolbar: a command whose input is a screenshot is offered there
+  // by default, runs on the screenshot without the panel (in a card, at the cursor, copied, or in
+  // the conversation), and its choices and toggles are picked beside it, like the selection
+  // toolbar's. It adds the `card` output, the island's answer card for answers the user reads, and
+  // the screenshot starters that make another screenshot command worth saving only when they
+  // do not cover the request.
+  skill('create-command', 12, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
     '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
     '42c6c0fbf5744db29f638249ecdde4e939dedb3612a098b83cd01989e00d89c8', // v0.10.0
+    '63edff2ac25f051a01be354bd2e65b2fbe026e0db1ea61ebfd839366578c7c39', // v0.10.5
   ]),
   // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
   // asks through ask_user only when an automation runs, what each run produces and, for work that

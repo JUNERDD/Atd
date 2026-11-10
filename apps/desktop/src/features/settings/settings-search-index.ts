@@ -83,6 +83,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     [
       'togglePanel',
       'captureScreenshot',
+      'recordScreen',
       'newConversation',
       'openSettings',
       'sendMessage',

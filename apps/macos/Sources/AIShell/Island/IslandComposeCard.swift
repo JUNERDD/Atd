@@ -102,9 +102,12 @@ struct IslandComposeCard: View {
         level: 0.06,
         shape: RoundedRectangle(cornerRadius: IslandMetrics.composeRadius, style: .continuous))
     }
-    // As the options card's filter: the field takes focus once the card is active and its
-    // window has the keyboard, and again when the window takes it back after an attachment.
-    .onChange(of: active && model.cardIsKey, initial: true) { _, focus in fieldFocused = focus }
+    // As the options card's filter: the field takes focus once the card is active and has
+    // arrived and its window has the keyboard, and again when the window takes it back after an
+    // attachment.
+    .onChange(of: active && model.arrived && model.cardIsKey, initial: true) { _, focus in
+      fieldFocused = focus
+    }
   }
 
   private func footer(canRun: Bool) -> some View {

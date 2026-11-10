@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AtSign, Camera, FolderPlus, Paperclip, Plus } from 'lucide-react';
 import {
@@ -8,20 +8,22 @@ import {
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { screenshotChip, type AttachedChip } from '../features/composer-editor/draft-attachments';
+import { captureScreen } from '../features/agent/capture-screen';
 import { agentApi } from '../features/agent/use-agent';
 import { IconButton } from './icon-button';
 import { showErrorToast } from './toast-store';
 import { receiveImported } from './use-imported-files';
 
 /**
- * The composer's attach control: a menu of the context a draft can take. Screenshot captures on
- * the native overlay and attaches the image with its screen context as one chip; Upload files opens the file
+ * The composer's attach control: a menu of the context a draft can take. Screenshot opens the full
+ * capture toolbar: confirm attaches the image with its screen context as one chip, while questions,
+ * commands and recordings follow the same paths as the capture shortcuts. Upload files opens the file
  * picker; Add folder opens the shell's folder picker, whose registered folders become folder chips
  * (read grants for the task) like dropped ones; Mention types `@` into the editor (`onMention`) so the mention panel opens, which a
  * running task does not offer. `attach` is the composer's path for picked, dropped and pasted
  * files and enforces the attachment limit; `room` is how many more files the draft takes, so a
- * capture with no room is refused before the overlay opens, and its context is left out when only
- * the image fits.
+ * confirmed screenshot with no room is refused, and its context is left out when only the image
+ * fits. Questions, commands and recordings do not need room in this draft.
  */
 export function ComposerAttachMenu({
   disabled,
@@ -38,6 +40,10 @@ export function ComposerAttachMenu({
 }) {
   const { t } = useTranslation('panel');
   const [busy, setBusy] = useState(false);
+  const latest = useRef({ room, attach });
+  useLayoutEffect(() => {
+    latest.current = { room, attach };
+  });
   /**
    * The chosen item, run once the menu has closed: the capture overlay and the file picker cover
    * or deactivate the panel, which pauses the menu's exit animation and left it on screen until
@@ -67,15 +73,14 @@ export function ComposerAttachMenu({
     setBusy(false);
   }
   async function capture() {
-    const desktop = window.desktop;
-    if (!desktop || room < 1) {
-      showErrorToast(desktop ? t('composer.attachLimit') : t('errors.openDesktopApp'));
-      return;
-    }
     setBusy(true);
     try {
-      const shot = await desktop.screenshot();
-      if (shot) attach([screenshotChip(shot, room)]);
+      const shot = await captureScreen('screenshot');
+      if (shot) {
+        const current = latest.current;
+        if (current.room < 1) showErrorToast(t('composer.attachLimit'));
+        else current.attach([screenshotChip(shot, current.room)]);
+      }
     } catch (error) {
       showErrorToast(error);
     }

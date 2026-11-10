@@ -24,6 +24,9 @@ final class ToolbarOptionsContent {
   var onPick: ((String, CommandArguments) -> Void)?
   /// The commands with options (`commandOptions.set`).
   var catalog = CommandOptionsCatalog()
+  /// Whether a field could take an answer at the cursor; false leaves Insert at cursor out of the
+  /// menus (``CommandOutputChoice``). The screenshot toolbar sets it from the field in front.
+  var cursor = true
 
   private unowned let cascade: ToolbarOptionsCascade
   /// The values picked so far per command id, since the menus opened.
@@ -38,15 +41,20 @@ final class ToolbarOptionsContent {
     sheets = [:]
   }
 
-  /// The More menu's rows for `commands`.
-  func moreItems(_ commands: [SelectionToolbarSettings.Command]) -> [ToolbarMenuItem] {
-    commands.map { command in
+  /// The More menu's rows for `commands`, then `trailing` after a hairline (the screenshot
+  /// toolbar's way to its settings); without commands, `trailing` alone.
+  func moreItems(
+    _ commands: [SelectionToolbarSettings.Command], trailing: [ToolbarMenuItem] = []
+  ) -> [ToolbarMenuItem] {
+    let rows = commands.map { command in
       let options = catalog.contains(command.id)
       return ToolbarMenuItem(
         content: .init(title: command.name, submenu: options),
         submenu: options ? { [weak self] in self?.items(for: command.id) ?? [] } : nil,
         action: { [weak self] in self?.onLaunch?(CommandLaunch(id: command.id)) })
     }
+    guard !rows.isEmpty, !trailing.isEmpty else { return rows + trailing }
+    return rows + [.separator] + trailing
   }
 
   /// Command `id`'s options menu: its values or its rows; empty without options in the catalog.
@@ -133,7 +141,7 @@ final class ToolbarOptionsContent {
     if let sheet = sheets[id] { return sheet }
     guard let entry = catalog.entry(for: id) else { return nil }
     let sheet = ToolbarOptionsSheet(
-      entry, names: CommandOutputChoice.Names(ShellStrings.shared.catalog))
+      entry, names: CommandOutputChoice.Names(ShellStrings.shared.catalog), cursor: cursor)
     sheets[id] = sheet
     return sheet
   }

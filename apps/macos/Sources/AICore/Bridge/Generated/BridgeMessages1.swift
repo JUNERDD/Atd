@@ -15,6 +15,8 @@ public enum NativeBridgeContract {
   public static let panelShortcutId = "togglePanel"
   /// The id of the screenshot registration in `shortcuts.set`.
   public static let screenshotShortcutId = "captureScreenshot"
+  /// The id of the screen recording registration in `shortcuts.set`.
+  public static let recordShortcutId = "recordScreen"
   /// The longest text a capture returns.
   public static let maxCaptureLength = 100_000
 }
@@ -63,6 +65,7 @@ public enum NativeCall: Equatable, Sendable {
   case clipboardWrite(ClipboardWriteParams)
   case screenshotCapture(ScreenshotCaptureParams)
   case screenshotEdit(ScreenshotEditParams)
+  case screenshotToolbarSet(ScreenshotToolbarSetParams)
   case shareText(ShareTextParams)
   case speechSpeak(SpeechSpeakParams)
   case speechStop(SpeechStopParams)
@@ -97,6 +100,7 @@ public enum NativeCall: Equatable, Sendable {
   case screenRecordingRequest(ScreenRecordingRequestParams)
   case appsPick(AppsPickParams)
   case shortcutsRecording(ShortcutsRecordingParams)
+  case recordingAnswer(RecordingAnswerParams)
 
   /// The contract name.
   public var name: String {
@@ -130,6 +134,7 @@ public enum NativeCall: Equatable, Sendable {
     case .clipboardWrite: "clipboard.write"
     case .screenshotCapture: "screenshot.capture"
     case .screenshotEdit: "screenshot.edit"
+    case .screenshotToolbarSet: "screenshotToolbar.set"
     case .shareText: "share.text"
     case .speechSpeak: "speech.speak"
     case .speechStop: "speech.stop"
@@ -164,6 +169,7 @@ public enum NativeCall: Equatable, Sendable {
     case .screenRecordingRequest: "screenRecording.request"
     case .appsPick: "apps.pick"
     case .shortcutsRecording: "shortcuts.recording"
+    case .recordingAnswer: "recording.answer"
     }
   }
 }

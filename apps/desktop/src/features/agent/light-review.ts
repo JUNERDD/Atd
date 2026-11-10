@@ -9,6 +9,7 @@ import { isActive, type RunStatus } from '../../client/agent/task-schema';
 import i18n from '../../i18n';
 import { MAX_REVIEW_VERSIONS } from '../../native-bridge/command-review';
 import { trackCommandRun } from './command-results';
+import { followIsland, isCurrentIsland } from './island-owner';
 import {
   letGo,
   lightBridge,
@@ -85,9 +86,7 @@ function busy(review: Review): boolean {
 
 /** Whether the run's review card is the HUD on screen and still the page's to answer. */
 function live(run: LightRun): boolean {
-  return (
-    lightRuns.current === run && !run.cancelled && !run.handedOver && run.review?.closed === false
-  );
+  return isCurrentIsland(run) && !run.cancelled && !run.handedOver && run.review?.closed === false;
 }
 
 /**
@@ -229,6 +228,7 @@ async function submitVersion(run: LightRun, review: Review, pending: Pending): P
     return;
   }
   run.runId = started.id;
+  followIsland({ type: 'task', state: detail });
   // A run already over never reaches `followCommandRuns`, which remembers only active runs.
   if (!active)
     settleReviewRun(run, started.id, started.status, lastAnswerText(detail.blocks, started.id));

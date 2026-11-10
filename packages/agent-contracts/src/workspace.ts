@@ -33,6 +33,8 @@ export function resolveLanguage(locale: string): AppLanguage {
 }
 
 const AcceleratorSchema = Type.String({ minLength: 1, maxLength: 100 });
+/** An action an upgrade added (`ADDED_SHORTCUT_ACTIONS`), which may have no keys (''). */
+const AddedAcceleratorSchema = Type.Union([AcceleratorSchema, Type.Literal('')]);
 
 /**
  * Application shortcut bindings. The accelerator grammar lives in `shortcuts.ts`; clients validate
@@ -42,6 +44,7 @@ export const ShortcutBindingsSchema = Type.Object(
   {
     togglePanel: AcceleratorSchema,
     captureScreenshot: AcceleratorSchema,
+    recordScreen: AddedAcceleratorSchema,
     newConversation: AcceleratorSchema,
     openSettings: AcceleratorSchema,
     sendMessage: AcceleratorSchema,

@@ -6,18 +6,21 @@ import SwiftUI
 /// glass shape at the bottom of the screen that enters at its first content's size as the
 /// selection toolbar does (``SelectionToolbarEntrance``), morphs from content to content as the
 /// mini panel's body does, and leaves as one piece, its content shrinking a little with the shape
-/// as it fades (``IslandChoreography``). Each change sets the shape and the contents' presence once,
-/// with the animation each moves on, and SwiftUI runs them; nothing is written while anything
-/// moves. Content leaves before the shape moves and arrives after it. The window's alpha carries
-/// the fades, so the glass fades with its content.
+/// as it fades (``IslandChoreography``). Each change sets the shape and the contents' presence
+/// once, with the animation each moves on, and SwiftUI runs them; nothing is written while
+/// anything moves. Content leaves before the shape moves and arrives after it, and a card's field
+/// takes the keyboard once the shape has come to rest (``shapeMoves(settling:)``). The window's
+/// alpha carries the fades, so the glass fades with its content.
 ///
 /// Placement is the glass HUDs' (``GlassHUDPlacement``): every appearance starts at home, the
-/// bottom centre of the display under the pointer; the working capsule's grip drags it within
-/// the work area, and a double-click puts it back. Shapes stand on the same bottom edge
-/// (``IslandMetrics/rest(_:)``), so the card grows up out of the capsule.
+/// bottom centre of the display under the pointer; its move handles (``IslandMoveHandle``) drag
+/// it within the work area, and a double-click puts it back. Shapes stand on the same bottom edge
+/// (``IslandMetrics/rest(_:)``), so the card grows up out of the capsule. The window is the
+/// default canvas for commands. Recording reserves its display's work area before appearing,
+/// keeping the window and coordinate system fixed throughout playback and as answers grow.
 ///
 /// The owner decides what shows (``show(_:inPlace:)``, ``exit()``) and when the window may take the
-/// keyboard (``setKeyCapable(_:)``, the options card and the answer card).
+/// keyboard (``setKeyCapable(_:taking:)``, the options card and the answer card).
 final class IslandController: NSObject, NSWindowDelegate {
   let model = IslandModel()
   /// The island came onto the screen (true) or left it (false, once its fade finished).
@@ -39,6 +42,8 @@ final class IslandController: NSObject, NSWindowDelegate {
   var size: WindowSize?
   /// The shape's bottom centre at rest, in global coordinates (y up).
   var anchor: NSPoint?
+  /// When every motion of the shape still running has come to rest (``shapeMoves(settling:)``).
+  var shapeRests = 0.0
   /// The content that shows now, by layer id.
   private var activeLayer: Int?
   private var nextLayer = 0
@@ -73,11 +78,14 @@ final class IslandController: NSObject, NSWindowDelegate {
   }
 
   /// Shows `next`: entering when nothing shows, changed in place when the same kind shows (a
-  /// summary arriving, the language), else morphed into from what shows. `inPlace` keeps content
-  /// at its own size without bounce for direct edits; asynchronous updates retain the spring.
+  /// summary arriving, the language, another version of a review), else morphed into from what
+  /// shows. `inPlace` keeps content at its own size without bounce for direct edits;
+  /// asynchronous updates retain the spring.
   func show(_ next: IslandContent, inPlace: Bool = false) {
+    if next.kind.layoutMotion == .interpolated { model.layoutMotion = .interpolated }
     let target = measure(next)
     generation += 1
+    growCanvas(for: next.kind.isShell ? screenRoom() : target.size)
     if !window.isVisible {
       appear(next, size: target)
     } else if exiting {
@@ -104,15 +112,15 @@ final class IslandController: NSObject, NSWindowDelegate {
   /// The island leaves as one piece, the entrance in reverse: its content stays in the glass and
   /// follows the shape as it shrinks to ``SelectionToolbarEntrance/startScale`` toward its bottom
   /// edge while the window fades out, eased in over ``IslandChoreography/exitDuration``. The
-  /// content never goes first, so the glass never shows empty. Clicks pass through from the
-  /// start, so nothing on its way out can be pressed. Under Reduce Motion it only fades.
+  /// content never goes first, so the glass never shows empty. Departing controls take no
+  /// pointer input; transparent pixels still pass it through. Under Reduce Motion it only fades.
   func exit() {
     guard window.isVisible, !exiting else { return }
     exiting = true
     generation += 1
     let token = generation
-    window.ignoresMouseEvents = true
-    for index in model.layers.indices { model.layers[index].scales = true }
+    window.acceptsPointerEvents = false
+    for index in model.layers.indices { model.layers[index].followsShape() }
     let duration = IslandChoreography.exitDuration
     if !model.reduceMotion {
       model.shape = model.shape.scaled(
@@ -129,8 +137,8 @@ final class IslandController: NSObject, NSWindowDelegate {
   /// changing the content in place for the same kind and morphing into it otherwise.
   private func turnBack(_ next: IslandContent, size measured: IslandMeasure) {
     exiting = false
-    window.ignoresMouseEvents = false
-    for index in model.layers.indices { model.layers[index].scales = true }
+    window.acceptsPointerEvents = true
+    for index in model.layers.indices { model.layers[index].followsShape() }
     let entrance = SelectionToolbarEntrance.self
     fade(
       to: 1, duration: model.reduceMotion ? entrance.reducedMotionFade : entrance.fadeDuration,
@@ -168,10 +176,12 @@ final class IslandController: NSObject, NSWindowDelegate {
   private func appear(_ next: IslandContent, size measured: IslandMeasure) {
     let target = measured.size
     exiting = false
-    window.ignoresMouseEvents = false
+    window.acceptsPointerEvents = true
     anchor = clamped(home(target), size: target)
     placeWindow()
+    // A fresh view tree: no motion from the last island runs on into this one.
     model.appearance += 1
+    shapeRests = 0
     model.layers = []
     let entrance = SelectionToolbarEntrance.self
     let rest = IslandShape(
@@ -197,14 +207,14 @@ final class IslandController: NSObject, NSWindowDelegate {
       // A replace meanwhile reveals its own content on the shape it morphs to.
       guard activeLayer == id else { return }
       reveal(id, IslandChoreography.entering)
-      if !model.reduceMotion, let size {
-        // A change in place meanwhile may have moved the rest; the spring goes to where it is.
-        let spring = MiniPanelSpring(entrance.duration, entrance.bounce)
-        model.shape = IslandShape(
-          frame: IslandMetrics.rest(size),
-          corner: IslandMetrics.corner(size, card: content?.kind.isCard == true),
-          animation: spring.animation)
-      }
+      guard !model.reduceMotion, let size else { return shapeMoves(settling: 0) }
+      // A change in place meanwhile may have moved the rest; the spring goes to where it is.
+      let spring = MiniPanelSpring(entrance.duration, entrance.bounce)
+      model.shape = IslandShape(
+        frame: IslandMetrics.rest(size),
+        corner: IslandMetrics.corner(size, card: content?.kind.isCard == true),
+        animation: spring.animation)
+      shapeMoves(settling: MiniPanelMotion.settling(spring))
     }
   }
 
@@ -216,6 +226,10 @@ final class IslandController: NSObject, NSWindowDelegate {
     let leaving = Set(model.layers.map(\.id))
     conceal(leavingCard: leavingCard)
     let id = mount(next, measured)
+    // Prepare the hidden content before starting the morph, as appear does. In particular,
+    // the recording's native player and text field must not first lay out during the spring.
+    window.contentView?.layoutSubtreeIfNeeded()
+    window.displayIfNeeded()
     morph(to: target, motion: motion(to: target), card: next.kind.isCard)
     after(MiniPanelMotion.frame) { [weak self] in
       guard let self, activeLayer == id else { return }
@@ -238,10 +252,15 @@ final class IslandController: NSObject, NSWindowDelegate {
     model.layers[index].content = next
     model.layers[index].limits = measured.limits
     model.layers[index].answerOffer = model.answerOffer
+    model.layers[index].shellCard = model.shellCard(for: next)
     guard target != size else { return }
     model.layers[index].rest = IslandMetrics.rest(target)
-    let inPlace = inPlace || next.kind == .compose
+    // An arrived review card lays out at its shape as drawn, on the direct edits' spring: its
+    // title stays on the top edge, its field and footer on the bottom, its answer takes the rest.
+    let reflows = next.kind == .review && model.arrived
+    let inPlace = inPlace || next.kind == .compose || reflows
     model.layers[index].scales = !inPlace
+    model.layers[index].reflows = reflows
     let resize = inPlace ? IslandChoreography.inPlace : IslandChoreography.resize
     morph(
       to: target,
@@ -253,15 +272,19 @@ final class IslandController: NSObject, NSWindowDelegate {
 
   private func finish() {
     exiting = false
-    window.ignoresMouseEvents = false
+    window.acceptsPointerEvents = true
     content = nil
     activeLayer = nil
     size = nil
     anchor = nil
     dragStart = nil
     setKeyCapable(false)
+    window.awaitsField = false
     window.orderOut(nil)
+    window.pointerHover.endDrag()
     model.layers = []
+    model.layoutMotion = .fixed
+    resetCanvas()
     report(false)
   }
 
@@ -272,8 +295,12 @@ final class IslandController: NSObject, NSWindowDelegate {
       IslandLayer(
         id: nextLayer, content: content, rest: IslandMetrics.rest(measured.size),
         presence: MiniPanelPresence(shown: false, motion: IslandChoreography.content),
-        limits: measured.limits, answerOffer: model.answerOffer))
+        limits: measured.limits, answerOffer: model.answerOffer,
+        shellCard: model.shellCard(for: content)))
     activeLayer = nextLayer
+    // It takes the keyboard once its shape rests; what is typed until then waits for its field.
+    model.arrived = false
+    window.awaitsField = takesTyping(content)
     return nextLayer
   }
 
@@ -287,23 +314,9 @@ final class IslandController: NSObject, NSWindowDelegate {
     for index in model.layers.indices {
       model.layers[index].presence = MiniPanelPresence(
         shown: false, motion: IslandChoreography.content)
-      model.layers[index].scales = true
+      model.layers[index].followsShape()
       if model.layers[index].content.kind == .choose, model.layers[index].card == nil {
         model.layers[index].card = leavingCard
-      }
-    }
-  }
-
-  private func morph(to target: WindowSize, motion: MiniPanelShapeMotion, card: Bool) {
-    model.shape = IslandShape(
-      frame: IslandMetrics.rest(target), corner: IslandMetrics.corner(target, card: card),
-      animation: motion.animation(thickness: .vertical))
-    size = target
-    if let anchor {
-      let inside = clamped(anchor, size: target)
-      if inside != anchor {
-        self.anchor = inside
-        placeWindow()
       }
     }
   }

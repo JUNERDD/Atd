@@ -1,9 +1,30 @@
 import Foundation
 
-/// What a capture's mosaics hide must not reach its screen context. Text recognition reads the
-/// raw selection, so it finds the text under a mosaic too, and Accessibility describes the picked
-/// element without knowing about annotations; both are cut back here before the file is written.
+/// What a capture's mosaics hide must not reach its screen context (architecture S7). Text
+/// recognition reads the raw selection, so it finds the text under a mosaic too, Accessibility
+/// describes the picked element without knowing about annotations, and the window list names the
+/// app and the window whatever they show; all of it is cut back here before the file is written.
 extension ScreenContext {
+  /// The context of a capture whose mosaics cover `areas` (``redactedAreas(of:selection:)``):
+  /// the `recognized` boxes in reading order with what is known about the screen around them,
+  /// cut back so nothing a mosaic hides reaches the file. Without a mosaic everything stays.
+  /// With one, only what cannot repeat the hidden text stays: the boxes no mosaic touches and
+  /// the picked element's role. The app's name and the window's title go too. A title repeats
+  /// what its window shows (a subject, a contact, a page or a file name) wherever the window
+  /// shows it, not only in its title bar, and a mosaic may cover the app's name where the screen
+  /// shows it. Comparing them with the text under the mosaics cannot rule either out: recognition
+  /// misreads, misses and runs out of time, and the screen shows names shortened.
+  public init(
+    app: String?, window: String?, element: Element?, recognized: [TextBox],
+    hiding areas: [CGRect]
+  ) {
+    let hides = !areas.isEmpty
+    self.init(
+      app: hides ? nil : app, window: hides ? nil : window,
+      element: hides ? element?.withoutText : element,
+      lines: Self.readingOrder(Self.unredacted(recognized, hiding: areas)))
+  }
+
   /// The areas `document`'s mosaics cover, as fractions of a selection of `size` points (origin
   /// at the top-left, y down, like a ``TextBox``'s box), cut to the selection. A mosaic counts
   /// whatever its redaction, since pixelation and blur keep only what they average. Empty for a

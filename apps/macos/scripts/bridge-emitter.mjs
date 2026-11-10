@@ -347,6 +347,8 @@ export function createEmitter({ defs, shared, recursive = [], splitUnions = fals
         `  public static let panelShortcutId = ${literal(bridge.panelShortcutId)}`,
         '  /// The id of the screenshot registration in `shortcuts.set`.',
         `  public static let screenshotShortcutId = ${literal(bridge.screenshotShortcutId)}`,
+        '  /// The id of the screen recording registration in `shortcuts.set`.',
+        `  public static let recordShortcutId = ${literal(bridge.recordShortcutId)}`,
         '  /// The longest text a capture returns.',
         `  public static let maxCaptureLength = ${int(bridge.maxCaptureLength)}`,
         '}',

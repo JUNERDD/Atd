@@ -12,7 +12,11 @@ export function applySummaries<S>(tasks: TaskClient<S>, frame: SummariesFrame): 
   // Deleting the visited key while iterating a Map is safe: iteration goes on with the next key.
   for (const taskId of tasks.entries.keys()) if (!listed.has(taskId)) tasks.forget(taskId);
   tasks.revisions.clear();
-  for (const summary of frame.tasks) tasks.storeSummary(summary);
+  for (const summary of frame.tasks) {
+    const previous = tasks.entries.get(summary.task.id);
+    if (previous?.transcript) tasks.recovery.begin(previous.task.id, tasks.host);
+    tasks.storeSummary(summary);
+  }
   tasks.host.broadcast();
   for (const [taskId, entry] of tasks.entries)
     if (entry.transcript) void tasks.reloadTranscript(taskId).catch(() => undefined);

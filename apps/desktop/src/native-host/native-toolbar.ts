@@ -1,9 +1,17 @@
-import { offeredAt, type SelectionToolbarSettings } from '@atd/agent-contracts';
+import { offeredAt, type CommandPlace, type SelectionToolbarSettings } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../client/agent/command-schema';
 import type { CallParams, NativeBridge } from '../native-bridge/client';
 
-/** Commands `toolbar.set` takes; the shell folds those past its width into More. */
+/** Commands `toolbar.set` and `screenshotToolbar.set` take; the shell folds the rest into More. */
 const MAX_TOOLBAR_COMMANDS = 64;
+
+/** The commands offered at a toolbar `place`, in command-list order, as the shell's buttons. */
+function offeredCommands(commands: readonly CommandDefinition[], place: CommandPlace) {
+  return commands
+    .filter((command) => offeredAt(command, place))
+    .slice(0, MAX_TOOLBAR_COMMANDS)
+    .map(({ id, name }) => ({ id, name }));
+}
 
 /**
  * What the selection toolbar offers: whether it shows, which selections bring it up, the apps it
@@ -23,16 +31,25 @@ export function toolbarParams(
     smallIcon: settings.smallIcon,
     position: settings.position,
     excludedBundleIds: settings.excludedApps.map((app) => app.bundleId),
-    commands: commands
-      .filter((command) => offeredAt(command, 'selectionToolbar'))
-      .slice(0, MAX_TOOLBAR_COMMANDS)
-      .map(({ id, name }) => ({ id, name })),
+    commands: offeredCommands(commands, 'selectionToolbar'),
   };
 }
 
 /**
- * The panel's side of the selection toolbar: it pushes the toolbar's settings and commands to the
- * shell whenever either changes, once the service's settings loaded (`settings` is null before,
+ * What the screenshot toolbar offers: the commands offered at its place (`offeredAt`: enabled,
+ * placed there, and taking a screenshot), in command-list order. Picking one ends the capture
+ * with it (`screenshot.capture`'s `launch`), so only the id and the name the button shows cross.
+ */
+export function screenshotToolbarParams(
+  commands: readonly CommandDefinition[],
+): CallParams<'screenshotToolbar.set'> {
+  return { commands: offeredCommands(commands, 'screenshotToolbar') };
+}
+
+/**
+ * The panel's side of the selection and screenshot toolbars: each sync pushes what changed of
+ * either to the shell. The screenshot toolbar follows the commands alone; the selection toolbar
+ * also its settings, so it waits until the service's settings loaded (`settings` is null before,
  * when the defaults could show a toolbar the user turned off). An unchanged set is not pushed
  * again; pushes run one at a time, in order.
  */
@@ -43,10 +60,10 @@ export function nativeToolbar(
     commands: () => readonly CommandDefinition[];
   },
 ): { sync: () => void } {
-  /** The set the shell last took. */
+  /** The sets the shell last took. */
   let pushed = '';
-  let queue = Promise.resolve();
-  async function push() {
+  let pushedScreenshot = '';
+  async function pushSelection() {
     const settings = host.settings();
     if (settings === null) return;
     const params = toolbarParams(settings, host.commands());
@@ -55,11 +72,26 @@ export function nativeToolbar(
     await bridge.call('toolbar.set', params);
     pushed = signature;
   }
+  async function pushScreenshot() {
+    const params = screenshotToolbarParams(host.commands());
+    const signature = JSON.stringify(params);
+    if (signature === pushedScreenshot) return;
+    await bridge.call('screenshotToolbar.set', params);
+    pushedScreenshot = signature;
+  }
+  let queue = Promise.resolve();
   return {
     sync() {
-      queue = queue.then(push).catch((error: unknown) => {
-        console.error('The native shell did not take the selection toolbar:', error);
-      });
+      // One toolbar the shell refused does not keep the other from being pushed.
+      queue = queue
+        .then(pushSelection)
+        .catch((error: unknown) => {
+          console.error('The native shell did not take the selection toolbar:', error);
+        })
+        .then(pushScreenshot)
+        .catch((error: unknown) => {
+          console.error('The native shell did not take the screenshot toolbar:', error);
+        });
     },
   };
 }

@@ -100,26 +100,51 @@ struct IslandWashStyle<Outline: InsettableShape>: ButtonStyle {
   let shape: Outline
   let hovered: Bool
   var rest = 0.0
+  var hover = 0.09
 
   func makeBody(configuration: Configuration) -> some View {
-    IslandWashLabel(configuration: configuration, shape: shape, hovered: hovered, rest: rest)
+    IslandWashLabel(
+      configuration: configuration, shape: shape, hovered: hovered, rest: rest, hover: hover)
   }
 }
 
-/// ``IslandWashStyle``'s label, which reads whether its button is enabled.
+/// ``IslandWashStyle``'s label, which reads whether its button is enabled and reports whether
+/// it has the keyboard focus (``IslandControlFocus``).
 private struct IslandWashLabel<Outline: InsettableShape>: View {
   let configuration: ButtonStyleConfiguration
   let shape: Outline
   let hovered: Bool
   let rest: Double
+  let hover: Double
   @Environment(\.isEnabled) private var isEnabled
 
   var body: some View {
     let level =
-      !isEnabled ? rest : configuration.isPressed ? 0.16 : hovered ? 0.09 : rest
+      !isEnabled ? rest : configuration.isPressed ? 0.16 : hovered ? hover : rest
     configuration.label
       .background { IslandWash(level: level, shape: shape) }
+      .background { IslandFocusProbe() }
       .contentShape(shape)
+  }
+}
+
+/// One of the island's buttons has the keyboard focus (Full Keyboard Access, which presses it
+/// with Space): each button reports it from inside its label, where `isFocused` is the
+/// button's own (``IslandFocusProbe``), and a card that reads Space itself reads it at its root.
+struct IslandControlFocus: PreferenceKey {
+  static let defaultValue = false
+
+  static func reduce(value: inout Bool, nextValue: () -> Bool) {
+    value = value || nextValue()
+  }
+}
+
+/// Reports ``IslandControlFocus`` for the button whose label holds it.
+struct IslandFocusProbe: View {
+  @Environment(\.isFocused) private var isFocused
+
+  var body: some View {
+    Color.clear.preference(key: IslandControlFocus.self, value: isFocused)
   }
 }
 
@@ -131,52 +156,71 @@ struct IslandIconButton: View {
   let label: String
   var tooltip: String?
   var side = IslandMetrics.controlSide
+  var foreground = Color.primary
   let action: () -> Void
   @State private var hovered = false
-  @Environment(\.isEnabled) private var isEnabled
 
   var body: some View {
     Button(action: action) {
+      // The glyph takes no clicks: the button's shape does, whatever redraws the glyph.
       IslandGlyph(name: glyph)
+        .allowsHitTesting(false)
         .frame(width: side, height: side)
     }
     .buttonStyle(IslandWashStyle(shape: Circle(), hovered: hovered))
-    .foregroundStyle(.primary)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .foregroundStyle(foreground)
+    .modifier(
+      FloatingHover {
+        hovered = $0
+      }
+    )
     .help(tooltip ?? label)
     .accessibilityLabel(Text(verbatim: label))
   }
 }
 
-/// A labelled capsule with an optional shortcut. The shortcut's trailing inset equals its
-/// vertical inset, keeping the two capsules concentric; plain labels keep 10 pt at both ends.
+/// A labelled capsule with an optional shortcut (``IslandTextFace``), in the label colour unless
+/// `foreground` says otherwise (the shell cards' Restore, in the link colour).
 struct IslandTextButton: View {
   let title: String
   var tooltip: String?
   var rest = 0.0
   var keys: String?
+  var glyph: String?
+  var foreground = Color.primary
   let action: () -> Void
   @State private var hovered = false
-  @Environment(\.isEnabled) private var isEnabled
 
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 6) {
-        Text(verbatim: title).font(IslandType.label).lineLimit(1)
-        if let keys { IslandKeycap(symbol: keys) }
-      }
-      .padding(.leading, 10)
-      .padding(
-        .trailing, keys == nil ? 10 : (IslandMetrics.controlSide - GlassHUDPieces.keycapHeight) / 2
-      )
-      .frame(height: IslandMetrics.controlSide)
+      IslandTextFace(title: title, keys: keys, glyph: glyph)
     }
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered, rest: rest))
-    .foregroundStyle(.primary)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .foregroundStyle(foreground)
+    .modifier(FloatingHover { hovered = $0 })
     .help(tooltip ?? title)
+  }
+}
+
+/// The label of the island's text buttons (``IslandTextButton``, ``IslandFeedbackButton``): an
+/// optional glyph, the title and an optional shortcut keycap. The keycap's trailing inset equals
+/// its vertical inset, keeping the two capsules concentric; plain labels keep 10 pt at both ends.
+struct IslandTextFace: View {
+  let title: String
+  var keys: String?
+  var glyph: String?
+
+  var body: some View {
+    HStack(spacing: 6) {
+      if let glyph { IslandGlyph(name: glyph, side: 14).allowsHitTesting(false) }
+      Text(verbatim: title).font(IslandType.label).lineLimit(1)
+      if let keys { IslandKeycap(symbol: keys) }
+    }
+    .padding(.leading, 10)
+    .padding(
+      .trailing, keys == nil ? 10 : (IslandMetrics.controlSide - GlassHUDPieces.keycapHeight) / 2
+    )
+    .frame(height: IslandMetrics.controlSide)
   }
 }
 
@@ -259,36 +303,17 @@ struct IslandMeter: View {
   }
 }
 
-/// The drag handle, as the HUD's (``AnnotationBarGrip``: 16 × 28 pt, the glyph in the label
-/// colour): it moves the island within the work area, and a double-click puts it back
-/// at home (``GlassHUDPlacement``). The controller follows the pointer itself, since the window
-/// moves under the gesture.
+/// The capsules' drag handle, as the HUD's (``AnnotationBarGrip``: 16 × 28 pt, the glyph in the
+/// label colour): it moves the island (``IslandMoveHandle``).
 struct IslandGrip: View {
   let model: IslandModel
-  @State private var dragging = false
+  var secondary = false
 
   var body: some View {
     IslandGlyph(name: AnnotationIcons.grip)
-      .foregroundStyle(.primary)
+      .foregroundStyle(secondary ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
       .frame(width: IslandMetrics.gripWidth, height: IslandMetrics.controlSide)
-      .contentShape(Rectangle())
-      .pointerStyle(.grabIdle)
-      .help(model.labels.move)
-      .gesture(
-        DragGesture(minimumDistance: 2, coordinateSpace: .global)
-          .onChanged { _ in
-            if !dragging {
-              dragging = true
-              model.drag(.began)
-            }
-            model.drag(.moved)
-          }
-          .onEnded { _ in
-            dragging = false
-            model.drag(.ended)
-          }
-      )
-      .simultaneousGesture(TapGesture(count: 2).onEnded { model.drag(.reset) })
+      .modifier(IslandMoveHandle(model: model))
       .accessibilityHidden(true)
   }
 }

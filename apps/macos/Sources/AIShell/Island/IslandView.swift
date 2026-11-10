@@ -2,65 +2,97 @@ import AICore
 import AppKit
 import SwiftUI
 
-/// The command island as drawn: one glass shape on the shell's glass surface, as the mini panel's
-/// body is (``View/glassSurface(in:animation:)``: the panel's base fill on regular
-/// Liquid Glass, the content kept in the app's scheme), with its contents riding inside it. The
-/// glass, its clip and every content take the same animated shape value (``IslandShape``), the
-/// clip erased as the glass's shape is so the two move as one, so the content can
-/// never show outside the glass; each content is laid out where its shape rests and follows the shape as
-/// drawn (``MiniPanelFollowEffect``), centred in it and scaling with it up to
-/// ``MiniPanelChoreography/followLimit``, and arrives and leaves through opacity and blur
-/// (``MiniPanelPresenceEffect``). Only shapes and render effects change from frame to frame.
-///
-/// The whole canvas is the shape's lane: it holds every shape the island takes, so a morph lays
-/// nothing out again. Its transparent pixels pass clicks to the windows below.
+/// All island contents use the common surface. Business views supply their target layout;
+/// the surface owns the layout policy and the animation given to each layer.
 struct IslandView: View {
   let model: IslandModel
 
   var body: some View {
-    let canvas = IslandMetrics.canvas
     let shape = model.shape
-    let outline = MiniPanelGlassOutline(shape: shape.glass)
-    ZStack(alignment: .topLeading) {
+    let card = model.layers.last(where: { $0.shellCard != nil })?.shellCard ?? model.keptShellCard
+    let change: IslandShellGeometry =
+      if let layout = card?.layout, let origin = card?.layoutOrigin {
+        IslandShellGeometry(layout: layout) - IslandShellGeometry(layout: origin)
+      } else { .zero }
+    let frame = AnimatablePair(shape.glass, change)
+    let content = ZStack(alignment: .topLeading) {
       IslandLoadingGlow(model: model)
       ForEach(model.layers) { layer in
         IslandLayerView(model: model, layer: layer)
       }
     }
-    .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
-    .glassSurface(in: outline, animation: shape.animation)
-    // The island times its own entrance; the glass adds no transition of its own.
-    .backport.glassEffectTransition(.identity)
-    .backport.glassEffectContainer()
+    IslandSurface(
+      frame: frame, canvas: model.canvas, animation: shape.animation,
+      layoutMotion: model.layoutMotion, content: content
+    )
     .id(model.appearance)
-    .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
-    // The glass draws its first frame in the app's scheme, and follows it when it changes.
-    .environment(\.colorScheme, GlassSurface.colorScheme)
   }
 }
 
-/// One content, laid out at its rest and following the shape as drawn.
+/// Places each business view at its measured size. Reflow placement follows the interpolated
+/// layout, so native hit regions move with the pixels; fixed content retains its measured rest.
 private struct IslandLayerView: View {
   let model: IslandModel
   let layer: IslandLayer
+  @Environment(\.[island: IslandPresentationKey<IslandShellGeometry>()])
+  private var presentation
+  @Environment(\.islandContentAnimation) private var animation
 
   var body: some View {
-    let rest = layer.rest
-    let shape = model.shape
-    let follow = MiniPanelFollowEffect(
-      shape: shape.glass, rest: rest, scales: !model.reduceMotion && layer.scales)
+    let origin = layer.shellCard?.layoutOrigin
+    let geometry = origin.map { IslandShellGeometry(layout: $0) + presentation.second }
+    // Keep the first measurement only as the interpolation baseline. Holding its position
+    // while moving a larger card with ignoredByLayout leaves native hit regions behind.
+    // This placement uses the current presentation, never the destination, so it cannot snap.
+    // A reflowing layer lays out at its shape as drawn, so it follows with no transform.
+    let rest =
+      geometry.map { IslandMetrics.rest($0.size) }
+      ?? (layer.reflows ? presentation.first.rect : layer.rest)
     let active = layer.presence.shown
-    content(active: active, rest: rest)
+    let shift = IslandMetrics.canvasShift(model.canvas)
+    IslandLayerContent(model: model, layer: layer, geometry: geometry, rest: rest)
+      // Presentation frames must not rebuild unchanged command text or recording controls.
+      // Their own observable state still invalidates the views that read it.
+      .equatable()
+      .environment(\.floatingHoverActive, active)
       .frame(width: rest.width, height: rest.height)
-      .animation(shape.animation) { $0.modifier(follow) }
+      .animation(animation) {
+        $0.modifier(
+          MiniPanelFollowEffect(
+            shape: presentation.first, rest: rest, scales: !model.reduceMotion && layer.scales
+          ).ignoredByLayout())
+      }
+      .animation(nil) { $0.offset(x: rest.minX + shift.x, y: rest.minY + shift.y) }
       .modifier(MiniPanelPresenceEffect(presence: layer.presence))
-      .animation(nil) { $0.offset(x: rest.minX, y: rest.minY) }
       .allowsHitTesting(active)
       .accessibilityHidden(!active)
   }
+}
 
-  @ViewBuilder private func content(active: Bool, rest: CGRect) -> some View {
-    if case .choose(let command) = layer.content, let card = layer.card ?? model.card {
+/// Business composition has no presentation-frame input. Equality holds fixed-layout content
+/// outside the animation's per-frame work; actual recording reflow supplies a changed geometry.
+private struct IslandLayerContent: View, Equatable {
+  let model: IslandModel
+  let layer: IslandLayer
+  let geometry: IslandShellGeometry?
+  /// Where the content lays out: its rest, or its shape as drawn while it reflows.
+  let rest: CGRect
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.model === rhs.model && lhs.layer == rhs.layer && lhs.geometry == rhs.geometry
+      && lhs.rest == rhs.rest
+  }
+
+  @ViewBuilder var body: some View {
+    let active = layer.presence.shown
+    if case .recording(let card)? = layer.shellCard, let geometry {
+      IslandRecordingCard(model: model, card: card, active: active, geometry: geometry)
+        // Native scroll/player descendants resolve the card's layout at this boundary.
+        .geometryGroup()
+    } else if case .longScreenshot(let card)? = layer.shellCard, let geometry {
+      IslandLongScreenshotCard(model: model, card: card, active: active, geometry: geometry)
+        .geometryGroup()
+    } else if case .choose(let command) = layer.content, let card = layer.card ?? model.card {
       IslandCard(
         model: model, command: command, card: card, active: active && layer.card == nil,
         width: rest.width)

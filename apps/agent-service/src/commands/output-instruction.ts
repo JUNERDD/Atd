@@ -9,8 +9,9 @@ const WRITE_PLACE: Record<CommandWriteAction, string> = {
 
 /**
  * The directive that tells the model its final answer is used as is, so it answers with the bare
- * text. Null for `panel`, whose answer is only read in the conversation. Delivered with the run's
- * hidden material (`RunSnapshot.instructions`), never in the visible prompt.
+ * text. Null for `panel` and `card`, whose answer is read (in the conversation, or on the island's
+ * answer card). Delivered with the run's hidden material (`RunSnapshot.instructions`), never in the
+ * visible prompt.
  */
 export function outputInstruction(output: CommandOutput): string | null {
   const { action } = output;

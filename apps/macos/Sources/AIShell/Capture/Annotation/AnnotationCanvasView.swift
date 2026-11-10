@@ -59,6 +59,8 @@ final class AnnotationCanvasView: NSView {
   var onStepStroke: ((Int) -> Bool)?
   /// ⌘Delete: ends open text and clears every annotation; false when there was nothing to do.
   var onClearAll: (() -> Bool)?
+  /// `/`: the command row turns into its ask field; false without a row.
+  var onAsk: (() -> Bool)?
 
   init(
     store: AnnotationStore, interaction: AnnotationInteraction, textEditor: AnnotationTextEditor,
@@ -199,7 +201,8 @@ final class AnnotationCanvasView: NSView {
   /// coordinates) when the host routes the pointer there to this view; elsewhere the session or
   /// a bar owns the cursor and no element is previewed.
   private func updatePointer(at location: CGPoint) {
-    guard let host = superview, let overlay = host.superview,
+    guard CaptureCursorOwnership.ownsPointer(in: window, at: NSEvent.mouseLocation),
+      let host = superview, let overlay = host.superview,
       host.hitTest(overlay.convert(location, from: nil))?.isDescendant(of: self) == true
     else {
       picker.hover(at: nil)
@@ -255,6 +258,7 @@ final class AnnotationCanvasView: NSView {
       if let step = ["[": -1, "-": -1, "_": -1, "]": 1, "=": 1, "+": 1][characters] {
         return onStepStroke?(step) ?? false
       }
+      if characters == "/" { return onAsk?() ?? false }
       guard let tool = AnnotationTool(key: characters) else { return false }
       onChooseTool?(tool)
       return true
@@ -266,6 +270,11 @@ final class AnnotationCanvasView: NSView {
   /// They are taken here rather than through the Edit menu, whose `undo:` would reach the
   /// window's undo manager, and ahead of an open text view's own handling of the keys.
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    // A field outside the canvas, the command row's ask field, keeps its editing keys: the
+    // field's bar takes them (`AnnotationAskBar.performKeyEquivalent`).
+    if let editor = window?.firstResponder as? NSTextView, editor.isFieldEditor {
+      return super.performKeyEquivalent(with: event)
+    }
     let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
     if event.type == .keyDown, window?.isKeyWindow == true, modifiers == .command,
       event.charactersIgnoringModifiers?.lowercased() == "c", !textEditor.isEditing,

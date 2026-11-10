@@ -141,27 +141,55 @@ struct AnnotationDocumentTests {
     #expect(Set(AnnotationTool.allCases.map(\.key)).count == AnnotationTool.allCases.count)
   }
 
-  @Test("Toolbar and style bar stack below, above (clear of the size label), or inside")
+  @Test("Toolbar and style bar stack below, above (past the size label only over it), or inside")
   func toolbarPlacement() {
     let display = CGRect(x: 0, y: 0, width: 1000, height: 800)
     let bar = CGSize(width: 300, height: 40)
     let style = CGSize(width: 200, height: 40)
-    func frames(_ selection: CGRect) -> (toolbar: CGRect, styleBar: CGRect) {
+    func frames(_ selection: CGRect, keepClear: AnnotationToolbarLayout.KeepClear = .init())
+      -> AnnotationToolbarLayout.Placement
+    {
       AnnotationToolbarLayout.frames(
-        toolbar: bar, styleBar: style, beside: selection, within: display)
+        toolbar: bar, styleBar: style, beside: selection, within: display, keepClear: keepClear)
     }
     let middle = frames(CGRect(x: 400, y: 200, width: 300, height: 200))
     #expect(middle.toolbar == CGRect(x: 400, y: 408, width: 300, height: 40))
     #expect(middle.styleBar == CGRect(x: 400, y: 454, width: 200, height: 40))
-    // 86 pt of bars do not fit under y 700, so the block goes above, clear of the size label
-    // (600 − 30 − 8 = 562 for its bottom), the style bar outermost: 562 − 86 = 476.
-    let low = frames(CGRect(x: 400, y: 600, width: 300, height: 100))
-    #expect(low.styleBar.minY == 476)
+    // 86 pt of bars do not fit under y 700, so the block goes above, 8 pt over the selection
+    // (600 − 8 = 592 for its bottom), the style bar outermost: 592 − 86 = 506.
+    let lowSelection = CGRect(x: 400, y: 600, width: 300, height: 100)
+    let low = frames(lowSelection)
+    #expect(low.styleBar.minY == 506)
     #expect(low.toolbar.minY == low.styleBar.maxY + 6)
-    #expect(low.toolbar.maxY == 562)
+    #expect(low.toolbar.maxY == 592)
+    // There it would cover the size label over the selection's top-left, so it rises past the
+    // label: 600 − 30 − 8 = 562 for its bottom.
+    let label = CaptureSizeLabelLayout.frame(
+      area: lowSelection, size: CGSize(width: 80, height: 23), display: display)
+    #expect(label == CGRect(x: 400, y: 571, width: 80, height: 23))
+    let labelled = frames(lowSelection, keepClear: .init(label: label))
+    #expect(labelled.styleBar.minY == 476)
+    #expect(labelled.toolbar.maxY == 562)
+    // A wide selection's right-aligned block stays clear of its label without rising.
+    let wide = CGRect(x: 100, y: 600, width: 800, height: 100)
+    let wideLabel = CaptureSizeLabelLayout.frame(
+      area: wide, size: CGSize(width: 80, height: 23), display: display)
+    #expect(frames(wide, keepClear: .init(label: wideLabel)).toolbar.maxY == 592)
     let full = frames(CGRect(x: 0, y: 0, width: 1000, height: 800))
     #expect(full.toolbar == CGRect(x: 692, y: 752, width: 300, height: 40))
     #expect(full.styleBar == CGRect(x: 692, y: 706, width: 200, height: 40))
+    // Inside a selection that fills the display, the block moves up off the bottom bar.
+    let bottomBar = CGRect(x: 300, y: 736, width: 400, height: 36)
+    let clear = frames(display, keepClear: .init(bar: bottomBar))
+    #expect(clear.styleBar == CGRect(x: 692, y: 642, width: 200, height: 40))
+    #expect(clear.toolbar == CGRect(x: 692, y: 688, width: 300, height: 40))
+    // Below a wide selection the block slides sideways just past the bar, still beside it.
+    let slid = AnnotationToolbarLayout.frames(
+      toolbar: bar, styleBar: style, beside: CGRect(x: 200, y: 550, width: 1000, height: 200),
+      within: CGRect(x: 0, y: 0, width: 1440, height: 900),
+      keepClear: .init(bar: CGRect(x: 520, y: 836, width: 400, height: 36)))
+    #expect(slid.toolbar == CGRect(x: 928, y: 758, width: 300, height: 40))
+    #expect(slid.styleBar == CGRect(x: 928, y: 804, width: 200, height: 40))
     // The style bar keeps the toolbar's leading edge unless that would leave the display.
     let leftEdge = frames(CGRect(x: 0, y: 100, width: 100, height: 100))
     #expect(leftEdge.toolbar.minX == 8)

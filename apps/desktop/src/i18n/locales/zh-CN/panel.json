@@ -56,7 +56,7 @@
     "folderLimit": "最多添加 {{max}} 个文件夹。",
     "editImage": "编辑 {{name}}",
     "attachMenu": {
-      "screenshot": "截图",
+      "screenshot": "截图或录屏",
       "upload": "上传文件",
       "folder": "添加文件夹…",
       "mention": "提及文件、对话或工具…"

@@ -23,12 +23,18 @@ final class AnnotationEditor: AnnotationEditing {
   var onCancel: (() -> Void)?
   var onCopy: (() -> Void)?
   var onInteriorClaimChange: ((Bool) -> Void)?
+  var onLaunch: ((CaptureLaunch) -> Void)?
+  var commandRow: CaptureCommandRowSetup?
+  var keepClear = AnnotationToolbarLayout.KeepClear()
+  var recognizedText: CaptureText? {
+    didSet { recognizedTextChanged() }
+  }
 
-  private let store = AnnotationStore()
+  let store = AnnotationStore()
   private let renderer = AnnotationRenderer()
   private let picker = AnnotationElementPicker()
   private let defaults: UserDefaults
-  private let interaction: AnnotationInteraction
+  let interaction: AnnotationInteraction
   let textEditor: AnnotationTextEditor
   /// One per host, in the hosts' order; empty while hidden.
   private(set) var canvases: [AnnotationCanvasView] = []
@@ -36,6 +42,8 @@ final class AnnotationEditor: AnnotationEditing {
   private weak var pressedCanvas: AnnotationCanvasView?
   let toolbar = AnnotationToolbar()
   let styleBar = AnnotationStyleBar()
+  /// The style bar's slot while nothing is styled: the command row or its ask field.
+  let slot = AnnotationCommandSlot()
 
   /// What mosaics sample for a selection (the session's), and its answer for the current one.
   private var backdrops: ((CGRect) -> CaptureBackdrop?)?
@@ -45,6 +53,11 @@ final class AnnotationEditor: AnnotationEditing {
   /// stay on the same display, whatever the selection does. Nil while the bars follow the
   /// selection.
   var movedOrigin: CGPoint?
+  /// Where the rule last put the bars beside the selection, which they hold while it is dragged
+  /// (``isDragged``).
+  var anchor: AnnotationToolbarLayout.Anchor?
+  /// The selection is being dragged (``selectionDidChange(_:dragging:)``).
+  private(set) var isDragged = false
   /// The run of wheel ticks in progress (``scroll(_:)``) and when its last tick came.
   private var wheelBurst = UUID()
   private var lastWheel: TimeInterval = 0
@@ -67,17 +80,18 @@ final class AnnotationEditor: AnnotationEditing {
       AnnotationStyleMemory.save(styles, to: self.defaults)
     }
     interaction.onEditText = { [weak self] point, existing in self?.editText(at: point, existing) }
-    interaction.onConfirm = { [weak self] in self?.confirm() }
+    interaction.onConfirm = { [weak self] in self?.onConfirm?() }
     textEditor.onEnd = { [weak self] in self?.focusCanvas() }
     toolbar.onTool = { [weak self] in self?.choose($0) }
     styleBar.onChange = { [weak self] in self?.restyle($0, burst: $1) }
     toolbar.onUndo = { [weak self] in self?.store.undo() }
     toolbar.onRedo = { [weak self] in self?.store.redo() }
     toolbar.onCancel = { [weak self] in self?.onCancel?() }
-    toolbar.onConfirm = { [weak self] in self?.confirm() }
-    toolbar.onCopy = { [weak self] in self?.copy() }
+    toolbar.onConfirm = { [weak self] in self?.onConfirm?() }
+    toolbar.onCopy = { [weak self] in self?.onCopy?() }
     toolbar.onDrag = { [weak self] in self?.moveBars($0) }
     styleBar.onDrag = { [weak self] in self?.moveBars($0) }
+    wireCommands()
   }
 
   func show(
@@ -89,12 +103,13 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.styles = AnnotationStyleMemory.load(from: defaults)
     toolbar.applyStrings()
     styleBar.applyStrings()
+    slot.prepare(commandRow, maxWidth: toolbar.fittingSize.width)
     canvases = hosts.map { host in
       let canvas = makeCanvas()
       host.addSubview(canvas)
       return canvas
     }
-    selectionDidChange(selection)
+    selectionDidChange(selection, dragging: false)
     refresh()
     focusCanvas()
   }
@@ -105,10 +120,11 @@ final class AnnotationEditor: AnnotationEditing {
       store: store, interaction: interaction, textEditor: textEditor, renderer: renderer,
       picker: picker)
     canvas.onPress = { [weak self, weak canvas] in self?.pressedCanvas = canvas }
-    canvas.onConfirm = { [weak self] in self?.confirm() }
-    canvas.onCopy = { [weak self] in self?.copy() }
+    canvas.onConfirm = { [weak self] in self?.confirmFromKey() }
+    canvas.onCopy = { [weak self] in self?.onCopy?() }
     canvas.onChooseTool = { [weak self] in self?.choose($0) }
     canvas.onEscape = { [weak self] in self?.stepBack() ?? false }
+    canvas.onAsk = { [weak self] in self?.slot.askFromKey() ?? false }
     canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
     canvas.onClearAll = { [weak self] in self?.clearAll() ?? false }
     return canvas
@@ -132,8 +148,9 @@ final class AnnotationEditor: AnnotationEditing {
     didSet { picker.targets = elementTargets }
   }
 
-  func selectionDidChange(_ selection: CGRect) {
+  func selectionDidChange(_ selection: CGRect, dragging: Bool) {
     self.selection = selection
+    isDragged = dragging
     // A selection moving onto another display, or across displays, samples other pixels.
     let backdrop = backdrops?(selection)
     let changed = backdrop?.image !== self.backdrop?.image
@@ -143,12 +160,16 @@ final class AnnotationEditor: AnnotationEditing {
       canvas.place(over: selection)
     }
     textEditor.selectionDidChange()
+    endFeedback()
     placeToolbar()
   }
+
+  func endText() { textEditor.end() }
 
   func hide() {
     interaction.cancelGesture()
     textEditor.cancel()
+    slot.hide()
     for canvas in canvases {
       canvas.removeFromSuperview()
       canvas.backdrop = nil
@@ -184,6 +205,7 @@ final class AnnotationEditor: AnnotationEditing {
   /// interior back.
   private func choose(_ tool: AnnotationTool?) {
     textEditor.end()
+    toolChanged()
     interaction.cancelGesture()
     let claimed = interaction.tool != nil
     interaction.tool = tool
@@ -193,11 +215,13 @@ final class AnnotationEditor: AnnotationEditing {
     focusCanvas()
   }
 
-  /// Esc steps back one level (E6): ends open text, else drops a gesture in progress, else
-  /// deselects, else drops the tool. False when none applied, so the key goes on to the
-  /// session, which cancels.
+  /// Esc steps back one level (E6): closes an open menu or the ask field, else ends open text,
+  /// else drops a gesture in progress, else deselects, else drops the tool. False when none
+  /// applied, so the key goes on to the session, which cancels.
   private func stepBack() -> Bool {
-    if textEditor.isEditing {
+    if slot.dismiss() {
+      return true
+    } else if textEditor.isEditing {
       textEditor.end()
     } else if interaction.isGesturing {
       interaction.cancelGesture()
@@ -235,9 +259,10 @@ final class AnnotationEditor: AnnotationEditing {
 
   /// The scroll wheel anywhere over the overlay while the style bar shows a size, as in PixPin:
   /// the same as dragging the size slider, one ``AnnotationStroke/stepped(by:)`` step per wheel
-  /// notch (or per 20 pt of trackpad travel), up for larger. A run of ticks no more than half a second apart, or one trackpad
-  /// gesture, is one undo step; momentum after a flick is ignored, so the size stops where the
-  /// fingers did. False when there is no size to change, so the session keeps the wheel.
+  /// notch (or per 20 pt of trackpad travel), up for larger. A run of ticks no more than half a
+  /// second apart, or one trackpad gesture, is one undo step; momentum after a flick is ignored,
+  /// so the size stops where the fingers did. False when there is no size to change, so the
+  /// session keeps the wheel.
   func scroll(_ event: NSEvent) -> Bool {
     guard styleTarget?.controls.contains(.strokes) == true else { return false }
     guard event.momentumPhase.isEmpty else { return true }
@@ -248,11 +273,12 @@ final class AnnotationEditor: AnnotationEditing {
     // Physical direction: up is larger whether or not scrolling is natural.
     let delta = event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
     let steps = event.hasPreciseScrollingDeltas ? delta / 20 : delta
-    if steps != 0 { resize(by: Double(steps), burst: wheelBurst) }
-    return true
+    guard steps != 0 else { return true }
+    return resize(by: Double(steps), burst: wheelBurst)
   }
 
-  /// Moves the size `steps` steps (``AnnotationStroke/stepped(by:)``).
+  /// Moves the size `steps` steps (``AnnotationStroke/stepped(by:)``); false when the style bar
+  /// shows no size, so the key or the wheel goes on to the session.
   private func resize(by steps: Double, burst: UUID?) -> Bool {
     guard let target = styleTarget, target.controls.contains(.strokes) else { return false }
     let stroke = target.style.stroke.stepped(by: steps)
@@ -278,36 +304,19 @@ final class AnnotationEditor: AnnotationEditing {
     textEditor.begin(at: point, editing: existing, style: interaction.styles.shared, in: canvas)
   }
 
-  /// Open text is committed first, so the export includes it.
-  private func confirm() {
-    textEditor.end()
-    onConfirm?()
-  }
-
-  /// The same export as ``confirm()``, for the clipboard.
-  private func copy() {
-    textEditor.end()
-    onCopy?()
-  }
-
-  private func refresh() {
+  func refresh() {
     redraw()
     toolbar.update(
       tool: interaction.tool, canUndo: store.undoManager.canUndo,
       canRedo: store.undoManager.canRedo)
-    if let target = styleTarget {
-      styleBar.update(style: target.style, controls: target.controls)
-      styleBar.isHidden = false
-    } else {
-      styleBar.isHidden = true
-    }
+    refreshSlot()
     placeToolbar()
   }
 
   /// What the style bar restyles: the open text, else the selected annotation, else the next one
   /// the active drawing tool makes; nil when there is nothing to style (no tool, the select tool
   /// with nothing selected, or a spotlight), which hides the bar.
-  private var styleTarget: (style: AnnotationStyle, controls: AnnotationStyleControls)? {
+  var styleTarget: (style: AnnotationStyle, controls: AnnotationStyleControls)? {
     let target: (style: AnnotationStyle, controls: AnnotationStyleControls)
     if let style = textEditor.style {
       target = (style, AnnotationTool.text.styleControls)

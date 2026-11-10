@@ -63,9 +63,12 @@ struct IslandCard: View {
         level: 0.06,
         shape: RoundedRectangle(cornerRadius: IslandMetrics.rowRadius, style: .continuous))
     }
-    // The card arrives hidden and becomes active a frame later, and its window may take the
-    // keyboard after that: the field takes focus once both hold.
-    .onChange(of: active && model.cardIsKey, initial: true) { _, focus in filterFocused = focus }
+    // The card arrives hidden, becomes active a frame later and comes to rest in its shape after
+    // that (``IslandModel/arrived``), and its window may take the keyboard at any point: the
+    // field takes focus once all three hold.
+    .onChange(of: active && model.arrived && model.cardIsKey, initial: true) { _, focus in
+      filterFocused = focus
+    }
   }
 
   @ViewBuilder private var rows: some View {
@@ -157,9 +160,11 @@ private struct IslandCardRow: View {
           hovered: false, rest: selected ? 0.1 : 0)
       )
       .foregroundStyle(.primary)
-      .onHover { inside in
-        if inside, active { model.cardEvent(.hover(index)) }
-      }
+      .modifier(
+        FloatingHover(enabled: active) { inside in
+          if inside { model.cardEvent(.hover(index)) }
+        }
+      )
       .accessibilityLabel(Text(verbatim: label))
       .accessibilityValue(Text(verbatim: value))
       .accessibilityAddTraits(selected ? .isSelected : [])

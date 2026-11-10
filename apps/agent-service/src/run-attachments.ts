@@ -1,6 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import { formatDimensionNote, resizeImage } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type FileRef, type TaskRun } from '@atd/agent-contracts';
+import { imagePages, type PagesContext } from './attachment-pages.js';
 import { extractionLayout, type ExtractionLayout } from './file-loader/extraction-paths.js';
 import { entryOf, type ExtractionEntry } from './file-loader/extraction-store.js';
 import { loadPathCached } from './file-loader/load-cache.js';
@@ -103,7 +104,10 @@ export async function loadRunAttachments(
       ? await contentOf(entry.path, hint)
       : { reason: "it is no longer in the app's storage" };
     if ('reason' in content) loaded.push(unavailable(entry, content.reason));
-    else if (content.kind === 'image') loaded.push(await imageAttachment(entry, content));
+    else if (content.kind === 'image')
+      loaded.push(
+        ...(await imageAttachments(entry, content, { log, taskId, ...(signal ? { signal } : {}) })),
+      );
     else {
       const kept = budget.entries ? entryOf(content) : undefined;
       loaded.push({
@@ -213,11 +217,12 @@ function unreadable(error: unknown): string {
 }
 
 /**
- * The size an attached image enters the session at. Pi re-sends every history image on every
- * request, so each one is kept near the models' native resolution: 1568px is what the standard
- * vision tier sees anyway, and staying under 2000px keeps Anthropic's stricter many-image rule
- * from applying. The byte cap counts base64 and leaves JPEG at a quality where screenshot text
- * stays legible; an image already inside both limits passes untouched.
+ * The size an attached image, or each page of a tall one (attachment-pages.ts), enters the
+ * session at. Pi re-sends every history image on every request, so each one is kept near the
+ * models' native resolution: 1568px is what the standard vision tier sees anyway, and staying
+ * under 2000px keeps Anthropic's stricter many-image rule from applying. The byte cap counts
+ * base64 and leaves JPEG at a quality where screenshot text stays legible; an image already
+ * inside both limits passes untouched.
  */
 const INGEST_IMAGE = { maxWidth: 1568, maxHeight: 1568, maxBytes: 1024 * 1024, jpegQuality: 85 };
 
@@ -227,26 +232,37 @@ const INGEST_IMAGE = { maxWidth: 1568, maxHeight: 1568, maxBytes: 1024 * 1024, j
  * model's own limits to the prompt's images, and converts a BMP the scaling passed untouched. An
  * image that cannot be decoded or scaled is not sent at all: Pi would drop it from the message
  * and leave the material's image numbers pointing at the wrong pictures, so the material says
- * instead that it was not sent.
+ * instead that it was not sent. A tall image (a long screenshot) is sent as its pages instead,
+ * one image input each (attachment-pages.ts), since scaled whole its text would be unreadable;
+ * every other image is sent as one.
  */
-async function imageAttachment(
+async function imageAttachments(
   entry: { name: string; path: string },
   loaded: LoadedImage,
-): Promise<RunAttachment> {
+  context: PagesContext,
+): Promise<RunAttachment[]> {
   const resized = await resizeImage(loaded.bytes, loaded.mime, INGEST_IMAGE);
   if (!resized) {
     const text =
       '[Unavailable as image input: the image could not be decoded or scaled to a size models take, so it was not sent. Tell the user when this matters for the answer.]';
-    return { kind: 'text', ...entry, text };
+    return [{ kind: 'text', ...entry, text }];
   }
-  const notes = [
-    loaded.convertedFrom ? `[Image converted from ${loaded.convertedFrom} to JPEG.]` : '',
-    formatDimensionNote(resized) ?? '',
-  ].filter(Boolean);
-  return {
-    kind: 'image',
-    ...entry,
-    image: { type: 'image', data: resized.data, mimeType: resized.mimeType },
-    ...(notes.length ? { note: notes.join('\n') } : {}),
-  };
+  const converted = loaded.convertedFrom
+    ? `[Image converted from ${loaded.convertedFrom} to JPEG.]`
+    : '';
+  const size = { width: resized.originalWidth, height: resized.originalHeight };
+  const pages = await imagePages(entry, loaded, size, INGEST_IMAGE, context);
+  if (pages)
+    return pages.map((page, index) =>
+      index === 0 && converted ? { ...page, note: [converted, page.note].join('\n') } : page,
+    );
+  const notes = [converted, formatDimensionNote(resized) ?? ''].filter(Boolean);
+  return [
+    {
+      kind: 'image',
+      ...entry,
+      image: { type: 'image', data: resized.data, mimeType: resized.mimeType },
+      ...(notes.length ? { note: notes.join('\n') } : {}),
+    },
+  ];
 }

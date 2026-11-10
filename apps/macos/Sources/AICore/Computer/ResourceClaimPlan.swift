@@ -30,6 +30,10 @@ public enum UserFeature: String, Sendable {
   case screenshot
   /// An open or save panel.
   case systemPanel
+  /// A screen recording, from its countdown until its capture stops. It holds the interactive
+  /// screen against background (computer-use) claims only: the user's other features go on
+  /// beside it (``ResourceClaimPlan/coexists(_:with:)``).
+  case screenRecording
 }
 
 /// The identity of one computer operation, which every claim of its actions shares: claims of
@@ -115,8 +119,9 @@ public enum ResourceClaimPlan {
   /// a computer operation holds.
   ///
   /// Refusals come first: closed background admission, a malformed escalation or one while
-  /// another owner's escalation waits, conflicting user claims except one-shot clipboard writes,
-  /// a background claim against the user's interactive screen, an owner conflicting with itself,
+  /// another owner's escalation waits, conflicting user claims except one-shot clipboard writes
+  /// and features beside a screen recording (``coexists(_:with:)``), a background claim against
+  /// the user's interactive screen, an owner conflicting with itself,
   /// then an owner asking out of order. Otherwise the claim waits on a conflicting holder or earlier
   /// waiter of at least its own priority (FIFO per resource, with user waiters ahead of background
   /// ones), and is granted when nothing blocks it.
@@ -161,6 +166,7 @@ public enum ResourceClaimPlan {
     for resource in ordered {
       for entry in queuedAhead
       where entry.owner != owner && (entry.owner.isUser || !owner.isUser)
+        && !coexists(owner, with: entry.owner)
         && entry.resources.contains(where: resource.conflicts(with:))
         && !entry.resources.contains(where: { waited in own.contains(where: waited.conflicts) })
       {
@@ -184,6 +190,7 @@ public enum ResourceClaimPlan {
     switch (owner.isUser, holder.isUser) {
     case (true, true):
       if requested == .clipboard, case .user(.clipboardWrite, _) = owner { return .wait }
+      if coexists(owner, with: holder) { return .none }
       return .refuse(.busy(requested))
     case (true, false):
       // The user takes the screen over background targets; their writes stop at the next claim.
@@ -192,6 +199,19 @@ public enum ResourceClaimPlan {
       return held == .interactiveScreen ? .refuse(.interactiveScreen) : .wait
     case (false, false):
       return .wait
+    }
+  }
+
+  /// Whether two user features may hold conflicting resources at once: a screen recording beside
+  /// any other user feature, except a screenshot asking while it records (the screen is being
+  /// captured already). The recording itself is granted over every user claim, so it takes the
+  /// screen over from the capture session that started it before that session lets go.
+  static func coexists(_ owner: ClaimOwner, with holder: ClaimOwner) -> Bool {
+    switch (owner, holder) {
+    case (.user(.screenRecording, _), .user): true
+    case (.user(.screenshot, _), .user(.screenRecording, _)): false
+    case (.user, .user(.screenRecording, _)): true
+    default: false
     }
   }
 }

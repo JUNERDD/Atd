@@ -4,7 +4,8 @@ import SwiftUI
 
 /// The answer card the island grows into where a run's answer could not be written (its target
 /// cannot take text, or the write was refused): the options card's corner, padding, title row
-/// and footer (``IslandCard``) around the answer. The title is the command's name with a close
+/// and footer (``IslandCard``) around the answer, under the grabber that moves the island
+/// (``IslandGrabber``) in place of the top padding. The title is the command's name with a close
 /// button; the page's note, when it gave one, says under it why nothing was written; the
 /// answer, selectable, scrolls inside the card once the card would be taller than the island's
 /// largest shape, so the title and the footer always show, fading out at an edge with more of
@@ -31,13 +32,15 @@ struct IslandAnswerCard: View {
   static let measuredLength = 4000
 
   var body: some View {
-    content
-      .padding(IslandMetrics.cardPadding)
-      .frame(
-        width: width.map { CGFloat($0) }, height: height.map { CGFloat($0) }, alignment: .topLeading
-      )
-      .accessibilityElement(children: .contain)
-      .accessibilityLabel(Text(verbatim: model.labels.answer(command)))
+    VStack(alignment: .leading, spacing: 0) {
+      IslandGrabber(model: model)
+      content.padding([.horizontal, .bottom], IslandMetrics.cardPadding)
+    }
+    .frame(
+      width: width.map { CGFloat($0) }, height: height.map { CGFloat($0) }, alignment: .topLeading
+    )
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text(verbatim: model.labels.answer(command)))
   }
 
   var widthProbe: some View {

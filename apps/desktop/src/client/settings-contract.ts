@@ -185,6 +185,8 @@ export interface SettingsSnapshot {
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */
   screenshotShortcutAvailable: boolean | null;
+  /** Whether the shell registered the record-screen shortcut; null until the panel reports it. */
+  recordShortcutAvailable: boolean | null;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;
   /**

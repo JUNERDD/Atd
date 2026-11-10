@@ -17,7 +17,9 @@ extension CommandProgressController {
   func wireAnswerCard() {
     answerFocus.onChange = { [weak self] offer in self?.answerOfferChanged(offer) }
     island.onKeyEquivalent = { [weak self] event in
+      // The page's cards read no keys while the shell is on the island; its card reads them.
       guard let self else { return false }
+      guard state.drawsProgress else { return shellKeyEquivalent(event) }
       return reviewKey(event) || answerKey(event) || composeKeyEquivalent(event)
     }
   }

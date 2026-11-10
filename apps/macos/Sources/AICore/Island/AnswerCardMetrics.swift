@@ -1,7 +1,8 @@
 /// The answer card's geometry: the card the island grows into where a run's answer could not be
 /// written. It shares the options card's corner, padding, title row and footer
 /// (``IslandMetrics/cardRadius``, ``IslandMetrics/cardPadding``, ``IslandMetrics/headerHeight``,
-/// ``IslandMetrics/footerHeight``); between them, the note under the title and the answer, which
+/// ``IslandMetrics/footerHeight``), with the grabber's strip in place of its top padding
+/// (``IslandMetrics/resultPadding``); between them, the note under the title and the answer, which
 /// scrolls inside the card once the card would be taller than ``IslandMetrics/maxShape``.
 extension IslandMetrics {
   /// Keep the established reading measure when the footer needs a wider card. This includes
@@ -26,10 +27,10 @@ extension IslandMetrics {
     maxShape.height - answerChrome(note: note, footer: footer)
   }
 
-  /// Everything but the answer: the padding, the title row, the note, the gaps either side of
-  /// the answer and the footer.
+  /// Everything but the answer: the grabber's strip and the padding, the title row, the note, the
+  /// gaps either side of the answer and the footer.
   private static func answerChrome(note: Double, footer: Double) -> Double {
-    cardPadding * 2 + headerHeight + (note > 0 ? note + noteGap : 0) + sectionGap * 2
+    resultPadding + headerHeight + (note > 0 ? note + noteGap : 0) + sectionGap * 2
       + max(footer, footerHeight)
   }
 }

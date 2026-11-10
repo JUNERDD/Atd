@@ -67,6 +67,7 @@ export function installBridge(extras?: {
     panelPlacement: 'bottomRight',
     shortcutAvailable: true,
     screenshotShortcutAvailable: true,
+    recordShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
     selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
@@ -263,7 +264,7 @@ export function installBridge(extras?: {
     show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
-    screenshot: vi.fn(async () => null),
+    captureScreenshotInput: vi.fn(async () => null),
     editScreenshot: vi.fn(async () => null),
     resource: vi.fn(async () => new Blob()),
     settings: {

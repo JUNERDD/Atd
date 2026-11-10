@@ -2,53 +2,6 @@ import AICore
 import Observation
 import SwiftUI
 
-/// What the command island shows.
-enum IslandContent: Equatable {
-  /// A command shortcut is down: the command's name and the charge toward its options card.
-  case press(command: String)
-  /// The run is going, with the values it runs with when it has options to change.
-  case working(command: String, summary: String?)
-  /// The options card (``IslandModel/card``) of the named command.
-  case choose(command: String)
-  case writing
-  case done
-  case notice(message: String)
-  /// The answer card (``IslandAnswerCard``): a run's answer that could not be written.
-  case answer(command: String, answer: String, note: String?)
-  /// The review card (``IslandReviewCard``, its draft in ``IslandModel/review``): an answer that
-  /// waits for review, with its original, changes, versions and options.
-  case review(command: String, answer: String, note: String?, review: CommandProgressState.Review)
-  /// The answer card's answer went to the clipboard.
-  case copied
-  /// The compose card (``IslandComposeCard``, its draft in ``IslandModel/compose``) of the named
-  /// command, launched with nothing selected; `attach` offers a screenshot or files.
-  case compose(command: String, attach: Bool)
-
-  /// Content of the same kind changes in place; another kind replaces it through a morph.
-  enum Kind {
-    case press, working, choose, writing, done, notice, answer, review, copied, compose
-
-    /// A card (the options card, the answer card, the review card, the compose card), with the
-    /// card's corner rather than a capsule's.
-    var isCard: Bool { [.choose, .answer, .review, .compose].contains(self) }
-  }
-
-  var kind: Kind {
-    switch self {
-    case .press: .press
-    case .working: .working
-    case .choose: .choose
-    case .writing: .writing
-    case .done: .done
-    case .notice: .notice
-    case .answer: .answer
-    case .review: .review
-    case .copied: .copied
-    case .compose: .compose
-    }
-  }
-}
-
 /// One content mounted in the island: laid out where its shape rests and following the shape as
 /// drawn, arriving and leaving on its own presence. A content stays mounted while it leaves, so
 /// the next one arrives into the same shape.
@@ -66,9 +19,22 @@ struct IslandLayer: Identifiable, Equatable {
   /// The card a leaving options card shows, frozen as it left, so it never draws the page that
   /// replaces it while it fades.
   var card: OptionsCard?
+  /// The shell's result card this layer shows, kept while it leaves, so a card forgotten
+  /// meanwhile (``IslandRecording/forgetCard()``, ``IslandLongScreenshot/forgetCard()``) still
+  /// leaves with its content.
+  var shellCard: IslandShellCard?
   /// The content scales with its shape as it follows it; off while direct edits resize it in
   /// place (``IslandChoreography/inPlace``), on again once it leaves or reverses its exit.
   var scales = true
+  /// The content lays out at its shape as drawn rather than at its rest, so a change in place
+  /// moves nothing that stays (an arrived review card paging between versions).
+  var reflows = false
+
+  /// Follows its shape as content does that comes or goes: scaling with it, laid out at rest.
+  mutating func followsShape() {
+    scales = true
+    reflows = false
+  }
 }
 
 /// The island's glass: where its shape rests in the canvas (y down) with its corner, and the
@@ -136,7 +102,7 @@ enum IslandCardEvent: Equatable {
   case filter(String)
 }
 
-/// The grip's drag, in global coordinates.
+/// A move handle's drag (``IslandMoveHandle``: the grip or the grabber), in global coordinates.
 enum IslandDrag: Equatable {
   case began
   case moved
@@ -186,6 +152,10 @@ struct IslandLabels: Equatable {
   var composeOpenSystemSettings = ""
   /// The review card's copy, and the options sheet's Done.
   var review = IslandReviewLabels()
+  /// The screen recording's copy.
+  var recording = IslandRecordingLabels()
+  /// The long screenshot's copy.
+  var longScreenshot = IslandLongScreenshotLabels()
 
   static func current() -> IslandLabels {
     let strings = ShellStrings.shared
@@ -218,7 +188,7 @@ struct IslandLabels: Equatable {
       composeScrollLeft: strings.text(.commandComposeScrollLeft),
       composeScrollRight: strings.text(.commandComposeScrollRight),
       composeOpenSystemSettings: strings.text(.commandComposeOpenSystemSettings),
-      review: .current())
+      review: .current(), recording: .current(), longScreenshot: .current())
   }
 
   /// What VoiceOver reads for a working run of `command`.
@@ -290,13 +260,29 @@ final class IslandModel {
   /// A card has the keyboard: the options card's filter field or the compose card's text field
   /// takes focus.
   var cardIsKey = false
+  /// The content that shows has come to rest in its shape, and its card's field takes the
+  /// keyboard only now: AppKit lays a field editor out once, for the geometry the field has as
+  /// editing begins, which the shape's motion scales until it rests
+  /// (``IslandController/shapeMoves(settling:)``).
+  var arrived = false
   /// Reduce Motion, followed live: no bounce, and content keeps its own size.
   var reduceMotion = false
   var labels = IslandLabels()
+  /// Commands use the default canvas; recording reserves its work area until the island hides.
+  var canvas = IslandMetrics.canvas
+  /// Keep reflow's clock through replacements and exit, until the island is hidden.
+  var layoutMotion = IslandLayoutMotion.fixed
+  /// The recording capsule's live values, written as often as the recording ticks.
+  var recording = RecordingCapsule()
+  /// The recording's result card while one is on the island or kept for showing again.
+  var recordingCard: IslandRecordingCardModel?
+  /// The long screenshot's result card while one is on the island or kept for showing again.
+  var longScreenshotCard: IslandLongScreenshotCardModel?
 
   @ObservationIgnored var act: (IslandAction) -> Void = { _ in }
   @ObservationIgnored var cardEvent: (IslandCardEvent) -> Void = { _ in }
   @ObservationIgnored var composeEvent: (IslandComposeEvent) -> Void = { _ in }
   @ObservationIgnored var reviewEvent: (IslandReviewEvent) -> Void = { _ in }
   @ObservationIgnored var drag: (IslandDrag) -> Void = { _ in }
+  @ObservationIgnored var recordingEvent: (IslandRecordingEvent) -> Void = { _ in }
 }

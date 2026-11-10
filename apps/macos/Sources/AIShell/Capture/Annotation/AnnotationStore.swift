@@ -30,6 +30,9 @@ final class AnnotationStore {
 
   /// Called after anything drawn or the undo state changed.
   var onChange: (() -> Void)?
+  /// Called when an undo or a redo begins, from the toolbar or a key: what was confirmed in place
+  /// may no longer be on screen.
+  var onUndoRedo: (() -> Void)?
 
   /// The burst the last commit belonged to, if any (``commit(_:burst:)``).
   private var burst: UUID?
@@ -67,6 +70,7 @@ final class AnnotationStore {
   /// gives the toolbar the final `canUndo` and `canRedo` (undo greys out at the oldest step).
   func undo() {
     guard undoManager.canUndo else { return }
+    onUndoRedo?()
     preview = nil
     burst = nil
     undoManager.undo()
@@ -76,6 +80,7 @@ final class AnnotationStore {
   /// Like ``undo()``: announced again once the redo has finished.
   func redo() {
     guard undoManager.canRedo else { return }
+    onUndoRedo?()
     preview = nil
     burst = nil
     undoManager.redo()

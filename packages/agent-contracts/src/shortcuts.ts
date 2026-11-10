@@ -14,11 +14,22 @@ import type {
 export const DEFAULT_SHORTCUTS = {
   togglePanel: 'CommandOrControl+Shift+Space',
   captureScreenshot: 'CommandOrControl+Shift+2',
+  recordScreen: 'CommandOrControl+Shift+3',
   newConversation: 'CommandOrControl+N',
   openSettings: 'CommandOrControl+,',
   sendMessage: 'Enter',
   newLine: 'Shift+Enter',
 } as const satisfies ShortcutBindingsWire;
+
+/**
+ * Application actions added after people could already give their keys to something else. An
+ * upgrade never takes keys that are in use, so such an action may have no keys (''): it starts
+ * without them where its default is taken (`withTakenAddedShortcutsReleased`) and registers
+ * nothing until the person records keys for it. The other actions always have keys.
+ */
+export const ADDED_SHORTCUT_ACTIONS = ['recordScreen'] as const satisfies ReadonlyArray<
+  keyof ShortcutBindingsWire
+>;
 
 const MODIFIERS = ['CommandOrControl', 'Command', 'Control', 'Super', 'Alt', 'Shift'];
 const SYMBOL_KEYS = new Set([',', '.', '/', ';', "'", '\\', '[', ']', '`', '-', '=']);
@@ -140,8 +151,9 @@ export function effectiveAccelerator(shortcut: string, platform: string): string
 
 /**
  * Validates application bindings for `platform`: every action present, each accelerator valid
- * (navigation actions need a modifier; only the global ones may be a double-tap), no two pressing
- * the same keys. Answers them canonical.
+ * (navigation actions need a modifier; only the global ones may be a double-tap) or, for an action
+ * an upgrade added (`ADDED_SHORTCUT_ACTIONS`), none, and no two pressing the same keys. Answers
+ * them canonical.
  */
 export function parseShortcutBindings(value: unknown, platform: string): ShortcutBindingsWire {
   if (
@@ -151,6 +163,7 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
     Object.keys(value).length !== Object.keys(DEFAULT_SHORTCUTS).length ||
     !('togglePanel' in value) ||
     !('captureScreenshot' in value) ||
+    !('recordScreen' in value) ||
     !('newConversation' in value) ||
     !('openSettings' in value) ||
     !('sendMessage' in value) ||
@@ -163,12 +176,16 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
   const shortcuts = {
     togglePanel: parseAccelerator(value.togglePanel, true, platform, global),
     captureScreenshot: parseAccelerator(value.captureScreenshot, true, platform, global),
+    recordScreen:
+      value.recordScreen === '' ? '' : parseAccelerator(value.recordScreen, true, platform, global),
     newConversation: parseAccelerator(value.newConversation, true, platform),
     openSettings: parseAccelerator(value.openSettings, true, platform),
     sendMessage: parseAccelerator(value.sendMessage, false, platform),
     newLine: parseAccelerator(value.newLine, false, platform),
   };
-  const effective = Object.values(shortcuts).map((value) => effectiveAccelerator(value, platform));
+  const effective = Object.values(shortcuts)
+    .filter((value) => value !== '')
+    .map((value) => effectiveAccelerator(value, platform));
   if (new Set(effective).size !== effective.length) {
     throw new TypeError('Each action needs a different shortcut.');
   }
@@ -216,6 +233,32 @@ export function commandHoldingShortcut(
 }
 
 /**
+ * `bindings` with each action an upgrade added (`ADDED_SHORTCUT_ACTIONS`) left without keys where
+ * another action or an enabled command's shortcut already presses its keys on `platform`; the same
+ * object when none is. Saves refuse such a collision on both sides, so only an upgrade (the new
+ * action's default) leaves one to release, and the older holder keeps its keys.
+ */
+export function withTakenAddedShortcutsReleased(
+  bindings: ShortcutBindingsWire,
+  commands: ReadonlyArray<ShortcutCommand>,
+  platform: string,
+): ShortcutBindingsWire {
+  let next = bindings;
+  for (const action of ADDED_SHORTCUT_ACTIONS) {
+    const keys = next[action];
+    if (!keys) continue;
+    const pressed = effectiveAccelerator(keys, platform);
+    const byAction = Object.entries(next).some(
+      ([other, value]) =>
+        other !== action && value !== '' && effectiveAccelerator(value, platform) === pressed,
+    );
+    if (byAction || commandHoldingShortcut(keys, commands, platform))
+      next = { ...next, [action]: '' };
+  }
+  return next;
+}
+
+/**
  * What already holds a shortcut: an application action, an enabled command's shortcut (named by
  * the command and the shortcut's own name, empty when the person gave none), or the gesture the
  * selection toolbar's `toggle` mode watches (`selectionToolbarDoubleTap`).
@@ -234,8 +277,9 @@ export type ShortcutHolder =
 
 /**
  * The application action, else the enabled command's shortcut other than `exceptShortcutId`, that
- * presses the same keys as `accelerator` on `platform`; null when neither does. For the selection
- * toolbar's own gesture, and as the shared part of `commandShortcutHolder`.
+ * presses the same keys as `accelerator` on `platform`; null when neither does. An action without
+ * keys holds nothing. For the selection toolbar's own gesture, and as the shared part of
+ * `commandShortcutHolder`.
  */
 export function shortcutHolder(
   accelerator: string,
@@ -248,7 +292,8 @@ export function shortcutHolder(
   for (const [action, value] of Object.entries(appShortcuts) as Array<
     [keyof ShortcutBindingsWire, string]
   >)
-    if (effectiveAccelerator(value, platform) === pressed) return { kind: 'app', action };
+    if (value !== '' && effectiveAccelerator(value, platform) === pressed)
+      return { kind: 'app', action };
   const held = commandHoldingShortcut(accelerator, commands, platform, exceptShortcutId);
   return held
     ? {

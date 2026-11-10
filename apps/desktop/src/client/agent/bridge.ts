@@ -106,6 +106,7 @@ export type AgentEvent =
   | { type: 'snapshot'; snapshot: AgentSnapshot }
   | { type: 'task'; state: TaskState }
   | { type: 'transcript'; patch: TranscriptPatch }
+  | { type: 'transcriptRecovery'; taskId: string; state: 'loading' | 'failed' }
   | { type: 'childTranscript'; patch: ChildTranscriptPatch }
   | { type: 'memory'; snapshot: MemorySnapshot }
   | { type: 'notice'; notice: AgentNotice };
@@ -210,6 +211,11 @@ export interface CommandLaunch {
    * options card when it shows one.
    */
   choose?: true;
+  /**
+   * The screenshot toolbar launched it on the screenshot just taken: a run that copies its answer
+   * runs on the island as well (`startLightCopy`), rather than in the panel.
+   */
+  fromCapture?: true;
 }
 
 export interface AgentBridge {

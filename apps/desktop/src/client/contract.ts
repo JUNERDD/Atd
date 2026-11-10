@@ -11,6 +11,7 @@ import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
 import type { ComputerBridge } from './computer-contract';
 import type { Screenshot } from './agent/screenshot-input';
+import type { CaptureBridge } from './capture-bridge';
 import type { FileRef } from './agent/task-schema';
 import type { NotificationsBridge } from './notifications-contract';
 import type { MiniPanelOpenOn, PanelPlacement, SettingsBridge } from './settings-contract';
@@ -231,11 +232,11 @@ export interface DesktopBridge {
    * preparing a command uses); null when the user cancelled. Rejects with an English message when
    * Screen Recording is not permitted or the import fails.
    */
-  screenshot: () => Promise<Screenshot | null>;
+  captureScreenshotInput: () => Promise<Screenshot | null>;
   /**
    * Reopens an image attachment (`resourceId`) on the capture overlay for more annotation and
    * cropping and imports the result as a new resource (`context` is always null); null when the
-   * user cancelled, which leaves the attachment as it was. Rejects like `screenshot`.
+   * user cancelled, which leaves the attachment as it was. Rejects like `captureScreenshotInput`.
    */
   editScreenshot: (resourceId: string) => Promise<Screenshot | null>;
   /** A stored resource's bytes through the relay (`GET /v1/resources/:id`), typed by its mime. */
@@ -254,10 +255,10 @@ export interface DesktopBridge {
    */
   onEditCommand?: (listener: (command: EditCommand) => void) => () => void;
   /**
-   * The global screenshot shortcut, which the shell hands to the panel page only (absent in the
-   * settings window and in tests); returns the unsubscribe. The page takes the screenshot itself.
+   * The composer's capture toolbar, global capture shortcuts and recording questions, available
+   * on the panel page only (absent in the settings window and in tests).
    */
-  onScreenshotShortcut?: (listener: () => void) => () => void;
+  readonly capture?: CaptureBridge;
   /**
    * The mini panel's New task, which the shell hands to the panel page only, without showing the
    * panel (absent in the settings window and in tests); returns the unsubscribe. The page starts a

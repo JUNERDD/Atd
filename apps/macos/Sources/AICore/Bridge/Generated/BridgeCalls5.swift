@@ -4,8 +4,8 @@
 
 import Foundation
 
-/// Result of the `screenshot.edit` call.
-public enum ScreenshotEditResult: Codable, Equatable, Sendable {
+/// Result of the `screenshot.capture` call.
+public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
   case ok(Ok)
   case notOk(NotOk)
 
@@ -32,11 +32,17 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
     public let file: FileRef
     public let context: FileRef?
     public let capturedAt: String
+    public let launch: Launch?
+    public let target: Target?
 
-    public init(file: FileRef, context: FileRef?, capturedAt: String) {
+    public init(
+      file: FileRef, context: FileRef?, capturedAt: String, launch: Launch?, target: Target?
+    ) {
       self.file = file
       self.context = context
       self.capturedAt = capturedAt
+      self.launch = launch
+      self.target = target
     }
 
     public init(from decoder: any Decoder) throws {
@@ -45,6 +51,8 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
       file = try container.value(.file, FileRef.self)
       context = try container.nullable(.context) { try container.value($0, FileRef.self) }
       capturedAt = try container.string(.capturedAt, maxLength: 64)
+      launch = try container.optional(.launch) { try container.value($0, Launch.self) }
+      target = try container.optional(.target) { try container.value($0, Target.self) }
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -53,6 +61,8 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
       try container.encode(file, forKey: .file)
       try container.encode(context, forKey: .context)
       try container.encode(capturedAt, forKey: .capturedAt)
+      try container.encodeIfPresent(launch, forKey: .launch)
+      try container.encodeIfPresent(target, forKey: .target)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -60,6 +70,148 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
       case file
       case context
       case capturedAt
+      case launch
+      case target
+    }
+
+    public enum Launch: Codable, Equatable, Sendable {
+      case command(Command)
+      case ask(Ask)
+
+      public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: Discriminator.self)
+        switch try container.decode(String.self, forKey: .kind) {
+        case "command": self = try .command(Command(from: decoder))
+        case "ask": self = try .ask(Ask(from: decoder))
+        default:
+          throw DecodingError.dataCorruptedError(
+            forKey: .kind, in: container, debugDescription: "Unknown Launch kind.")
+        }
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        switch self {
+        case .command(let value): try value.encode(to: encoder)
+        case .ask(let value): try value.encode(to: encoder)
+        }
+      }
+
+      private enum Discriminator: String, CodingKey {
+        case kind
+      }
+
+      public struct Command: Codable, Equatable, Sendable {
+        public let id: String
+        public let arguments: CommandArguments?
+        public let intent: Intent?
+
+        public init(id: String, arguments: CommandArguments?, intent: Intent?) {
+          self.id = id
+          self.arguments = arguments
+          self.intent = intent
+        }
+
+        public init(from decoder: any Decoder) throws {
+          let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+          try container.literal(.kind, "command")
+          id = try container.string(.id, minLength: 1, maxLength: 128)
+          arguments = try container.optional(.arguments) {
+            try container.value($0, CommandArguments.self)
+          }
+          intent = try container.optional(.intent) { try container.value($0, Intent.self) }
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+          var container = encoder.container(keyedBy: CodingKeys.self)
+          try container.encode("command", forKey: .kind)
+          try container.encode(id, forKey: .id)
+          try container.encodeIfPresent(arguments, forKey: .arguments)
+          try container.encodeIfPresent(intent, forKey: .intent)
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+          case kind
+          case id
+          case arguments
+          case intent
+        }
+
+        public enum Intent: String, Codable, Equatable, Sendable {
+          case run
+          case choose
+          case edit
+        }
+      }
+
+      public struct Ask: Codable, Equatable, Sendable {
+        public let question: String
+
+        public init(question: String) {
+          self.question = question
+        }
+
+        public init(from decoder: any Decoder) throws {
+          let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+          try container.literal(.kind, "ask")
+          question = try container.string(.question, minLength: 1, maxLength: 100_000)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+          var container = encoder.container(keyedBy: CodingKeys.self)
+          try container.encode("ask", forKey: .kind)
+          try container.encode(question, forKey: .question)
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+          case kind
+          case question
+        }
+      }
+    }
+
+    public struct Target: Codable, Equatable, Sendable {
+      public let id: String
+      public let app: String
+      public let writable: Bool
+      public let selectionKind: SelectionKind?
+
+      public init(id: String, app: String, writable: Bool, selectionKind: SelectionKind?) {
+        self.id = id
+        self.app = app
+        self.writable = writable
+        self.selectionKind = selectionKind
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        id = try container.string(.id, minLength: 1, maxLength: 128)
+        app = try container.string(.app, minLength: 1, maxLength: 255)
+        writable = try container.boolean(.writable)
+        selectionKind = try container.optional(.selectionKind) {
+          try container.value($0, SelectionKind.self)
+        }
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(app, forKey: .app)
+        try container.encode(writable, forKey: .writable)
+        try container.encodeIfPresent(selectionKind, forKey: .selectionKind)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case id
+        case app
+        case writable
+        case selectionKind
+      }
+
+      public enum SelectionKind: String, Codable, Equatable, Sendable {
+        case text
+        case cells
+        case unknown
+      }
     }
   }
 
@@ -90,142 +242,27 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
     public enum Reason: String, Codable, Equatable, Sendable {
       case cancelled
       case notPermitted
+      case recording
+      case longScreenshot
     }
   }
 }
 
-/// Params of the `share.text` call.
-public struct ShareTextParams: Codable, Equatable, Sendable {
-  public let text: String
-  public let anchor: Anchor
+/// Params of the `screenshot.edit` call.
+public struct ScreenshotEditParams: Codable, Equatable, Sendable {
+  public let resourceId: String
 
-  public init(text: String, anchor: Anchor) {
-    self.text = text
-    self.anchor = anchor
+  public init(resourceId: String) {
+    self.resourceId = resourceId
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
-    anchor = try container.value(.anchor, Anchor.self)
+    resourceId = try container.string(
+      .resourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case text
-    case anchor
-  }
-
-  public struct Anchor: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x)
-      y = try container.number(.y)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
+    case resourceId
   }
 }
-
-/// Result of the `share.text` call.
-public typealias ShareTextResult = NativeEmpty
-
-/// Params of the `speech.speak` call.
-public struct SpeechSpeakParams: Codable, Equatable, Sendable {
-  public let text: String
-
-  public init(text: String) {
-    self.text = text
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case text
-  }
-}
-
-/// Result of the `speech.speak` call.
-public typealias SpeechSpeakResult = NativeEmpty
-
-/// Params of the `speech.stop` call.
-public typealias SpeechStopParams = NativeEmpty
-
-/// Result of the `speech.stop` call.
-public typealias SpeechStopResult = NativeEmpty
-
-/// Params of the `link.open` call.
-public struct LinkOpenParams: Codable, Equatable, Sendable {
-  public let url: String
-
-  public init(url: String) {
-    self.url = url
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    url = try container.string(.url, maxLength: 8_192, pattern: "^https?://")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case url
-  }
-}
-
-/// Result of the `link.open` call.
-public typealias LinkOpenResult = NativeEmpty
-
-/// Params of the `artifact` call.
-public struct ArtifactParams: Codable, Equatable, Sendable {
-  public let artifactId: String
-  public let operation: Operation
-
-  public init(artifactId: String, operation: Operation) {
-    self.artifactId = artifactId
-    self.operation = operation
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    artifactId = try container.string(.artifactId, minLength: 1, maxLength: 128)
-    operation = try container.value(.operation, Operation.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case artifactId
-    case operation
-  }
-
-  public enum Operation: String, Codable, Equatable, Sendable {
-    case open
-    case reveal
-    case copyPath
-  }
-}
-
-/// Result of the `artifact` call.
-public typealias ArtifactResult = FileRef
-
-/// Params of the `files.pick` call.
-public typealias FilesPickParams = NativeEmpty

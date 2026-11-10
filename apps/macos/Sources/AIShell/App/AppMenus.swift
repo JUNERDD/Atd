@@ -22,6 +22,9 @@ struct AppMenuActions {
   /// Whether the mini panel shows; both menus show it as the checkable Show Mini Panel item.
   var miniPanelShown: () -> Bool
   var setMiniPanelShown: (Bool) -> Void
+  /// Shows the last screen recording's result card again; nil while there is none to show (no
+  /// recording yet, one running, or its card already up). Read as the status menu opens.
+  var showLastRecording: (() -> Void)?
 }
 
 /// The app's menus.
@@ -69,6 +72,12 @@ enum AppMenus {
       menu.addItem(.separator())
     }
     menu.autoenablesItems = false
+    if let showLastRecording = actions.showLastRecording {
+      menu.addItem(
+        ActionMenuItem(
+          ShellStrings.shared.text(RecordingOrchestrationStringKey.showLast), showLastRecording))
+      menu.addItem(.separator())
+    }
     if let listening = actions.selectionListening() {
       let item = ActionMenuItem(ShellStrings.shared.text(.menuSelectionListening)) {
         actions.setSelectionListening(!listening)
@@ -225,6 +234,6 @@ extension AppMenuActions {
       checkForUpdates: nil,
       restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false },
       selectionListening: { nil }, setSelectionListening: { _ in }, miniPanelShown: { false },
-      setMiniPanelShown: { _ in })
+      setMiniPanelShown: { _ in }, showLastRecording: nil)
   }
 }

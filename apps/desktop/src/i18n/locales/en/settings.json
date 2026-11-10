@@ -477,6 +477,10 @@
         "label": "Take screenshot",
         "description": "Capture the screen and attach it to the composer."
       },
+      "recordScreen": {
+        "label": "Record screen",
+        "description": "Record an area, a window or the whole screen."
+      },
       "newConversation": {
         "label": "New conversation",
         "description": "Start with a clean composer."
@@ -497,6 +501,8 @@
     "capture": {
       "cancelLabel": "Cancel recording {{label}}",
       "changeLabel": "Change {{label}}: {{keys}}",
+      "setLabel": "Record a shortcut for {{label}}",
+      "unset": "Record shortcut",
       "reset": "Reset to default",
       "resetLabel": "Reset {{label}} to default"
     },
@@ -545,7 +551,10 @@
       "shortcutSave": "The shortcut could not be saved.",
       "defaultsRestore": "Default shortcuts could not be restored.",
       "windowPreferenceSave": "The window preference could not be saved.",
-      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut."
+      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut.",
+      "unbound": "This action has no shortcut yet. Record one to use it.",
+      "unboundHeldByAction": "{{keys}} is already used by “{{action}}”, so this action has no shortcut yet. Record other keys for it.",
+      "unboundHeldByCommand": "{{keys}} is already used by the command “{{name}}”, so this action has no shortcut yet. Record other keys for it."
     }
   },
   "extensions": {

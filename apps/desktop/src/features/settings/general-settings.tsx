@@ -74,6 +74,9 @@ export function GeneralSettings({
   const recording = settings.recording !== null;
   const panelFailed = desktopApp && snapshot?.shortcutAvailable === false;
   const screenshotFailed = desktopApp && snapshot?.screenshotShortcutAvailable === false;
+  // Without keys the shortcut registers nothing, so its row says why it has none instead.
+  const recordUnbound = settings.unboundText('recordScreen');
+  const recordFailed = desktopApp && !recordUnbound && snapshot?.recordShortcutAvailable === false;
   const restoring = settings.shortcutBusy === 'all';
   const restoreUnavailable = settings.shortcutBusy !== null || settings.allDefault;
 
@@ -135,10 +138,17 @@ export function GeneralSettings({
                 settings={settings}
                 error={screenshotFailed ? t('shortcuts.errors.register') : undefined}
               />
+              <ShortcutRow
+                action="recordScreen"
+                label={t('shortcuts.actions.recordScreen.label')}
+                description={t('shortcuts.actions.recordScreen.description')}
+                settings={settings}
+                error={recordUnbound || (recordFailed ? t('shortcuts.errors.register') : undefined)}
+              />
             </ItemGroup>
           </Card>
           {/* Only global shortcuts can collide with another app's; an error says it itself. */}
-          {!panelFailed && !screenshotFailed && <ShortcutConflictHint />}
+          {!panelFailed && !screenshotFailed && !recordFailed && <ShortcutConflictHint />}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
           <h3 id="settings-in-app-shortcuts" className="settings-section-title">

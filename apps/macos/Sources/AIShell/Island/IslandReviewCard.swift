@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The review card the island grows into where a command's answer waits for review before it is
 /// written (contract: `commandProgress.show`'s answer with `review`): the answer card's corner,
-/// padding, title row and footer around the original, the answer, an adjust field that always
-/// shows and a row of chips. The title is the command's name (with the value of a lone choice
+/// padding, grabber, title row and footer around the original, the answer, an adjust field that
+/// always shows and a row of chips. The title is the command's name (with the value of a lone choice
 /// offered as chips); the header has, while the next version is being made, a spinner and what is
 /// happening, otherwise a pager once there are several versions, then Regenerate and close. The
 /// original (``IslandReviewSource``) sits above the answer, which shows its changes against it
@@ -14,7 +14,9 @@ import SwiftUI
 /// (``ReviewOptionChips``: a lone short choice's values, else one summary chip that opens the
 /// options sheet) and the command's adjustments; the field's text and everything staged go to the
 /// page together, as one adjustment, from the send button or Return. The footer is the answer
-/// card's, Copy and the writes waiting while a version is pending.
+/// card's, Copy and the writes waiting while a version is pending. Another version changes the
+/// card in place: the answer, chips and title fade across while the count rolls, and the card
+/// keeps its width, its height following the answer (``IslandLayer/reflows``).
 ///
 /// The draft is the model's (``IslandModel/review``); every change goes to the controller as an
 /// ``IslandReviewEvent``. Keys reach the card through its window first
@@ -45,15 +47,18 @@ struct IslandReviewCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      top
-      answerView
-      field.padding(.top, IslandMetrics.sectionGap)
-      if !review.chipRow.isEmpty {
-        chipRow.padding(.top, IslandMetrics.reviewChipsTop)
+      IslandGrabber(model: model)
+      VStack(alignment: .leading, spacing: 0) {
+        top
+        answerView
+        field.padding(.top, IslandMetrics.sectionGap)
+        if !review.chipRow.isEmpty {
+          Self.paged(chipsShown) { chipRow }.padding(.top, IslandMetrics.reviewChipsTop)
+        }
+        footer.padding(.top, IslandMetrics.sectionGap)
       }
-      footer.padding(.top, IslandMetrics.sectionGap)
+      .padding([.horizontal, .bottom], IslandMetrics.cardPadding)
     }
-    .padding(IslandMetrics.cardPadding)
     .frame(
       width: width.map { CGFloat($0) }, height: height.map { CGFloat($0) }, alignment: .topLeading
     )
@@ -87,6 +92,8 @@ struct IslandReviewCard: View {
     let labels = model.labels
     return HStack(spacing: 8) {
       Text(verbatim: title)
+        .contentTransition(.opacity)
+        .animation(.easeOut(duration: Self.fadeIn), value: review.version)
         .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(.secondary)
         .lineLimit(1)
@@ -133,16 +140,20 @@ struct IslandReviewCard: View {
     let labels = model.labels.review
     let side = IslandMetrics.reviewPagerSide
     return HStack(spacing: 0) {
-      IslandIconButton(glyph: IslandIcons.scrollLeft, label: labels.previous, side: side) {
-        model.reviewEvent(.version(review.version - 1))
-      }
+      IslandIconButton(
+        glyph: IslandIcons.scrollLeft, label: labels.previous, tooltip: labels.previous + " ⌘←",
+        side: side
+      ) { model.reviewEvent(.version(review.version - 1)) }
       .disabled(review.version <= 1)
       .opacity(review.version <= 1 ? 0.38 : 1)
       Text(verbatim: "\(review.version) / \(review.count)")
         .font(IslandType.hint).foregroundStyle(.secondary).monospacedDigit().fixedSize()
-      IslandIconButton(glyph: IslandIcons.scrollRight, label: labels.next, side: side) {
-        model.reviewEvent(.version(review.version + 1))
-      }
+        .contentTransition(.numericText(value: Double(review.version)))
+        .animation(.snappy(duration: 0.3), value: review.version)
+      IslandIconButton(
+        glyph: IslandIcons.scrollRight, label: labels.next, tooltip: labels.next + " ⌘→",
+        side: side
+      ) { model.reviewEvent(.version(review.version + 1)) }
       .disabled(review.version >= review.count)
       .opacity(review.version >= review.count ? 0.38 : 1)
     }
@@ -164,7 +175,7 @@ struct IslandReviewCard: View {
     if height == nil {
       text
     } else {
-      IslandFadingScroll(reduceMotion: model.reduceMotion) { text }
+      IslandFadingScroll(reduceMotion: model.reduceMotion) { Self.paged(review.version) { text } }
         .frame(maxHeight: .infinity, alignment: .top)
     }
   }
@@ -204,9 +215,11 @@ struct IslandReviewCard: View {
     .frame(height: IslandMetrics.reviewFieldHeight)
     .background { IslandWash(level: 0.07, shape: Capsule()) }
     .padding(.horizontal, 2)
-    // As the compose card's field: focus once the card is active and its window has the
-    // keyboard, and again when the window takes it back.
-    .onChange(of: active && model.cardIsKey, initial: true) { _, focus in fieldFocused = focus }
+    // As the compose card's field: focus once the card is active and has arrived and its window
+    // has the keyboard, and again when the window takes it back.
+    .onChange(of: active && model.arrived && model.cardIsKey, initial: true) { _, focus in
+      fieldFocused = focus
+    }
   }
 
   /// The option chips, a hairline, then the adjustment chips, wrapping; the chip the keyboard
@@ -250,6 +263,38 @@ struct IslandReviewCard: View {
     }
   }
 
+  /// How long another version's answer, chips and title take to fade in.
+  private static let fadeIn = 0.18
+
+  /// `content` as `shown`, what it shows: when that changes, the last fades out quickly and the
+  /// next fades in in its place just after, so the two barely overlap; when it does not (the
+  /// chips of two versions that ran with the same values), nothing moves.
+  private static func paged(
+    _ shown: some Hashable, @ViewBuilder content: () -> some View
+  ) -> some View {
+    ZStack(alignment: .topLeading) {
+      content()
+        .id(shown)
+        .transition(
+          .asymmetric(
+            insertion: .opacity.animation(.easeOut(duration: fadeIn).delay(0.06)),
+            removal: .opacity.animation(.easeIn(duration: 0.1))))
+    }
+    .animation(.easeOut(duration: fadeIn), value: shown)
+  }
+
+  /// What the chips row shows of the version: values, summary and adjustments, not what the
+  /// person staged on them.
+  private var chipsShown: [String] {
+    review.chipRow.map {
+      switch $0 {
+      case .value(let key, let option): "\(key)=\(option.value)=\(option.label)"
+      case .summary: "summary=" + (review.summary ?? "")
+      case .adjustment(let adjustment): "adjust=" + adjustment
+      }
+    }
+  }
+
   private var footer: IslandResultFooter {
     IslandResultFooter(
       model: model, offer: offer, pending: pending, showsOptionHint: !review.chipRow.isEmpty)
@@ -268,8 +313,10 @@ extension IslandController {
     let card = IslandReviewCard(
       model: model, command: command, answer: String(answer.prefix(limit)), note: note,
       review: review.measured(limit: limit), offer: model.answerOffer)
-    let width = resultCardWidth(
+    let ideal = resultCardWidth(
       ideal: NSHostingView(rootView: card.widthProbe.fixedSize()).fittingSize.width)
+    // Another version never narrows the card it pages in: it keeps the widest it has been.
+    let width = content?.kind == .review ? max(ideal, size?.width ?? 0) : ideal
     let natural = Self.height(of: card, width: width)
     return IslandMeasure(
       size: WindowSize(width: width, height: IslandMetrics.reviewCardHeight(natural: natural)))

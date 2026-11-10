@@ -477,6 +477,10 @@
         "label": "截图",
         "description": "截取屏幕并添加到输入框。"
       },
+      "recordScreen": {
+        "label": "录屏",
+        "description": "录制屏幕上的区域、窗口或整个屏幕。"
+      },
       "newConversation": {
         "label": "新建对话",
         "description": "从空白输入框开始。"
@@ -497,6 +501,8 @@
     "capture": {
       "cancelLabel": "取消录制“{{label}}”",
       "changeLabel": "更改“{{label}}”快捷键：{{keys}}",
+      "setLabel": "为“{{label}}”录制快捷键",
+      "unset": "录制快捷键",
       "reset": "恢复默认",
       "resetLabel": "将“{{label}}”恢复为默认"
     },
@@ -545,7 +551,10 @@
       "shortcutSave": "无法保存快捷键。",
       "defaultsRestore": "无法恢复默认快捷键。",
       "windowPreferenceSave": "无法保存窗口偏好。",
-      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。"
+      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。",
+      "unbound": "此操作还没有快捷键。录制一个即可使用。",
+      "unboundHeldByAction": "{{keys}} 已被“{{action}}”使用，所以此操作还没有快捷键。请为它录制其他按键。",
+      "unboundHeldByCommand": "{{keys}} 已被命令“{{name}}”使用，所以此操作还没有快捷键。请为它录制其他按键。"
     }
   },
   "extensions": {

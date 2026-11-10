@@ -9,6 +9,7 @@
     "deliverArgument": "message",
     "panelShortcutId": "togglePanel",
     "screenshotShortcutId": "captureScreenshot",
+    "recordShortcutId": "recordScreen",
     "maxCaptureLength": 100000,
     "calls": [
       "app.startup",
@@ -40,6 +41,7 @@
       "clipboard.write",
       "screenshot.capture",
       "screenshot.edit",
+      "screenshotToolbar.set",
       "share.text",
       "speech.speak",
       "speech.stop",
@@ -73,7 +75,8 @@
       "accessibility.request",
       "screenRecording.request",
       "apps.pick",
-      "shortcuts.recording"
+      "shortcuts.recording",
+      "recording.answer"
     ],
     "posts": [
       "bridge.ready",
@@ -122,7 +125,10 @@
       "task.queueWithdrawn",
       "commandProgress.action",
       "text.writeOffer",
-      "commandOptions.picked"
+      "commandOptions.picked",
+      "recording.ask",
+      "recording.askStop",
+      "recording.askOpen"
     ]
   },
   "anyOf": [
@@ -1097,9 +1103,42 @@
               "const": "screenshot.capture"
             },
             "params": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["purpose", "mode"],
+                  "properties": {
+                    "purpose": {
+                      "type": "string",
+                      "const": "capture"
+                    },
+                    "mode": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "screenshot"
+                        },
+                        {
+                          "type": "string",
+                          "const": "record"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["purpose"],
+                  "properties": {
+                    "purpose": {
+                      "type": "string",
+                      "const": "image"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "additionalProperties": false
@@ -1129,6 +1168,53 @@
                   "minLength": 1,
                   "maxLength": 128,
                   "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshotToolbar.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["commands"],
+              "properties": {
+                "commands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
                 }
               },
               "additionalProperties": false
@@ -1667,6 +1753,10 @@
                                 },
                                 {
                                   "type": "string",
+                                  "const": "card"
+                                },
+                                {
+                                  "type": "string",
                                   "const": "replaceSelection"
                                 },
                                 {
@@ -1688,6 +1778,10 @@
                                 {
                                   "type": "string",
                                   "const": "panel"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "card"
                                 },
                                 {
                                   "type": "string",
@@ -2204,6 +2298,10 @@
                               },
                               {
                                 "type": "string",
+                                "const": "card"
+                              },
+                              {
+                                "type": "string",
                                 "const": "replaceSelection"
                               },
                               {
@@ -2225,6 +2323,10 @@
                               {
                                 "type": "string",
                                 "const": "panel"
+                              },
+                              {
+                                "type": "string",
+                                "const": "card"
                               },
                               {
                                 "type": "string",
@@ -3026,6 +3128,78 @@
                 },
                 "active": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "recording.answer"
+            },
+            "params": {
+              "type": "object",
+              "required": ["askId", "source", "state", "text"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    },
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    }
+                  ]
+                },
+                "state": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "thinking"
+                    },
+                    {
+                      "type": "string",
+                      "const": "streaming"
+                    },
+                    {
+                      "type": "string",
+                      "const": "done"
+                    },
+                    {
+                      "type": "string",
+                      "const": "stopped"
+                    },
+                    {
+                      "type": "string",
+                      "const": "failed"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
                 }
               },
               "additionalProperties": false
@@ -3958,6 +4132,10 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
@@ -4032,7 +4210,21 @@
             },
             "payload": {
               "type": "object",
-              "properties": {},
+              "required": ["mode"],
+              "properties": {
+                "mode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "record"
+                    }
+                  ]
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -5095,6 +5287,10 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
@@ -5199,6 +5395,10 @@
                             {
                               "type": "string",
                               "const": "panel"
+                            },
+                            {
+                              "type": "string",
+                              "const": "card"
                             },
                             {
                               "type": "string",
@@ -5323,6 +5523,10 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
@@ -5360,6 +5564,142 @@
                     }
                   },
                   "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.ask"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId", "source", "sourceId", "question", "files"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    },
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    }
+                  ]
+                },
+                "sourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100000
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "size", "type"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "type": {
+                        "type": "string",
+                        "maxLength": 100
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.askStop"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.askOpen"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
                 }
               },
               "additionalProperties": false
@@ -5565,6 +5905,10 @@
             },
             {
               "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
               "const": "replaceSelection"
             },
             {
@@ -5611,6 +5955,10 @@
         },
         {
           "type": "string",
+          "const": "card"
+        },
+        {
+          "type": "string",
           "const": "replaceSelection"
         },
         {
@@ -5639,6 +5987,10 @@
             },
             {
               "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
               "const": "replaceSelection"
             },
             {
@@ -5660,6 +6012,10 @@
             {
               "type": "string",
               "const": "panel"
+            },
+            {
+              "type": "string",
+              "const": "card"
             },
             {
               "type": "string",
@@ -6509,9 +6865,42 @@
       "additionalProperties": false
     },
     "ScreenshotCaptureParams": {
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["purpose", "mode"],
+          "properties": {
+            "purpose": {
+              "type": "string",
+              "const": "capture"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "screenshot"
+                },
+                {
+                  "type": "string",
+                  "const": "record"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["purpose"],
+          "properties": {
+            "purpose": {
+              "type": "string",
+              "const": "image"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ScreenshotCaptureResult": {
       "anyOf": [
@@ -6583,6 +6972,148 @@
             "capturedAt": {
               "type": "string",
               "maxLength": 64
+            },
+            "launch": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["kind", "id"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "command"
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "required": ["choices", "toggles"],
+                      "properties": {
+                        "output": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "panel"
+                            },
+                            {
+                              "type": "string",
+                              "const": "card"
+                            },
+                            {
+                              "type": "string",
+                              "const": "replaceSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAfterSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAtCursor"
+                            },
+                            {
+                              "type": "string",
+                              "const": "copy"
+                            }
+                          ]
+                        },
+                        "choices": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "string",
+                              "maxLength": 256
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "toggles": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "intent": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "run"
+                        },
+                        {
+                          "type": "string",
+                          "const": "choose"
+                        },
+                        {
+                          "type": "string",
+                          "const": "edit"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["kind", "question"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "ask"
+                    },
+                    "question": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100000
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "target": {
+              "type": "object",
+              "required": ["id", "app", "writable"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "app": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "writable": {
+                  "type": "boolean"
+                },
+                "selectionKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    {
+                      "type": "string",
+                      "const": "cells"
+                    },
+                    {
+                      "type": "string",
+                      "const": "unknown"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -6604,6 +7135,14 @@
                 {
                   "type": "string",
                   "const": "notPermitted"
+                },
+                {
+                  "type": "string",
+                  "const": "recording"
+                },
+                {
+                  "type": "string",
+                  "const": "longScreenshot"
                 }
               ]
             }
@@ -6723,6 +7262,39 @@
           "additionalProperties": false
         }
       ]
+    },
+    "ScreenshotToolbarSetParams": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotToolbarSetResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
     },
     "ShareTextParams": {
       "type": "object",
@@ -7348,6 +7920,10 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
@@ -7369,6 +7945,10 @@
                         {
                           "type": "string",
                           "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "card"
                         },
                         {
                           "type": "string",
@@ -7900,6 +8480,10 @@
                       },
                       {
                         "type": "string",
+                        "const": "card"
+                      },
+                      {
+                        "type": "string",
                         "const": "replaceSelection"
                       },
                       {
@@ -7921,6 +8505,10 @@
                       {
                         "type": "string",
                         "const": "panel"
+                      },
+                      {
+                        "type": "string",
+                        "const": "card"
                       },
                       {
                         "type": "string",
@@ -8891,6 +9479,64 @@
       "properties": {},
       "additionalProperties": false
     },
+    "RecordingAnswerParams": {
+      "type": "object",
+      "required": ["askId", "source", "state", "text"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "recording"
+            },
+            {
+              "type": "string",
+              "const": "screenshot"
+            }
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "thinking"
+            },
+            {
+              "type": "string",
+              "const": "streaming"
+            },
+            {
+              "type": "string",
+              "const": "done"
+            },
+            {
+              "type": "string",
+              "const": "stopped"
+            },
+            {
+              "type": "string",
+              "const": "failed"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAnswerResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "BridgeReadyPost": {
       "type": "object",
       "properties": {},
@@ -9428,6 +10074,10 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
@@ -9487,7 +10137,21 @@
     },
     "ShortcutScreenshotEvent": {
       "type": "object",
-      "properties": {},
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "record"
+            }
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "ResourcesImportedEvent": {
@@ -10265,6 +10929,10 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
@@ -10372,6 +11040,10 @@
                     },
                     {
                       "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
                       "const": "replaceSelection"
                     },
                     {
@@ -10463,6 +11135,10 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
@@ -10500,6 +11176,97 @@
             }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAskEvent": {
+      "type": "object",
+      "required": ["askId", "source", "sourceId", "question", "files"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "recording"
+            },
+            {
+              "type": "string",
+              "const": "screenshot"
+            }
+          ]
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100000
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size", "type"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAskStopEvent": {
+      "type": "object",
+      "required": ["askId"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAskOpenEvent": {
+      "type": "object",
+      "required": ["askId"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
         }
       },
       "additionalProperties": false

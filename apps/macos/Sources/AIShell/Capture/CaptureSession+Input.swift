@@ -10,6 +10,22 @@ import AppKit
 /// displays still freezing) is dropped here: a press then would commit a selection reaching
 /// displays whose overlays, and so whose canvases, do not exist yet.
 extension CaptureSession: CaptureOverlayDelegate {
+  /// A second screenshot shortcut copies a settled screenshot selection, or the long screenshot
+  /// being captured without its result card. The same copy paths commit open annotation text
+  /// and let ScreenshotTaker own the clipboard claim.
+  func copyFromShortcut() {
+    guard isActive, !isFinished, mode == .screenshot else { return }
+    switch phase {
+    case .selected:
+      if editor?.dismissMenus() == true { return }
+      copy()
+    case .longScreenshot:
+      finishLongScreenshot(copying: true)
+    case .idle, .pressing, .creating, .adjusting:
+      return
+    }
+  }
+
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint) {
     guard isActive else { return }
     pointer = (overlay, point)
@@ -24,14 +40,12 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int) {
-    guard isActive else { return }
+    // An open menu of the record bar takes the presses outside it.
+    guard isActive, accessory?.isModal != true else { return }
     switch phase {
     case .idle:
-      if isTrustRequest(point, on: overlay) {
-        finish(.wantsAccessibility)
-      } else {
-        phase = .pressing(overlay, start: point)
-      }
+      phase = .pressing(overlay, start: point)
+      refreshBars()
     case .selected(let rect):
       // Outside the selection a press does nothing; a right-click starts over instead, so a
       // stray click cannot lose the selection.
@@ -50,7 +64,8 @@ extension CaptureSession: CaptureOverlayDelegate {
         break
       }
       phase = .adjusting(drag)
-    case .pressing, .creating, .adjusting:
+    // The long screenshot's selection is the app's; a press around it does nothing.
+    case .pressing, .creating, .adjusting, .longScreenshot:
       break
     }
   }
@@ -70,8 +85,8 @@ extension CaptureSession: CaptureOverlayDelegate {
       show(rect, handles: true)
       // The loupe shows the pixel being adjusted until the button goes up (`move`).
       showLoupe(at: model.loupePoint(for: drag, rect: rect, pointer: point))
-      editor?.selectionDidChange(rect)
-    case .idle, .selected:
+      follow(rect)
+    case .idle, .selected, .longScreenshot:
       break
     }
   }
@@ -88,23 +103,20 @@ extension CaptureSession: CaptureOverlayDelegate {
       commit(model.rect(for: drag, to: point, square: square))
     case .adjusting(let drag):
       move(to: model.rect(for: drag, to: point))
-    case .idle, .selected:
+    case .idle, .selected, .longScreenshot:
       break
     }
   }
 
-  /// Clears the selection back to idle, unless that would lose annotations (or open text).
+  /// Clears the selection back to idle, unless that would lose annotations (or open text),
+  /// including the screenshot's while record mode shows.
   func overlayRightClicked(_ overlay: CaptureOverlayView) {
-    guard isActive, case .selected = phase, editor?.hasAnnotations != true else { return }
-    editor?.hide()
-    editor = nil
-    interiorClaimed = false
-    for overlay in overlays {
-      overlay.annotationHost.passThrough = nil
-      overlay.annotationHost.scroll = nil
-    }
+    guard isActive, case .selected = phase, editor?.hasAnnotations != true,
+      shotDocument?.isEmpty ?? true, accessory?.isModal != true
+    else { return }
+    unhost()
     phase = .idle
-    refreshHints()
+    refreshBars()
     renderIdle()
     requestHover()
   }
@@ -112,30 +124,56 @@ extension CaptureSession: CaptureOverlayDelegate {
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand) {
     // The wheel walks the chain through here; keys cannot arrive before activation.
     guard isActive else { return }
+    // While the record bar's menu or folder panel is open the keyboard is its; Escape closes it.
+    if accessory?.isModal == true {
+      if command == .cancel { _ = accessory?.dismissMenus() }
+      return
+    }
+    if case .longScreenshot = phase { return performInLongScreenshot(command) }
     switch command {
     case .cancel:
+      // Escape closes an open menu or the ask field before it ends the session.
+      if editor?.dismissMenus() == true || accessory?.dismissMenus() == true { return }
       cancel()
     case .confirm:
+      if editor?.dismissMenus() == true { return }
       confirm()
     case .walk(let step):
       walkChain(step)
     case .selectDisplay:
       selectDisplay(on: overlay)
     // Arrows reach the session whenever the editor did not take them (it takes them only to
-    // nudge a selected annotation).
+    // nudge a selected annotation). A held arrow repeats, so the text is read once it stops.
     case .nudge(let dx, let dy):
       guard case .selected(let rect) = phase else { return }
-      move(to: model.nudged(rect, dx: dx, dy: dy))
+      move(to: model.nudged(rect, dx: dx, dy: dy), readAfter: CaptureTextReader.settleDelay)
     case .resize(let dWidth, let dHeight):
       guard case .selected(let rect) = phase else { return }
-      move(to: model.resized(rect, dWidth: dWidth, dHeight: dHeight))
+      move(
+        to: model.resized(rect, dWidth: dWidth, dHeight: dHeight),
+        readAfter: CaptureTextReader.settleDelay)
     case .resizeLeading(let dx, let dy):
       guard case .selected(let rect) = phase else { return }
-      move(to: model.resizedLeading(rect, dx: dx, dy: dy))
+      move(
+        to: model.resizedLeading(rect, dx: dx, dy: dy), readAfter: CaptureTextReader.settleDelay)
     case .recall:
       recallRegion()
     case .toggleWindowsOnly:
       toggleWindowsOnly()
+    case .mode(let mode):
+      setMode(mode)
+    case .requestAccessibility:
+      requestAccessibility()
+    case .longScreenshot:
+      // Only a screenshot selection takes ⌘↓, beeping while it does not offer the long
+      // screenshot; where the session never offers it, ⌘↓ stays the nudge it was.
+      if offersLongScreenshot, case .selected = phase {
+        startLongScreenshot()
+      } else {
+        self.overlay(overlay, perform: .nudge(dx: 0, dy: 1))
+      }
+    case .toggleAutoScroll:
+      break
     }
   }
 
@@ -146,7 +184,8 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .selected(let rect):
       if let handle = model.handle(at: point, of: rect) { return handle.cursor }
       guard rect.contains(point) else { return .arrow }
-      return interiorClaimed ? nil : .openHand
+      if interiorClaimed { return nil }
+      return .openHand
     case .adjusting(.move):
       return .closedHand
     case .adjusting(.resize(let handle, _)):
@@ -155,6 +194,8 @@ extension CaptureSession: CaptureOverlayDelegate {
       return .arrow
     case .idle, .pressing, .creating:
       return .crosshair
+    case .longScreenshot(let rect):
+      return longScreenshotCursor(at: point, selection: rect)
     }
   }
 
@@ -171,58 +212,52 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .selected(let rect):
       let display = wholeDisplay(holding: rect, fallback: overlay.bounds)
       move(to: rect == display ? model.settled(model.bounds) : display)
-    case .pressing, .creating, .adjusting:
+    case .pressing, .creating, .adjusting, .longScreenshot:
       break
     }
   }
 
-  /// Makes `rect` the selection and hands it to a new annotation editor, whose canvas covers
-  /// every display it reaches. A click on a detected element sets ``CaptureSession/pick`` once
-  /// this returns.
+  /// Makes `rect` the selection and hosts the mode on it (``host(_:)``): the annotation editor,
+  /// whose canvas covers every display it reaches, or the record bar. A click on a detected
+  /// element sets ``CaptureSession/pick`` once this returns.
   func commit(_ rect: CGRect) {
     phase = .selected(rect)
     pick = nil
     interiorClaimed = false
     showLoupe(at: nil)
-    refreshHints()
     show(rect, handles: true)
-    let editor = makeEditor()
-    self.editor = editor
-    editor.onConfirm = { [weak self] in self?.confirm() }
-    editor.onCancel = { [weak self] in self?.cancel() }
-    editor.onCopy = { [weak self] in self?.copy() }
-    editor.onInteriorClaimChange = { [weak self] claimed in
-      guard let self else { return }
-      interiorClaimed = claimed
-      for overlay in overlays { overlay.refreshCursor() }
-    }
-    editor.elementTargets = { [weak self] point in
-      await self?.elementTargets(at: point) ?? []
-    }
-    for overlay in overlays {
-      overlay.annotationHost.passThrough = { [weak self] in self?.ownsPress(at: $0) ?? false }
-      overlay.annotationHost.scroll = { [weak editor] in editor?.scroll($0) ?? false }
-    }
-    editor.show(in: overlays.map(\.annotationHost), selection: rect) { [weak self] in
-      self?.desktop.backdrop(for: $0)
-    }
+    refreshBars()
+    host(rect)
     primaryOverlay(for: rect)?.window?.makeKey()
   }
 
   /// Whether a press at `point` is the session's rather than the editor's (D14): the handles
   /// and the edge band always, the interior until a tool claims it.
-  private func ownsPress(at point: CGPoint) -> Bool {
+  func ownsPress(at point: CGPoint) -> Bool {
     guard case .selected(let rect) = phase else { return false }
     if model.handle(at: point, of: rect) != nil { return true }
     return !interiorClaimed && rect.contains(point)
   }
 
-  private func move(to rect: CGRect) {
+  /// A settled move or resize: the bar takes its place for the new selection first, so the bars
+  /// beside the selection keep clear of where it now is; the text is read again, and the scroll
+  /// area under it looked for, once no other move came for `delay`.
+  private func move(to rect: CGRect, readAfter delay: Duration = .zero) {
     phase = .selected(rect)
     showLoupe(at: nil)
     show(rect, handles: true)
-    editor?.selectionDidChange(rect)
-    refreshHints()
+    refreshBars()
+    follow(rect)
+    readText(in: rect, after: delay)
+    probeScrollArea(in: rect, after: delay)
+  }
+
+  /// The editor's bars or the record bar follow `rect`, clear of the bottom bar where it is and
+  /// of the size label, holding their place while the mouse still drags it.
+  private func follow(_ rect: CGRect) {
+    editor?.keepClear = keepClear(for: rect)
+    editor?.selectionDidChange(rect, dragging: isAdjusting)
+    placeAccessory(beside: rect)
   }
 
   private func showCreating(_ drag: SelectionDrag, at point: CGPoint, square: Bool) {

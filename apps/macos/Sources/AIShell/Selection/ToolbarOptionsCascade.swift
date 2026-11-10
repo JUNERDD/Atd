@@ -2,7 +2,8 @@ import AICore
 import AppKit
 import QuartzCore
 
-/// An entry of one of the selection toolbar's menu panels: a row, or the hairline between rows.
+/// An entry of one of the selection toolbar's menu panels: a row, a note, or the hairline between
+/// rows.
 struct ToolbarMenuItem {
   /// The row's look; nil for a separator.
   var content: ToolbarOptionsRow.Content?
@@ -10,8 +11,33 @@ struct ToolbarMenuItem {
   var submenu: (() -> [ToolbarMenuItem])?
   /// What a click on the row does; a row with a submenu and no action opens the submenu at once.
   var action: (() -> Void)?
+  /// A line that only informs (``note(_:)``).
+  private(set) var isNote = false
+  private(set) var isCompactNote = false
+
+  init(
+    content: ToolbarOptionsRow.Content?, submenu: (() -> [ToolbarMenuItem])? = nil,
+    action: (() -> Void)? = nil
+  ) {
+    self.content = content
+    self.submenu = submenu
+    self.action = action
+  }
 
   static let separator = ToolbarMenuItem(content: nil)
+
+  /// A row that only informs, such as an estimate that follows from the values above it: in the
+  /// secondary colour, without a wash, an action or a submenu (``ToolbarOptionsRow/isNote``). It
+  /// is never the row under the pointer, so the cascade passes over it as over a separator;
+  /// ``ToolbarOptionsCascade/refresh()`` updates its text like a row's.
+  /// `compact` uses an 11 pt single-line title in a 17 pt row; `reserved` then holds whole
+  /// alternative note titles. Ordinary notes keep their standard row layout.
+  static func note(_ content: ToolbarOptionsRow.Content, compact: Bool = false) -> ToolbarMenuItem {
+    var item = ToolbarMenuItem(content: content)
+    item.isNote = true
+    item.isCompactNote = compact
+    return item
+  }
 }
 
 /// The selection toolbar's menus as one cascade (contract: selection toolbar, mouse path): a
@@ -31,6 +57,7 @@ final class ToolbarOptionsCascade: NSObject {
   var onClose: (() -> Void)?
 
   private let hover: SelectionToolbarHover
+  private let level: NSWindow.Level
   private var levels: [Level] = []
   /// One panel per depth, kept while the cascade is open: a submenu that swaps as the pointer
   /// crosses rows reuses its depth's window rather than making a new one each time.
@@ -58,8 +85,10 @@ final class ToolbarOptionsCascade: NSObject {
     }
   }
 
-  init(hover: SelectionToolbarHover) {
+  /// `level` is every panel's window level (``ToolbarWindow/selectionToolbar(level:)``).
+  init(hover: SelectionToolbarHover, level: NSWindow.Level = .popUpMenu) {
     self.hover = hover
+    self.level = level
     super.init()
   }
 
@@ -147,23 +176,32 @@ final class ToolbarOptionsCascade: NSObject {
     place: (WindowSize) -> ScreenRect?
   ) {
     let items = build()
-    guard let width = items.compactMap(\.content).map(ToolbarOptionsRow.width).max() else {
+    let widths = items.compactMap { item in
+      item.content.map { ToolbarOptionsRow.width($0, compactNote: item.isCompactNote) }
+    }
+    guard let width = widths.max() else {
       return
     }
     let rows = items.map { item in
       item.content.map { content in
-        let row = ToolbarOptionsRow(content, width: width, action: #selector(rowClicked))
+        let row = ToolbarOptionsRow(
+          content, width: width, action: #selector(rowClicked), note: item.isNote,
+          compactNote: item.isCompactNote)
         row.target = self
         return row
       }
     }
     let views = rows.map { $0 ?? ToolbarOptionsSeparator(width: width) }
     let rowCount = rows.count(where: { $0 != nil })
-    let size = SelectionToolbarMenuLayout.size(
+    var size = SelectionToolbarMenuLayout.size(
       rowWidth: width, rowCount: rowCount, separatorCount: rows.count - rowCount)
+    let compactCount = items.count(where: \.isCompactNote)
+    size.height -=
+      Double(compactCount)
+      * (SelectionToolbarMenuLayout.rowHeight - Double(ToolbarOptionsRow.compactNoteHeight))
     guard let placed = place(size) else { return }
     let menu = panel(at: levels.count)
-    menu.open(views, content: size, at: placed, label: label)
+    menu.open(views, at: placed, label: label)
     levels.append(Level(menu: menu, build: build, items: items, rows: rows))
   }
 
@@ -188,7 +226,7 @@ final class ToolbarOptionsCascade: NSObject {
   /// The panel for depth `depth`, made the first time the cascade reaches that depth.
   private func panel(at depth: Int) -> SelectionToolbarMenu {
     if panels.indices.contains(depth) { return panels[depth] }
-    let menu = SelectionToolbarMenu(hover: hover)
+    let menu = SelectionToolbarMenu(hover: hover, level: level)
     menu.onPressOutside = { [weak self] point in self?.pressed(at: point) }
     panels.append(menu)
     return menu
