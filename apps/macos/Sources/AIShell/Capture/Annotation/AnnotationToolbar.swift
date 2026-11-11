@@ -40,6 +40,10 @@ final class AnnotationToolbar: NSView {
   private let confirmButton = AnnotationToolbarButton(
     selection: nil, action: #selector(confirmClicked))
   private let bar: AnnotationGlassBar
+  /// The bar's groups after the tools and undo: the long screenshot alone, so its divider comes
+  /// and goes with it, then cancel, copy and confirm.
+  private static let longGroup = 2
+  private static let sessionGroup = 3
   /// The orange dot on the mosaic tool while sensitive text lies unmasked (architecture S6).
   private let mosaicBadge = AnnotationToolBadge()
   private var sensitiveCount = 0
@@ -48,11 +52,9 @@ final class AnnotationToolbar: NSView {
     let actions = [undoButton, redoButton, longButton, cancelButton, copyButton, confirmButton]
     bar = AnnotationGlassBar(
       groups: [
-        [grip] + (tools as [NSView]), [undoButton, redoButton],
-        [longButton, cancelButton, copyButton, confirmButton],
+        [grip] + (tools as [NSView]), [undoButton, redoButton], [longButton],
+        [cancelButton, copyButton, confirmButton],
       ], blending: .withinWindow)
-    // Hidden, it takes no room: the stack detaches it.
-    longButton.isHidden = true
     super.init(frame: frame)
     // Confirm, the bar's primary action, as the ask bar's Send.
     confirmButton.presentation = .primary
@@ -112,8 +114,9 @@ final class AnnotationToolbar: NSView {
   }
 
   /// The long screenshot button as ``longScreenshot`` has it, in the current shell language.
+  /// Hidden, it takes no room: the stack detaches it, and its divider goes with it.
   private func applyLongScreenshot() {
-    longButton.isHidden = longScreenshot == nil
+    bar.setGroup(Self.longGroup, hidden: longScreenshot == nil)
     guard let longScreenshot else { return }
     let strings = ShellStrings.shared
     let name = strings.text(LongScreenshotCaptureStringKey.name)
@@ -137,7 +140,8 @@ final class AnnotationToolbar: NSView {
   /// screenshot, cancel, copy and confirm go, the dividers with them.
   func hideSessionControls() {
     grip.isHidden = true
-    bar.setGroup(2, hidden: true)
+    bar.setGroup(Self.longGroup, hidden: true)
+    bar.setGroup(Self.sessionGroup, hidden: true)
   }
 
   /// Pins the bar's glass dark (``AnnotationGlassBar/pinDark()``).
