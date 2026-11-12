@@ -4,6 +4,14 @@
     "description": "帮助 Agent 按你的习惯工作的偏好。",
     "searchLabel": "搜索记忆",
     "searchPlaceholder": "搜索记忆…",
+    "groups": {
+      "label": "筛选记忆",
+      "all": "全部",
+      "user": "用户画像",
+      "preference": "偏好与事实",
+      "correction": "纠正与经验",
+      "toolQuirk": "工具偏好"
+    },
     "learning": {
       "label": "自动学习",
       "description": "在工作过程中保存稳定的偏好和明确的纠正。关闭后不会保存新的记忆，Agent 仍可使用已保存的记忆。"
@@ -37,8 +45,10 @@
       "delete": "删除",
       "loading": "正在加载记忆…",
       "empty": "还没有保存的记忆。在工作过程中分享你的长期偏好。",
+      "emptyGroup": "这个分组里还没有记忆。",
       "noMatches": "没有与“{{query}}”匹配的记忆",
-      "clearSearch": "清除搜索"
+      "clearSearch": "清除搜索",
+      "showAll": "显示全部记忆"
     },
     "source": {
       "user": "你",
@@ -53,7 +63,7 @@
       "insight": "心得",
       "preference": "偏好",
       "convention": "约定",
-      "tool-quirk": "工具特性"
+      "tool-quirk": "工具偏好"
     },
     "activation": {
       "core": {
