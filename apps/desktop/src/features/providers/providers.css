@@ -154,6 +154,21 @@
   line-height: 16px;
   overflow-wrap: anywhere;
 }
+.provider-transport-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--ata-status-warning);
+  font-size: 12px;
+  line-height: 16px;
+}
+.provider-transport-warning svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
 .model-picker [cmdk-group-heading] {
   overflow: hidden;
   text-overflow: ellipsis;

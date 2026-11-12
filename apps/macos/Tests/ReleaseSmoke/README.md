@@ -81,3 +81,54 @@ and retain its DMG digest; do not substitute a freshly rebuilt app for a failing
 artifact. Replay the named case in the report on that same package and OS image,
 then compare its service/native/crash logs. Live-provider and UI/TCC testing need
 their own approved credentials, permissions and acceptance criteria.
+
+## Promoting PR release candidates
+
+A same-repository PR targeting `main` produces a signed, dual-architecture release
+candidate when `apps/macos/package.json` differs from its base version. The
+`ci/release-candidate-reuse` branch also opts in for integration rehearsal at the
+current version. Ordinary PRs with no version change and fork PRs keep their
+existing checks. The shared `release-candidate.yml` preserves the existing native
+build/DMG jobs, macOS 15 verification and Intel Release smoke checks. Candidate
+production runs alongside quality checks; the complete CI run must pass. Xcode
+timing summaries and passive DMG phase logs are retained for seven days, including
+logs produced by failed runs.
+
+When the version bump reaches `main`, `release.yml` automatically finds the PR
+that introduced that exact commit, then its latest CI run for the PR head. It
+never prefers an older green run over a newer unfinished or failed one. The
+immutable candidate ID and archive digest, source receipt, actual tested merge
+commit and full Git tree are validated before the usual draft/asset checks.
+Different merge SHAs are accepted only for the identical complete repository
+tree; the manifest retains the real build SHA. Formal promotion also requires
+the PR's actual merged commit and the existing branch/version restrictions.
+
+No matching PR/run/candidate, or an expired candidate, is reported explicitly
+and uses the normal complete build and verification path. API errors, failed or
+unfinished CI, wrong source/versions/tree, missing required checks or invalid
+existing artifacts stop promotion. There is no silent fallback from a candidate
+that fails verification. `mode=artifacts` always builds fresh. The optional
+`candidate_run_id` still selects an explicit source; a PR source also takes
+`candidate_pr_number`, while a manual source requires the exact commit.
+
+To validate reuse before merging or publishing, refresh the PR branch from main,
+wait for its complete CI, then dispatch `release.yml` on that branch with
+`mode=rehearsal` and `candidate_pr_number`. The branch and its tested merge commit
+must have the identical full tree; source-run discovery and all artifact checks
+still run. After merging, dispatch on main with only `mode=rehearsal` to validate
+automatic discovery without a PR hint. Both paths reuse the candidate, then
+create, validate and delete a draft. Neither publishes or updates mirrors, and
+neither needs an extra branch. An unmerged PR cannot be formally promoted.
+
+For 0.10.8, review diagnostics and candidate reuse as separate CI PRs before the
+final release PR. After the CI changes are approved and merged, update the
+release branch from main, finish the feature changes and bilingual release post,
+then bump all required versions in the final PR. Wait for the complete candidate
+CI before merging that PR. Any intervening change to main requires refreshing
+and revalidating the candidate's complete tree. Keep candidate generation scoped
+to release preparation rather than every development push.
+
+These changes do not enable the experimental Rust release cache, DMG job split,
+phase timeout supervisor or Swift cache. Measure first candidate production and
+subsequent promotion separately; moving compilation into PR CI does not make
+the complete build-and-release workflow as short as promotion alone.
