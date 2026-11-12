@@ -58,6 +58,7 @@ export function installBridge(extras?: {
     language: 'en',
     appearance: null,
     glowEffects: true,
+    resultMarkdown: true,
     panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND),
     computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
@@ -287,6 +288,7 @@ export function installBridge(extras?: {
         writeSettings({ appearance }),
       ),
       setGlowEffects: vi.fn(async (glowEffects) => writeSettings({ glowEffects })),
+      setResultMarkdown: vi.fn(async (resultMarkdown) => writeSettings({ resultMarkdown })),
       setPanelBackground: vi.fn(async (panelBackground) => writeSettings({ panelBackground })),
       saveShortcuts: vi.fn(async () => settings),
       setComputerVisionModel: vi.fn(async (computerVisionModel) =>

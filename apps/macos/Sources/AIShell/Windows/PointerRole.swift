@@ -20,6 +20,11 @@ enum PointerRole {
   case resizeColumn
   /// A drag trims or resizes along y.
   case resizeRow
+  /// A press places the caret in an enabled text field, or picks recognized text, and a drag
+  /// selects characters (the I-beam). A field in a nonactivating surface names this role on its
+  /// hover region (``FloatingHover``): AppKit's own cursor rects do not reach it while another
+  /// app is active, and the surface would otherwise keep the arrow over it.
+  case text
 
   /// An AppKit button's role: it acts on a click while it is enabled.
   init(button: NSButton) { self = button.isEnabled ? .action : .passive }
@@ -32,6 +37,7 @@ enum PointerRole {
     case .grabbing: .closedHand
     case .resizeColumn: .columnResize
     case .resizeRow: .rowResize
+    case .text: .iBeam
     }
   }
 }

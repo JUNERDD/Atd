@@ -183,6 +183,9 @@ export const DEFAULT_SUMMARY_TITLES = true;
 /** Show the app's decorative glows and shimmering running text until the user turns them off. */
 export const DEFAULT_GLOW_EFFECTS = true;
 
+/** Render Markdown in the floating result cards until the user turns it off. */
+export const DEFAULT_RESULT_MARKDOWN = true;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
@@ -197,6 +200,12 @@ export const UserSettingsSchema = Type.Object(
      * HUD's and mini panel's working light) and shimmers running text (`DEFAULT_GLOW_EFFECTS`).
      */
     glowEffects: Type.Boolean(),
+    /**
+     * Whether the floating result cards (the command island's answer and review cards, and the
+     * capture, recording and long screenshot results) render their text as Markdown rather than
+     * plain text (`DEFAULT_RESULT_MARKDOWN`).
+     */
+    resultMarkdown: Type.Boolean(),
     /** The panel's and floating surfaces' fill and glass (`DEFAULT_PANEL_BACKGROUND`). */
     panelBackground: PanelBackgroundSchema,
     /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
@@ -255,6 +264,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
     glowEffects: Type.Optional(Type.Boolean()),
+    resultMarkdown: Type.Optional(Type.Boolean()),
     panelBackground: Type.Optional(PanelBackgroundSchema),
     summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),

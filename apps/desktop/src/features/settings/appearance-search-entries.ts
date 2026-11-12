@@ -26,8 +26,9 @@ const panelBackgroundEntries = (
 }));
 
 /**
- * General › Appearance, in page order (`appearance-row.tsx`, `panel-background-summary-row.tsx`
- * and `glow-effects-row.tsx`), with the panel background's sub-page after its row.
+ * General › Appearance, in page order (`appearance-row.tsx`, `panel-background-summary-row.tsx`,
+ * `glow-effects-row.tsx` and `result-markdown-row.tsx`), with the panel background's sub-page
+ * after its row.
  */
 export const appearanceSearchEntries: readonly SettingsSearchEntry[] = [
   {
@@ -54,5 +55,13 @@ export const appearanceSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'shortcuts.glowEffects.title',
     description: 'shortcuts.glowEffects.description',
     keywords: 'search.keywords.glowEffects',
+  },
+  {
+    id: 'appearance-result-markdown',
+    section: 'general',
+    anchor: 'settings-result-markdown',
+    label: 'shortcuts.resultMarkdown.title',
+    description: 'shortcuts.resultMarkdown.description',
+    keywords: 'search.keywords.resultMarkdown',
   },
 ];

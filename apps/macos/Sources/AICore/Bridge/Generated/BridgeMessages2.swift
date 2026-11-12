@@ -155,6 +155,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         post = try .appearanceSet(container.value(.params, AppearanceSetPost.self))
       case "glowEffects.set":
         post = try .glowEffectsSet(container.value(.params, GlowEffectsSetPost.self))
+      case "resultMarkdown.set":
+        post = try .resultMarkdownSet(container.value(.params, ResultMarkdownSetPost.self))
       case "panelBackground.set":
         post = try .panelBackgroundSet(container.value(.params, PanelBackgroundSetPost.self))
       case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))

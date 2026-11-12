@@ -66,6 +66,7 @@
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "appearance": "theme appearance color scheme light dark mode night day system automatic follow",
       "glowEffects": "glow glows light lighting effect effects shimmer shine sparkle highlight animation motion flowing working decorative visual",
+      "resultMarkdown": "markdown format formatting rich text render headings lists code plain text result card island answer",
       "viewInitiative": "view views interactive ui widget window card chart form dashboard visual show display agent proactive proactively balanced request ask unprompted automatic conversation chat",
       "summaryTitles": "summary summarize title titles name naming automatic conversation chat",
       "nextSteps": "suggest suggestion suggestions next steps follow-up followups follow up continue task automation idea after reply finish conversation chat",
@@ -424,6 +425,11 @@
       "title": "Glow effects",
       "description": "Show the flowing light while a reply is on its way, the glow around running commands and the mini panel, and shimmering progress text.",
       "saveFailed": "The glow effects setting could not be saved."
+    },
+    "resultMarkdown": {
+      "title": "Markdown in results",
+      "description": "Format answers on floating result cards — the command island and capture, recording and long screenshot results — with headings, lists and code. Turn off to show plain text.",
+      "saveFailed": "The Markdown in results setting could not be saved."
     },
     "summaryTitles": {
       "title": "Summary titles",

@@ -12,6 +12,7 @@ import { NotificationSettings } from './notification-settings';
 import { PanelBackgroundPage } from './panel-background-page';
 import { PanelBackgroundSummaryRow } from './panel-background-summary-row';
 import { PanelPlacementRow } from './panel-placement-row';
+import { ResultMarkdownRow } from './result-markdown-row';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
 import type { SettingsPageTarget, SettingsSearchPage } from './settings-navigation';
@@ -99,8 +100,8 @@ export function GeneralSettings({
       <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
         {import.meta.env.DEV && <DevelopmentSyncSettings />}
-        {/* The color scheme, panel background and glows are the desktop app's: the shell mirrors
-            them onto its windows. */}
+        {/* The color scheme, panel background, glows and result Markdown are the desktop app's:
+            the shell mirrors them onto its windows. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-appearance-group">
             <h3 id="settings-appearance-group" className="settings-section-title">
@@ -114,6 +115,7 @@ export function GeneralSettings({
                   onOpen={() => history.open(PANEL_BACKGROUND)}
                 />
                 <GlowEffectsRow snapshot={snapshot} />
+                <ResultMarkdownRow snapshot={snapshot} />
               </ItemGroup>
             </Card>
           </section>

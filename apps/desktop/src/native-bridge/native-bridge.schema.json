@@ -83,6 +83,7 @@
       "language.set",
       "appearance.set",
       "glowEffects.set",
+      "resultMarkdown.set",
       "panelBackground.set",
       "typing.set",
       "window.dragRegions",
@@ -3313,6 +3314,31 @@
             "method": {
               "type": "string",
               "const": "glowEffects.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["enabled"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "resultMarkdown.set"
             },
             "params": {
               "type": "object",
@@ -9588,6 +9614,16 @@
       "additionalProperties": false
     },
     "GlowEffectsSetPost": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResultMarkdownSetPost": {
       "type": "object",
       "required": ["enabled"],
       "properties": {

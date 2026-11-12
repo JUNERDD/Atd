@@ -40,6 +40,11 @@ let package = Package(
     // the private stdio MCP connection to the computer-use browser worker
     // (Computer/Engines/Browser).
     .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.11.0"),
+    // Apple's CommonMark/GFM parser (Apache-2.0 with the Runtime Library Exception,
+    // licenses/swift-markdown-LICENSE and -NOTICE; its cmark-gfm is BSD-2-Clause,
+    // licenses/swift-cmark-LICENSE): the result cards' Markdown (Island/ResultText), drawn by the
+    // shell's own TextKit renderer.
+    .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.9.0"),
   ],
   targets: [
     // The frozen computer-use driver protocol: request/response/event Codable unions, the
@@ -69,6 +74,7 @@ let package = Package(
         "AICore", "AIRelay", "AIWidgetModel", "AIWidgetRender",
         .product(name: "Sparkle", package: "Sparkle"),
         .product(name: "MCP", package: "swift-sdk"),
+        .product(name: "Markdown", package: "swift-markdown"),
       ],
       swiftSettings: approachableConcurrency),
     // The renderer relay, virtual socket pipe, control stream and service access: Foundation,

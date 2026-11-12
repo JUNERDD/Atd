@@ -76,6 +76,7 @@ export {
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   SELECTION_TOOLBAR_ACTIVATIONS,
@@ -146,6 +147,11 @@ export interface SettingsSnapshot {
    * shell's surfaces alike; the service's default until it loads.
    */
   glowEffects: boolean;
+  /**
+   * Whether the shell's floating result cards render Markdown rather than plain text; the
+   * service's default until it loads.
+   */
+  resultMarkdown: boolean;
   /** The panel's and floating surfaces' fill and glass; the service's default until it loads. */
   panelBackground: PanelBackground;
   /** Null reads screens with the task model; a selection uses a separate image model. */
@@ -267,6 +273,8 @@ export interface SettingsBridge {
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
   /** Shows or leaves out the decorative glows and the running-text shimmer everywhere. */
   setGlowEffects: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Renders Markdown on the floating result cards, or shows their text plain. */
+  setResultMarkdown: (enabled: boolean) => Promise<SettingsSnapshot>;
   /** Replaces the whole panel background setting. */
   setPanelBackground: (background: PanelBackground) => Promise<SettingsSnapshot>;
   setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;

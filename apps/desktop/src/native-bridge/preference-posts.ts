@@ -49,6 +49,13 @@ export const NativePreferencePosts = {
    */
   'glowEffects.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
   /**
+   * Whether the shell's floating result cards (the command island's answer and review cards, and
+   * the capture, recording and long screenshot results) render Markdown or show plain text
+   * (`resultMarkdown`). Swift keeps it and restores the last one at launch, rendering Markdown
+   * until the first push.
+   */
+  'resultMarkdown.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
+  /**
    * The panel background for the shell's own surfaces: the floating glass's fill per appearance
    * (`GlassSurface`), the Liquid Glass variant of the panel's, the Settings window's and the
    * floating surfaces' glass, and its blur and edge refraction relative to the system's, as

@@ -155,27 +155,6 @@ struct IslandAnswerNote: View {
   }
 }
 
-/// The answer: the label type at regular weight in the label colour, wrapping, selectable.
-struct IslandAnswerText: View {
-  let text: String
-
-  var body: some View {
-    Text(verbatim: text)
-      .font(IslandType.answer)
-      .foregroundStyle(.primary)
-      .textSelection(.enabled)
-      .fixedSize(horizontal: false, vertical: true)
-      .padding(.horizontal, IslandMetrics.rowPadding)
-      .frame(maxWidth: IslandMetrics.resultTextWidth, alignment: .leading)
-      .frame(maxWidth: .infinity, alignment: .leading)
-  }
-}
-
-extension IslandType {
-  /// The answer card's answer: the label size at regular weight.
-  static let answer = Font.system(size: 13)
-}
-
 extension IslandController {
   /// The answer card's rest size: as wide as its widest part (title, note, the answer's longest
   /// line, footer) within ``resultCardWidth(ideal:)``, and as tall as its note and its

@@ -76,6 +76,24 @@ public struct GlowEffectsSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `resultMarkdown.set` post.
+public struct ResultMarkdownSetPost: Codable, Equatable, Sendable {
+  public let enabled: Bool
+
+  public init(enabled: Bool) {
+    self.enabled = enabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    enabled = try container.boolean(.enabled)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case enabled
+  }
+}
+
 /// Params of the `panelBackground.set` post.
 public struct PanelBackgroundSetPost: Codable, Equatable, Sendable {
   public let dark: Dark
@@ -207,52 +225,5 @@ public struct TypingSetPost: Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case typing
     case animation
-  }
-}
-
-/// Params of the `window.dragRegions` post.
-public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
-  public let rects: [Rect]
-
-  public init(rects: [Rect]) {
-    self.rects = rects
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rects = try container.array(.rects, of: Rect.self, maxItems: 64)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rects
-  }
-
-  public struct Rect: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x)
-      y = try container.number(.y)
-      width = try container.number(.width)
-      height = try container.number(.height)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
-    }
   }
 }

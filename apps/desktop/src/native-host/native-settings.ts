@@ -6,6 +6,7 @@ import {
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -108,6 +109,7 @@ export function nativeSettings(
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
       glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
+      resultMarkdown: settings?.resultMarkdown ?? DEFAULT_RESULT_MARKDOWN,
       panelBackground: structuredClone(settings?.panelBackground ?? DEFAULT_PANEL_BACKGROUND),
       computerVisionModel: settings?.computerVisionModel ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
@@ -230,6 +232,7 @@ export function nativeSettings(
       return write({ appearance });
     },
     setGlowEffects: (glowEffects) => write({ glowEffects }),
+    setResultMarkdown: (resultMarkdown) => write({ resultMarkdown }),
     setPanelBackground: (panelBackground) => write({ panelBackground }),
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
     setComputerVisionModel: (computerVisionModel) => write({ computerVisionModel }),

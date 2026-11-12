@@ -4,6 +4,7 @@ import {
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -16,19 +17,29 @@ import {
  * stores every field.
  */
 export function upgradeSettingsFile(raw: unknown): unknown {
-  return withAddedPanelBackground(
-    withAddedTaskPreferences(
-      withAddedVisionModel(
-        withAddedAppearance(
-          withAddedCommandTypingAnimation(
-            withAddedCommandTyping(
-              withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+  return withAddedResultMarkdown(
+    withAddedPanelBackground(
+      withAddedTaskPreferences(
+        withAddedVisionModel(
+          withAddedAppearance(
+            withAddedCommandTypingAnimation(
+              withAddedCommandTyping(
+                withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+              ),
             ),
           ),
         ),
       ),
     ),
   );
+}
+
+/** A file written before the result Markdown setting existed renders the result cards' Markdown. */
+function withAddedResultMarkdown(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return { ...file, settings: { resultMarkdown: DEFAULT_RESULT_MARKDOWN, ...settings } };
 }
 
 /** A file written before the panel background setting existed takes the measured recipe. */
