@@ -31,6 +31,9 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { MACHO_ARCHS, nativeHostArch } from './arch.mjs';
 import { invalidateDevBuild } from './dev-cache.mjs';
+import { configureSigning } from './signing/config.mjs';
+import { signApp } from './signing/sign-app.mjs';
+import { checkUpgradeCompatibility } from './signing/upgrade-compat.mjs';
 import { configureDevelopmentSigning } from './development-signing.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -155,6 +158,7 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
+const releaseSigning = configureSigning(options.configuration);
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
 if (options.configuration === 'Debug') {
@@ -168,3 +172,9 @@ if (options.configuration === 'Debug') {
 run('xcodegen', ['generate', '--quiet']);
 pinPackages();
 run('xcodebuild', args);
+
+if (options.configuration === 'Release') {
+  const app = path.join(packageRoot, 'DerivedData/Build/Products/Release/Atd.app');
+  checkUpgradeCompatibility(app);
+  if (releaseSigning) await signApp(app, releaseSigning);
+}

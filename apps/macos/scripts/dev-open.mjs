@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDevCache } from './dev-cache.mjs';
+import { configureSigning } from './signing/config.mjs';
 import { installDevCopy } from './dev-install.mjs';
 import { startDevApp } from './dev-launch.mjs';
 import { lockNativeDev, runningAppPid, startChild } from './dev-process.mjs';
@@ -60,6 +61,7 @@ if (process.platform !== 'darwin') {
 } else {
   try {
     unlock = lockNativeDev();
+    configureSigning('Debug');
     configureDevelopmentSigning(log);
     cache = await createDevCache({
       packageRoot,

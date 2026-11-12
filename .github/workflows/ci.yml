@@ -238,9 +238,9 @@ jobs:
           rustup toolchain install
           cargo --version
       - run: pnpm install --frozen-lockfile
-      # With no AI_CODE_SIGN_IDENTITY, project.yml signs ad hoc; build.mjs targets the host (x64).
+      # Explicit ad hoc signing is reserved for this unsigned packaging rehearsal.
       - name: Build the Release app
-        run: pnpm --filter @atd/macos build:release
+        run: AI_CODE_SIGN_IDENTITY=- pnpm --filter @atd/macos build:release
       - name: Verify the app
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app

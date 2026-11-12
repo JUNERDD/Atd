@@ -52,6 +52,14 @@ paths = ['''(^|/)apps/macos/project\.yml$''']
 regexTarget = "line"
 regexes = ['''^\s*SUPublicEDKey: [A-Za-z0-9+/]{43}=$''']
 
+[[allowlists]]
+description = "Exact public EdDSA key shipped to existing Atd users, pinned by the upgrade gate"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/macos/scripts/signing/upgrade-compat\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^ZkMCOa3sWdgMqszOe6hWN78I1eh77SzbSaghs2iy6lU=$''']
+
 [[rules]]
 id = "private-figma-file"
 description = "Keep design file URLs in ignored local project context"
