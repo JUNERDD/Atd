@@ -172,8 +172,9 @@ The 0.11.0 images are in `project/4171:512653`, in the
 `W · Website · Blog · 0.11.0 images (2026-11-12)` section (`4171:512654`–`4171:512661`). The four
 scenes cover screen recording review and questions, scrolling long screenshots, running commands on
 screenshot text, and Markdown in floating result cards, with Chinese and English editions side by
-side over the Tahoe Beach Dusk backdrop and handwritten notes, exported at 1440 × 900 (1x) as WebP
-at quality 85.
+side over Nathan Anderson's _Red sunset on a mountain_ backdrop
+([Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Red_sunset_on_a_mountain_(Unsplash).jpg>),
+CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as WebP at quality 85.
 
 ### Design
 

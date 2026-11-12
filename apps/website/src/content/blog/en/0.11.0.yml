@@ -13,7 +13,7 @@ highlights:
       - **Steps Atd Will Read** — inspect detected clicks, keystrokes, screen changes, and on-device narration; the video file itself is not sent to the model.
       - **Ask or share** — ask a question right on the card, or save, copy, or choose **Attach to Conversation**.
     image: /media/blog/0.11.0/screen-recording.en.webp
-    alt: The Screen Recording result card over the lake backdrop, with a video preview on the left, timestamped actions under Steps Atd Will Read on the right, a trimmed filmstrip timeline, and quick question chips, with a handwritten arrow pointing to the card.
+    alt: The Screen Recording result card over a dusk mountain ridge backdrop, with a video preview on the left, timestamped actions under Steps Atd Will Read on the right, a trimmed filmstrip timeline, and quick question chips, with a handwritten arrow pointing to the card.
   - title: Long screenshots for scrolling pages
     body: |-
       Select a scrollable area on a display and click **Long screenshot** on the toolbar, or press `⌘↓`. Scroll through the page yourself or press `Space` for **Auto-scroll** while Atd stitches the selection live alongside a preview strip. Press `↩` to open the **Long Screenshot** card, where you can trim the top and bottom, inspect **What Atd Will Read** page by page, cover sensitive info, annotate in full-screen preview, ask about the capture, or copy or attach it.
@@ -38,7 +38,7 @@ highlights:
 
       Any command can now also set its result to **Show in a card**, keeping explanations, summaries, and translations in a floating card over the app you ran them from, ready to copy, insert, or open in Atd without bringing up the main panel.
     image: /media/blog/0.11.0/markdown-result-cards.en.webp
-    alt: A floating Summarize answer card over a release-notes window on the lake backdrop, rendering formatted headings, inline code, a bulleted list, a code block, and a three-column rollout table, with a handwritten arrow pointing to the card.
+    alt: A floating Summarize answer card over a release-notes window on a dusk mountain ridge backdrop, rendering formatted headings, inline code, a bulleted list, a code block, and a three-column rollout table, with a handwritten arrow pointing to the card.
 improvements:
   - text: After updating to a new stable version, a **Release notes** button in the panel header — and **View release notes** in **Settings › About** — opens that release's notes in your language.
   - text: '**Panel, capture, and command shortcuts** now respond right away before keys are released or background selection reads finish, and screen recordings prepare during the countdown so capture starts without a pause.'
