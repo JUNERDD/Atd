@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import { needsInput } from '../../client/agent/command-arguments';
 import { showErrorToast } from '../../components/toast-store';
@@ -14,7 +14,8 @@ import { showPanel } from './use-panel-window';
 /**
  * The global launch channel (`AgentBridge.onLaunch`): command shortcut presses, the settings
  * window's runs and the native selection toolbar over other apps. A launch that runs as-is never
- * shows the command input: `submit` starts its task, which the panel then shows. Any other launch,
+ * shows the command input: `submit` opens its starting conversation at once and sends its run,
+ * revealing the panel immediately before the service answers. Any other launch,
  * and a run that cannot start (with its failure), shows the command's input page (`showInput`).
  * Either way the panel is revealed once the launched view is on screen. A light launch (one that
  * runs as-is and whose answer lands in or over the app it ran from: written back, or on the
@@ -34,27 +35,34 @@ export function useCommandLaunch({
   showInput,
   openTask,
 }: {
-  submit: (launched: PreparedCommand) => Promise<TaskDetail | null>;
+  submit: (launched: PreparedCommand, onStart?: () => void) => Promise<TaskDetail | null>;
   showInput: (prepared: PreparedCommand) => void;
   openTask: (taskId: string) => void;
 }): void {
   useCommandResults();
-  const [autoRun, setAutoRun] = useState<PreparedCommand | null>(null);
   const [revealCount, setRevealCount] = useState(0);
-  useLightCommands({
-    openTask,
-    showInput,
-    reveal: () => setRevealCount((count) => count + 1),
-    run: setAutoRun,
-  });
   // The panel as of the latest commit: a launch arrives, and a run settles, after renders the
   // press did not see.
   const latest = useRef({ submit, showInput });
   useLayoutEffect(() => {
     latest.current = { submit, showInput };
   });
-  // The reveal counter is raised together with the launched view, so the commit that reveals the
-  // panel already renders that view.
+  // `submit` opens the starting task view synchronously and calls `reveal` before awaiting the
+  // service, so the commit that reveals the panel already renders that view with no HTTP wait.
+  const runInPanel = useCallback((prepared: PreparedCommand) => {
+    const reveal = () => setRevealCount((count) => count + 1);
+    void latest.current.submit(prepared, reveal).catch((error: unknown) => {
+      latest.current.showInput(prepared);
+      showErrorToast(error);
+      reveal();
+    });
+  }, []);
+  useLightCommands({
+    openTask,
+    showInput,
+    reveal: () => setRevealCount((count) => count + 1),
+    run: runInPanel,
+  });
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
@@ -88,27 +96,13 @@ export function useCommandLaunch({
         }
       }
       if (run) {
-        setAutoRun(prepared);
+        runInPanel(prepared);
         return;
       }
       latest.current.showInput(prepared);
       setRevealCount((count) => count + 1);
     });
-  }, []);
-  // Every launch is a fresh object, so this runs exactly once per press.
-  useEffect(() => {
-    if (!autoRun) return;
-    void latest.current
-      .submit(autoRun)
-      .then((detail) => {
-        if (detail) setRevealCount((count) => count + 1);
-      })
-      .catch((error: unknown) => {
-        latest.current.showInput(autoRun);
-        showErrorToast(error);
-        setRevealCount((count) => count + 1);
-      });
-  }, [autoRun]);
+  }, [runInPanel]);
   useEffect(() => {
     if (revealCount) void showPanel();
   }, [revealCount]);

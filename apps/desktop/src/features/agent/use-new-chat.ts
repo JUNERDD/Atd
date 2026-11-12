@@ -14,9 +14,9 @@ const TURN_ARRIVE = 'turn-arrive';
  * that send opens. Follow-ups, other conversations, and runs opened from the task history are not
  * new chats. One motion carries it: the message is captured as the send starts (`depart`,
  * `MessageFlight`) and hands over to its arriving bubble once the conversation shows, while the
- * welcome dissolves into the whole conversation on one timeline. A message opens its conversation
- * in the render that sends it, before the service creates the task (`unsaved`); a command launched
- * from the welcome opens its own once the service answers.
+ * welcome dissolves into the whole conversation on one timeline. A message or launched command
+ * opens its conversation in the render that sends it, before the service creates the task
+ * (`unsaved`); when a command run creates its task under a service-picked id, the chat follows it.
  *
  * - `welcome`: the welcome stays visible but inert while a command's send is out (`pending`), then
  *   stays mounted through the shared dissolve into the conversation it opened (`toChat`).
@@ -52,6 +52,8 @@ export function useNewChat({
   covered: boolean;
 }) {
   const [sendingNewChat, setSendingNewChat] = useState(false);
+  /** The unsaved chat whose first run is in flight; its server id may differ once accepted. */
+  const [unsavedChat, setUnsavedChat] = useState<string | null>(null);
   /** The task the latest new chat opened. */
   const [chat, setChat] = useState<string | null>(null);
   /** The latest new chat whose first output has already appeared. */
@@ -61,12 +63,20 @@ export function useNewChat({
   const [flight, setFlight] = useState<Flight | null>(null);
   const [sourceHidden, setSourceHidden] = useState(false);
   if (sending && view === 'new' && !sendingNewChat) setSendingNewChat(true);
-  // A message opens its new chat as it is sent, in the render that leaves the welcome.
+  // A message or launched command opens its new chat as it is sent, before the service creates it.
   const opening = unsaved && view === 'task' ? taskId : null;
   if (opening !== null && opening !== chat) {
     setChat(opening);
     setEntering(opening);
     if (flight) setFlight({ ...flight, outcome: 'opened' });
+  }
+  if (opening !== null && sending && unsavedChat !== opening) setUnsavedChat(opening);
+  if (unsavedChat !== null && !unsaved) {
+    setUnsavedChat(null);
+    if (!sending && view === 'task' && taskId !== null && chat === unsavedChat && taskId !== chat) {
+      setChat(taskId);
+      if (entering === unsavedChat) setEntering(taskId);
+    }
   }
   if (sendingNewChat && !sending) {
     const opened = view === 'task' ? taskId : null;
