@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ScreenshotTextFollowUpSchema } from './capture-answer.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import {
@@ -64,6 +65,12 @@ export const SubmitTaskRequestSchema = Type.Object(
      * keeps the task's last run's bindings (never an automation's grant), else no computer use.
      */
     computer: Type.Optional(ComputerRunRequestSchema),
+    /**
+     * A follow-up that makes a new version of a screenshot-text run's answer
+     * (`ScreenshotTextFollowUp`): the run is told that answer's format as hidden instructions, as
+     * the run it follows was. Requires an existing task (`taskId`); absent for every other run.
+     */
+    screenshotText: Type.Optional(ScreenshotTextFollowUpSchema),
   },
   { additionalProperties: false },
 );

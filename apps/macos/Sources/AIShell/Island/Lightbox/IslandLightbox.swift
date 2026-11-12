@@ -24,6 +24,7 @@ final class IslandLightbox {
   /// Bumped by every open and close, so a step scheduled for one never runs for the next.
   private var generation = 0
   private var screenObserver: NSObjectProtocol?
+  private let keyboard = KeyboardHandoff()
 
   init() {
     model.onClose = { [weak self] in self?.close() }
@@ -43,6 +44,7 @@ final class IslandLightbox {
     content make: (IslandLightboxModel) -> any IslandLightboxContent
   ) {
     guard content == nil else { return }
+    keyboard.cancel()
     generation += 1
     let generation = generation
     let frame = screen.frame
@@ -59,7 +61,10 @@ final class IslandLightbox {
     host?.rootView = IslandLightboxRoot(model: model, content: content.view)
     window.setFrame(frame, display: false)
     window.orderFrontRegardless()
-    window.makeKey()
+    keyboard.perform { [weak self, weak window] in
+      guard let self, self.generation == generation, let window, window.isVisible else { return }
+      window.makeKey()
+    }
     observeScreens()
     // The first frame stands the media on the card's; the next one moves it.
     DispatchQueue.main.async { [weak self] in
@@ -82,6 +87,7 @@ final class IslandLightbox {
   /// from), or at once without `animated` (the card left the island).
   func close(animated: Bool = true, origin: CGRect? = nil) {
     guard let content, model.phase != .leaving || !animated else { return }
+    keyboard.cancel()
     generation += 1
     let generation = generation
     content.willClose()
@@ -105,12 +111,18 @@ final class IslandLightbox {
   /// The window goes, its content with it, and the keyboard goes back to the card.
   private func finish() {
     generation += 1
+    let returnsKeyboard = window?.isKeyWindow == true
     window?.orderOut(nil)
     host?.rootView = IslandLightboxRoot(model: model, content: AnyView(EmptyView()))
     content = nil
     if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
     screenObserver = nil
-    if let returnKey, returnKey.isVisible, returnKey.canBecomeKey { returnKey.makeKey() }
+    if returnsKeyboard, let returnKey {
+      keyboard.perform { [weak returnKey] in
+        guard let returnKey, returnKey.isVisible, returnKey.canBecomeKey else { return }
+        returnKey.makeKey()
+      }
+    }
     returnKey = nil
   }
 
@@ -146,7 +158,10 @@ final class IslandLightbox {
     host.sizingOptions = []
     let window = IslandLightboxWindow(content: host)
     window.onKeyDown = { [weak self] in self?.key($0) ?? false }
+    window.onKeyUp = { [weak self] in self?.content?.keyUp($0) ?? false }
+    window.onFlagsChanged = { [weak self] in self?.content?.flagsChanged($0) }
     window.onKeyEquivalent = { [weak self] in self?.content?.keyEquivalent($0) ?? false }
+    window.onKeyboardLost = { [weak self] in self?.content?.keyboardLost() }
     self.window = window
     self.host = host
     return window

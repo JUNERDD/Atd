@@ -145,3 +145,92 @@ public struct RecordingAskOpenEvent: Codable, Equatable, Sendable {
     case askId
   }
 }
+
+/// Payload of the `captureText.run` event.
+public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
+  public let runId: String
+  public let surface: Surface
+  public let commandId: String
+  public let arguments: CommandArguments?
+  public let scope: Scope
+  public let paragraphs: [Paragraph]
+  public let files: [FileRef]
+
+  public init(
+    runId: String, surface: Surface, commandId: String, arguments: CommandArguments?, scope: Scope,
+    paragraphs: [Paragraph], files: [FileRef]
+  ) {
+    self.runId = runId
+    self.surface = surface
+    self.commandId = commandId
+    self.arguments = arguments
+    self.scope = scope
+    self.paragraphs = paragraphs
+    self.files = files
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    runId = try container.string(.runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    surface = try container.value(.surface, Surface.self)
+    commandId = try container.string(.commandId, minLength: 1, maxLength: 128)
+    arguments = try container.optional(.arguments) {
+      try container.value($0, CommandArguments.self)
+    }
+    scope = try container.value(.scope, Scope.self)
+    paragraphs = try container.array(.paragraphs, of: Paragraph.self, minItems: 1, maxItems: 4_000)
+    files = try container.array(.files, of: FileRef.self, maxItems: 4)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(runId, forKey: .runId)
+    try container.encode(surface, forKey: .surface)
+    try container.encode(commandId, forKey: .commandId)
+    try container.encodeIfPresent(arguments, forKey: .arguments)
+    try container.encode(scope, forKey: .scope)
+    try container.encode(paragraphs, forKey: .paragraphs)
+    try container.encode(files, forKey: .files)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case runId
+    case surface
+    case commandId
+    case arguments
+    case scope
+    case paragraphs
+    case files
+  }
+
+  public enum Surface: String, Codable, Equatable, Sendable {
+    case capture
+    case longScreenshot
+  }
+
+  public enum Scope: String, Codable, Equatable, Sendable {
+    case picked
+    case all
+  }
+
+  public struct Paragraph: Codable, Equatable, Sendable {
+    public let id: String
+    public let text: String
+
+    public init(id: String, text: String) {
+      self.id = id
+      self.text = text
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 16, pattern: "^[a-zA-Z0-9_-]+$")
+      text = try container.string(.text, minLength: 1, maxLength: 100_000)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case text
+    }
+  }
+}

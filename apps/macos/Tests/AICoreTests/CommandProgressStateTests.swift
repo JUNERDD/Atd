@@ -128,20 +128,38 @@ struct CommandProgressStateTests {
   func answerPhase() {
     typealias Answer = CommandProgressShowParams.State.Answer
     let answer = CommandProgressShowParams.State.answer(
-      Answer(command: " Fix \n", answer: "  Fixed.\n", note: " Not editable. ", review: nil))
+      Answer(
+        command: " Fix \n", answer: "  Fixed.\n", note: " Not editable. ", review: nil,
+        streaming: nil))
     #expect(
       CommandProgressState.phase(answer)
         == .answer(command: "Fix", answer: "  Fixed.\n", note: "Not editable."))
     let silent = CommandProgressShowParams.State.answer(
-      Answer(command: "Fix", answer: "Fixed.", note: " \n ", review: nil))
+      Answer(command: "Fix", answer: "Fixed.", note: " \n ", review: nil, streaming: nil))
     #expect(
       CommandProgressState.phase(silent) == .answer(command: "Fix", answer: "Fixed.", note: nil))
     let blankAnswer = CommandProgressShowParams.State.answer(
-      Answer(command: "Fix", answer: " \n\t ", note: nil, review: nil))
+      Answer(command: "Fix", answer: " \n\t ", note: nil, review: nil, streaming: true))
     #expect(CommandProgressState.phase(blankAnswer) == nil)
     let blankCommand = CommandProgressShowParams.State.answer(
-      Answer(command: "  ", answer: "Fixed.", note: nil, review: nil))
+      Answer(command: "  ", answer: "Fixed.", note: nil, review: nil, streaming: nil))
     #expect(CommandProgressState.phase(blankCommand) == nil)
+  }
+
+  @Test("An answer streaming in holds Escape; Stop keeps its card, Cancel takes it away")
+  func streamingAnswer() {
+    var state = CommandProgressState()
+    state.show(
+      target: "a", phase: .answer(command: "Fix", answer: "Fi", note: nil, streaming: true))
+    #expect(state.answerStreams && state.cancelsWithEscape && !state.answerSettled)
+    #expect(state.leaving == Self.event("a", .cancel))
+    #expect(state.press(.stop) == Self.event("a", .stop))
+    #expect(state.answerStreams)
+    #expect(state.press(.cancel) == Self.event("a", .cancel))
+    #expect(state.shown == nil)
+    state.show(target: "a", phase: .answer(command: "Fix", answer: "Fixed.", note: nil))
+    #expect(state.answerSettled && !state.cancelsWithEscape && state.leaving == nil)
+    #expect(state.press(.stop) == nil && state.press(.cancel) == nil)
   }
 
   @Test("The answer card opens the run and goes; Cancel and the others do nothing on it")

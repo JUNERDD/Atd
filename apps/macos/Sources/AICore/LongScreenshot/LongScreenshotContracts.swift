@@ -184,25 +184,21 @@ public struct LongScreenshotCardSource: @unchecked Sendable {
   }
 }
 
-/// The part of the image the card keeps, in image points, whether its sensitive parts are
-/// covered, and what is drawn on the image. Every footer action and ask acts on it, so each
-/// sends the image as the card shows it.
+/// The part of the image the card keeps, in image points, and what is drawn on the image. Every
+/// footer action and ask acts on it, so each sends the image as the card shows it.
 public struct LongScreenshotKept: Equatable, Sendable {
   public let top: CGFloat
   public let bottom: CGFloat
-  public let covered: Bool
-  /// What the user drew on the image in the lightbox's annotate mode, in image points with the
-  /// origin at the top-left: over the whole image, so a trim keeps them where they were and only
-  /// the part inside the range is sent. Empty until something is drawn.
+  /// What is on the image, in image points with the origin at the top-left: what the user drew
+  /// in the lightbox's annotate mode, the mosaics Cover Sensitive Info adds (decision D7) and the
+  /// marks and replacements text commands leave. Over the whole image, so a trim keeps them where
+  /// they were and only the part inside the range is sent. Empty until something is added.
   public let annotations: AnnotationDocument
 
-  public init(
-    top: CGFloat, bottom: CGFloat, covered: Bool,
-    annotations: AnnotationDocument = AnnotationDocument()
-  ) {
+  public init(top: CGFloat, bottom: CGFloat, annotations: AnnotationDocument = AnnotationDocument())
+  {
     self.top = top
     self.bottom = bottom
-    self.covered = covered
     self.annotations = annotations
   }
 }
@@ -213,7 +209,8 @@ public struct LongScreenshotAsk: Equatable, Sendable {
   public let question: String
   /// What was kept when it was asked, which its files cover.
   public let kept: LongScreenshotKept
-  /// A regeneration's: the ask it replaces, whose page it takes over.
+  /// A regeneration's: the ask it regenerates, whose page keeps its answer; this one's comes on
+  /// a new page after it.
   public let replacing: String?
 
   public init(id: String, question: String, kept: LongScreenshotKept, replacing: String? = nil) {
@@ -229,7 +226,7 @@ public enum LongScreenshotCardEvent: Equatable, Sendable {
   case ask(LongScreenshotAsk)
   /// Stop the ask with this id; the card has already applied its stop rules.
   case stopAnswer(String)
-  /// Run this ask in place of its `replacing` one, on the same answer page.
+  /// Run this ask again as a new answer page after its `replacing` one, which keeps its answer.
   case regenerate(LongScreenshotAsk)
   /// Hand the task of this ask to the panel.
   case openAnswer(String)

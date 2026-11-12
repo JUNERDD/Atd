@@ -8,10 +8,9 @@ extension LongScreenshotController {
   /// encoded off the main actor, then written under the screenshot's clipboard claim.
   func copy(_ kept: LongScreenshotKept) {
     guard let source else { return }
-    let cover = CaptureExport.longScreenshotCover(source, kept: kept, mosaic: mosaic)
     run(.copy) { [self] generation in
       guard
-        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept, cover: cover),
+        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept),
         let clipboard = await CaptureExport.longScreenshotClipboard(image, scale: source.shot.scale)
       else { return .failed(Self.text(.exportFailed)) }
       guard generation == self.generation else { return nil }
@@ -24,10 +23,9 @@ extension LongScreenshotController {
   /// (``attach(_:capturedAt:generation:describe:)``).
   func attach(_ kept: LongScreenshotKept) {
     guard let source else { return }
-    let cover = CaptureExport.longScreenshotCover(source, kept: kept, mosaic: mosaic)
     run(.attach) { [self] generation in
       guard
-        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept, cover: cover)
+        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept)
       else { return .failed(Self.text(.exportFailed)) }
       return await attach(image, capturedAt: source.shot.capturedAt, generation: generation) {
         LongScreenshotContext(

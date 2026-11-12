@@ -265,6 +265,7 @@ final class IslandRecording {
       }
       return true
     case kVK_Space where field == nil && modifiers.isEmpty && !card.controlFocused:
+      guard !event.isARepeat else { return true }
       card.togglePlay()
       return true
     case kVK_LeftArrow where field == nil && !card.controlFocused,

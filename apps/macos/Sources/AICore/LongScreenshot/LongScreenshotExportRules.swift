@@ -2,7 +2,8 @@ import CoreGraphics
 import Foundation
 
 /// How a long screenshot leaves its result card (decisions D8, D12): the image file it is
-/// attached or asked about as, the parts its cover hides, its copy, and the names the user sees.
+/// attached or asked about as, its copy (the whole kept range, or the segment a text command
+/// changed), and the names the user sees.
 ///
 /// Unlike a screenshot's (``ScreenshotRules``), the file keeps its full resolution, so its text
 /// stays legible once the service reads it as pages (``LongScreenshotPages``): only its width is
@@ -108,19 +109,26 @@ public enum LongScreenshotExportRules {
     return String(name.dropLast(encoding.fileExtension.count + 1)) + " long"
   }
 
-  // MARK: The cover
+  // MARK: A segment
 
-  /// What `kept` of `source` covers, in image points, by the card's own recipe so the copy, the
-  /// file and its context hide exactly what the card's preview shows covered: each sensitive part
-  /// that shows in the range, even one a handle cuts through (``LongScreenshotKept/touches(_:)``),
-  /// grown as ``LongScreenshotCardState/coverRect(_:)`` grows it. Empty when the range is not
-  /// covered.
-  public static func coveredAreas(of source: LongScreenshotCardSource, kept: LongScreenshotKept)
-    -> [CGRect]
+  /// How far a copied segment reaches past the changes it holds, above and below (points).
+  public static let segmentMargin: CGFloat = 16
+
+  /// The stretch of `kept` that holds `areas` (image points: what a text command changed on the
+  /// image), for Copy Screenshot on the full-screen preview's result card (decision D9): the rows
+  /// from the areas' top to their bottom grown by ``segmentMargin``, on whole points, within the
+  /// kept range, the image's whole width, with the same annotations, so the copy draws the changes
+  /// as the preview shows them. A long screenshot is too long to share whole for one change; the
+  /// bottom bar's Copy copies the whole kept range. The whole kept range when no area lies in it.
+  public static func segment(holding areas: [CGRect], of kept: LongScreenshotKept)
+    -> LongScreenshotKept
   {
-    guard kept.covered else { return [] }
-    return source.sensitive.filter { kept.touches($0.box) }.map {
-      LongScreenshotCardState.coverRect($0.box)
-    }
+    let rows = areas.map(\.standardized).filter { $0.maxY > kept.top && $0.minY < kept.bottom }
+      .reduce(CGRect.null) { $0.union($1) }
+    guard !rows.isNull else { return kept }
+    let top = max(kept.top, (rows.minY - segmentMargin).rounded(.down))
+    let bottom = min(kept.bottom, (rows.maxY + segmentMargin).rounded(.up))
+    guard bottom > top else { return kept }
+    return LongScreenshotKept(top: top, bottom: bottom, annotations: kept.annotations)
   }
 }

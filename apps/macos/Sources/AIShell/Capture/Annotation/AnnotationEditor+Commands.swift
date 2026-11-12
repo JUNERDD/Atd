@@ -30,10 +30,12 @@ extension AnnotationEditor {
     store.onUndoRedo = { [weak self] in self?.endFeedback() }
   }
 
-  /// The second row for the current state: the style bar while something is styled and the
-  /// ask field is closed, else the command row or the field; the badge and auto-redact follow
-  /// what is still unmasked.
+  /// The second row for the current state, one at a time: the style bar while something is
+  /// styled and the ask field is closed, else the field, the text row in text mode, or the
+  /// command row; the badge and both auto-redact buttons follow what is still unmasked, and the
+  /// text row's scope and running bar what text mode and the runs are doing.
   func refreshSlot() {
+    text.mode.mask(mosaics)
     let target = slot.isAsking ? nil : styleTarget
     if let target {
       styleBar.update(style: target.style, controls: target.controls)
@@ -41,7 +43,8 @@ extension AnnotationEditor {
     } else {
       styleBar.isHidden = true
     }
-    slot.show(target != nil ? nil : slot.isAsking ? .ask : .commands)
+    let row: AnnotationCommandSlot.Shown = text.mode.isOn ? .text : .commands
+    slot.show(target != nil ? nil : slot.isAsking ? .ask : row)
     let unmasked = unmaskedSensitive
     toolbar.setSensitiveCount(unmasked.count)
     styleBar.setRedaction(
@@ -49,6 +52,10 @@ extension AnnotationEditor {
         if !unmasked.isEmpty { return .cover(unmasked.count) }
         return text.sensitive.isEmpty ? .none : .allCovered
       } ?? .reading)
+    slot.setRedaction(count: unmasked.count)
+    slot.setSelectText(hasText: recognizedText.map { !$0.boxes.isEmpty })
+    slot.setScope(scopeLabel)
+    slot.setRunning(text.runs.running?.commandId)
   }
 
   /// A tool was chosen or dropped: menus, the field and feedback go.
@@ -66,21 +73,21 @@ extension AnnotationEditor {
   }
 
   func recognizedTextChanged() {
+    text.mode.read(recognizedText)
     if slot.copyPending, recognizedText != nil { copyText() }
     refresh()
   }
 
   // MARK: Ask
 
-  /// The field takes the slot: the tool, the selected annotation and open text go.
+  /// The field takes the slot: the tool, the selected annotation and open text go; text mode
+  /// and what it picked stay, for the question to read.
   private func askOpening() {
     textEditor.end()
     interaction.cancelGesture()
     store.selectedID = nil
-    if interaction.tool != nil {
-      interaction.tool = nil
-      onInteriorClaimChange?(false)
-    }
+    interaction.tool = nil
+    updateClaim()
     styleBar.endRedactionFeedback()
     refreshPointer()
     refresh()
@@ -113,7 +120,7 @@ extension AnnotationEditor {
   // MARK: Auto-redact
 
   /// The mosaics' rects (desktop points).
-  private var mosaics: [CGRect] {
+  var mosaics: [CGRect] {
     store.document.annotations.compactMap { annotation in
       if case .mosaic(let rect) = annotation.shape { rect } else { nil }
     }
@@ -126,29 +133,20 @@ extension AnnotationEditor {
   }
 
   /// Covers every unmasked sensitive item with a mosaic in the style auto-redact shows, a few
-  /// points past it, as one undo step, then says so on the button.
-  private func redactSensitive() {
+  /// points past it, as one undo step, then says so on the button that asked: the mosaic style
+  /// bar's or its shortcut on the command row (decision D7).
+  func redactSensitive() {
     let hits = unmaskedSensitive
     guard !hits.isEmpty else { return }
     textEditor.end()
     let style = styleTarget?.style ?? interaction.styles[AnnotationTool.mosaic.styleSlot]
-    var next = store.document
-    for hit in hits {
-      next.add(Annotation(shape: .mosaic(hit.box.insetBy(dx: -3, dy: -3).integral), style: style))
-    }
-    store.commit(next)
+    store.commit(store.document.redacting(hits, style: style))
     let strings = ShellStrings.shared
     let said =
       strings.text(.captureRedactDone, count: hits.count) + " · "
       + strings.text(.captureRedactUndoHint)
     styleBar.confirmRedaction(count: hits.count, tooltip: said)
+    slot.confirmRedaction(count: hits.count, tooltip: said)
     Self.announce(said)
-  }
-
-  /// Says `text` to VoiceOver without showing anything more.
-  private static func announce(_ text: String) {
-    NSAccessibility.post(
-      element: NSApplication.shared, notification: .announcementRequested,
-      userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
   }
 }

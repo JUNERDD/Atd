@@ -7,10 +7,14 @@ import { Label } from '@atd/ui/components/label';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 
-/** The places in the order the section lists them: other apps first, then conversations. */
+/**
+ * The places in the order the section lists them: other apps first, then screenshots, then
+ * conversations.
+ */
 const PLACES: readonly CommandPlace[] = [
   'selectionToolbar',
   'screenshotToolbar',
+  'screenshotText',
   'turnSelection',
   'turnActions',
 ];

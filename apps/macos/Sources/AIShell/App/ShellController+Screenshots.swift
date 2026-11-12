@@ -16,6 +16,15 @@ extension ShellController {
     screenshots.openCommandSettings = { [weak self] in
       self?.openSettings(commandId: nil, section: "commands")
     }
+    let arbiter = deviceArbiter
+    screenshots.textRuns = CaptureTextRunner(
+      attachments: attachments, panelHost: panelHost,
+      copy: { arbiter.writeClipboard($0, as: .screenshot) })
+    // A text command's Insert ends the capture first: the overlays are gone and the app in front
+    // has its field back by the time the answer is written.
+    screenshots.writeAnswer = { [weak self] answer in
+      Task { _ = await self?.writeAnswer(answer, mode: .cursor) }
+    }
   }
 
   /// `screenshot.capture`, which hides the panel while it runs. A summon still moving the panel

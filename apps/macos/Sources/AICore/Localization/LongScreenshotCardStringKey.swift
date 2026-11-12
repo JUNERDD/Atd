@@ -41,7 +41,10 @@ public enum LongScreenshotCardStringKey: String, CaseIterable, ShellCatalogKey {
   case kindKey = "longScreenshot.card.kind.key"
   case kindCard = "longScreenshot.card.kind.card"
   case kindSeparator = "longScreenshot.card.kindSeparator"
+  /// Cover Sensitive Info, on the card's sensitive row and the lightbox's bottom bar (decision
+  /// D7): it adds a mosaic over each item no mosaic hides yet. No count: its tooltip has them.
   case cover = "longScreenshot.card.cover"
+  /// Its tooltip; `%@` lists the kinds still uncovered with their counts.
   case coverTooltip = "longScreenshot.card.coverTooltip"
   // Asking about the long screenshot.
   case askPlaceholder = "longScreenshot.card.askPlaceholder"
@@ -80,8 +83,6 @@ public enum LongScreenshotCardStringKey: String, CaseIterable, ShellCatalogKey {
   /// The bottom bar's key hints.
   case hintScroll = "longScreenshot.card.hintScroll"
   case hintZoom = "longScreenshot.card.hintZoom"
-  /// The bottom bar's cover button; `%@` lists the kinds found with their counts.
-  case coverKinds = "longScreenshot.card.coverKinds"
   /// The overview rail, and its viewport's tooltip.
   case overview = "longScreenshot.card.overview"
   case viewportTooltip = "longScreenshot.card.viewportTooltip"

@@ -1,4 +1,8 @@
-import type { CommandProgressAction, SubmitRequest } from '../../client/agent/bridge';
+import type {
+  CommandProgressAction,
+  PreparedCommand,
+  SubmitRequest,
+} from '../../client/agent/bridge';
 import { argumentOverrides } from '../../client/agent/command-arguments';
 import type {
   ArgumentValues,
@@ -9,7 +13,12 @@ import { emptyInput } from '../../client/agent/task-schema';
 import i18n from '../../i18n';
 import { argumentText } from '../commands/shortcut-names';
 import { draftChips, quoteChip, serialize } from '../composer-editor/draft';
-import type { LightLaunch } from './light-command-run';
+
+/**
+ * The launch a review makes its versions from: the command, the input its first run read, where
+ * its answer goes and the shortcut that launched it.
+ */
+export type ReviewLaunch = Pick<PreparedCommand, 'command' | 'input' | 'output' | 'shortcutId'>;
 
 /** What the review card staged for the next version (`CommandProgressAction.adjust`). */
 type ReviewAdjust = NonNullable<CommandProgressAction['adjust']>;
@@ -91,7 +100,7 @@ export function adjustPlan(
  * the chip, as it reads any quote); it keeps the task's model, tools and memory (no policy).
  */
 export function versionRequest(
-  launch: LightLaunch,
+  launch: ReviewLaunch,
   taskId: string,
   plan: VersionPlan,
 ): Omit<SubmitRequest, 'action'> {

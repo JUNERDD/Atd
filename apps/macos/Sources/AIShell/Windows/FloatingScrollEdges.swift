@@ -9,6 +9,18 @@ import SwiftUI
 struct FloatingScrollEdges<Edges: View>: ViewModifier {
   var axis: Axis = .vertical
   let reduceMotion: Bool
+  /// Content is streaming in: while the viewport is at the end, it stays at the end as the
+  /// content grows; scrolling away stops that until the person scrolls back to the end.
+  ///
+  /// Vertical only. "At the end" is the bottom edge's own test (no bottom fade: the content
+  /// fits, or the viewport reaches its end), so following and the fade never disagree. Nothing
+  /// scrolls programmatically: the scroll view's size-change anchor keeps the end in place in the
+  /// same layout pass as the growth, so a person's scroll is never overridden and a viewport
+  /// scrolled away stays where it is. A growing card whose content still fits has nothing to
+  /// scroll. While following, the scroll content drops an animation inherited from the change
+  /// (its own `animation(_:value:)` still applies), so each growth jumps to the end instead of
+  /// springing there, with or without Reduce Motion.
+  var follows = false
   @ViewBuilder let edges: (AnswerOverflow) -> Edges
 
   @State private var overflow = AnswerOverflow()
@@ -18,10 +30,18 @@ struct FloatingScrollEdges<Edges: View>: ViewModifier {
   func body(content: Content) -> some View {
     let plain = reduceTransparency || contrast == .increased
     let vertical = axis == .vertical
+    let following = follows && vertical && !overflow.bottom
     content
       .scrollIndicators(.never)
       .scrollBounceBehavior(.basedOnSize)
       .backport.scrollEdgeEffectHidden(true, for: vertical ? .vertical : .horizontal)
+      // Both stay applied with neutral values while not following (a nil anchor is the
+      // system's), so toggling `follows` keeps the scroll view's identity and its offset.
+      .defaultScrollAnchor(following ? .bottom : nil, for: .sizeChanges)
+      // A page opened while it streams (paging back to the answer still coming) starts at its
+      // newest text, so it follows from its first frame; any other opens at its top.
+      .defaultScrollAnchor(follows && vertical ? .bottom : nil, for: .initialOffset)
+      .transaction { if following { $0.animation = nil } }
       .onScrollGeometryChange(for: AnswerOverflow.self) { geometry in
         vertical
           ? AnswerOverflow(
@@ -54,8 +74,8 @@ struct FloatingScrollEdges<Edges: View>: ViewModifier {
 }
 
 extension FloatingScrollEdges where Edges == EmptyView {
-  init(axis: Axis = .vertical, reduceMotion: Bool) {
-    self.init(axis: axis, reduceMotion: reduceMotion) {
+  init(axis: Axis = .vertical, reduceMotion: Bool, follows: Bool = false) {
+    self.init(axis: axis, reduceMotion: reduceMotion, follows: follows) {
       _ in EmptyView()
     }
   }

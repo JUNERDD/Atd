@@ -91,15 +91,20 @@ extension IslandController {
     }
   }
 
-  /// Takes the keyboard for a card, or returns it when the card gives it up
-  /// (``NSPanel/returnKeyboard()``), keeping the island's exit or replacement visible. A card
-  /// that is not `taking` the keyboard leaves it where it is: it takes it on a click.
+  /// Takes the keyboard for a card once its shortcut is released (``KeyboardHandoff``),
+  /// or returns it when the card gives it up (``NSPanel/returnKeyboard()``), keeping the island's
+  /// exit or replacement visible. A card that is not `taking` the keyboard leaves it where it is:
+  /// it takes it on a click.
   func setKeyCapable(_ capable: Bool, taking: Bool = true) {
     window.keyCapable = capable
-    if capable, taking, window.isVisible {
-      window.makeKey()
-    } else if !capable {
-      window.returnKeyboard()
+    if capable, taking, window.isVisible, !window.isKeyWindow {
+      keyboardTake.perform { [weak self] in
+        guard let self, window.keyCapable, window.isVisible else { return }
+        window.makeKey()
+      }
+    } else {
+      keyboardTake.cancel()
+      if !capable { window.returnKeyboard() }
     }
   }
 

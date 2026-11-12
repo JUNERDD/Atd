@@ -21,8 +21,23 @@ protocol IslandLightboxContent: AnyObject {
   func key(_ event: NSEvent) -> Bool
   /// A key equivalent (⌘C, ⌘↩, ⌘Z…) while the lightbox is key: true when it was taken.
   func keyEquivalent(_ event: NSEvent) -> Bool
+  /// A key let go while the lightbox is key (a held key that pans, say): true when it was taken.
+  func keyUp(_ event: NSEvent) -> Bool
+  /// The modifier keys changed while the lightbox is key (⌥ held to peek at the original).
+  func flagsChanged(_ event: NSEvent)
+  /// The keyboard moved elsewhere: clear held-key modes whose releases may no longer arrive.
+  func keyboardLost()
   /// The lightbox starts closing (with motion or without): open edits end, a drag lets go.
   func willClose()
+}
+
+extension IslandLightboxContent {
+  /// Content that holds no key leaves every release alone.
+  func keyUp(_ event: NSEvent) -> Bool { false }
+  /// Content that reads no modifier keys on their own ignores them.
+  func flagsChanged(_ event: NSEvent) {}
+  /// Content without held-key modes has nothing to clear when the keyboard moves elsewhere.
+  func keyboardLost() {}
 }
 
 /// The lightbox's state for its content: how far in or out it is, where the card's media is, its

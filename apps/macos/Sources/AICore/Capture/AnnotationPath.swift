@@ -130,7 +130,13 @@ public enum AnnotationPath {
   /// The rounded plate behind text with a background (decision E9): the text's frame grown by
   /// a margin that scales with the type, so the glyphs never touch its edge.
   public static func textPlate(around frame: CGRect, fontSize: CGFloat) -> CGRect {
-    frame.insetBy(dx: -(fontSize * 0.35).rounded(), dy: -(fontSize * 0.15).rounded())
+    let margins = textPlateMargins(fontSize: fontSize)
+    return frame.insetBy(dx: -margins.width, dy: -margins.height)
+  }
+
+  /// How far a text plate reaches past the text's frame on each side, across and down.
+  public static func textPlateMargins(fontSize: CGFloat) -> CGSize {
+    CGSize(width: (fontSize * 0.35).rounded(), height: (fontSize * 0.15).rounded())
   }
 
   /// Corner radius of a text plate.

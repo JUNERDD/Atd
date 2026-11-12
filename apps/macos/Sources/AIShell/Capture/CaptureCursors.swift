@@ -16,6 +16,18 @@ import AppKit
 // | dragging an annotation                           | closed hand                   |
 // | text the text tool would open                    | I-beam                        |
 // | empty canvas: select / text / drawing tools      | arrow / I-beam / crosshair    |
+//
+// With no tool chosen the editor sets these over the interior instead (text mode claims it; a
+// badge is claimed by itself, ``AnnotationEditing/claimsPress(at:)``):
+//
+// | Under the pointer (or the gesture running)       | Cursor                        |
+// | ------------------------------------------------ | ----------------------------- |
+// | a step badge a text command drew                 | pointing hand                 |
+// | text mode: a paragraph, or selecting characters  | I-beam                        |
+// | text mode: elsewhere, or drawing a marquee       | crosshair                     |
+//
+// Over a text command's result card its controls set their own (their ``PointerRole``s, through
+// the overlay window's hover clock); the arrow shows on the rest of it.
 
 /// Full-screen tracking areas still receive events beneath separate menu windows. Only the
 /// front window under the pointer may set a hover cursor; an in-progress drag keeps its owner.
@@ -77,5 +89,33 @@ extension AnnotationInteraction {
     case .rectangle, .ellipse, .arrow, .line, .pen, .highlighter, .mosaic, .spotlight, .step:
       .crosshair
     }
+  }
+}
+
+extension CaptureTextMode {
+  /// Text mode's cursor at `point`: what a press there does (picks or selects text over a
+  /// paragraph, starts a marquee elsewhere), or the gesture in progress's.
+  func cursor(at point: CGPoint) -> NSCursor {
+    let role: PointerRole =
+      switch gesture {
+      case .marquee: .marquee
+      case .characters: .text
+      case .idle, .pressed, .cancelled: paragraph(at: point) != nil ? .text : .marquee
+      }
+    return role.cursor
+  }
+}
+
+extension AnnotationEditor {
+  /// The cursor of what a text command drew at `point` while no tool is chosen: a step badge
+  /// acts (its result card opens), and in text mode so does a highlighter mark of a run with
+  /// versions (``CaptureTextRuns/mark(at:in:)``), else text mode's; nil leaves the cursor to the
+  /// interaction.
+  func textCursor(at point: CGPoint) -> NSCursor? {
+    guard interaction.tool == nil else { return nil }
+    if stepBadge(at: point) != nil { return PointerRole.action.cursor }
+    guard text.mode.isOn else { return nil }
+    if text.runs.mark(at: point, in: store.document) != nil { return PointerRole.action.cursor }
+    return text.mode.cursor(at: point)
   }
 }

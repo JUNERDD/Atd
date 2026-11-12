@@ -27,6 +27,9 @@ final class LongScreenshotControlBar: NSView {
   /// What the toggle and the count show now.
   private var autoScrolling = false
   private var screens = 0.0
+  /// The toggle's steady width: its wider label's in the current language, so Back and Done stay
+  /// under the pointer while Space flips it during the capture.
+  private var toggleWidth: CGFloat = 0
   /// The glyphs of the toggle's two states, made once.
   private let playGlyph: NSImage
   private let pauseGlyph = AnnotationIcons.glyph(LongScreenshotChromeIcons.pause, label: "")
@@ -69,7 +72,7 @@ final class LongScreenshotControlBar: NSView {
     grip.toolTip = strings.text(.captureToolbarMove)
     let label = AnnotationToolbarButton.Label.self
     // The toggle and the count keep the room of their widest values in this language.
-    let toggleWidth =
+    toggleWidth =
       [copy.text(.autoScroll), copy.text(.pauseScroll)]
       .map { label.width(text: $0, hasImage: true) }.max() ?? 0
     count.width =
@@ -83,7 +86,7 @@ final class LongScreenshotControlBar: NSView {
       button.toolTip = copy.tooltip(name, key: key)
       button.setAccessibilityLabel(name)
     }
-    showToggle(width: toggleWidth)
+    showToggle()
     count.show(copy.captured(screens))
   }
 
@@ -91,19 +94,19 @@ final class LongScreenshotControlBar: NSView {
   func show(autoScrolling: Bool, screens: Double) {
     if autoScrolling != self.autoScrolling {
       self.autoScrolling = autoScrolling
-      showToggle(width: nil)
+      showToggle()
     }
     guard screens != self.screens else { return }
     self.screens = screens
     count.show(LongScreenshotChromeCopy.captured(screens))
   }
 
-  /// The toggle as ``autoScrolling`` has it: Pause while Atd scrolls, Auto-scroll otherwise;
-  /// `width` when the language's room changed.
-  private func showToggle(width: CGFloat?) {
+  /// The toggle as ``autoScrolling`` has it: Pause while Atd scrolls, Auto-scroll otherwise, at
+  /// its steady width (``toggleWidth``).
+  private func showToggle() {
     let copy = LongScreenshotChromeCopy.self
     let name = copy.text(autoScrolling ? .pauseScroll : .autoScroll)
-    autoButton.setLabel(name, image: autoScrolling ? pauseGlyph : playGlyph, width: width)
+    autoButton.setLabel(name, image: autoScrolling ? pauseGlyph : playGlyph, width: toggleWidth)
     autoButton.toolTip = copy.tooltip(name, key: "Space")
   }
 

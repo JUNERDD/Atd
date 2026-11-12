@@ -8,10 +8,12 @@ import type {
   TaskDetail,
 } from '../../client/agent/bridge';
 import { withScreenshot, type Screenshot } from '../../client/agent/screenshot-input';
-import { emptyInput, type RunStatus } from '../../client/agent/task-schema';
+import { emptyInput, type RunStatus, type TaskInput } from '../../client/agent/task-schema';
 import { errorMessage } from '../../client/agent/validation';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import i18n from '../../i18n';
+import { draftChips, quoteChip, serialize } from '../composer-editor/draft';
+import { CardStream } from './card-stream';
 import { followAnswer, runWaits } from './light-answer';
 import type { LightHost } from './light-command';
 import { followIsland, isCurrentIsland, replaceIsland } from './island-owner';
@@ -42,6 +44,8 @@ interface CaptureRun {
   cancelled: boolean;
   /** The panel shows it (it asked for the person, or Open); its HUD went. */
   handedOver: boolean;
+  /** Its answer on the answer card as it streams in (a question's); null for one copied. */
+  stream: CardStream | null;
 }
 
 function show(run: CaptureRun, state: CommandProgressState) {
@@ -60,9 +64,28 @@ function stop(run: CaptureRun) {
   if (run.taskId && run.runId && !run.ended) stopRun(run.taskId, run.runId);
 }
 
+/** The run stops, quietly: its answer streams no more, and its end shows nothing. */
+function cancel(run: CaptureRun) {
+  run.cancelled = true;
+  run.stream?.end();
+  stop(run);
+}
+
+/** Why a run gave no answer, as the island says it: it was stopped, or it failed. */
+function reasonText(run: CaptureRun, status: RunStatus): string {
+  const key = status === 'stopped' || status === 'cancelled' ? 'stopped' : 'failed';
+  return i18n.t(`tasks:commandOutput.progress.${key}`, { command: run.title });
+}
+
+/** The answer card with what came of the answer, and why there is no more (`note`). */
+function showPartial(run: CaptureRun, answer: string, note: string) {
+  show(run, { phase: 'answer', command: run.title, answer, note });
+}
+
 /** The panel takes the run over and shows it, or the command's input step when it never started. */
 function handOver(run: CaptureRun, host: LightHost) {
   run.handedOver = true;
+  run.stream?.end();
   lightBridge()
     ?.hide(run.key)
     .catch((error: unknown) => console.error('The progress HUD did not hide:', error));
@@ -74,21 +97,30 @@ function handOver(run: CaptureRun, host: LightHost) {
   host.reveal();
 }
 
-/** A press on the run's HUD: Open shows it in the panel; cancel stops it while it works. */
+/**
+ * A press on the run's HUD: Open shows it in the panel; cancel stops it while it works (or while
+ * its answer streams onto the answer card, whose card went); stop stops the one streaming onto
+ * the card, which keeps what came, saying the run was stopped.
+ */
 function act(run: CaptureRun, action: CommandProgressAction, host: LightHost) {
   if (run.handedOver) return;
   if (action.action === 'open') return handOver(run, host);
-  if (action.action !== 'cancel') return;
-  run.cancelled = true;
-  stop(run);
+  if (action.action === 'cancel') return cancel(run);
+  const { stream } = run;
+  if (action.action !== 'stop' || !stream?.shown || run.cancelled || run.ended) return;
+  cancel(run);
+  showPartial(run, stream.text, reasonText(run, 'stopped'));
 }
 
 /**
  * The run's end: its task goes, and unless it was cancelled, a completed run's answer settles as
  * the run says (`settle`, also once the panel took it over), and a notice says why any other run
- * gave none while its HUD still shows.
+ * gave none while its HUD still shows, or the answer card says so under what of its answer
+ * streamed onto it.
  */
 function ended(run: CaptureRun, status: RunStatus, answer: string) {
+  const streamed = run.stream?.shown && isCurrentIsland(run) ? run.stream.text : '';
+  run.stream?.end();
   run.ended = true;
   lightBridge()?.release(run.key);
   if (run.cancelled) return;
@@ -96,9 +128,9 @@ function ended(run: CaptureRun, status: RunStatus, answer: string) {
     run.settle(run, answer).catch((error: unknown) => notice(run, errorMessage(error)));
     return;
   }
-  const key = status === 'stopped' || status === 'cancelled' ? 'stopped' : 'failed';
-  if (!run.handedOver)
-    notice(run, i18n.t(`tasks:commandOutput.progress.${key}`, { command: run.title }));
+  if (run.handedOver) return;
+  if (streamed) showPartial(run, streamed, reasonText(run, status));
+  else notice(run, reasonText(run, status));
 }
 
 /**
@@ -120,9 +152,7 @@ async function start(
     act: (action, host) => act(run, action, host),
     follow: (event, host) => followCaptureRun(run, event, host),
     supersede: () => {
-      if (run.handedOver || run.ended) return;
-      run.cancelled = true;
-      stop(run);
+      if (!run.handedOver && !run.ended) cancel(run);
     },
   });
   show(run, { phase: 'working', command: run.title });
@@ -141,7 +171,10 @@ async function start(
   run.runId = detail.task.runs.at(-1)?.id ?? null;
   if (run.cancelled) stop(run);
   followIsland({ type: 'task', state: detail });
-  followAnswer(detail, { end: (status, answer) => ended(run, status, answer) });
+  followAnswer(detail, {
+    text: (text) => run.stream?.push(text),
+    end: (status, answer) => ended(run, status, answer),
+  });
 }
 
 /**
@@ -169,15 +202,34 @@ function captureRun(
     ended: false,
     cancelled: false,
     handedOver: false,
+    stream: null,
   };
 }
 
 /**
- * Asks `question` about the screenshot `shot` on the island: the question runs as a new task with
- * the screenshot (and its screen context) attached, and its answer shows on the island's answer
- * card, titled Ask Atd with the question under it, whose Open shows the task in the panel.
+ * The question as its run reads it: after a quote of `selection`, the text picked in the
+ * screenshot that the question is about, when there is any (the run reads the passage from the
+ * quote chip, as it reads any quote).
  */
-export function startLightAsk(question: string, shot: Screenshot, light: LightCommandBridge) {
+function askInput(question: string, selection: string | undefined): TaskInput {
+  if (!selection) return { ...emptyInput(), text: question };
+  const draft = serialize([quoteChip(selection), ' ', question]);
+  return { ...emptyInput(), text: draft.text, chips: draftChips(draft) };
+}
+
+/**
+ * Asks `question` about the screenshot `shot` on the island, and about `selection`, the text
+ * picked in it, when there is any: the question runs as a new task with the screenshot (and its
+ * screen context) attached, and its answer shows on the island's answer card, titled Ask Atd with
+ * the question under it, whose Open shows the task in the panel. The answer streams onto the card
+ * as it comes (`CardStream`), and settles there once the run ends.
+ */
+export function startLightAsk(
+  question: string,
+  shot: Screenshot,
+  light: LightCommandBridge,
+  selection?: string,
+) {
   const title = i18n.t('tasks:commandOutput.ask.title');
   const note = i18n.t('tasks:commandOutput.ask.note', { question }).slice(0, MAX_NOTE_LENGTH);
   // The panel shows the answer of a question it took over.
@@ -186,6 +238,10 @@ export function startLightAsk(question: string, shot: Screenshot, light: LightCo
     if (!answer) return notice(asked, i18n.t('tasks:commandOutput.ask.empty'));
     if (isCurrentIsland(asked)) show(asked, { phase: 'answer', command: title, answer, note });
   });
+  run.stream = new CardStream(
+    (answer) => show(run, { phase: 'answer', command: title, answer, note, streaming: true }),
+    () => isCurrentIsland(run) && !run.cancelled && !run.handedOver && !run.ended,
+  );
   return start(
     run,
     {
@@ -195,7 +251,7 @@ export function startLightAsk(question: string, shot: Screenshot, light: LightCo
       commandId: null,
       commandRevision: null,
       savedRun: null,
-      input: withScreenshot({ ...emptyInput(), text: question }, shot),
+      input: withScreenshot(askInput(question, selection), shot),
     },
     light,
   );

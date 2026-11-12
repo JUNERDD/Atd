@@ -24,23 +24,21 @@ public struct LongScreenshotContext: Equatable, Sendable {
 
   /// The context of `kept` of `source`, attached as a file of `pixelWidth` × `pixelHeight`: the
   /// lines the range keeps (``LongScreenshotKept/keeps(_:)``), each on the page its centre falls
-  /// on, less every line the cover or a mosaic drawn on the image touches
-  /// (``LongScreenshotExportRules/hiddenAreas(of:kept:)``), as the card counts the lines it sends
-  /// (``LongScreenshotCardState/keptLines``) and as a screenshot's context leaves out what its
-  /// mosaics hide (``ScreenContext/unredacted(_:hiding:)``); and the app's name and the window's
-  /// title unless they could repeat what is hidden (``fields(app:window:covered:redacted:)``).
+  /// on, less every line a mosaic on the image touches (``LongScreenshotKept/redactedAreas``), as
+  /// the card counts the lines it sends (``LongScreenshotCardState/keptLines``) and as a
+  /// screenshot's context leaves out what its mosaics hide (``ScreenContext/unredacted(_:hiding:)``);
+  /// and the app's name and the window's title unless they could repeat what is hidden
+  /// (``fields(app:window:redacted:)``).
   public init(
     source: LongScreenshotCardSource, kept: LongScreenshotKept, pixelWidth: Int, pixelHeight: Int
   ) {
-    let hidden = LongScreenshotExportRules.hiddenAreas(of: source, kept: kept)
-      .map { $0.offsetBy(dx: 0, dy: -kept.top) }
+    let hidden = kept.redactedAreas.map { $0.offsetBy(dx: 0, dy: -kept.top) }
     let lines = source.lines.compactMap { line -> ScreenContext.TextBox? in
       guard kept.keeps(line.box) else { return nil }
       return ScreenContext.TextBox(text: line.text, box: line.box.offsetBy(dx: 0, dy: -kept.top))
     }
     let (app, window) = Self.fields(
-      app: source.shot.appName, window: source.shot.windowTitle, covered: kept.covered,
-      redacted: kept.redacts)
+      app: source.shot.appName, window: source.shot.windowTitle, redacted: kept.redacts)
     self.init(
       app: app, window: window,
       pages: Self.pages(
@@ -50,18 +48,12 @@ public struct LongScreenshotContext: Equatable, Sendable {
 
   /// The app's name and the window's title as the kept range may show them. A mosaic in the range
   /// (`redacted`) takes both, as a screenshot's context does (``ScreenContext``): either may
-  /// repeat what it hides, and comparing them with the hidden text cannot rule that out. A
-  /// covered range hides exactly the parts ``SensitiveText`` finds, so a name or title in which it
-  /// finds one goes (the window list names them whatever the screen shows). Otherwise both stay.
-  static func fields(app: String?, window: String?, covered: Bool, redacted: Bool) -> (
-    String?, String?
-  ) {
-    guard !redacted else { return (nil, nil) }
-    guard covered else { return (app, window) }
-    func shown(_ value: String?) -> String? {
-      value.flatMap { SensitiveText.matches(in: $0).isEmpty ? $0 : nil }
-    }
-    return (shown(app), shown(window))
+  /// repeat what it hides, and comparing them with the hidden text cannot rule that out. That
+  /// includes the mosaics Cover Sensitive Info adds (decision D7), which replaced the card's cover
+  /// flag: a covered range now leaves both out, where the flag left out only a name or title in
+  /// which ``SensitiveText`` found something. Otherwise both stay.
+  static func fields(app: String?, window: String?, redacted: Bool) -> (String?, String?) {
+    redacted ? (nil, nil) : (app, window)
   }
 
   /// `boxes` (points of an image `height` points tall) by page: each on the page of a

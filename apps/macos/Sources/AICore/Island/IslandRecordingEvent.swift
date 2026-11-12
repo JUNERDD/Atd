@@ -23,7 +23,8 @@ public enum IslandRecordingEvent: Equatable, Sendable {
   /// Stop the ask with this id (`recording.askStop`); the card has already applied the stop
   /// rules.
   case stopAnswer(String)
-  /// Regenerate: run this ask in place of `replacing` (the card shows it on the same page).
+  /// Regenerate: run this ask again as a new answer page after `replacing`'s, which keeps its
+  /// answer.
   case regenerate(RecordingAsk)
   /// "Open in Atd": hand the task of this ask to the panel (`recording.askOpen`).
   case openAnswer(String)

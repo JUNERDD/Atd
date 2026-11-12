@@ -14,12 +14,13 @@ export type CommandOutputOption = Static<typeof CommandOutputOptionSchema>;
 
 /**
  * The actions in the order every picker lists them, in groups divided by separators: the ones
- * that show the answer (the conversation, the island's answer card), the write-backs into the app
- * the command ran from, then the clipboard.
+ * that show the answer (the conversation, the island's answer card), the ones that land in the
+ * text the command ran on (written over or after the selection, marked on text in a screenshot,
+ * written at the cursor), then the clipboard. The shell's options menus list them in this order.
  */
 export const OUTPUT_ACTION_GROUPS: readonly (readonly CommandOutputAction[])[] = [
   ['panel', 'card'],
-  ['replaceSelection', 'insertAfterSelection', 'insertAtCursor'],
+  ['replaceSelection', 'insertAfterSelection', 'annotate', 'insertAtCursor'],
   ['copy'],
 ];
 export const OUTPUT_ACTIONS: readonly CommandOutputAction[] = OUTPUT_ACTION_GROUPS.flat();

@@ -55,6 +55,7 @@ struct IslandCard: View {
     .textFieldStyle(.plain)
     .font(.system(size: 13))
     .focused($filterFocused)
+    .modifier(FloatingHover(pointer: .text) { _ in })
     .disabled(!active)
     .padding(.horizontal, IslandMetrics.rowPadding)
     .frame(height: IslandMetrics.filterHeight)

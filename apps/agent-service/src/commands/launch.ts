@@ -2,18 +2,13 @@ import { randomUUID } from 'node:crypto';
 import {
   commandShortcut,
   instructionCapabilities,
-  instructionReferenceKey,
-  MAX_INPUT_CHIPS,
   parse,
   parseInstructionTokens,
   shortcutRunSettings,
   SubmitTaskRequestSchema,
   type CommandOutput,
+  type CommandScreenshotText,
   type ComputerRunRequest,
-  type InputChip,
-  type InputChipRange,
-  type InstructionReference,
-  type InstructionToken,
   type ModelSelection,
   type PreviewTaskResponse,
   type RunReference,
@@ -35,6 +30,7 @@ import { resolvePreview } from '../tasks/preview.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
 import { commandFingerprint } from './fingerprint.js';
+import { commandChips, framed } from './launch-text.js';
 import { isLiteRun } from './lite.js';
 import { outputInstruction } from './output-instruction.js';
 import { CommandStore } from './store.js';
@@ -115,6 +111,12 @@ export interface LaunchCommandRequest {
   expectedFingerprint?: string;
   /** Registered computer targets an attended run may act on (`SubmitTaskRequest.computer`). */
   computer?: ComputerRunRequest;
+  /**
+   * The run reads text recognized in a screenshot (`CommandRunRequest.screenshotText`): its files
+   * (the screenshot and its screen context) attach whatever the command's input accepts, and its
+   * output instruction says how to answer for that screenshot. The panel's route only.
+   */
+  screenshotText?: CommandScreenshotText;
 }
 
 /**
@@ -138,7 +140,8 @@ export interface LaunchCommandRequest {
  *    from, and a task the run creates is titled after the command unless `internal` names one.
  *    A command whose output is used verbatim also tells the model so, as the run's hidden
  *    instructions (`outputInstruction`), unless the run is unattended; a launch may pick another
- *    output for its run alone (`output`).
+ *    output for its run alone (`output`). A run on text in a screenshot (`screenshotText`) also
+ *    attaches the screenshot's files whatever the command accepts, and is told how to answer for it.
  * 6. A person's run that creates its task and needs no tools, tokens, files, folders or frame
  *    takes the lightweight session (commands/lite.ts `isLiteRun`).
  *
@@ -193,7 +196,7 @@ export async function launchCommand(
   // answer only stays in its conversation and the model is told nothing about where it goes.
   const instructions = internal.trigger
     ? ''
-    : (outputInstruction(request.output ?? command.output) ?? '');
+    : (outputInstruction(request.output ?? command.output, request.screenshotText) ?? '');
   if (
     request.frame &&
     runInputSize({ ...snapshot, input: submit.input, instructions }) > CONTEXT_BUDGET
@@ -257,6 +260,7 @@ async function preview(
     return await resolvePreview(
       { dataDir: deps.paths.root, ledger: deps.ledger },
       { command, input: request.input, ...(policy ? { policy } : {}) },
+      { anyFiles: request.screenshotText !== undefined },
     );
   } catch (error) {
     if (error instanceof TypeError) throw new CommandLaunchError('invalidInput', error.message);
@@ -275,52 +279,6 @@ function checked(request: SubmitTaskRequest): SubmitTaskRequest {
     if (error instanceof TypeError) throw new CommandLaunchError('invalidInput', error.message);
     throw error;
   }
-}
-
-/** Where the rendered template sits in a run's text. */
-interface Span {
-  from: number;
-  to: number;
-}
-
-/** The rendered template with the frame's text before and after it, joined with blank lines. */
-function framed(
-  rendered: string,
-  frame: LaunchCommandRequest['frame'],
-): { text: string; span: Span } {
-  const before = frame?.before ? `${frame.before}\n\n` : '';
-  const after = frame?.after ? `\n\n${frame.after}` : '';
-  const span = { from: before.length, to: before.length + rendered.length };
-  return { text: `${before}${rendered}${after}`, span };
-}
-
-/**
- * Transcript chips for a command run's rendered `text`: its tokens that the template holds, found
- * within the template's `span`, in document order (so ranges ascend without overlap), capped like
- * composer chips. A conversation chip shows that task's title, or its id when the task is gone.
- */
-function commandChips(
-  text: string,
-  span: Span,
-  template: readonly InstructionToken[],
-  ledger: Ledger,
-): InputChipRange[] {
-  const keys = new Set(template.map((token) => instructionReferenceKey(token.reference)));
-  return parseInstructionTokens(text)
-    .filter((token) => token.from >= span.from && token.to <= span.to)
-    .filter((token) => keys.has(instructionReferenceKey(token.reference)))
-    .slice(0, MAX_INPUT_CHIPS)
-    .map((token) => ({ from: token.from, to: token.to, chip: chipOf(token.reference, ledger) }));
-}
-
-function chipOf(reference: InstructionReference, ledger: Ledger): InputChip {
-  if (reference.kind !== 'task') return reference;
-  const title = ledger.data.tasks.find((task) => task.id === reference.taskId)?.title;
-  return {
-    kind: 'task',
-    taskId: reference.taskId,
-    title: (title || reference.taskId).slice(0, 1024),
-  };
 }
 
 /**

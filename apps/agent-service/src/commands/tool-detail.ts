@@ -1,5 +1,5 @@
 import {
-  writesBack,
+  reviewable,
   type CommandInput,
   type CommandOutput,
   type CommandOutputAction,
@@ -31,6 +31,7 @@ const OUTPUT_ACTIONS = {
   card: 'shown in a card over the app it ran from',
   replaceSelection: 'written over the selected text',
   insertAfterSelection: 'inserted after the selected text',
+  annotate: 'marked on the selected text in a screenshot, else shown in a card',
   insertAtCursor: 'inserted at the cursor',
   copy: 'copied to the clipboard',
 } as const satisfies Record<CommandOutputAction, string>;
@@ -51,7 +52,7 @@ function inputSummary(input: CommandInput): string {
 
 function outputSummary(output: CommandOutput): string {
   const where = OUTPUT_ACTIONS[output.action];
-  return writesBack(output.action) && output.review ? `${where} · after you review it` : where;
+  return reviewable(output.action) && output.review ? `${where} · after you review it` : where;
 }
 
 function parameterLine(parameter: CommandParameter): string {

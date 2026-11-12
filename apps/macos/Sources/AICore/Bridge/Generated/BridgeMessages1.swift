@@ -101,6 +101,7 @@ public enum NativeCall: Equatable, Sendable {
   case appsPick(AppsPickParams)
   case shortcutsRecording(ShortcutsRecordingParams)
   case recordingAnswer(RecordingAnswerParams)
+  case captureTextProgress(CaptureTextProgressParams)
 
   /// The contract name.
   public var name: String {
@@ -170,6 +171,7 @@ public enum NativeCall: Equatable, Sendable {
     case .appsPick: "apps.pick"
     case .shortcutsRecording: "shortcuts.recording"
     case .recordingAnswer: "recording.answer"
+    case .captureTextProgress: "captureText.progress"
     }
   }
 }

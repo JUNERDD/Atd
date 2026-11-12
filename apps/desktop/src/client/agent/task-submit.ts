@@ -1,5 +1,5 @@
 import { runCommand, type AgentClientOptions } from '@atd/agent-client';
-import { snapshotToolsFor } from '@atd/agent-contracts';
+import { snapshotToolsFor, type ScreenshotTextFollowUp } from '@atd/agent-contracts';
 import type { AgentRequest, SubmitRequest, TaskDetail } from './bridge';
 import type { CommandDefinition } from './command-schema';
 import { stageRunChoices } from './run-staging';
@@ -36,7 +36,11 @@ export async function submitTask<S>(
   // follow-up would append instead of replacing. (The service refuses one without `taskId`.)
   if (request.branchBefore && busy)
     throw new Error('Wait for the current run to finish before changing an earlier message.');
+  const screenshotText = screenshotFollowUp(request);
   if (busy && previous) {
+    // A queued follow-up is text only; the answer format it would be told would not reach it.
+    if (screenshotText)
+      throw new Error('Wait for the current run to finish before making a new version.');
     if (request.input.files.length || request.input.folders?.length)
       throw new Error('Attach files and folders after the run finishes.');
     // A queued follow-up is text only; it would silently drop the chips' references and skill.
@@ -72,8 +76,21 @@ export async function submitTask<S>(
     ...(policy?.computer ? { computer: policy.computer } : {}),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
+    ...(screenshotText ? { screenshotText } : {}),
   });
   return settled(tasks, submitted.taskId, holder);
+}
+
+/**
+ * What a follow-up on a screenshot-text run's answer asks the service to tell it (its scope,
+ * paragraph count and where the answer goes), or undefined for any other follow-up. It needs the
+ * answer's `output` beside `screenshotText`.
+ */
+function screenshotFollowUp(request: SubmitRequest): ScreenshotTextFollowUp | undefined {
+  const { screenshotText, output } = request;
+  if (!screenshotText) return undefined;
+  if (!output) throw new Error('A follow-up on screenshot text needs where its answer goes.');
+  return { ...screenshotText, output: output.action };
 }
 
 /**
@@ -82,7 +99,8 @@ export async function submitTask<S>(
  * command material and titles a new task after the command. The command must still be the one the
  * panel showed. A command run stages only its template's tokens: the panel sends no composer
  * chips with it, so the policy contributes its model, thinking level, tools and memory flag. A
- * launch from one of the command's shortcuts names it, so the service starts from its overrides.
+ * launch from one of the command's shortcuts names it, so the service starts from its overrides,
+ * and a run on text picked in a screenshot says so (`screenshotText`).
  */
 async function runSavedCommand<S>(
   tasks: TaskClient<S>,
@@ -115,6 +133,7 @@ async function runSavedCommand<S>(
     ...(policy?.computer ? { computer: policy.computer } : {}),
     ...(request.output ? { output: request.output } : {}),
     ...(request.shortcutId ? { shortcutId: request.shortcutId } : {}),
+    ...(request.screenshotText ? { screenshotText: request.screenshotText } : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
   });
   return settled(tasks, submitted.taskId, holder);

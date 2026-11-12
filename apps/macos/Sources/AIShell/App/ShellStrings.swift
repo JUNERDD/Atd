@@ -110,9 +110,9 @@ final class ShellStrings {
   /// The current language's table, for copy AICore formats (``McpApprovalDialog``).
   var catalog: ShellText {
     let table = table
-    return ShellText(language: language) {
-      table.localizedString(forKey: $0.rawValue, value: nil, table: nil)
-    }
+    return ShellText(
+      language: language,
+      catalog: { table.localizedString(forKey: $0, value: nil, table: nil) })
   }
 
   /// The compiled `<language>.lproj` of the app bundle. Outside an app bundle (tests, `swift

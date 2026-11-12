@@ -29,7 +29,9 @@ final class CaptureTextReader {
       if delay > .zero { try? await Task.sleep(for: delay) }
       guard !Task.isCancelled else { return }
       var scan: ScreenText.Scan?
-      if let image = pixels() { scan = await ScreenText.scan(in: image, timeout: Self.timeout) }
+      if let image = pixels() {
+        scan = await ScreenText.scan(in: image, timeout: Self.timeout, glyphs: true)
+      }
       guard !Task.isCancelled, let self else { return }
       reading = nil
       onChange?(scan.map { Self.text($0, in: selection) } ?? .empty)
@@ -45,7 +47,8 @@ final class CaptureTextReader {
   /// `scan`'s normalized boxes in desktop points over `selection`.
   private static func text(_ scan: ScreenText.Scan, in selection: CGRect) -> CaptureText {
     func place(_ box: CGRect) -> CGRect {
-      CGRect(
+      guard !box.isNull else { return .null }
+      return CGRect(
         x: selection.minX + box.minX * selection.width,
         y: selection.minY + box.minY * selection.height, width: box.width * selection.width,
         height: box.height * selection.height)
@@ -54,6 +57,11 @@ final class CaptureTextReader {
       boxes: scan.boxes.map {
         ScreenContext.TextBox(text: $0.text, box: place($0.box), confidence: $0.confidence)
       },
-      sensitive: scan.sensitive.map { SensitiveText.Box(kind: $0.kind, box: place($0.box)) })
+      sensitive: scan.sensitive.map { SensitiveText.Box(kind: $0.kind, box: place($0.box)) },
+      glyphs: CaptureTextGlyphs(
+        runs: scan.glyphs.map { run in
+          CaptureTextGlyphs.Run(
+            text: run.text, box: place(run.box), characters: run.characters.map(place))
+        }))
   }
 }

@@ -9,8 +9,8 @@ import AppKit
 /// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
 /// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
 /// for the names below. The capture bar's and command row's glyphs that set lacked (`video`,
-/// `scan-text`, `scan-eye`, `shield-check`) are written out from the icon nodes of the pinned
-/// `lucide-react` 1.61.0; `camera`, `sparkles`, `ellipsis` and `arrow-up` are the other sets'.
+/// `scan-text`, `scan-eye`, `shield-check`, `square-dashed-text`) are written out from the icon
+/// nodes of the pinned `lucide-react` 1.61.0; `camera`, `sparkles`, `ellipsis` and `arrow-up` are the other sets'.
 /// Swatches and the cover box depict their values, so they are drawn here.
 enum AnnotationIcons {
   static let undo = "undo-2"
@@ -29,6 +29,8 @@ enum AnnotationIcons {
   static let autoRedact = "scan-eye"
   static let redacted = "shield-check"
   static let longScreenshot = "unfold-vertical"
+  /// Text mode's way in and its scope chip (the plan's 「选取文字」).
+  static let selectText = "square-dashed-text"
 
   /// The Lucide glyph for pixelate and blur; a drawn black box for solid, which depicts itself.
   static func redaction(_ redaction: AnnotationRedaction, label: String) -> NSImage {
@@ -94,5 +96,11 @@ extension AnnotationColor {
   nonisolated var nsColor: NSColor {
     let rgb = components
     return NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
+  }
+}
+
+extension AnnotationRGBA {
+  nonisolated var nsColor: NSColor {
+    NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
   }
 }

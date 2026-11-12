@@ -32,18 +32,27 @@ nonisolated enum ScreenText {
   /// What a selection being edited shows (architecture S5, S6): every piece of text, and the
   /// parts of it that look sensitive (``SensitiveText``), each boxed on its own rather than as
   /// its whole line where the recognizer can say where it is. Boxes are normalized with the
-  /// origin at the top-left.
+  /// origin at the top-left. `glyphs` holds each piece's characters' boxes when the caller asked
+  /// for them (the capture editor's text mode selects by the character), else nothing.
   struct Scan: Sendable {
     let boxes: [ScreenContext.TextBox]
     let sensitive: [SensitiveText.Box]
+    var glyphs: [CaptureTextGlyphs.Run] = []
   }
 
-  /// `image`'s ``Scan``; nil when recognition failed or ran past `timeout`. Cancelling the
-  /// calling task stops the recognition and answers nil at once.
-  static func scan(in image: CGImage, timeout: Duration) async -> Scan? {
+  /// The most characters one scan boxes one by one (``scan(in:timeout:glyphs:)``); pieces past
+  /// it are left to an even estimate, so a screen full of small text cannot hold the reading up.
+  static let maxGlyphCharacters = 8_000
+
+  /// `image`'s ``Scan``, with each piece's characters boxed when `glyphs` (while the budget
+  /// lasts, ``maxGlyphCharacters``); nil when recognition failed or ran past `timeout`.
+  /// Cancelling the calling task stops the recognition and answers nil at once.
+  static func scan(in image: CGImage, timeout: Duration, glyphs: Bool = false) async -> Scan? {
     await bounded(by: timeout) {
       await recognize(image).map { lines in
-        Scan(boxes: lines.map(\.box), sensitive: lines.flatMap(sensitiveParts))
+        Scan(
+          boxes: lines.map(\.box), sensitive: lines.flatMap(sensitiveParts),
+          glyphs: glyphs ? characterRuns(of: lines) : [])
       }
     }
   }
@@ -98,6 +107,26 @@ nonisolated enum ScreenText {
     return SensitiveText.matches(in: text).map { match in
       let part = line.reading.boundingBox(for: match.range).map { flipped($0.boundingBox.cgRect) }
       return SensitiveText.Box(kind: match.kind, box: part ?? line.box.box)
+    }
+  }
+
+  /// Every piece's characters, each boxed by the recognizer (``CGRect/null`` where it gave
+  /// none), until ``maxGlyphCharacters`` are boxed; the pieces after that carry no boxes. Stops
+  /// early, with what it has, once the calling task is cancelled.
+  private static func characterRuns(of lines: [Line]) -> [CaptureTextGlyphs.Run] {
+    var budget = maxGlyphCharacters
+    return lines.map { line in
+      let text = line.reading.string
+      guard text.count <= budget, !Task.isCancelled else {
+        return CaptureTextGlyphs.Run(text: text, box: line.box.box, characters: [])
+      }
+      budget -= text.count
+      let characters = text.indices.map { index in
+        line.reading.boundingBox(for: index..<text.index(after: index)).map {
+          flipped($0.boundingBox.cgRect)
+        } ?? .null
+      }
+      return CaptureTextGlyphs.Run(text: text, box: line.box.box, characters: characters)
     }
   }
 

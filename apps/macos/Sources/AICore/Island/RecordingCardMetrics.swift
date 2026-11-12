@@ -4,7 +4,7 @@ import CoreGraphics
 /// corner, padding, title row and footer around a player with the steps beside it, the
 /// filmstrip timeline under them, the ask field with its quick asks, the answer slot and the
 /// footer. The recording shows larger only in the card's lightbox
-/// (``recordingLightboxLayout(window:area:recorded:aspect:steps:)``).
+/// (``recordingLightboxLayout(area:recorded:aspect:dockedPanel:)``).
 extension IslandMetrics {
   public static let recordingCardWidth = 632.0
   /// The small player's room: it shows the recording at its own shape inside it.
@@ -175,20 +175,15 @@ extension IslandMetrics {
 }
 
 /// The recording's lightbox (`IslandRecordingLightbox`): the player on a stage in the media
-/// column, the steps panel on its right, the top bar over the column and the two-row bottom bar
-/// with the larger filmstrip under it. Chrome stays inside the work area; the player never shows
-/// larger than the recording's own point size.
+/// column, the top bar over the column and the two-row bottom bar with the larger filmstrip under
+/// it, and the side panel with the steps on the right (``lightboxPanel(shown:in:between:)``).
+/// Chrome stays inside the work area; the player never shows larger than the recording's own point
+/// size.
 extension IslandMetrics {
   public static let recordingLightboxFilmHeight = 36.0
-  /// The stage's top below the work area's top, and its sides' gutter.
+  /// The stage's top below the work area's top, and its sides' gutter (beside a docked panel too).
   public static let recordingLightboxTop = 72.0
   public static let recordingLightboxGutter = 32.0
-  /// The steps panel: its width, its inset from the work area's side, and the window width under
-  /// which it never shows.
-  public static let recordingLightboxStepsWidth = 300.0
-  public static let recordingLightboxStepsInset = 16.0
-  public static let recordingLightboxStepsMinWindow = 1100.0
-  public static let recordingLightboxStepsRadius = 18.0
   /// The bottom bar: two rows (the timeline, then the hints and actions) in a rounded rectangle,
   /// at least this wide unless the column is narrower, and the gap above it.
   public static let recordingLightboxBarMinWidth = 760.0
@@ -207,25 +202,20 @@ extension IslandMetrics {
     public let column: CGRect
     /// The player at rest.
     public let player: CGRect
-    /// The steps panel; nil while it is hidden or the window is too narrow for it.
-    public let steps: CGRect?
     /// The bottom bar's width.
     public let barWidth: Double
   }
 
-  /// The layout in a window of `window` whose work area is `area`, for a recording `recorded`
-  /// points large and `aspect` wide per point of height, with the steps panel when `steps`.
+  /// The layout in a work area `area`, for a recording `recorded` points large and `aspect` wide
+  /// per point of height, left of the side panel while it docks at `dockedPanel`.
   public static func recordingLightboxLayout(
-    window: WindowSize, area: CGRect, recorded: WindowSize, aspect: Double, steps: Bool
+    area: CGRect, recorded: WindowSize, aspect: Double, dockedPanel: CGRect?
   ) -> RecordingLightboxLayout {
-    let side = steps && window.width >= recordingLightboxStepsMinWindow
     let top = area.minY + recordingLightboxTop
     let bottom =
       area.maxY - lightboxBottomInset - recordingLightboxBarHeight - recordingLightboxBarGap
     let left = area.minX + recordingLightboxGutter
-    let right =
-      area.maxX - recordingLightboxGutter
-      - (side ? recordingLightboxStepsWidth + recordingLightboxStepsInset : 0)
+    let right = (dockedPanel?.minX ?? area.maxX) - recordingLightboxGutter
     let column = CGRect(
       x: left, y: top, width: max(right - left, 0), height: max(bottom - top, 0))
     let size = recordingPlayer(
@@ -235,11 +225,15 @@ extension IslandMetrics {
     let player = CGRect(
       x: column.midX - size.width / 2, y: column.midY - size.height / 2, width: size.width,
       height: size.height)
-    let panel = CGRect(
-      x: area.maxX - recordingLightboxStepsInset - recordingLightboxStepsWidth, y: top,
-      width: recordingLightboxStepsWidth, height: column.height)
     return RecordingLightboxLayout(
-      column: column, player: player, steps: side ? panel : nil,
+      column: column, player: player,
       barWidth: min(max(size.width, recordingLightboxBarMinWidth), column.width))
+  }
+
+  /// The rows the bars leave free in a work area `area`: from the top bar's bottom to the bottom
+  /// bar's top, where the side panel stands as a drawer.
+  public static func recordingLightboxBetweenBars(in area: CGRect) -> ClosedRange<CGFloat> {
+    let top = area.minY + lightboxTopInset + lightboxTopBarHeight
+    return top...max(area.maxY - lightboxBottomInset - recordingLightboxBarHeight, top)
   }
 }

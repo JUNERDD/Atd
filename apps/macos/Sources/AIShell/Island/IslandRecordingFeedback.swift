@@ -41,21 +41,24 @@ enum IslandShellFeedbackTiming {
 /// tooltip and accessibility value in every layout.
 struct IslandFeedbackButton: View {
   let title: String
-  /// What a compacted secondary action shows in place of its label.
-  let glyph: String
+  /// What a compacted secondary action shows in place of its label; without one it keeps it.
+  let glyph: String?
   let workingLabel: String
   var tooltip: String?
   /// The shortcut that performs the action too (``IslandShellFooterKey``), shown as a keycap.
   var keys: String?
   var primary = false
   var compact = false
+  /// The glyph leads the label at rest too, for an action that enters a mode the capture toolbar
+  /// also names with its glyph (the long screenshot's Select Text).
+  var glyphAtRest = false
   let feedback: IslandRecording.CardFeedback?
   let action: () -> Void
   @State private var hovered = false
   @Environment(\.isEnabled) private var isEnabled
 
   /// A secondary action compacted to its glyph.
-  private var iconOnly: Bool { compact && !primary }
+  private var iconOnly: Bool { compact && !primary && glyph != nil }
 
   var body: some View {
     let message = feedback.flatMap(Self.message)
@@ -86,11 +89,11 @@ struct IslandFeedbackButton: View {
 
   /// The button at rest: its label and keycap, or a compacted secondary action's glyph.
   @ViewBuilder private var rest: some View {
-    if iconOnly {
+    if iconOnly, let glyph {
       IslandGlyph(name: glyph)
         .frame(width: IslandMetrics.controlSide, height: IslandMetrics.controlSide)
     } else {
-      IslandTextFace(title: title, keys: compact ? nil : keys)
+      IslandTextFace(title: title, keys: compact ? nil : keys, glyph: glyphAtRest ? glyph : nil)
     }
   }
 

@@ -39,6 +39,9 @@ final class CaptureSession {
     case longScreenshot(LongScreenshotImage)
     /// The same image as `longScreenshot`, for the clipboard rather than the result card.
     case copiedLongScreenshot(LongScreenshotImage)
+    /// A text command's result card ended the capture to open its task or write its answer
+    /// (decision D10); nothing is attached.
+    case textResult(CaptureTextHandoff)
     case failed
   }
 
@@ -232,7 +235,7 @@ final class CaptureSession {
     case .launched(let confirmation, let launch):
       outcome = .launched(await described(confirmation), launch)
     case .cancelled, .wantsAccessibility, .copied, .record, .longScreenshot,
-      .copiedLongScreenshot, .failed:
+      .copiedLongScreenshot, .textResult, .failed:
       break
     }
     await targeting.end()
@@ -268,13 +271,13 @@ final class CaptureSession {
       let primary = desktop.geometry.primary(for: rect)
     else { return finish(.failed) }
     let origin = desktop.geometry.desktopPoint(primary.quartzFrame.origin)
-    finish(
-      outcome(
-        CaptureConfirmation(
-          image: rendered.image, raw: rendered.raw, pixelScale: rendered.scale,
-          document: editor?.document ?? AnnotationDocument(), displayID: primary.id,
-          displayFrame: primary.quartzFrame,
-          selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)))
+    var confirmation = CaptureConfirmation(
+      image: rendered.image, raw: rendered.raw, pixelScale: rendered.scale,
+      document: editor?.document ?? AnnotationDocument(), displayID: primary.id,
+      displayFrame: primary.quartzFrame,
+      selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)
+    confirmation.pickedText = editor?.pickedText
+    finish(outcome(confirmation))
   }
 
   /// Edit mode: makes `rect` (view points of the display `displayID`) the selection and puts
@@ -318,27 +321,4 @@ final class CaptureSession {
     continuation?.resume(returning: outcome)
     continuation = nil
   }
-}
-
-/// A confirmed capture: what is imported, and what reopening it later needs (decision F2).
-struct CaptureConfirmation {
-  /// The selection's pixels with the annotations drawn in.
-  let image: CGImage
-  /// The same pixels without annotations.
-  let raw: CGImage
-  /// Pixels per point of the image: the display's, or the finest of those a selection spans.
-  let pixelScale: CGFloat
-  /// The annotations, selection-local.
-  let document: AnnotationDocument
-  /// The display holding most of the selection.
-  let displayID: CGDirectDisplayID
-  /// That display's Quartz frame.
-  let displayFrame: CGRect
-  /// The selection in that display's view points; it reaches past the display when it spans
-  /// several.
-  let selection: CGRect
-  /// The selection in the session's desktop points.
-  let desktopSelection: CGRect
-  /// The element the selection was picked from, described; set by ``CaptureSession/run()``.
-  var element: ElementDescription?
 }

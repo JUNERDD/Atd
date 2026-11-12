@@ -12,7 +12,7 @@ enum IslandAskEvent<Ask: CardAsk>: Equatable {
   case ask(Ask)
   /// Stop the ask with this id.
   case stop(String)
-  /// Run this ask in place of its `replacing` one, on the same answer page.
+  /// Run this ask, which asks its `replacing` one's question again on a new answer page.
   case regenerate(Ask)
   /// Hand the task of this ask to the panel ("Open in Atd").
   case open(String)
@@ -61,7 +61,8 @@ final class IslandAsking<Ask: CardAsk, Quick: Hashable & Sendable> {
     onResize()
   }
 
-  /// Regenerate: the shown answer is asked again in its place, about the range kept now.
+  /// Regenerate: the shown answer's question is asked again about the range kept now, on a new
+  /// page that shows; the shown answer keeps its page.
   func regenerate() {
     guard let range = range(),
       case .asked(let ask, let stopping)? = answers.regenerate(range: range, id: Self.askID())
@@ -91,13 +92,16 @@ final class IslandAsking<Ask: CardAsk, Quick: Hashable & Sendable> {
     onResize()
   }
 
+  /// Open in Atd: the shown answer's task in the panel, once that answer settled.
   func openAnswer() {
-    guard let shown = answers.shown else { return }
+    guard let shown = answers.shown, !shown.phase.running else { return }
     onEvent(.open(shown.askID))
   }
 
+  /// Copies the shown answer once it settled with text.
   func copyAnswer() {
-    guard let shown = answers.shown, !shown.text.isEmpty, writeClipboard(shown.text)
+    guard let shown = answers.shown, !shown.phase.running, !shown.text.isEmpty,
+      writeClipboard(shown.text)
     else { return }
     copiedToken += 1
     let token = copiedToken

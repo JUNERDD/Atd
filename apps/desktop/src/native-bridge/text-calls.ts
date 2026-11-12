@@ -156,12 +156,19 @@ export const NativeTextCalls = {
    * shown) takes Return. A press writes the answer into that field as `text.write` would
    * (`cursor` or `selection`, with the `typing.set` settings), showing writing and then done, and
    * the card goes; a refused write brings the card back with why, and one that stopped partway
-   * puts the whole answer on the clipboard and says so in a notice. With `review` (the
+   * puts the whole answer on the clipboard and says so in a notice. With `streaming` the answer
+   * is still coming (a run whose answer lands on the card, shown as it grows): the answer follows
+   * its newest text, Stop (`stop`, Escape too) takes the place of Copy, Insert and Replace, and
+   * the close button cancels the run (`cancel`); after `stop` the card stays until the page shows
+   * what came, and the page's next show without `streaming` settles it. With `review` (the
    * command's answer waits for review, `command-review.ts`) the answer card is the review card:
    * it also shows the original and the answer's changes, steps between versions (`version`),
    * offers Regenerate (`regenerate`), stops a pending version (`stop`), and takes an adjustment
    * (typed text, chosen suggestions, changed options, all staged on the card until it is sent,
-   * `adjust`); none of these takes the card away, and the page answers each with a show. While
+   * `adjust`); none of these takes the card away, and the page answers each with a show. While a
+   * version is pending the card has a page for it after the `count` kept ones (`version` is
+   * `count` + 1 on it), whose `answer` is what came of it so far, empty before any did; it streams
+   * as `streaming` does, and Copy and the writes act on kept versions only. While
    * a field has a selection the card's Insert writes after it (`afterSelection`) rather than at
    * the focus. One HUD shows at a time: a show for another target replaces it, one for the same
    * target changes it in place. Only the panel's page may call it.
@@ -207,9 +214,11 @@ export const NativeTextCalls = {
             {
               phase: Type.Literal('answer'),
               command: Type.String({ minLength: 1, maxLength: 200 }),
-              answer: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }),
+              // Empty only on a review card's page of a pending version, before any of it came.
+              answer: Type.String({ maxLength: MAX_NATIVE_TEXT_LENGTH }),
               note: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
               review: Type.Optional(CommandReviewSchema),
+              streaming: Type.Optional(Type.Boolean()),
             },
             { additionalProperties: false },
           ),
@@ -271,18 +280,19 @@ export const NativeTextPosts = {
 export const NativeTextEvents = {
   /**
    * The person acted on the progress HUD of `target` (`commandProgress.show`): `cancel` (its
-   * cancel button, or Escape) while it showed `working`, or the options card closed in `choose`;
-   * `open` (its Open button) on a notice or an answer card; `change` (the values summary) while `working`; `run`
+   * cancel button, or Escape) while it showed `working`, the close button of an answer card while
+   * it streams (the HUD goes; `stop`, its Stop or Escape, keeps it), or the options card closed in
+   * `choose`; `open` (its Open button) on a notice or an answer card; `change` (the values summary) while `working`; `run`
    * (with `arguments`, every value the card shows) or `edit` (an input option handed to the panel)
    * in `choose`, and `pick` (with `arguments`) whenever the card's choices or toggles change there,
    * the card staying up, so the page remembers them at once; `run` (Return or its Run button) or `open` (Open in Atd) with `compose` in
    * `compose`, or `cancel` (Escape or its close button). On the review card: `regenerate`
    * (↻ or ⌘R), `adjust` (with `adjust`, what the card staged), `version` (with `version`, the
-   * one to show) and, while a version is pending, `stop`; `close` once the review card went away
+   * one to show, the pending version's page too) and, while a version is pending, `stop`; `close` once the review card went away
    * on its own (closed, copied, or written, whatever the write's outcome), so the page lets the
-   * review go. After `change` the page shows `choose` for the same target; after `pick` and the
-   * review card's other actions the card is still up; after any other action the HUD is already
-   * gone. Sent to the panel only.
+   * review go. After `change` the page shows `choose` for the same target; after `pick`, `stop`
+   * and the review card's other actions the card is still up; after any other action the HUD is
+   * already gone. Sent to the panel only.
    */
   'commandProgress.action': Type.Object(
     {

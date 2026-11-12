@@ -105,6 +105,8 @@ extension CaptureSession {
     editor.commandRow = options.commands
     editor.longScreenshot = longScreenshotAvailability(for: rect)
     editor.onLongScreenshot = { [weak self] in self?.startLongScreenshot() }
+    editor.renderSelection = { [weak self] in self?.shootSelection() }
+    editor.onTextResult = { [weak self] in self?.finish(.textResult($0)) }
     editor.keepClear = keepClear(for: rect)
     for overlay in overlays {
       overlay.annotationHost.scroll = { [weak editor] in editor?.scroll($0) ?? false }

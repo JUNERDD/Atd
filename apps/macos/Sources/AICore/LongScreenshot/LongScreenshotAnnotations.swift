@@ -1,15 +1,17 @@
 import CoreGraphics
 import Foundation
 
-// What a long screenshot's annotations (``LongScreenshotKept/annotations``, drawn in the card's
-// lightbox) mean for what its card sends: the image carries them, the text they hide stays out of
-// what goes with it, and an ask about other annotations is another ask.
+// What a long screenshot's annotations (``LongScreenshotKept/annotations``, added in the card's
+// lightbox or by its Cover Sensitive Info) mean for what its card sends: the image carries them,
+// the text their mosaics hide stays out of what goes with it, and an ask about other annotations
+// is another ask.
 
 extension LongScreenshotKept {
   /// The areas the annotations' mosaics hide, in image points: every mosaic whatever its
   /// redaction, since pixelation and blur keep only what they average, as a screenshot's context
   /// counts them (``ScreenContext/redactedAreas(of:selection:)``). Without area, a mosaic hides
-  /// nothing.
+  /// nothing. A recognized line or paragraph any of them touches is left out of what is sent as
+  /// text, picked or copied (decision D6), so what the image hides is not sent beside it in words.
   public var redactedAreas: [CGRect] {
     annotations.annotations.compactMap { annotation in
       guard case .mosaic(let rect) = annotation.shape else { return nil }
@@ -21,18 +23,6 @@ extension LongScreenshotKept {
   /// A mosaic shows in the range: the screen around the image (its app and window) may repeat
   /// what it hides, as a screenshot's context assumes (``ScreenContext``).
   public var redacts: Bool { redactedAreas.contains { touches($0) } }
-}
-
-extension LongScreenshotExportRules {
-  /// What keeps text of `kept` of `source` from being sent as text, in image points: the cover's
-  /// areas (``coveredAreas(of:kept:)``) and every mosaic drawn on the image
-  /// (``LongScreenshotKept/redactedAreas``). A recognized line any of them touches is left out,
-  /// so what the image hides is not sent beside it in words.
-  public static func hiddenAreas(of source: LongScreenshotCardSource, kept: LongScreenshotKept)
-    -> [CGRect]
-  {
-    coveredAreas(of: source, kept: kept) + kept.redactedAreas
-  }
 }
 
 extension AnnotationDocument {
@@ -61,11 +51,20 @@ extension Annotation {
       case .step(let center, let tip): [8] + center.askKey + (tip.map { [1] + $0.askKey } ?? [0])
       case .spotlight(let rect): [9] + rect.askKey
       }
-    return shape + [
+    let base: [Int] = [
       AnnotationColor.allCases.firstIndex(of: style.color) ?? 0, Self.bits(style.stroke.value),
       style.textBackground ? 1 : 0,
       AnnotationRedaction.allCases.firstIndex(of: style.redaction) ?? 0,
     ]
+    let size: [Int] = style.fontSize.map { [1, Self.bits(Double($0))] } ?? [0]
+    let text: [Int] = Self.askKey(style.plate) + Self.askKey(style.ink) + size
+    return shape + base + text + [style.fixedWidth ? 1 : 0]
+  }
+
+  /// An exact colour as its four components' bits after a tag, or the tag alone without one.
+  fileprivate static func askKey(_ color: AnnotationRGBA?) -> [Int] {
+    guard let color else { return [0] }
+    return [1, bits(color.red), bits(color.green), bits(color.blue), bits(color.alpha)]
   }
 
   /// A value's bits, with both zeros as one.

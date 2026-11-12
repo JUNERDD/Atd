@@ -27,7 +27,9 @@ import {
  * Actions the run cannot use stay in the menu, disabled: the selection actions for a command that
  * does not read the selection, the write-backs for a launch that did not come from another app.
  * When the current action is one of them, a note under the field says why the answer will stay in
- * the conversation instead.
+ * the conversation instead. Marking the selection (`annotate`) works only on text picked in a
+ * screenshot, which a run from here never reads, so it is listed only while it is the current or
+ * the saved action, where its description says that the answer shows in a card instead.
  */
 export function RunOutputField({
   prepared,
@@ -42,6 +44,11 @@ export function RunOutputField({
   // The launching shortcut's output, if it sets one, is the default this run started from.
   const saved = launchSettings(prepared).output.action;
   const blocked = outputUnavailable(prepared, action);
+  const groups = OUTPUT_ACTION_GROUPS.map((group) =>
+    group.filter(
+      (candidate) => candidate !== 'annotate' || action === candidate || saved === candidate,
+    ),
+  );
   return (
     <div className="settings-field">
       <Label htmlFor={id}>{t('output.action')}</Label>
@@ -56,7 +63,7 @@ export function RunOutputField({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {OUTPUT_ACTION_GROUPS.map((group, index) => (
+          {groups.map((group, index) => (
             <Fragment key={group[0]}>
               {index > 0 && <SelectSeparator />}
               <SelectGroup>

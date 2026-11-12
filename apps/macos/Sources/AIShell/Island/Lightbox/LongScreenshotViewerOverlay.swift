@@ -8,9 +8,9 @@ import AppKit
 /// image's frame after every scroll and zoom (``place(image:)``); it reads the kept range and the
 /// pages from the card it shares with the card's own preview (``refresh()``).
 ///
-/// It takes the pointer only on the trim bars, and not at all in annotate mode, where the bars and
-/// the page hover are hidden and the shade stays; everything else goes through to the scroll
-/// view under it.
+/// It takes the pointer only on the trim bars, and not at all in annotate or text mode, where the
+/// bars and the page hover are hidden and the shade stays; everything else goes through to the
+/// scroll view under it.
 final class LongScreenshotViewerOverlay: NSView {
   private let card: IslandLongScreenshotCardModel
   private let labels: IslandLongScreenshotLabels
@@ -26,9 +26,9 @@ final class LongScreenshotViewerOverlay: NSView {
   /// The image's frame in this view.
   private var image = CGRect.zero
 
-  /// Annotate mode: no trim bars, no page hover.
-  var annotating = false {
-    didSet { if annotating != oldValue { refresh() } }
+  /// Annotate or text mode: no trim bars, no page hover.
+  var editing = false {
+    didSet { if editing != oldValue { refresh() } }
   }
 
   /// The bar being dragged, whose hover covers the overlay.
@@ -63,7 +63,7 @@ final class LongScreenshotViewerOverlay: NSView {
 
   /// Only a shown trim bar takes the pointer.
   override func hitTest(_ point: NSPoint) -> NSView? {
-    guard !annotating, let superview else { return nil }
+    guard !editing, let superview else { return nil }
     let local = convert(point, from: superview)
     return bars.first { !$0.isHidden && $0.frame.contains(local) }
   }
@@ -116,7 +116,7 @@ final class LongScreenshotViewerOverlay: NSView {
       tag.setFrameOrigin(NSPoint(x: image.minX + 8, y: top + 8))
     }
     let hovered =
-      annotating ? nil : card.hoveredPage.flatMap { pages.indices.contains($0) ? $0 : nil }
+      editing ? nil : card.hoveredPage.flatMap { pages.indices.contains($0) ? $0 : nil }
     outline.isHidden = hovered == nil
     if let hovered {
       let page = pages[hovered]
@@ -130,14 +130,14 @@ final class LongScreenshotViewerOverlay: NSView {
     let overhang = IslandMetrics.longScreenshotHandleOverhang
     for (bar, hover) in zip(bars, hovers) {
       let value = bar.edge == .top ? kept.top : kept.bottom
-      bar.isHidden = annotating
+      bar.isHidden = editing
       bar.frame = CGRect(
         x: image.minX - overhang, y: y(value) - hit / 2, width: image.width + overhang * 2,
         height: hit)
       bar.text = labels.trimTab(bar.edge, IslandLongScreenshotLabels.points(value))
       bar.focused = card.focusedHandle == bar.edge
       bar.dragging = dragging == bar.edge
-      hover.enabled = !annotating && (dragging == nil || dragging == bar.edge)
+      hover.enabled = !editing && (dragging == nil || dragging == bar.edge)
       hover.frame = dragging == bar.edge ? bounds : bar.frame
     }
   }

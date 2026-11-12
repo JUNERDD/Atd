@@ -45,6 +45,8 @@ interface Tracked {
    * patch was missed, has none and its answer only stays in the conversation.
    */
   answer: RunAnswer | null;
+  /** Hears the answer as it grows while it is followed (`trackCommandRun`'s `onText`). */
+  onText: ((text: string) => void) | undefined;
 }
 
 const runs = new Map<string, Tracked>();
@@ -60,12 +62,14 @@ function changed() {
  * (`target`: a write-back, or the island's answer card). Either without a target leaves the answer
  * in the conversation, so it is not remembered.
  * `light` marks a run on the island (a light launch's, or a version of its review), whose end the
- * island reports even under review, since its review card shows the answer.
+ * island reports even under review, since its review card shows the answer; `onText` hears that
+ * answer as it grows, until the run ends.
  */
 export function trackCommandRun(
   prepared: PreparedCommand,
   detail: TaskDetail,
   light = false,
+  onText?: (text: string) => void,
 ): void {
   const { output } = prepared;
   const target = answersInPlace(output.action) ? (prepared.target ?? null) : null;
@@ -77,6 +81,7 @@ export function trackCommandRun(
     run: { taskId: detail.task.id, runId: run.id, output, target },
     pending,
     answer: pending ? new RunAnswer(detail, run.id) : null,
+    onText,
   });
   for (const runId of runs.keys()) {
     if (runs.size <= MAX_RUNS) break;
@@ -106,15 +111,20 @@ export function forgetCommandTarget(runId: string): void {
 }
 
 /**
- * Follows remembered runs once per event. Failed, stopped, cancelled or invalid transcripts
- * leave their answers in the conversation; only completed valid answers act by themselves.
+ * Follows remembered runs once per event, telling a run's `onText` when its answer grew while it
+ * goes on. Failed, stopped, cancelled or invalid transcripts leave their answers in the
+ * conversation; only completed valid answers act by themselves.
  */
 export function followCommandRuns(event: AgentEvent): SettledCommandRun[] {
   const settled: SettledCommandRun[] = [];
   for (const tracked of runs.values()) {
     if (!tracked.pending || !tracked.answer) continue;
+    const previous = tracked.answer.text;
     const status = tracked.answer.follow(event);
-    if (status === undefined) continue;
+    if (status === undefined) {
+      if (tracked.answer.text !== previous) tracked.onText?.(tracked.answer.text);
+      continue;
+    }
     const answer = status === 'completed' && tracked.answer.valid ? tracked.answer.text : '';
     tracked.pending = false;
     tracked.answer = null;

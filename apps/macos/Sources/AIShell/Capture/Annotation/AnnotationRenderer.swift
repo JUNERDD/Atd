@@ -23,16 +23,47 @@ nonisolated final class AnnotationRenderer {
   /// committing an edit does not move or reflow the text.
   static func textAttributes(_ style: AnnotationStyle) -> [NSAttributedString.Key: Any] {
     [
-      .font: NSFont.systemFont(ofSize: style.stroke.fontSize, weight: .semibold),
+      .font: NSFont.systemFont(ofSize: style.textFontSize, weight: .semibold),
       .foregroundColor: textColor(style),
     ]
   }
 
-  /// The glyph colour: the style's, or on a plate black or white for contrast, like a step
-  /// badge's number (E9).
+  /// The glyph colour: an exact ink, else the style's, or on a plate black or white for
+  /// contrast, like a step badge's number (E9).
   static func textColor(_ style: AnnotationStyle) -> NSColor {
+    if let ink = style.ink { return ink.nsColor }
     guard style.textBackground else { return style.color.nsColor }
     return style.color.isLight ? .black : .white
+  }
+
+  /// The size `text` takes drawn in `style` and wrapped at `width`, as ``draw`` lays it out: what
+  /// a command's text in place is fitted with (``CaptureTextMarks/Measure``) and what a text box
+  /// grows to when a grip narrows it.
+  static func measure(_ text: String, style: AnnotationStyle, width: CGFloat) -> CGSize {
+    let bounds = NSAttributedString(string: text, attributes: textAttributes(style)).boundingRect(
+      with: CGSize(width: width, height: .greatestFiniteMagnitude),
+      options: [.usesLineFragmentOrigin])
+    return CGSize(width: ceil(bounds.width), height: ceil(bounds.height))
+  }
+
+  /// ``measure(_:style:width:)`` for a semibold system font of `fontSize`, as the
+  /// ``CaptureTextMarks`` builder measures.
+  static func measure(_ text: String, fontSize: CGFloat, width: CGFloat) -> CGSize {
+    measure(text, style: AnnotationStyle(fontSize: fontSize), width: width)
+  }
+
+  /// `annotation` with a text box's frame as tall as its text takes at the frame's width, or
+  /// taller when it already was: a resize that narrowed it keeps every line. Other annotations
+  /// come back as they are.
+  static func fittingTextBox(_ annotation: Annotation) -> Annotation {
+    guard annotation.style.fixedWidth, case .text(let string, var frame) = annotation.shape else {
+      return annotation
+    }
+    let needed = measure(string, style: annotation.style, width: frame.width).height
+    frame.size.height = max(frame.height, needed)
+    var fitted = annotation
+    fitted.shape = .text(string, frame: frame)
+    return fitted
   }
 
   /// Draws `document` back to front, skipping `hidden` (the text being edited in place).
@@ -68,18 +99,76 @@ nonisolated final class AnnotationRenderer {
     }
   }
 
-  /// Draws text's rounded plate around `frame` in the style's colour (E9), with the step
-  /// badge's hairline edge on light colours so a white plate still shows on white.
+  /// Draws a text command's answer under review (``CaptureTextPreview``, decision D12) over the
+  /// annotations as it would land, but for `hidden` (translations whose originals show): each of
+  /// its annotations outlined dashed in `edge` a little clear of it, all of it at 45% while another
+  /// version is being made. It is never in the document, so the export never draws it.
+  func draw(
+    _ preview: CaptureTextPreview, hiding hidden: Set<UUID>, edge: CGColor, in context: CGContext
+  ) {
+    let shown = preview.ids.filter { !hidden.contains($0) }.compactMap { preview.document[$0] }
+    guard !shown.isEmpty else { return }
+    context.saveGState()
+    if preview.pending {
+      // One layer, so a plate and its text fade together rather than through each other.
+      context.setAlpha(0.45)
+      context.beginTransparencyLayer(auxiliaryInfo: nil)
+    }
+    for annotation in shown {
+      context.saveGState()
+      draw(annotation, number: preview.document.stepNumber(of: annotation.id), in: context) { _ in
+        nil
+      }
+      context.restoreGState()
+    }
+    context.setStrokeColor(edge)
+    context.setLineWidth(1.5)
+    context.setLineDash(phase: 0, lengths: [4, 3])
+    for annotation in shown { context.addPath(Self.previewOutline(of: annotation)) }
+    context.strokePath()
+    if preview.pending { context.endTransparencyLayer() }
+    context.restoreGState()
+  }
+
+  /// The dashed outline around an annotation a review previews: its text plate, its step badge's
+  /// circle, or a mark's bounds, 1.75 points out.
+  private static func previewOutline(of annotation: Annotation) -> CGPath {
+    let gap: CGFloat = 1.75
+    switch annotation.shape {
+    case .step(let center, _):
+      let radius = annotation.style.stroke.stepDiameter / 2 + gap
+      return CGPath(
+        ellipseIn: CGRect(
+          x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2),
+        transform: nil)
+    case .text where annotation.style.hasTextPlate:
+      let box = annotation.bounds.insetBy(dx: -gap, dy: -gap)
+      let radius = AnnotationPath.textPlateRadius(fontSize: annotation.style.textFontSize) + gap
+      return rounded(box, radius: radius)
+    default:
+      return rounded(annotation.bounds.insetBy(dx: -gap, dy: -gap), radius: 3)
+    }
+  }
+
+  /// A rounded rectangle whose corners never pass half a side, which `CGPath` would not draw.
+  private static func rounded(_ rect: CGRect, radius: CGFloat) -> CGPath {
+    let corner = max(min(radius, rect.width / 2, rect.height / 2), 0)
+    return CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
+  }
+
+  /// Draws text's rounded plate around `frame` in the style's colour (E9), or its exact plate
+  /// colour, with the step badge's hairline edge on light swatches so a white plate still shows
+  /// on white. An exact plate matches what it covers, so it has no edge.
   static func drawTextPlate(around frame: CGRect, style: AnnotationStyle, in context: CGContext) {
-    let fontSize = style.stroke.fontSize
+    let fontSize = style.textFontSize
     let plate = AnnotationPath.textPlate(around: frame, fontSize: fontSize)
     let radius = AnnotationPath.textPlateRadius(fontSize: fontSize)
     let path = CGPath(roundedRect: plate, cornerWidth: radius, cornerHeight: radius, transform: nil)
     context.saveGState()
-    context.setFillColor(style.color.nsColor.cgColor)
+    context.setFillColor((style.plate?.nsColor ?? style.color.nsColor).cgColor)
     context.addPath(path)
     context.fillPath()
-    if style.color.isLight {
+    if style.plate == nil, style.color.isLight {
       context.setStrokeColor(NSColor.black.withAlphaComponent(0.35).cgColor)
       context.setLineWidth(1)
       let edge = plate.insetBy(dx: 0.5, dy: 0.5)
@@ -142,7 +231,7 @@ nonisolated final class AnnotationRenderer {
       context.addPath(Self.path(AnnotationPath.smoothed(points)))
       context.strokePath()
     case .text(let string, let frame):
-      if annotation.style.textBackground {
+      if annotation.style.hasTextPlate {
         Self.drawTextPlate(around: frame, style: annotation.style, in: context)
       }
       Self.withAppKit(context) {

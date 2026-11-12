@@ -40,8 +40,19 @@ final class AnnotationHostView: NSView {
     return (passive ? PointerRole.passive : .grab).cursor
   }
 
+  /// The result card under `point` (the overlay's coordinates), whose controls set their own
+  /// cursors.
+  func card(at point: CGPoint) -> CaptureResultCardHost? {
+    guard let hit = super.hitTest(point) else { return nil }
+    return sequence(first: hit, next: \.superview).lazy.compactMap { $0 as? CaptureResultCardHost }
+      .first
+  }
+
+  /// A bar or the result card: they take their presses wherever they lie, over the selection too.
   private static func isInBar(_ view: NSView) -> Bool {
-    sequence(first: view, next: \.superview).contains { $0 is AnnotationGlassBar }
+    sequence(first: view, next: \.superview).contains {
+      $0 is AnnotationGlassBar || $0 is CaptureResultCardHost
+    }
   }
 }
 

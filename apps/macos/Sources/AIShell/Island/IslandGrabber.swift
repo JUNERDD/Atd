@@ -54,12 +54,23 @@ struct IslandGrabber: View {
   @State private var highlighted = false
 
   var body: some View {
+    IslandGrabberMark(highlighted: highlighted)
+      .modifier(IslandMoveHandle(model: model) { highlighted = $0 })
+      .frame(maxWidth: .infinity)
+      .accessibilityHidden(true)
+  }
+}
+
+/// The grabber as it looks: the capsule centred in its hit area of the strip, secondary while
+/// `highlighted`. The island's grabber and the screenshot text command's result card each attach
+/// their own move handle to it.
+struct IslandGrabberMark: View {
+  let highlighted: Bool
+
+  var body: some View {
     Capsule()
       .fill(highlighted ? HierarchicalShapeStyle.secondary : .tertiary)
       .frame(width: IslandMetrics.grabberWidth, height: IslandMetrics.grabberHeight)
       .frame(width: IslandMetrics.grabberHitWidth, height: IslandMetrics.grabberStrip)
-      .modifier(IslandMoveHandle(model: model) { highlighted = $0 })
-      .frame(maxWidth: .infinity)
-      .accessibilityHidden(true)
   }
 }

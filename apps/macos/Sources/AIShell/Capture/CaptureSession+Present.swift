@@ -39,10 +39,15 @@ extension CaptureSession {
     }
     let target = await targetRead?.value
     options.commands?.cursor = target?.writable == true
+    options.commands?.cursorApp = target?.app
     let presented = CapturePresentation(capturedAt: capturedAt, snapshot: snapshot, target: target)
     // A display change or a quit may have ended the session meanwhile.
     if isFinished { return presented }
     guard !overlays.isEmpty else { throw BridgeError("No display could be captured.") }
+    guard await ShortcutRelease.waitForHandoff(isValid: { !isFinished }) else {
+      cancel()
+      return presented
+    }
     // Activating only now keeps the other displays' windows in their active appearance while
     // they are frozen.
     NSApp.activate()

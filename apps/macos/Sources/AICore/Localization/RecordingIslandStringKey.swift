@@ -49,6 +49,8 @@ public enum RecordingIslandStringKey: String, CaseIterable, Sendable {
   case lightboxHintSeek = "island.recording.lightboxHintSeek"
   case lightboxHintTrim = "island.recording.lightboxHintTrim"
   case lightboxHintBack = "island.recording.lightboxHintBack"
+  /// The side panel's hide button, in both lightboxes (the long screenshot's borrows it).
+  case lightboxHidePanel = "island.recording.lightboxHidePanel"
   // Asking about the recording.
   case askPlaceholder = "island.recording.askPlaceholder"
   case askLabel = "island.recording.askLabel"

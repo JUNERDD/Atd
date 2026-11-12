@@ -137,7 +137,7 @@ export function validateShortcuts(command: ServiceCommandFull): void {
     const action = shortcut.output?.action;
     if (action && actsOnSelection(action) && !readsSelection(command.input))
       throw new TypeError(
-        `${named} sends its answer to ${action}, which writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output for the shortcut (card, insertAtCursor, copy or panel), or none to follow the command.`,
+        `${named} sends its answer to ${action}, which acts on the selected text (writing over or after it, or marking it), so the command must read it: set input.source to selection or input.selection to true, or choose another output for the shortcut (card, insertAtCursor, copy or panel), or none to follow the command.`,
       );
   }
 }

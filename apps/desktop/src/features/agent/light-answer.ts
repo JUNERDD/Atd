@@ -8,8 +8,11 @@ import { agentApi } from './use-agent';
 export interface AnswerHandlers {
   /** The answer so far changed while the run goes on (its text as it streams). */
   text?: (text: string) => void;
-  /** The run ended; an unrecoverable completed answer reports failed with its partial text. */
-  end: (status: RunStatus, answer: string) => void;
+  /**
+   * The run ended; an unrecoverable completed answer reports failed with its partial text.
+   * `error` is why, as the run's record says ('' when it says nothing).
+   */
+  end: (status: RunStatus, answer: string, error: string) => void;
 }
 
 /**
@@ -38,7 +41,11 @@ export function runWaits(event: AgentEvent, taskId: string, runId: string): bool
 export function followAnswer(detail: TaskDetail, handlers: AnswerHandlers): () => void {
   const run = detail.task.runs.at(-1);
   if (!run || !isActive(run.status)) {
-    handlers.end(run?.status ?? 'failed', run ? lastAnswerText(detail.blocks, run.id) : '');
+    handlers.end(
+      run?.status ?? 'failed',
+      run ? lastAnswerText(detail.blocks, run.id) : '',
+      run?.error ?? '',
+    );
     return () => undefined;
   }
   const runId = run.id;
@@ -53,7 +60,11 @@ export function followAnswer(detail: TaskDetail, handlers: AnswerHandlers): () =
     ended = true;
     unsubscribe();
     // Failed, stopped and cancelled runs keep whatever they had produced.
-    handlers.end(status === 'completed' && !answer.valid ? 'failed' : status, answer.text);
+    handlers.end(
+      status === 'completed' && !answer.valid ? 'failed' : status,
+      answer.text,
+      answer.error,
+    );
   });
   return () => {
     ended = true;

@@ -88,13 +88,13 @@ final class AnnotationToolbarButton: NSButton {
     }
   }
 
-  /// `selection` is nil for a plain action (undo, confirm…). The owner sets `target` once it
-  /// exists.
-  init(selection: Selection?, action: Selector) {
+  /// `selection` is nil for a plain action (undo, confirm…); `side` is the circle's diameter (a
+  /// smaller one fits a control inside a chip). The owner sets `target` once it exists.
+  init(selection: Selection?, side: CGFloat = AnnotationToolbarButton.side, action: Selector) {
     self.selection = selection
     label = nil
-    super.init(frame: CGRect(x: 0, y: 0, width: Self.side, height: Self.side))
-    configure(width: Self.side, action: action)
+    super.init(frame: CGRect(x: 0, y: 0, width: side, height: side))
+    configure(width: side, height: side, action: action)
   }
 
   /// A labelled action: `image` (a template glyph drawn at ``Label/iconSide``) then `text`, cut
@@ -110,11 +110,11 @@ final class AnnotationToolbarButton: NSButton {
     label = (text, image)
     let width = width ?? Label.width(text: text, hasImage: image != nil)
     super.init(frame: CGRect(x: 0, y: 0, width: width, height: Self.side))
-    configure(width: width, action: action)
+    configure(width: width, height: Self.side, action: action)
     setAccessibilityLabel(text)
   }
 
-  private func configure(width: CGFloat, action: Selector) {
+  private func configure(width: CGFloat, height: CGFloat, action: Selector) {
     isBordered = false
     imagePosition = .imageOnly
     imageScaling = .scaleNone
@@ -125,16 +125,19 @@ final class AnnotationToolbarButton: NSButton {
     let widthConstraint = widthAnchor.constraint(equalToConstant: width)
     self.widthConstraint = widthConstraint
     NSLayoutConstraint.activate([
-      widthConstraint, heightAnchor.constraint(equalToConstant: Self.side),
+      widthConstraint, heightAnchor.constraint(equalToConstant: height),
     ])
   }
 
-  /// A labelled button's new text and glyph, at `width` when given (nil keeps its width): the
-  /// owner reserves the widest of what it may say, so the label changes in place.
+  /// A labelled button's new text and glyph, as wide as they are
+  /// (``Label/width(text:hasImage:)``), so the button never shows room for a longer label it is
+  /// not saying; its bar grows or shrinks with it, and an owner that must keep its place reserves
+  /// the longer forms in its layout instead. `width` holds a steady width only for a live control
+  /// pressed again and again while its bar must not move (the long screenshot's scroll toggle).
   func setLabel(_ text: String, image: NSImage?, width: CGFloat? = nil) {
     guard label != nil else { return }
     label = (text, image)
-    if let width { widthConstraint?.constant = width }
+    widthConstraint?.constant = width ?? Label.width(text: text, hasImage: image != nil)
     setAccessibilityLabel(text)
     needsDisplay = true
   }

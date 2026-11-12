@@ -202,6 +202,7 @@ public enum CommandOutputAction: String, Codable, Equatable, Sendable {
   case card
   case replaceSelection
   case insertAfterSelection
+  case annotate
   case insertAtCursor
   case copy
 }

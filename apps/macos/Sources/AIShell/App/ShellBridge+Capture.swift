@@ -18,10 +18,14 @@ extension ShellBridge {
     }
   }
 
-  /// `screenshotToolbar.set`: the commands the capture's command row offers, in order; read when
-  /// the next capture with the row starts.
+  /// `screenshotToolbar.set`: the commands the capture's command row offers, and those its text
+  /// commands offer on picked text, each in order; read when the next capture with the row starts
+  /// (the text commands also when a long screenshot's full-screen preview shows them).
   static func setScreenshotToolbar(_ params: ScreenshotToolbarSetParams, shell: ShellController) {
     shell.screenshots.toolbarCommands = params.commands.map {
+      SelectionToolbarSettings.Command(id: $0.id, name: $0.name)
+    }
+    shell.screenshots.textCommands = params.textCommands.map {
       SelectionToolbarSettings.Command(id: $0.id, name: $0.name)
     }
   }
@@ -51,7 +55,8 @@ extension ScreenshotCaptureResult {
       self = .ok(
         Ok(
           file: shot.file, context: shot.context, capturedAt: shot.capturedAt,
-          launch: shot.launch.map(Ok.Launch.init), target: shot.target.map(Ok.Target.init)))
+          launch: shot.launch.map { Ok.Launch($0, selection: shot.selection) },
+          target: shot.target.map(Ok.Target.init)))
     case .cancelled: self = .notOk(.init(reason: .cancelled))
     case .notPermitted: self = .notOk(.init(reason: .notPermitted))
     case .recording: self = .notOk(.init(reason: .recording))
@@ -62,8 +67,10 @@ extension ScreenshotCaptureResult {
 
 extension ScreenshotCaptureResult.Ok.Launch {
   /// A plain run leaves the intent out, as a command shortcut's event does
-  /// (``CommandLaunch/event(target:)``).
-  init(_ launch: CaptureLaunch) {
+  /// (``CommandLaunch/event(target:)``). `selection` is the text the screenshot's text mode
+  /// offered when the capture ended (``ScreenshotAttachment/selection``: paragraphs in reading
+  /// order, blank lines apart, nothing a mosaic touches); nil with text mode off.
+  init(_ launch: CaptureLaunch, selection: String? = nil) {
     switch launch {
     case .command(let command):
       let intent: Command.Intent? =
@@ -72,9 +79,11 @@ extension ScreenshotCaptureResult.Ok.Launch {
         case .choose: .choose
         case .edit: .edit
         }
-      self = .command(Command(id: command.id, arguments: command.arguments, intent: intent))
+      self = .command(
+        Command(
+          id: command.id, arguments: command.arguments, intent: intent, selection: selection))
     case .ask(let question):
-      self = .ask(Ask(question: question))
+      self = .ask(Ask(question: question, selection: selection))
     }
   }
 }

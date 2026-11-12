@@ -99,6 +99,8 @@ export class NativeBridge {
     'recording.ask': new Set(),
     'recording.askStop': new Set(),
     'recording.askOpen': new Set(),
+    'captureText.run': new Set(),
+    'captureText.action': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

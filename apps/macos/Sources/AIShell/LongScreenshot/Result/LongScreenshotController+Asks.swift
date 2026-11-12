@@ -13,10 +13,9 @@ extension LongScreenshotController {
   func send(_ ask: LongScreenshotAsk) {
     guard let source, preparingAsks[ask.id] == nil, runningAsks[ask.id] == nil else { return }
     let kept = ask.kept
-    let cover = CaptureExport.longScreenshotCover(source, kept: kept, mosaic: mosaic)
     preparingAsks[ask.id] = Task {
       guard
-        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept, cover: cover)
+        let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept)
       else { return failAsk(ask.id, .exportFailed) }
       let files: LongScreenshotFiles
       do throws(LongScreenshotFiles.Failure) {

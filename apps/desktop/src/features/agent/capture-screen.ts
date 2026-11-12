@@ -24,7 +24,7 @@ export async function captureScreen(mode: CaptureMode): Promise<Screenshot | nul
       case 'ask': {
         const light = desktop.agent?.light;
         if (!light) throw new Error(i18n.t('errors.openDesktopApp', { ns: 'panel' }));
-        await startLightAsk(captured.question, captured.shot, light);
+        await startLightAsk(captured.question, captured.shot, light, captured.selection);
         return null;
       }
       case 'launched':

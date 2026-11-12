@@ -1,16 +1,21 @@
 import type { AgentEvent, TaskDetail } from '../../client/agent/bridge';
-import { isActive, type RunStatus } from '../../client/agent/task-schema';
+import { isActive, type RunStatus, type TaskRun } from '../../client/agent/task-schema';
 import { applyTranscriptPatch, type Block } from '../../client/agent/transcript-schema';
 import { lastAnswerText } from './transcript/final-answer';
 
-export function runStatus(event: AgentEvent, taskId: string, runId: string): RunStatus | undefined {
+/** Run `runId` of task `taskId` as `event` records it, when the event carries the task. */
+function eventRun(event: AgentEvent, taskId: string, runId: string): TaskRun | undefined {
   const task =
     event.type === 'task'
       ? event.state.task
       : event.type === 'snapshot'
         ? event.snapshot.tasks.find((item) => item.id === taskId)
         : undefined;
-  return task?.id === taskId ? task.runs.find((run) => run.id === runId)?.status : undefined;
+  return task?.id === taskId ? task.runs.find((run) => run.id === runId) : undefined;
+}
+
+export function runStatus(event: AgentEvent, taskId: string, runId: string): RunStatus | undefined {
+  return eventRun(event, taskId, runId)?.status;
 }
 
 /** Reconstructs one run's answer; consumers own output effects and partial-answer policy. */
@@ -19,6 +24,8 @@ export class RunAnswer {
   text: string;
   private recovering = false;
   private terminal: RunStatus | undefined;
+  /** Why the run ended as it did, as its record says once it ended ('' when it says nothing). */
+  error = '';
 
   constructor(
     detail: TaskDetail,
@@ -47,8 +54,11 @@ export class RunAnswer {
         this.text = lastAnswerText(this.transcript.blocks, this.runId);
       }
     }
-    const status = runStatus(event, this.taskId, this.runId);
-    if (status !== undefined && !isActive(status)) this.terminal = status;
+    const run = eventRun(event, this.taskId, this.runId);
+    if (run && !isActive(run.status)) {
+      this.terminal = run.status;
+      this.error = run.error;
+    }
     return this.recovering ? undefined : this.terminal;
   }
 }

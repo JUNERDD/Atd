@@ -35,6 +35,7 @@ extension ShellController {
       self?.shownComputerTaskId = nil
       self?.installedScreenRecording?.pageDidUnload()
       self?.installedLongScreenshots?.pageDidUnload()
+      self?.screenshots.textRuns?.pageDidUnload()
     }
     computer.start()
     startAddons()

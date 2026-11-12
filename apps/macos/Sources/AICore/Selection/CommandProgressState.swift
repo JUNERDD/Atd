@@ -11,12 +11,14 @@ import Foundation
 /// going by itself after ``doneDuration``; a `notice` opens the run in the panel and goes by
 /// itself after ``noticeDuration``; an `answer` card, shown where the answer could not be
 /// written, opens the run in the panel or copies the answer (`copied`, the shell's own, going
-/// like `done`) and stays until it is acted on or replaced; with a ``Review`` (the command's
-/// answer waits for review) it is the review card, which also asks the page for another version
-/// (`regenerate`, `adjust`), steps between versions (`version`), stops a pending one (`stop`) and
-/// tells the page once it goes by itself (`close`); the `compose` card, shown where a
-/// command was launched with nothing selected, asks for the text (and, when the command takes
-/// files, the attachments) that stand in for the selection, and runs, opens or cancels with them.
+/// like `done`) and stays until it is acted on or replaced; while its answer streams in it stops
+/// the run instead (`stop`, keeping the card) and its close cancels it; with a ``Review`` (the
+/// command's answer waits for review) it is the review card, which also asks the page for another
+/// version (`regenerate`, `adjust`), steps between versions and a pending one's page (`version`),
+/// stops a pending one (`stop`) and tells the page once it goes by itself (`close`); the `compose`
+/// card, shown where a command was launched with nothing selected, asks for the text (and, when
+/// the command takes files, the attachments) that stand in for the selection, and runs, opens or
+/// cancels with them.
 /// The options card, the answer card and the compose card take the keyboard (``takesKeyboard``).
 public struct CommandProgressState: Equatable, Sendable {
   /// What the review card shows besides the answer: the original, the answer's changes, the
@@ -40,8 +42,11 @@ public struct CommandProgressState: Equatable, Sendable {
     case notice(message: String)
     /// The run's answer, which could not be written or waits for review: the command's name,
     /// the answer as the run gave it, why it was not written (the page's words; nil: nothing
-    /// said), and the review, which makes the card the review card.
-    case answer(command: String, answer: String, note: String?, review: Review? = nil)
+    /// said), the review, which makes the card the review card, and whether the answer shown is
+    /// still coming (the run's answer as it streams, or the review's page of a pending version).
+    case answer(
+      command: String, answer: String, note: String?, review: Review? = nil, streaming: Bool = false
+    )
     /// The answer card's answer is on the clipboard.
     case copied
   }
@@ -92,13 +97,17 @@ public struct CommandProgressState: Equatable, Sendable {
       let message = trimmed(notice.message)
       return message.isEmpty ? nil : .notice(message: message)
     case .answer(let answer):
-      // The answer shows as the run gave it; only one with nothing to read shows nothing.
+      // The answer shows as the run gave it; only one with nothing to read shows nothing, except
+      // a review's page of a pending version, which streams from nothing. A review streams there
+      // and only there, whatever the page said.
       let command = trimmed(answer.command)
-      guard !command.isEmpty, !trimmed(answer.answer).isEmpty else { return nil }
+      let streaming = answer.review.map(\.showsPending) ?? (answer.streaming == true)
+      let blank = trimmed(answer.answer).isEmpty
+      guard !command.isEmpty, !blank || answer.review?.showsPending == true else { return nil }
       let note = answer.note.map(trimmed)
       return .answer(
         command: command, answer: answer.answer, note: note?.isEmpty == false ? note : nil,
-        review: answer.review)
+        review: answer.review, streaming: streaming)
     }
   }
 
@@ -114,11 +123,13 @@ public struct CommandProgressState: Equatable, Sendable {
     return true
   }
 
-  /// Escape cancels only while a run is working; otherwise it stays with the apps, or with the
-  /// card up, which reads its own keys.
+  /// Escape cancels only while a run is working, and stops one whose answer streams onto the
+  /// answer card; otherwise it stays with the apps, or with the card up, which reads its own keys.
   public var cancelsWithEscape: Bool {
-    if case .working = shown?.phase { return true }
-    return false
+    switch shown?.phase {
+    case .working, .answer(_, _, _, nil, true): true
+    default: false
+    }
   }
 
   /// The shell's own writing and "Written" may show for `target`: nothing shows, or that
@@ -137,8 +148,21 @@ public struct CommandProgressState: Equatable, Sendable {
   /// The answer the answer card shows, which its Copy puts on the clipboard (the shell then
   /// shows `copied`); nil while no answer card is up.
   public var answerShown: String? {
-    if case .answer(_, let answer, _, _) = shown?.phase { return answer }
+    if case .answer(_, let answer, _, _, _) = shown?.phase { return answer }
     return nil
+  }
+
+  /// The answer the card shows is still coming (its run's answer as it streams, or the review's
+  /// page of a pending version).
+  public var answerStreams: Bool {
+    if case .answer(_, _, _, _, true) = shown?.phase { return true }
+    return false
+  }
+
+  /// The answer card's answer can be copied or written: it is not streaming in, and no version
+  /// of the review is pending.
+  public var answerSettled: Bool {
+    isAnswering && !answerStreams && reviewShown?.pending == nil
   }
 
   /// The answer card is up, the review card included.
@@ -146,7 +170,7 @@ public struct CommandProgressState: Equatable, Sendable {
 
   /// The review the review card shows; nil while no review card is up.
   public var reviewShown: Review? {
-    if case .answer(_, _, _, let review?) = shown?.phase { return review }
+    if case .answer(_, _, _, let review?, _) = shown?.phase { return review }
     return nil
   }
 
@@ -164,8 +188,8 @@ public struct CommandProgressState: Equatable, Sendable {
   public var takesKeyboard: Bool { isChoosing || isAnswering || isComposing }
 
   /// A command shortcut's press capsule replaces what shows: an outcome (`done`, `copied`, a
-  /// notice or an answer card) gives way to it; a run working, its options card or the compose
-  /// card asking for its text stays.
+  /// notice or an answer card, one still streaming too, whose run ``leaving`` cancels) gives way
+  /// to it; a run working, its options card or the compose card asking for its text stays.
   public var givesWayToPress: Bool {
     switch shown?.phase {
     case .done, .copied, .notice, .answer: true
@@ -182,10 +206,12 @@ public struct CommandProgressState: Equatable, Sendable {
   /// until the page shows its options; Run turns the card into the run it starts, until the page
   /// shows that run's own progress.
   ///
-  /// On the review card, Regenerate and Adjust (with what the card staged, `adjust`) ask for a
-  /// version while it takes one (``Review/takesVersion``), Version shows another of the versions
-  /// (`version`) while none is pending, and Stop stops the pending one; each leaves the card as it is until the page shows the outcome. Close takes
-  /// the card away.
+  /// On an answer card whose answer streams in, Stop stops the run, the card staying as it is
+  /// until the page shows what came, and Cancel (its close button) stops it and takes the card
+  /// away. On the review card, Regenerate and Adjust (with what the card staged, `adjust`) ask for
+  /// a version while it takes one (``Review/takesVersion``), Version shows another of its pages
+  /// (`version`, the pending version's too), and Stop stops the pending one; each leaves the card
+  /// as it is until the page shows the outcome. Close takes the card away.
   public mutating func press(
     _ action: CommandProgressActionEvent.Action, arguments: CommandArguments? = nil,
     compose: CommandProgressActionEvent.Compose? = nil,
@@ -196,8 +222,10 @@ public struct CommandProgressState: Equatable, Sendable {
     let event = Self.event(target, action)
     switch (action, shown.phase) {
     case (.cancel, .working), (.open, .notice), (.open, .answer), (.cancel, .choose),
-      (.cancel, .compose):
+      (.cancel, .compose), (.cancel, .answer(_, _, _, nil, true)):
       hide(target: target)
+      return event
+    case (.stop, .answer(_, _, _, nil, true)):
       return event
     case (.change, .working(_, .some)):
       return event
@@ -220,19 +248,19 @@ public struct CommandProgressState: Equatable, Sendable {
       guard let compose else { return nil }
       hide(target: target)
       return Self.event(target, .open, compose: compose)
-    case (.regenerate, .answer(_, _, _, let review?)) where review.takesVersion:
+    case (.regenerate, .answer(_, _, _, let review?, _)) where review.takesVersion:
       return event
-    case (.adjust, .answer(_, _, _, let review?)) where review.takesVersion:
+    case (.adjust, .answer(_, _, _, let review?, _)) where review.takesVersion:
       guard let adjust else { return nil }
       return Self.event(target, .adjust, adjust: adjust)
-    case (.version, .answer(_, _, _, let review?)) where review.pending == nil:
-      guard let version, version != review.version, (1...review.count).contains(version) else {
+    case (.version, .answer(_, _, _, let review?, _)):
+      guard let version, version != review.version, (1...review.pages).contains(version) else {
         return nil
       }
       return Self.event(target, .version, version: version)
-    case (.stop, .answer(_, _, _, let review?)) where review.pending != nil:
+    case (.stop, .answer(_, _, _, let review?, _)) where review.pending != nil:
       return event
-    case (.close, .answer(_, _, _, .some)):
+    case (.close, .answer(_, _, _, .some, _)):
       hide(target: target)
       return event
     default:
@@ -245,6 +273,18 @@ public struct CommandProgressState: Equatable, Sendable {
   /// the page lets the review go.
   public static func closing(target: String) -> CommandProgressActionEvent {
     event(target, .close)
+  }
+
+  /// What tells the page that the card shown goes for good other than through its own presses
+  /// (a shortcut's press over it): ``closing(target:)`` for a review card, so the page lets the
+  /// review go, and Cancel for an answer still streaming in, so its run stops rather than bring
+  /// the card back; nil for anything else.
+  public var leaving: CommandProgressActionEvent? {
+    guard let shown, case .answer(_, _, _, let review, let streaming) = shown.phase else {
+      return nil
+    }
+    if review != nil { return Self.closing(target: shown.target) }
+    return streaming ? Self.event(shown.target, .cancel) : nil
   }
 
   private static func event(

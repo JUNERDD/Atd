@@ -3,7 +3,10 @@ import CoreGraphics
 /// The long screenshot's lightbox geometry (the result preview's direction A, `P.LB.openLong` and
 /// `P.viewer` in the approved prototype): the whole image in a vertical scroller that fills the
 /// window's height left of an overview rail, centred in its column with a gutter beside it and
-/// room above and below it for the bars, at a zoom between 25% and 200%.
+/// room above and below it for the bars, at a zoom between 25% and 200%. A docked side panel
+/// (``IslandMetrics/lightboxPanel(shown:in:between:)``) takes the work area's right, the column
+/// and its rail laying out left of it; a drawer stands over the column between the bars
+/// (``betweenBars(textRow:)``) and moves nothing.
 ///
 /// The scroller's position is its top-left corner in image points (an `NSClipView`'s bounds
 /// origin) at a zoom (screen points per image point). The viewer constrains every position it
@@ -17,11 +20,14 @@ public struct LongScreenshotLightboxLayout: Equatable, Sendable {
   public let workArea: CGRect
   /// The image's size in points.
   public let image: CGSize
+  /// The side panel's frame while it docks; nil while it is hidden or a drawer.
+  public let dockedPanel: CGRect?
 
-  public init(size: CGSize, workArea: CGRect, image: CGSize) {
+  public init(size: CGSize, workArea: CGRect, image: CGSize, dockedPanel: CGRect? = nil) {
     self.size = size
     self.workArea = workArea
     self.image = CGSize(width: max(image.width, 1), height: max(image.height, 1))
+    self.dockedPanel = dockedPanel
   }
 
   /// Beside the image, at least, at any zoom (screen points).
@@ -56,16 +62,20 @@ public struct LongScreenshotLightboxLayout: Equatable, Sendable {
 
   // MARK: Regions
 
-  /// The scroller: the window's whole height, the work area's width less the rail's column.
+  /// The edge the column and its rail lay out left of: a docked panel's, else the work area's.
+  private var trailing: CGFloat { dockedPanel?.minX ?? workArea.maxX }
+
+  /// The scroller: the window's whole height, the work area's width less the rail's column (and
+  /// a docked panel).
   public var column: CGRect {
-    let right = workArea.maxX - Self.railWidth - Self.railRight * 2
+    let right = trailing - Self.railWidth - Self.railRight * 2
     return CGRect(x: workArea.minX, y: 0, width: max(right - workArea.minX, 1), height: size.height)
   }
 
   /// The overview rail's box; its image is ``railImage``.
   public var rail: CGRect {
     CGRect(
-      x: workArea.maxX - Self.railRight - Self.railWidth, y: workArea.minY + Self.railTop,
+      x: trailing - Self.railRight - Self.railWidth, y: workArea.minY + Self.railTop,
       width: Self.railWidth,
       height: max(workArea.height - Self.railTop - Self.railBottom, 1))
   }
@@ -182,6 +192,48 @@ public struct LongScreenshotLightboxLayout: Equatable, Sendable {
     if y < upper { return -min(Self.autoscrollStep, (upper - y) / 2) }
     if y > lower { return min(Self.autoscrollStep, (y - lower) / 2) }
     return 0
+  }
+
+  // MARK: Text mode
+
+  /// Between the bottom bar and the text command row docked above it, and between the row and
+  /// what must stay clear of it.
+  public static let textRowGap = 8.0
+  /// A marquee dragged within this distance of the visible region's top, or of the text command
+  /// row, scrolls the image, faster the deeper the pointer goes, at most ``marqueeStep`` a frame
+  /// (screen points).
+  public static let marqueeEdge = 56.0
+  public static let marqueeStep = 28.0
+
+  /// The bottom bar's top edge.
+  public var bottomBarTop: CGFloat {
+    workArea.maxY - IslandMetrics.lightboxBottomInset - IslandMetrics.lightboxBottomBarHeight
+  }
+
+  /// The text command row's top edge, docked ``textRowGap`` above the bottom bar.
+  public var textRowTop: CGFloat {
+    bottomBarTop - Self.textRowGap - IslandMetrics.lightboxTopBarHeight
+  }
+
+  /// The rows the bars leave free, where the side panel stands as a drawer: from the top bar's
+  /// bottom to the bottom bar's top, or the text command row's while it shows (`textRow`).
+  public func betweenBars(textRow: Bool) -> ClosedRange<CGFloat> {
+    let top = workArea.minY + IslandMetrics.lightboxTopInset + IslandMetrics.lightboxTopBarHeight
+    return top...max(textRow ? textRowTop : bottomBarTop, top)
+  }
+
+  /// How far to scroll a marquee's drag this frame with the pointer at `y` (screen points from
+  /// the scroller's top): up within ``marqueeEdge`` of the visible top, down within it of the text
+  /// command row, by the square of how deep into that edge the pointer is, capped at
+  /// ``marqueeStep``; nothing between.
+  public func marqueeAutoscroll(pointer y: CGFloat) -> CGFloat {
+    let upper = visibleInsets.top + Self.marqueeEdge
+    let lower = textRowTop - Self.textRowGap - Self.marqueeEdge
+    let depth = y < upper ? y - upper : y > lower ? y - lower : 0
+    guard depth != 0 else { return 0 }
+    let share = abs(depth) / Self.marqueeEdge
+    let step = min(Self.marqueeStep, (share * share * 16).rounded(.up))
+    return depth < 0 ? -step : step
   }
 
   /// The page the counter names for `visible` rows: the one a third of the way down them, or

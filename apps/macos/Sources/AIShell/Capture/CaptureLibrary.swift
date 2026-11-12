@@ -115,9 +115,10 @@ final class CaptureLibrary {
       help: description.help)
   }
 
-  /// Writes the context file off the main actor; nil when it could not be written.
+  /// Writes a context file off the main actor; nil when it could not be written. A text command
+  /// run from the capture writes its context with it too.
   @concurrent
-  private nonisolated static func write(_ markdown: String, to file: URL) async -> URL? {
+  nonisolated static func write(_ markdown: String, to file: URL) async -> URL? {
     do {
       try Data(markdown.utf8).write(to: file)
       return file

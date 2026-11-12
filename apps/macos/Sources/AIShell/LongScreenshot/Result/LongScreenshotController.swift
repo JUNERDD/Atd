@@ -14,6 +14,8 @@ import AppKit
 /// - Asks: each runs as a light task on the panel's page with the kept image and its context
 ///   (`recording.ask` with the `screenshot` source), whose answer the card shows as it grows
 ///   (``LongScreenshotController+Asks``).
+/// - Text commands: the full-screen preview runs them on the image's text through the screenshot
+///   capability's runner, with the files and copies made here (``LongScreenshotController+Text``).
 ///
 /// Nothing outlives the card: its close, or the next long screenshot, stops its asks and drops
 /// its state; the files of each export live only until their import answered
@@ -28,8 +30,10 @@ final class LongScreenshotController: LongScreenshotResults {
   let attachments: AttachmentImporter
   let panelHost: WebViewHost
   let showPanel: () -> Void
-  /// Pixelates the covered parts; it keeps the shown image's block grid between exports.
-  let mosaic = AnnotationMosaic()
+  /// The screenshot capability, whose text commands, options and runner the full-screen
+  /// preview's text commands use (``textServices``); the shell sets it, and without it the
+  /// preview offers Copy alone.
+  weak var screenshots: ScreenshotTaker?
 
   /// What the card shows; nil before the text is read and once the card went.
   var source: LongScreenshotCardSource?
@@ -54,6 +58,7 @@ final class LongScreenshotController: LongScreenshotResults {
     self.panelHost = panelHost
     self.showPanel = showPanel
     island.onEvent = { [weak self] in self?.handle($0) }
+    island.textServices = textServices
   }
 
   // MARK: Showing

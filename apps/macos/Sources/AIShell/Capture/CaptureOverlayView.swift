@@ -248,7 +248,10 @@ final class CaptureOverlayView: NSView {
   /// has one (D15).
   private func hoverCursor(at point: CGPoint) {
     guard CaptureCursorOwnership.ownsPointer(in: window, at: NSEvent.mouseLocation) else { return }
-    if let cursor = barHost.barCursor(at: point) ?? annotationHost.barCursor(at: point) {
+    // A text command's result card: its controls set their own cursor, the arrow elsewhere on it.
+    if let card = annotationHost.card(at: point) {
+      card.cursor(at: point)?.set()
+    } else if let cursor = barHost.barCursor(at: point) ?? annotationHost.barCursor(at: point) {
       cursor.set()
     } else {
       delegate?.overlay(self, cursorAt: point)?.set()
@@ -262,8 +265,8 @@ final class CaptureOverlayView: NSView {
   // MARK: Keyboard
 
   override func keyDown(with event: NSEvent) {
-    // Space held down toggles auto-scroll once, not on every repeat (and repeats do not beep).
-    if event.keyCode == 49, event.isARepeat { return }
+    // Space and W toggle modes once per press; navigation still repeats while held.
+    if [49, 13].contains(event.keyCode), event.isARepeat { return }
     guard let command = CaptureCommand(event) else {
       super.keyDown(with: event)
       return

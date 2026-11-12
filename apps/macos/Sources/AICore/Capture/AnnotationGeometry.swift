@@ -40,8 +40,8 @@ extension Annotation {
     case .pen(let points), .highlighter(let points):
       return AnnotationMath.rect(enclosing: points).insetBy(dx: -width / 2, dy: -width / 2)
     case .text(_, let frame):
-      guard style.textBackground else { return frame }
-      return AnnotationPath.textPlate(around: frame, fontSize: style.stroke.fontSize)
+      guard style.hasTextPlate else { return frame }
+      return AnnotationPath.textPlate(around: frame, fontSize: style.textFontSize)
     case .mosaic(let rect), .spotlight(let rect):
       return rect
     case .step(let center, let tip):
@@ -110,20 +110,14 @@ extension Annotation {
 
   /// The grips a selected annotation offers, with their positions. Freehand paths, text and
   /// plain badges only move; box shapes resize from eight grips, arrows and lines from their
-  /// ends, and a badge with a tail from its centre (`start`) and its tip (`end`).
+  /// ends, and a badge with a tail from its centre (`start`) and its tip (`end`). Text that is a
+  /// box (``AnnotationStyle/fixedWidth``) resizes from the eight grips of what it paints.
   public var handles: [(handle: AnnotationHandle, point: CGPoint)] {
     switch shape {
     case .rectangle(let rect), .ellipse(let rect), .mosaic(let rect), .spotlight(let rect):
-      return [
-        (.topLeft, CGPoint(x: rect.minX, y: rect.minY)),
-        (.top, CGPoint(x: rect.midX, y: rect.minY)),
-        (.topRight, CGPoint(x: rect.maxX, y: rect.minY)),
-        (.right, CGPoint(x: rect.maxX, y: rect.midY)),
-        (.bottomRight, CGPoint(x: rect.maxX, y: rect.maxY)),
-        (.bottom, CGPoint(x: rect.midX, y: rect.maxY)),
-        (.bottomLeft, CGPoint(x: rect.minX, y: rect.maxY)),
-        (.left, CGPoint(x: rect.minX, y: rect.midY)),
-      ]
+      return Self.boxHandles(rect)
+    case .text where style.fixedWidth:
+      return Self.boxHandles(bounds)
     case .arrow(let from, let to), .line(let from, let to):
       return [(.start, from), (.end, to)]
     case .step(let center, let tip?):
@@ -131,6 +125,19 @@ extension Annotation {
     case .pen, .highlighter, .text, .step:
       return []
     }
+  }
+
+  private static func boxHandles(_ rect: CGRect) -> [(handle: AnnotationHandle, point: CGPoint)] {
+    [
+      (.topLeft, CGPoint(x: rect.minX, y: rect.minY)),
+      (.top, CGPoint(x: rect.midX, y: rect.minY)),
+      (.topRight, CGPoint(x: rect.maxX, y: rect.minY)),
+      (.right, CGPoint(x: rect.maxX, y: rect.midY)),
+      (.bottomRight, CGPoint(x: rect.maxX, y: rect.maxY)),
+      (.bottom, CGPoint(x: rect.midX, y: rect.maxY)),
+      (.bottomLeft, CGPoint(x: rect.minX, y: rect.maxY)),
+      (.left, CGPoint(x: rect.minX, y: rect.midY)),
+    ]
   }
 
   /// The grip within `tolerance` of `point`, nearest first.
@@ -165,9 +172,14 @@ extension Annotation {
 
   /// The annotation with `handle` dragged to `point`. A box grip moves the edges it sits on (the
   /// box may flip past its opposite edge and is kept standardized); an end grip moves that end.
+  /// Text that is a box moves the edges of what it paints and lays its text out inside, at least
+  /// ``minimumTextBoxWidth`` font sizes wide; its lines then wrap to the new width, and the shell
+  /// grows the frame to the height they take.
   public func resized(_ handle: AnnotationHandle, to point: CGPoint) -> Annotation {
     var copy = self
     switch shape {
+    case .text(let string, _) where style.fixedWidth:
+      copy.shape = .text(string, frame: resizedTextFrame(handle, to: point))
     case .rectangle(let rect): copy.shape = .rectangle(Self.resize(rect, handle, to: point))
     case .ellipse(let rect): copy.shape = .ellipse(Self.resize(rect, handle, to: point))
     case .mosaic(let rect): copy.shape = .mosaic(Self.resize(rect, handle, to: point))
@@ -183,6 +195,20 @@ extension Annotation {
       break
     }
     return copy
+  }
+
+  /// The narrowest a text box resizes to, in font sizes.
+  public static let minimumTextBoxWidth: CGFloat = 2
+
+  /// The text frame inside the painted box `handle` drags to `point`: the plate's margins in.
+  private func resizedTextFrame(_ handle: AnnotationHandle, to point: CGPoint) -> CGRect {
+    let size = style.textFontSize
+    let box = Self.resize(bounds, handle, to: point)
+    let inset = style.hasTextPlate ? AnnotationPath.textPlateMargins(fontSize: size) : .zero
+    let width = max(box.width - inset.width * 2, size * Self.minimumTextBoxWidth)
+    let height = max(box.height - inset.height * 2, 1)
+    return CGRect(
+      x: box.minX + inset.width, y: box.minY + inset.height, width: width, height: height)
   }
 
   static func resize(_ rect: CGRect, _ handle: AnnotationHandle, to point: CGPoint) -> CGRect {

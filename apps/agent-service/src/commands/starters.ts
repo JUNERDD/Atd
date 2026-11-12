@@ -25,9 +25,9 @@ import { CommandStore } from './store.js';
  * commands: editable, deletable, and never restored after the seed. None takes a global
  * shortcut: one could collide with the user's other apps or their own app shortcuts. None chooses
  * a placement either: the ones that work on selected text take the selection as their input, so
- * their default placement (`defaultCommandPlacement`) shows them on the selection toolbar, the ones
- * that take a screenshot show on the screenshot toolbar, and none shows in a conversation until
- * the user places it there.
+ * their default placement (`defaultCommandPlacement`) shows them on the selection toolbar and on
+ * text picked in a screenshot, the ones that take a screenshot show on the screenshot toolbar,
+ * and none shows in a conversation until the user places it there.
  *
  * They are written as light commands (product-skills/create-command): no tools, and quick text
  * transforms ask for no reasoning (`off`), which keeps them fast and cheap, while the others take

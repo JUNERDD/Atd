@@ -4,6 +4,27 @@
 
 import Foundation
 
+/// Params of the `link.open` call.
+public struct LinkOpenParams: Codable, Equatable, Sendable {
+  public let url: String
+
+  public init(url: String) {
+    self.url = url
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    url = try container.string(.url, maxLength: 8_192, pattern: "^https?://")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case url
+  }
+}
+
+/// Result of the `link.open` call.
+public typealias LinkOpenResult = NativeEmpty
+
 /// Params of the `artifact` call.
 public struct ArtifactParams: Codable, Equatable, Sendable {
   public let artifactId: String

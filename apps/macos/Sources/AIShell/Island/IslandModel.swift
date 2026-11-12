@@ -68,8 +68,12 @@ enum IslandAction: Equatable {
   case cancel
   /// The notice's Open, and the answer and review cards'.
   case open
-  /// The notice's × and the answer and review cards' (or Escape on the answer card).
+  /// The notice's × and the answer and review cards' (or Escape on the answer card); on an answer
+  /// still streaming in it cancels the run.
   case dismiss
+  /// The Stop of an answer card whose answer is streaming in (or Escape on it): the run stops and
+  /// the card keeps what came.
+  case stop
   /// The answer and review cards' Copy (or ⌘C on them).
   case copy
   /// The working capsule's values chip.

@@ -43,6 +43,8 @@ struct IslandRecordingLabels: Equatable {
   var lightboxHintSeek = ""
   var lightboxHintTrim = ""
   var lightboxHintBack = ""
+  /// The side panel's hide button, in both lightboxes.
+  var lightboxHidePanel = ""
   var save = ""
   var saveTooltip = ""
   var copy = ""
@@ -71,7 +73,8 @@ struct IslandRecordingLabels: Equatable {
       lightboxStepsTooltip: text(.lightboxStepsTooltip), lightboxBack: text(.lightboxBack),
       lightboxBackTooltip: text(.lightboxBackTooltip), lightboxHintPlay: text(.lightboxHintPlay),
       lightboxHintSeek: text(.lightboxHintSeek), lightboxHintTrim: text(.lightboxHintTrim),
-      lightboxHintBack: text(.lightboxHintBack), save: text(.save), saveTooltip: text(.saveTooltip),
+      lightboxHintBack: text(.lightboxHintBack), lightboxHidePanel: text(.lightboxHidePanel),
+      save: text(.save), saveTooltip: text(.saveTooltip),
       copy: text(.copy), copyTooltip: text(.copyTooltip), attach: text(.attach),
       attachTooltip: text(.attachTooltip), actionWorking: text(.actionWorking),
       asking: .current(

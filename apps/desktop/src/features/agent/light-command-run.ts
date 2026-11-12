@@ -1,11 +1,17 @@
-import { answersInPlace, type CommandInPlaceAction } from '@atd/agent-contracts';
+import {
+  answersInPlace,
+  answersOnCard,
+  writesBack,
+  type CommandInPlaceAction,
+} from '@atd/agent-contracts';
 import type {
   CommandProgressState,
   LightCommandBridge,
   PreparedCommand,
   WriteTarget,
 } from '../../client/agent/bridge';
-import type { Review } from './light-review';
+import type { CardStream } from './card-stream';
+import type { Review } from './review-versions';
 import { islandHoldKey, isCurrentIsland } from './island-owner';
 import { agentApi } from './use-agent';
 
@@ -27,6 +33,23 @@ export function isLightLaunch(prepared: PreparedCommand): prepared is LightLaunc
   return answersInPlace(prepared.output.action) && prepared.target !== undefined;
 }
 
+/**
+ * Whether the launch's answer lands on the answer card whatever it turns out to be, as known when
+ * it starts: an answer meant for a card (`card`, and `annotate`, which marks text only in a
+ * screenshot, `answersOnCard`), or a write-back its field cannot take (not `writable`, or an
+ * insert after a selection that is not text). An answer under review goes to the review card.
+ */
+export function landsOnCard({ target, output }: LightLaunch): boolean {
+  if (writesBack(output.action) && output.review) return false;
+  return (
+    answersOnCard(output.action) ||
+    !target.writable ||
+    (target.selectionKind !== undefined &&
+      target.selectionKind !== 'text' &&
+      output.action === 'insertAfterSelection')
+  );
+}
+
 /** One light launch, from its first run to its end (or its review's end). */
 export interface LightRun {
   launch: LightLaunch;
@@ -44,6 +67,8 @@ export interface LightRun {
   handedOver: boolean;
   /** The review its first answer started (`output.review`); null before, and without review. */
   review: Review | null;
+  /** Its answer on the answer card as it streams in, when it lands there (`landsOnCard`). */
+  stream: CardStream | null;
 }
 
 /** Light runs by the id of each of their runs still going, until that run ends. */

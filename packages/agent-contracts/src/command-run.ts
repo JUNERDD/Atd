@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { CommandScreenshotTextSchema } from './capture-answer.js';
 import { CommandOutputSchema } from './command-output.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
@@ -85,6 +86,14 @@ export const CommandRunRequestSchema = Type.Object(
     shortcutId: Type.Optional(Identifier),
     /** Registered computer targets the run may act on (`SubmitTaskRequest.computer`). */
     computer: Type.Optional(ComputerRunRequestSchema),
+    /**
+     * The run reads text recognized in a screenshot (`CommandScreenshotText`): `input.selection`
+     * holds the paragraphs in the capture grammar's blocks, and `input.files` the screenshot and
+     * its screen context, which the run attaches whatever the command's input accepts. Where its
+     * answer goes is `output` (else the command's saved output), which the hidden instructions
+     * describe in that grammar. Absent for every other run.
+     */
+    screenshotText: Type.Optional(CommandScreenshotTextSchema),
   },
   { additionalProperties: false },
 );

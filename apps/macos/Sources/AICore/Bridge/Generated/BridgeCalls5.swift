@@ -104,11 +104,13 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
         public let id: String
         public let arguments: CommandArguments?
         public let intent: Intent?
+        public let selection: String?
 
-        public init(id: String, arguments: CommandArguments?, intent: Intent?) {
+        public init(id: String, arguments: CommandArguments?, intent: Intent?, selection: String?) {
           self.id = id
           self.arguments = arguments
           self.intent = intent
+          self.selection = selection
         }
 
         public init(from decoder: any Decoder) throws {
@@ -119,6 +121,9 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
             try container.value($0, CommandArguments.self)
           }
           intent = try container.optional(.intent) { try container.value($0, Intent.self) }
+          selection = try container.optional(.selection) {
+            try container.string($0, minLength: 1, maxLength: 100_000)
+          }
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -127,6 +132,7 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
           try container.encode(id, forKey: .id)
           try container.encodeIfPresent(arguments, forKey: .arguments)
           try container.encodeIfPresent(intent, forKey: .intent)
+          try container.encodeIfPresent(selection, forKey: .selection)
         }
 
         private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -134,6 +140,7 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
           case id
           case arguments
           case intent
+          case selection
         }
 
         public enum Intent: String, Codable, Equatable, Sendable {
@@ -145,26 +152,33 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
 
       public struct Ask: Codable, Equatable, Sendable {
         public let question: String
+        public let selection: String?
 
-        public init(question: String) {
+        public init(question: String, selection: String?) {
           self.question = question
+          self.selection = selection
         }
 
         public init(from decoder: any Decoder) throws {
           let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
           try container.literal(.kind, "ask")
           question = try container.string(.question, minLength: 1, maxLength: 100_000)
+          selection = try container.optional(.selection) {
+            try container.string($0, minLength: 1, maxLength: 100_000)
+          }
         }
 
         public func encode(to encoder: any Encoder) throws {
           var container = encoder.container(keyedBy: CodingKeys.self)
           try container.encode("ask", forKey: .kind)
           try container.encode(question, forKey: .question)
+          try container.encodeIfPresent(selection, forKey: .selection)
         }
 
         private enum CodingKeys: String, CodingKey, CaseIterable {
           case kind
           case question
+          case selection
         }
       }
     }
@@ -245,24 +259,5 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
       case recording
       case longScreenshot
     }
-  }
-}
-
-/// Params of the `screenshot.edit` call.
-public struct ScreenshotEditParams: Codable, Equatable, Sendable {
-  public let resourceId: String
-
-  public init(resourceId: String) {
-    self.resourceId = resourceId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    resourceId = try container.string(
-      .resourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case resourceId
   }
 }

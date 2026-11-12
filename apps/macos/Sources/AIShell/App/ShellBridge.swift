@@ -236,6 +236,9 @@ final class ShellBridge {
       case .screenshot: Self.answerLongScreenshot(params, shell: shell)
       }
       return try Self.encode(NativeEmpty())
+    case .captureTextProgress(let params):
+      try Self.progressCaptureText(params, from: host, shell: shell)
+      return try Self.encode(NativeEmpty())
     case .accessibilityRequest:
       shell.trust.openSystemSettings()
       return try Self.encode(NativeEmpty())

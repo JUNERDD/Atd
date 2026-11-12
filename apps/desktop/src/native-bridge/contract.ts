@@ -15,6 +15,7 @@ import { Type, type TSchema } from 'typebox';
 import { NativeAppearanceEvents } from './appearance-events.ts';
 import { NativeCalls } from './calls.ts';
 import { NativeCaptureEvents } from './capture-calls.ts';
+import { NativeCaptureTextEvents } from './capture-text-calls.ts';
 import {
   CommandArgumentsSchema,
   NativeCommandOptionsEvents,
@@ -301,6 +302,7 @@ export const NativeEvents = {
   ...NativeTextEvents,
   ...NativeCommandOptionsEvents,
   ...NativeRecordingEvents,
+  ...NativeCaptureTextEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

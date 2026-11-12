@@ -4,14 +4,18 @@ import SwiftUI
 
 /// The long screenshot lightbox's view (``IslandLongScreenshotLightbox``) in the lightbox's whole
 /// size: the viewer in its column, the motion's ghost over it, then the chrome: the overview rail
-/// on the right and the bars above and below the column, which fade in once the image has
-/// landed and go first when closing.
+/// right of the column, the bars above and below it and the side panel with the text commands'
+/// result (``LongScreenshotResultsPanel``), docked beside the rail or a drawer over the column's
+/// right side between the bars, which fade in once the image has landed and go first when
+/// closing. Under a drawer a click on the image or the scrim closes it
+/// (``IslandLightboxDrawerCatcher``).
 struct IslandLongScreenshotLightboxView: View {
   let content: IslandLongScreenshotLightbox
 
   var body: some View {
     let lightbox = content.lightbox
     let column = content.viewport.layout.column
+    let placement = content.panelPlacement
     ZStack(alignment: .topLeading) {
       LongScreenshotViewerLayer(content: content)
         .frame(width: column.width, height: column.height)
@@ -19,11 +23,15 @@ struct IslandLongScreenshotLightboxView: View {
         .padding(.top, column.minY)
       if content.moves { IslandLongScreenshotLightboxGhost(content: content) }
       Group {
+        if placement.isDrawer { IslandLightboxDrawerCatcher { content.panel.hide() } }
         LongScreenshotRail(content: content)
         IslandLongScreenshotLightboxChrome(content: content)
           .frame(width: column.width, height: column.height)
           .padding(.leading, column.minX)
           .padding(.top, column.minY)
+        IslandLightboxPanelSlot(placement: placement) {
+          LongScreenshotResultsPanel(content: content)
+        }
       }
       .opacity(lightbox.chromeOpacity)
       .allowsHitTesting(lightbox.chromeShown)
@@ -39,8 +47,8 @@ struct IslandLongScreenshotLightboxView: View {
 }
 
 /// The viewer as the lightbox shows it: it reads what the viewer's marks show from the card (the
-/// kept range, the cover, the pages, the hovered page, the focused bar) and whether the viewer is
-/// live, so the viewer follows them (``LongScreenshotViewerHost``).
+/// kept range with what is on the image, the pages, the hovered page, the focused bar), the mode
+/// and whether the viewer is live, so the viewer follows them (``LongScreenshotViewerHost``).
 private struct LongScreenshotViewerLayer: View {
   let content: IslandLongScreenshotLightbox
 
@@ -49,8 +57,8 @@ private struct LongScreenshotViewerLayer: View {
     LongScreenshotViewerHost(
       viewer: content.viewer,
       marks: LongScreenshotViewerHost.Marks(
-        kept: card.state.kept, covered: card.state.coveredAreas, pages: card.pages,
-        hovered: card.hoveredPage, focused: card.focusedHandle, annotating: content.annotating),
+        kept: card.state.kept, pages: card.pages, hovered: card.hoveredPage,
+        focused: card.focusedHandle, mode: content.mode),
       live: content.live, opacity: content.moves ? nil : content.lightbox.mediaOpacity
     ) { content.landed() }
   }
@@ -62,11 +70,10 @@ private struct LongScreenshotViewerHost: NSViewRepresentable {
   /// What the viewer's marks show.
   struct Marks: Equatable {
     let kept: LongScreenshotKept
-    let covered: [CGRect]
     let pages: [LongScreenshotCardPage]
     let hovered: Int?
     let focused: LongScreenshotCardState.Edge?
-    let annotating: Bool
+    let mode: LongScreenshotLightboxMode
   }
 
   let viewer: LongScreenshotViewer
@@ -90,7 +97,7 @@ private struct LongScreenshotViewerHost: NSViewRepresentable {
   func updateNSView(_ view: LongScreenshotViewerContainer, context: Context) {
     if context.coordinator.marks != marks {
       context.coordinator.marks = marks
-      viewer.refresh(annotating: marks.annotating)
+      viewer.refresh(mode: marks.mode)
     }
     if let opacity {
       viewer.fade(to: opacity)

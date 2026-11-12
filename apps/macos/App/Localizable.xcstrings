@@ -1665,6 +1665,1378 @@
         }
       }
     },
+    "captureText.action.apply" : {
+      "comment" : "Screenshot text commands: result card button that puts reviewed replacements on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply to screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用到截图"
+          }
+        }
+      }
+    },
+    "captureText.action.copyNotesTooltip" : {
+      "comment" : "Screenshot text commands: tooltip of the Copy button on an explanation's result card, before its shortcut",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制说明文字"
+          }
+        }
+      }
+    },
+    "captureText.action.copyScreenshot" : {
+      "comment" : "Screenshot text commands: result card button that copies the screenshot with its changes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制截图"
+          }
+        }
+      }
+    },
+    "captureText.action.copyScreenshotTooltip" : {
+      "comment" : "Screenshot text commands: tooltip of the result card's Copy screenshot button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the screenshot with these changes without ending it"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制带着这些改动的截图，不结束截图"
+          }
+        }
+      }
+    },
+    "captureText.action.discard" : {
+      "comment" : "Screenshot text commands: key hint, and the long screenshot side panel's button before Apply, while a result waits for review: nothing goes onto the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃"
+          }
+        }
+      }
+    },
+    "captureText.action.reapply" : {
+      "comment" : "Screenshot text commands: result card button, in Restore's place once the result is off the screenshot, that puts it back",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reapply"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新应用"
+          }
+        }
+      }
+    },
+    "captureText.action.reapplyTooltip" : {
+      "comment" : "Screenshot text commands: tooltip of the result card's Reapply button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put this result back on the screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把这次结果重新放回截图上"
+          }
+        }
+      }
+    },
+    "captureText.action.revert" : {
+      "comment" : "Screenshot text commands: result card button that takes this result off the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原"
+          }
+        }
+      }
+    },
+    "captureText.action.revertTooltip" : {
+      "comment" : "Screenshot text commands: tooltip of the result card's Restore button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo this result and put the screenshot back as it was"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销这次结果，截图回到它之前的样子"
+          }
+        }
+      }
+    },
+    "captureText.copied.screenshot" : {
+      "comment" : "Screenshot text commands: copied capsule after Copy screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制截图"
+          }
+        }
+      }
+    },
+    "captureText.copied.screenshotSize" : {
+      "comment" : "Screenshot text commands: copied capsule after Copy screenshot; the image size, such as 1040 × 760",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied screenshot · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制截图 · %@"
+          }
+        }
+      }
+    },
+    "captureText.copied.text" : {
+      "comment" : "Screenshot text commands: copied capsule after copying selected text; the number of paragraphs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Copied %arg paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Copied %arg paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已复制 %arg 段文字"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.dock.highlights" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row; the number of highlighter marks on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg highlight"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg highlights"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "荧光笔 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.dock.reading" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row while a run reads and nothing has landed yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读…"
+          }
+        }
+      }
+    },
+    "captureText.dock.revertTooltip" : {
+      "comment" : "Screenshot text commands: tooltip of the long screenshot summary row's Restore button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo every AI change on the screenshot and return to the original"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销截图上所有 AI 改动，回到原图"
+          }
+        }
+      }
+    },
+    "captureText.dock.steps" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row; the number of numbered markers on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@markers@"
+          },
+          "substitutions" : {
+            "markers" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg number"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg numbers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@markers@"
+          },
+          "substitutions" : {
+            "markers" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "编号 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.dock.translations" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row; the number of translated paragraphs on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg translated paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg translated paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "译文 %arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.failed.export" : {
+      "comment" : "Screenshot text commands: result card error when the screenshot or its context could not be prepared for the command",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t prepare the screenshot for the command."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法为命令准备截图。"
+          }
+        }
+      }
+    },
+    "captureText.failed.interrupted" : {
+      "comment" : "Screenshot text commands: result card error when the panel's page went away during the run",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The connection was interrupted. Run the command again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接已中断，请重新运行命令。"
+          }
+        }
+      }
+    },
+    "captureText.hint.original" : {
+      "comment" : "Screenshot text commands: key hint of the Option key: the original text shows while it is held",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原文"
+          }
+        }
+      }
+    },
+    "captureText.item.gone" : {
+      "comment" : "Screenshot text commands: tooltip of a result card item whose number was deleted from the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This number was deleted from the screenshot. Press ⌘Z to bring it back."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图上的这个编号已删除，⌘Z 可以恢复"
+          }
+        }
+      }
+    },
+    "captureText.note.copied" : {
+      "comment" : "Screenshot text commands: result card note when the answer was copied",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied to the clipboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制到剪贴板"
+          }
+        }
+      }
+    },
+    "captureText.note.covered" : {
+      "comment" : "Screenshot text commands: result card note when one run cannot read every paragraph of its scope; the number of paragraphs it reads, from the first",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Reads only the first %arg paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Reads only the first %arg paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "只读了前 %arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.note.failed" : {
+      "comment" : "Screenshot text commands: result card note after the run failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Didn’t finish"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有完成"
+          }
+        }
+      }
+    },
+    "captureText.note.highlights" : {
+      "comment" : "Screenshot text commands: result card note after highlighter marks were drawn; the number of marks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Highlighted %arg place"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Highlighted %arg places"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "用荧光笔标了 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.note.making" : {
+      "comment" : "Screenshot text commands: result card note while another version of the result is being made; the number of that version",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Making version %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成第 %lld 版"
+          }
+        }
+      }
+    },
+    "captureText.note.nothing" : {
+      "comment" : "Screenshot text commands: result card note when the command found nothing to put on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有需要改动的地方"
+          }
+        }
+      }
+    },
+    "captureText.note.reading" : {
+      "comment" : "Screenshot text commands: result card note while the command reads; the scope chip's words",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Reading…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读%@…"
+          }
+        }
+      }
+    },
+    "captureText.note.replaced" : {
+      "comment" : "Screenshot text commands: result card note after paragraphs were replaced in place on the screenshot; the number replaced",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Replaced %arg paragraph in place"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Replaced %arg paragraphs in place"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已在原位替换 %arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.note.replacing" : {
+      "comment" : "Screenshot text commands: result card note while paragraphs are replaced on the screenshot; paragraphs replaced so far, then the paragraphs read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replacing %lld of %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在替换 %lld / %lld"
+          }
+        }
+      }
+    },
+    "captureText.note.restored" : {
+      "comment" : "Screenshot text commands: result card note once the result was taken off the screenshot again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restored"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已还原"
+          }
+        }
+      }
+    },
+    "captureText.note.review" : {
+      "comment" : "Screenshot text commands: result card note while replacements wait for review; the version shown, then the number of versions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review before replacing · version %lld of %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替换前先审阅 · 第 %lld / %lld 版"
+          }
+        }
+      }
+    },
+    "captureText.note.reviewMarks" : {
+      "comment" : "Screenshot text commands: result card note while numbered steps or highlighter marks wait for review; the version shown and the number of versions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review before marking · version %lld of %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标注前先审阅 · 第 %lld / %lld 版"
+          }
+        }
+      }
+    },
+    "captureText.note.steps" : {
+      "comment" : "Screenshot text commands: result card note after numbered markers were drawn; the numbers, such as 1–4",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Numbered %@ on the screenshot; the notes are here"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图上标了编号 %@，说明在这里"
+          }
+        }
+      }
+    },
+    "captureText.note.stopped" : {
+      "comment" : "Screenshot text commands: result card note after the run was stopped",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已停止"
+          }
+        }
+      }
+    },
+    "captureText.note.unchanged" : {
+      "comment" : "Screenshot text commands: result card note when the answer stays on the card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The screenshot is unchanged"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图没有改动"
+          }
+        }
+      }
+    },
+    "captureText.note.versionFailed" : {
+      "comment" : "Screenshot text commands: result card note when an attempt at another version of the result made none; the version shown stays",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New version failed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没能生成新版本"
+          }
+        }
+      }
+    },
+    "captureText.note.writing" : {
+      "comment" : "Screenshot text commands: result card note while the answer is being written",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成…"
+          }
+        }
+      }
+    },
+    "captureText.scope.all" : {
+      "comment" : "Screenshot text commands: scope chip while nothing is selected; the number of recognized paragraphs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "All text · %arg paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "All text · %arg paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "全部文字 · %arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureText.scope.clear" : {
+      "comment" : "Screenshot text commands: the scope chip's clear button and its tooltip",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear selection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除所选"
+          }
+        }
+      }
+    },
+    "captureText.scope.picked" : {
+      "comment" : "Screenshot text commands: scope chip while paragraphs are selected; the number of selected paragraphs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Selected · %arg paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Selected · %arg paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "所选 · %arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureTextMode.copied.characters" : {
+      "comment" : "Said after the selected characters of the screenshot's text were copied",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied selected text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制所选文字"
+          }
+        }
+      }
+    },
+    "captureTextMode.copy" : {
+      "comment" : "Text command row: copies the selected text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "captureTextMode.copyTooltip" : {
+      "comment" : "Tooltip of the text command row's Copy",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the selected text, or all of it while nothing is selected (⌘C)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制所选文字，没有选时复制全部文字（⌘C）"
+          }
+        }
+      }
+    },
+    "captureTextMode.entered" : {
+      "comment" : "VoiceOver announcement as the screenshot's text mode opens: how it is used",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text mode: click a paragraph to pick it, drag over empty space to pick several, drag over text to select characters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字模式：点按段落选中它，在空白处拖动框选多段，在文字上拖动选字"
+          }
+        }
+      }
+    },
+    "captureTextMode.label" : {
+      "comment" : "VoiceOver name of the text command row shown in the screenshot's text mode",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字命令"
+          }
+        }
+      }
+    },
+    "captureTextMode.redact" : {
+      "comment" : "Screenshot command row: the shortcut to the mosaic tool's auto-redact, shown while unmasked sensitive items exist",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover Sensitive Info"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遮盖敏感信息"
+          }
+        }
+      }
+    },
+    "captureTextMode.redactTooltip" : {
+      "comment" : "Tooltip of the command row's Cover Sensitive Info shortcut; the number of sensitive items it covers",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Cover %arg sensitive item, as the mosaic tool’s Cover button does"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Cover %arg sensitive items, as the mosaic tool’s Cover button does"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@items@"
+          },
+          "substitutions" : {
+            "items" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "遮盖 %arg 处敏感信息（与马赛克工具样式栏里的按钮相同）"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureTextMode.runTooltip" : {
+      "comment" : "Tooltip of a command button on the text command row; %@ is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run “%@” on the selected text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对所选文字运行“%@”"
+          }
+        }
+      }
+    },
+    "captureTextMode.scope.characters" : {
+      "comment" : "Text command row: the scope chip while characters are selected; the number of selected characters (white space aside)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@characters@"
+          },
+          "substitutions" : {
+            "characters" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Selected · %arg character"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Selected · %arg characters"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@characters@"
+          },
+          "substitutions" : {
+            "characters" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "所选 · %arg 字"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureTextMode.selectText" : {
+      "comment" : "Screenshot command row: the button that enters text mode, where paragraphs and characters of the screenshot's text are picked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选取文字"
+          }
+        }
+      }
+    },
+    "captureTextMode.selectTextNone" : {
+      "comment" : "Tooltip of the disabled Select Text button once the selection was read and held no text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No text was found in the selection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选区里没有识别出文字"
+          }
+        }
+      }
+    },
+    "captureTextMode.selectTextTooltip" : {
+      "comment" : "Tooltip of the screenshot command row's Select Text button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick paragraphs or characters to run text commands on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选取段落或文字，对它们运行文字命令"
+          }
+        }
+      }
+    },
     "commandCompose.attach" : {
       "comment" : "Command island compose card: accessibility label and tooltip of the button that opens the menu to attach a screenshot or files (the panel composer's wording)",
       "extractionState" : "manual",
@@ -2165,6 +3537,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "回答完成后"
+          }
+        }
+      }
+    },
+    "commandOptions.output.annotate" : {
+      "comment" : "Answer destination in the command options menu and card, offered for commands on screenshot text: the answer is drawn on the screenshot as numbered steps or highlighter marks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark up the screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标注在截图上"
           }
         }
       }
@@ -4441,6 +5831,24 @@
         }
       }
     },
+    "island.recording.lightboxHidePanel" : {
+      "comment" : "Full screen preview side panel button that hides the panel (steps or results)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏侧栏"
+          }
+        }
+      }
+    },
     "island.recording.lightboxHintBack" : {
       "comment" : "Full screen preview hint after the esc keycap",
       "extractionState" : "manual",
@@ -4550,19 +5958,19 @@
       }
     },
     "island.recording.lightboxStepsTooltip" : {
-      "comment" : "Tooltip of the full screen preview's steps button",
+      "comment" : "Tooltip of the full screen preview's steps button, with its shortcut",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show or hide the steps"
+            "value" : "Show or hide steps (⌥⌘I)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示或隐藏步骤"
+            "value" : "显示或隐藏步骤（⌥⌘I）"
           }
         }
       }
@@ -5686,55 +7094,37 @@
       }
     },
     "longScreenshot.card.cover" : {
-      "comment" : "Long screenshot result card on the island (cover)",
+      "comment" : "Long screenshot result card and full-screen preview: adds a mosaic over each sensitive item not yet covered",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cover"
+            "value" : "Cover Sensitive Info"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "遮盖"
-          }
-        }
-      }
-    },
-    "longScreenshot.card.coverKinds" : {
-      "comment" : "Long screenshot result card on the island (coverKinds)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cover %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "遮盖 %@"
+            "value" : "遮盖敏感信息"
           }
         }
       }
     },
     "longScreenshot.card.coverTooltip" : {
-      "comment" : "Long screenshot result card on the island (coverTooltip)",
+      "comment" : "Tooltip of Cover Sensitive Info; the argument lists the uncovered kinds with their counts",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pixelate each of them"
+            "value" : "Cover each with a mosaic: %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "把这些内容逐个打码"
+            "value" : "逐个盖上马赛克：%@"
           }
         }
       }
@@ -6440,13 +7830,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep the whole long screenshot and undo covering and annotations"
+            "value" : "Keep the whole long screenshot and undo covering, translations and annotations"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "恢复整张长图，撤销遮盖和标注"
+            "value" : "恢复整张长图，撤销遮盖、译文和标注"
           }
         }
       }
@@ -7059,6 +8449,278 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "长截图太大，无法发送。"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.copyTooltip" : {
+      "comment" : "Long screenshot full-screen preview, text: tooltip of the text command row's Copy",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy this text, without AI"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制这些文字，不经过 AI"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.doneTooltip" : {
+      "comment" : "Long screenshot full-screen preview, text: tooltip of Done, which leaves text mode",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave text mode (Esc)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出文字模式（Esc）"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.hint.exit" : {
+      "comment" : "Long screenshot full-screen preview, text: key hint, Escape leaves text mode",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.hint.marquee" : {
+      "comment" : "Long screenshot full-screen preview, text: key hint, a drag boxes paragraphs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动框选"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.hint.pan" : {
+      "comment" : "Long screenshot full-screen preview, text: key hint, Space held drags the image",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold to pan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住平移"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.marqueeCount" : {
+      "comment" : "Long screenshot full-screen preview, text: badge beside the marquee pointer; the number of paragraphs picked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg paragraph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg paragraphs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@paragraphs@"
+          },
+          "substitutions" : {
+            "paragraphs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg 段"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "longScreenshot.text.results" : {
+      "comment" : "Long screenshot full-screen preview, top bar button that shows or hides the side panel with the text command result",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Results"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.resultsTooltip" : {
+      "comment" : "Long screenshot full-screen preview, tooltip of the top bar button that shows or hides the results panel, with its shortcut",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show or hide results (⌥⌘I)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示或隐藏结果（⌥⌘I）"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.row" : {
+      "comment" : "Long screenshot full-screen preview, text: the text command row, for VoiceOver",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字命令"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.runTooltip" : {
+      "comment" : "Long screenshot full-screen preview, text: a command button's tooltip; the argument is the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run “%@” on this text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对这些文字运行“%@”"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.running" : {
+      "comment" : "Long screenshot full-screen preview, text: a command button's VoiceOver value while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.select" : {
+      "comment" : "Long screenshot full-screen preview, text: bottom bar button that enters text mode",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选取文字"
+          }
+        }
+      }
+    },
+    "longScreenshot.text.selectTooltip" : {
+      "comment" : "Long screenshot full-screen preview, text: tooltip of Select Text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select text in the long screenshot: drag to box paragraphs; commands read all the text until you pick some"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选取长图里的文字：拖动框选，命令默认处理全部文字"
           }
         }
       }

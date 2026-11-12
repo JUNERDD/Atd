@@ -96,7 +96,7 @@ struct IslandLongScreenshotPreview: View {
     }
   }
 
-  /// The image as made for the preview, pixelated where covered; the box's wash until made.
+  /// The image as made for the preview, with what is on it; the box's wash until made.
   @ViewBuilder private var image: some View {
     if let shown = card.displayThumbnail {
       Image(decorative: shown, scale: 1).resizable().interpolation(.high)

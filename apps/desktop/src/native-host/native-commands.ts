@@ -93,12 +93,15 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * Prepared like a shortcut launch (a failed capture becomes a notice), but the selection the
-   * command reads is `text`, captured now, so the shell's stashed selection stays untouched.
+   * command reads is `text`, captured now, so the shell's stashed selection stays untouched. A
+   * command that also takes a screenshot reads `shot` when one is given (the screenshot the text
+   * was picked in, or null for none) instead of a new capture.
    */
   async prepareWithText(
     id: string,
     text: string,
     overrides?: ArgumentValues,
+    shot?: Screenshot | null,
   ): Promise<PreparedCommand> {
     if (text.length > MAX_CAPTURE_LENGTH)
       throw new Error(i18n.t('input.errors.textTooLong', { ns: 'panel' }));
@@ -107,7 +110,7 @@ export class NativeCommands implements CommandCatalog {
       this.find(id),
       {
         capture: async (source) => (source === 'selection' ? selection : this.capture(source)),
-        screenshot: () => this.screenshot(),
+        screenshot: async () => (shot === undefined ? this.screenshot() : shot),
       },
       true,
       overrides,
@@ -116,16 +119,23 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * Prepared like a shortcut launch (a failed capture becomes a notice), but the screenshot the
-   * command reads is `shot`, the capture that launched it, so no second capture opens.
+   * command reads is `shot`, the capture that launched it, so no second capture opens, and the
+   * selection it reads is `selection`, the text picked in that screenshot, when there is any.
    */
   async prepareWithScreenshot(
     id: string,
     shot: Screenshot,
     overrides?: ArgumentValues,
+    selection?: string,
   ): Promise<PreparedCommand> {
+    const picked = selection && { text: selection, capturedAt: shot.capturedAt };
     return prepareCommand(
       this.find(id),
-      { capture: (source) => this.capture(source), screenshot: async () => shot },
+      {
+        capture: async (source) =>
+          source === 'selection' && picked ? picked : this.capture(source),
+        screenshot: async () => shot,
+      },
       true,
       overrides,
     );

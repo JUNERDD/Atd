@@ -12,6 +12,9 @@ extension ShellController {
       panelHost: panelHost, showPanel: { [weak self] in self?.showPanel() })
     installedLongScreenshots = controller
     screenshots.longScreenshots = controller
+    // The full-screen preview offers the screenshot's text commands and runs them through the
+    // same runner as the capture editor.
+    controller.screenshots = screenshots
     return controller
   }
 }

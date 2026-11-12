@@ -56,6 +56,8 @@ final class IslandController: NSObject, NSWindowDelegate {
   /// The compose card's width and note height as last measured (``measureCompose``).
   var composeMeasures = ComposeMeasureCache()
   private var observers: [NSObjectProtocol] = []
+  /// Takes the keyboard once a shortcut's modifiers are up (``setKeyCapable(_:taking:)``).
+  let keyboardTake = KeyboardHandoff()
 
   override init() {
     super.init()
@@ -109,12 +111,13 @@ final class IslandController: NSObject, NSWindowDelegate {
     replace(content, size: measure(content), leavingCard: previous)
   }
 
-  /// The island leaves as one piece, the entrance in reverse: its content stays in the glass and
-  /// follows the shape as it shrinks to ``SelectionToolbarEntrance/startScale`` toward its bottom
-  /// edge while the window fades out, eased in over ``IslandChoreography/exitDuration``. The
+  /// The island leaves as one piece: its content stays in the glass and follows the shape as it
+  /// shrinks a little, to ``SelectionToolbarEntrance/startScale``, toward its bottom edge while
+  /// the window fades out, eased in over ``IslandChoreography/exitDuration``. The
   /// content never goes first, so the glass never shows empty. Departing controls take no
   /// pointer input; transparent pixels still pass it through. Under Reduce Motion it only fades.
   func exit() {
+    keyboardTake.cancel()
     guard window.isVisible, !exiting else { return }
     exiting = true
     generation += 1
@@ -259,7 +262,7 @@ final class IslandController: NSObject, NSWindowDelegate {
     // An arrived review card lays out at its shape as drawn, on the direct edits' spring: its
     // title stays on the top edge, its field and footer on the bottom, its answer takes the rest.
     let reflows = next.kind == .review && model.arrived
-    let inPlace = inPlace || next.kind == .compose || reflows
+    let inPlace = inPlace || next.resizesInPlace || reflows
     model.layers[index].scales = !inPlace
     model.layers[index].reflows = reflows
     let resize = inPlace ? IslandChoreography.inPlace : IslandChoreography.resize

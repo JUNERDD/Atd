@@ -48,19 +48,21 @@ struct LongScreenshotViewerGlide {
   let timer: Timer
 }
 
-/// Dragging the image (the long screenshot lightbox's view mode): the image follows the pointer,
-/// as the rail's viewport does there, across and along at any zoom within the scroller's limits,
-/// and a flick lets it glide on. The pointer is an open hand over the image and a closed one
-/// from the press to the release, as on the rail (``LongScreenshotViewerDocument/hover``). Annotate mode leaves every drag to
-/// the canvas; a trim bar's drag wins over the image under it. Anything else that moves the
-/// image (a scroll, a pinch, a key, the rail, a button) stops a glide.
+/// Dragging the image (the long screenshot lightbox's view mode, and text mode with Space held):
+/// the image follows the pointer, as the rail's viewport does there, across and along at any
+/// zoom within the scroller's limits, and a flick lets it glide on. The pointer is an open hand
+/// over the image and a closed one from the press to the release, as on the rail
+/// (``LongScreenshotViewerDocument/hover``). Annotate mode leaves every drag to the canvas; a
+/// trim bar's drag wins over the image under it. A press that never travels is a click, which
+/// picks the paragraph under it (``onPick``). Anything else that moves the image (a scroll, a
+/// pinch, a key, the rail, a button) stops a glide.
 extension LongScreenshotViewer {
   /// The image was pressed: a glide stops, a focused trim bar lets go, and the press may become
   /// a drag.
   func beginPan(_ event: NSEvent) {
     stopGlide()
     card.focusedHandle = nil
-    guard !annotating, trim == nil else { return }
+    guard mode != .annotate, trim == nil else { return }
     let point = event.locationInWindow
     pan = LongScreenshotViewerPan(
       start: point, last: point, samples: [(event.timestamp, point)])
@@ -86,18 +88,23 @@ extension LongScreenshotViewer {
     PointerRole.grabbing.cursor.set()
   }
 
-  /// The press was let go: a drag that was still moving glides on.
+  /// The press was let go: a drag that was still moving glides on; one that never travelled is
+  /// a click on the image.
   func endPan(_ event: NSEvent) {
     guard let current = pan else { return }
     pan = nil
-    document.hover.pointer = .grab
-    guard current.moved else { return }
+    document.hover.pointer = restingPointer
+    guard current.moved else {
+      // Space held in text mode only moves the image.
+      guard !panKeyHeld else { return }
+      return onPick(document.convert(event.locationInWindow, from: nil), event.modifierFlags)
+    }
     if let velocity = current.velocity(at: event.timestamp) { startGlide(velocity) }
   }
 
   /// The drag and the glide end with the viewer (hidden, closing, annotate mode).
   func stopPan() {
-    if pan != nil { document.hover.pointer = .grab }
+    if pan != nil { document.hover.pointer = restingPointer }
     pan = nil
     stopGlide()
   }

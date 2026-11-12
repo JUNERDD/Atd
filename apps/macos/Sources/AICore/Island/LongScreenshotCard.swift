@@ -5,12 +5,12 @@ public enum LongScreenshotQuickAsk: String, CaseIterable, Sendable {
   case summary, table, keyInfo
 }
 
-/// Asks about kept ranges equal to the whole point, covered alike and with the same annotations
-/// (``AnnotationDocument/askKey``), are about the same range: other annotations send another
+/// Asks about kept ranges equal to the whole point and with the same annotations
+/// (``AnnotationDocument/askKey``) are about the same range: other annotations send another
 /// image, and another text with it.
 extension LongScreenshotKept: CardAskRange {
   public var askKey: [Int] {
-    [Int(top.rounded()), Int(bottom.rounded()), covered ? 1 : 0] + annotations.askKey
+    [Int(top.rounded()), Int(bottom.rounded())] + annotations.askKey
   }
 
   /// The kept height in points.
@@ -30,11 +30,10 @@ extension LongScreenshotKept: CardAskRange {
 
   /// This range with only the parts named replaced.
   func with(
-    top: CGFloat? = nil, bottom: CGFloat? = nil, covered: Bool? = nil,
-    annotations: AnnotationDocument? = nil
+    top: CGFloat? = nil, bottom: CGFloat? = nil, annotations: AnnotationDocument? = nil
   ) -> Self {
     Self(
-      top: top ?? self.top, bottom: bottom ?? self.bottom, covered: covered ?? self.covered,
+      top: top ?? self.top, bottom: bottom ?? self.bottom,
       annotations: annotations ?? self.annotations)
   }
 }
@@ -66,10 +65,10 @@ public struct LongScreenshotSensitiveCount: Equatable, Sendable {
 }
 
 /// The long screenshot card's own state, apart from asking (decision D11): the range it keeps
-/// between its two handles, whether the sensitive parts in it are covered and what is drawn on
-/// the image (``LongScreenshotKept``), and what follows from them for the card to show: the pages
-/// Atd reads, their recognized lines and the sensitive items found. It lives with the source
-/// while the card is shown again (the panel taking the keyboard) and goes with it.
+/// between its two handles and what is on the image (``LongScreenshotKept``), and what follows
+/// from them for the card to show: the pages Atd reads, their recognized lines and the sensitive
+/// items found, and which of those no mosaic hides yet. It lives with the source while the card
+/// is shown again (the panel taking the keyboard) and goes with it.
 public struct LongScreenshotCardState: Sendable {
   public let source: LongScreenshotCardSource
   public private(set) var kept: LongScreenshotKept
@@ -85,7 +84,7 @@ public struct LongScreenshotCardState: Sendable {
 
   public init(source: LongScreenshotCardSource) {
     self.source = source
-    kept = LongScreenshotKept(top: 0, bottom: source.shot.pointSize.height, covered: false)
+    kept = LongScreenshotKept(top: 0, bottom: source.shot.pointSize.height)
   }
 
   /// The whole image's height in points.
@@ -118,24 +117,20 @@ public struct LongScreenshotCardState: Sendable {
   /// Either end moved off the image's own.
   public var isTrimmed: Bool { kept.top > 0.5 || kept.bottom < height - 0.5 }
 
-  /// "还原" undoes the trim, the cover and the annotations.
-  public var canRestore: Bool { isTrimmed || kept.covered || !kept.annotations.isEmpty }
+  /// "还原" undoes the trim and everything on the image: what was drawn, the mosaics over the
+  /// sensitive items and the text commands' results (decision D5).
+  public var canRestore: Bool { isTrimmed || !kept.annotations.isEmpty }
 
-  /// The whole image again, uncovered, with nothing drawn on it.
+  /// The whole image again, with nothing on it.
   public mutating func restore() {
-    kept = LongScreenshotKept(top: 0, bottom: height, covered: false)
+    kept = LongScreenshotKept(top: 0, bottom: height)
   }
 
-  /// Covers the sensitive parts in the kept range (and any the range takes in later).
-  public mutating func cover() {
-    kept = kept.with(covered: true)
-  }
-
-  /// What is drawn on the image (``LongScreenshotKept/annotations``).
+  /// What is on the image (``LongScreenshotKept/annotations``).
   public var annotations: AnnotationDocument { kept.annotations }
 
-  /// Makes `document` (image points) what is drawn on the image: the lightbox's annotate mode
-  /// keeps every change here as it is made, with no step to confirm it.
+  /// Makes `document` (image points) what is on the image: the lightbox keeps every change here
+  /// as it is made, with no step to confirm it.
   public mutating func setAnnotations(_ document: AnnotationDocument) {
     kept = kept.with(annotations: document)
   }
@@ -149,34 +144,32 @@ public struct LongScreenshotCardState: Sendable {
   }
 
   /// The kinds found in the kept range with their counts, in ``SensitiveText/Kind``'s order.
-  public var sensitiveCounts: [LongScreenshotSensitiveCount] {
-    let found = keptSensitive
-    return SensitiveText.Kind.allCases.compactMap { kind in
+  public var sensitiveCounts: [LongScreenshotSensitiveCount] { Self.counts(keptSensitive) }
+
+  /// The sensitive parts in the kept range that no mosaic on the image hides yet
+  /// (``SensitiveText/uncovered(_:by:)``): what Cover Sensitive Info covers, and while there are
+  /// any, the card and the lightbox offer it (decision D7). Nothing is covered by default.
+  public var unmaskedSensitive: [SensitiveText.Box] {
+    SensitiveText.uncovered(keptSensitive, by: kept.redactedAreas)
+  }
+
+  /// ``unmaskedSensitive`` by kind with their counts, in ``SensitiveText/Kind``'s order.
+  public var unmaskedSensitiveCounts: [LongScreenshotSensitiveCount] {
+    Self.counts(unmaskedSensitive)
+  }
+
+  private static func counts(_ found: [SensitiveText.Box]) -> [LongScreenshotSensitiveCount] {
+    SensitiveText.Kind.allCases.compactMap { kind in
       let count = found.filter { $0.kind == kind }.count
       return count > 0 ? LongScreenshotSensitiveCount(kind: kind, count: count) : nil
     }
   }
 
-  /// How the card covers a sensitive part, so what is copied, attached and asked about can match
-  /// the preview: a pixelating mosaic of 7 pt blocks (``AnnotationStroke/mosaicBlock`` at 4/30)
-  /// over the part's box grown 3 pt each way, as the screenshot editor's auto-redact covers it.
-  public static let coverStyle = AnnotationStyle(
-    stroke: AnnotationStroke(4.0 / 30.0), redaction: .pixelate)
-
-  public static func coverRect(_ box: CGRect) -> CGRect { box.insetBy(dx: -3, dy: -3).integral }
-
-  /// The areas covered now, in image points: each sensitive part in the kept range once covered.
-  public var coveredAreas: [CGRect] {
-    kept.covered ? keptSensitive.map { Self.coverRect($0.box) } : []
-  }
-
   /// The recognized lines Atd reads with the image, top to bottom: those in the kept range, less
-  /// every line a covered area or a mosaic drawn on the image touches
-  /// (``LongScreenshotExportRules/hiddenAreas(of:kept:)``), as a screenshot's context leaves out
-  /// a line with one hidden word rather than show it in part. The sensitive counts and
-  /// ``coveredAreas`` stay the cover's own: a mosaic hides text, it does not cover for the card.
+  /// every line a mosaic on the image touches (``LongScreenshotKept/redactedAreas``), as a
+  /// screenshot's context leaves out a line with one hidden word rather than show it in part.
   public var keptLines: [LongScreenshotLine] {
-    let hidden = LongScreenshotExportRules.hiddenAreas(of: source, kept: kept)
+    let hidden = kept.redactedAreas
     return source.lines
       .filter { line in
         kept.keeps(line.box) && !hidden.contains { !line.box.intersection($0).isEmpty }

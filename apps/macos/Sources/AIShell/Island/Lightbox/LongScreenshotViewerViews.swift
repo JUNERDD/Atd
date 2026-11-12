@@ -5,8 +5,9 @@ import AppKit
 // scroll view and its clip view.
 
 /// The viewer as the lightbox hosts it: the scroll view with the marks over it
-/// (``LongScreenshotViewerOverlay``), both filling it. It reports its first size, which the
-/// viewer waits for to place the image where it opens.
+/// (``LongScreenshotViewerOverlay``), both filling it. It reports every size it takes: the
+/// viewer waits for the first to place the image where it opens, and follows the others as a
+/// docked side panel narrows or widens its column.
 final class LongScreenshotViewerContainer: NSView {
   var onResize: () -> Void = {}
 
@@ -74,13 +75,15 @@ final class LongScreenshotClipView: NSClipView {
   }
 }
 
-/// The viewer's state that the lightbox's SwiftUI chrome reads: the zoom, the rows between the
-/// bars and where the whole image stands, as the viewer (``LongScreenshotViewer``) moves. Each is
-/// its own property, so a view reading one is not redrawn when another changes. Before the viewer
-/// is placed they are where the lightbox opens, which its motion grows the image to.
+/// The viewer's state that the lightbox's SwiftUI chrome reads: the layout, the zoom, the rows
+/// between the bars and where the whole image stands, as the viewer (``LongScreenshotViewer``)
+/// moves. Each is its own property, so a view reading one is not redrawn when another changes.
+/// Before the viewer is placed they are where the lightbox opens, which its motion grows the
+/// image to.
 @Observable
 final class LongScreenshotViewport {
-  @ObservationIgnored let layout: LongScreenshotLightboxLayout
+  /// The lightbox's layout; it changes with the side panel's place (``setLayout(_:)``).
+  private(set) var layout: LongScreenshotLightboxLayout
   /// Screen points per image point.
   private(set) var zoom: CGFloat
   /// The zoom fits the image's width (Fit), rather than a step, 100% or a pinch.
@@ -119,5 +122,11 @@ final class LongScreenshotViewport {
 
   func setFitted(_ fitted: Bool) {
     if self.fitted != fitted { self.fitted = fitted }
+  }
+
+  /// The side panel moved: the column and the rail follow; the viewer then reports where it
+  /// stands in it (``update(origin:zoom:view:)``).
+  func setLayout(_ layout: LongScreenshotLightboxLayout) {
+    if self.layout != layout { self.layout = layout }
   }
 }

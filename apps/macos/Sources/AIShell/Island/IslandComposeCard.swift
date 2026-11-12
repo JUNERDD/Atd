@@ -93,6 +93,7 @@ struct IslandComposeCard: View {
     .font(IslandType.answer)
     .lineLimit(1...IslandMetrics.composeMaxLines)
     .focused($fieldFocused)
+    .modifier(FloatingHover(pointer: .text) { _ in })
     .disabled(!active)
     .padding(.horizontal, IslandMetrics.rowPadding)
     .padding(.vertical, IslandMetrics.composeFieldInset)

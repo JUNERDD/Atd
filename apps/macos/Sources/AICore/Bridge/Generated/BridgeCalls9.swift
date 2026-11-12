@@ -187,23 +187,27 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
       public let answer: String
       public let note: String?
       public let review: Review?
+      public let streaming: Bool?
 
-      public init(command: String, answer: String, note: String?, review: Review?) {
+      public init(command: String, answer: String, note: String?, review: Review?, streaming: Bool?)
+      {
         self.command = command
         self.answer = answer
         self.note = note
         self.review = review
+        self.streaming = streaming
       }
 
       public init(from decoder: any Decoder) throws {
         let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
         try container.literal(.phase, "answer")
         command = try container.string(.command, minLength: 1, maxLength: 200)
-        answer = try container.string(.answer, minLength: 1, maxLength: 1_000_000)
+        answer = try container.string(.answer, maxLength: 1_000_000)
         note = try container.optional(.note) {
           try container.string($0, minLength: 1, maxLength: 500)
         }
         review = try container.optional(.review) { try container.value($0, Review.self) }
+        streaming = try container.optional(.streaming) { try container.boolean($0) }
       }
 
       public func encode(to encoder: any Encoder) throws {
@@ -213,6 +217,7 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         try container.encode(answer, forKey: .answer)
         try container.encodeIfPresent(note, forKey: .note)
         try container.encodeIfPresent(review, forKey: .review)
+        try container.encodeIfPresent(streaming, forKey: .streaming)
       }
 
       private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -221,6 +226,7 @@ public struct CommandProgressShowParams: Codable, Equatable, Sendable {
         case answer
         case note
         case review
+        case streaming
       }
 
       public struct Review: Codable, Equatable, Sendable {

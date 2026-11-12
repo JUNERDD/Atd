@@ -23,10 +23,19 @@ const ShotFields = {
 };
 
 /**
+ * Text picked in the screenshot when the capture ended on the toolbar: the picked paragraphs'
+ * text in reading order, separated by blank lines, without any text a mosaic touches. A command
+ * that reads `{{selection}}` gets it as its selection, besides the screenshot; an ask gets it as
+ * the text it is about. Absent: nothing was picked.
+ */
+const PickedText = Type.Optional(Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH }));
+
+/**
  * What the person picked on the screenshot toolbar, which ended the capture: a command placed
  * there (`id`, with the values picked in its options over the remembered ones and, in `output`,
  * where its answer goes for this run, and what to do with it as `shortcut.command`'s `intent`
- * says, absent: `run`), or a question typed in its ask field (`question`).
+ * says, absent: `run`), or a question typed in its ask field (`question`); either with the text
+ * picked in the screenshot (`selection`).
  */
 const ScreenshotLaunchSchema = Type.Union([
   Type.Object(
@@ -35,6 +44,7 @@ const ScreenshotLaunchSchema = Type.Union([
       id: Type.String({ minLength: 1, maxLength: 128 }),
       arguments: Type.Optional(CommandArgumentsSchema),
       intent: Type.Optional(ShortcutCommandIntentSchema),
+      selection: PickedText,
     },
     { additionalProperties: false },
   ),
@@ -42,10 +52,20 @@ const ScreenshotLaunchSchema = Type.Union([
     {
       kind: Type.Literal('ask'),
       question: Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH }),
+      selection: PickedText,
     },
     { additionalProperties: false },
   ),
 ]);
+
+/** A command a screenshot surface offers: its id and name. */
+const ToolbarCommand = Type.Object(
+  {
+    id: Type.String({ minLength: 1, maxLength: 128 }),
+    name: Type.String({ minLength: 1, maxLength: 256 }),
+  },
+  { additionalProperties: false },
+);
 
 export const NativeCaptureCalls = {
   /**
@@ -126,23 +146,18 @@ export const NativeCaptureCalls = {
   /**
    * Replaces the commands the screenshot toolbar offers; the page pushes it whenever they change.
    * `commands`: the enabled commands placed on the screenshot toolbar whose input is a screenshot,
-   * in command-list order. Their options and where their answers go come from
-   * `commandOptions.set`, as the selection toolbar's do; picking one ends the capture with a
-   * `launch` (`screenshot.capture`).
+   * in command-list order; picking one ends the capture with a `launch` (`screenshot.capture`).
+   * `textCommands`: the enabled commands placed on `screenshotText` that read the selection, in
+   * command-list order, which the capture editor and the long screenshot's full-screen preview
+   * offer on text picked in the screenshot; picking one keeps the surface open and runs it there
+   * (`captureText.run`). Their options and where their answers go come from
+   * `commandOptions.set`, as the selection toolbar's do.
    */
   'screenshotToolbar.set': {
     params: Type.Object(
       {
-        commands: Type.Array(
-          Type.Object(
-            {
-              id: Type.String({ minLength: 1, maxLength: 128 }),
-              name: Type.String({ minLength: 1, maxLength: 256 }),
-            },
-            { additionalProperties: false },
-          ),
-          { maxItems: 64 },
-        ),
+        commands: Type.Array(ToolbarCommand, { maxItems: 64 }),
+        textCommands: Type.Array(ToolbarCommand, { maxItems: 64 }),
       },
       { additionalProperties: false },
     ),

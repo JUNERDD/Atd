@@ -6,21 +6,26 @@ import SwiftUI
 struct IslandFadingScroll<Content: View, Edges: View>: View {
   var axis: Axis = .vertical
   let reduceMotion: Bool
+  /// Keeps the newest content in view while it streams in (``FloatingScrollEdges/follows``).
+  var follows = false
   @ViewBuilder let content: Content
   @ViewBuilder let edges: (AnswerOverflow) -> Edges
 
   var body: some View {
     ScrollView(axis == .vertical ? .vertical : .horizontal) { content }
       .modifier(
-        FloatingScrollEdges(axis: axis, reduceMotion: reduceMotion, edges: edges))
+        FloatingScrollEdges(
+          axis: axis, reduceMotion: reduceMotion, follows: follows, edges: edges))
   }
 }
 
 extension IslandFadingScroll where Edges == EmptyView {
   init(
-    axis: Axis = .vertical, reduceMotion: Bool,
+    axis: Axis = .vertical, reduceMotion: Bool, follows: Bool = false,
     @ViewBuilder content: () -> Content
   ) {
-    self.init(axis: axis, reduceMotion: reduceMotion, content: content) { _ in EmptyView() }
+    self.init(axis: axis, reduceMotion: reduceMotion, follows: follows, content: content) {
+      _ in EmptyView()
+    }
   }
 }

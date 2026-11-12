@@ -112,8 +112,9 @@ protocol AnnotationEditing: AnyObject {
   var onCancel: (() -> Void)? { get set }
   /// The user asked to copy the result instead of attaching it (toolbar or ⌘C).
   var onCopy: (() -> Void)? { get set }
-  /// True while a tool is chosen: presses inside the selection (away from its handles and edge
-  /// band) go to the editor. False: they move the selection. Called on every change.
+  /// True while a tool is chosen or text mode is on: presses inside the selection (away from its
+  /// handles and edge band) go to the editor. False: they move the selection, except where
+  /// ``claimsPress(at:)`` holds. Called on every change.
   var onInteriorClaimChange: ((Bool) -> Void)? { get set }
   /// Whether anything is drawn; a right-click clears the selection back to idle only when not.
   var hasAnnotations: Bool { get }
@@ -173,6 +174,43 @@ protocol AnnotationEditing: AnyObject {
   var longScreenshot: LongScreenshotAvailability? { get set }
   /// The long screenshot button was clicked.
   var onLongScreenshot: (() -> Void)? { get set }
+  /// Escape: steps back one level (an open menu or field, a running text command, open text, a
+  /// gesture, a result card, text mode's picks, a selection, the tool); false when nothing was
+  /// left, so the session cancels.
+  func stepBack() -> Bool
+  /// Whether a press at `point` inside an interior no tool claimed is still the editor's: a click
+  /// on a numbered step a text command drew opens its result card. The session leaves such a
+  /// press, and the cursor over it, to the editor.
+  func claimsPress(at point: CGPoint) -> Bool
+  /// The text a command or question launched from the capture also reads while text mode is on:
+  /// what is picked, else what a text command would read (every available paragraph), unmasked
+  /// only (decision D6); nil with text mode off or no text.
+  var pickedText: String? { get }
+  /// Set by the session before ``show(in:selection:backdrop:)``: the selection as it shows now,
+  /// with its annotations, for Copy Screenshot (decision D9) and a text command's screenshot; nil
+  /// when there is nothing to render.
+  var renderSelection: (() -> CaptureSelectionShot?)? { get set }
+  /// A text command's result card ended the capture (decision D10): the session ends with it.
+  var onTextResult: ((CaptureTextHandoff) -> Void)? { get set }
+}
+
+/// The selection rendered as it shows (``AnnotationEditing/renderSelection``): its pixels with
+/// the annotations at `scale` pixels per point, its size in points, and the app and window under
+/// it for the screen context (each nil when unknown).
+struct CaptureSelectionShot {
+  let image: CGImage
+  let scale: CGFloat
+  let size: CGSize
+  let app: String?
+  let window: String?
+}
+
+/// What a text command's result card hands on as it ends the capture (decision D10), done once
+/// the overlays are gone: open run `runId`'s task in Atd, or write `text` at the cursor the
+/// capture recorded.
+enum CaptureTextHandoff: Equatable {
+  case open(runId: String)
+  case insert(String)
 }
 
 /// What a screenshot session launches as it ends (architecture S1, S3, B2): a command placed on
@@ -200,6 +238,17 @@ struct CaptureCommandRowSetup {
   /// cursor; set once the session read it (``CaptureSession/present(reopening:targetRead:)``).
   /// Without one the options menus leave Insert at cursor out (``CommandOutputChoice``).
   var cursor = false
+  /// The app of that field, which a result card's Insert names.
+  var cursorApp: String?
+  /// The commands placed on `screenshotText` that read the selection, in order
+  /// (`screenshotToolbar.set`'s `textCommands`): text mode's command row.
+  var textCommands: [SelectionToolbarSettings.Command] = []
+  /// Runs those commands while the capture stays open; nil runs none (text mode still picks and
+  /// copies).
+  var textRuns: CaptureTextRunner?
+  /// Puts an image on the clipboard at its pixels per point (a result card's Copy Screenshot,
+  /// decision D9); false when the clipboard is busy.
+  var copyImage: (CGImage, CGFloat) -> Bool = { _, _ in false }
 }
 
 /// What recognition read in a selection's frozen pixels while it is edited (architecture S5,
@@ -209,6 +258,8 @@ struct CaptureText: Equatable {
   var boxes: [ScreenContext.TextBox]
   /// The parts of it that look sensitive (``SensitiveText``).
   var sensitive: [SensitiveText.Box]
+  /// Where each piece's characters are, for text mode's selection by the character.
+  var glyphs = CaptureTextGlyphs.empty
 
   /// Recognition failed or found nothing.
   static let empty = CaptureText(boxes: [], sensitive: [])

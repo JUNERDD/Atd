@@ -25,6 +25,8 @@ enum PointerRole {
   /// hover region (``FloatingHover``): AppKit's own cursor rects do not reach it while another
   /// app is active, and the surface would otherwise keep the arrow over it.
   case text
+  /// A drag draws a box that picks what it touches (text mode's marquee).
+  case marquee
 
   /// An AppKit button's role: it acts on a click while it is enabled.
   init(button: NSButton) { self = button.isEnabled ? .action : .passive }
@@ -38,6 +40,7 @@ enum PointerRole {
     case .resizeColumn: .columnResize
     case .resizeRow: .rowResize
     case .text: .iBeam
+    case .marquee: .crosshair
     }
   }
 }

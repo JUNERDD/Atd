@@ -23,10 +23,13 @@ public struct CommandOptionsCatalog: Equatable, Sendable {
     }
 
     /// Every option the menus show: the parameters', then where the answer goes (`cursor`:
-    /// whether a field could take it at the cursor, ``CommandOutputChoice``).
-    public func options(_ names: CommandOutputChoice.Names, cursor: Bool = true) -> [CommandOption]
-    {
-      CommandOutputChoice.appending(output, to: options, names: names, cursor: cursor)
+    /// whether a field could take it at the cursor; `screenshotText`: whether the command runs on
+    /// text picked in a screenshot, ``CommandOutputChoice``).
+    public func options(
+      _ names: CommandOutputChoice.Names, cursor: Bool = true, screenshotText: Bool = false
+    ) -> [CommandOption] {
+      CommandOutputChoice.appending(
+        output, to: options, names: names, cursor: cursor, screenshotText: screenshotText)
     }
   }
 

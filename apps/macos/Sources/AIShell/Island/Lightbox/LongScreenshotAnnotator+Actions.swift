@@ -86,11 +86,9 @@ extension LongScreenshotAnnotator {
     }
   }
 
-  /// The sensitive items in the kept range that neither the card's cover nor a mosaic hides.
-  private var unmaskedSensitive: [SensitiveText.Box] {
-    let state = card.state
-    guard !state.kept.covered else { return [] }
-    return SensitiveText.uncovered(state.keptSensitive, by: mosaics)
+  /// The sensitive items in the kept range that no mosaic hides.
+  var unmaskedSensitive: [SensitiveText.Box] {
+    SensitiveText.uncovered(card.state.keptSensitive, by: mosaics)
   }
 
   /// The mosaic tool's dot and the style bar's auto-redact, as the card's text and the kept range
@@ -103,18 +101,18 @@ extension LongScreenshotAnnotator {
         ? .cover(unmasked.count) : card.state.keptSensitive.isEmpty ? .none : .allCovered)
   }
 
-  /// Covers every unmasked sensitive item with a mosaic in the style auto-redact shows, a few
-  /// points past it, as one undo step, then says so on the button, as the editor's does.
-  func redactSensitive() {
+  /// Covers every unmasked sensitive item with a mosaic a few points past it, as one undo step,
+  /// then says so on the button pressed, as the editor's does (decision D7). From the style bar
+  /// the mosaic takes the style it shows; from the bottom bar's shortcut, outside the mosaic tool,
+  /// the mosaic tool's remembered style, whether or not annotate mode ever opened.
+  func redactSensitive(fromStyleBar: Bool = true) {
     let hits = unmaskedSensitive
     guard !hits.isEmpty else { return }
     textEditor.end()
-    let style = styleTarget?.style ?? interaction.styles[AnnotationTool.mosaic.styleSlot]
-    var next = store.document
-    for hit in hits {
-      next.add(Annotation(shape: .mosaic(hit.box.insetBy(dx: -3, dy: -3).integral), style: style))
-    }
-    store.commit(next)
+    let remembered = IslandLongScreenshotCardModel.mosaicStyle(defaults)
+    let style = fromStyleBar && active ? styleTarget?.style ?? remembered : remembered
+    store.commit(store.document.redacting(hits, style: style))
+    card.confirmRedaction(hits.count)
     let strings = ShellStrings.shared
     let said =
       strings.text(.captureRedactDone, count: hits.count) + " · "

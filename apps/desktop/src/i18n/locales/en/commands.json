@@ -154,6 +154,10 @@
       "title": "Screenshot toolbar",
       "description": "Runs on a screenshot you take with the screenshot shortcut."
     },
+    "screenshotText": {
+      "title": "Text in a screenshot",
+      "description": "Runs on text you pick in a screenshot, which stays open."
+    },
     "turnSelection": {
       "title": "Selection toolbar in conversations",
       "description": "Runs on text you select in an answer."
@@ -184,6 +188,10 @@
       "title": "Insert after the selected text",
       "description": "Writes the answer after the text you selected, keeping that text."
     },
+    "annotate": {
+      "title": "Mark the selected text",
+      "description": "Highlights and numbers what matters in text you pick in a screenshot, with the notes in a card beside it."
+    },
     "insertAtCursor": {
       "title": "Insert at the cursor",
       "description": "Types the answer where the cursor was."
@@ -195,9 +203,15 @@
     "writeBackNote": "Writes only when the command runs from another app, through its shortcut or a toolbar. Anywhere else, the answer stays in the conversation.",
     "cardNote": "If that app can’t take text there, the answer shows in a card for you to copy.",
     "cardPlaceNote": "Shows the card only when the command runs from another app, through its shortcut or a toolbar. Anywhere else, the answer stays in the conversation.",
+    "annotateNote": "Marks text only when the command runs on text picked in a screenshot. Anywhere else, the answer shows in a card.",
+    "screenshotNote": {
+      "replaceSelection": "On text picked in a screenshot, the answer replaces that text on the image.",
+      "insertAfterSelection": "On text picked in a screenshot, the answer numbers that text on the image and lists the notes in a card."
+    },
     "review": {
       "title": "Review before applying",
-      "description": "The answer waits on the island, where you can regenerate or adjust it before writing it in."
+      "description": "The answer waits on the island, where you can regenerate or adjust it before writing it in.",
+      "annotateDescription": "The marks wait as a preview on the screenshot, where you can regenerate or adjust them before applying them."
     },
     "adjustments": {
       "title": "Adjustment suggestions",

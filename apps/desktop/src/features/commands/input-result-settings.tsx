@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import {
   actsOnSelection,
   defaultCommandOutput,
+  placeAvailable,
   readsSelection,
+  reviewable,
   writesBack,
   type CommandPlace,
 } from '@atd/agent-contracts';
@@ -38,29 +40,45 @@ const SOURCE_LABELS = {
   none: 'input.sourceNone',
 } as const satisfies Record<Source, string>;
 
-/** The place a command goes on when the person switches its input to a source that place offers. */
-const SOURCE_PLACES: Partial<Record<Source, CommandPlace>> = {
-  selection: 'selectionToolbar',
-  screenshot: 'screenshotToolbar',
+/**
+ * The places a command goes on when the person switches its input to a source those places offer:
+ * Selected text puts it where text is selected, in other apps and in screenshots, and Screenshot
+ * on the screenshot toolbar.
+ */
+const SOURCE_PLACES: Partial<Record<Source, readonly CommandPlace[]>> = {
+  selection: ['selectionToolbar', 'screenshotText'],
+  screenshot: ['screenshotToolbar'],
 };
 
 /**
  * Whether some run of `command` waits for review: one with the command's own output, or one from a
- * shortcut whose output override reviews a write-back. Either shows the command's adjustment
- * suggestions on its review card.
+ * shortcut whose output override reviews a write-back (or marks, `reviewable`). Either shows the
+ * command's adjustment suggestions on its review card.
  */
 function reviewsSomewhere(command: CommandDefinition): boolean {
   const outputs = [command.output, ...command.shortcuts.flatMap(({ output }) => output ?? [])];
-  return outputs.some((output) => writesBack(output.action) && output.review);
+  return outputs.some((output) => reviewable(output.action) && output.review);
+}
+
+/** What the result does where the command runs on text picked in a screenshot, if it says more. */
+function screenshotNote(
+  command: CommandDefinition,
+): 'replaceSelection' | 'insertAfterSelection' | null {
+  const { action } = command.output;
+  if (action !== 'replaceSelection' && action !== 'insertAfterSelection') return null;
+  const placed =
+    command.placement.screenshotText && placeAvailable(command.input, 'screenshotText');
+  return placed ? action : null;
 }
 
 /**
  * What a run reads and where its answer goes, as one editor group: the input source beside the
- * result, then the input options, the review switch of a write-back with the adjustment
- * suggestions the review card offers, shown while any run reviews (`reviewsSomewhere`), and notes
- * on what the shell does around the run. Turning review off keeps the suggestions for when it is
- * on again. The result offers only the actions this input can serve: the ones on the
- * selection (`actsOnSelection`) need a command that reads it, so they are left out until it does,
+ * result, then the input options, the review switch of a write-back or a marking result
+ * (`reviewable`) with the adjustment suggestions the review card offers, shown while any run
+ * reviews (`reviewsSomewhere`), and notes on what the shell does around the run, on text picked in
+ * a screenshot included. Turning review off keeps the suggestions for when it is on again. The
+ * result offers only the actions this input can serve: the ones on the selection
+ * (`actsOnSelection`) need a command that reads it, so they are left out until it does,
  * and an input change that stops reading the selection returns such a result to the conversation.
  * A command that takes the selection, run from its shortcut with nothing selected, asks for the
  * text on the island and puts a selection write-back at the cursor (`withComposedInput`); an
@@ -89,12 +107,15 @@ export function InputResultSettings({
   const { action, review } = command.output;
   const writeBack = writesBack(action);
   const reviewed = reviewsSomewhere(command);
+  const onScreenshot = screenshotNote(command);
   const notes = [
     command.input.source === 'selection' &&
-      t(actsOnSelection(action) ? 'io.composeCursorNote' : 'io.composeNote'),
+      t(actsOnSelection(action) && writeBack ? 'io.composeCursorNote' : 'io.composeNote'),
     writeBack && t('output.writeBackNote'),
     writeBack && t('output.cardNote'),
+    onScreenshot && t(`output.screenshotNote.${onScreenshot}`),
     action === 'card' && t('output.cardPlaceNote'),
+    action === 'annotate' && t('output.annotateNote'),
   ].filter((note) => typeof note === 'string');
   /**
    * Applies an input change. An output that acts on the selection needs a command that reads it,
@@ -116,9 +137,12 @@ export function InputResultSettings({
     if (!next) return;
     // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
     // Switching to Selected text also puts the command on the selection toolbar over other apps,
-    // where a command that takes the selection as its input has always shown, and switching to
-    // Screenshot puts it on the screenshot toolbar, where such a command shows by default.
-    const place = next === command.input.source ? undefined : SOURCE_PLACES[next];
+    // where a command that takes the selection as its input has always shown, and on text in a
+    // screenshot, and switching to Screenshot puts it on the screenshot toolbar, where such a
+    // command shows by default.
+    const placement = { ...command.placement };
+    if (next !== command.input.source)
+      for (const place of SOURCE_PLACES[next] ?? []) placement[place] = true;
     update(
       {
         ...command.input,
@@ -128,7 +152,7 @@ export function InputResultSettings({
         selection: command.input.selection || next === 'selection',
         clipboard: command.input.clipboard || next === 'clipboard',
       },
-      place ? { ...command.placement, [place]: true } : command.placement,
+      placement,
     );
   }
   return (
@@ -175,14 +199,18 @@ export function InputResultSettings({
           onOpenChange={onOptionsOpenChange}
         />
       </div>
-      {(writeBack || reviewed) && (
+      {(reviewable(action) || reviewed) && (
         <Card size="sm" className="settings-card">
           <ItemGroup>
-            {writeBack && (
+            {reviewable(action) && (
               <SettingsSwitchRow
                 id="command-output-review"
                 title={t('output.review.title')}
-                description={t('output.review.description')}
+                description={t(
+                  action === 'annotate'
+                    ? 'output.review.annotateDescription'
+                    : 'output.review.description',
+                )}
                 checked={review}
                 onCheckedChange={(checked) =>
                   onChange({ ...command, output: { ...command.output, review: checked } })

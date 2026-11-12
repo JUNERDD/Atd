@@ -4,6 +4,25 @@
 
 import Foundation
 
+/// Params of the `screenshot.edit` call.
+public struct ScreenshotEditParams: Codable, Equatable, Sendable {
+  public let resourceId: String
+
+  public init(resourceId: String) {
+    self.resourceId = resourceId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resourceId = try container.string(
+      .resourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resourceId
+  }
+}
+
 /// Result of the `screenshot.edit` call.
 public enum ScreenshotEditResult: Codable, Equatable, Sendable {
   case ok(Ok)
@@ -97,21 +116,46 @@ public enum ScreenshotEditResult: Codable, Equatable, Sendable {
 /// Params of the `screenshotToolbar.set` call.
 public struct ScreenshotToolbarSetParams: Codable, Equatable, Sendable {
   public let commands: [Command]
+  public let textCommands: [TextCommand]
 
-  public init(commands: [Command]) {
+  public init(commands: [Command], textCommands: [TextCommand]) {
     self.commands = commands
+    self.textCommands = textCommands
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     commands = try container.array(.commands, of: Command.self, maxItems: 64)
+    textCommands = try container.array(.textCommands, of: TextCommand.self, maxItems: 64)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case commands
+    case textCommands
   }
 
   public struct Command: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+
+    public init(id: String, name: String) {
+      self.id = id
+      self.name = name
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      name = try container.string(.name, minLength: 1, maxLength: 256)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+    }
+  }
+
+  public struct TextCommand: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
 
@@ -216,24 +260,3 @@ public typealias SpeechStopParams = NativeEmpty
 
 /// Result of the `speech.stop` call.
 public typealias SpeechStopResult = NativeEmpty
-
-/// Params of the `link.open` call.
-public struct LinkOpenParams: Codable, Equatable, Sendable {
-  public let url: String
-
-  public init(url: String) {
-    self.url = url
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    url = try container.string(.url, maxLength: 8_192, pattern: "^https?://")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case url
-  }
-}
-
-/// Result of the `link.open` call.
-public typealias LinkOpenResult = NativeEmpty

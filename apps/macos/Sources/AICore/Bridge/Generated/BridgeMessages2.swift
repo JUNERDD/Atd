@@ -139,6 +139,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .shortcutsRecording(container.value(.params, ShortcutsRecordingParams.self))
       case "recording.answer":
         call = try .recordingAnswer(container.value(.params, RecordingAnswerParams.self))
+      case "captureText.progress":
+        call = try .captureTextProgress(container.value(.params, CaptureTextProgressParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -242,6 +244,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case recordingAsk(RecordingAskEvent)
   case recordingAskStop(RecordingAskStopEvent)
   case recordingAskOpen(RecordingAskOpenEvent)
+  case captureTextRun(CaptureTextRunEvent)
+  case captureTextAction(CaptureTextActionEvent)
 
   /// The contract name.
   public var name: String {
@@ -276,6 +280,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .recordingAsk: "recording.ask"
     case .recordingAskStop: "recording.askStop"
     case .recordingAskOpen: "recording.askOpen"
+    case .captureTextRun: "captureText.run"
+    case .captureTextAction: "captureText.action"
     }
   }
 
@@ -311,6 +317,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .recordingAsk(let payload): try payload.encode(to: encoder)
     case .recordingAskStop(let payload): try payload.encode(to: encoder)
     case .recordingAskOpen(let payload): try payload.encode(to: encoder)
+    case .captureTextRun(let payload): try payload.encode(to: encoder)
+    case .captureTextAction(let payload): try payload.encode(to: encoder)
     }
   }
 }

@@ -27,6 +27,9 @@ final class ToolbarOptionsContent {
   /// Whether a field could take an answer at the cursor; false leaves Insert at cursor out of the
   /// menus (``CommandOutputChoice``). The screenshot toolbar sets it from the field in front.
   var cursor = true
+  /// Whether the commands run on text picked in a screenshot, the one place the menus offer
+  /// Annotate (``CommandOutputChoice``): the text command rows set it.
+  var screenshotText = false
 
   private unowned let cascade: ToolbarOptionsCascade
   /// The values picked so far per command id, since the menus opened.
@@ -141,7 +144,8 @@ final class ToolbarOptionsContent {
     if let sheet = sheets[id] { return sheet }
     guard let entry = catalog.entry(for: id) else { return nil }
     let sheet = ToolbarOptionsSheet(
-      entry, names: CommandOutputChoice.Names(ShellStrings.shared.catalog), cursor: cursor)
+      entry, names: CommandOutputChoice.Names(ShellStrings.shared.catalog), cursor: cursor,
+      screenshotText: screenshotText)
     sheets[id] = sheet
     return sheet
   }

@@ -37,7 +37,8 @@ export const ReviewChangeSchema = Type.Object(
  * the next version (a lone choice as chips of its values, any other set as `summary` opening the
  * options sheet); `adjustments`, the command's suggested adjustments, offered as chips; and
  * `pending`, set while the next version is being made (by Regenerate, an adjustment or changed
- * options): the card keeps the answer, dimmed, and offers to stop.
+ * options), which the card shows as being made and offers to stop (the island's review card on a
+ * page of its own after the `count` kept ones, `version` being `count` + 1 there: `text-calls.ts`).
  */
 export const CommandReviewSchema = Type.Object(
   {

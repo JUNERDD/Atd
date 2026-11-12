@@ -36,19 +36,26 @@ export function toolbarParams(
 }
 
 /**
- * What the screenshot toolbar offers: the commands offered at its place (`offeredAt`: enabled,
- * placed there, and taking a screenshot), in command-list order. Picking one ends the capture
- * with it (`screenshot.capture`'s `launch`), so only the id and the name the button shows cross.
+ * What the screenshot surfaces offer, in command-list order, as id and name only: on the
+ * screenshot toolbar, the commands offered at its place (`offeredAt`: enabled, placed there, and
+ * taking a screenshot), picking one ends the capture with it (`screenshot.capture`'s `launch`);
+ * on text picked in a screenshot, the commands offered at `screenshotText` (enabled, placed there,
+ * and reading the selection), picking one runs it there while the screenshot stays open
+ * (`captureText.run`).
  */
 export function screenshotToolbarParams(
   commands: readonly CommandDefinition[],
 ): CallParams<'screenshotToolbar.set'> {
-  return { commands: offeredCommands(commands, 'screenshotToolbar') };
+  return {
+    commands: offeredCommands(commands, 'screenshotToolbar'),
+    textCommands: offeredCommands(commands, 'screenshotText'),
+  };
 }
 
 /**
  * The panel's side of the selection and screenshot toolbars: each sync pushes what changed of
- * either to the shell. The screenshot toolbar follows the commands alone; the selection toolbar
+ * either to the shell. The screenshot toolbar (its text commands included) follows the commands
+ * alone; the selection toolbar
  * also its settings, so it waits until the service's settings loaded (`settings` is null before,
  * when the defaults could show a toolbar the user turned off). An unchanged set is not pushed
  * again; pushes run one at a time, in order.

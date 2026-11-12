@@ -11,6 +11,7 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCaptureCalls } from './capture-calls.ts';
+import { NativeCaptureTextCalls } from './capture-text-calls.ts';
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
@@ -274,4 +275,5 @@ export const NativeCalls = {
   },
   ...NativeShortcutRecordingCalls,
   ...NativeRecordingCalls,
+  ...NativeCaptureTextCalls,
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

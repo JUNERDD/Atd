@@ -6,16 +6,17 @@ import Foundation
 /// parameter's (a parameter key starts with a letter), and it never crosses the bridge as a
 /// choice: ``CommandArguments/init(values:)`` sends its value as `output`.
 ///
-/// The choice lists the actions in the command settings' order, leaving out the two on the
-/// selection for a command that does not read it, and Insert at cursor where no field could take
-/// the answer (``appending(_:to:names:cursor:)``), and names the command's saved action as the
+/// The choice lists the actions in the command settings' order, leaving out the ones on the
+/// selection for a command that does not read it, Insert at cursor where no field could take
+/// the answer, and Annotate anywhere but text picked in a screenshot
+/// (``appending(_:to:names:cursor:screenshotText:)``), and names the command's saved action as the
 /// default. A pick lasts for that run only; the page never remembers it.
 public enum CommandOutputChoice {
   public static let key = "@output"
 
   /// Every action in the order the choice lists them.
   static let actions: [CommandOutputAction] = [
-    .panel, .card, .replaceSelection, .insertAfterSelection, .insertAtCursor, .copy,
+    .panel, .card, .replaceSelection, .insertAfterSelection, .annotate, .insertAtCursor, .copy,
   ]
 
   /// The words the choice shows, in the shell's language.
@@ -37,12 +38,17 @@ public enum CommandOutputChoice {
   /// `options` followed by the choice for `output`. `cursor` false: no field in front can take
   /// text (a screenshot taken over no text field), so Insert at cursor is left out unless it is
   /// the run's current action, which then shows the answer on the island's card anyway.
+  /// `screenshotText`: the command runs on text picked in a screenshot (`captureText.run`), the
+  /// one place Annotate draws marks; elsewhere it is left out unless it is the run's current
+  /// action, which then answers on the card.
   public static func appending(
-    _ output: CommandOutputOption, to options: [CommandOption], names: Names, cursor: Bool = true
+    _ output: CommandOutputOption, to options: [CommandOption], names: Names, cursor: Bool = true,
+    screenshotText: Bool = false
   ) -> [CommandOption] {
     let offered = actions.filter { action in
       switch action {
       case .replaceSelection, .insertAfterSelection: output.selection
+      case .annotate: (output.selection && screenshotText) || output.value == action
       case .insertAtCursor: cursor || output.value == action
       case .panel, .card, .copy: true
       }
@@ -72,6 +78,7 @@ extension CommandOutputChoice.Names {
         .card: text(.commandOptionsOutputCard),
         .replaceSelection: text(.commandOptionsOutputReplaceSelection),
         .insertAfterSelection: text(.commandOptionsOutputInsertAfterSelection),
+        .annotate: text(CaptureTextStringKey.outputAnnotate),
         .insertAtCursor: text(.commandOptionsOutputInsertAtCursor),
         .copy: text(.commandOptionsOutputCopy),
       ],

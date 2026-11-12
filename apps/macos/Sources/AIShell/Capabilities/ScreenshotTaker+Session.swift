@@ -31,6 +31,13 @@ extension ScreenshotTaker {
         self?.opensCommandSettings = true
         self?.session?.cancel()
       })
+    options.commands?.textCommands = textCommands
+    options.commands?.textRuns = textRuns
+    options.commands?.copyImage = { image, scale in
+      arbiter.writeClipboard(as: .screenshot) {
+        CaptureExport.copy(image, pixelScale: scale, to: $0)
+      }
+    }
     return options
   }
 
@@ -51,6 +58,11 @@ extension ScreenshotTaker {
   func run(
     reopening: ReopenBase?, request: ScreenshotRequest, writeTargets: WriteTargets?
   ) async throws(BridgeError) -> SessionRun {
+    // Capture overlays activate Atd and take the keyboard. Let the invoking chord finish in
+    // its original app before withdrawing the panel or presenting any overlay or permission UI.
+    guard await ShortcutRelease.waitForHandoff() else {
+      throw BridgeError("The screenshot was cancelled.")
+    }
     // A build whose grant was revoked (or left with an earlier signature) captures only the
     // wallpaper and the menu bar, so the grant is checked on every capture before anything shows.
     guard CGPreflightScreenCaptureAccess() else {
@@ -87,8 +99,9 @@ extension ScreenshotTaker {
       throw (error as? BridgeError) ?? BridgeError("The screen could not be captured.")
     }
     let outcome = await session.run()
-    // The previous app gets activation back before the panel reappears, so a restored panel
-    // is key over it exactly as before (non-activating, like a summon).
+    // The previous app gets activation back before the panel reappears, so a panel that had the
+    // keyboard is key over it exactly as before (non-activating, like a summon), and one that
+    // did not returns behind the windows that covered it.
     if NSApp.isActive, let previousApp { _ = previousApp.activate(from: .current, options: []) }
     restorePanel()
     // Auto-scroll was refused for its permission during the long screenshot.
@@ -142,6 +155,8 @@ extension ScreenshotTaker {
       return .longScreenshot(shot)
     case .copiedLongScreenshot(let shot):
       return .copiedLongScreenshot(shot)
+    case .textResult(let handoff):
+      return .textResult(handoff)
     }
   }
 

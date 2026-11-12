@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import {
   CommandOutputSchema,
+  CommandScreenshotTextSchema,
   MemoryCreateRequestSchema,
   MemorySaveRequestSchema,
   MemorySettingsRequestSchema,
@@ -69,10 +70,20 @@ export const AgentRequestSchema = Type.Union([
     commandRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     savedRun: Type.Union([Type.Object({ taskId: Identifier, runId: Identifier }), Type.Null()]),
     input: InputSchema,
-    /** A command run only: where its answer goes, over the command's saved output, for this run. */
+    /**
+     * A command run: where its answer goes, over the command's saved output, for this run. A
+     * follow-up on a screenshot-text run's answer (`screenshotText`): where that answer goes.
+     */
     output: Type.Optional(CommandOutputSchema),
     /** A command run only: the command's shortcut that launched it (`CommandRunRequest.shortcutId`). */
     shortcutId: Type.Optional(Identifier),
+    /**
+     * A command run: it reads text picked in a screenshot, whose files it attaches whatever the
+     * command accepts (`CommandRunRequest.screenshotText`). A follow-up, with `output`: it makes a
+     * new version of such a run's answer, told the same answer format
+     * (`SubmitTaskRequest.screenshotText`).
+     */
+    screenshotText: Type.Optional(CommandScreenshotTextSchema),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
     branchBefore: Type.Optional(SessionEntryId),
     /**

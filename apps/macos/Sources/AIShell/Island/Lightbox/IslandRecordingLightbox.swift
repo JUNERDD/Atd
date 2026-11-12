@@ -13,19 +13,21 @@ import SwiftUI
 /// Keys while it has the keyboard: Space plays or pauses (unless a button has the keyboard
 /// focus, which Space presses), ← and → move the playhead a second (⇧ five), I sets the kept
 /// range's start at the playhead and O its end, ⌘C copies and ⌘↩ attaches the kept range, as the
-/// card's footer does. Escape is left to the lightbox, which closes.
+/// card's footer does, and ⌥⌘I shows or hides the steps' side panel. Escape closes the panel
+/// while it is a drawer; otherwise it is left to the lightbox, which closes.
 final class IslandRecordingLightbox: IslandLightboxContent {
   let card: IslandRecordingCardModel
   let labels: IslandRecordingLabels
   let lightbox: IslandLightboxModel
-  /// What only the lightbox shows: the steps panel's toggle and the timeline's hover frame.
-  let state = IslandRecordingLightboxState()
+  /// What only the lightbox shows: the steps' side panel and the timeline's hover frame.
+  let state: IslandRecordingLightboxState
 
   init(card: IslandRecordingCardModel, labels: IslandRecordingLabels, lightbox: IslandLightboxModel)
   {
     self.card = card
     self.labels = labels
     self.lightbox = lightbox
+    state = IslandRecordingLightboxState(reduceMotion: lightbox.reduceMotion)
   }
 
   var view: AnyView {
@@ -36,7 +38,11 @@ final class IslandRecordingLightbox: IslandLightboxContent {
   func key(_ event: NSEvent) -> Bool {
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     switch Int(event.keyCode) {
+    case kVK_Escape where state.placement(in: lightbox.workArea).isDrawer:
+      state.panel.hide()
+      return true
     case kVK_Space where modifiers.isEmpty && !state.controlFocused:
+      guard !event.isARepeat else { return true }
       card.togglePlay()
       return true
     case kVK_LeftArrow, kVK_RightArrow:
@@ -56,8 +62,14 @@ final class IslandRecordingLightbox: IslandLightboxContent {
     return true
   }
 
-  /// ⌘C copies the kept range and ⌘↩ attaches it (``IslandShellFooterKey``), as on the card.
+  /// ⌘C copies the kept range and ⌘↩ attaches it (``IslandShellFooterKey``), as on the card;
+  /// ⌥⌘I shows or hides the steps.
   func keyEquivalent(_ event: NSEvent) -> Bool {
+    if IslandLightboxPanelState.toggles(event) {
+      guard !event.isARepeat else { return true }
+      state.panel.toggle()
+      return true
+    }
     guard let key = IslandShellFooterKey(event, field: nil) else { return false }
     switch key {
     case .copy: card.onEvent(.copy(card.state.trim))
@@ -93,11 +105,20 @@ final class IslandRecordingLightbox: IslandLightboxContent {
 /// The lightbox's own state, apart from the card model it shares with the card.
 @Observable
 final class IslandRecordingLightboxState {
-  /// The steps panel shows, where the window is wide enough for it.
-  var stepsShown = true
+  /// Whether the side panel with the steps shows, docked or as a drawer.
+  let panel: IslandLightboxPanelState
   /// The timeline's hover frame, the lightbox's larger one.
   let bubble = IslandRecordingFrameBubble(.lightbox)
   /// One of the lightbox's buttons has the keyboard focus (Full Keyboard Access), so Space
   /// presses it rather than playing (``IslandControlFocus``).
   @ObservationIgnored var controlFocused = false
+
+  init(reduceMotion: Bool) {
+    panel = IslandLightboxPanelState(kind: .recording, reduceMotion: reduceMotion)
+  }
+
+  /// Where the panel stands in a work area `area`: as a drawer, between the bars.
+  func placement(in area: CGRect) -> IslandMetrics.LightboxPanelPlacement {
+    panel.placement(in: area, between: IslandMetrics.recordingLightboxBetweenBars(in: area))
+  }
 }

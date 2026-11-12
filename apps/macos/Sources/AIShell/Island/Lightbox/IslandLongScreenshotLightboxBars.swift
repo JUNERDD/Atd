@@ -3,7 +3,10 @@ import SwiftUI
 
 /// The long screenshot lightbox's bars over its column, on the shell's glass pinned dark
 /// (``IslandLightboxBar``), inside the work area: the top bar 16 pt below its top, the bottom
-/// bar 20 pt above its bottom. In annotate mode the editor's own bars take the top bar's middle.
+/// bar 20 pt above its bottom, and the text command row docked
+/// ``LongScreenshotLightboxLayout/textRowGap`` above it while it shows
+/// (``IslandLongScreenshotLightbox/showsTextRow``). In annotate mode the editor's own bars take
+/// the top bar's middle.
 struct IslandLongScreenshotLightboxChrome: View {
   let content: IslandLongScreenshotLightbox
 
@@ -16,6 +19,10 @@ struct IslandLongScreenshotLightboxChrome: View {
         IslandLongScreenshotTopBar(content: content)
       }
       Spacer(minLength: 0)
+      if content.showsTextRow {
+        IslandLongScreenshotTextRow(content: content)
+          .padding(.bottom, LongScreenshotLightboxLayout.textRowGap)
+      }
       IslandLongScreenshotBottomBar(content: content)
     }
     .padding(.top, layout.workArea.minY - layout.column.minY + IslandMetrics.lightboxTopInset)
@@ -51,7 +58,8 @@ private struct IslandLongScreenshotLightboxTitle: View {
   }
 }
 
-/// Restore while there is something to restore, and the × back to the card.
+/// Restore while there is something to restore, the side panel's toggle once a text command ran,
+/// and the × back to the card.
 private struct IslandLongScreenshotLightboxEnd: View {
   let content: IslandLongScreenshotLightbox
 
@@ -62,6 +70,12 @@ private struct IslandLongScreenshotLightboxEnd: View {
         title: labels.restore, tooltip: labels.restoreTooltip,
         foreground: Color(nsColor: .linkColor)
       ) { content.card.restore() }
+    }
+    if content.hasResult {
+      IslandLightboxPanelToggle(
+        title: labels.results, tooltip: labels.resultsTooltip, shown: content.panel.shown,
+        dot: content.panelDot
+      ) { content.togglePanel() }
     }
     IslandIconButton(
       glyph: AnnotationIcons.cancel, label: labels.back, tooltip: labels.backTooltip
@@ -158,7 +172,8 @@ private struct IslandLongScreenshotAnnotateTop: View {
       + IslandMetrics.lightboxBarLeading * 2
     let restore =
       content.card.state.canRestore ? IslandType.width(of: labels.restore, limit: room) + 22 : 0
-    let end = restore + IslandMetrics.controlSide + IslandMetrics.lightboxBarTrailing * 2
+    let toggle = content.hasResult ? IslandLightboxPanelToggle.width(of: labels.results) + 2 : 0
+    let end = restore + toggle + IslandMetrics.controlSide + IslandMetrics.lightboxBarTrailing * 2
     let showsEnd = bars + 8 + end <= room
     row(title: showsEnd && bars + title + end + 16 <= room, end: showsEnd)
   }
@@ -185,121 +200,9 @@ private struct IslandLongScreenshotAnnotateTop: View {
   }
 }
 
-/// The bottom bar: the key hints | the sensitive status (Cover, or what is covered) | Annotate
-/// (Done in annotate mode) | Copy | Attach, the primary action; Copy and Attach report how they
-/// went on their own buttons, as the card's footer does. The hints give way first on a narrow
-/// screen, then the actions compact to their glyphs.
-///
-/// Both ends hold capsules, so both stand ``IslandMetrics/lightboxBarTrailing`` in: a button's
-/// own inset then puts its text as far in as a bar's text, and the first keycap, set in by
-/// ``hintsInset`` more, stands concentric with the bar.
-private struct IslandLongScreenshotBottomBar: View {
-  let content: IslandLongScreenshotLightbox
-
-  private static let hintsInset =
-    (IslandMetrics.lightboxBottomBarHeight - GlassHUDPieces.keycapHeight) / 2
-    - IslandMetrics.lightboxBarTrailing
-
-  var body: some View {
-    ViewThatFits(in: .horizontal) {
-      bar(hints: true, compact: false)
-      bar(hints: false, compact: false)
-      bar(hints: false, compact: true)
-    }
-  }
-
-  private func bar(hints: Bool, compact: Bool) -> some View {
-    let labels = content.labels
-    let card = content.card
-    let feedback = card.feedback.states
-    let annotating = content.annotating
-    return IslandLightboxBar(
-      height: IslandMetrics.lightboxBottomBarHeight, leading: IslandMetrics.lightboxBarTrailing
-    ) {
-      if hints {
-        IslandLongScreenshotHints(labels: labels, annotating: annotating)
-          .padding(.leading, Self.hintsInset)
-        IslandLightboxDivider()
-      }
-      IslandLongScreenshotSensitive(content: content)
-      IslandFeedbackButton(
-        title: annotating ? labels.done : labels.annotate, glyph: annotating ? "check" : "pencil",
-        workingLabel: labels.actionWorking,
-        tooltip: annotating ? labels.doneTooltip : labels.annotateTooltip, compact: compact,
-        feedback: nil
-      ) { content.setAnnotating(!annotating) }
-      IslandFeedbackButton(
-        title: labels.copy, glyph: IslandIcons.copy, workingLabel: labels.actionWorking,
-        tooltip: labels.copyTooltip, keys: IslandShellFooterKey.copyKeys, compact: compact,
-        feedback: feedback[.copy]
-      ) { content.send(.copy) }
-      IslandFeedbackButton(
-        title: labels.attach, glyph: IslandIcons.attach, workingLabel: labels.actionWorking,
-        tooltip: labels.attachTooltip, keys: IslandShellFooterKey.attachKeys, primary: true,
-        compact: compact, feedback: feedback[.attach]
-      ) { content.send(.attach) }
-    }
-    .fixedSize()
-    .modifier(IslandLongScreenshotBarHover())
-  }
-}
-
-/// The keys the lightbox reads: ↑↓ scroll, + − zoom, Escape back to the card; in annotate mode
-/// only Escape, which finishes annotating.
-private struct IslandLongScreenshotHints: View {
-  let labels: IslandLongScreenshotLabels
-  let annotating: Bool
-
-  var body: some View {
-    HStack(spacing: 10) {
-      if !annotating {
-        hint(["↑↓"], labels.hintScroll)
-        hint(["+", "−"], labels.hintZoom)
-      }
-      hint(["esc"], annotating ? labels.done : labels.back)
-    }
-  }
-
-  private func hint(_ keys: [String], _ label: String) -> some View {
-    HStack(spacing: 4) {
-      ForEach(keys, id: \.self) { IslandKeycap(symbol: $0) }
-      Text(verbatim: label).font(IslandType.hint).foregroundStyle(.secondary).lineLimit(1)
-    }
-    .fixedSize()
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text(verbatim: keys.joined(separator: " ") + " " + label))
-  }
-}
-
-/// The sensitive parts in the kept range: Cover, which pixelates them, until they are covered,
-/// then what is covered, in secondary text.
-private struct IslandLongScreenshotSensitive: View {
-  let content: IslandLongScreenshotLightbox
-
-  var body: some View {
-    let labels = content.labels
-    let state = content.card.state
-    let counts = state.sensitiveCounts
-    if !counts.isEmpty {
-      if state.kept.covered {
-        Text(verbatim: labels.sensitive(counts, covered: true))
-          .font(IslandType.hint)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          // A text button's inset, so it stands among the buttons as their labels do.
-          .padding(.horizontal, 10)
-      } else {
-        IslandTextButton(
-          title: labels.coverKinds(counts), tooltip: labels.coverTooltip, glyph: "scan-eye"
-        ) { content.card.cover() }
-      }
-    }
-  }
-}
-
 /// A bar's own hover: passive, so the pointer over a bar's glass, rather than its buttons, marks
 /// no page of the image under it.
-private struct IslandLongScreenshotBarHover: ViewModifier {
+struct IslandLongScreenshotBarHover: ViewModifier {
   func body(content: Content) -> some View {
     content.modifier(FloatingHover(pointer: .passive) { _ in })
   }

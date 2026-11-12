@@ -30,6 +30,8 @@ final class ScreenshotTaker {
     case longScreenshot(LongScreenshotImage)
     /// A long screenshot for the clipboard: nothing to attach either.
     case copiedLongScreenshot(LongScreenshotImage)
+    /// A text command's result card ended the capture (decision D10): nothing to attach.
+    case textResult(CaptureTextHandoff)
   }
 
   /// What takes over once a session's claim and overlays are gone.
@@ -37,6 +39,7 @@ final class ScreenshotTaker {
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     case copyLongScreenshot(LongScreenshotImage)
+    case textResult(CaptureTextHandoff)
   }
 
   struct Confirmed {
@@ -82,6 +85,15 @@ final class ScreenshotTaker {
   var longScreenshots: (any LongScreenshotResults)?
   /// The commands placed on the screenshot toolbar, in order (`screenshotToolbar.set`).
   var toolbarCommands: [SelectionToolbarSettings.Command] = []
+  /// The commands placed on `screenshotText` that read the selection, in order
+  /// (`screenshotToolbar.set`'s `textCommands`): what the capture editor and the long
+  /// screenshot's full-screen preview offer on text picked in the screenshot.
+  var textCommands: [SelectionToolbarSettings.Command] = []
+  /// Runs those commands while their surface stays open (`captureText.*`); the shell sets it.
+  var textRuns: CaptureTextRunner?
+  /// Writes a text command's answer at the cursor the capture recorded (a result card's Insert),
+  /// once the overlays are gone and the app in front has its field back.
+  var writeAnswer: ((String) -> Void)?
   /// The commands' options (`commandOptions.set`).
   var commandOptions: () -> CommandOptionsCatalog = { CommandOptionsCatalog() }
   /// The current screenshot shortcut's keycap label; nil when it is not registered.
@@ -132,6 +144,8 @@ final class ScreenshotTaker {
     case .record(let recording): recorder?.begin(recording)
     case .longScreenshot(let shot): longScreenshots?.show(shot)
     case .copyLongScreenshot(let shot): copy(shot)
+    case .textResult(.open(let runId)): textRuns?.act(.open, runId: runId)
+    case .textResult(.insert(let answer)): writeAnswer?(answer)
     case nil: break
     }
     if opensCommandSettings {
@@ -152,7 +166,7 @@ final class ScreenshotTaker {
     }
     let base = try await library.base(for: resourceId)
     switch try await runSession(reopening: base, request: .image, writeTargets: nil) {
-    case .cancelled, .record, .longScreenshot, .copiedLongScreenshot:
+    case .cancelled, .record, .longScreenshot, .copiedLongScreenshot, .textResult:
       return .notOk(.init(reason: .cancelled))
     case .notPermitted:
       return .notOk(.init(reason: .notPermitted))
@@ -183,6 +197,8 @@ final class ScreenshotTaker {
       return (.longScreenshot, .longScreenshot(shot))
     case .copiedLongScreenshot(let shot):
       return (.cancelled, .copyLongScreenshot(shot))
+    case .textResult(let handoff):
+      return (.cancelled, .textResult(handoff))
     case .confirmed(let confirmed):
       let capture = confirmed.capture
       regions.remember(
@@ -194,7 +210,8 @@ final class ScreenshotTaker {
           ScreenshotAttachment(
             file: imported.file, context: imported.context,
             capturedAt: CapturedText.timestamp(confirmed.capturedAt), launch: confirmed.launch,
-            target: confirmed.launch == nil ? nil : confirmed.target)),
+            target: confirmed.launch == nil ? nil : confirmed.target,
+            selection: confirmed.launch == nil ? nil : capture.pickedText)),
         nil
       )
     }

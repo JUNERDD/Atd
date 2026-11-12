@@ -154,6 +154,10 @@
       "title": "截图工具栏",
       "description": "对你用截图快捷键截取的截图运行。"
     },
+    "screenshotText": {
+      "title": "截图里的文字",
+      "description": "对你在截图里选取的文字运行，截图保持打开。"
+    },
     "turnSelection": {
       "title": "对话中的选择文字工具栏",
       "description": "对你在回答中选中的文字运行。"
@@ -184,6 +188,10 @@
       "title": "插入到选中文字之后",
       "description": "在选中的文字之后写入回答，保留原文。"
     },
+    "annotate": {
+      "title": "标注选中的文字",
+      "description": "在截图里选取的文字上用荧光笔和编号标出重点，说明显示在旁边的卡片中。"
+    },
     "insertAtCursor": {
       "title": "插入到光标处",
       "description": "在光标所在处输入回答。"
@@ -195,9 +203,15 @@
     "writeBackNote": "仅在通过快捷键或工具栏从其他 App 运行时写入；在其他地方运行时，回答保留在对话中。",
     "cardNote": "如果该 App 无法在此写入文字，回答会显示在卡片中，供你拷贝。",
     "cardPlaceNote": "仅在通过快捷键或工具栏从其他 App 运行时显示卡片；在其他地方运行时，回答保留在对话中。",
+    "annotateNote": "仅在对截图里选取的文字运行时做标注；在其他地方运行时，回答显示在卡片中。",
+    "screenshotNote": {
+      "replaceSelection": "对截图里选取的文字运行时，回答会在图上原位替换这些文字。",
+      "insertAfterSelection": "对截图里选取的文字运行时，回答会在图上为这些文字标上编号，说明按编号列在卡片中。"
+    },
     "review": {
       "title": "应用前确认",
-      "description": "回答先显示在灵动岛里，可重新生成或调整，确认后再写入。"
+      "description": "回答先显示在灵动岛里，可重新生成或调整，确认后再写入。",
+      "annotateDescription": "标注先在截图上预览，可重新生成或调整，确认后再应用。"
     },
     "adjustments": {
       "title": "调整建议",

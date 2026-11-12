@@ -55,7 +55,8 @@ struct IslandResultTests {
     let required =
       NSHostingView(rootView: footer.widthProbe).fittingSize.width
       + IslandMetrics.cardPadding * 2
-    let answer = controller.measure(.answer(command: "Translate", answer: "Hello", note: nil))
+    let answer = controller.measure(
+      .answer(command: "Translate", answer: IslandAnswer(text: "Hello"), note: nil))
     let review = controller.measure(reviewContent())
     #expect(answer.size.width >= required)
     #expect(review.size.width >= required)

@@ -1,13 +1,23 @@
-import type { CaptureBridge } from '../client/capture-bridge';
+import type { CaptureBridge, CaptureTextBridge } from '../client/capture-bridge';
 import type { EventPayload, NativeBridge } from '../native-bridge/client';
 
 type CaptureEvent =
   | 'shortcut.screenshot'
   | 'recording.ask'
   | 'recording.askStop'
-  | 'recording.askOpen';
+  | 'recording.askOpen'
+  | 'captureText.run'
+  | 'captureText.action';
 
-/** Capture shortcuts and result card questions can arrive before React mounts their consumer. */
+/** What the capture events hand the page before the host knows the commands to prepare. */
+export type CaptureEvents = Pick<CaptureBridge, 'onShortcut' | 'recordingAsks'> & {
+  captureText: Omit<CaptureTextBridge, 'prepare'>;
+};
+
+/**
+ * Capture shortcuts, result card questions and runs on screenshot text can arrive before React
+ * mounts their consumer.
+ */
 function heldEvent<E extends CaptureEvent>(native: NativeBridge, event: E) {
   const waiting: EventPayload<E>[] = [];
   const listeners = new Set<(value: EventPayload<E>) => void>();
@@ -22,10 +32,8 @@ function heldEvent<E extends CaptureEvent>(native: NativeBridge, event: E) {
   };
 }
 
-/** Subscribe before host installation awaits, preserving every question and its actions. */
-export function nativeCaptureEvents(
-  native: NativeBridge,
-): Pick<CaptureBridge, 'onShortcut' | 'recordingAsks'> {
+/** Subscribe before host installation awaits, preserving every question, run and their actions. */
+export function nativeCaptureEvents(native: NativeBridge): CaptureEvents {
   const onShortcut = heldEvent(native, 'shortcut.screenshot');
   const onAsk = heldEvent(native, 'recording.ask');
   const onStop = heldEvent(native, 'recording.askStop');
@@ -37,6 +45,11 @@ export function nativeCaptureEvents(
       onStop: (listener) => onStop(({ askId }) => listener(askId)),
       onOpen: (listener) => onOpen(({ askId }) => listener(askId)),
       answer: async (answer) => void (await native.call('recording.answer', answer)),
+    },
+    captureText: {
+      onRun: heldEvent(native, 'captureText.run'),
+      onAction: heldEvent(native, 'captureText.action'),
+      progress: async (progress) => void (await native.call('captureText.progress', progress)),
     },
   };
 }

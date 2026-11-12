@@ -70,6 +70,7 @@ export const CommandOutputActionSchema = Type.Union([
   Type.Literal('card'),
   Type.Literal('replaceSelection'),
   Type.Literal('insertAfterSelection'),
+  Type.Literal('annotate'),
   Type.Literal('insertAtCursor'),
   Type.Literal('copy'),
 ]);
@@ -78,8 +79,9 @@ export const CommandOutputActionSchema = Type.Union([
  * Where the answer of a run goes, offered beside the parameters: `value` for this run (the
  * command's saved output until the person picks another), `saved` the command's saved one, which
  * the shell marks as its default. A pick lasts for that run only. `selection` says whether the command reads the selection:
- * without it, the two actions on the selection (`replaceSelection`, `insertAfterSelection`) are
- * not offered.
+ * without it, the actions on the selection (`replaceSelection`, `insertAfterSelection`,
+ * `annotate`) are not offered. The shell offers `annotate` only where the selection is text in a
+ * screenshot (`captureText.run`).
  */
 export const CommandOutputOptionSchema = Type.Object(
   {

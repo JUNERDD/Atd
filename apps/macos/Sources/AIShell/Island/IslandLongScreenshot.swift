@@ -4,7 +4,7 @@ import Carbon.HIToolbox
 
 /// The long screenshot on the command island (decision D11): display only. Its orchestrator
 /// shows each phase and hears every press through ``onEvent``; the island owns only what it
-/// draws (the card's kept range and cover, its answer pages). It is the shell's content as the
+/// draws (the card's kept range and what is on the image, its answer pages). It is the shell's content as the
 /// screen recording is, taking the island through their one gate in turn (D13,
 /// ``CommandProgressController+Recording``):
 ///
@@ -18,7 +18,7 @@ import Carbon.HIToolbox
 ///   the keyboard; one that comes back by itself does not, so it never takes the keyboard from
 ///   where the person is typing: a click on it does;
 /// - ``release()`` takes the card off the island and keeps its state, so showing the same
-///   source again (after annotating, say) keeps its kept range, cover, answers and ask text;
+///   source again (after annotating, say) keeps its kept range, annotations, answers and ask text;
 ///   ``forgetCard()`` lets that state go.
 ///
 /// The card takes the keyboard while it shows (its keys: ``key(_:)``, ⌘C and ⌘↩:
@@ -47,6 +47,8 @@ final class IslandLongScreenshot {
   private unowned let progress: CommandProgressController
   /// The card's full-screen preview.
   let lightbox = IslandLightbox()
+  /// What the preview's text commands use; its orchestrator sets it.
+  var textServices = LongScreenshotTextServices()
 
   init(progress: CommandProgressController) {
     self.progress = progress
@@ -204,11 +206,13 @@ final class IslandLongScreenshot {
       let screen = island.window.screen ?? NSScreen.main
     else { return }
     let labels = island.model.labels.longScreenshot
+    let services = textServices
     lightbox.open(
       on: screen, from: island.screenRect(model.mediaFrame), returningKeyTo: island.window
     ) { lightbox in
       IslandLongScreenshotLightbox(
-        card: model, labels: labels, lightbox: lightbox, at: y, annotate: annotate)
+        card: model, labels: labels, lightbox: lightbox, at: y, annotate: annotate,
+        services: services)
     }
   }
 
@@ -244,6 +248,7 @@ final class IslandLongScreenshot {
       guard modifiers.isEmpty || modifiers == .shift else { return false }
       return card.nudge(down: Int(event.keyCode) == kVK_DownArrow, shift: modifiers == .shift)
     case kVK_Space where field == nil && !card.controlFocused && modifiers.isEmpty:
+      guard !event.isARepeat else { return true }
       card.openLightbox(nil, false)
       return true
     default:

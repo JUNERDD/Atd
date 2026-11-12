@@ -5,8 +5,9 @@ import SwiftUI
 /// glyph saying how Atd reads the image, one row per page of the kept range with the first lines
 /// recognized on it (scrolling inside past the room), then under a rule what goes with the
 /// image: the recognized lines and characters, and the sensitive items found in the kept range
-/// with Cover, which pixelates them (Restore on the title row undoes it). A hovered row marks
-/// its page on the preview and the other way round.
+/// with Cover Sensitive Info while any has no mosaic over it (decision D7: it adds mosaics, which
+/// the lightbox's annotate mode can move or delete, and Restore on the title row removes). A
+/// hovered row marks its page on the preview and the other way round.
 struct IslandLongScreenshotReads: View {
   let card: IslandLongScreenshotCardModel
   let labels: IslandLongScreenshotLabels
@@ -15,6 +16,7 @@ struct IslandLongScreenshotReads: View {
   var body: some View {
     let state = card.state
     let sensitive = state.sensitiveCounts
+    let unmasked = state.unmaskedSensitiveCounts
     VStack(alignment: .leading, spacing: 2) {
       header
       ScrollView(.vertical) {
@@ -33,15 +35,20 @@ struct IslandLongScreenshotReads: View {
         text: labels.recognized(lines: state.keptLines.count, characters: state.characterCount)
       ) { EmptyView() }
       if !sensitive.isEmpty {
+        let covered = unmasked.isEmpty
+        // The longer English label beside Cover Sensitive Info needs a second line.
         row(
-          glyph: state.kept.covered ? IslandIcons.reads : "scan-eye",
-          text: labels.sensitive(sensitive, covered: state.kept.covered),
-          secondary: state.kept.covered
+          glyph: covered ? IslandIcons.reads : "scan-eye",
+          text: labels.sensitive(covered ? sensitive : unmasked, covered: covered),
+          secondary: covered, lines: 2
         ) {
-          if !state.kept.covered {
-            IslandTextButton(title: labels.cover, tooltip: labels.coverTooltip, glyph: "scan-eye") {
-              card.cover()
-            }
+          if let count = card.redacted {
+            // The button's face, still: it says what it just did.
+            IslandTextFace(title: IslandLongScreenshotLabels.covered(count), glyph: "check")
+          } else if !covered {
+            IslandTextButton(
+              title: labels.cover, tooltip: labels.coverTooltip(unmasked), glyph: "scan-eye"
+            ) { card.redact() }
           }
         }
       }
@@ -66,25 +73,31 @@ struct IslandLongScreenshotReads: View {
     .frame(height: IslandMetrics.recordingStepsHeader)
   }
 
-  /// One fixed row under the rule: a glyph, its text cut with an ellipsis (the tooltip has it
-  /// whole), and an action at its end.
+  /// One row under the rule: a glyph, its text on up to `lines` lines, cut with an ellipsis past
+  /// them (the tooltip has it whole), and an action at its end. A one-line row keeps its fixed
+  /// height; a longer one grows from it.
   private func row<Action: View>(
-    glyph: String, text: String, secondary: Bool = false, @ViewBuilder action: () -> Action
+    glyph: String, text: String, secondary: Bool = false, lines: Int = 1,
+    @ViewBuilder action: () -> Action
   ) -> some View {
     HStack(spacing: 8) {
       IslandGlyph(name: glyph, side: 14).foregroundStyle(.secondary)
       Text(verbatim: text)
         .font(.system(size: 13))
         .foregroundStyle(secondary ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-        .lineLimit(1)
+        .lineLimit(lines)
         .truncationMode(.tail)
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         .help(text)
       action()
     }
     .padding(.leading, IslandMetrics.rowPadding)
     .padding(.trailing, 2)
-    .frame(height: IslandMetrics.recordingStepHeight)
+    .frame(
+      minHeight: IslandMetrics.recordingStepHeight,
+      maxHeight: lines == 1 ? IslandMetrics.recordingStepHeight : nil
+    )
     .accessibilityElement(children: .combine)
   }
 }

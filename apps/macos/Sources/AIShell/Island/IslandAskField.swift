@@ -49,6 +49,7 @@ struct IslandAskField<Ask: CardAsk, Quick: IslandQuickAsk>: View {
       .font(IslandType.answer)
       .focused($focused)
       .onSubmit { send() }
+      .modifier(FloatingHover(pointer: .text) { _ in })
       .accessibilityLabel(Text(verbatim: labels.askLabel))
       Button {
         send()

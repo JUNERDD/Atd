@@ -2,10 +2,11 @@ import AICore
 import SwiftUI
 
 /// The long screenshot lightbox's overview rail, right of the viewer and in place of its scroll
-/// indicators: the whole image fitted to the rail (the card's preview image, covered and
-/// annotated as the card shows it), with the card's marks on it (the shade outside the kept
-/// range, the page splits, the hovered page), its two trim handles, which drag as the card's do,
-/// and the viewport, the rows the viewer shows between the bars. Dragging the viewport scrolls
+/// indicators: the whole image fitted to the rail (the card's preview image, with what is on it
+/// as the card shows it), with the card's marks on it (the shade outside the kept range, the
+/// page splits, the hovered page), the picked paragraphs of its text, its two trim handles
+/// (view mode only), which drag as the card's do, and the viewport, the rows the viewer shows
+/// between the bars. Dragging the viewport scrolls
 /// the viewer; a press elsewhere on the rail centres the viewport there first, then drags it.
 struct LongScreenshotRail: View {
   let content: IslandLongScreenshotLightbox
@@ -37,9 +38,12 @@ struct LongScreenshotRail: View {
       IslandLongScreenshotMarks(card: card, scale: scale)
         .frame(width: frame.width, height: frame.height)
         .allowsHitTesting(false)
+      LongScreenshotRailPicks(text: content.text, scale: scale)
+        .frame(width: frame.width, height: frame.height)
+        .allowsHitTesting(false)
       LongScreenshotRailViewport(
         content: content, scale: scale, width: frame.width, dragging: drag != nil)
-      if !content.annotating {
+      if content.mode == .view {
         ForEach([LongScreenshotCardState.Edge.top, .bottom], id: \.self) { edge in
           IslandLongScreenshotHandle(
             card: card, labels: labels, edge: edge, scale: scale, width: frame.width,
@@ -101,5 +105,28 @@ private struct LongScreenshotRailViewport: View {
       .help(content.labels.viewportTooltip)
       .offset(x: -3, y: visible.lowerBound * scale)
       .accessibilityHidden(true)
+  }
+}
+
+/// The picked paragraphs on the rail, so picks far from the view still show: each a bar of the
+/// accent colour across its rows, at least a point tall.
+private struct LongScreenshotRailPicks: View {
+  let text: LongScreenshotTextModel
+  let scale: CGFloat
+
+  var body: some View {
+    let picked = text.picks.picked
+    Canvas { context, _ in
+      guard !picked.isEmpty else { return }
+      let accent = Color.accentColor
+      for index in picked where text.layout.indices.contains(index) {
+        let box = text.layout[index].box
+        let rect = CGRect(
+          x: box.minX * scale, y: box.minY * scale, width: max(box.width * scale, 2),
+          height: max(box.height * scale, 1))
+        context.fill(Path(rect), with: .color(accent.opacity(0.55)))
+      }
+    }
+    .accessibilityHidden(true)
   }
 }

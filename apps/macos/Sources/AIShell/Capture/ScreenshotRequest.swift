@@ -49,4 +49,8 @@ struct ScreenshotAttachment {
   /// The field focused in the app in front before the capture, for a command that inserts its
   /// answer at the cursor: recorded only for a `toolbar` request, and given only with a launch.
   let target: ShortcutCommandEvent.Target?
+  /// The text the screenshot's text mode offered, which the launch reads too (the picked
+  /// paragraphs, or every available one with none picked, in reading order, blank lines apart,
+  /// nothing a mosaic touches); nil without a launch or with text mode off.
+  let selection: String?
 }

@@ -69,6 +69,7 @@ struct TaskActivityQuestionView: View {
       .textFieldStyle(.plain).font(TaskActivityRequestStyle.body).lineLimit(1)
       .focused($focused)
       .onSubmit { model.reply(typed, to: request, of: item.key) }
+      .modifier(FloatingHover(pointer: .text) { _ in })
       .disabled(sending != nil)
       .accessibilityIdentifier("activity.reply.\(item.key.taskID)/\(item.key.runID)/\(request.id)")
       ZStack {

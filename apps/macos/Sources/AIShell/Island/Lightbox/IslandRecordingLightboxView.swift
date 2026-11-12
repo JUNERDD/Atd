@@ -3,16 +3,18 @@ import AppKit
 import SwiftUI
 
 /// What the recording's lightbox shows over the scrim, in the window's whole size (top-left
-/// origin), laid out by ``IslandMetrics/recordingLightboxLayout(window:area:recorded:aspect:steps:)``:
-/// the player on the stage, never larger than the recording's own size; the steps panel on the
-/// right, glass, while it is toggled on and the window is wide enough; the top bar over the media
-/// column ("Screen Recording", the card's subtitle, Restore while trimmed, the steps toggle and
-/// Back to Card); and the two-row bottom bar: the timeline with the larger filmstrip, then the
-/// keys' hints and the card's actions (``IslandRecordingActions``).
+/// origin), laid out by ``IslandMetrics/recordingLightboxLayout(area:recorded:aspect:dockedPanel:)``:
+/// the player on the stage, never larger than the recording's own size; the side panel with the
+/// steps on the right (``IslandRecordingStepsPanel``) while it shows, docked beside the stage or
+/// a drawer over its right side between the bars; the top bar over the media column ("Screen
+/// Recording", the card's subtitle, Restore while trimmed, the steps' toggle and Back to Card);
+/// and the two-row bottom bar: the timeline with the larger filmstrip, then the keys' hints and
+/// the card's actions (``IslandRecordingActions``).
 ///
 /// The player grows from the card's (``IslandLightboxModel/mediaFrame(_:)``) and goes back to
 /// it; the chrome fades in once it has landed and goes first. A click on the player plays or
 /// pauses and a double-click goes back to the card; a click on the scrim around it closes too.
+/// Under a drawer, a click on either closes the drawer instead (``IslandLightboxDrawerCatcher``).
 struct IslandRecordingLightboxView: View {
   let card: IslandRecordingCardModel
   let labels: IslandRecordingLabels
@@ -21,10 +23,10 @@ struct IslandRecordingLightboxView: View {
 
   var body: some View {
     let size = lightbox.size
-    let window = WindowSize(width: size.width, height: size.height)
+    let placement = state.placement(in: lightbox.workArea)
     let layout = IslandMetrics.recordingLightboxLayout(
-      window: window, area: lightbox.workArea, recorded: card.source.pointSize,
-      aspect: card.source.aspect, steps: state.stepsShown)
+      area: lightbox.workArea, recorded: card.source.pointSize, aspect: card.source.aspect,
+      dockedPanel: placement.docked)
     let player = lightbox.mediaFrame(layout.player)
     ZStack(alignment: .topLeading) {
       IslandRecordingPlayer(
@@ -34,7 +36,7 @@ struct IslandRecordingLightboxView: View {
       ) { lightbox.close() }
       .position(x: player.midX, y: player.midY)
       .opacity(lightbox.mediaOpacity)
-      chrome(layout, window: window)
+      chrome(layout, placement: placement)
         .opacity(lightbox.chromeOpacity)
         .allowsHitTesting(lightbox.chromeShown)
     }
@@ -52,26 +54,15 @@ struct IslandRecordingLightboxView: View {
 
   @ViewBuilder
   private func chrome(
-    _ layout: IslandMetrics.RecordingLightboxLayout, window: WindowSize
+    _ layout: IslandMetrics.RecordingLightboxLayout,
+    placement: IslandMetrics.LightboxPanelPlacement
   ) -> some View {
     let area = lightbox.workArea
     let column = layout.column
-    if let steps = layout.steps {
-      let outline = RoundedRectangle(
-        cornerRadius: IslandMetrics.recordingLightboxStepsRadius, style: .continuous)
-      IslandRecordingSteps(card: card, labels: labels, reduceMotion: lightbox.reduceMotion)
-        .padding(6)
-        .frame(width: steps.width, height: steps.height, alignment: .topLeading)
-        .glassSurface(in: outline, animation: nil, dark: true)
-        // A click on the panel between its rows is not one on the scrim.
-        .contentShape(outline)
-        .position(x: steps.midX, y: steps.midY)
-        .transition(.opacity)
-    }
+    if placement.isDrawer { IslandLightboxDrawerCatcher { state.panel.hide() } }
     // The bar hugs its content up to the column's width, cutting the subtitle past it.
     IslandRecordingLightboxTopBar(
-      card: card, labels: labels, state: state, lightbox: lightbox,
-      stepsAvailable: window.width >= IslandMetrics.recordingLightboxStepsMinWindow
+      card: card, labels: labels, panel: state.panel, lightbox: lightbox
     )
     .frame(width: column.width)
     .position(
@@ -84,18 +75,22 @@ struct IslandRecordingLightboxView: View {
       x: column.midX,
       y: area.maxY - IslandMetrics.lightboxBottomInset
         - IslandMetrics.recordingLightboxBarHeight / 2)
+    IslandLightboxPanelSlot(placement: placement) {
+      IslandRecordingStepsPanel(
+        card: card, labels: labels, reduceMotion: lightbox.reduceMotion
+      ) { state.panel.hide() }
+    }
   }
 }
 
 /// The lightbox's top bar: "Screen Recording" and the card's subtitle (cut with an ellipsis,
-/// whole in its tooltip), Restore while the recording is trimmed, the steps panel's toggle where
-/// the window has room for the panel, and Back to Card.
+/// whole in its tooltip), Restore while the recording is trimmed, the steps' toggle, and Back to
+/// Card.
 private struct IslandRecordingLightboxTopBar: View {
   let card: IslandRecordingCardModel
   let labels: IslandRecordingLabels
-  let state: IslandRecordingLightboxState
+  let panel: IslandLightboxPanelState
   let lightbox: IslandLightboxModel
-  let stepsAvailable: Bool
 
   var body: some View {
     let subtitle = card.subtitle(labels)
@@ -121,17 +116,9 @@ private struct IslandRecordingLightboxTopBar: View {
         ) { card.resetTrim() }
       }
       IslandLightboxDivider()
-      if stepsAvailable {
-        IslandTextButton(
-          title: labels.lightboxSteps, tooltip: labels.lightboxStepsTooltip,
-          rest: state.stepsShown ? 0.1 : 0, glyph: IslandIcons.steps
-        ) {
-          withAnimation(
-            lightbox.reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 1)
-          ) { state.stepsShown.toggle() }
-        }
-        .accessibilityAddTraits(state.stepsShown ? .isSelected : [])
-      }
+      IslandLightboxPanelToggle(
+        title: labels.lightboxSteps, tooltip: labels.lightboxStepsTooltip, shown: panel.shown
+      ) { panel.toggle() }
       IslandIconButton(
         glyph: AnnotationIcons.cancel, label: labels.lightboxBack,
         tooltip: labels.lightboxBackTooltip

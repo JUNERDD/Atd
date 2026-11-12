@@ -123,7 +123,9 @@ final class AnnotationInteraction {
       let offset = CGVector(dx: point.x - start.x, dy: point.y - start.y)
       store.preview = Self.document(document, replacing: original.moved(by: offset))
     case .resizing(let original, let handle):
-      store.preview = Self.document(document, replacing: original.resized(handle, to: point))
+      // A text box's lines wrap to the new width; its frame grows to the height they take.
+      let resized = AnnotationRenderer.fittingTextBox(original.resized(handle, to: point))
+      store.preview = Self.document(document, replacing: resized)
     }
   }
 

@@ -5,8 +5,10 @@ import {
   type RunComputer,
   type RunSnapshot,
   type RunTrigger,
+  type SubmitTaskRequest,
   type TaskOrigin,
 } from '@atd/agent-contracts';
+import { followUpInstruction } from '../commands/output-instruction.js';
 import { needsSummaryTitle } from './title-policy.js';
 
 /**
@@ -22,7 +24,8 @@ export interface InternalSubmitOptions {
   trigger?: RunTrigger;
   /**
    * Frozen as `RunSnapshot.instructions`, which reaches the model as hidden run material: what
-   * only this run needs to be told (a command's output directive). A follow-up does not carry it.
+   * only this run needs to be told (a command's output directive). A follow-up does not carry it
+   * over; one on a screenshot-text answer is told that answer's format (`requestedOptions`).
    */
   instructions?: string;
   /**
@@ -51,6 +54,25 @@ export function checkSideChatOf(
   if (previous) throw new TypeError('Invalid data: sideChatOf only applies to a new task.');
   if (!tasks.some((item) => item.id === sideChatOf))
     throw new TypeError('Invalid data: sideChatOf needs an existing task.');
+}
+
+/**
+ * `internal` with what the request asks service code to tell the run: a follow-up that makes a new
+ * version of a screenshot-text run's answer (`SubmitTaskRequest.screenshotText`) is told that
+ * answer's format as hidden instructions (`followUpInstruction`), since a follow-up carries none
+ * of the run it follows, along with the text it reads when it carries a selection of its own. It
+ * only follows a run, so it needs the task (`previous`). Service code that sets its own
+ * instructions sends no `screenshotText`.
+ */
+export function requestedOptions(
+  request: SubmitTaskRequest,
+  previous: AgentTask | null,
+  internal: InternalSubmitOptions,
+): InternalSubmitOptions {
+  const followUp = request.screenshotText;
+  if (followUp === undefined) return internal;
+  if (!previous) throw new TypeError('Invalid data: screenshotText only applies to a follow-up.');
+  return { ...internal, instructions: followUpInstruction(followUp, request.input.selection) };
 }
 
 /**

@@ -3,50 +3,17 @@ import AppKit
 import CoreGraphics
 
 /// A long screenshot's pixels as they leave its result card (decisions D8, D12): the kept range
-/// cut from the stitched image with its sensitive parts pixelated as the card's preview covers
-/// them and what was drawn on it in the lightbox, the file written through the one image encoder
-/// under ``LongScreenshotExportRules``, and the copy at full pixels. A long image takes seconds to
-/// compose and encode, so all of it but the cover's blocks and the pasteboard write runs off the
-/// main actor, the annotations too (``AnnotationRenderer`` is nonisolated).
+/// cut from the stitched image with what was drawn on it (mosaics over sensitive text included),
+/// the file written through the one image encoder under ``LongScreenshotExportRules``, and the
+/// copy at full pixels. A long image takes seconds to compose and encode, so all of it but the
+/// pasteboard write runs off the main actor, the annotations too (``AnnotationRenderer`` is
+/// nonisolated).
 extension CaptureExport {
-  /// Pixelated blocks over one covered part, in the kept image's pixels (origin top-left): the
-  /// blocks are drawn into `area` and show only inside `clip`, the part itself.
-  nonisolated struct LongScreenshotPatch: Sendable {
-    let blocks: CGImage
-    let area: CGRect
-    let clip: CGRect
-  }
-
   /// A kept image encoded for the clipboard (``longScreenshotClipboard(_:scale:)``).
   nonisolated struct LongScreenshotClipboard: Sendable {
     let png: Data
     /// Nil past ``LongScreenshotExportRules/clipboardTIFFMaxPixels``.
     let tiff: Data?
-  }
-
-  /// The patches covering `kept` of `source` (none when it is not covered): the card's cover
-  /// (``LongScreenshotExportRules/coveredAreas(of:kept:)`` in
-  /// ``LongScreenshotCardState/coverStyle``), on a grid fixed to the whole image, so the pixels
-  /// match the card's preview. `mosaic` keeps the image's block grid between calls.
-  static func longScreenshotCover(
-    _ source: LongScreenshotCardSource, kept: LongScreenshotKept, mosaic: AnnotationMosaic
-  ) -> [LongScreenshotPatch] {
-    let shot = source.shot
-    let top = keptRows(of: shot, kept: kept).lowerBound
-    func pixels(_ rect: CGRect) -> CGRect {
-      CGRect(
-        x: rect.minX * shot.scale, y: rect.minY * shot.scale - CGFloat(top),
-        width: rect.width * shot.scale, height: rect.height * shot.scale)
-    }
-    let areas = LongScreenshotExportRules.coveredAreas(of: source, kept: kept)
-    return areas.compactMap { area in
-      guard
-        let (blocks, covered) = mosaic.render(
-          area, style: LongScreenshotCardState.coverStyle, backdrop: shot.image,
-          scale: shot.scale, opaque: true)
-      else { return nil }
-      return LongScreenshotPatch(blocks: blocks, area: pixels(covered), clip: pixels(area))
-    }
   }
 
   /// The pixel rows of `shot` that `kept` keeps, at least one.
@@ -59,36 +26,25 @@ extension CaptureExport {
     return top..<bottom
   }
 
-  /// The kept image: `kept`'s rows of `shot` with `cover` drawn in, then `kept`'s annotations
-  /// over them at the image's own pixels (``longScreenshotAnnotations(_:of:rows:in:)``); nil when
-  /// it could not be drawn. With neither it is a crop of the stitched pixels.
+  /// The kept image: `kept`'s rows of `shot` with `kept`'s annotations over them at the image's
+  /// own pixels (``longScreenshotAnnotations(_:of:rows:in:)``); nil when it could not be drawn.
+  /// Without annotations it is a crop of the stitched pixels.
   @concurrent
-  nonisolated static func longScreenshotKept(
-    _ shot: LongScreenshotImage, kept: LongScreenshotKept, cover: [LongScreenshotPatch]
-  ) async -> CGImage? {
+  nonisolated static func longScreenshotKept(_ shot: LongScreenshotImage, kept: LongScreenshotKept)
+    async -> CGImage?
+  {
     let rows = keptRows(of: shot, kept: kept)
     let width = shot.image.width
     guard
       let crop = shot.image.cropping(
         to: CGRect(x: 0, y: rows.lowerBound, width: width, height: rows.count))
     else { return nil }
-    guard !cover.isEmpty || !kept.annotations.isEmpty else { return crop }
+    guard !kept.annotations.isEmpty else { return crop }
     guard let context = bitmap(width: width, height: rows.count, like: shot.image) else {
       return nil
     }
     let height = CGFloat(rows.count)
-    // The context's origin is at the bottom-left; the patches' at the top-left.
-    func flipped(_ rect: CGRect) -> CGRect {
-      CGRect(x: rect.minX, y: height - rect.maxY, width: rect.width, height: rect.height)
-    }
     context.draw(crop, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: height))
-    context.interpolationQuality = .none
-    for patch in cover {
-      context.saveGState()
-      context.clip(to: flipped(patch.clip))
-      context.draw(patch.blocks, in: flipped(patch.area))
-      context.restoreGState()
-    }
     longScreenshotAnnotations(kept.annotations, of: shot, rows: rows, in: context)
     return context.makeImage()
   }
@@ -96,7 +52,7 @@ extension CaptureExport {
   /// Draws `document` (image points, origin top-left) into `context`, the kept image of `rows`
   /// of `shot`'s pixels (origin bottom-left), clipped to the rows, as the canvas shows it in the
   /// lightbox: with the renderer the canvas draws with, its mosaics sampling the long image
-  /// itself, so their blocks sit on the grid the canvas shows and never on the cover.
+  /// itself, so their blocks sit on the grid the canvas shows.
   nonisolated private static func longScreenshotAnnotations(
     _ document: AnnotationDocument, of shot: LongScreenshotImage, rows: Range<Int>,
     in context: CGContext

@@ -132,8 +132,10 @@ extension CaptureSession: CaptureOverlayDelegate {
     if case .longScreenshot = phase { return performInLongScreenshot(command) }
     switch command {
     case .cancel:
-      // Escape closes an open menu or the ask field before it ends the session.
-      if editor?.dismissMenus() == true || accessory?.dismissMenus() == true { return }
+      // Escape steps the editor back (an open menu or field, a running text command, a result
+      // card, text mode) before it ends the session; it arrives here too from a field the
+      // canvas does not hold, such as a result card's.
+      if editor?.stepBack() == true || accessory?.dismissMenus() == true { return }
       cancel()
     case .confirm:
       if editor?.dismissMenus() == true { return }
@@ -184,7 +186,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .selected(let rect):
       if let handle = model.handle(at: point, of: rect) { return handle.cursor }
       guard rect.contains(point) else { return .arrow }
-      if interiorClaimed { return nil }
+      if interiorClaimed || editor?.claimsPress(at: point) == true { return nil }
       return .openHand
     case .adjusting(.move):
       return .closedHand
@@ -232,11 +234,12 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   /// Whether a press at `point` is the session's rather than the editor's (D14): the handles
-  /// and the edge band always, the interior until a tool claims it.
+  /// and the edge band always, the interior until a tool or text mode claims it, except where
+  /// the editor claims a press of its own there (``AnnotationEditing/claimsPress(at:)``).
   func ownsPress(at point: CGPoint) -> Bool {
     guard case .selected(let rect) = phase else { return false }
     if model.handle(at: point, of: rect) != nil { return true }
-    return !interiorClaimed && rect.contains(point)
+    return !interiorClaimed && rect.contains(point) && editor?.claimsPress(at: point) != true
   }
 
   /// A settled move or resize: the bar takes its place for the new selection first, so the bars

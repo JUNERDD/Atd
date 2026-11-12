@@ -12,7 +12,11 @@ import {
 } from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { findPluginCommand } from '../plugins/commands.js';
-import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
+import {
+  defaultArguments,
+  resolveCommandInstructions,
+  type ResolveOptions,
+} from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
 import {
@@ -42,9 +46,14 @@ export function registerPreviewRoute(app: FastifyInstance, ctx: PreviewContext):
   });
 }
 
+/**
+ * The preview of `body`; `options` relax what a launch's input must be (a command launch passes
+ * them, the preview route none).
+ */
 export async function resolvePreview(
   ctx: PreviewContext,
   body: PreviewTaskRequest,
+  options: ResolveOptions = {},
 ): Promise<PreviewTaskResponse> {
   const commands = await CommandStore.load(ctx.dataDir);
   const connections = await ConnectionStore.load(ctx.dataDir);
@@ -53,7 +62,7 @@ export async function resolvePreview(
     ? { ...defaultArguments(command), ...body.input.arguments }
     : body.input.arguments;
   const input = { ...body.input, arguments: args };
-  const instructions = command ? resolveInstructions(command, input) : '';
+  const instructions = command ? resolveInstructions(command, input, options) : '';
   const warnings: string[] = [];
   for (const file of input.files) {
     if (!ctx.ledger.data.resources.some((resource) => resource.id === file.id))
@@ -113,9 +122,10 @@ async function resolveCommand(
 function resolveInstructions(
   command: ServiceCommandFull,
   input: PreviewTaskRequest['input'],
+  options: ResolveOptions,
 ): string {
   try {
-    return resolveCommandInstructions(command, input);
+    return resolveCommandInstructions(command, input, options);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The input is invalid.';
     throw new TypeError(`Invalid preview: ${message}`);

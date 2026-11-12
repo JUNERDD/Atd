@@ -11,7 +11,7 @@ public struct RecordingAsk: Equatable, Sendable {
   public let question: String
   /// The range kept when it was asked, which its files cover.
   public let range: RecordingTrim
-  /// A regeneration's: the ask it replaces, whose page it takes over.
+  /// A regeneration's: the ask whose answer it asks again; that answer keeps its own page.
   public let replacing: String?
 
   public init(id: String, question: String, range: RecordingTrim, replacing: String? = nil) {

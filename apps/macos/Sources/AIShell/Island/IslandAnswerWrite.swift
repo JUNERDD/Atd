@@ -20,8 +20,9 @@ struct AnswerWriteOutcome {
 /// since the answer goes where the focus is now; the writer captures that field afresh and
 /// writes into it. Written, the island says so and goes; a refused write brings the card back
 /// with why, in the panel's words; a write that stopped partway puts the whole answer on the
-/// clipboard and says so in a notice, as the page does for its own writes. The review card writes
-/// the same way (not while a version is pending, nor from its options sheet). Once its answer
+/// clipboard and says so in a notice, as the page does for its own writes. Nothing is written
+/// while the answer streams in. The review card writes the same way (not while a version is
+/// pending, nor from its options sheet). Once its answer
 /// went in the card is gone for good, and the page is told to let the review go (`close`); after
 /// an interrupted write it is told once the notice goes, unless the notice's Open hands the review
 /// to the panel instead (``ReviewClosings/notice``). A refused write (or an interrupted one whose
@@ -46,12 +47,13 @@ extension CommandProgressController {
 
   /// Copy on the answer card: the whole answer goes on the clipboard as plain text, and the
   /// card turns into "Copied", giving the keyboard back to the target's field; the review card,
-  /// not while a version is pending, goes with it for good, which the page is told. While another
-  /// write holds the clipboard the card stays as it is.
+  /// not while a version is pending, goes with it for good, which the page is told. Nothing is
+  /// copied while the answer streams in, and while another write holds the clipboard the card
+  /// stays as it is.
   func copyAnswer() {
     let reviewing = state.isReviewing
-    guard let target = state.shown?.target, let answer = state.answerShown,
-      state.reviewShown?.pending == nil, arbiter.writeClipboard(answer)
+    guard let target = state.shown?.target, let answer = state.answerShown, state.answerSettled,
+      arbiter.writeClipboard(answer)
     else { return }
     present(target: target, phase: .copied)
     if reviewing { send(CommandProgressState.closing(target: target)) }
@@ -60,10 +62,18 @@ extension CommandProgressController {
   /// Insert (``AnswerWriteOffer/insert``) or Replace (`selection`), while the card offers it.
   /// The review card's options sheet holds unsent edits, so its write keys write nothing.
   func writeAnswer(_ mode: TextWriteParams.Mode) {
-    guard let shown = state.shown,
-      case .answer(let command, let answer, _, let review) = shown.phase,
-      review?.pending == nil, !reviewSheetOpen, let offer = island.model.answerOffer,
-      offer.offers(mode)
+    guard let shown = state.shown else { return }
+    answerWriteHandoff.perform { [weak self] in
+      guard let self, state.shown?.target == shown.target, state.shown?.phase == shown.phase
+      else { return }
+      writeReleasedAnswer(mode)
+    }
+  }
+
+  private func writeReleasedAnswer(_ mode: TextWriteParams.Mode) {
+    guard let shown = state.shown, state.answerSettled,
+      case .answer(let command, let answer, _, let review, _) = shown.phase,
+      !reviewSheetOpen, let offer = island.model.answerOffer, offer.offers(mode)
     else { return }
     let target = shown.target
     writingReview = review == nil ? nil : target

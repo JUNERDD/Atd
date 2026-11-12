@@ -97,6 +97,13 @@ public enum AnnotationRedaction: String, CaseIterable, Sendable {
 
 /// Colour, stroke, text background and redaction of one annotation; also the style bar's current
 /// choice for new ones.
+///
+/// Text drawn by a command over a paragraph it replaces (``CaptureTextMarks``) also carries what
+/// only such text needs: an exact ``plate`` and ``ink`` sampled from the screenshot, a
+/// ``fontSize`` fitted to the paragraph, and a ``fixedWidth`` box. These are never remembered
+/// (``AnnotationStyleMemory`` keeps the four style bar values), and the style bar's own controls
+/// replace them: a colour takes the swatch's plate and ink again, a size the slider's size, the
+/// background switch the swatch's plate or none.
 public struct AnnotationStyle: Equatable, Sendable {
   public var color: AnnotationColor
   public var stroke: AnnotationStroke
@@ -105,19 +112,39 @@ public struct AnnotationStyle: Equatable, Sendable {
   public var textBackground: Bool
   /// Mosaic only; other shapes ignore it.
   public var redaction: AnnotationRedaction
+  /// Text only: the plate in this exact colour rather than ``color``'s, whatever
+  /// ``textBackground`` says; nil for the swatch's rules.
+  public var plate: AnnotationRGBA?
+  /// Text only: the glyphs in this exact colour rather than the swatch's or black and white.
+  public var ink: AnnotationRGBA?
+  /// Text only: this point size rather than the stroke's ``AnnotationStroke/fontSize``; it may be
+  /// smaller than the slider goes, to fit a paragraph's box.
+  public var fontSize: CGFloat?
+  /// Text only: the text is a box of its frame's width. It wraps at that width, keeps it while it
+  /// is edited (rather than wrapping at the selection's edge) and resizes from eight grips, its
+  /// lines wrapping again to the new width.
+  public var fixedWidth: Bool
 
   public init(
     color: AnnotationColor = .red, stroke: AnnotationStroke = .default,
-    textBackground: Bool = false, redaction: AnnotationRedaction = .pixelate
+    textBackground: Bool = false, redaction: AnnotationRedaction = .pixelate,
+    plate: AnnotationRGBA? = nil, ink: AnnotationRGBA? = nil, fontSize: CGFloat? = nil,
+    fixedWidth: Bool = false
   ) {
     self.color = color
     self.stroke = stroke
     self.textBackground = textBackground
     self.redaction = redaction
+    self.plate = plate
+    self.ink = ink
+    self.fontSize = fontSize
+    self.fixedWidth = fixedWidth
   }
 
   /// This style with only what the style bar changed replaced, so picking a colour keeps an
-  /// annotation's stroke and the other way round.
+  /// annotation's stroke and the other way round. A colour drops the exact plate and ink, a stroke
+  /// the exact size and the background switch the exact plate, so the control that changed shows
+  /// its effect; the box stays a box.
   public func with(
     color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil,
     redaction: AnnotationRedaction? = nil
@@ -125,7 +152,50 @@ public struct AnnotationStyle: Equatable, Sendable {
     Self(
       color: color ?? self.color, stroke: stroke ?? self.stroke,
       textBackground: textBackground ?? self.textBackground,
-      redaction: redaction ?? self.redaction)
+      redaction: redaction ?? self.redaction,
+      plate: color == nil && textBackground == nil ? plate : nil,
+      ink: color == nil ? ink : nil, fontSize: stroke == nil ? fontSize : nil,
+      fixedWidth: fixedWidth)
+  }
+
+  /// Text: whether it sits on a plate, the swatch's or an exact one.
+  public var hasTextPlate: Bool { textBackground || plate != nil }
+
+  /// Text: the point size it draws at.
+  public var textFontSize: CGFloat { fontSize ?? stroke.fontSize }
+}
+
+/// An exact sRGB colour, components in 0...1: a plate or ink sampled from the screenshot
+/// (``CaptureTextColors``). Values outside the range are clamped.
+public struct AnnotationRGBA: Equatable, Hashable, Sendable {
+  public let red: Double
+  public let green: Double
+  public let blue: Double
+  public let alpha: Double
+
+  public init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
+    func unit(_ value: Double) -> Double { value.isFinite ? min(max(value, 0), 1) : 0 }
+    self.red = unit(red)
+    self.green = unit(green)
+    self.blue = unit(blue)
+    self.alpha = unit(alpha)
+  }
+
+  public static let black = Self(red: 0, green: 0, blue: 0)
+  public static let white = Self(red: 1, green: 1, blue: 1)
+
+  /// Relative luminance (WCAG), from linearized components.
+  public var luminance: Double {
+    func linear(_ value: Double) -> Double {
+      value <= 0.039_28 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+    }
+    return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+  }
+
+  /// The WCAG contrast ratio between this colour and `other`, 1 to 21.
+  public func contrast(with other: Self) -> Double {
+    let (lighter, darker) = (max(luminance, other.luminance), min(luminance, other.luminance))
+    return (lighter + 0.05) / (darker + 0.05)
   }
 }
 

@@ -53,19 +53,7 @@ struct IslandCapsule: View {
 
   /// Writing, with the activity indicator, or written (or copied), with a check.
   private func status(_ text: String, running: Bool) -> some View {
-    HStack(spacing: 8) {
-      if running {
-        IslandSpinner()
-      } else {
-        IslandGlyph(name: "check")
-      }
-      Text(verbatim: text).font(IslandType.label).lineLimit(1).fixedSize()
-    }
-    // As the HUD's status-only capsule: 8 pt in, 10 pt out, inside the bar's padding.
-    .padding(.leading, IslandMetrics.padding + 8)
-    .padding(.trailing, IslandMetrics.padding + 10)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text(verbatim: text))
+    IslandStatusCapsule(text: text, running: running)
   }
 
   /// The app's mark, the page's message, Open and a close button that only dismisses.
@@ -190,5 +178,29 @@ private struct IslandChip: View {
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
     .accessibilityValue(Text(verbatim: summary))
+  }
+}
+
+/// A status capsule's content: the activity indicator while `running`, else a check, beside the
+/// status in the label type (the island's writing, written and copied phases, and the screenshot
+/// text command's copied capsule).
+struct IslandStatusCapsule: View {
+  let text: String
+  let running: Bool
+
+  var body: some View {
+    HStack(spacing: 8) {
+      if running {
+        IslandSpinner()
+      } else {
+        IslandGlyph(name: "check")
+      }
+      Text(verbatim: text).font(IslandType.label).lineLimit(1).fixedSize()
+    }
+    // As the HUD's status-only capsule: 8 pt in, 10 pt out, inside the bar's padding.
+    .padding(.leading, IslandMetrics.padding + 8)
+    .padding(.trailing, IslandMetrics.padding + 10)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(Text(verbatim: text))
   }
 }

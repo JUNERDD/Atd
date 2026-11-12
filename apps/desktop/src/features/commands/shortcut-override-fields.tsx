@@ -179,6 +179,7 @@ export function ShortcutOverrideFields({
         id="shortcut-result"
         input={command.input}
         value={shortcut.output?.action}
+        offerAnnotate={false}
         follow={follow(t(`output.${command.output.action}.title`))}
         onChange={(action) =>
           override(

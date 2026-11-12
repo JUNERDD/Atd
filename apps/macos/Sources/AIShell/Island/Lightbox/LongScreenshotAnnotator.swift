@@ -31,7 +31,9 @@ import SwiftUI
 /// The card is the one place the annotations live: every change of the store goes there at once
 /// (``IslandLongScreenshotCardModel/setAnnotations(_:)``), and a change made there by anything
 /// else (Restore) comes back into the store, whose undo history then starts over. A new
-/// annotator (the lightbox opened again) starts from the card's annotations.
+/// annotator (the lightbox opened again) starts from the card's annotations. Text command
+/// results land in the same store in every mode (``LongScreenshotAnnotator+Results``), so they
+/// are undo steps and annotations like any other.
 final class LongScreenshotAnnotator {
   let card: IslandLongScreenshotCardModel
   /// The surface the viewer places over the image (``LongScreenshotAnnotatorSurface``).
@@ -53,7 +55,10 @@ final class LongScreenshotAnnotator {
   private let surface: LongScreenshotAnnotatorSurface
   private let barsModel = LongScreenshotAnnotatorBarsModel()
   private let hover: LongScreenshotAnnotatorHover
-  private let defaults: UserDefaults
+  /// Keeps the remembered styles, shared with the screenshot editor's.
+  let defaults: UserDefaults
+  /// The store's document or its undo state changed, after the card took it.
+  var onChange: () -> Void = {}
 
   /// `defaults` keeps the remembered styles, shared with the screenshot editor's.
   init(card: IslandLongScreenshotCardModel, defaults: UserDefaults = .standard) {
@@ -212,6 +217,7 @@ final class LongScreenshotAnnotator {
       toolbar: toolbar.fittingSize, styleBar: target == nil ? nil : styleBar.fittingSize)
     hover.refresh()
     if store.document != card.state.annotations { card.setAnnotations(store.document) }
+    onChange()
   }
 
   /// What the style bar restyles: the open text, else the selected annotation, else the next one

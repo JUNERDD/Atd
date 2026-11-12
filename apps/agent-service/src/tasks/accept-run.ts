@@ -19,7 +19,12 @@ import {
   freezeRunSnapshot,
   loadSubmitCatalog,
 } from './run-snapshot.js';
-import { checkSideChatOf, newTaskRecord, type InternalSubmitOptions } from './submit-options.js';
+import {
+  checkSideChatOf,
+  newTaskRecord,
+  requestedOptions,
+  type InternalSubmitOptions,
+} from './submit-options.js';
 import type { TaskTitles } from './titles.js';
 
 export interface RunAcceptanceDeps {
@@ -81,6 +86,7 @@ export class RunAcceptance {
     checkBranchBefore(request.branchBefore, onBranch);
     const { sideChatOf } = request;
     checkSideChatOf(sideChatOf, previous, ledger.data.tasks);
+    const options = requestedOptions(request, previous, internal);
     const folderIds = request.input.folders ?? [];
     this.deps.folders.resolve(folderIds);
     const runId = randomUUID();
@@ -97,7 +103,7 @@ export class RunAcceptance {
         catalog,
         previous,
         onBranch,
-        internal,
+        options,
       );
       const now = new Date().toISOString();
       // Granted before the run exists, so no dispatch can start it without its folders.

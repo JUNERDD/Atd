@@ -1,5 +1,12 @@
 import AICore
 
+/// The answer card's answer: its text, and whether more of it is still coming, which the card
+/// follows and offers to stop rather than to copy or write.
+struct IslandAnswer: Equatable {
+  let text: String
+  var streaming = false
+}
+
 /// What the command island shows.
 enum IslandContent: Equatable {
   /// A command shortcut is down: the command's name and the charge toward its options card.
@@ -11,8 +18,9 @@ enum IslandContent: Equatable {
   case writing
   case done
   case notice(message: String)
-  /// The answer card (``IslandAnswerCard``): a run's answer that could not be written.
-  case answer(command: String, answer: String, note: String?)
+  /// The answer card (``IslandAnswerCard``): a run's answer that could not be written, or that
+  /// lands on the card and is still streaming in.
+  case answer(command: String, answer: IslandAnswer, note: String?)
   /// The review card (``IslandReviewCard``, its draft in ``IslandModel/review``): an answer that
   /// waits for review, with its original, changes, versions and options.
   case review(command: String, answer: String, note: String?, review: CommandProgressState.Review)
@@ -59,6 +67,15 @@ enum IslandContent: Equatable {
     var layoutMotion: IslandLayoutMotion {
       isShell || self == .review ? .interpolated : .fixed
     }
+  }
+
+  /// A change of size within this content follows the person's own input or a stream rather
+  /// than replacing what shows: the shape moves on the direct edits' spring and the content keeps
+  /// its own size (``IslandChoreography/inPlace``), so text under the eye holds still.
+  /// An answer streaming in grows the same way.
+  var resizesInPlace: Bool {
+    if case .answer(_, let answer, _) = self { return answer.streaming }
+    return kind == .compose
   }
 
   var kind: Kind {

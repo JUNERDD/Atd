@@ -35,6 +35,7 @@ describe('selection toolbar push', () => {
       turnSelection: true,
       turnActions: true,
       screenshotToolbar: false,
+      screenshotText: false,
     };
     // Summarize reads its input by hand: placed on the toolbar, it shows there only once it reads
     // the selection through the variable.
@@ -61,8 +62,16 @@ describe('selection toolbar push', () => {
 
   it('offers on the screenshot toolbar the enabled commands placed there that take a screenshot', () => {
     const commands = fixtureCommands().map((command) => ({ ...command, enabled: true }));
-    // Placed by default only once its input is a screenshot, as a command that never chose is.
-    expect(screenshotToolbarParams(commands)).toEqual({ commands: [] });
+    // Placed by default only once its input is a screenshot, as a command that never chose is;
+    // the ones that take the selection are placed on text in a screenshot by default.
+    expect(screenshotToolbarParams(commands)).toEqual({
+      commands: [],
+      textCommands: [
+        { id: 'translate', name: 'Translate selection' },
+        { id: 'extract', name: 'Extract action items' },
+        { id: 'polish', name: 'Polish writing' },
+      ],
+    });
     const [translate, extract, polish, summarize] = commands;
     if (!translate || !extract || !polish || !summarize) throw new Error('A fixture is missing.');
     const shot = { ...summarize.input, source: 'screenshot' as const };
@@ -70,7 +79,8 @@ describe('selection toolbar push', () => {
     summarize.placement = { ...summarize.placement, screenshotToolbar: true };
     polish.input = shot;
     polish.placement = { ...polish.placement, screenshotToolbar: true };
-    // Translate is placed there but reads the selection, so the toolbar cannot run it.
+    // Translate is placed there but reads the selection, so the toolbar cannot run it; it stays
+    // on text in a screenshot, which the others no longer read.
     translate.placement = { ...translate.placement, screenshotToolbar: true };
     extract.input = shot;
     expect(screenshotToolbarParams(commands)).toEqual({
@@ -78,6 +88,7 @@ describe('selection toolbar push', () => {
         { id: 'polish', name: 'Polish writing' },
         { id: 'summarize', name: 'Summarize files' },
       ],
+      textCommands: [{ id: 'translate', name: 'Translate selection' }],
     });
     polish.enabled = false;
     expect(screenshotToolbarParams(commands).commands).toEqual([
@@ -96,7 +107,10 @@ describe('selection toolbar push', () => {
     // follows the commands alone, has something to send.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(calls('toolbar.set')).toHaveLength(0);
-    expect(call).toHaveBeenCalledExactlyOnceWith('screenshotToolbar.set', { commands: [] });
+    expect(call).toHaveBeenCalledExactlyOnceWith(
+      'screenshotToolbar.set',
+      screenshotToolbarParams(commands),
+    );
     current = settings;
     toolbar.sync();
     toolbar.sync();

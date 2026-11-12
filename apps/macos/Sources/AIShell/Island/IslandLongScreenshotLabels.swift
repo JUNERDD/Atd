@@ -2,9 +2,10 @@ import AICore
 import Foundation
 
 /// The long screenshot's copy on the island in the shell language (``IslandLabels/longScreenshot``),
-/// built again when it changes. Restore, Attach and the footer's working label are the recording
-/// card's words, as its ask field and answer slot are (``IslandAskLabels``). Formatted copy is
-/// built per use, since its values (sizes, counts) change while the copy does not.
+/// built again when it changes. Restore, Attach, the footer's working label and the lightbox side
+/// panel's hide button are the recording card's words, as its ask field and answer slot are
+/// (``IslandAskLabels``). Formatted copy is built per use, since its values (sizes, counts) change
+/// while the copy does not.
 struct IslandLongScreenshotLabels: Equatable {
   var processing = ""
   var title = ""
@@ -17,8 +18,8 @@ struct IslandLongScreenshotLabels: Equatable {
   var reads = ""
   var readsInfo = ""
   var noText = ""
+  /// Cover Sensitive Info (decision D7); its tooltip lists the kinds (``coverTooltip(_:)``).
   var cover = ""
-  var coverTooltip = ""
   var annotate = ""
   var annotateTooltip = ""
   var copy = ""
@@ -43,18 +44,34 @@ struct IslandLongScreenshotLabels: Equatable {
   var viewportTooltip = ""
   var done = ""
   var doneTooltip = ""
+  // The lightbox's text mode and text command row.
+  var select = ""
+  var selectTooltip = ""
+  var textDoneTooltip = ""
+  var hintMarquee = ""
+  var hintPan = ""
+  var hintExit = ""
+  var textRow = ""
+  var textCopy = ""
+  var textCopyTooltip = ""
+  var running = ""
+  // The lightbox's side panel with the text commands' result.
+  var results = ""
+  var resultsTooltip = ""
+  var hidePanel = ""
   /// The ask field's and answer slot's copy, with the long screenshot's quick asks.
   var asking = IslandAskLabels<LongScreenshotQuickAsk>()
 
   static func current() -> IslandLongScreenshotLabels {
     let text: (LongScreenshotCardStringKey) -> String = { ShellStrings.shared.text($0) }
     let recording: (RecordingIslandStringKey) -> String = { ShellStrings.shared.text($0) }
+    let lightboxText: (LongScreenshotTextStringKey) -> String = { ShellStrings.shared.text($0) }
     return IslandLongScreenshotLabels(
       processing: text(.processing), title: text(.title), trimmed: text(.trimmed),
       restore: recording(.restore), restoreTooltip: text(.restoreTooltip),
       preview: text(.preview), trimTop: text(.trimTop), trimBottom: text(.trimBottom),
       reads: text(.reads), readsInfo: text(.readsInfo), noText: text(.noText),
-      cover: text(.cover), coverTooltip: text(.coverTooltip), annotate: text(.annotate),
+      cover: text(.cover), annotate: text(.annotate),
       annotateTooltip: text(.annotateTooltip), copy: text(.copy), copyTooltip: text(.copyTooltip),
       attach: recording(.attach), attachTooltip: recording(.attachTooltip),
       actionWorking: recording(.actionWorking), lightbox: text(.lightbox),
@@ -63,6 +80,14 @@ struct IslandLongScreenshotLabels: Equatable {
       zoomOut: text(.zoomOut), zoomTooltip: text(.zoomTooltip), fit: text(.fit),
       hintScroll: text(.hintScroll), hintZoom: text(.hintZoom), overview: text(.overview),
       viewportTooltip: text(.viewportTooltip), done: text(.done), doneTooltip: text(.doneTooltip),
+      select: lightboxText(.select), selectTooltip: lightboxText(.selectTooltip),
+      textDoneTooltip: lightboxText(.doneTooltip), hintMarquee: lightboxText(.hintMarquee),
+      hintPan: lightboxText(.hintPan), hintExit: lightboxText(.hintExit),
+      textRow: lightboxText(.row),
+      textCopy: ShellStrings.shared.text(CaptureCommandsStringKey.captureCommandsCopyText),
+      textCopyTooltip: lightboxText(.copyTooltip), running: lightboxText(.running),
+      results: lightboxText(.results), resultsTooltip: lightboxText(.resultsTooltip),
+      hidePanel: recording(.lightboxHidePanel),
       asking: .current(
         placeholder: text(.askPlaceholder), label: text(.askLabel), question: text(.askDefault),
         quickAsks: [
@@ -100,16 +125,27 @@ struct IslandLongScreenshotLabels: Equatable {
       strings.text(LongScreenshotCardStringKey.characters, count: characters))
   }
 
-  /// The sensitive row: the kinds found in the kept range with their counts, before or after
-  /// they are covered.
+  /// The sensitive row: the kinds in the kept range with their counts, those still uncovered or
+  /// all of them once every one is covered.
   func sensitive(_ counts: [LongScreenshotSensitiveCount], covered: Bool) -> String {
     ShellStrings.shared.text(
       covered ? LongScreenshotCardStringKey.sensitiveCovered : .sensitiveFound, Self.kinds(counts))
   }
 
-  /// The lightbox's Cover button: "Cover 2 email addresses, 1 phone number".
-  func coverKinds(_ counts: [LongScreenshotSensitiveCount]) -> String {
-    ShellStrings.shared.text(LongScreenshotCardStringKey.coverKinds, Self.kinds(counts))
+  /// Cover Sensitive Info's tooltip: "Cover each with a mosaic: 2 email addresses, 1 phone
+  /// number", the kinds still uncovered.
+  func coverTooltip(_ counts: [LongScreenshotSensitiveCount]) -> String {
+    ShellStrings.shared.text(LongScreenshotCardStringKey.coverTooltip, Self.kinds(counts))
+  }
+
+  /// Cover Sensitive Info's confirmation in place of its label: "Covered 3 items".
+  static func covered(_ count: Int) -> String {
+    ShellStrings.shared.text(CaptureCommandsStringKey.captureRedactDone, count: count)
+  }
+
+  /// A text command's tooltip: "Run “Translate” on this text".
+  func runTooltip(_ name: String) -> String {
+    ShellStrings.shared.text(LongScreenshotTextStringKey.runTooltip, name)
   }
 
   /// The lightbox's page counter: "Page 2 of 7".

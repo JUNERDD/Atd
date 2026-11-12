@@ -3,8 +3,14 @@ import AppKit
 /// One capture overlay window per display (decision D7): borderless, non-activating, above
 /// the menu bar, the Dock and open menus, on every Space and over full-screen apps. It can
 /// become key although it never activates the app by itself, like the task panel; the session
-/// activates the app separately for the cursor, the keyboard and input methods.
-final class CaptureOverlayPanel: NSPanel {
+/// activates the app separately for the cursor, the keyboard and input methods. A text command's
+/// result card in it follows the pointer with the window's own clock (``FloatingHoverHost``), as
+/// the island's controls do.
+final class CaptureOverlayPanel: NSPanel, FloatingHoverHost {
+  lazy var pointerHover = IslandPointerHover()
+  var hoverRegions: FloatingHoverRegions { pointerHover.regions }
+  var hoverInteractive: Bool { isVisible }
+
   init(screen: NSScreen, content: NSView) {
     super.init(
       contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,

@@ -81,7 +81,7 @@ struct IslandLongScreenshotCard: View {
 }
 
 /// The title row (``IslandShellTitle``): "Long Screenshot", the size, screens and app of what is
-/// kept (``IslandLongScreenshotLabels/subtitle(_:)``), "Restore" while it is trimmed or covered,
+/// kept (``IslandLongScreenshotLabels/subtitle(_:)``), "Restore" while it is trimmed or has anything on it,
 /// and the close button. Its own view, so the kept range reads only here and in the views that
 /// show it.
 private struct IslandLongScreenshotTitle: View {
@@ -101,7 +101,7 @@ private struct IslandLongScreenshotTitle: View {
 }
 
 /// The footer (``IslandShellFooter``): Annotate, which opens the lightbox in annotate mode, Copy
-/// (⌘C) and Attach to Conversation (⌘↩), each on the range kept now (its cover and annotations
+/// (⌘C) and Attach to Conversation (⌘↩), each on the range kept now (everything on the image
 /// with it); Attach is the primary action. Copy and Attach report how they went on their own
 /// buttons (``IslandShellFeedback``), so the card stays.
 private struct IslandLongScreenshotFooter: View {

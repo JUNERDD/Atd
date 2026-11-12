@@ -4,12 +4,13 @@ import Carbon.HIToolbox
 
 /// The answer card's keys, while the island is in its `answer` phase and has the keyboard
 /// (contract: `commandProgress.show`'s answer card). Escape closes the card, as its close
-/// button does. ⌘C copies the whole answer, as Copy does, unless some of the answer is selected:
-/// the selection is copied then, the usual way. Both arrive as key presses or, ⌘C usually, as
+/// button does, or stops the answer while it streams in, as its Stop does. ⌘C copies the whole
+/// answer, as Copy does, unless some of the answer is selected (the selection is copied then, the
+/// usual way) or it is still streaming in. Both arrive as key presses or, ⌘C usually, as
 /// key equivalents ahead of the menus (``IslandWindow/onKeyEquivalent``); every other key goes
 /// on as usual. Return performs the primary write; ⌘Return and ⌥⌘Return are hot keys held while
 /// the card (or the review card) offers a write (``holdWriteKeys(_:)``), so they work from the
-/// field the person clicked into as well.
+/// field the person clicked into as well. None of the writes acts while the answer streams in.
 ///
 /// Unlike the options card, the answer card stays when the window gives up the keyboard (a
 /// click in another app): it never goes by itself, and a click on it takes the keyboard again.
@@ -30,7 +31,7 @@ extension CommandProgressController {
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     if Int(event.keyCode) == kVK_Escape, modifiers.isEmpty {
       guard let target = state.shown?.target else { return false }
-      hide(target: target)
+      if state.answerStreams { request(.stop) } else { hide(target: target) }
       return true
     }
     // Return writes the primary of Insert and Replace while the card offers them; ⌘Return and
@@ -43,6 +44,8 @@ extension CommandProgressController {
         default: nil
         }
       guard let key, let mode = island.model.answerOffer?.write(for: key) else { return false }
+      guard !event.isARepeat else { return true }
+      ShortcutRelease.pressed(event.keyCode)
       writeAnswer(mode)
       return true
     }
@@ -55,11 +58,13 @@ extension CommandProgressController {
   }
 
   /// Holds ⌘Return and ⌥⌘Return while the card offers `offer`, for whichever writes it has, and
-  /// lets them go with the offer; one another app already holds is left to the card's own keys.
+  /// lets them go with the offer, and while the answer streams in, so the keys reach the person's
+  /// app until there is a whole answer to write; one another app already holds is left to the
+  /// card's own keys.
   func holdWriteKeys(_ offer: AnswerWriteOffer?) {
     for token in writeKeys { keys.unregister(token) }
     writeKeys = []
-    guard let offer else { return }
+    guard let offer, !state.answerStreams else { return }
     let combinations: [(AnswerWriteOffer.Key, HotKeyModifiers)] =
       [(.primary, [.command]), (.insert, [.option, .command])]
     for (key, modifiers) in combinations where offer.write(for: key) != nil {

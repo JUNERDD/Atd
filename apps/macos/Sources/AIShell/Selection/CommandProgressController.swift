@@ -1,6 +1,5 @@
 import AICore
 import AppKit
-import Carbon.HIToolbox
 
 /// The command island of a command that writes its answer back without the panel
 /// (`commandProgress.show`, `.hide`, and `text.write`), drawn by ``IslandController``:
@@ -31,12 +30,13 @@ import Carbon.HIToolbox
 ///
 /// Presses reach the page as `commandProgress.action`. Escape belongs to the island only while a
 /// run is working, where it cancels the run instead of reaching the app the answer will be
-/// written into, and while the answer card shows, where it closes the card even after the person
-/// clicked into another app to insert there: a temporary hot key, registered then and gone with
-/// those phases, as the answer card's write keys are (``holdWriteKeys(_:)``); its registrations
-/// carry their own signature, apart from the global shortcuts' (``CarbonHotKeys``). The other
-/// cards read Escape themselves, as the key window. The selection toolbar's listening
-/// HUD shares the bottom-centre place, so it yields while the island is on screen.
+/// written into, and while the answer card shows, where it closes the card (or stops its answer
+/// while it streams in) even after the person clicked into another app to insert there: a
+/// temporary hot key, registered then and gone with those phases, as the answer card's write keys
+/// are (``holdWriteKeys(_:)``); its registrations carry their own signature, apart from the global
+/// shortcuts' (``CarbonHotKeys``). The other cards read Escape themselves, as the key window.
+/// The selection toolbar's listening HUD shares the bottom-centre place, so it yields while the
+/// island is on screen.
 final class CommandProgressController: NSObject {
   /// 'AIES'
   private static let escapeSignature: OSType = 0x4149_4553
@@ -63,6 +63,7 @@ final class CommandProgressController: NSObject {
   let answerFocus = AnswerFocusWatch()
   /// The shell's own write of the answer card's answer into the focused field.
   let answerWriter: AnswerWriter
+  let answerWriteHandoff = KeyboardHandoff()
   /// Claims the clipboard for Copy and for the answer a stopped write leaves there.
   let arbiter: DeviceArbiter
   /// The answer card's write hot keys, held while it offers a write (``holdWriteKeys(_:)``).
@@ -102,7 +103,7 @@ final class CommandProgressController: NSObject {
     guard let phase = CommandProgressState.phase(params.state) else {
       throw BridgeError("The progress has nothing to show.")
     }
-    if isStaleReview(phase, target: params.target) { return }
+    if isStale(phase, target: params.target) { return }
     present(target: params.target, phase: phase)
   }
 
@@ -134,7 +135,7 @@ final class CommandProgressController: NSObject {
     guard progressMayShow() else { return }
     if let shown = state.shown, state.givesWayToPress {
       let keyboard = state.takesKeyboard
-      if state.isReviewing { send(CommandProgressState.closing(target: shown.target)) }
+      if let leaving = state.leaving { send(leaving) }
       state.hide(target: shown.target)
       sync(leavingCard: keyboard ? shown.target : nil)
     }
@@ -169,10 +170,15 @@ final class CommandProgressController: NSObject {
 
   /// Shows `phase` for `target`. A card leaving gives the keyboard back to its target's field
   /// unless `returningFocus` is false (an Insert or Replace, which writes where the focus is).
+  /// What follows an answer streaming in for the same target (more of it, or its end) changes the
+  /// card in place, as the stream itself does, without taking the keyboard back from where the
+  /// person put it meanwhile.
   func present(
     target: String, phase: CommandProgressState.Phase, returningFocus: Bool = true
   ) {
     let leaving = state.takesKeyboard ? state.shown?.target : nil
+    let streamed = state.answerStreams
+    let inPlace = streamed && state.shown?.target == target
     if case .choose(_, let options, let output) = phase, state.shown?.phase != phase {
       let names = CommandOutputChoice.Names(ShellStrings.shared.catalog)
       island.updateCard(
@@ -188,8 +194,10 @@ final class CommandProgressController: NSObject {
     state.show(target: target, phase: phase)
     timer += 1
     let draws = progressMayShow()
-    if draws { island.show(content(phase)) }
-    sync(leavingCard: state.takesKeyboard || !returningFocus ? nil : leaving)
+    if draws { island.show(content(phase), inPlace: inPlace) }
+    sync(leavingCard: state.takesKeyboard || !returningFocus ? nil : leaving, taking: !inPlace)
+    // The writes' keys wait while the answer streams in.
+    if streamed != state.answerStreams { holdWriteKeys(island.model.answerOffer) }
     if draws { expire() }
   }
 
@@ -201,11 +209,13 @@ final class CommandProgressController: NSObject {
     case .writing: .writing
     case .done: .done
     case .notice(let message): .notice(message: message)
-    case .answer(let command, _, _, .some) where island.model.cardStages: .choose(command: command)
-    case .answer(let command, let answer, let note, let review?):
+    case .answer(let command, _, _, .some, _) where island.model.cardStages:
+      .choose(command: command)
+    case .answer(let command, let answer, let note, let review?, _):
       .review(command: command, answer: answer, note: note, review: review)
-    case .answer(let command, let answer, let note, nil):
-      .answer(command: command, answer: answer, note: note)
+    case .answer(let command, let answer, let note, nil, let streaming):
+      .answer(
+        command: command, answer: IslandAnswer(text: answer, streaming: streaming), note: note)
     case .copied: .copied
     case .compose(let command, let attach): .compose(command: command, attach: attach)
     }
@@ -234,7 +244,14 @@ final class CommandProgressController: NSObject {
     case .change: press(.change)
     case .dismiss:
       guard let shown = state.shown else { return }
-      if state.isReviewing { press(.close) } else { hide(target: shown.target) }
+      if state.isReviewing {
+        press(.close)
+      } else if state.answerStreams {
+        press(.cancel)
+      } else {
+        hide(target: shown.target)
+      }
+    case .stop: request(.stop)
     case .copy: copyAnswer()
     case .write(let mode): writeAnswer(mode)
     }
@@ -250,15 +267,15 @@ final class CommandProgressController: NSObject {
   }
 
   /// A shortcut pressed while a card has the keyboard closes it, giving the keyboard back: the
-  /// options card and the compose card cancel their command, the review card closes, the answer
-  /// card only goes.
+  /// options card and the compose card cancel their command, the review card closes, an answer
+  /// still streaming in cancels its run, any other answer card only goes.
   func closeCard() {
     if !state.drawsProgress {
       closeShellCard()
-    } else if state.isChoosing || state.isComposing {
-      press(.cancel)
     } else if state.isReviewing {
       press(.close)
+    } else if state.isChoosing || state.isComposing || state.answerStreams {
+      press(.cancel)
     } else if let shown = state.shown, state.isAnswering {
       hide(target: shown.target)
     }
@@ -303,48 +320,5 @@ final class CommandProgressController: NSObject {
   func send(_ event: CommandProgressActionEvent) {
     noteSent(event)
     panel.send(.commandProgressAction(event), scope: .document)
-  }
-
-  /// Escape held exactly while a run is working or the answer card shows; the keyboard taken
-  /// while a card is up and given back to `leavingCard`'s field once it is gone. A registration
-  /// that fails leaves the close button as the only way to cancel.
-  func sync(leavingCard: String?) {
-    guard state.drawsProgress else { return yieldKeys() }
-    settleReviewNotice()
-    if state.takesKeyboard {
-      island.setKeyCapable(true)
-    } else if let leavingCard {
-      island.setKeyCapable(false)
-      returnFocus(leavingCard)
-    }
-    followAnswerFocus()
-    if state.cancelsWithEscape || state.isAnswering {
-      guard escape == nil else { return }
-      let combination = HotKeyCombination(keyCode: UInt32(kVK_Escape), modifiers: [])
-      if case .success(let token) = keys.register(
-        combination, onPress: { [weak self] in self?.escapePressed() })
-      {
-        escape = token
-      }
-    } else if let token = escape {
-      keys.unregister(token)
-      escape = nil
-    }
-  }
-
-  /// Escape: a card's field composing text hands it to the input method; the review card's
-  /// options sheet goes back a step, and the review card peels a layer (``peelReview()``); the
-  /// answer card closes, as its close button does; a working run is cancelled.
-  private func escapePressed() {
-    if forwardEscapeToInputMethod() { return }
-    if reviewSheetOpen {
-      sheetEscape()
-    } else if state.isReviewing {
-      peelReview()
-    } else if let shown = state.shown, state.isAnswering {
-      hide(target: shown.target)
-    } else {
-      press(.cancel)
-    }
   }
 }

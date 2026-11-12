@@ -46,6 +46,9 @@ final class AnnotationStyleBar: NSView {
   private var controls: AnnotationStyleControls = []
   /// Ends auto-redact's confirmation after a moment.
   private var confirmation: Task<Void, Never>?
+  /// How much wider auto-redact's longest label is than the one it shows, which ``fullSize``
+  /// reserves.
+  private var redactSlack: CGFloat = 0
 
   override init(frame: NSRect) {
     sizeSlot = NSStackView(views: [size])
@@ -79,17 +82,19 @@ final class AnnotationStyleBar: NSView {
     bar.frame = bounds
   }
 
-  /// The bar's size in its widest form, a mosaic's (redaction, size, auto-redact) or any other
-  /// tool's with every control (colours, size, text background), which the layout reserves so
-  /// the toolbar keeps its place whichever controls show.
+  /// The bar's size in its widest form, a mosaic's (redaction, size, auto-redact at its longest
+  /// label) or any other tool's with every control (colours, size, text background), which the
+  /// layout reserves so the toolbar keeps its place whichever controls show and whatever
+  /// auto-redact says.
   var fullSize: NSSize {
     defer { showControls(controls) }
-    let forms: [AnnotationStyleControls] = [
-      [.redaction, .strokes], [.colors, .strokes, .textBackground],
+    let forms: [(AnnotationStyleControls, CGFloat)] = [
+      ([.redaction, .strokes], redactSlack), ([.colors, .strokes, .textBackground], 0),
     ]
-    let sizes = forms.map { shown in
+    let sizes = forms.map { shown, slack in
       showControls(shown)
-      return bar.fittingSize
+      let size = bar.fittingSize
+      return NSSize(width: size.width + slack, height: size.height)
     }
     return NSSize(
       width: sizes.map(\.width).max() ?? 0, height: sizes.map(\.height).max() ?? 0)
@@ -135,7 +140,7 @@ final class AnnotationStyleBar: NSView {
   func confirmRedaction(count: Int, tooltip: String) {
     confirmation?.cancel()
     let label = ShellStrings.shared.text(.captureRedactDone, count: count)
-    redact.setLabel(label, image: AnnotationIcons.glyph(AnnotationIcons.redacted, label: ""))
+    sizeRedact(to: label, image: AnnotationIcons.glyph(AnnotationIcons.redacted, label: ""))
     redact.toolTip = tooltip
     redact.presentation = .success
     redact.isEnabled = false
@@ -154,8 +159,8 @@ final class AnnotationStyleBar: NSView {
     showRedaction()
   }
 
-  /// The button for ``redaction``, at a width that holds every label it may show for counts up
-  /// to two digits, so the bar keeps its width.
+  /// The button for ``redaction``, as wide as what it says (decision D7); the layout reserves its
+  /// longest label for counts up to two digits (``fullSize``), so the toolbar stays put.
   private func showRedaction() {
     let strings = ShellStrings.shared
     let label =
@@ -165,16 +170,28 @@ final class AnnotationStyleBar: NSView {
       case .allCovered: strings.text(.captureRedactAllCovered)
       case .cover(let count): strings.text(.captureRedactAction, count: count)
       }
-    let widest = [
-      strings.text(.captureRedactScanning), strings.text(.captureRedactNone),
-      strings.text(.captureRedactAllCovered), strings.text(.captureRedactAction, count: 88),
-      strings.text(.captureRedactDone, count: 88),
-    ].map { AnnotationToolbarButton.Label.width(text: $0, hasImage: true) }.max()
-    redact.setLabel(
-      label, image: AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: ""), width: widest)
+    sizeRedact(to: label, image: AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: ""))
     redact.toolTip = strings.text(.captureRedactTooltip)
     redact.isEnabled = if case .cover = redaction { true } else { false }
     redact.presentation = .standard
+  }
+
+  /// Auto-redact saying `label`, at its width, and the slack to its longest label.
+  private func sizeRedact(to label: String, image: NSImage) {
+    let strings = ShellStrings.shared
+    let width = { (text: String) in AnnotationToolbarButton.Label.width(text: text, hasImage: true)
+    }
+    let widest =
+      [
+        strings.text(.captureRedactScanning), strings.text(.captureRedactNone),
+        strings.text(.captureRedactAllCovered), strings.text(.captureRedactAction, count: 88),
+        strings.text(.captureRedactDone, count: 88),
+      ].map(width).max() ?? 0
+    let current = width(label)
+    redact.setLabel(label, image: image, width: current)
+    redactSlack = max(widest - current, 0)
+    // The bar grows or shrinks with its label in place (the host is flipped: the top-left stays).
+    if superview != nil { setFrameSize(fittingSize) }
   }
 
   /// Shows `style`, with only the `controls` that apply.

@@ -35,6 +35,7 @@ export * from './commands.js';
 export * from './command-run.js';
 export * from './command-shortcuts.js';
 export * from './command-output.js';
+export * from './capture-answer.js';
 export * from './memory.js';
 export * from './memory-units.js';
 export * from './tasks-manage.js';

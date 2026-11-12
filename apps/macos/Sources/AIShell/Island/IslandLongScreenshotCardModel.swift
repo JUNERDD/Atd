@@ -3,9 +3,9 @@ import AppKit
 import Observation
 
 /// The long screenshot's result card as it runs (decision D11): its state
-/// (``LongScreenshotCardState``: the kept range, the cover and the annotations) with what the
-/// card's views add (the page under the pointer, the handle the arrow keys move, the preview's
-/// images), its asking (``asking``) and its footer's feedback. The card's views and its lightbox
+/// (``LongScreenshotCardState``: the kept range and what is on the image) with what the card's
+/// views add (the page under the pointer, the handle the arrow keys move, the preview's images,
+/// Cover Sensitive Info's confirmation), its asking (``asking``) and its footer's feedback. The card's views and its lightbox
 /// (whose annotate mode writes the annotations, ``setAnnotations(_:)``) call it, it applies local
 /// changes and requests external work through ``onEvent``; the presenter
 /// (``IslandLongScreenshot``) re-measures the card when its size changes (``onResize``).
@@ -14,7 +14,7 @@ final class IslandLongScreenshotCardModel {
   private(set) var state: LongScreenshotCardState
   /// The state's source, which never changes: reading it here does not follow the kept range.
   let source: LongScreenshotCardSource
-  /// The pages Atd reads the kept range as, worked out again when the range or the cover changes.
+  /// The pages Atd reads the kept range as, worked out again when the range or a mosaic changes.
   private(set) var pages: [LongScreenshotCardPage] = []
   /// The page whose row or part of the preview has the pointer: the two are marked together.
   private(set) var hoveredPage: Int?
@@ -23,11 +23,12 @@ final class IslandLongScreenshotCardModel {
   /// The whole image as the preview and the lightbox's overview draw it, made off the main
   /// actor; nil until it is.
   private(set) var thumbnail: CGImage?
-  /// The same with the sensitive parts pixelated, made once covered; nil until it is.
-  private(set) var coveredThumbnail: CGImage?
-  /// One of the two with the annotations drawn in, made off the main actor after each change
+  /// The thumbnail with the annotations drawn in, made off the main actor after each change
   /// (``drawAnnotations()``); it may lag the latest change until the next one lands.
   private(set) var annotatedThumbnail: CGImage?
+  /// How many sensitive items Cover Sensitive Info just covered, which its button says in place
+  /// of its label for ``CommandProgressState/doneDuration`` (decision D7); nil otherwise.
+  private(set) var redacted: Int?
   /// Asking about the kept range.
   let asking = IslandAsking<LongScreenshotAsk, LongScreenshotQuickAsk>()
   /// What Annotate, Copy and Attach report on their buttons
@@ -56,6 +57,7 @@ final class IslandLongScreenshotCardModel {
   /// The annotations being drawn into the preview's image, and whether they changed meanwhile.
   @ObservationIgnored private var annotating: Task<Void, Never>?
   @ObservationIgnored private var annotationsChanged = false
+  @ObservationIgnored private var redactedReset: Task<Void, Never>?
 
   init(_ state: LongScreenshotCardState) {
     self.state = state
@@ -87,7 +89,7 @@ final class IslandLongScreenshotCardModel {
     controlFocused = false
   }
 
-  // MARK: Trim and cover
+  // MARK: Trim and Cover Sensitive Info
 
   /// Handle `edge` dragged `offset` image points from where it was when pressed, so a press
   /// alone moves nothing wherever on the handle it lands.
@@ -112,20 +114,40 @@ final class IslandLongScreenshotCardModel {
     return true
   }
 
-  /// "还原": the whole image is kept again, uncovered, with nothing drawn on it.
+  /// "还原": the whole image is kept again with nothing on it: no drawing, no mosaic, no text
+  /// command result (decision D5).
   func restore() {
     state.restore()
     keptChanged()
     drawAnnotations()
   }
 
-  /// "遮盖": the sensitive parts in the kept range are pixelated, in the preview and in all the
-  /// card hands on.
-  func cover() {
-    state.cover()
-    keptChanged()
-    makeCoveredThumbnail()
-    drawAnnotations()
+  /// Cover Sensitive Info on the card (decision D7): a mosaic over each sensitive item in the
+  /// kept range that none hides yet, in the mosaic tool's remembered style, as ordinary
+  /// annotations the lightbox's annotate mode can move or delete; then its button confirms. The
+  /// lightbox covers through its annotator instead, so the mosaics are one undo step there.
+  func redact() {
+    let hits = state.unmaskedSensitive
+    guard !hits.isEmpty else { return }
+    setAnnotations(state.annotations.redacting(hits, style: Self.mosaicStyle()))
+    confirmRedaction(hits.count)
+  }
+
+  /// The mosaic tool's style as the screenshot editor remembers it: what Cover Sensitive Info
+  /// draws with wherever it is pressed outside the mosaic tool's own style bar.
+  static func mosaicStyle(_ defaults: UserDefaults = .standard) -> AnnotationStyle {
+    AnnotationStyleMemory.load(from: defaults)[AnnotationTool.mosaic.styleSlot]
+  }
+
+  /// Cover Sensitive Info's buttons say `count` items were covered for a moment.
+  func confirmRedaction(_ count: Int) {
+    redacted = count
+    redactedReset?.cancel()
+    redactedReset = Task { [weak self] in
+      try? await Task.sleep(for: CommandProgressState.doneDuration)
+      guard !Task.isCancelled else { return }
+      self?.redacted = nil
+    }
   }
 
   /// What is drawn on the image (image points, origin top-left), as the lightbox's annotate mode
@@ -162,16 +184,10 @@ final class IslandLongScreenshotCardModel {
 
   // MARK: The preview's images
 
-  /// The image the preview, the lightbox's overview and its motion draw now: pixelated where
-  /// covered, once that is made, with the annotations drawn in once that is.
+  /// The image the preview, the lightbox's overview and its motion draw now: the thumbnail with
+  /// the annotations drawn in once that is made.
   var displayThumbnail: CGImage? {
-    state.annotations.isEmpty ? baseThumbnail : annotatedThumbnail ?? baseThumbnail
-  }
-
-  /// The preview's image without annotations, pixelated where covered once that is made; nil
-  /// until the thumbnail is.
-  private var baseThumbnail: CGImage? {
-    (state.kept.covered ? coveredThumbnail : nil) ?? thumbnail
+    state.annotations.isEmpty ? thumbnail : annotatedThumbnail ?? thumbnail
   }
 
   /// The widest the thumbnail is drawn, in points: the lightbox's overview rail (120 pt) at twice
@@ -196,23 +212,13 @@ final class IslandLongScreenshotCardModel {
       let made = await IslandLongScreenshotThumbnail.make(image, width: width, height: height)
       guard let self, !Task.isCancelled else { return }
       thumbnail = made
-      if state.kept.covered { makeCoveredThumbnail() }
       drawAnnotations()
     }
   }
 
-  private func makeCoveredThumbnail() {
-    guard coveredThumbnail == nil, let thumbnail else { return }
-    coveredThumbnail = IslandLongScreenshotThumbnail.covered(
-      thumbnail, shot: source.shot,
-      areas: source.sensitive.map {
-        LongScreenshotCardState.coverRect($0.box)
-      })
-  }
-
-  /// Draws the annotations into the preview's image again, off the main actor, for the cover as
-  /// it stands: one drawing at a time, and once it lands another for whatever changed meanwhile,
-  /// so a burst of changes (a stroke after a stroke, undo pressed in a row) ends with the latest.
+  /// Draws the annotations into the preview's image again, off the main actor: one drawing at a
+  /// time, and once it lands another for whatever changed meanwhile, so a burst of changes (a
+  /// stroke after a stroke, undo pressed in a row, a translation streaming in) ends with the latest.
   /// Without annotations, or before the image is made, there is nothing to draw.
   private func drawAnnotations() {
     guard annotating == nil else {
@@ -221,7 +227,7 @@ final class IslandLongScreenshotCardModel {
     }
     annotationsChanged = false
     let annotations = state.annotations
-    guard !annotations.isEmpty, let base = baseThumbnail else {
+    guard !annotations.isEmpty, let base = thumbnail else {
       annotatedThumbnail = nil
       return
     }
@@ -240,6 +246,7 @@ final class IslandLongScreenshotCardModel {
   func close() {
     thumbnailTask?.cancel()
     annotating?.cancel()
+    redactedReset?.cancel()
   }
 }
 

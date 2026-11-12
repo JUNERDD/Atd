@@ -37,7 +37,7 @@ extension LongScreenshotViewer {
   }
 
   private func beginTrim(_ edge: LongScreenshotCardState.Edge, _ event: NSEvent) {
-    guard trim == nil, !annotating else { return }
+    guard trim == nil, mode == .view else { return }
     let kept = card.state.kept
     let start = edge == .top ? kept.top : kept.bottom
     let pointer = overlay.convert(event.locationInWindow, from: nil).y
@@ -86,6 +86,6 @@ extension LongScreenshotViewer {
     card.endDrag()
     viewport.trimming = false
     overlay.dragging = nil
-    document.hover.enabled = !annotating
+    document.hover.enabled = mode != .annotate
   }
 }

@@ -1,14 +1,14 @@
 import AICore
 import SwiftUI
 
-/// "Steps Atd will read" beside the card's player (R9), and in its lightbox's steps panel: every
+/// "Steps Atd will read" beside the card's player (R9), and in its lightbox's side panel: every
 /// click, key, app switch, screen change and line of narration by time, as tall as its place
 /// (the player, the panel) and scrolling inside past it. The step at the playhead is marked (and
 /// kept in view while playing); hovering one shows its frame in the player and marks its dot on
 /// the strip; a click goes there; a step outside the kept range is dimmed, since Atd will not
 /// read it. Its title's info glyph says what Atd reads instead of a footnote, and "No narration"
 /// says the microphone was off. Both places draw the one card model, so they mark the same
-/// steps.
+/// steps; the panel brings its own title row and scroll (``IslandRecordingStepsPanel``).
 struct IslandRecordingSteps: View {
   let card: IslandRecordingCardModel
   let labels: IslandRecordingLabels
@@ -18,14 +18,14 @@ struct IslandRecordingSteps: View {
     VStack(alignment: .leading, spacing: 2) {
       header
       if card.source.steps.isEmpty {
-        Text(verbatim: labels.noSteps)
-          .font(IslandType.hint)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-          .padding(.horizontal, IslandMetrics.rowPadding)
-          .padding(.vertical, 6)
+        IslandRecordingNoSteps(labels: labels)
       } else {
-        list
+        ScrollViewReader { proxy in
+          ScrollView(.vertical) {
+            IslandRecordingStepRows(card: card, labels: labels, proxy: proxy)
+          }
+          .modifier(FloatingScrollEdges(reduceMotion: reduceMotion))
+        }
       }
     }
     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -42,10 +42,7 @@ struct IslandRecordingSteps: View {
         .accessibilityLabel(Text(verbatim: labels.stepsInfo))
       Spacer(minLength: 0)
       if !card.source.narration {
-        Text(verbatim: labels.noNarration)
-          .foregroundStyle(.tertiary)
-          .lineLimit(1)
-          .help(labels.noNarrationTooltip)
+        IslandRecordingNoNarration(labels: labels)
           .padding(.trailing, IslandMetrics.rowPadding)
       }
     }
@@ -54,22 +51,78 @@ struct IslandRecordingSteps: View {
     .padding(.leading, IslandMetrics.rowPadding)
     .frame(height: IslandMetrics.recordingStepsHeader)
   }
+}
 
-  private var list: some View {
-    ScrollViewReader { proxy in
-      ScrollView(.vertical) {
-        LazyVStack(spacing: IslandMetrics.recordingStepGap) {
-          ForEach(card.source.steps.indices, id: \.self) { index in
-            IslandRecordingStepRow(card: card, labels: labels, index: index).id(index)
-          }
+/// The steps in the lightbox's side panel (``IslandLightboxPanel``): its title row says "Steps
+/// Atd will read" with the info glyph, and "No narration" among its tools, over the steps.
+struct IslandRecordingStepsPanel: View {
+  let card: IslandRecordingCardModel
+  let labels: IslandRecordingLabels
+  let reduceMotion: Bool
+  let onHide: () -> Void
+
+  var body: some View {
+    IslandLightboxPanel(
+      title: labels.steps, info: (IslandIcons.reads, labels.stepsInfo),
+      hide: labels.lightboxHidePanel, reduceMotion: reduceMotion, onHide: onHide,
+      tools: {
+        if !card.source.narration {
+          IslandRecordingNoNarration(labels: labels).font(IslandType.hint)
         }
-      }
-      .modifier(FloatingScrollEdges(reduceMotion: reduceMotion))
-      .onChange(of: card.currentStep) { _, step in
-        guard card.playing, let step else { return }
-        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(step, anchor: .center) }
+      },
+      content: { proxy in
+        if card.source.steps.isEmpty {
+          IslandRecordingNoSteps(labels: labels)
+        } else {
+          IslandRecordingStepRows(card: card, labels: labels, proxy: proxy)
+        }
+      })
+  }
+}
+
+/// The steps, one row each, in a scroll view whose `proxy` keeps the playhead's in view while it
+/// plays.
+private struct IslandRecordingStepRows: View {
+  let card: IslandRecordingCardModel
+  let labels: IslandRecordingLabels
+  let proxy: ScrollViewProxy
+
+  var body: some View {
+    LazyVStack(spacing: IslandMetrics.recordingStepGap) {
+      ForEach(card.source.steps.indices, id: \.self) { index in
+        IslandRecordingStepRow(card: card, labels: labels, index: index).id(index)
       }
     }
+    .onChange(of: card.currentStep) { _, step in
+      guard card.playing, let step else { return }
+      withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(step, anchor: .center) }
+    }
+  }
+}
+
+/// What shows in place of the steps when the recording has none.
+private struct IslandRecordingNoSteps: View {
+  let labels: IslandRecordingLabels
+
+  var body: some View {
+    Text(verbatim: labels.noSteps)
+      .font(IslandType.hint)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+      .padding(.horizontal, IslandMetrics.rowPadding)
+      .padding(.vertical, 6)
+  }
+}
+
+/// "No narration", when the microphone was off; its tooltip says so.
+private struct IslandRecordingNoNarration: View {
+  let labels: IslandRecordingLabels
+
+  var body: some View {
+    Text(verbatim: labels.noNarration)
+      .foregroundStyle(.tertiary)
+      .lineLimit(1)
+      .help(labels.noNarrationTooltip)
   }
 }
 
