@@ -5,21 +5,26 @@ import AppKit
 /// toolbar and the mini panel, and owns the selection stash it fills: the selection is read
 /// before the panel can take focus, through Accessibility or, where that shows none, by a
 /// simulated ⌘C (``CopySelection``), and `capture('selection')` answers from the stash, never
-/// from a live read. A command's summon also records the field it came from in ``writeTargets``.
+/// from a live read. Capture shortcuts deliver immediately and read any wanted selection in the
+/// background through Accessibility alone. A command's summon also records the field it came from
+/// in ``writeTargets``.
 final class Summoner {
   private let panel: PanelWindowController
-  private let panelHost: WebViewHost
+  let panelHost: WebViewHost
   private let systemPanels: SystemPanels
-  private let trust: AccessibilityTrust
+  let trust: AccessibilityTrust
   /// A summon during a capture session would show the panel against the overlays.
   private let isCapturing: () -> Bool
   /// Admits the simulated ⌘C of ``CopySelection``.
-  private let arbiter: DeviceArbiter
+  let arbiter: DeviceArbiter
 
   /// A summon's steps are running; the panel may still be moving.
-  private(set) var isSummoning = false
+  var isSummoning = false
   private var selectionWanted = false
-  private var stash: CapturedText?
+  var stash: CapturedText?
+  private var selectionRead: Task<Void, Never>?
+  /// Pushed by `commandOptions.set`; prunes unneeded command selection and write-target reads.
+  var commandOptions = CommandOptionsCatalog()
   /// The fields commands were summoned from, for `text.write`.
   let writeTargets = WriteTargets()
 
@@ -34,6 +39,8 @@ final class Summoner {
     self.isCapturing = isCapturing
     self.arbiter = arbiter
   }
+
+  isolated deinit { selectionRead?.cancel() }
 
   /// `selectedText` is the selection when it is already known: the welcome guide's practice
   /// selection when its toolbar asked (the frontmost app is Atd itself then), or text dropped on
@@ -54,10 +61,29 @@ final class Summoner {
         panelIsKey: panel.isKey, filePanelOpen: systemPanels.isOpen,
         selectionWanted: selectionWanted))
     guard !steps.isEmpty else { return false }
+    selectionRead?.cancel()
+    selectionRead = nil
+    if steps == [.hidePanel] {
+      panel.hideFromShortcut()
+      return true
+    }
+    if case .deliverScreenshot(let mode) = steps.last {
+      summonScreenshot(mode: mode, steps: steps, selectedText: selectedText)
+      return true
+    }
+    if steps.last == .showPanel, !steps.contains(.deliverAsk) {
+      summonShowPanel(steps: steps, selectedText: selectedText)
+      return true
+    }
+    if case .command(let launch) = trigger {
+      beginCommandSummon(launch, steps: steps, selectedText: selectedText, held: held)
+      return true
+    }
     isSummoning = true
-    if steps.contains(where: { if case .captureTarget = $0 { true } else { false } }),
+    if steps.contains(.captureTarget),
       let frontmost = NSWorkspace.shared.frontmostApplication,
-      frontmost != NSRunningApplication.current
+      frontmost != NSRunningApplication.current,
+      WriteTargets.awaitsWebFocus(frontmost)
     {
       SelectionPresence.wake(pid: frontmost.processIdentifier)
     }
@@ -68,8 +94,7 @@ final class Summoner {
       for step in steps {
         switch step {
         case .hidePanel:
-          guard await ShortcutRelease.waitForHandoff() else { return }
-          panel.hide()
+          panel.hideFromShortcut()
         case .captureSelection:
           var read = SummonSelection.field(selectedText)
           if selectedText == nil { read = await readSelection() }
@@ -97,16 +122,57 @@ final class Summoner {
     return true
   }
 
+  /// Shows the panel immediately on toggle without blocking on Accessibility or posting ⌘C; any
+  /// wanted selection is stashed in the background from the app that was frontmost at the press.
+  private func summonShowPanel(steps: [SummonStep], selectedText: String?) {
+    stashBackgroundSelection(steps: steps, selectedText: selectedText)
+    panel.placeForSummon()
+    panel.show()
+  }
+
+  /// Delivers a screenshot or screen-recording shortcut immediately, without setting
+  /// ``isSummoning`` (`screenshot.capture` rejects calls while the panel is moving) or stalling on
+  /// ``CopySelection``. Any wanted selection is read concurrently through Accessibility from the
+  /// app that was frontmost when the shortcut fired; capture owns its own trust prompt.
+  private func summonScreenshot(mode: CaptureMode, steps: [SummonStep], selectedText: String?) {
+    stashBackgroundSelection(steps: steps, selectedText: selectedText)
+    panelHost.send(.shortcutScreenshot(.init(mode: mode == .record ? .record : .screenshot)))
+  }
+
+  private func stashBackgroundSelection(steps: [SummonStep], selectedText: String?) {
+    let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    let capturedAt = Date.now
+    stash = nil
+    guard steps.contains(.captureSelection) else { return }
+    if let selectedText {
+      stash = TextCapture.stash(selectedText, at: capturedAt)
+    } else if SelectionReader.isTrusted {
+      selectionRead = Task { [weak self] in
+        let outcome = await SelectionReader.readBounded(frontmostPID: pid)
+        guard !Task.isCancelled, let self else { return }
+        self.selectionRead = nil
+        if case .text(let text) = outcome {
+          self.stash = TextCapture.stash(text, at: capturedAt)
+        }
+      }
+    }
+  }
+
   /// Some enabled command fills its input from the selection (`shortcuts.set`); without one
   /// the stash goes at once.
   func setSelectionWanted(_ wanted: Bool) {
     selectionWanted = wanted
-    if !wanted { stash = nil }
+    if !wanted {
+      selectionRead?.cancel()
+      selectionRead = nil
+      stash = nil
+    }
   }
 
-  /// `capture('selection')`: the stash of the last summon.
-  func captureResult() -> CaptureResult {
-    TextCapture.captureResult(stash: stash, trusted: SelectionReader.isTrusted)
+  /// `capture('selection')`: the stash of the last summon, awaiting any background AX read.
+  func captureResult() async -> CaptureResult {
+    _ = await selectionRead?.value
+    return TextCapture.captureResult(stash: stash, trusted: SelectionReader.isTrusted)
   }
 
   /// The frontmost app's selection, asking for Accessibility once per launch when needed: read

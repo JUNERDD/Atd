@@ -1,49 +1,36 @@
 import AICore
 import AppKit
 
-/// The task panel: a non-activating `NSPanel` whose background is an `NSGlassEffectView` with
-/// the transparent renderer web view on top (grill decision Q13). The native window owns the
-/// clipping, edge and shadow; the page paints no window shell.
-///
-/// Hiding follows spike S7 and plan decision R9: the panel stays ordered in at alpha 0, ignores
-/// the mouse and gives up key status, because `orderOut` drops WebKit's timers to 1/s. Alpha 0
-/// alone keeps timers and animation frames at full rate, so occlusion detection stays on.
+/// The task panel: a non-activating `NSPanel` with an `NSGlassEffectView` background and the
+/// transparent renderer web view on top (Q13). Hiding stays ordered in at alpha 0, ignores mouse
+/// events and gives up key status because `orderOut` throttles WebKit timers to 1/s (S7, R9).
 final class PanelWindowController: NSObject, NSWindowDelegate {
   let panel: ShellPanel
   let host: WebViewHost
   private let defaults: UserDefaults
   private let placements: PanelPlacementStore
-  /// The anchor the panel was last placed against, which it keeps to across display changes
-  /// while it stays there; see `PanelGeometry.follow`.
+  /// Anchor the panel follows across display changes (`PanelGeometry.follow`).
   private var anchor: PanelAnchor?
-  /// The user is moving the panel: AppKit sent `windowWillMove`, which it sends when the user
-  /// starts a drag (on the title bar or a page drag region, `performDrag`); the shell's own
-  /// frame changes never set it (``placing``). Moves made while it is set are remembered as where
-  /// the user left the panel; programmatic placement, display changes and hiding clear it, as
-  /// does the first move once the mouse button is up.
+  /// True during a user drag (`windowWillMove`); cleared on shell placement, hide or mouse-up.
   private var userMoving = false
-  /// The shell itself is setting the frame, which never counts as the user's move.
   private var placing = false
   private var isPinned = false
   private var systemPanelOpen = false
-  /// The panel holds the keyboard in front: a summon put it there, or it gained the keyboard
-  /// where no other app's window covers it. Only then may it float (``updateLevel()``); key
-  /// status AppKit hands on when another Atd window gives the keyboard up never sets this.
+  /// A summon put the panel in front, or it gained key uncovered; only then may it float.
   private var holdsFront = false
-  private let keyboardHandoff = KeyboardHandoff()
-  /// Called with the new visibility after every show and hide.
+  private var awaitsKey = false
+  private var ordersOutAfterHandoff = false
+  private var handoffTask: Task<Void, Never>?
   var onVisibilityChange: ((Bool) -> Void)?
   /// Called when the panel is hidden while it held key status, to pass focus on.
   var onGaveUpKey: (() -> Void)?
-
   private static let widthKey = "panel.width"
   private static let heightKey = "panel.height"
 
   init(host: WebViewHost, pinned: Bool, defaults: UserDefaults = .standard) {
     self.host = host
     self.defaults = defaults
-    let placements = PanelPlacementStore(defaults: defaults)
-    self.placements = placements
+    placements = PanelPlacementStore(defaults: defaults)
     let display = Screens.displayUnderCursor()
     let placed = Self.summonFrame(on: display, size: Self.savedSize(defaults), placements)
     panel = ShellPanel(
@@ -63,10 +50,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.becomesKeyOnlyIfNeeded = false
     panel.isReleasedWhenClosed = false
     panel.isExcludedFromWindowsMenu = true
-    // A summon moves the panel to the active Space, and auxiliary lets that be another app's
-    // full-screen Space; without it the panel stays on a desktop Space behind the full-screen
-    // app whatever its level. Auxiliary also keeps the panel itself out of full screen, where
-    // its glass would have nothing behind it.
+    // Auxiliary lets a summon enter another app's full-screen Space without full-screening itself.
     panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
     panel.contentView = GlassBackground.make(content: host.container)
     panel.delegate = self
@@ -82,8 +66,10 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
       name: NSApplication.didChangeScreenParametersNotification, object: nil)
   }
 
+  isolated deinit { handoffTask?.cancel() }
+
   var isVisible: Bool { panel.alphaValue > 0 && !panel.ignoresMouseEvents && !panel.isMiniaturized }
-  var isKey: Bool { panel.isKeyWindow }
+  var isKey: Bool { (panel.isKeyWindow || (isVisible && awaitsKey)) && !panel.retainsKeyForHandoff }
 
   func setTitle(_ title: String) { panel.title = title }
 
@@ -94,37 +80,28 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   /// Keep open/save panels above the task panel even if AppKit changes key ownership meanwhile.
-  func lowerForSystemPanel() {
-    systemPanelOpen = true
-    updateLevel()
-  }
+  func lowerForSystemPanel() { setSystemPanel(true) }
+  func restoreAfterSystemPanel() { setSystemPanel(false) }
 
-  func restoreAfterSystemPanel() {
-    systemPanelOpen = false
+  private func setSystemPanel(_ open: Bool) {
+    systemPanelOpen = open
     updateLevel()
   }
 
   private func updateLevel() {
-    // A summon borrows the keyboard without changing the frontmost app. Its normal windows
-    // can reorder on modifier keys, so the key panel in front needs priority until focus moves
-    // away. Pinning keeps that priority after blur; an open/save panel takes precedence over both.
+    // Non-activating key panels stay above frontmost windows reordering on modifiers; never
+    // reassign an unchanged level, which orders the window above peers that cover it.
     let floats = isPinned || (holdsFront && isVisible && panel.isKeyWindow)
     let level: NSWindow.Level = !systemPanelOpen && floats ? .floating : .normal
-    // Entering a level orders a window in front of every peer there, so assigning the level it
-    // already has must never happen: it would lift a panel other apps cover.
     if panel.level != level { panel.level = level }
   }
 
-  /// Where summons show the panel. A change applies from the next summon: a visible panel
-  /// stays where it is.
   var placement: PanelPlacement {
     get { placements.placement }
     set { placements.placement = newValue }
   }
 
-  /// Places the panel for a summon on the display under the cursor, keeping the user's size:
-  /// in the work area's bottom-right corner, its center, or where the user last left it on that
-  /// display (its center until they have), as ``placement`` says.
+  /// Places the panel on the cursor's display according to ``placement``, keeping the user's size.
   func placeForSummon() {
     let display = Screens.displayUnderCursor()
     let size = panel.isZoomed ? Self.savedSize(defaults) : ScreenRect(panel.frame).size
@@ -135,13 +112,17 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   func show() {
+    resetHandoff()
     if panel.isMiniaturized { panel.deminiaturize(nil) }
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
     panel.orderFrontRegardless()
     holdsFront = true
-    keyboardHandoff.perform { [weak self] in
-      guard let self, isVisible else { return }
+    awaitsKey = true
+    waitForHandoff { [weak self] released in
+      guard let self else { return }
+      awaitsKey = false
+      guard released, isVisible else { return }
       panel.makeKey()
       updateLevel()
     }
@@ -150,45 +131,99 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   func hide() {
-    keyboardHandoff.cancel()
-    let wasKey = panel.isKeyWindow
+    let wasKey = panel.isKeyWindow || panel.retainsKeyForHandoff
+    conceal()
+    if wasKey { onGaveUpKey?() }
+    onVisibilityChange?(false)
+  }
+
+  /// Hides visually at once while keeping key absorption until the shortcut's keys come up.
+  func hideFromShortcut() {
+    let wasKey = panel.isKeyWindow || panel.retainsKeyForHandoff
+    conceal()
+    onVisibilityChange?(false)
+    if wasKey { releaseHiddenKey() }
+  }
+
+  private func releaseHiddenKey() {
+    panel.retainsKeyForHandoff = true
+    waitForHandoff { [weak self] released in
+      guard let self else { return }
+      panel.retainsKeyForHandoff = false
+      if released { onGaveUpKey?() } else { panel.returnKeyboard() }
+    }
+  }
+
+  private func waitForHandoff(_ completion: @escaping @MainActor (Bool) -> Void) {
+    handoffTask?.cancel()
+    let source = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    let sourceWindow = NSApp.keyWindow
+    handoffTask = Task { [weak self] in
+      let released = await ShortcutRelease.waitForHandoff(isValid: {
+        NSWorkspace.shared.frontmostApplication?.processIdentifier == source
+          && NSApp.keyWindow === sourceWindow
+      })
+      guard !Task.isCancelled, let self else { return }
+      handoffTask = nil
+      completion(released)
+    }
+  }
+
+  private func resetHandoff() {
+    handoffTask?.cancel()
+    handoffTask = nil
+    awaitsKey = false
+    ordersOutAfterHandoff = false
+    panel.retainsKeyForHandoff = false
+  }
+
+  private func conceal() {
+    resetHandoff()
     holdsFront = false
     userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
     updateLevel()
-    if wasKey { onGaveUpKey?() }
-    onVisibilityChange?(false)
   }
 
-  /// Takes the panel off screen for a capture session and returns what puts it back as it was.
-  /// A resident panel is ordered out too, not only a visible one, so no panel state can take
-  /// key status or events while the overlays are up; `orderOut`'s timer throttling (R9) only
-  /// lasts as long as the session. A miniaturized panel is left alone. A panel the person was
-  /// using (it had the keyboard) comes back as a summon shows it; one they were not, such as a
-  /// panel other apps covered, comes back where it stood, still behind them and without the
-  /// keyboard.
+  /// Takes the panel off screen for a capture session and returns what puts it back as it was;
+  /// a key panel hides at alpha 0 immediately and defers `orderOut` until the shortcut releases.
   func withdrawForCapture() -> @MainActor () -> Void {
     guard !panel.isMiniaturized else { return {} }
     let visible = isVisible
-    let inUse = visible && panel.isKeyWindow
+    let holdsKey = panel.isKeyWindow || panel.retainsKeyForHandoff
+    let inUse = visible && (holdsKey || awaitsKey)
     let above = visible && !inUse ? WindowStack.windowsAbove(atLevelOf: panel) : []
-    if visible { hide() }
-    panel.orderOut(nil)
+    if holdsKey {
+      conceal()
+      panel.retainsKeyForHandoff = true
+      ordersOutAfterHandoff = true
+      if visible { onVisibilityChange?(false) }
+      waitForHandoff { [weak self] _ in
+        guard let self, ordersOutAfterHandoff else { return }
+        resetHandoff()
+        panel.orderOut(nil)
+      }
+    } else {
+      if visible { hide() }
+      panel.orderOut(nil)
+    }
     return { [weak self] in
       guard let self else { return }
+      resetHandoff()
       if inUse {
         show()
       } else if visible {
         reveal(below: above)
+      } else if panel.isKeyWindow {
+        releaseHiddenKey()
       } else {
         panel.orderFrontRegardless()
       }
     }
   }
 
-  /// Shows the panel again under `windows` (``WindowStack/orderIn(_:below:)``) without taking
-  /// the keyboard or floating it.
+  /// Shows the panel under `windows` (``WindowStack/orderIn(_:below:)``) without taking focus.
   private func reveal(below windows: [CGWindowID]) {
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
@@ -199,14 +234,11 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
 
   // MARK: NSWindowDelegate
 
-  /// The close button dismisses like the in-panel hide control; quitting releases the panel.
   func windowShouldClose(_ sender: NSWindow) -> Bool {
     hide()
     return false
   }
 
-  /// Only an edge drag by the user replaces the remembered size; a drag on the left or top edge
-  /// moves the panel as well.
   func windowDidEndLiveResize(_ notification: Notification) {
     defaults.set(panel.frame.width, forKey: Self.widthKey)
     defaults.set(panel.frame.height, forKey: Self.heightKey)
@@ -217,32 +249,31 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     if !placing { userMoving = true }
   }
 
-  /// AppKit may report a drag's last move after the button is released, so that move still
-  /// counts before the drag ends.
+  /// AppKit may report a drag's last move after mouse-up, so record it before ending the drag.
   func windowDidMove(_ notification: Notification) {
     guard userMoving else { return }
     rememberPosition()
     if NSEvent.pressedMouseButtons & 1 == 0 { userMoving = false }
   }
 
-  /// AppKit also hands the keyboard to the panel when another Atd window gives it up (an island
-  /// card, the mini panel, a capture overlay, a closing window), even while other apps cover the
-  /// panel. That key status keeps the panel where it is; only one gained in front may float.
+  /// Key status inherited when another Atd window resigns must not float a covered panel.
   func windowDidBecomeKey(_ notification: Notification) {
+    awaitsKey = false
     if !holdsFront { holdsFront = !WindowStack.isCovered(panel) }
     updateLevel()
     host.setState(.windowActive(.init(active: true)))
   }
 
   func windowDidResignKey(_ notification: Notification) {
+    let ordersOut = ordersOutAfterHandoff
+    if ordersOut || !isVisible { resetHandoff() } else { awaitsKey = false }
+    if ordersOut { panel.orderOut(nil) }
     holdsFront = false
     updateLevel()
     host.setState(.windowActive(.init(active: false)))
   }
 
-  /// A display change: a panel still at its corner or center follows it, a moved one or one
-  /// shown where the user left it stays inside. Moves AppKit makes for the change are not the
-  /// user's.
+  /// Keeps anchored panels with their display and clamps moved ones inside the new work area.
   @objc private func screensChanged() {
     userMoving = false
     let frame = ScreenRect(panel.frame)
@@ -260,8 +291,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.setFrame(NSRect(frame), display: true)
   }
 
-  /// Records where the panel sits on the display holding most of it. A zoomed panel fills the
-  /// work area by the system's choice, not where the user put it.
+  /// Records the unzoomed panel offset on the display holding most of it.
   private func rememberPosition() {
     guard !panel.isZoomed else { return }
     let frame = ScreenRect(panel.frame)
@@ -284,39 +314,33 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   private static func savedSize(_ defaults: UserDefaults) -> WindowSize {
-    let width = defaults.double(forKey: widthKey)
-    let height = defaults.double(forKey: heightKey)
-    return width > 0 && height > 0
-      ? WindowSize(width: width, height: height) : PanelGeometry.defaultSize
+    let (w, h) = (defaults.double(forKey: widthKey), defaults.double(forKey: heightKey))
+    return w > 0 && h > 0 ? WindowSize(width: w, height: h) : PanelGeometry.defaultSize
   }
 }
 
-/// A panel that can become key on summon without activating the app, so the page gets the
-/// keyboard while the other app keeps the menu bar (spike S7). Direct clicks use normal native
-/// activation when available. Hidden, it stays ordered in for WebKit's timers but must not inherit
-/// the keyboard when the command island resigns it: the next summon would otherwise read this
-/// invisible panel instead of the original selection.
+/// Non-activating summonable task panel (S7); direct clicks activate natively when available, and
+/// hidden `canBecomeKey` stays false outside shortcut handoff so resigning HUDs skip it.
 final class ShellPanel: NSPanel {
   private var nativeClickActivation = false
+  var retainsKeyForHandoff = false
 
-  /// Configured once before this task panel is first ordered in; mini panels keep their own
-  /// non-activating clicks so their actions can still capture the source application's selection.
+  /// Configured once for the task panel; mini panels keep non-activating clicks for selection.
   func configureClickActivation() {
     nativeClickActivation = PanelClickActivation.configure(self)
   }
 
   override var canBecomeKey: Bool {
-    alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized
+    retainsKeyForHandoff || (alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized)
   }
   override var canBecomeMain: Bool { false }
 
   override func sendEvent(_ event: NSEvent) {
-    // If the private capability is unavailable, keep the previous click activation request.
-    // Native clicks otherwise pass through once, including their drag and mouse-up sequence.
-    switch event.type {
-    case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-      if !nativeClickActivation, canBecomeKey { NSApp.activate() }
-    default: break
+    // Fall back to explicit activation on click only when the native capability is unavailable.
+    if !nativeClickActivation, canBecomeKey,
+      [.leftMouseDown, .rightMouseDown, .otherMouseDown].contains(event.type)
+    {
+      NSApp.activate()
     }
     super.sendEvent(event)
   }

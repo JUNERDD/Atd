@@ -82,17 +82,33 @@ final class WriteTargets {
   /// step read (`selection`); when the summon read none, the field's selected text is read here.
   /// The page learns whether the field can take text (``AXWritability``).
   func capture(after selection: SummonSelection) async -> ShortcutCommandEvent.Target? {
+    let readsText = if case .unread = selection { true } else { false }
+    let read = await beginRead(readsText: readsText)?.value
+    return record(read, after: selection)
+  }
+
+  /// Starts reading the frontmost external app's focused field off the main thread so a command
+  /// summon can run it concurrently with ``SelectionReader``.
+  func beginRead(readsText: Bool) -> Task<WriteTargetReader.Read?, Never>? {
     let ownPID = ProcessInfo.processInfo.processIdentifier
     guard SelectionReader.isTrusted,
-      let frontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-      frontmost != ownPID
+      let frontmost = NSWorkspace.shared.frontmostApplication,
+      frontmost.processIdentifier != ownPID
     else { return nil }
-    let readsText = if case .unread = selection { true } else { false }
-    let reader = WriteTargetReader(frontmostPID: frontmost, readsText: readsText)
-    guard
-      let read = await Deadline.value(
-        within: .milliseconds(750), fallback: nil, { reader.read() }),
-      read.target.pid != ownPID,
+    let reader = WriteTargetReader(
+      frontmostPID: frontmost.processIdentifier, readsText: readsText,
+      awaitsWebFocus: Self.awaitsWebFocus(frontmost))
+    return Task {
+      await Deadline.value(within: .milliseconds(750), fallback: nil) { reader.read() }
+    }
+  }
+
+  /// Records a completed field read with `selection` stamped onto it.
+  func record(_ read: WriteTargetReader.Read?, after selection: SummonSelection)
+    -> ShortcutCommandEvent.Target?
+  {
+    let ownPID = ProcessInfo.processInfo.processIdentifier
+    guard let read, read.target.pid != ownPID,
       let app = NSRunningApplication(processIdentifier: read.target.pid),
       let name = Self.displayName(app)
     else { return nil }
@@ -106,8 +122,7 @@ final class WriteTargets {
       if content.containsCells {
         target.selection = .cells(nil)
       } else {
-        let textSurface = SelectionSurface(target.element)
-        target.selection = content.hasHTML || textSurface.nativeText ? .copied : .untyped
+        target.selection = content.hasHTML || read.nativeText ? .copied : .untyped
       }
     }
     let id = UUID().uuidString
@@ -123,6 +138,20 @@ final class WriteTargets {
       }
     return ShortcutCommandEvent.Target(
       id: id, app: name, writable: read.writable, selectionKind: kind)
+  }
+
+  /// Whether `app` is a Chromium, Electron or CEF host whose accessibility tree builds
+  /// asynchronously after ``SelectionPresence/wakeWebContent(_:)`` asks for its role.
+  static func awaitsWebFocus(_ app: NSRunningApplication) -> Bool {
+    if BrowserTextGeometry.arms(app.bundleIdentifier) { return true }
+    guard let bundleURL = app.bundleURL else { return false }
+    return [
+      "Contents/Frameworks/Electron Framework.framework",
+      "Contents/Frameworks/Chromium Embedded Framework.framework",
+    ].contains { relative in
+      let path = bundleURL.appendingPathComponent(relative, isDirectory: true).path
+      return FileManager.default.fileExists(atPath: path)
+    }
   }
 
   /// The target recorded under `id`, unless it expired.
@@ -165,25 +194,28 @@ nonisolated struct WriteTargetReader: Sendable {
   struct Read: Sendable {
     var target: WriteTarget
     let writable: Bool
+    let nativeText: Bool
   }
 
   let frontmostPID: pid_t
   /// Read `AXSelectedText` too, when the summon did not read the selection itself.
   let readsText: Bool
+  /// Only Chromium, Electron and CEF hosts build their tree asynchronously on wake.
+  let awaitsWebFocus: Bool
 
   /// How long the capture waits for a browser woken now to build the tree its focus is in.
   static let webContentWait: Duration = .milliseconds(450)
 
   /// The app's focused element. Chromium and Electron report none until an assistive tool asked
-  /// them something, then build their tree asynchronously: an app with no focus to report is
-  /// woken (``SelectionPresence/wakeWebContent(_:)``, usually already done when the shortcut
-  /// fired) and asked again until the tree answers or ``webContentWait`` passes.
-  private static func focusedElement(of app: AXUIElement) throws(AXFieldError) -> AXUIElement? {
+  /// them something, then build their tree asynchronously: only such hosts are woken
+  /// (``SelectionPresence/wakeWebContent(_:)``) and polled up to ``webContentWait``.
+  private func focusedElement(of app: AXUIElement) throws(AXFieldError) -> AXUIElement? {
     if let focused: AXUIElement = try AXField.copy(app, kAXFocusedUIElementAttribute) {
       return focused
     }
+    guard awaitsWebFocus else { return nil }
     SelectionPresence.wakeWebContent(app)
-    let deadline = ContinuousClock.now + webContentWait
+    let deadline = ContinuousClock.now + Self.webContentWait
     while ContinuousClock.now < deadline {
       Thread.sleep(forTimeInterval: 0.03)
       if let focused: AXUIElement = try AXField.copy(app, kAXFocusedUIElementAttribute) {
@@ -202,7 +234,7 @@ nonisolated struct WriteTargetReader: Sendable {
       AXUIElementSetMessagingTimeout(systemWide, timeout)
       let app = AXUIElementCreateApplication(frontmostPID)
       AXUIElementSetMessagingTimeout(app, timeout)
-      let focused = try Self.focusedElement(of: app)
+      let focused = try focusedElement(of: app)
       var pid: pid_t = 0
       guard let focused, AXUIElementGetPid(focused, &pid) == .success, pid != ownPID else {
         return nil
@@ -219,7 +251,9 @@ nonisolated struct WriteTargetReader: Sendable {
         pid: pid, element: focused,
         selection: table == nil ? .field(range: range) : .cells(cells), selectedText: text)
       return Read(
-        target: target, writable: (table == nil || cells != nil) && AXWritability.writable(focused))
+        target: target,
+        writable: (table == nil || cells != nil) && AXWritability.writable(focused),
+        nativeText: surface.nativeText)
     } catch {
       return nil
     }

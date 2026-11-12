@@ -7,6 +7,8 @@ import Foundation
 final class HeldIntent {
   private var decided: CommandLaunch.Intent?
   private var waiting: [CheckedContinuation<CommandLaunch.Intent, Never>] = []
+  /// Shows press feedback immediately on key-up when a quick tap still waits on synthetic ⌘C.
+  var onTapFallback: (() -> Void)?
   /// The launch went to the page.
   var onDelivered: (() -> Void)?
 
@@ -66,6 +68,10 @@ final class ShortcutHolds {
     case .hold(let generation):
       guard let entry else { return }
       let held = HeldIntent()
+      held.onTapFallback = { [weak progress] in
+        guard let progress, !progress.pressing else { return }
+        progress.showPress(command: entry.name)
+      }
       held.onDelivered = { [weak progress] in progress?.pressDelivered() }
       guard summon(trigger, held) else {
         hold.drop(generation: generation)

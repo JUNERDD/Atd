@@ -152,7 +152,7 @@ final class ShellBridge {
       try shell.setShortcutRecording(params, from: host, document: document)
       return try Self.encode(NativeEmpty())
     case .capture:
-      return try Self.encode(shell.captureSelection())
+      return try Self.encode(await shell.captureSelection())
     case .clipboardRead:
       let text = NSPasteboard.general.string(forType: .string) ?? ""
       return try Self.encode(ClipboardReadResult(text: text))

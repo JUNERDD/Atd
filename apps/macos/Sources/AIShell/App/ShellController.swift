@@ -306,8 +306,8 @@ public final class ShellController {
   }
 
   /// `capture('selection')` returns the stash of the last summon, never a live read.
-  func captureSelection() -> CaptureResult {
-    summoner.captureResult()
+  func captureSelection() async -> CaptureResult {
+    await summoner.captureResult()
   }
 
   var isPinned: Bool { defaults.bool(forKey: Self.pinnedKey) }
