@@ -161,6 +161,9 @@ final class ScreenshotTaker {
     let screen = try claim()
     defer { release(screen) }
     guard CGPreflightScreenCaptureAccess() else {
+      guard await ShortcutRelease.waitForHandoff() else {
+        throw BridgeError("The screenshot was cancelled.")
+      }
       requestScreenAccess()
       return .notOk(.init(reason: .notPermitted))
     }

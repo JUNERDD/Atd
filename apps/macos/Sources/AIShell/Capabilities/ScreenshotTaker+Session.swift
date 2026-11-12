@@ -58,47 +58,65 @@ extension ScreenshotTaker {
   func run(
     reopening: ReopenBase?, request: ScreenshotRequest, writeTargets: WriteTargets?
   ) async throws(BridgeError) -> SessionRun {
-    // Capture overlays activate Atd and take the keyboard. Let the invoking chord finish in
-    // its original app before withdrawing the panel or presenting any overlay or permission UI.
-    guard await ShortcutRelease.waitForHandoff() else {
-      throw BridgeError("The screenshot was cancelled.")
-    }
     // A build whose grant was revoked (or left with an earlier signature) captures only the
     // wallpaper and the menu bar, so the grant is checked on every capture before anything shows.
     guard CGPreflightScreenCaptureAccess() else {
+      guard await ShortcutRelease.waitForHandoff() else {
+        throw BridgeError("The screenshot was cancelled.")
+      }
       requestScreenAccess()
       return .notPermitted
     }
-    // Read while the app in front still has its field focused; the freeze runs meanwhile.
-    let targetRead =
-      request.toolbar
-      ? writeTargets.map { targets in
-        Task { await targets.capture(after: .unread) }
-      } : nil
     let previousApp = NSWorkspace.shared.frontmostApplication.flatMap {
       $0 == NSRunningApplication.current ? nil : $0
     }
     let restorePanel = panel.withdrawForCapture()
-    let session = CaptureSession(
-      targeting: targeting, offersTrustRequest: !trustRequested,
-      regions: reopening == nil ? regions : CaptureRegionMemory(),
-      options: options(for: request, reopening: reopening), makeEditor: makeEditor)
-    self.session = session
+    // Before any overlay exists: detection must see the windows the user sees.
+    let snapshot = reopening == nil ? WindowSnapshot.take() : WindowSnapshot(entries: [])
+    let targetRead: Task<ShortcutCommandEvent.Target?, Never>?
+    let session: CaptureSession
     defer { self.session = nil }
-    let presented: CapturePresentation
+    var presented: CapturePresentation
     do {
-      presented = try await session.present(reopening: reopening, targetRead: targetRead)
+      async let freezer = DisplayFreezer.prepare()
+      // Read while the app in front still has its field focused; the freeze runs meanwhile.
+      targetRead =
+        request.toolbar
+        ? writeTargets.map { targets in
+          Task { await targets.capture(after: .unread) }
+        } : nil
+      session = CaptureSession(
+        targeting: targeting, offersTrustRequest: !trustRequested,
+        regions: reopening == nil ? regions : CaptureRegionMemory(),
+        options: options(for: request, reopening: reopening), makeEditor: makeEditor)
+      self.session = session
+      session.longScreenshot.snapshot = snapshot
+      if reopening == nil { session.begin(windows: snapshot.windows) }
+      presented = try await session.present(
+        reopening: reopening, snapshot: snapshot, freezer: try await freezer,
+        targetRead: targetRead, needsHandoff: true)
     } catch {
+      targetRead?.cancel()
       session.cancel()
       _ = await session.run()
       restorePanel()
       if DisplayFreezer.isPermissionError(error) {
+        guard await ShortcutRelease.waitForHandoff() else {
+          throw BridgeError("The screenshot was cancelled.")
+        }
         requestScreenAccess()
         return .notPermitted
       }
       throw (error as? BridgeError) ?? BridgeError("The screen could not be captured.")
     }
     let outcome = await session.run()
+    switch outcome {
+    case .confirmed, .launched, .textResult(.insert):
+      presented.target = await targetRead?.value
+    case .cancelled, .wantsAccessibility, .failed, .copied, .record, .longScreenshot,
+      .copiedLongScreenshot, .textResult(.open):
+      targetRead?.cancel()
+    }
     // The previous app gets activation back before the panel reappears, so a panel that had the
     // keyboard is key over it exactly as before (non-activating, like a summon), and one that
     // did not returns behind the windows that covered it.

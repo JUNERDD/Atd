@@ -113,6 +113,13 @@ final class AnnotationCommandSlot {
     redaction = .hidden
   }
 
+  /// Updates the focused field's state when `WriteTargets` finishes after the row was built.
+  func updateCursor(_ cursor: Bool, app: String?) {
+    setup?.cursor = cursor
+    setup?.cursorApp = app
+    options.cursor = cursor
+  }
+
   /// `/`: the row turns into the field; false without a row or with the field already open.
   func askFromKey() -> Bool {
     guard row != nil, !isAsking else { return false }

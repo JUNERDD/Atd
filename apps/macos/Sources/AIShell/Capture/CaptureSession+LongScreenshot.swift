@@ -50,7 +50,7 @@ extension CaptureSession {
     refreshBars()
     hostChrome(of: live, on: owner, keepClear: keepClear(for: rect))
     live.previewSize = chrome.previewSize
-    owner.window?.makeKey()
+    if hasKeyboard { owner.window?.makeKey() }
     owner.window?.makeFirstResponder(owner)
     longScreenshotChanged(live.capture.progress, in: live)
     Task { [weak self] in
@@ -110,12 +110,12 @@ extension CaptureSession {
     guard case .longScreenshot(let rect) = phase else { return }
     longScreenshot.endLive()
     for overlay in overlays { overlay.showsFrozenScreen = true }
-    NSApp.activate()
+    if hasKeyboard { NSApp.activate() }
     phase = .selected(rect)
     show(rect, handles: true)
     refreshBars()
     host(rect)
-    primaryOverlay(for: rect)?.window?.makeKey()
+    if hasKeyboard { primaryOverlay(for: rect)?.window?.makeKey() }
   }
 
   /// Return or the chrome's Done: the session ends with the stitched image once the engine has
@@ -245,8 +245,8 @@ extension CaptureSession {
   /// The overlay, a non-activating panel, becomes key again without activating Atd, so Space,
   /// Return and Esc keep reaching it.
   private func retakeKeyboard() {
-    guard case .longScreenshot(let rect) = phase, let owner = primaryOverlay(for: rect),
-      let window = owner.window
+    guard hasKeyboard, case .longScreenshot(let rect) = phase,
+      let owner = primaryOverlay(for: rect), let window = owner.window
     else { return }
     window.makeKey()
     window.makeFirstResponder(owner)

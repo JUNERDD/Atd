@@ -31,7 +31,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     pointer = (overlay, point)
     guard case .idle = phase else { return }
     // While nothing is selected the keyboard follows the pointer's display.
-    if let window = overlay.window, !window.isKeyWindow {
+    if hasKeyboard, let window = overlay.window, !window.isKeyWindow {
       window.makeKey()
       window.makeFirstResponder(overlay)
     }
@@ -230,7 +230,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     show(rect, handles: true)
     refreshBars()
     host(rect)
-    primaryOverlay(for: rect)?.window?.makeKey()
+    if hasKeyboard { primaryOverlay(for: rect)?.window?.makeKey() }
   }
 
   /// Whether a press at `point` is the session's rather than the editor's (D14): the handles

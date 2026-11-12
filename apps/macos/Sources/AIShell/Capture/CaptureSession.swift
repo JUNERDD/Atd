@@ -103,9 +103,12 @@ final class CaptureSession {
   /// The selection geometry over the displays added so far.
   private(set) var model = SelectionModel(bounds: .zero, displays: [])
   private(set) var overlays: [CaptureOverlayView] = []
-  /// Set by ``activate()`` once every display is frozen. Until then the overlays are inert: the
-  /// pointer is ignored, so nothing is selected over displays that have no overlay yet.
-  private(set) var isActive = false
+  /// Set by ``beginInteractive()`` once every display is frozen. Until then the overlays are inert:
+  /// the pointer is ignored, so nothing is selected over displays that have no overlay yet.
+  var isActive = false
+  /// Set by ``activateKeyboard()`` once the invoking shortcut's keys are released and the overlays
+  /// may become key.
+  var hasKeyboard = false
   var phase = Phase.idle
   /// A tool is chosen: presses inside the selection, away from its handles and edge band, are
   /// the editor's. The selection itself stays adjustable either way (D14).
@@ -123,6 +126,8 @@ final class CaptureSession {
   var chainIndex = 0
   var hoverInFlight = false
   private var beginTask: Task<Void, Never>?
+  var handoffTask: Task<Void, Never>?
+  var targetTask: Task<Void, Never>?
   private var outcome: Outcome?
   private var continuation: CheckedContinuation<Outcome, Never>?
   private var observers: [any NSObjectProtocol] = []
@@ -151,7 +156,9 @@ final class CaptureSession {
       observers.append(
         center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
           MainActor.assumeIsolated {
-            guard let self, !(resigns && self.passesInputThrough) else { return }
+            guard let self, !resigns || (self.hasKeyboard && !self.passesInputThrough) else {
+              return
+            }
             self.cancel()
           }
         })
@@ -181,7 +188,7 @@ final class CaptureSession {
     desktop = FrozenDesktop(quartzBounds: quartzBounds)
   }
 
-  /// Puts a frozen display's overlay on its screen, inert until ``activate()``.
+  /// Puts a frozen display's overlay on its screen, inert until ``beginInteractive()``.
   func add(_ display: FrozenDisplay, on screen: NSScreen) {
     guard !isFinished else { return }
     desktop.add(display)
@@ -193,23 +200,6 @@ final class CaptureSession {
     overlays.append(view)
     view.show(area: nil, handles: false)
     refreshBar(on: view)
-  }
-
-  /// Every display is frozen: the overlay under the pointer takes the keyboard and the
-  /// detected area follows the pointer.
-  func activate() {
-    guard !isFinished else { return }
-    isActive = true
-    let mouse = NSEvent.mouseLocation
-    let overlay =
-      overlays.first { NSMouseInRect(mouse, $0.window?.frame ?? .zero, false) } ?? overlays.first
-    guard let overlay, let window = overlay.window else { return }
-    window.makeKeyAndOrderFront(nil)
-    window.makeFirstResponder(overlay)
-    pointer = (overlay, overlay.convert(window.mouseLocationOutsideOfEventStream, from: nil))
-    refreshBars()
-    renderIdle()
-    requestHover()
   }
 
   /// Suspends until the session ends, then ends element detection. A confirmed (or launched)
@@ -280,25 +270,13 @@ final class CaptureSession {
     finish(outcome(confirmation))
   }
 
-  /// Edit mode: makes `rect` (view points of the display `displayID`) the selection and puts
-  /// `document` (selection-local) back on it, still editable.
-  func preselect(
-    _ rect: CGRect, onDisplay displayID: CGDirectDisplayID, restoring document: AnnotationDocument
-  ) {
-    guard !isFinished, let owner = overlays.first(where: { $0.display.displayID == displayID })
-    else { return }
-    if let window = owner.window {
-      window.makeKeyAndOrderFront(nil)
-      window.makeFirstResponder(owner)
-      pointer = (owner, owner.convert(window.mouseLocationOutsideOfEventStream, from: nil))
-    }
-    commit(rect.offsetBy(dx: owner.bounds.minX, dy: owner.bounds.minY))
-    if !document.isEmpty { editor?.restore(document) }
-  }
-
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    handoffTask?.cancel()
+    handoffTask = nil
+    targetTask?.cancel()
+    targetTask = nil
     phase = .idle
     editor?.hide()
     editor = nil

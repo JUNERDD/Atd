@@ -24,7 +24,14 @@ final class AnnotationEditor: AnnotationEditing {
   var onCopy: (() -> Void)?
   var onInteriorClaimChange: ((Bool) -> Void)?
   var onLaunch: ((CaptureLaunch) -> Void)?
-  var commandRow: CaptureCommandRowSetup?
+  var commandRow: CaptureCommandRowSetup? {
+    didSet {
+      guard let commandRow, !canvases.isEmpty else { return }
+      slot.updateCursor(commandRow.cursor, app: commandRow.cursorApp)
+      text.card.insertApp = commandRow.cursorApp
+      if text.card.presentation == .card { refreshCard() }
+    }
+  }
   var keepClear = AnnotationToolbarLayout.KeepClear()
   var renderSelection: (() -> CaptureSelectionShot?)?
   var onTextResult: ((CaptureTextHandoff) -> Void)?
