@@ -59,7 +59,7 @@ export function MemoryList({
   });
   const { count, sentinel } = useRevealMore(shown.length, CARD_BATCH, `${group}:${searched}`);
   if (!shown.length) {
-    const searching = Boolean(searched.trim());
+    const searching = Boolean(searched.trim()) && totalUnits > 0;
     const filtered = totalUnits > 0 && group !== 'all';
     return (
       <div className="settings-extension-empty">
