@@ -13,6 +13,9 @@ final class IslandShellFeedback<Action: Hashable> {
   private(set) var states: [Action: IslandRecording.CardFeedback] = [:]
   @ObservationIgnored private var tokens: [Action: Int] = [:]
 
+  // Avoid Swift 6.2.4's optimized generic main-actor deinit crash, as with IslandPlainHost.
+  deinit {}
+
   func show(_ feedback: IslandRecording.CardFeedback, for action: Action) {
     states[action] = feedback
     let token = (tokens[action] ?? 0) + 1

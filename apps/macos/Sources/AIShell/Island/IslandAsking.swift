@@ -45,6 +45,10 @@ final class IslandAsking<Ask: CardAsk, Quick: Hashable & Sendable> {
   @ObservationIgnored var writeClipboard: (String) -> Bool = { _ in false }
   @ObservationIgnored private var copiedToken = 0
 
+  // Swift 6.2.4's Release optimizer crashes on this generic main-actor class's synthesized
+  // deinit below macOS 26, as with IslandPlainHost. Remove when the toolchain is fixed.
+  deinit {}
+
   /// Asks `question` (a quick ask's when `quick`) about the kept range: a repeat pages to its
   /// answer and flashes it; otherwise the ask goes to the orchestrator, after the one still
   /// coming is stopped.
