@@ -4,8 +4,8 @@ import AppKit
 
 /// One screen recording (decision R5): a ScreenCaptureKit stream of the configured region,
 /// written to one movie with pauses cut out, plus the input log and, with Show Keys, the key
-/// badges drawn into it. It records one take: ``start()`` once, then ``stop()`` for the take or
-/// ``discard()``.
+/// badges drawn into it. It records one take: optionally ``prepare()`` ahead of time, ``start()``
+/// once, then ``stop()`` for the take or ``discard()``.
 ///
 /// It owns no claim, countdown or corner marks; its owner shows those around it (see the
 /// handoff's claim procedure). The recorder's owner is told the live state at most every
@@ -14,7 +14,7 @@ import AppKit
 /// ``discard()``. All of it runs on the main actor; samples are written on the writer's queue.
 final class ScreenRecorder {
   enum Phase: Equatable {
-    case idle, starting, recording, stopping, ended
+    case idle, preparing, prepared, starting, recording, stopping, ended
   }
 
   /// The live state, every 200 ms while recording, at once after a pause, resume or
@@ -27,23 +27,25 @@ final class ScreenRecorder {
   let config: RecordingConfig
   private(set) var phase: Phase = .idle
   /// The microphone recorded now; nil while it is off.
-  private(set) var microphoneID: String?
+  var microphoneID: String?
   /// Why the capture stopped by itself, once it did. The take then holds only what came before
   /// that moment (no frame, sound or input after it, the clock standing still), pausing and the
   /// microphone no longer apply, and ``stop()`` keeps it.
   private(set) var interruption: RecordingInterruption?
-  private let clock: RecordingWriterClock
-  private var session: RecordingSession?
+  let clock: RecordingWriterClock
+  var session: RecordingSession?
+  private var preparation: Task<Result<RecordingSession, RecordingError>, Never>?
+  private var prepareFailure: RecordingError?
   private var inputLog: RecordingInputLog?
   private var keyBadges: RecordingKeyBadges?
   private var ticker: Task<Void, Never>?
   private var displays: NSObjectProtocol?
-  /// An interruption heard while starting, with its host time: told once the take records.
+  /// An interruption heard before recording begins, with its host time: told once the take records.
   private var earlyInterruption: (reason: RecordingInterruption, time: Double)?
   /// The microphone the latest ``setMicrophone(_:)`` asked for.
-  private var microphoneTarget: String?
+  var microphoneTarget: String?
   /// The calls waiting for the microphone switch under way; nil while none runs.
-  private var microphoneWaiters: [CheckedContinuation<RecordingError?, Never>]?
+  var microphoneWaiters: [CheckedContinuation<RecordingError?, Never>]?
 
   init(config: RecordingConfig) {
     self.config = config
@@ -54,24 +56,37 @@ final class ScreenRecorder {
 
   var isPaused: Bool { clock.current.timeline.isPaused }
 
-  /// Starts recording. Asks for the microphone first when the configuration records one.
-  /// Throws ``RecordingError/microphoneDenied``, ``RecordingError/screenRecordingDenied``,
+  /// Opens the take's stream and writer ahead of ``start()`` without capturing samples or input
+  /// yet. ``discard()`` cleans up at any point.
+  func prepare() async throws(RecordingError) {
+    if let prepareFailure { throw prepareFailure }
+    if phase == .prepared { return }
+    guard phase == .idle || phase == .preparing else { throw .notRecording }
+    if phase == .idle { phase = .preparing }
+    _ = try await openSession()
+    if phase == .preparing { phase = .prepared }
+  }
+
+  /// Starts recording, reusing a prepared session when ``prepare()`` opened one. Throws
+  /// ``RecordingError/microphoneDenied``, ``RecordingError/screenRecordingDenied``,
   /// ``RecordingError/displayUnavailable`` or ``RecordingError/captureFailed(_:)``; the recorder
   /// has then cleaned up and ended.
   func start() async throws(RecordingError) {
-    guard phase == .idle else { throw .notRecording }
+    if let prepareFailure {
+      self.prepareFailure = nil
+      throw prepareFailure
+    }
+    guard [.idle, .preparing, .prepared].contains(phase) else { throw .notRecording }
     phase = .starting
     do throws(RecordingError) {
-      if microphoneID != nil { try await MicrophoneAccess.request() }
-      guard phase == .starting else { throw RecordingError.notRecording }
-      let session = try await RecordingSession.open(
-        config: config, microphoneID: microphoneID, clock: clock, prepare: prepareBadges,
-        onInterruption: { [weak self] in self?.interrupt($0, at: $1) })
+      let session = try await openSession()
       guard phase == .starting else {
         await session.cancel()
         throw RecordingError.notRecording
       }
-      self.session = session
+      guard CGDisplayBounds(config.displayID).width > 0,
+        NSScreen.screens.contains(where: { $0.displayID == config.displayID })
+      else { throw RecordingError.displayUnavailable }
       let log = RecordingInputLog(region: session.region)
       log.onKey = { [weak self] press in
         guard let self, !self.isPaused else { return }
@@ -119,35 +134,6 @@ final class ScreenRecorder {
     tick()
   }
 
-  /// Turns the microphone on with `deviceID` (`AVCaptureDevice.uniqueID`, the remembered one) or
-  /// off with nil, while recording. Turning it on asks for the grant at first need; turning it
-  /// off stops the capture of the device, not only its recording. Switches run one at a time
-  /// and the latest call wins: one made while a switch runs waits for it, and every waiting
-  /// call hears how it ended. A refused grant leaves the microphone as it was; a switch the
-  /// stream refuses leaves it off.
-  func setMicrophone(_ deviceID: String?) async throws(RecordingError) {
-    guard phase == .recording, interruption == nil, clock.current.timeline.stop == nil,
-      session != nil
-    else { throw .notRecording }
-    microphoneTarget = deviceID
-    if microphoneWaiters != nil {
-      let failure = await withCheckedContinuation { microphoneWaiters?.append($0) }
-      if let failure { throw failure }
-      return
-    }
-    microphoneWaiters = []
-    var failure: RecordingError?
-    do throws(RecordingError) {
-      try await switchMicrophone()
-    } catch {
-      failure = error
-    }
-    let waiters = microphoneWaiters ?? []
-    microphoneWaiters = nil
-    for waiter in waiters { waiter.resume(returning: failure) }
-    if let failure { throw failure }
-  }
-
   /// Stops and finishes the take at this moment; after an interruption, keeping what was
   /// recorded until it. The take's folder then belongs to the caller. Throws
   /// ``RecordingError/writerFailed(_:)`` when no movie could be finished, after cleaning up; a
@@ -174,12 +160,57 @@ final class ScreenRecorder {
     }
   }
 
-  /// Drops the recording and its files while it starts or records. Nothing once ``stop()`` began:
+  /// Drops the recording and its files before or while it records. Nothing once ``stop()`` began:
   /// its take, or its failure, settles the files (the caller deletes a take's folder).
   func discard() async {
-    guard phase == .idle || phase == .starting || phase == .recording else { return }
+    guard [.idle, .preparing, .prepared, .starting, .recording].contains(phase) else { return }
     phase = .ended
     await tearDown()
+  }
+
+  private func openSession() async throws(RecordingError) -> RecordingSession {
+    if let prepareFailure { throw prepareFailure }
+    if let session { return session }
+    let task =
+      preparation
+      ?? Task<Result<RecordingSession, RecordingError>, Never> { [weak self] in
+        guard let self else { return .failure(.notRecording) }
+        do throws(RecordingError) {
+          if self.microphoneID != nil { try await MicrophoneAccess.request() }
+          guard self.phase == .preparing || self.phase == .starting else {
+            throw RecordingError.notRecording
+          }
+          let session = try await RecordingSession.open(
+            config: self.config, microphoneID: self.microphoneID, clock: self.clock,
+            prepare: { [weak self] in self?.prepareBadges(region: $0) },
+            onInterruption: { [weak self] in self?.interrupt($0, at: $1) })
+          guard self.phase == .preparing || self.phase == .starting else {
+            await session.cancel()
+            throw RecordingError.notRecording
+          }
+          self.session = session
+          return .success(session)
+        } catch {
+          return .failure(error)
+        }
+      }
+    preparation = task
+    let result = await task.value
+    preparation = nil
+    switch result {
+    case .success(let session):
+      guard [.preparing, .prepared, .starting, .recording].contains(phase) else {
+        throw .notRecording
+      }
+      return session
+    case .failure(let error):
+      if phase == .preparing {
+        prepareFailure = error
+        phase = .ended
+        await tearDown()
+      }
+      throw error
+    }
   }
 
   /// Shows the key badges' window before the stream reads what is on screen, so its filter
@@ -192,52 +223,15 @@ final class ScreenRecorder {
     return badges.windowNumber
   }
 
-  private func tick() {
+  func tick() {
     onLive?(clock.live(at: RecordingSamples.hostNow))
-  }
-
-  /// Applies ``microphoneTarget`` until the microphone matches it, reading it again after every
-  /// wait. A failure leaves the target at the microphone as the failure left it.
-  private func switchMicrophone() async throws(RecordingError) {
-    while microphoneTarget != microphoneID {
-      let target = microphoneTarget
-      do throws(RecordingError) {
-        if target != nil { try await MicrophoneAccess.request() }
-        guard phase == .recording, interruption == nil, clock.current.timeline.stop == nil,
-          let session
-        else {
-          throw RecordingError.notRecording
-        }
-        guard target == microphoneTarget else { continue }
-        // Off first, so nothing the old device still sends is written; on again after the
-        // switch, so another device starts a file of its own.
-        clock.setMicrophone(on: false)
-        microphoneID = nil
-        try await session.update(microphoneID: target)
-        guard phase == .recording, interruption == nil, clock.current.timeline.stop == nil else {
-          throw RecordingError.notRecording
-        }
-        microphoneID = target
-        // Not when it was turned off again meanwhile: the file would hold nothing wanted.
-        if target != nil, target == microphoneTarget { clock.setMicrophone(on: true) }
-        tick()
-      } catch {
-        if phase == .recording, interruption == nil, clock.current.timeline.stop == nil,
-          target != microphoneTarget
-        {
-          continue
-        }
-        microphoneTarget = microphoneID
-        throw error
-      }
-    }
   }
 
   /// The capture stopped by itself at host `time`. The take stops there (nothing captured from
   /// then on counts, the clock stands still, the input log stops listening) and the owner hears
-  /// it, once. Heard while starting, it waits until the take records.
+  /// it, once. Heard before recording begins, it waits until the take records.
   private func interrupt(_ reason: RecordingInterruption, at time: Double) {
-    if phase == .starting {
+    if [.preparing, .prepared, .starting].contains(phase) {
       if earlyInterruption == nil { earlyInterruption = (reason, time) }
       clock.stop(at: time)
       inputLog?.stopListening()
@@ -280,6 +274,10 @@ final class ScreenRecorder {
 
   /// Ends everything and deletes the take's folder.
   private func tearDown() async {
+    let pending = preparation
+    preparation = nil
+    pending?.cancel()
+    _ = await pending?.value
     clock.stop(at: RecordingSamples.hostNow)
     endLive()
     _ = await inputLog?.stop()

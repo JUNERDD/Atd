@@ -8,8 +8,8 @@ import AppKit
 /// - Start: the recording's own claim (`.user(.screenRecording)`, which leaves the user's other
 ///   features free and refuses background computer use), the remembered settings
 ///   (``RecordingSettingsMemory``) mapped onto a ``RecordingConfig``, the microphone's
-///   permission, the corner marks and the countdown, which Escape and ⌃⌘Esc cancel; then the
-///   ``ScreenRecorder``.
+///   permission, the corner marks and the countdown (which prepares the ``ScreenRecorder`` in
+///   parallel while Escape and ⌃⌘Esc can still cancel); then live capture.
 /// - Recording: the island's capsule and the menu bar timer follow the recorder's live state;
 ///   pause, discard (confirmed on the island) and stop (the capsule, the timer's menu, ⌃⌘Esc) come
 ///   from either, the microphone toggle from the capsule (``ScreenRecordingController+Live``).
@@ -122,7 +122,8 @@ final class ScreenRecordingController: CaptureRecording {
   }
 
   /// The microphone's permission first, so its prompt never cuts into the countdown; a refusal
-  /// records without it. Then the corner marks and the countdown around the region.
+  /// records without it. Then the corner marks and the countdown around the region while the
+  /// recorder prepares its stream and writer in parallel.
   private func countDown(_ request: CaptureRecordRequest, generation: Int) async {
     var microphone = settings.microphone(among: RecordingMicrophones.available())
     if microphone != nil {
@@ -135,21 +136,6 @@ final class ScreenRecordingController: CaptureRecording {
       }
     }
     guard generation == self.generation else { return }
-    let region = request.rect.offsetBy(dx: request.displayFrame.minX, dy: request.displayFrame.minY)
-    marks.show(around: region)
-    keys.hold(countingDown: true)
-    let counted = await countdown.run(from: settings.countdown.seconds, centeredIn: region)
-    guard counted, generation == self.generation else { return }
-    // Started from here on: a cancel must not cancel the recorder's start with this task.
-    countdownTask = nil
-    keys.hold(countingDown: false)
-    await start(request, microphone: microphone, generation: generation)
-  }
-
-  private func start(
-    _ request: CaptureRecordRequest, microphone: RecordingMicrophone?, generation: Int
-  ) async {
-    stage = .starting
     let recorder = ScreenRecorder(config: config(for: request, microphone: microphone))
     recorder.onLive = { [weak self] in self?.update($0) }
     // The system's Stop, the display going away or a failing writer: keep what was recorded.
@@ -157,6 +143,29 @@ final class ScreenRecordingController: CaptureRecording {
       if self?.stage == .recording { self?.stop() }
     }
     self.recorder = recorder
+    let region = request.rect.offsetBy(dx: request.displayFrame.minX, dy: request.displayFrame.minY)
+    marks.show(around: region)
+    keys.hold(countingDown: true)
+    let seconds = settings.countdown.seconds
+    let preparation: Task<Void, Never>? =
+      seconds > 0
+      ? Task { _ = try? await recorder.prepare() }
+      : nil
+    let counted = await countdown.run(from: seconds, centeredIn: region)
+    guard counted, generation == self.generation else { return }
+    // Started from here on: a cancel must not cancel the recorder's start with this task.
+    countdownTask = nil
+    keys.hold(countingDown: false)
+    await start(recorder, preparation: preparation, microphone: microphone, generation: generation)
+  }
+
+  private func start(
+    _ recorder: ScreenRecorder, preparation: Task<Void, Never>?,
+    microphone: RecordingMicrophone?, generation: Int
+  ) async {
+    stage = .starting
+    await preparation?.value
+    guard generation == self.generation else { return }
     do throws(RecordingError) {
       try await recorder.start()
     } catch {
