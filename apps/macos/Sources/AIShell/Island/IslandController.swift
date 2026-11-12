@@ -3,10 +3,10 @@ import AppKit
 import SwiftUI
 
 /// Runs the command island (the "Dynamic Island" of a command that runs without the panel): one
-/// glass shape at the bottom of the screen that enters at its first content's size as the
-/// selection toolbar does (``SelectionToolbarEntrance``), morphs from content to content as the
-/// mini panel's body does, and leaves as one piece, its content shrinking a little with the shape
-/// as it fades (``IslandChoreography``). Each change sets the shape and the contents' presence
+/// glass shape at the bottom of the screen that enters as the Dynamic Island opens, out of a pill
+/// on its bottom edge on elastic per-axis springs, morphs from content to content as the mini
+/// panel's body does, and leaves as one piece, its content shrinking a little with the shape as it
+/// fades (``IslandChoreography``). Each change sets the shape and the contents' presence
 /// once, with the animation each moves on, and SwiftUI runs them; nothing is written while
 /// anything moves. Content leaves before the shape moves and arrives after it, and a card's field
 /// takes the keyboard once the shape has come to rest (``shapeMoves(settling:)``). The window's
@@ -162,16 +162,20 @@ final class IslandController: NSObject, NSWindowDelegate {
 
   // MARK: Choreography
 
-  /// Enters as the selection toolbar does, shape and content together: the shape, already at its
-  /// first content's measured size, springs from ``SelectionToolbarEntrance/startScale`` of it
-  /// and ``SelectionToolbarEntrance/rise`` points below, out of its bottom edge, as the window
-  /// fades in and the content arrives (``IslandChoreography/entering``: no delay), following the
-  /// shape. Under Reduce Motion the shape stands at its size, and window and content only fade.
+  /// Enters as the Dynamic Island opens, shape and content together: the shape opens out of a pill
+  /// standing on the middle of its bottom edge (``IslandShape/entrancePill``) to its first
+  /// content's measured size, its height and its width each on its own elastic spring
+  /// (``IslandChoreography/entrance(reduceMotion:)``), swelling a little past their rest before
+  /// they settle, as the window fades in and the content arrives (``IslandChoreography/entering``:
+  /// no delay), small in the pill and growing with it as its blur clears. It arrives, and a
+  /// card's field takes the keyboard, once both springs have come to rest
+  /// (``morph(to:motion:card:)``). Under Reduce Motion the shape stands at its size, and window
+  /// and content only fade.
   ///
   /// The window shows nothing until that start is drawn: it is ordered in at alpha 0 with a
   /// fresh view tree (``IslandModel/appearance``), so neither the previous island's last frame
   /// nor any animation still running from it can show, and laid out and drawn before the fade
-  /// and the spring begin a frame later. The fade belongs to the window's entrance, not to its
+  /// and the springs begin a frame later. The fade belongs to the window's entrance, not to its
   /// first content: a show within that frame replaces the content, and the window still fades in.
   private func appear(_ next: IslandContent, size measured: IslandMeasure) {
     let target = measured.size
@@ -187,8 +191,7 @@ final class IslandController: NSObject, NSWindowDelegate {
     let rest = IslandShape(
       frame: IslandMetrics.rest(target),
       corner: IslandMetrics.corner(target, card: next.kind.isCard))
-    model.shape =
-      model.reduceMotion ? rest : rest.scaled(entrance.startScale, drop: entrance.rise)
+    model.shape = model.reduceMotion ? rest : rest.entrancePill
     size = target
     let id = mount(next, measured)
     window.alphaValue = 0
@@ -207,14 +210,12 @@ final class IslandController: NSObject, NSWindowDelegate {
       // A replace meanwhile reveals its own content on the shape it morphs to.
       guard activeLayer == id else { return }
       reveal(id, IslandChoreography.entering)
-      guard !model.reduceMotion, let size else { return shapeMoves(settling: 0) }
-      // A change in place meanwhile may have moved the rest; the spring goes to where it is.
-      let spring = MiniPanelSpring(entrance.duration, entrance.bounce)
-      model.shape = IslandShape(
-        frame: IslandMetrics.rest(size),
-        corner: IslandMetrics.corner(size, card: content?.kind.isCard == true),
-        animation: spring.animation)
-      shapeMoves(settling: MiniPanelMotion.settling(spring))
+      guard let size else { return shapeMoves(settling: 0) }
+      // A change in place meanwhile may have moved the rest; the shape opens to where it is.
+      // Under Reduce Motion it already stands there, and nothing moves.
+      morph(
+        to: size, motion: IslandChoreography.entrance(reduceMotion: model.reduceMotion),
+        card: content?.kind.isCard == true)
     }
   }
 

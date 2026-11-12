@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 
 @testable import AICore
@@ -156,12 +157,16 @@ struct MiniPanelMotionTests {
     #expect(vertical.across == 25 && vertical.along == 20)
   }
 
-  @Test("The island morphs like the capsule growing and the drop card shrinking, with no pill")
+  @Test("The island morphs as the capsule opens and closes, and as the drop card shrinks")
   func island() {
-    let capsule = WindowSize(width: 200, height: 44)
+    let capsule = WindowSize(width: 200, height: IslandMetrics.capsuleHeight)
     let card = WindowSize(width: 320, height: 200)
     #expect(IslandChoreography.shape(from: capsule, to: card) == Choreography.shape(.expand))
-    #expect(IslandChoreography.shape(from: card, to: capsule) == Choreography.shape(.untarget))
+    // A card drawing into a capsule settles as the capsule closes into its pill; a card shrinking
+    // into a smaller card still waits for its content as the drop card does.
+    #expect(IslandChoreography.shape(from: card, to: capsule) == Choreography.shape(.collapse))
+    let smaller = WindowSize(width: 300, height: 120)
+    #expect(IslandChoreography.shape(from: card, to: smaller) == Choreography.shape(.untarget))
     let reduced = IslandChoreography.shape(from: capsule, to: card, reduceMotion: true)
     #expect(reduced.thickness.bounce == 0 && reduced.length.bounce == 0)
     // Content that replaces other content arrives once that has left; the first arrives with
@@ -171,7 +176,7 @@ struct MiniPanelMotionTests {
     #expect(IslandChoreography.entering.hiddenBlur == Choreography.content(.expand).hiddenBlur)
     // Leaving, the island shrinks and fades as one piece, quicker than it entered.
     #expect(IslandChoreography.exitDuration == 0.18)
-    #expect(IslandMetrics.corner(capsule, card: false) == 22)
+    #expect(IslandMetrics.corner(capsule, card: false) == 18)
     // Capsules keep the progress HUD's toolbar row: 28 pt controls in 4 pt, 2 pt apart.
     #expect(IslandMetrics.capsuleHeight == 36 && IslandMetrics.controlSide == 28)
     #expect(IslandMetrics.padding == 4 && IslandMetrics.gap == 2 && IslandMetrics.gripWidth == 16)
@@ -180,6 +185,54 @@ struct MiniPanelMotionTests {
     let canvas = IslandMetrics.canvas
     #expect(canvas.width >= IslandMetrics.maxShape.width * Choreography.followLimit)
     #expect(canvas.height >= IslandMetrics.maxShape.height * Choreography.followLimit)
+  }
+
+  @Test("The island enters out of a pill on the capsule's opening springs, inside its canvas")
+  func islandEntrance() {
+    let entrance = IslandChoreography.entrance()
+    #expect(entrance == Choreography.shape(.expand))
+    #expect(
+      IslandChoreography.entrance(reduceMotion: true)
+        == Choreography.shape(.expand, reduceMotion: true))
+    // Narrower than short in proportion, so the content scaling to fit is held by the width.
+    let (width, height) = (IslandChoreography.entranceWidth, IslandChoreography.entranceHeight)
+    #expect(width == 0.4 && height == 0.6)
+    // Each axis swells visibly past its rest, as the Dynamic Island does, yet within what content
+    // follows and the canvas holds.
+    let peakWidth = 1 + (1 - width) * overshoot(entrance.length)
+    let peakHeight = 1 + (1 - height) * overshoot(entrance.thickness)
+    #expect(abs(peakWidth - 1.0326) < 0.0005 && abs(peakHeight - 1.0292) < 0.0005)
+    #expect(peakWidth <= Choreography.followLimit && peakHeight <= Choreography.followLimit)
+  }
+
+  @Test("The island's canvas, its shapes and its window stand on whole points")
+  func islandWholePoints() {
+    // 640 × 1.06 + 128 = 806.4 across, up to an even 808; 400 × 1.06 + 128 = 552 tall.
+    let canvas = IslandMetrics.canvas
+    #expect(canvas == WindowSize(width: 808, height: 552))
+    // An odd width keeps its spare half point on the right; the bottom edge stays put.
+    let odd = IslandMetrics.rest(WindowSize(width: 277, height: 36))
+    #expect(odd.minX == 265 && odd.maxY == canvas.height - IslandMetrics.inset)
+    #expect(IslandMetrics.rest(WindowSize(width: 276, height: 36)).minX == 266)
+    // A larger canvas of odd width shifts the default one by whole points, and its window keeps
+    // the shapes where the default one has them, on whole points for a whole-point anchor.
+    let large = WindowSize(width: 1001, height: 700)
+    let shift = IslandMetrics.canvasShift(large)
+    #expect(shift.x == 96 && shift.y == 148)
+    let anchor = CGPoint(x: 960, y: 48)
+    let origin = IslandMetrics.windowOrigin(large, anchor: anchor)
+    #expect(origin == CGPoint(x: 460, y: -16))
+    // One type on both sides: `#expect` compares its operands generically, where a Double and a
+    // CGFloat never equal each other.
+    #expect(origin.x + CGFloat(shift.x) == IslandMetrics.windowOrigin(canvas, anchor: anchor).x)
+  }
+
+  /// How far past its target a spring started at rest swings, as a share of its change: SwiftUI's
+  /// spring of a given bounce has a damping ratio of 1 minus it.
+  private func overshoot(_ spring: MiniPanelSpring) -> Double {
+    let damping = 1 - spring.bounce
+    guard damping < 1 else { return 0 }
+    return exp(-Double.pi * damping / (1 - damping * damping).squareRoot())
   }
 
   @Test("The island's spinner keeps the system small spinner's shape and stepped wave")

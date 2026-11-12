@@ -41,10 +41,7 @@ extension IslandController {
     withTransaction(transaction) {
       model.canvas = canvas
       guard window.isVisible, let anchor else { return }
-      let frame = NSRect(
-        x: anchor.x - canvas.width / 2, y: anchor.y - IslandMetrics.inset, width: canvas.width,
-        height: canvas.height)
-      window.setFrame(frame, display: false)
+      window.setFrame(windowFrame(canvas, anchor: anchor), display: false)
       window.contentView?.layoutSubtreeIfNeeded()
       window.displayIfNeeded()
     }

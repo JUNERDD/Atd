@@ -98,12 +98,14 @@ public enum IslandMetrics {
   public static let inset = 64.0
 
   /// The default canvas shapes are drawn in, and their coordinates: the largest shape at its
-  /// overshoot (``MiniPanelChoreography/followLimit``) with ``inset`` around it. Only the
-  /// recording's result card needs more (``canvas(fitting:)``).
+  /// overshoot (``MiniPanelChoreography/followLimit``) with ``inset`` around it, in whole points
+  /// and an even number of them across, so the window centred on a whole-point anchor
+  /// (``windowOrigin(_:anchor:)``) stands on whole points, and so does a shape resting in it
+  /// (``rest(_:)``). Only the recording's result card needs more (``canvas(fitting:)``).
   public static var canvas: WindowSize {
     let limit = MiniPanelChoreography.followLimit
     return WindowSize(
-      width: (maxShape.width * limit + inset * 2).rounded(.up),
+      width: ((maxShape.width * limit + inset * 2) / 2).rounded(.up) * 2,
       height: (maxShape.height * limit + inset * 2).rounded(.up))
   }
 
@@ -125,12 +127,15 @@ public enum IslandMetrics {
     min(max(ideal.rounded(.up), minCardWidth), maxCardWidth)
   }
 
-  /// Where a shape of `size` rests in the canvas (y down): centred, its bottom ``inset`` above the
-  /// canvas's bottom edge, so every shape grows up out of the same place.
+  /// Where a shape of `size` rests in the canvas (y down): centred to the whole point (an odd
+  /// width keeps its spare half point on the right), its bottom ``inset`` above the canvas's
+  /// bottom edge, so every shape grows up out of the same place. A shape of whole points rests
+  /// on whole points, as the pixel-snapped controls and text inside it are drawn: half a point
+  /// off, on a 1x display, its glass edges would fall between pixels and read as cut.
   public static func rest(_ size: WindowSize) -> CGRect {
     let canvas = canvas
     return CGRect(
-      x: (canvas.width - size.width) / 2, y: canvas.height - inset - size.height,
+      x: ((canvas.width - size.width) / 2).rounded(.down), y: canvas.height - inset - size.height,
       width: size.width, height: size.height)
   }
 
@@ -140,25 +145,50 @@ public enum IslandMetrics {
   }
 }
 
-/// The island's motion. It is not resident UI, so it has no resting pill: it enters at its first
-/// shape's size as the selection toolbar does (``SelectionToolbarEntrance``: a brisk spring from
-/// 0.9 of its size, rising out of its bottom edge, while it fades in), its content arriving with
-/// the shape; it leaves as one piece, its content staying in the shape as both shrink a little
-/// toward the bottom edge while the island fades out, so the glass never shows empty, and a show
-/// before it is gone turns it back from where it is. Between contents it morphs as
-/// the mini panel's body does (``MiniPanelChoreography``), with the shape's thickness on its
-/// height and its length on its width: content leaves before the shape moves and arrives after
-/// it, centred in the shape and scaling with it. Reduce Motion fades it in and out without scale.
+/// The island's motion. It is not resident UI, so it has no pill to rest as: it enters as the
+/// Dynamic Island opens, out of a pill of its own standing on its bottom edge (``entranceWidth``
+/// and ``entranceHeight`` of its first shape), on the mini panel capsule's opening springs
+/// (``entrance(reduceMotion:)``), its height and its width each swelling a little past their rest
+/// before they settle, while the window fades in and its content, arriving at once, grows with the
+/// shape out of its blur; it leaves as one piece, its content staying in the shape as both shrink a
+/// little toward the bottom edge while the island fades out, so the glass never shows empty, and a
+/// show before it is gone turns it back from where it is. Between contents it morphs as the mini
+/// panel's body does (``MiniPanelChoreography``), with the shape's thickness on its height and its
+/// length on its width: content leaves before the shape moves and arrives after it, centred in the
+/// shape and scaling with it. Reduce Motion fades it in and out without scale.
 public enum IslandChoreography {
   /// The shape's springs from a shape of `from` to one of `to`. A growing shape opens as the
-  /// mini panel's capsule does; a shrinking one waits for its content as the drop card does
-  /// going back to the invite.
+  /// mini panel's capsule does; a card drawing into a capsule (``IslandMetrics/capsuleHeight``
+  /// tall) closes as that capsule does into its pill, a little past its rest and back out; any
+  /// other shape shrinking waits for its content as the drop card does going back to the invite.
   public static func shape(from: WindowSize, to: WindowSize, reduceMotion: Bool = false)
     -> MiniPanelShapeMotion
   {
-    let shrinks = to.width * to.height < from.width * from.height
-    return MiniPanelChoreography.shape(shrinks ? .untarget : .expand, reduceMotion: reduceMotion)
+    let moment: MiniPanelMoment =
+      if to.width * to.height >= from.width * from.height {
+        .expand
+      } else if to.height <= IslandMetrics.capsuleHeight, from.height > to.height {
+        .collapse
+      } else {
+        .untarget
+      }
+    return MiniPanelChoreography.shape(moment, reduceMotion: reduceMotion)
   }
+
+  /// How the island's shape enters: from its pill to its first shape on the springs the mini
+  /// panel's capsule opens on, each axis swinging past its rest and back, from ``entranceWidth``
+  /// and ``entranceHeight`` by about 3 % at most, well inside
+  /// ``MiniPanelChoreography/followLimit``, so the canvas needs no more room for it.
+  public static func entrance(reduceMotion: Bool = false) -> MiniPanelShapeMotion {
+    MiniPanelChoreography.shape(.expand, reduceMotion: reduceMotion)
+  }
+
+  /// The pill the island enters from, as shares of its first shape's width and height, standing
+  /// on the middle of its bottom edge with its corner scaled with its height, so a capsule enters
+  /// as a capsule. It is narrower than it is short in proportion, so the content, which scales to
+  /// fit the shape, is held by its width and starts with room above and below it.
+  public static let entranceWidth = 0.4
+  public static let entranceHeight = 0.6
 
   /// How content arrives in a shape and leaves it.
   public static let content = MiniPanelChoreography.content(.expand)
@@ -169,7 +199,7 @@ public enum IslandChoreography {
   }
 
   /// How the first content arrives as the island enters: at once, its opacity and blur clearing
-  /// alongside the shape's spring and the window's fade, so the island never shows as an empty
+  /// alongside the shape's springs and the window's fade, so the island never shows as an empty
   /// shell.
   public static let entering = MiniPanelContentMotion(delay: 0, exit: content.exit)
 

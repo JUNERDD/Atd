@@ -55,11 +55,15 @@ extension IslandController {
 
   func placeWindow(animate: Bool = false) {
     guard let anchor else { return }
-    let canvas = model.canvas
-    let frame = NSRect(
-      x: anchor.x - canvas.width / 2, y: anchor.y - IslandMetrics.inset, width: canvas.width,
-      height: canvas.height)
-    window.setFrame(frame, display: true, animate: animate)
+    window.setFrame(windowFrame(model.canvas, anchor: anchor), display: true, animate: animate)
+  }
+
+  /// The window's frame for a canvas of `canvas` around `anchor`
+  /// (``IslandMetrics/windowOrigin(_:anchor:)``): on whole points, as the anchor is.
+  func windowFrame(_ canvas: WindowSize, anchor: NSPoint) -> NSRect {
+    NSRect(
+      origin: IslandMetrics.windowOrigin(canvas, anchor: anchor),
+      size: NSSize(width: canvas.width, height: canvas.height))
   }
 
   /// The shape's bottom centre at home for a shape of `size`.
@@ -70,13 +74,15 @@ extension IslandController {
     return NSPoint(x: origin.x + size.width / 2, y: origin.y)
   }
 
-  /// `anchor` moved so a shape of `size` standing on it stays inside the work area.
+  /// `anchor` moved so a shape of `size` standing on it stays inside the work area, and onto whole
+  /// points, so the window and the shapes resting in it stand on them (``IslandMetrics/rest(_:)``)
+  /// wherever home, a drag or a morph puts it.
   func clamped(_ anchor: NSPoint, size: WindowSize) -> NSPoint {
     let placed = GlassHUDPlacement.clamped(
       ScreenRect(
         x: anchor.x - size.width / 2, y: anchor.y, width: size.width, height: size.height),
       displays: Self.displays(NSScreen.screens), fallback: Self.displays([NSScreen.main]).first)
-    return NSPoint(x: placed.x + placed.width / 2, y: placed.y)
+    return NSPoint(x: (placed.x + placed.width / 2).rounded(), y: placed.y.rounded())
   }
 
   private static func displays(_ screens: [NSScreen?]) -> [GlassHUDPlacement.Display] {
