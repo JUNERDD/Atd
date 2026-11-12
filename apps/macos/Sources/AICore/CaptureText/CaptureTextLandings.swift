@@ -40,6 +40,11 @@ public struct CaptureTextLandings: Equatable, Sendable {
     current = version
   }
 
+  /// No version of the run stands on the image any more.
+  mutating func clearCurrent() {
+    current = nil
+  }
+
   /// The landed version other than ``current`` of which `present` (the annotations on the image)
   /// holds the most annotations, the newest on a tie; nil when none of theirs is there.
   func version(in present: Set<UUID>) -> Int? {

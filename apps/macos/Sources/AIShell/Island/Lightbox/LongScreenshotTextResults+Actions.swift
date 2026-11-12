@@ -111,7 +111,13 @@ extension LongScreenshotTextResults {
     closeReplacedReviews(keeping: run.id)
     openCard(of: run.id)
     guard let versions = run.review, versions.count < CommandProgressState.Review.maxVersions
-    else { return NSSound.beep() }
+    else {
+      if arguments == nil, run.restored(in: annotator.store.document) {
+        reapply(run.id)
+        return
+      }
+      return NSSound.beep()
+    }
     runner.act(.again, runId: run.id, arguments: arguments)
   }
 

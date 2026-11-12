@@ -143,7 +143,7 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
   }
 
   func captureTextProgress(_ update: CaptureTextProgressParams, copied: Bool?) {
-    guard runs.apply(update, copied: copied) else { return }
+    guard runs.apply(update, in: annotator.store.document, copied: copied) else { return }
     // A run a newer one replaced can still begin its review (its stopped first version had
     // pieces): nothing could apply it now.
     closeReplacedReviews()

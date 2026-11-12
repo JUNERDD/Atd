@@ -89,13 +89,21 @@ extension AnnotationEditor: CaptureTextConsumer {
     openCard(of: run.id)
     guard let versions = run.review,
       versions.count < CommandProgressState.Review.maxVersions
-    else { return NSSound.beep() }
+    else {
+      if arguments == nil, run.restored(in: store.document) {
+        text.runs.update(run.id) { $0.reapply(in: store.document) }
+        land(run.id)
+        refresh()
+        return
+      }
+      return NSSound.beep()
+    }
     runner.act(.again, runId: run.id, arguments: arguments)
     refresh()
   }
 
   func captureTextProgress(_ update: CaptureTextProgressParams, copied: Bool?) {
-    guard text.runs.apply(update, copied: copied) else { return }
+    guard text.runs.apply(update, in: store.document, copied: copied) else { return }
     // A run a newer one replaced can still begin its review (its stopped first version had
     // pieces): nothing could apply it now.
     closeReplacedReviews()

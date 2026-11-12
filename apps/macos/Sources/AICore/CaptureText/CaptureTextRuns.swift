@@ -32,11 +32,13 @@ public struct CaptureTextRuns: Equatable, Sendable {
     runs.append(run)
   }
 
-  /// Applies `update` to the run it names; false when no run here has its id.
+  /// Applies `update` to the run it names against `document`; false when no run here has its id.
   @discardableResult
-  public mutating func apply(_ update: CaptureTextProgressParams, copied: Bool? = nil) -> Bool {
+  public mutating func apply(
+    _ update: CaptureTextProgressParams, in document: AnnotationDocument, copied: Bool? = nil
+  ) -> Bool {
     guard let index = runs.firstIndex(where: { $0.id == update.runId }) else { return false }
-    return runs[index].apply(update, copied: copied)
+    return runs[index].apply(update, in: document, copied: copied)
   }
 
   /// Changes run `id` in place (recording what it applied, accepting its review).
