@@ -50,11 +50,13 @@ final class SpeechReader: NSObject {
 
   // MARK: Voice
 
+  private static let availableVoices = AVSpeechSynthesisVoice.speechVoices()
+
   /// The best installed voice for the text's dominant language; nil leaves the system voice.
   static func voice(for text: String) -> AVSpeechSynthesisVoice? {
     guard let language = dominantLanguage(of: text) else { return nil }
     let wanted = Locale.Language(identifier: language.rawValue)
-    let candidates = AVSpeechSynthesisVoice.speechVoices().filter {
+    let candidates = availableVoices.filter {
       matches(Locale.Language(identifier: $0.language), wanted)
     }
     let preferred = Locale.preferredLanguages.first
