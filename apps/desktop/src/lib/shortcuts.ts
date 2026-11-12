@@ -77,11 +77,14 @@ export function matchesAccelerator(
 export function recordedHotkeyToAccelerator(hotkey: HotkeyChord, platform: string): string | null {
   const chord = parseHotkey(hotkey, platform === 'darwin' ? 'mac' : 'windows');
   if (!chord.code) return null;
-  const recorded = chord.code.toLowerCase().replace(/^(?:key|digit|numpad)/, '');
+  // The native grammar has no keypad positions: saving Numpad1 as "1" would register the
+  // top-row key instead of the physical key the user recorded.
+  if (chord.code.startsWith('Numpad')) return null;
+  const recorded = chord.code.toLowerCase().replace(/^(?:key|digit)/, '');
   const key =
     recordedKeyNames.get(recorded) ??
     (/^(?:[a-z0-9]|f(?:[1-9]|1\d|2[0-4]))$/.test(recorded) ? recorded.toUpperCase() : null);
-  if (!key) return null;
+  if (!key || (platform === 'darwin' && /^F2[1-4]$/.test(key))) return null;
 
   const modifiers: string[] = [];
   if (platform === 'darwin') {

@@ -67,7 +67,9 @@ final class Summoner {
       var target: ShortcutCommandEvent.Target?
       for step in steps {
         switch step {
-        case .hidePanel: panel.hide()
+        case .hidePanel:
+          guard await ShortcutRelease.waitForHandoff() else { return }
+          panel.hide()
         case .captureSelection:
           var read = SummonSelection.field(selectedText)
           if selectedText == nil { read = await readSelection() }

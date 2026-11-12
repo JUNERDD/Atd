@@ -18,7 +18,7 @@ const isAction = (key: string | undefined): key is keyof typeof ACTIONS =>
 
 /** A key a control already handled, one an IME is composing, or one typed into text or a dialog. */
 function ignored(event: KeyboardEvent) {
-  if (event.defaultPrevented || isComposingKey(event)) return true;
+  if (event.defaultPrevented || event.repeat || isComposingKey(event)) return true;
   const target = event.target instanceof Element ? event.target : null;
   return Boolean(target?.closest(TEXT_ENTRY) || target?.closest(MODAL));
 }
@@ -28,8 +28,8 @@ function ignored(event: KeyboardEvent) {
  * and Forward through the shown section's pages. Only ⌘ counts (another modifier with it is a
  * different shortcut), matched by the key it types. They leave alone a key a control already
  * handled (`defaultPrevented`), keys typed into a text field or an open dialog, and every key
- * while `disabled` (a shortcut is being recorded). Other form controls (switches, buttons) still
- * take them.
+ * while `disabled` (a shortcut is being recorded). Each physical press acts once; other form
+ * controls (switches, buttons) still take them.
  */
 export function useSettingsKeys(disabled: boolean, actions: Record<Action, () => void>) {
   useHotkeys(

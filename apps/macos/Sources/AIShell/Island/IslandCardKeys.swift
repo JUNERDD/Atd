@@ -48,6 +48,13 @@ extension CommandProgressController {
     if field?.hasMarkedText() == true { return false }
     guard let key = Self.key(event) else { return field == nil }
     let response = card.handle(key)
+    if event.isARepeat {
+      switch key {
+      case .space, .enter, .escape, .digit:
+        if response != .ignored { return true }
+      default: break
+      }
+    }
     update(card)
     switch response {
     case .ignored: return field == nil

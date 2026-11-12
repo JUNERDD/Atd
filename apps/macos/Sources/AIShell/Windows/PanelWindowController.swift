@@ -26,6 +26,11 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   private var placing = false
   private var isPinned = false
   private var systemPanelOpen = false
+  /// The panel holds the keyboard in front: a summon put it there, or it gained the keyboard
+  /// where no other app's window covers it. Only then may it float (``updateLevel()``); key
+  /// status AppKit hands on when another Atd window gives the keyboard up never sets this.
+  private var holdsFront = false
+  private let keyboardHandoff = KeyboardHandoff()
   /// Called with the new visibility after every show and hide.
   var onVisibilityChange: ((Bool) -> Void)?
   /// Called when the panel is hidden while it held key status, to pass focus on.
@@ -101,10 +106,13 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
 
   private func updateLevel() {
     // A summon borrows the keyboard without changing the frontmost app. Its normal windows
-    // can reorder on modifier keys, so the key panel needs priority until focus moves away.
-    // Pinning keeps that priority after blur; an open/save panel takes precedence over both.
-    let floats = isPinned || (isVisible && panel.isKeyWindow)
-    panel.level = !systemPanelOpen && floats ? .floating : .normal
+    // can reorder on modifier keys, so the key panel in front needs priority until focus moves
+    // away. Pinning keeps that priority after blur; an open/save panel takes precedence over both.
+    let floats = isPinned || (holdsFront && isVisible && panel.isKeyWindow)
+    let level: NSWindow.Level = !systemPanelOpen && floats ? .floating : .normal
+    // Entering a level orders a window in front of every peer there, so assigning the level it
+    // already has must never happen: it would lift a panel other apps cover.
+    if panel.level != level { panel.level = level }
   }
 
   /// Where summons show the panel. A change applies from the next summon: a visible panel
@@ -131,13 +139,20 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
     panel.orderFrontRegardless()
-    panel.makeKey()
+    holdsFront = true
+    keyboardHandoff.perform { [weak self] in
+      guard let self, isVisible else { return }
+      panel.makeKey()
+      updateLevel()
+    }
     updateLevel()
     onVisibilityChange?(true)
   }
 
   func hide() {
+    keyboardHandoff.cancel()
     let wasKey = panel.isKeyWindow
+    holdsFront = false
     userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
@@ -149,16 +164,37 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   /// Takes the panel off screen for a capture session and returns what puts it back as it was.
   /// A resident panel is ordered out too, not only a visible one, so no panel state can take
   /// key status or events while the overlays are up; `orderOut`'s timer throttling (R9) only
-  /// lasts as long as the session. A miniaturized panel is left alone.
+  /// lasts as long as the session. A miniaturized panel is left alone. A panel the person was
+  /// using (it had the keyboard) comes back as a summon shows it; one they were not, such as a
+  /// panel other apps covered, comes back where it stood, still behind them and without the
+  /// keyboard.
   func withdrawForCapture() -> @MainActor () -> Void {
     guard !panel.isMiniaturized else { return {} }
     let visible = isVisible
+    let inUse = visible && panel.isKeyWindow
+    let above = visible && !inUse ? WindowStack.windowsAbove(atLevelOf: panel) : []
     if visible { hide() }
     panel.orderOut(nil)
     return { [weak self] in
       guard let self else { return }
-      if visible { show() } else { panel.orderFrontRegardless() }
+      if inUse {
+        show()
+      } else if visible {
+        reveal(below: above)
+      } else {
+        panel.orderFrontRegardless()
+      }
     }
+  }
+
+  /// Shows the panel again under `windows` (``WindowStack/orderIn(_:below:)``) without taking
+  /// the keyboard or floating it.
+  private func reveal(below windows: [CGWindowID]) {
+    panel.alphaValue = 1
+    panel.ignoresMouseEvents = false
+    WindowStack.orderIn(panel, below: windows)
+    updateLevel()
+    onVisibilityChange?(true)
   }
 
   // MARK: NSWindowDelegate
@@ -189,12 +225,17 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     if NSEvent.pressedMouseButtons & 1 == 0 { userMoving = false }
   }
 
+  /// AppKit also hands the keyboard to the panel when another Atd window gives it up (an island
+  /// card, the mini panel, a capture overlay, a closing window), even while other apps cover the
+  /// panel. That key status keeps the panel where it is; only one gained in front may float.
   func windowDidBecomeKey(_ notification: Notification) {
+    if !holdsFront { holdsFront = !WindowStack.isCovered(panel) }
     updateLevel()
     host.setState(.windowActive(.init(active: true)))
   }
 
   func windowDidResignKey(_ notification: Notification) {
+    holdsFront = false
     updateLevel()
     host.setState(.windowActive(.init(active: false)))
   }

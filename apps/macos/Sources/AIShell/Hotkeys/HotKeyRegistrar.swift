@@ -1,4 +1,5 @@
 import AICore
+import AppKit
 import Foundation
 import OSLog
 
@@ -20,17 +21,21 @@ final class HotKeyRegistrar {
   }
 
   private let carbon = CarbonHotKeys()
+  private let remoteModifiers = RemoteModifierRepair()
   private let taps: ModifierTapMonitor
   private var registered: [String: Registration] = [:]
   /// The set last pushed, which ``reapply()`` registers again.
   private var desired: [ShortcutRegistration] = []
   private var recording: [ObjectIdentifier: Set<Int>] = [:]
+  private var resuming: Task<Void, Never>?
   private var pending:
     [(desired: [ShortcutRegistration], continuation: CheckedContinuation<[ShortcutResult], Never>)] =
       []
   private let onPress: @MainActor (String) -> Void
   private let onRelease: @MainActor (String) -> Void
   private let canWatchKeyboard: () -> Bool
+  private var localKeys: Any?
+  private var externalReleases: Any?
 
   /// `onPress` receives the id of the pressed entry, `onRelease` that of the entry whose key
   /// came back up. `canWatchKeyboard`: whether the app has Accessibility trust, without which a
@@ -44,13 +49,63 @@ final class HotKeyRegistrar {
     self.onPress = onPress
     self.onRelease = onRelease
     taps = ModifierTapMonitor(onPress: onPress, onRelease: onRelease)
+    watchKeys()
+  }
+
+  isolated deinit {
+    resuming?.cancel()
+    if let localKeys { NSEvent.removeMonitor(localKeys) }
+    if let externalReleases { NSEvent.removeMonitor(externalReleases) }
+    ShortcutRelease.setModifierObservation(active: false)
+  }
+
+  /// Records a chord's actual press before renderer recording completes. Ordinary typing and
+  /// repeats after recording ended never become keys a later handoff waits for. Releases still
+  /// clear known keys after completion or focus loss; only virtual codes are retained.
+  private func watchKeys() {
+    if localKeys == nil {
+      localKeys = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
+        [weak self] event in
+        MainActor.assumeIsolated {
+          if !KeyPress.isSynthesized(event) {
+            if event.type == .keyUp {
+              ShortcutRelease.released(event.keyCode)
+            } else if event.type == .flagsChanged {
+              ShortcutRelease.modifiersChanged(event)
+            } else if self?.recording.isEmpty == false, !event.isARepeat {
+              ShortcutRelease.pressed(event.keyCode)
+            }
+          }
+        }
+        return event
+      }
+    }
+    if canWatchKeyboard(), externalReleases == nil {
+      externalReleases = NSEvent.addGlobalMonitorForEvents(matching: [.keyUp, .flagsChanged]) {
+        event in
+        MainActor.assumeIsolated {
+          guard !KeyPress.isSynthesized(event) else { return }
+          if event.type == .keyUp {
+            ShortcutRelease.released(event.keyCode)
+          } else {
+            ShortcutRelease.modifiersChanged(event)
+          }
+        }
+      }
+    } else if !canWatchKeyboard(), let externalReleases {
+      NSEvent.removeMonitor(externalReleases)
+      self.externalReleases = nil
+    }
+    ShortcutRelease.setModifierObservation(
+      active: canWatchKeyboard() && localKeys != nil && externalReleases != nil)
+    refreshRemoteModifiers()
   }
 
   /// Registers the difference to `desired` and reports every entry once, in order. The page
   /// words failures by reason; the details go to the log.
   func apply(_ desired: [ShortcutRegistration]) async -> [ShortcutResult] {
     self.desired = desired
-    guard recording.isEmpty else {
+    guard recording.isEmpty, resuming == nil else {
       // Do not claim registration succeeded while listeners are suspended. Each caller gets the
       // real OS result after recording ends; the last request remains the desired set.
       return await withCheckedContinuation { pending.append((desired, $0)) }
@@ -86,6 +141,7 @@ final class HotKeyRegistrar {
       registered.reduce(into: [:]) { entries, entry in
         if case .doubleTap(let modifier) = entry.value { entries[modifier] = entry.key }
       })
+    refreshRemoteModifiers()
     var reported: Set<String> = []
     return desired.compactMap { request in
       guard reported.insert(request.id).inserted else { return nil }
@@ -100,7 +156,8 @@ final class HotKeyRegistrar {
   /// registers once the app is trusted and is released when it no longer is. The page learns
   /// the outcome from its own next push.
   func reapply() {
-    if recording.isEmpty { _ = register(desired) }
+    watchKeys()
+    if recording.isEmpty, resuming == nil { _ = register(desired) }
   }
 
   /// Hints describe an active registration, never an unavailable default or failed binding.
@@ -113,6 +170,8 @@ final class HotKeyRegistrar {
 
   /// Multiple recorders/windows can coexist; only releasing the last one restores shortcuts.
   func startRecording(owner: ObjectIdentifier, session: Int) {
+    resuming?.cancel()
+    resuming = nil
     if recording.isEmpty { unregisterAll() }
     recording[owner, default: []].insert(session)
   }
@@ -138,13 +197,22 @@ final class HotKeyRegistrar {
 
   private func resumeIfReady() -> Bool {
     guard recording.isEmpty else { return false }
+    resuming?.cancel()
+    resuming = Task { [weak self] in
+      guard await ShortcutRelease.waitForHandoff(), let self else { return }
+      resuming = nil
+      resumeRegistrations()
+    }
+    return true
+  }
+
+  private func resumeRegistrations() {
     let waiting = pending
     pending = []
     if waiting.isEmpty { _ = register(desired) }
     for request in waiting {
       request.continuation.resume(returning: register(request.desired))
     }
-    return true
   }
 
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "hotkeys")
@@ -163,5 +231,15 @@ final class HotKeyRegistrar {
     for case .chord(_, let token) in registered.values { carbon.unregister(token) }
     registered.removeAll()
     taps.watch([:])
+    refreshRemoteModifiers()
+  }
+
+  private func refreshRemoteModifiers() {
+    let chords = Set(
+      registered.values.compactMap { registration -> HotKeyCombination? in
+        if case .chord(let combination, _) = registration { return combination }
+        return nil
+      })
+    remoteModifiers.watch(chords, trusted: canWatchKeyboard())
   }
 }

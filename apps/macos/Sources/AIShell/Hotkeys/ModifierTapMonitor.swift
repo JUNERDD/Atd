@@ -29,6 +29,7 @@ final class ModifierTapMonitor {
 
   /// Watches for `entries`, or stops watching when there are none.
   func watch(_ entries: [TapModifier: String]) {
+    if entries != self.entries { detector.reset() }
     self.entries = entries
     if entries.isEmpty {
       for monitor in monitors { NSEvent.removeMonitor(monitor) }

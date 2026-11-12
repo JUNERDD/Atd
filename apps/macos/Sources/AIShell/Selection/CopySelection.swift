@@ -95,12 +95,7 @@ enum CopySelection {
   /// Waits until the keyboard holds no shortcut modifier: true once it does, false when `limit`
   /// passed first.
   private static func modifiersReleased(within limit: Duration) async -> Bool {
-    let deadline = ContinuousClock.now + limit
-    while CopyFallback.shortcutModifiersHeld(CGEventSource.flagsState(.hidSystemState).rawValue) {
-      guard ContinuousClock.now < deadline else { return false }
-      try? await Task.sleep(for: pollInterval)
-    }
-    return true
+    await ShortcutRelease.wait(until: .now + limit)
   }
 
   /// Polls until the copy is in: the change count moved from `before` and the pasteboard has a
