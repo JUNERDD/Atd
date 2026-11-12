@@ -84,8 +84,12 @@ collections:
             widget: string
           - name: body
             label: Text
-            hint: Plain text; a blank line starts a new paragraph.
-            widget: text
+            hint: Constrained Markdown (**bold**, *italic*, `code`, [link](url), and flat bulleted or numbered lists; a blank line starts a new paragraph).
+            widget: markdown
+            minimal: true
+            buttons: [bold, italic, code, link, bulleted-list, numbered-list]
+            editor_components: []
+            modes: [rich_text, raw]
           - name: image
             label: Image
             widget: image
@@ -93,10 +97,10 @@ collections:
             label: Image description
             hint: What the image shows, for readers who cannot see it.
             widget: string
-      - name: fixes
-        label: Fixes
-        label_singular: Fix
-        hint: One line per fix or small improvement. Where seeing the change helps, add an image (1440 × 900, one per language) and its description; the two go together.
+      - name: improvements
+        label: Improvements
+        label_singular: Improvement
+        hint: One line per improvement. Where seeing the change helps, add an image (1440 × 900, one per language) and its description; the two go together.
         widget: list
         i18n: true
         required: false
@@ -104,7 +108,64 @@ collections:
         fields:
           - name: text
             label: Text
+            hint: One inline Markdown paragraph (**bold**, *italic*, `code`, [link](url); no lists or extra blocks).
+            widget: markdown
+            minimal: true
+            buttons: [bold, italic, code, link]
+            editor_components: []
+            modes: [rich_text, raw]
+          - name: image
+            label: Image
+            widget: image
+            required: false
+          - name: alt
+            label: Image description
+            hint: With an image, what it shows, for readers who cannot see it.
             widget: string
+            required: false
+      - name: fixes
+        label: Fixes
+        label_singular: Fix
+        hint: One line per bug fix. Where seeing the change helps, add an image (1440 × 900, one per language) and its description; the two go together.
+        widget: list
+        i18n: true
+        required: false
+        summary: '{{fields.text}}'
+        fields:
+          - name: text
+            label: Text
+            hint: One inline Markdown paragraph (**bold**, *italic*, `code`, [link](url); no lists or extra blocks).
+            widget: markdown
+            minimal: true
+            buttons: [bold, italic, code, link]
+            editor_components: []
+            modes: [rich_text, raw]
+          - name: image
+            label: Image
+            widget: image
+            required: false
+          - name: alt
+            label: Image description
+            hint: With an image, what it shows, for readers who cannot see it.
+            widget: string
+            required: false
+      - name: other
+        label: Other
+        label_singular: Note
+        hint: One line per additional release note (packaging, format compatibility, platform notes). Where seeing the change helps, add an image (1440 × 900, one per language) and its description; the two go together.
+        widget: list
+        i18n: true
+        required: false
+        summary: '{{fields.text}}'
+        fields:
+          - name: text
+            label: Text
+            hint: One inline Markdown paragraph (**bold**, *italic*, `code`, [link](url); no lists or extra blocks).
+            widget: markdown
+            minimal: true
+            buttons: [bold, italic, code, link]
+            editor_components: []
+            modes: [rich_text, raw]
           - name: image
             label: Image
             widget: image

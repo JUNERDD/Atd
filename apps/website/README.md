@@ -98,9 +98,11 @@ date), then the contents and the sections. The contents are the sections' titles
 one track, with the section under the reading line lit (`aria-current="location"`); below 1100px
 they sit under the header, from 1100px in a column of their own that stays beside the text, and
 the header lines up with the text. Each highlight has its text at a 680px measure and its image
-wider; the fixes follow in a card, any of them with an image, and the page ends with one primary
-action, the release's installers on GitHub. A section's anchor is its English title in lowercase
-with dashes (`#choose-your-panel-background`), the same in both languages; the fixes are `#fixes`.
+wider; any non-empty tail sections (`improvements`, `fixes`, `other`) follow in that order, each in
+a full-width card whose items may carry an image, and the page ends with one primary action, the
+release's installers on GitHub. A highlight's anchor is its English title in lowercase with dashes
+(`#choose-your-panel-background`), the same in both languages; the tail sections use
+`#improvements`, `#fixes`, and `#other`.
 
 The nav links to the blog after the home page's sections, marking it current on the list and on
 posts; the footer's links and language switch keep the visitor on the page they are reading. From
@@ -121,23 +123,34 @@ The releases are files in this repository, edited with [Sveltia CMS](https://sve
 Git-based CMS that writes them in place. Each post announces one release and has one YAML file per language
 under `src/content/blog/<lang>/`, with the same file name in both:
 
-| Field        | In each language | Holds                                                             |
-| ------------ | ---------------- | ----------------------------------------------------------------- |
-| `version`    | The same         | The released version without a leading `v`, such as `0.10.6`      |
-| `date`       | The same         | The release day, `YYYY-MM-DD`                                     |
-| `title`      | Translated       | The release's headline                                            |
-| `summary`    | Translated       | One or two sentences under it                                     |
-| `highlights` | Translated       | `title`, `body` (a blank line starts a paragraph), `image`, `alt` |
-| `fixes`      | Translated       | `text`, and optionally `image` with its `alt`; optional           |
+| Field          | In each language | Holds                                                                                    |
+| -------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| `version`      | The same         | The released version without a leading `v`, such as `0.10.6`                             |
+| `date`         | The same         | The release day, `YYYY-MM-DD`                                                            |
+| `title`        | Translated       | The release's headline                                                                   |
+| `summary`      | Translated       | One or two sentences under it                                                            |
+| `highlights`   | Translated       | `title`, `body` (paragraphs and `- ` / `1. ` lists with inline Markdown), `image`, `alt` |
+| `improvements` | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+| `fixes`        | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+| `other`        | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+
+`highlights[].body` and the tail note fields (`improvements[].text`, `fixes[].text`,
+`other[].text`) accept a constrained editorial Markdown subset parsed at build time
+(`blog-markdown.ts`): inline `**bold**`, `*italic*`, `` `code` ``, and `[link](url)` (`https://`,
+`http://`, `/`, or `#`), plus flat `- ` bulleted and `1. ` numbered lists in `highlights[].body`.
+Headings, raw HTML, fenced code blocks, tables, blockquotes, images, task checkboxes, nested
+sublists, and unsafe link schemes fail the build; plain-text posts such as `0.10.6` and `0.10.7`
+remain valid without edits.
 
 `blog-content.ts` reads them at build time (the client and server builds alike) and fails the
-build, naming the file, when a file does not match `src/content/blog-schema.ts`, a post lacks a
-language or disagrees on its version, date or number of highlights, a version repeats, two English
-highlight titles give the same anchor, a fix has an image without its description (or the
-reverse), or an image is missing. It reads
+build, naming the file, when a file does not match `src/content/blog-schema.ts`, uses unsupported
+Markdown, lacks a language or disagrees on its version, date or item counts across `highlights`,
+`improvements`, `fixes`, and `other`, repeats a version, collides on an English highlight anchor
+(including `#improvements`, `#fixes`, and `#other`), has a note image without its description (or
+the reverse), or references a missing image. It reads
 each image's size so the page reserves its box, formats the dates once so prerendered and hydrated
-pages agree, and serves the result as `virtual:atd-blog`; the validator never reaches the
-browser. On the dev server, edits reload the page.
+pages agree, and serves the result as `virtual:atd-blog`; neither the validator nor the Markdown
+parser reaches the browser. On the dev server, edits reload the page.
 
 Images live in `public/media/blog/<release file name>/`, one per highlight and language, named
 `<highlight>.<lang>.webp`. A fix or a small improvement may carry one too, wherever seeing the

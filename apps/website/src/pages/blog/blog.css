@@ -305,11 +305,75 @@
   text-wrap: balance;
 }
 
-.post__text {
+.post__text,
+.post__list {
   font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   line-height: 1.6;
   color: var(--fg-2);
   text-wrap: pretty;
+}
+
+.post__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.post__list:not([data-ordered]) > li {
+  position: relative;
+  padding-inline-start: 22px;
+}
+
+.post__list:not([data-ordered]) > li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 4px;
+  inset-block-start: calc(0.8em - 3px);
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background-color: var(--dot-mid);
+}
+
+.post__list[data-ordered] {
+  padding-inline-start: 1.5em;
+  list-style: decimal;
+}
+
+.post__list[data-ordered] > li::marker {
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+:is(.post__copy, .post__fix) strong {
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.post__code {
+  padding: 0.1em 0.38em;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background-color: var(--fill-quaternary);
+  font-family: var(--font-mono), var(--font-text);
+  font-size: 0.875em;
+  font-weight: 500;
+  color: var(--fg-1);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.post__link {
+  color: var(--fg-1);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--dur-fast) linear;
+}
+
+.post__link:hover {
+  text-decoration-color: var(--fg-1);
 }
 
 /* An image sits like a screen set into the plate: the display's corner and hairline, on black
@@ -333,7 +397,6 @@
    what changed carries its image under its line. */
 .post__fixes {
   inline-size: 100%;
-  max-inline-size: var(--post-text);
   --card-pad: 4px 20px;
   gap: 0;
 }
@@ -345,6 +408,10 @@
   padding-block: 14px;
   padding-inline-start: 22px;
   color: var(--fg-2);
+}
+
+.post__fix-text {
+  text-wrap: pretty;
 }
 
 .post__fix + .post__fix {

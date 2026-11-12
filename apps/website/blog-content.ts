@@ -4,8 +4,12 @@ import { imageSize } from 'image-size';
 import { Value } from 'typebox/value';
 import type { Plugin, ResolvedConfig } from 'vite';
 import { parse } from 'yaml';
+import { parseHighlightBody, parseNoteText } from './blog-markdown.ts';
 import {
+  BLOG_NOTE_KINDS,
   BlogPostSchema,
+  type BlogNote,
+  type BlogNoteKind,
   type BlogPost,
   type BlogPostCopy,
   type BlogPostEntry,
@@ -92,16 +96,21 @@ function loadPosts(root: string, publicDir: string, watch: (file: string) => voi
         fail(name, 'must have the same version and date in every language.');
       if (entry.highlights.length !== source.highlights.length)
         fail(name, 'must have the same number of highlights in every language.');
+      for (const kind of BLOG_NOTE_KINDS) {
+        if ((entry[kind]?.length ?? 0) !== (source[kind]?.length ?? 0))
+          fail(name, `must have the same number of ${kind} items in every language.`);
+      }
     }
     checkDate(source.date, name);
     const slug = `atd-${source.version.replaceAll('.', '-')}`;
     if (slugs.has(slug)) fail(name, `repeats version ${source.version}.`);
     slugs.add(slug);
+    const reservedAnchors = new Set<string>(BLOG_NOTE_KINDS);
     const anchors = source.highlights.map((highlight, index) => {
       const anchor = anchorOf(highlight.title);
       if (
         !anchor ||
-        anchor === 'fixes' ||
+        reservedAnchors.has(anchor) ||
         source.highlights.slice(0, index).some((other) => anchorOf(other.title) === anchor)
       )
         fail(`en/${name}`, `highlight “${highlight.title}” needs a distinct English title.`);
@@ -110,6 +119,18 @@ function loadPosts(root: string, publicDir: string, watch: (file: string) => voi
     const copy = (lang: Lang): BlogPostCopy => {
       const entry = entryOf(lang);
       const file = `${lang}/${name}`;
+      const notes = (kind: BlogNoteKind): BlogNote[] =>
+        (entry[kind] ?? []).map((note, index) => {
+          const content = parseNoteText(note.text, file, kind, index);
+          if (note.image !== undefined && note.alt !== undefined)
+            return { content, figure: { image: image(note.image, file), alt: note.alt } };
+          if (note.image !== undefined || note.alt !== undefined)
+            fail(
+              file,
+              `${kind} “${note.text}” needs both an image and its description, or neither.`,
+            );
+          return { content, figure: null };
+        });
       return {
         dateLabel: new Intl.DateTimeFormat(htmlLang[lang], {
           dateStyle: 'long',
@@ -120,20 +141,13 @@ function loadPosts(root: string, publicDir: string, watch: (file: string) => voi
         highlights: entry.highlights.map((highlight, index) => ({
           anchor: anchors[index] ?? fail(file, 'has an extra highlight.'),
           title: highlight.title,
-          paragraphs: highlight.body
-            .split(/\n\s*\n/)
-            .map((paragraph) => paragraph.trim())
-            .filter(Boolean),
+          blocks: parseHighlightBody(highlight.body, file, highlight.title),
           image: image(highlight.image, file),
           alt: highlight.alt,
         })),
-        fixes: (entry.fixes ?? []).map((fix) => {
-          if (fix.image !== undefined && fix.alt !== undefined)
-            return { text: fix.text, figure: { image: image(fix.image, file), alt: fix.alt } };
-          if (fix.image !== undefined || fix.alt !== undefined)
-            fail(file, `fix “${fix.text}” needs both an image and its description, or neither.`);
-          return { text: fix.text, figure: null };
-        }),
+        improvements: notes('improvements'),
+        fixes: notes('fixes'),
+        other: notes('other'),
       };
     };
     return {

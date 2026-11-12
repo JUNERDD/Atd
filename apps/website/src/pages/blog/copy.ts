@@ -1,5 +1,8 @@
 import type { Localized } from '../../i18n/routes.ts';
 
+export const BLOG_NOTE_KINDS = ['improvements', 'fixes', 'other'] as const;
+export type BlogNoteKind = (typeof BLOG_NOTE_KINDS)[number];
+
 interface BlogCopy {
   /** The list's heading, lit in dots; also the back button's label on a post. */
   title: string;
@@ -15,7 +18,9 @@ interface BlogCopy {
   back: string;
   /** Heads a post's contents, the links to its sections. */
   contents: string;
+  improvements: string;
   fixes: string;
+  other: string;
   /** A post's primary action: its GitHub release, which carries the installers. */
   onGitHub: (version: string) => string;
   allReleases: string;
@@ -34,7 +39,9 @@ export const blogCopy = {
     release: (version) => `Atd ${version}`,
     back: 'Back to Blog',
     contents: 'On this page',
+    improvements: 'Improvements',
     fixes: 'Fixes',
+    other: 'Other',
     onGitHub: (version) => `Get Atd ${version}`,
     allReleases: 'All releases on GitHub',
     missing: 'There is no post at this address.',
@@ -49,7 +56,9 @@ export const blogCopy = {
     release: (version) => `Atd ${version}`,
     back: '返回博客',
     contents: '目录',
+    improvements: '优化',
     fixes: '修复',
+    other: '其他',
     onGitHub: (version) => `获取 Atd ${version}`,
     allReleases: '在 GitHub 查看全部版本',
     missing: '这个地址没有对应的文章。',
