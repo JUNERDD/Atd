@@ -1,5 +1,5 @@
 version: '0.11.0'
-date: '2026-11-12'
+date: '2026-11-13'
 title: Capture more of your screen and act on it in place
 summary: Record your screen with detected steps and narration, stitch scrolling pages into long screenshots, run commands on text inside a screenshot, and read formatted Markdown on floating result cards.
 highlights:
@@ -47,6 +47,8 @@ improvements:
   - text: '**Floating cards, capsules, and secondary windows** keep responsive hover states, pointer cursors, edge scroll fades, and smooth entrance and resize animations even while another app is active.'
   - text: OpenDocument text (`.odt`) files in conversations now open directly like other documents without an extra confirmation prompt.
   - text: '**Read aloud** starts faster by caching installed macOS speech voices.'
+  - text: Filter **Memory** by user profile, preferences and facts, corrections and learnings, or tool preferences, with clearer empty and search-result states.
+  - text: Provider connections now accept **plain HTTP endpoints**, including internal hostnames, with an inline warning for non-loopback connections.
 fixes:
   - text: Fixed **focus handoffs and answer write-backs** triggered by shortcuts so they wait cleanly for shortcut keys to be released — including over remote input — and keep the answer on its card if focus changes before writing finishes.
   - text: Fixed the **selection toolbar** reading selections from background apps or triggering on empty Chromium selection markers and navigation tables in Apple Notes.
