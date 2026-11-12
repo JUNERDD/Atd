@@ -44,15 +44,23 @@ extension AnnotationCanvasView {
   /// ⌘Z and ⇧⌘Z undo the document, or the typing while text is open; ⌘Delete clears it; ⌘C
   /// copies (``onCopy`` decides what), except while text is open, where it copies the text
   /// selected in it; ⌘A picks every paragraph in text mode; ⌘↩ is the result card's primary
-  /// action. They are taken here rather than through the Edit menu, whose `undo:` would reach
-  /// the window's undo manager, and ahead of an open text view's own handling of the keys. Nil
-  /// leaves the event to the rest of the window.
+  /// action; ⌥⌘I shows or hides the result card once a run started. They are taken here rather
+  /// than through the Edit menu, whose `undo:` would reach the window's undo manager, and ahead
+  /// of an open text view's own handling of the keys. Nil leaves the event to the rest of the
+  /// window.
   func keyEquivalent(_ event: NSEvent) -> Bool? {
+    if let editor = window?.firstResponder as? NSTextView, editor.hasMarkedText() {
+      return nil
+    }
+    if event.type == .keyDown, window?.isKeyWindow == true,
+      IslandLightboxPanelState.toggles(event),
+      (pointerOwner as? AnnotationEditor)?.toggleResultCard() == true
+    {
+      return true
+    }
     // A field outside the canvas (the command row's ask field, the result card's adjust field)
     // keeps its editing keys: its bar or card takes them.
-    if let editor = window?.firstResponder as? NSTextView,
-      editor.isFieldEditor || editor.hasMarkedText()
-    {
+    if let editor = window?.firstResponder as? NSTextView, editor.isFieldEditor {
       return nil
     }
     guard event.type == .keyDown, window?.isKeyWindow == true else { return nil }

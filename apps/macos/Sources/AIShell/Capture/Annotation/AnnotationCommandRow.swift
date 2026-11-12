@@ -4,14 +4,15 @@ import AppKit
 /// One of the screenshot's command rows (architecture S1), on the shared glass capsule; the slot
 /// shows one at a time (``AnnotationCommandSlot``).
 ///
-/// - The screenshot row: Ask Atd, a button per command placed on the screenshot toolbar while the
-///   row stays within `maxWidth` (a command with options is a split button whose chevron opens
-///   them, as on the selection toolbar), More, then after a hairline Copy text and Select Text
-///   (text mode's way in), and after another the shortcut to auto-redact, shown only while it
-///   has something to cover or says it just did (decision D7).
+/// - The screenshot row: once a text run started, the result card toggle, then after a hairline
+///   Ask Atd, a button per command placed on the screenshot toolbar while the row stays within
+///   `maxWidth` (a command with options is a split button whose chevron opens them, as on the
+///   selection toolbar), More, then after a hairline Copy text and Select Text (text mode's way
+///   in), and after another the shortcut to auto-redact, shown only while it has something to
+///   cover or says it just did (decision D7).
 /// - The text row, while text mode is on: the scope chip (what a command reads, with × to clear
-///   the picks), Ask Atd, the commands placed on `screenshotText` the same way, More, then after
-///   a hairline Copy.
+///   the picks) and, once a run started, the result card toggle, then after a hairline Ask Atd,
+///   the commands placed on `screenshotText` the same way, More, then after another hairline Copy.
 ///
 /// More always shows: it holds the commands that did not fit and, last, the way to customize the
 /// toolbar. A running text command's bar sits under its button (or More's) without changing a
@@ -48,6 +49,7 @@ final class AnnotationCommandRow: NSView {
   var onCopy: (() -> Void)?
   var onSelectText: (() -> Void)?
   var onRedact: (() -> Void)?
+  var onToggleResults: (() -> Void)?
   /// The scope chip's ×.
   var onScopeClear: (() -> Void)? {
     get { scope?.onClear }
@@ -64,16 +66,17 @@ final class AnnotationCommandRow: NSView {
   private(set) var overflow: [Command] = []
   private var shown: [Command] = []
   /// Each shown command's button, by command id.
-  private var buttons: [String: NSButton] = [:]
-  private let more: AnnotationToolbarButton
-  private let copy: AnnotationToolbarButton
-  private let selectText: AnnotationToolbarButton?
-  private let redact: AnnotationToolbarButton?
-  private let scope: AnnotationScopeChip?
-  private let runBar = AnnotationRunBar()
+  private(set) var buttons: [String: NSButton] = [:]
+  let more: AnnotationToolbarButton
+  let copy: AnnotationToolbarButton
+  let selectText: AnnotationToolbarButton?
+  let redact: AnnotationToolbarButton?
+  let results: AnnotationToolbarButton
+  let scope: AnnotationScopeChip?
+  let runBar = AnnotationRunBar()
   /// The button the running bar sits under.
-  private weak var running: NSView?
-  private let bar: AnnotationGlassBar
+  weak var running: NSView?
+  let bar: AnnotationGlassBar
   /// The row with every part showing, each at its widest.
   private(set) var reservedSize = NSSize.zero
 
@@ -96,7 +99,14 @@ final class AnnotationCommandRow: NSView {
       image: kind == .screenshot ? AnnotationIcons.glyph(AnnotationIcons.copyText, label: "") : nil,
       action: #selector(copyClicked))
     copy.toolTip = Self.copyTooltip(kind)
-    var fixed: [NSView] = [ask, more, copy]
+    let results = AnnotationToolbarButton(
+      selection: .washToggle, action: #selector(resultsClicked))
+    let resultsName = strings.text(CaptureTextModeStringKey.results)
+    results.image = AnnotationIcons.glyph(AnnotationIcons.results, label: resultsName)
+    results.toolTip = strings.text(CaptureTextModeStringKey.resultsTooltip)
+    results.setAccessibilityLabel(resultsName)
+    self.results = results
+    var fixed: [NSView] = [results, ask, more, copy]
     var groups: [[NSView]]
     switch kind {
     case .screenshot:
@@ -113,14 +123,14 @@ final class AnnotationCommandRow: NSView {
       self.redact = redact
       scope = nil
       fixed += [select, redact]
-      groups = [[ask, more], [copy, select], [redact]]
+      groups = [[results], [ask, more], [copy, select], [redact]]
     case .text:
       let chip = AnnotationScopeChip()
       selectText = nil
       redact = nil
       scope = chip
-      fixed.append(chip)
-      groups = [[chip], [ask, more], [copy]]
+      fixed += [chip]
+      groups = [[chip, results], [ask, more], [copy]]
     }
     // The row with its fixed parts alone: 2 pt between neighbours of a group, 13 pt for each
     // hairline with its gaps. Each command adds its part and a gap while it fits.
@@ -129,7 +139,8 @@ final class AnnotationCommandRow: NSView {
     width += groups.map { CGFloat(max($0.count - 1, 0)) * 2 }.reduce(0, +)
     width += CGFloat(groups.count - 1) * 13
     var units: [NSView] = []
-    var controls: [NSControl] = [ask, more, copy] + [selectText, redact].compactMap(\.self)
+    var controls: [NSControl] =
+      [results, ask, more, copy] + [selectText, redact].compactMap(\.self)
     for command in commands {
       let unit = Self.unit(for: command, index: units.count, options: hasOptions(command.id), kind)
       let unitWidth = unit.view.fittingSize.width + 2
@@ -143,8 +154,7 @@ final class AnnotationCommandRow: NSView {
       shown.append(command)
       buttons[command.id] = unit.controls.first as? NSButton
     }
-    let commandGroup = kind == .screenshot ? 0 : 1
-    groups[commandGroup] = [ask] + units + [more]
+    groups[1] = [ask] + units + [more]
     bar = AnnotationGlassBar(groups: groups, blending: .withinWindow)
     super.init(frame: CGRect(origin: .zero, size: bar.fittingSize))
     reservedSize = widestSize()
@@ -153,6 +163,7 @@ final class AnnotationCommandRow: NSView {
     runBar.isHidden = true
     addSubview(runBar)
     if kind == .screenshot { setRedaction(.hidden) }
+    setResults(visible: false, isOpen: false)
     setAccessibilityElement(true)
     setAccessibilityRole(.toolbar)
     setAccessibilityLabel(
@@ -168,129 +179,14 @@ final class AnnotationCommandRow: NSView {
   override func layout() {
     super.layout()
     bar.frame = bounds
+    bar.layoutSubtreeIfNeeded()
     placeRunBar()
-  }
-
-  // MARK: States
-
-  /// Shows what Copy text or Copy just did, or its action again, at its reserved width.
-  func showCopy(_ state: CopyState, tooltip: String? = nil) {
-    let labels = Self.copyLabels(kind)
-    let (label, icon): (String, String?) =
-      switch state {
-      case .idle: (labels[0], AnnotationIcons.copyText)
-      case .copied: (labels[1], AnnotationIcons.confirm)
-      case .noText: (labels[2], AnnotationIcons.copyText)
-      }
-    let image = kind == .screenshot ? icon.map { AnnotationIcons.glyph($0, label: "") } : nil
-    copy.setLabel(label, image: image)
-    copy.presentation =
-      switch state {
-      case .idle: .standard
-      case .copied: .success
-      case .noText: .muted
-      }
-    copy.toolTip = tooltip ?? Self.copyTooltip(kind)
-    fit()
-  }
-
-  /// Select Text: enabled unless the selection was read and holds no text (`false`).
-  func setSelectText(hasText: Bool?) {
-    guard let selectText else { return }
-    let none = hasText == false
-    selectText.isEnabled = !none
-    let strings = ShellStrings.shared
-    selectText.toolTip = strings.text(
-      none ? CaptureTextModeStringKey.selectTextNone : .selectTextTooltip)
-  }
-
-  /// The auto-redact shortcut's state; its group shows only while it covers or confirms.
-  func setRedaction(_ state: Redaction) {
-    guard let redact else { return }
-    let strings = ShellStrings.shared
-    switch state {
-    case .hidden:
-      break
-    case .cover(let count):
-      redact.setLabel(
-        strings.text(CaptureTextModeStringKey.redact),
-        image: AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: ""))
-      redact.toolTip = strings.text(CaptureTextModeStringKey.redactTooltip, count: count)
-      redact.presentation = .standard
-      redact.isEnabled = true
-    case .done(let count):
-      redact.setLabel(
-        strings.text(.captureRedactDone, count: count),
-        image: AnnotationIcons.glyph(AnnotationIcons.redacted, label: ""))
-      redact.presentation = .success
-      redact.isEnabled = false
-    }
-    bar.setGroup(2, hidden: state == .hidden)
-    fit()
-  }
-
-  /// The confirmation's tooltip (what was covered and how to undo it).
-  func setRedactionTooltip(_ tooltip: String) { redact?.toolTip = tooltip }
-
-  /// The scope chip's words.
-  func setScope(_ label: String) {
-    scope?.setLabel(label)
-    fit()
-  }
-
-  /// The row at the size of what it shows now, in place: its host is flipped, so the top-left
-  /// stays where the toolbar put it.
-  private func fit() {
-    guard superview != nil else { return }
-    setFrameSize(fittingSize)
-  }
-
-  /// The row with every part showing and each label that changes at its longest form (Copy's,
-  /// the shortcut's at a two-digit count, the scope chip's), measured once with the current
-  /// language's copy; the parts then show their idle labels again.
-  private func widestSize() -> NSSize {
-    let strings = ShellStrings.shared
-    let copyImage =
-      kind == .screenshot ? AnnotationIcons.glyph(AnnotationIcons.copyText, label: "") : nil
-    let width = { (text: String) in
-      AnnotationToolbarButton.Label.width(text: text, hasImage: copyImage != nil)
-    }
-    copy.setLabel(Self.copyLabels(kind).max { width($0) < width($1) } ?? "", image: copyImage)
-    let redactImage = AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: "")
-    redact?.setLabel(strings.text(.captureRedactDone, count: 88), image: redactImage)
-    scope?.setLabel(AnnotationScopeChip.widestLabel)
-    let size = bar.fittingSize
-    showCopy(.idle)
-    redact?.setLabel(strings.text(CaptureTextModeStringKey.redact), image: redactImage)
-    scope?.setLabel("")
-    return size
-  }
-
-  /// The running bar under command `id`'s button, or under More when it sits there; nil hides it.
-  func setRunning(_ id: String?) {
-    let next: NSView? = id.map { buttons[$0] ?? more }
-    guard next !== running else { return }
-    running = next
-    if running == nil {
-      runBar.stop()
-    } else {
-      placeRunBar()
-      runBar.start()
-    }
-  }
-
-  /// 2 pt under the label, 9 pt in from the button's ends, 3 pt above its bottom edge.
-  private func placeRunBar() {
-    guard let running, running.superview != nil else { return }
-    let rect = convert(running.bounds, from: running)
-    let y = isFlipped ? rect.maxY - 3 - 2 : rect.minY + 3
-    runBar.frame = CGRect(x: rect.minX + 9, y: y, width: max(rect.width - 18, 0), height: 2)
   }
 
   // MARK: Building
 
   /// Copy's action and its two confirmations, the first the action.
-  private static func copyLabels(_ kind: Kind) -> [String] {
+  static func copyLabels(_ kind: Kind) -> [String] {
     let strings = ShellStrings.shared
     return [
       kind == .screenshot
@@ -299,7 +195,7 @@ final class AnnotationCommandRow: NSView {
     ]
   }
 
-  private static func copyTooltip(_ kind: Kind) -> String {
+  static func copyTooltip(_ kind: Kind) -> String {
     let strings = ShellStrings.shared
     return kind == .screenshot
       ? strings.text(.captureCommandsCopyTextTooltip)
@@ -335,6 +231,7 @@ final class AnnotationCommandRow: NSView {
   @objc private func copyClicked() { onCopy?() }
   @objc private func selectTextClicked() { onSelectText?() }
   @objc private func redactClicked() { onRedact?() }
+  @objc private func resultsClicked() { onToggleResults?() }
 
   @objc private func commandClicked(_ sender: NSButton) {
     guard shown.indices.contains(sender.tag) else { return }

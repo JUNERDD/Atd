@@ -66,6 +66,7 @@ final class AnnotationGlassBar: NSView {
   }()
   private let stack = NSStackView()
   private let groups: [[NSView]]
+  private let dividerSpacing: (leading: CGFloat, trailing: CGFloat)
   /// Each group's divider (none before the first group).
   private var dividers: [NSView?] = []
   /// Where the press that is moving the bar went down, in screen coordinates. Travel is
@@ -80,6 +81,7 @@ final class AnnotationGlassBar: NSView {
     dividerSpacing: (leading: CGFloat, trailing: CGFloat) = (6, 6)
   ) {
     self.groups = groups
+    self.dividerSpacing = dividerSpacing
     material = NativeMaterialView(.capsule(blending))
     super.init(frame: .zero)
     // Its layer carries the row's scale while the glass changes shape.
@@ -93,9 +95,6 @@ final class AnnotationGlassBar: NSView {
       var divider: NSView?
       if index > 0 {
         let line = Self.divider()
-        if let last = stack.arrangedSubviews.last {
-          stack.setCustomSpacing(dividerSpacing.leading, after: last)
-        }
         stack.addArrangedSubview(line)
         stack.setCustomSpacing(dividerSpacing.trailing, after: line)
         divider = line
@@ -103,6 +102,7 @@ final class AnnotationGlassBar: NSView {
       dividers.append(divider)
       for view in group { stack.addArrangedSubview(view) }
     }
+    refreshDividers()
     // At its content's size from the start, not zero: see ``restSize``.
     stack.setFrameSize(stack.fittingSize)
     surface.addSubview(stack)
@@ -206,11 +206,32 @@ final class AnnotationGlassBar: NSView {
   /// sides of it.
   func setGroup(_ index: Int, hidden: Bool) {
     for view in groups[index] { view.isHidden = hidden }
-    var visibleBefore = false
+    refreshDividers()
+  }
+
+  /// Hides or shows one control `view` inside a group, keeping divider visibility and pre-divider
+  /// spacing aligned with the group's last visible control.
+  func setHidden(_ hidden: Bool, for view: NSView) {
+    guard view.isHidden != hidden else { return }
+    view.isHidden = hidden
+    refreshDividers()
+  }
+
+  /// Updates each divider's visibility and puts ``dividerSpacing.leading`` after the last visible
+  /// view preceding each visible divider (default spacing everywhere else in a group).
+  private func refreshDividers() {
+    var previousLast: NSView?
     for (group, divider) in zip(groups, dividers) {
-      let visible = group.contains { !$0.isHidden }
-      divider?.isHidden = !(visible && visibleBefore)
-      visibleBefore = visibleBefore || visible
+      let lastVisible = group.last { !$0.isHidden }
+      let showsDivider = lastVisible != nil && previousLast != nil
+      divider?.isHidden = !showsDivider
+      if showsDivider, let previousLast {
+        stack.setCustomSpacing(dividerSpacing.leading, after: previousLast)
+      }
+      for view in group {
+        stack.setCustomSpacing(NSStackView.useDefaultSpacing, after: view)
+      }
+      if lastVisible != nil { previousLast = lastVisible }
     }
   }
 

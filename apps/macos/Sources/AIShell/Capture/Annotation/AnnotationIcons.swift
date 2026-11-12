@@ -31,6 +31,8 @@ enum AnnotationIcons {
   static let longScreenshot = "unfold-vertical"
   /// Text mode's way in and its scope chip (the plan's 「选取文字」).
   static let selectText = "square-dashed-text"
+  /// The text row's toggle for the result card (`Lucide / panel-right`, as in the long screenshot preview).
+  static let results = "panel-right"
 
   /// The Lucide glyph for pixelate and blur; a drawn black box for solid, which depicts itself.
   static func redaction(_ redaction: AnnotationRedaction, label: String) -> NSImage {

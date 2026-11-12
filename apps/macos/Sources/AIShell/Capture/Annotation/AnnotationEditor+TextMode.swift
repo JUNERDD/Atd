@@ -16,6 +16,7 @@ extension AnnotationEditor {
     slot.onTextRun = { [weak self] in self?.runText($0) }
     slot.onTextCopy = { [weak self] in self?.copySelectedText(fromKey: false) }
     slot.onScopeClear = { [weak self] in self?.clearScope() }
+    slot.onToggleResults = { [weak self] in self?.toggleResultCard() }
     text.card.onAction = { [weak self] in self?.cardAction($0) }
     store.onRestored = { [weak self] in self?.followUndo() }
   }

@@ -56,6 +56,7 @@ extension AnnotationEditor {
     slot.setSelectText(hasText: recognizedText.map { !$0.boxes.isEmpty })
     slot.setScope(scopeLabel)
     slot.setRunning(text.runs.running?.commandId)
+    syncResultToggle()
   }
 
   /// A tool was chosen or dropped: menus, the field and feedback go.

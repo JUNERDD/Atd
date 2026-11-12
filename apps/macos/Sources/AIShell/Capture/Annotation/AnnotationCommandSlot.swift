@@ -36,6 +36,8 @@ final class AnnotationCommandSlot {
   var onTextCopy: (() -> Void)?
   /// The scope chip's ×.
   var onScopeClear: (() -> Void)?
+  /// The rows' result card toggle.
+  var onToggleResults: (() -> Void)?
   /// The auto-redact shortcut's confirmation ended: the editor shows the count again.
   var onRedactionFeedbackEnd: (() -> Void)?
   /// The row or the field being dragged by its surface.
@@ -91,6 +93,7 @@ final class AnnotationCommandSlot {
         self?.openOptions(of: command, from: chevron, text: shown)
       }
       view.onMore = { [weak self] more in self?.openMore(from: more, text: shown) }
+      view.onToggleResults = { [weak self] in self?.onToggleResults?() }
       view.onDrag = { [weak self] in self?.onDrag?($0) }
     }
     row.onRun = { [weak self] command in self?.onLaunch?(.command(CommandLaunch(id: command.id))) }
@@ -187,6 +190,12 @@ final class AnnotationCommandSlot {
 
   /// The text row's scope chip.
   func setScope(_ label: String) { textRow?.setScope(label) }
+
+  /// Both rows' result card toggle: shown once a run started, lit while the card shows.
+  func setResults(visible: Bool, isOpen: Bool) {
+    row?.setResults(visible: visible, isOpen: isOpen)
+    textRow?.setResults(visible: visible, isOpen: isOpen)
+  }
 
   /// The running bar under text command `id` (nil: none runs).
   func setRunning(_ id: String?) { textRow?.setRunning(id) }

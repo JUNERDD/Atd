@@ -19,9 +19,10 @@ final class AnnotationToolbarButton: NSButton {
   /// How the selected state shows: an accent fill under a white glyph (tools, stroke widths),
   /// or an accent ring around the glyph (colour swatches, which a fill would hide). `toggle` is
   /// an on/off control that shows "on" like `fill`; `wash` one of a choice whose selected one
-  /// keeps the pressed wash (the capture bar's mode pair, which leaves the accent to the toolbar).
+  /// keeps the pressed wash (the capture bar's mode pair, which leaves the accent to the toolbar);
+  /// `washToggle` an on/off control with that neutral wash (the command rows' result toggle).
   enum Selection {
-    case fill, ring, toggle, wash
+    case fill, ring, toggle, wash, washToggle
   }
 
   /// Capture-only faces; other toolbar consumers keep the standard appearance. Feedback is
@@ -203,7 +204,7 @@ final class AnnotationToolbarButton: NSButton {
       NSColor.labelColor.setFill()
       circle.fill()
       NSGraphicsContext.restoreGraphicsState()
-    } else if selection == .wash, isSelected, isEnabled {
+    } else if selection == .wash || selection == .washToggle, isSelected, isEnabled {
       let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
       let opacity: CGFloat = presentation == .captureMode ? (dark ? 0.14 : 0.08) : 0.16
       NSColor.labelColor.withAlphaComponent(opacity).setFill()
@@ -322,7 +323,7 @@ final class AnnotationToolbarButton: NSButton {
   override func accessibilityRole() -> NSAccessibility.Role? {
     switch selection {
     case nil: super.accessibilityRole()
-    case .toggle: .checkBox
+    case .toggle, .washToggle: .checkBox
     case .fill, .ring, .wash: .radioButton
     }
   }

@@ -8,12 +8,39 @@ import Observation
 /// grabber dragged it; its copied capsule stands where it stood. The editor feeds it the latest
 /// run and does what it asks (``CaptureResultAction``).
 extension AnnotationEditor {
+  /// A text command run exists to show in the result card.
+  var hasTextResult: Bool { text.card.card != nil && !text.runs.runs.isEmpty }
+
+  /// Keeps the command rows' result toggle in step with the card's existence and visibility.
+  func syncResultToggle() {
+    slot.setResults(visible: hasTextResult, isOpen: text.card.presentation == .card)
+  }
+
+  /// Shows or hides the result card (the command rows' toggle and ⌥⌘I); false without a result.
+  @discardableResult
+  func toggleResultCard() -> Bool {
+    guard hasTextResult else { return false }
+    if text.card.presentation == .card {
+      text.card.close()
+      syncResultToggle()
+      refreshTextLayers()
+      placeCard()
+      if !slot.isAsking { focusCanvas() }
+    } else if let id = text.card.card.flatMap({ text.runs[$0.run]?.id }) ?? text.runs.latest?.id {
+      openCard(of: id)
+    } else {
+      return false
+    }
+    return true
+  }
+
   /// The card for the run it shows as that run stands, and the preview of the answer under
   /// review.
   func refreshCard() {
     let model = text.card
     if let shown = model.card?.run, let run = text.runs[shown] { model.update(card(for: run)) }
     model.stepColor = interaction.styles[AnnotationTool.step.styleSlot].color
+    syncResultToggle()
     refreshPreview()
     placeCard()
   }
@@ -29,6 +56,7 @@ extension AnnotationEditor {
   /// travel, an edge it was kept inside), and its text and glass are then resampled, which blurs
   /// them on a 1x display.
   func placeCard() {
+    syncResultToggle()
     let model = text.card
     guard model.presentation != .hidden, let host = toolbar.superview,
       let workArea = workArea(of: host)
@@ -101,6 +129,7 @@ extension AnnotationEditor {
   /// in, a copy collapsing it, a close).
   private func observeCard() {
     withObservationTracking {
+      _ = text.card.card
       _ = text.card.size
       _ = text.card.presentation
     } onChange: { [weak self] in

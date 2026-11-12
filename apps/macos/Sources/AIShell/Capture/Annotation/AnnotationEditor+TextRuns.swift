@@ -165,6 +165,7 @@ extension AnnotationEditor: CaptureTextConsumer {
   func forget(_ id: String) {
     text.runs.remove(id)
     text.waiting.remove(id)
+    syncResultToggle()
   }
 
   /// The answer under review previews dashed on every canvas, as it would land now; ⌥ keeps
@@ -181,6 +182,7 @@ extension AnnotationEditor: CaptureTextConsumer {
     slot.setup?.textRuns?.release(self, keeping: text.opening)
     for canvas in canvases { canvas.textLayer.stop() }
     text.reset()
+    syncResultToggle()
   }
 
   /// The card for `run` as it stands, on the image as it is now.

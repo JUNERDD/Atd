@@ -2909,6 +2909,42 @@
         }
       }
     },
+    "captureTextMode.results" : {
+      "comment" : "Text command row: button after the scope chip that shows or hides the floating result card once a text command ran",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Results"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果"
+          }
+        }
+      }
+    },
+    "captureTextMode.resultsTooltip" : {
+      "comment" : "Text command row: tooltip of the button that shows or hides the floating result card, with its shortcut",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show or hide results (⌥⌘I)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示或隐藏结果（⌥⌘I）"
+          }
+        }
+      }
+    },
     "captureTextMode.runTooltip" : {
       "comment" : "Tooltip of a command button on the text command row; %@ is the command's name",
       "extractionState" : "manual",

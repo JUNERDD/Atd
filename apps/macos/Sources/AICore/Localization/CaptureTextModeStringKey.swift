@@ -17,6 +17,9 @@ public enum CaptureTextModeStringKey: String, CaseIterable, ShellCatalogKey {
   case label = "captureTextMode.label"
   /// One `%lld`, with plural variations: the scope chip while characters are selected.
   case scopeCharacters = "captureTextMode.scope.characters"
+  /// The text command row's toggle that shows or hides the result card once a run started.
+  case results = "captureTextMode.results"
+  case resultsTooltip = "captureTextMode.resultsTooltip"
   /// One `%@`, the command's name: a text command's tooltip.
   case runTooltip = "captureTextMode.runTooltip"
   /// The text command row's Copy.
