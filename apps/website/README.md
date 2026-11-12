@@ -168,6 +168,13 @@ editions side by side. They retain the Tahoe Beach Dusk backdrop and use editabl
 components with handwritten notes. Export each 1440 × 900 frame at 1x, then encode WebP at
 quality 85; keep the localized alt text aligned with the scene.
 
+The 0.11.0 images are in `project/4171:512653`, in the
+`W · Website · Blog · 0.11.0 images (2026-11-12)` section (`4171:512654`–`4171:512661`). The four
+scenes cover screen recording review and questions, scrolling long screenshots, running commands on
+screenshot text, and Markdown in floating result cards, with Chinese and English editions side by
+side over the Tahoe Beach Dusk backdrop and handwritten notes, exported at 1440 × 900 (1x) as WebP
+at quality 85.
+
 ### Design
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`

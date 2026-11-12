@@ -1,0 +1,56 @@
+version: '0.11.0'
+date: '2026-11-12'
+title: Capture more of your screen and act on it in place
+summary: Record your screen with detected steps and narration, stitch scrolling pages into long screenshots, run commands on text inside a screenshot, and read formatted Markdown on floating result cards.
+highlights:
+  - title: Record your screen and ask about it
+    body: |-
+      Switch to **Record** on the capture bar, choose **Screenshot or recording** from the composer's `+` menu, or press `⇧⌘3` (when available) to record an element, a window, or any part of your display. Set **Sound** and **Options** right beside the selection — microphone and system audio, countdown, quality, frame rate, pointer, clicks and keystrokes, and what happens afterward — then press `↩` to start, and pause, toggle the microphone, or stop anytime from the floating capsule, the menu bar timer, or `⌃⌘Esc`.
+
+      When you finish, the **Screen Recording** card opens over your screen:
+
+      - **Timeline** — trim the start and end to keep only the moments that matter, or restore the full clip anytime.
+      - **Steps Atd Will Read** — inspect detected clicks, keystrokes, screen changes, and on-device narration; the video file itself is not sent to the model.
+      - **Ask or share** — ask a question right on the card, or save, copy, or choose **Attach to Conversation**.
+    image: /media/blog/0.11.0/screen-recording.en.webp
+    alt: The Screen Recording result card over the lake backdrop, with a video preview on the left, timestamped actions under Steps Atd Will Read on the right, a trimmed filmstrip timeline, and quick question chips, with a handwritten arrow pointing to the card.
+  - title: Long screenshots for scrolling pages
+    body: |-
+      Select a scrollable area on a display and click **Long screenshot** on the toolbar, or press `⌘↓`. Scroll through the page yourself or press `Space` for **Auto-scroll** while Atd stitches the selection live alongside a preview strip. Press `↩` to open the **Long Screenshot** card, where you can trim the top and bottom, inspect **What Atd Will Read** page by page, cover sensitive info, annotate in full-screen preview, ask about the capture, or copy or attach it.
+
+      Every screenshot now also includes a command row for **Ask Atd**, **Copy Text**, **Cover Sensitive Info**, and screenshot commands — including starter commands to explain, translate, or summarize a screenshot, or transcribe it as Markdown. Questions and commands started from screenshots or recordings live in their own **Captures** tab in task history, with **Show captures in All** available under View options.
+    image: /media/blog/0.11.0/long-screenshots.en.webp
+    alt: A live long screenshot over a scrolling report window, with a stitched preview strip beside the selection, a floating Pause Scrolling bar below it, and a handwritten arrow pointing to the Space keycap on the bottom shortcut bar.
+  - title: Run commands on text in a screenshot
+    body: |-
+      Click **Select Text** on a screenshot — or in a long screenshot's full-screen preview — to click paragraphs, drag across several, or select characters while the capture stays open. Commands that read selected text run right on the image:
+
+      - **Replace the selected text** — commands such as Translate or Polish rewrite picked paragraphs in place; hold `⌥` to compare with the original.
+      - **Insert after the selected text** — numbers the paragraphs on the image and lists the notes on a floating card beside the capture.
+      - **Mark the selected text** — highlights key passages and numbers steps directly on the screenshot.
+
+      From the result card you can compare or regenerate versions, restore or reapply changes on the image, and **Copy screenshot** without closing the capture; the **Results** toggle (`⌥⌘I`) on the command row shows or hides the card at any time. Text covered with the mosaic tool or **Cover Sensitive Info** cannot be picked and is excluded from the recognized text sent with a capture.
+    image: /media/blog/0.11.0/screenshot-text-commands.en.webp
+    alt: An open screenshot in Select Text mode with two report paragraphs selected and translated in place, the annotation and text command bars below, a floating Translate result card with version controls and Copy screenshot on the right, and a handwritten arrow pointing to the translated heading.
+  - title: Markdown in floating result cards
+    body: |-
+      Answers on floating result cards — the command island's answer and review cards, along with screenshot, long screenshot, and recording results — now format headings, bulleted and numbered lists, task checkboxes, quotes, code blocks, and tables as they stream in. Turn off **Markdown in results** under **Settings › General** if you prefer plain text.
+
+      Any command can now also set its result to **Show in a card**, keeping explanations, summaries, and translations in a floating card over the app you ran them from, ready to copy, insert, or open in Atd without bringing up the main panel.
+    image: /media/blog/0.11.0/markdown-result-cards.en.webp
+    alt: A floating Summarize answer card over a release-notes window on the lake backdrop, rendering formatted headings, inline code, a bulleted list, a code block, and a three-column rollout table, with a handwritten arrow pointing to the card.
+improvements:
+  - text: After updating to a new stable version, a **Release notes** button in the panel header — and **View release notes** in **Settings › About** — opens that release's notes in your language.
+  - text: '**Panel, capture, and command shortcuts** now respond right away before keys are released or background selection reads finish, and screen recordings prepare during the countdown so capture starts without a pause.'
+  - text: '**Panel commands** now open their conversation right away before the service responds, keep any draft you start typing as the task settles, and return to the command input view if starting fails.'
+  - text: Added an optional **WPS spreadsheet selection** integration under **Settings › General › Selection toolbar** to show the toolbar when selecting spreadsheet content in WPS.
+  - text: '**Floating cards, capsules, and secondary windows** keep responsive hover states, pointer cursors, edge scroll fades, and smooth entrance and resize animations even while another app is active.'
+  - text: OpenDocument text (`.odt`) files in conversations now open directly like other documents without an extra confirmation prompt.
+  - text: '**Read aloud** starts faster by caching installed macOS speech voices.'
+fixes:
+  - text: Fixed **focus handoffs and answer write-backs** triggered by shortcuts so they wait cleanly for shortcut keys to be released — including over remote input — and keep the answer on its card if focus changes before writing finishes.
+  - text: Fixed the **selection toolbar** reading selections from background apps or triggering on empty Chromium selection markers and navigation tables in Apple Notes.
+  - text: Fixed **unpinned task panels** losing window order while focused, staying above other apps after switching away, or covering system file dialogs.
+  - text: Fixed switching **annotation tools** in a screenshot leaving the previous annotation selected when changing color or stroke width.
+other:
+  - text: Release installers and updates are now signed with **Apple Developer ID** and notarized by Apple; macOS may ask to reconfirm privacy permissions once when upgrading from an earlier version.
