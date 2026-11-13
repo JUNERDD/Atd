@@ -43,6 +43,9 @@ export function leadingSystemMessage(): ExtensionFactory {
  */
 export const RUN_MATERIAL_TYPE = 'app-material';
 
+/** Tools that can read or inspect an attached file's read-only resource path on disk. */
+const RESOURCE_PATH_TOOLS = new Set(['read', 'bash', 'grep', 'find', 'ls']);
+
 /**
  * Sends the current run's material with each of its prompts, before the user's text, in a
  * `run_material` element, which the service system prompt explains: the saved command's
@@ -53,9 +56,14 @@ export function runMaterialContext(material: () => RunMaterial): ExtensionFactor
   return (pi) => {
     pi.on('before_agent_start', async (_event, ctx) => {
       const current = material();
+      const opensResources = pi.getActiveTools().some((tool) => RESOURCE_PATH_TOOLS.has(tool));
       // Pi prompts only with a model selected; one without image input gets a placeholder text
       // in place of each image.
-      const text = formatMaterial(current, ctx.model?.input.includes('image') ?? true);
+      const text = formatMaterial(
+        current,
+        ctx.model?.input.includes('image') ?? true,
+        opensResources,
+      );
       if (!text) return;
       beforePrompt(pi, {
         customType: RUN_MATERIAL_TYPE,
@@ -76,9 +84,14 @@ const NUMBERED = "The user's message carries the images in the order they are nu
 
 /**
  * The run's material. Everything embedded in it is `materialSafe`, so nothing a file, a name or
- * a quoted passage holds can close the material or one of its elements.
+ * a quoted passage holds can close the material or one of its elements. Resource disk paths are
+ * included only when the session has an active file or shell tool that can open them.
  */
-function formatMaterial(material: RunMaterial, seesImages: boolean): string {
+function formatMaterial(
+  material: RunMaterial,
+  seesImages: boolean,
+  opensResources: boolean,
+): string {
   const images = material.attachments.filter((file) => file.kind === 'image');
   return [
     materialSafe(material.instructions),
@@ -86,11 +99,16 @@ function formatMaterial(material: RunMaterial, seesImages: boolean): string {
     ...material.attachments.map((file) => {
       switch (file.kind) {
         case 'image':
-          return imageEntry(file, `${images.indexOf(file) + 1} of ${images.length}`, seesImages);
+          return imageEntry(
+            file,
+            `${images.indexOf(file) + 1} of ${images.length}`,
+            seesImages,
+            opensResources,
+          );
         case 'unavailable':
           return `File: ${materialLine(file.name)}\n[Unavailable: ${file.reason}, so it was not loaded. Tell the user when this matters for the answer.]`;
         case 'text':
-          return textEntry(file);
+          return textEntry(file, opensResources);
       }
     }),
     formatFolders(material.folders),
@@ -101,15 +119,15 @@ function formatMaterial(material: RunMaterial, seesImages: boolean): string {
 }
 
 /**
- * A file read as text: its name, its resource, the entry that keeps its extracted files when the
- * run can open it (file-loader/extraction-store.ts), and its material, already cut and marked
- * (run-attachments.ts). The entry's line stays outside the file's element, so pruning keeps it
- * and the material's line numbers stay `read`'s.
+ * A file read as text: its name, its resource when the session can open it, the entry that keeps
+ * its extracted files when the run can open it (file-loader/extraction-store.ts), and its
+ * material, already cut and marked (run-attachments.ts). The entry's line stays outside the file's
+ * element, so pruning keeps it and the material's line numbers stay `read`'s.
  */
-function textEntry(file: RunTextAttachment): string {
+function textEntry(file: RunTextAttachment, opensResources: boolean): string {
   return [
     `File: ${materialLine(file.name)}`,
-    `Read-only resource: ${file.path}`,
+    ...(opensResources ? [`Read-only resource: ${file.path}`] : []),
     ...(file.entry ? [materialLine(extractionNote(file.entry))] : []),
     file.text,
   ].join('\n');
@@ -119,10 +137,15 @@ function textEntry(file: RunTextAttachment): string {
  * An image of the run, numbered as the user's message carries it (task-runner.ts sends the run's
  * images in attachment order). A model without image input never sees it, and is told so.
  */
-function imageEntry(file: RunImageAttachment, number: string, seen: boolean): string {
+function imageEntry(
+  file: RunImageAttachment,
+  number: string,
+  seen: boolean,
+  opensResources: boolean,
+): string {
   return [
     `Image ${number}: ${materialLine(file.name)}`,
-    `Read-only resource: ${file.path}`,
+    ...(opensResources ? [`Read-only resource: ${file.path}`] : []),
     ...(seen
       ? ["Sent with the user's message as image input.", ...(file.note ? [file.note] : [])]
       : [

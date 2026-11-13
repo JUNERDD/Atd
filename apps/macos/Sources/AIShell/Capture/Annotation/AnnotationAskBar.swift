@@ -2,20 +2,28 @@ import AICore
 import AppKit
 
 /// The command row turned into a field (architecture S3): a question about the screenshot,
-/// sent with Return or the send button at the capsule's end, which ends the session with it;
-/// Escape or the close button beside the field goes back to the row. Its own 415 × 40 pt capsule
-/// shares the command row's anchor; the slot reserves the wider of the two. An empty submission
-/// asks the default question.
+/// sent with Return or the send button at the capsule's end, which ends the session with it
+/// outside text mode or runs on picked text in text mode; Escape or the close button beside the
+/// field goes back to the row (closing any open output menu first). Its 415 × 40 pt capsule
+/// (wider in text mode when the "When done" picker shows before Send) shares the command row's
+/// anchor; the slot reserves the wider of the two. An empty submission asks the default question.
 final class AnnotationAskBar: NSView, NSTextFieldDelegate {
   var onSubmit: ((String) -> Void)?
   var onClose: (() -> Void)?
+  var onEscape: (() -> Void)?
+  var onOutputMenu: ((NSButton) -> Void)?
   /// The field's capsule being dragged by its surface; it moves with the toolbar.
   var onDrag: ((AnnotationGlassBar.Drag) -> Void)? {
     get { bar.onDrag }
     set { bar.onDrag = newValue }
   }
 
+  /// Widest capsule with the Select Text destination picker showing, reserved by the slot.
+  private(set) var reservedSize = NSSize.zero
+  var outputControl: NSButton { outputButton }
+
   private let field = NSTextField(string: "")
+  private let outputButton: AnnotationAskOutputButton
   private let send: AnnotationToolbarButton
   private let bar: AnnotationGlassBar
 
@@ -61,9 +69,23 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
       field.widthAnchor.constraint(equalToConstant: 304),
       input.heightAnchor.constraint(equalToConstant: side),
     ])
-    bar = AnnotationGlassBar(groups: [[input, close], [send]], blending: .withinWindow)
+    outputButton = AnnotationAskOutputButton(action: #selector(outputClicked))
+    bar = AnnotationGlassBar(
+      groups: [[input, close], [outputButton, send]], blending: .withinWindow)
+    let font = AnnotationToolbarButton.Label.font
+    let widestOutput =
+      CommandOutputChoice.Names(strings.catalog).actions.values.max {
+        $0.size(withAttributes: [.font: font]).width
+          < $1.size(withAttributes: [.font: font]).width
+      } ?? ""
+    outputButton.setTitle(widestOutput)
+    let maxBarSize = bar.fittingSize
+    outputButton.setTitle("")
+    bar.setHidden(true, for: outputButton)
     super.init(frame: CGRect(origin: .zero, size: bar.fittingSize))
+    reservedSize = maxBarSize
     field.delegate = self
+    outputButton.target = self
     send.target = self
     close.target = self
     addSubview(bar)
@@ -112,6 +134,20 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
     return true
   }
 
+  /// Configures whether the Select Text "When done" destination control shows and its label.
+  func configure(textMode: Bool, outputLabel: String) {
+    outputButton.setTitle(outputLabel)
+    let whenDone = ShellStrings.shared.text(.commandOptionsOutput)
+    outputButton.toolTip = whenDone
+    outputButton.setAccessibilityLabel("\(whenDone), \(outputLabel)")
+    bar.setHidden(!textMode, for: outputButton)
+    if superview != nil { setFrameSize(fittingSize) }
+  }
+
+  func setOutputMenuActive(_ active: Bool) {
+    outputButton.isActive = active
+  }
+
   /// Empties the field for the next time it opens.
   func reset() {
     field.stringValue = ""
@@ -126,6 +162,7 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
     onSubmit?(question.isEmpty ? ShellStrings.shared.text(.captureCommandsAskDefault) : question)
   }
 
+  @objc private func outputClicked(_ sender: NSButton) { onOutputMenu?(sender) }
   @objc private func sendClicked() { submit() }
   @objc private func closeClicked() { onClose?() }
 
@@ -138,10 +175,108 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
       submit()
       return true
     case #selector(NSResponder.cancelOperation(_:)):
-      onClose?()
+      (onEscape ?? onClose)?()
       return true
     default:
       return false
     }
+  }
+}
+
+/// Compact destination picker shown before Send in `AnnotationAskBar` while Select Text mode is
+/// active: a 28 pt capsule showing the active "When done" label and a trailing down chevron.
+private final class AnnotationAskOutputButton: NSButton {
+  private static let leadingInset: CGFloat = 10
+  private static let chevronGap: CGFloat = 4
+  private static let chevronWidth: CGFloat = 9
+  private static let trailingInset: CGFloat = 8
+
+  var isHovered = false {
+    didSet { if isHovered != oldValue { needsDisplay = true } }
+  }
+
+  var isActive = false {
+    didSet { if isActive != oldValue { needsDisplay = true } }
+  }
+
+  override var isHighlighted: Bool {
+    didSet { needsDisplay = true }
+  }
+
+  private var labelText = ""
+  private var widthConstraint: NSLayoutConstraint!
+  private var trackingArea: NSTrackingArea?
+
+  init(action: Selector) {
+    let side = AnnotationToolbarButton.side
+    super.init(frame: NSRect(x: 0, y: 0, width: side, height: side))
+    isBordered = false
+    title = ""
+    self.action = action
+    translatesAutoresizingMaskIntoConstraints = false
+    widthConstraint = widthAnchor.constraint(equalToConstant: side)
+    NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: side)])
+    setAccessibilityRole(.menuButton)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+  func setTitle(_ text: String) {
+    labelText = text
+    let font = AnnotationToolbarButton.Label.font
+    let textWidth = min(
+      ceil(text.size(withAttributes: [.font: font]).width),
+      AnnotationToolbarButton.Label.maxTextWidth)
+    widthConstraint.constant =
+      Self.leadingInset + textWidth + Self.chevronGap + Self.chevronWidth + Self.trailingInset
+    invalidateIntrinsicContentSize()
+    needsDisplay = true
+  }
+
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  override func draw(_ dirtyRect: NSRect) {
+    if isEnabled, let wash = isHighlighted || isActive ? 0.16 : (isHovered ? 0.09 : nil) {
+      let radius = min(bounds.width, bounds.height) / 2
+      NSColor.labelColor.withAlphaComponent(wash).setFill()
+      NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+    }
+    let color = isEnabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
+    let font = AnnotationToolbarButton.Label.font
+    let style = NSMutableParagraphStyle()
+    style.lineBreakMode = .byTruncatingTail
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: font, .foregroundColor: color, .paragraphStyle: style,
+    ]
+    let height = ceil(font.ascender - font.descender + font.leading)
+    let textWidth = max(
+      0, bounds.width - Self.leadingInset - Self.chevronGap - Self.chevronWidth - Self.trailingInset
+    )
+    let textRect = NSRect(
+      x: bounds.minX + Self.leadingInset, y: bounds.midY - height / 2, width: textWidth,
+      height: height)
+    NSAttributedString(string: labelText, attributes: attributes).draw(in: textRect)
+    if let chevron = ToolbarOptionsGlyphs.options {
+      let chevronRect = NSRect(
+        x: bounds.maxX - Self.trailingInset - Self.chevronWidth, y: bounds.minY,
+        width: Self.chevronWidth, height: bounds.height)
+      ToolbarOptionsGlyphs.draw(chevron, color: color, centeredIn: chevronRect)
+    }
+  }
+
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    if let trackingArea { removeTrackingArea(trackingArea) }
+    let area = NSTrackingArea(
+      rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
+    addTrackingArea(area)
+    trackingArea = area
+  }
+
+  override func mouseEntered(with event: NSEvent) { isHovered = true }
+  override func mouseExited(with event: NSEvent) { isHovered = false }
+  override func resetCursorRects() {
+    addCursorRect(bounds, cursor: PointerRole(button: self).cursor)
   }
 }

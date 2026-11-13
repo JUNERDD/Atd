@@ -13,7 +13,9 @@ extension AnnotationEditor {
     slot.onSelectText = { [weak self] in self?.enterTextMode() }
     slot.onRedact = { [weak self] in self?.redactSensitive() }
     slot.onRedactionFeedbackEnd = { [weak self] in self?.refresh() }
+    slot.isTextMode = { [weak self] in self?.text.mode.isOn ?? false }
     slot.onTextRun = { [weak self] in self?.runText($0) }
+    slot.onTextAsk = { [weak self] question, output in self?.runTextAsk(question, output: output) }
     slot.onTextCopy = { [weak self] in self?.copySelectedText(fromKey: false) }
     slot.onScopeClear = { [weak self] in self?.clearScope() }
     slot.onToggleResults = { [weak self] in self?.toggleResultCard() }

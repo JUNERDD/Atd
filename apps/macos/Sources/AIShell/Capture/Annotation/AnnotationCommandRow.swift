@@ -43,6 +43,7 @@ final class AnnotationCommandRow: NSView {
   }
 
   var onAsk: (() -> Void)?
+  var onAskOptions: ((ToolbarOptionsChevron) -> Void)?
   var onRun: ((Command) -> Void)?
   var onOptions: ((ToolbarOptionsChevron, Command) -> Void)?
   var onMore: ((NSButton) -> Void)?
@@ -106,7 +107,22 @@ final class AnnotationCommandRow: NSView {
     results.toolTip = strings.text(CaptureTextModeStringKey.resultsTooltip)
     results.setAccessibilityLabel(resultsName)
     self.results = results
-    var fixed: [NSView] = [results, ask, more, copy]
+    var controls: [NSControl] = [results, ask, more, copy]
+    let askUnit: NSView
+    if kind == .text {
+      let askChevron = ToolbarOptionsChevron(action: #selector(askOptionsClicked))
+      let askMenuLabel = strings.text(.commandOptionsMenu, strings.text(.selectionToolbarAsk))
+      askChevron.toolTip = askMenuLabel
+      askChevron.setAccessibilityLabel(askMenuLabel)
+      let split = NSStackView(views: [ask, askChevron])
+      split.spacing = 0
+      askUnit = split
+      controls.append(askChevron)
+      buttons[CaptureTextRun.askID] = ask
+    } else {
+      askUnit = ask
+    }
+    var fixed: [NSView] = [results, askUnit, more, copy]
     var groups: [[NSView]]
     switch kind {
     case .screenshot:
@@ -123,14 +139,14 @@ final class AnnotationCommandRow: NSView {
       self.redact = redact
       scope = nil
       fixed += [select, redact]
-      groups = [[results], [ask, more], [copy, select], [redact]]
+      groups = [[results], [askUnit, more], [copy, select], [redact]]
     case .text:
       let chip = AnnotationScopeChip()
       selectText = nil
       redact = nil
       scope = chip
       fixed += [chip]
-      groups = [[chip, results], [ask, more], [copy]]
+      groups = [[chip, results], [askUnit, more], [copy]]
     }
     // The row with its fixed parts alone: 2 pt between neighbours of a group, 13 pt for each
     // hairline with its gaps. Each command adds its part and a gap while it fits.
@@ -139,8 +155,7 @@ final class AnnotationCommandRow: NSView {
     width += groups.map { CGFloat(max($0.count - 1, 0)) * 2 }.reduce(0, +)
     width += CGFloat(groups.count - 1) * 13
     var units: [NSView] = []
-    var controls: [NSControl] =
-      [results, ask, more, copy] + [selectText, redact].compactMap(\.self)
+    controls += [selectText, redact].compactMap(\.self)
     for command in commands {
       let unit = Self.unit(for: command, index: units.count, options: hasOptions(command.id), kind)
       let unitWidth = unit.view.fittingSize.width + 2
@@ -154,7 +169,7 @@ final class AnnotationCommandRow: NSView {
       shown.append(command)
       buttons[command.id] = unit.controls.first as? NSButton
     }
-    groups[1] = [ask] + units + [more]
+    groups[1] = [askUnit] + units + [more]
     bar = AnnotationGlassBar(groups: groups, blending: .withinWindow)
     super.init(frame: CGRect(origin: .zero, size: bar.fittingSize))
     reservedSize = widestSize()
@@ -227,6 +242,7 @@ final class AnnotationCommandRow: NSView {
   }
 
   @objc private func askClicked() { onAsk?() }
+  @objc private func askOptionsClicked(_ sender: ToolbarOptionsChevron) { onAskOptions?(sender) }
   @objc private func moreClicked(_ sender: NSButton) { onMore?(sender) }
   @objc private func copyClicked() { onCopy?() }
   @objc private func selectTextClicked() { onSelectText?() }

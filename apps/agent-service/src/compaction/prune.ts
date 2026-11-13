@@ -47,7 +47,15 @@ const KEPT_TOOLS = new Set<string>([
 /** Tools whose large arguments are a file's content, which the file itself still holds. */
 const FILE_WRITES = new Set(['write', 'edit']);
 
-const FILE_TEXT = new RegExp(`(<${MATERIAL_TAGS.file}>)[\\s\\S]*?(</${MATERIAL_TAGS.file}>)`, 'g');
+/**
+ * Matches `<file-material>` blocks only under `File:` entries that carry `Read-only resource:`
+ * (with an optional single-line extraction note), so pathless material from `lite` or tool-less
+ * runs is never cleared into a dangling "read its resource again" stub.
+ */
+const FILE_TEXT = new RegExp(
+  `((?:^|\\n)File: [^\\n]+\\nRead-only resource: [^\\n]+\\n(?:[^\\n]+\\n)?<${MATERIAL_TAGS.file}>)[\\s\\S]*?(</${MATERIAL_TAGS.file}>)`,
+  'g',
+);
 
 type ProjectedMessage = ProjectedSessionEntry['messages'][number];
 
@@ -68,8 +76,9 @@ interface Clearable {
  * (harness/image-budget.ts). A stub says where the content is still found (re-running the tool,
  * the written file, the file's resource); the session file and transcript keep all of it. A
  * session whose active tools lack `read` (a run of a command that binds no tools) keeps its
- * material whole, since it could not read a cleared file again. Nothing is cleared unless it saves
- * at least 20k tokens, since every edit invalidates the provider's prompt cache from that point.
+ * material whole, since it could not read a cleared file again, as do earlier pathless material
+ * entries written by `lite` or tool-less runs. Nothing is cleared unless it saves at least 20k
+ * tokens, since every edit invalidates the provider's prompt cache from that point.
  */
 export function pruneToolOutputs(): ExtensionFactory {
   return (pi) => {
@@ -207,12 +216,19 @@ function stubbedArguments(call: ToolCall): { args: JsonObject; saved: number } |
 }
 
 /**
- * A run's material (prompt-context.ts), whose file texts may give way to `CLEARED_FILE_TEXT`.
- * Only what lies inside each file's element changes: the notes around it (the file's name and
- * resource path, saved command instructions, folder overviews, references) stay. File text is
- * escaped in the material, so an element ends at its own closing tag.
+ * A run's material (prompt-context.ts), whose pathed file texts may give way to
+ * `CLEARED_FILE_TEXT`. Entries without `Read-only resource:` lines (from `lite` or tool-less runs)
+ * return null so they stay whole and do not count against `KEEP_RECENT_TOKENS`. Only what lies
+ * inside each pathed file's element changes: the notes around it (the file's name and resource
+ * path, extraction note, saved command instructions, folder overviews, references) stay. File text
+ * is escaped in the material, so an element ends at its own closing tag.
  */
-function runMaterial(message: Extract<ProjectedMessage, { role: 'custom' }>): Clearable {
+function runMaterial(message: Extract<ProjectedMessage, { role: 'custom' }>): Clearable | null {
+  const hasClearable =
+    typeof message.content === 'string'
+      ? message.content.search(FILE_TEXT) >= 0
+      : message.content.some((part) => part.type === 'text' && part.text.search(FILE_TEXT) >= 0);
+  if (!hasClearable) return null;
   const tokens = estimateTokens(message);
   const cleared = (text: string) => text.replace(FILE_TEXT, `$1\n${CLEARED_FILE_TEXT}\n$2`);
   return {

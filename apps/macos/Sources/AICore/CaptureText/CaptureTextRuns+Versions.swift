@@ -28,6 +28,7 @@ extension CaptureTextRuns {
   public func again(
     _ commandId: String, output: CommandOutputAction, reading: [CaptureTextParagraph]
   ) -> CaptureTextRun? {
+    guard commandId != CaptureTextRun.askID else { return nil }
     let wanted = Self.keys(reading)
     return runs.last { run in
       run.commandId == commandId && run.output == output && run.versioned

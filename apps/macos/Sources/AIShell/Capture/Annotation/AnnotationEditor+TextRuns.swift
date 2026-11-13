@@ -44,6 +44,42 @@ extension AnnotationEditor: CaptureTextConsumer {
     refresh()
   }
 
+  /// Runs a free-form `question` asked from `AnnotationAskBar` while Select Text mode is active,
+  /// honoring the chosen `output` ("When done"). `panel` starts the task and immediately hands it
+  /// over to the Atd panel as capture ends; every other output runs in-place on the open capture.
+  func runTextAsk(_ question: String, output: CommandOutputAction) {
+    guard let setup = slot.setup, let runner = setup.textRuns else { return NSSound.beep() }
+    let mode = text.mode
+    let paragraphs = mode.runReading.map { mode.layout[$0] }
+    guard !paragraphs.isEmpty else { return NSSound.beep() }
+    slot.finishAsk()
+    if let running = text.runs.running { runner.act(.stop, runId: running.id) }
+    let run = CaptureTextRun(
+      commandId: CaptureTextRun.askID, command: ShellStrings.shared.text(.selectionToolbarAsk),
+      scope: mode.scope, paragraphs: paragraphs, output: output)
+    let arguments = CommandArguments(output: output, choices: [:], toggles: [:])
+    let files = runFiles()
+    if output == .panel {
+      runner.start(
+        run, surface: .capture, question: question, arguments: arguments, consumer: self,
+        files: files)
+      text.opening = run.id
+      onTextResult?(.open(runId: run.id))
+      return
+    }
+    text.runs.start(run)
+    closeReplacedReviews()
+    text.cardOrigin = nil
+    text.cardSide = nil
+    text.card.insertApp = setup.cursorApp
+    text.card.show(card(for: run))
+    runner.start(
+      run, surface: .capture, question: question, arguments: arguments, consumer: self,
+      files: files)
+    refresh()
+    focusCanvas()
+  }
+
   /// A retry on run `id`'s card (Regenerate, or an adjustment, `adjust`) reads what text mode
   /// reads now: when the person moved or resized the selection or picked other paragraphs since
   /// the run read its text, the run takes the paragraphs the selection holds now

@@ -97,7 +97,17 @@ export function capturePresses({ bridge, reviews, host, letGo }: PressDeps) {
     const { id: runId, surface, launch } = run;
     let prepared: PreparedCommand;
     try {
-      prepared = await bridge.prepare({ runId, surface, commandId: launch.command.id, ...reading });
+      prepared = await bridge.prepare(
+        launch.ask
+          ? {
+              runId,
+              surface,
+              question: launch.input.text,
+              arguments: { choices: {}, toggles: {}, output: launch.output.action },
+              ...reading,
+            }
+          : { runId, surface, commandId: launch.command.id, ...reading },
+      );
     } catch (error) {
       console.error('The command could not read the new text:', error);
       if (run.review && reviews.live(run)) reviews.show(run, run.review, true);
@@ -126,6 +136,7 @@ export function capturePresses({ bridge, reviews, host, letGo }: PressDeps) {
     if (early) {
       early.stopped ||= event.action === 'stop';
       early.closed ||= event.action === 'close';
+      early.opened ||= event.action === 'open';
       return;
     }
     const run = runs.get(event.runId);

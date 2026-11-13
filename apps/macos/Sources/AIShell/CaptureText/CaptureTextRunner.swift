@@ -35,6 +35,9 @@ final class CaptureTextRunner {
     /// updates the runner makes itself.
     let output: CommandOutputAction
     var awaitsApply = false
+    /// Whether Open in Atd was requested before the page received the run (`preparing != nil`):
+    /// once the run delivers, it is immediately handed over to the panel.
+    var opened = false
     /// The files being prepared and imported; nil once the page has the run.
     var preparing: Task<Void, Never>?
     /// A retry's files being prepared and imported (``retry(_:run:adjust:files:)``); nil once the
@@ -57,12 +60,13 @@ final class CaptureTextRunner {
     self.copy = copy
   }
 
-  /// Starts `run` of command `commandId` (with the values its options menu picked, else the
-  /// remembered ones) on `surface`, for `consumer`: `files` writes the screenshot as it shows and
-  /// its context (nil: they could not be written), which are imported, then the page gets the run.
+  /// Starts `run` of command `commandId` or free-form `question` (with the values its options
+  /// menu picked, else the remembered ones) on `surface`, for `consumer`: `files` writes the
+  /// screenshot as it shows and its context (nil: they could not be written), which are imported,
+  /// then the page gets the run.
   func start(
-    _ run: CaptureTextRun, surface: CaptureTextRunEvent.Surface, commandId: String,
-    arguments: CommandArguments?, consumer: any CaptureTextConsumer,
+    _ run: CaptureTextRun, surface: CaptureTextRunEvent.Surface, commandId: String? = nil,
+    question: String? = nil, arguments: CommandArguments?, consumer: any CaptureTextConsumer,
     files: @escaping () async -> Files?
   ) {
     let id = run.id
@@ -83,7 +87,7 @@ final class CaptureTextRunner {
         }
         self?.deliver(
           run.event(
-            surface: surface, commandId: commandId, arguments: arguments,
+            surface: surface, commandId: commandId, question: question, arguments: arguments,
             files: result.imported.map { FileRef($0.resource) }))
       } catch {
         self?.end(id, .failed, CaptureTextStringKey.failedExport)
@@ -93,8 +97,9 @@ final class CaptureTextRunner {
 
   /// The person acted on run `runId`'s card, or ran its command again on the same text (`again`,
   /// with the values its options menu picked as `arguments`) (contract: `captureText.action`).
-  /// Before the page has the run, Stop ends it here and Close forgets it; once it has, every action
-  /// goes to the page, and Close and Open end the shell's part.
+  /// Before the page has the run, Stop ends it here, Close forgets it, and Open marks the run so
+  /// it opens as soon as it delivers; once the page has it, every action goes to the page, and
+  /// Close and Open end the shell's part.
   func act(
     _ action: CaptureTextActionEvent.Action, runId: String,
     adjust: CaptureTextActionEvent.Adjust? = nil, arguments: CommandArguments? = nil,
@@ -102,6 +107,10 @@ final class CaptureTextRunner {
   ) {
     guard let entry = runs[runId] else { return }
     if let preparing = entry.preparing {
+      if action == .open {
+        runs[runId]?.opened = true
+        return
+      }
       guard action == .stop || action == .close else { return }
       preparing.cancel()
       if action == .stop { end(runId, .stopped, nil) } else { runs.removeValue(forKey: runId) }
@@ -232,8 +241,18 @@ final class CaptureTextRunner {
     guard panelHost.isPageReady else {
       return end(event.runId, .failed, CaptureTextStringKey.failedInterrupted)
     }
+    let opened = runs[event.runId]?.opened ?? false
     runs[event.runId]?.preparing = nil
     panelHost.send(.captureTextRun(event), scope: .document)
+    if opened {
+      panelHost.send(
+        .captureTextAction(
+          CaptureTextActionEvent(
+            runId: event.runId, action: .open, adjust: nil, arguments: nil, version: nil,
+            reading: nil)),
+        scope: .document)
+      runs.removeValue(forKey: event.runId)
+    }
   }
 
   /// Ends run `id` here, telling its surface with `message`, and forgets it.

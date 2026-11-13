@@ -116,13 +116,16 @@ public struct CaptureTextRun: Equatable, Sendable {
   /// A fresh run id: letters, digits and dashes, as the bridge requires.
   public static func mintID() -> String { "ct-" + UUID().uuidString.lowercased() }
 
+  /// Synthetic command id used when Ask Atd runs on screenshot text rather than a saved command.
+  public static let askID = "@ask"
+
   /// The event that starts the run on the panel's page, with the files the shell imported.
   public func event(
-    surface: CaptureTextRunEvent.Surface, commandId: String, arguments: CommandArguments?,
-    files: [FileRef]
+    surface: CaptureTextRunEvent.Surface, commandId: String? = nil, question: String? = nil,
+    arguments: CommandArguments?, files: [FileRef]
   ) -> CaptureTextRunEvent {
     CaptureTextRunEvent(
-      runId: id, surface: surface, commandId: commandId, arguments: arguments,
+      runId: id, surface: surface, commandId: commandId, question: question, arguments: arguments,
       scope: scope.bridge,
       paragraphs: paragraphs.map { .init(id: $0.id, text: $0.paragraph.text) }, files: files)
   }

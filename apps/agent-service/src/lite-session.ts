@@ -6,11 +6,15 @@ import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { buildRunSession, openSessionBase } from './session-base.js';
 
 /**
- * The system prompt of a lite session. It names nothing the session lacks (tools, skills,
- * folders), so the model is not told about capabilities it cannot use.
+ * The system prompts of a lite session: one for a saved command (`fromCommand`), one for a direct
+ * inline question (`Ask Atd`). Neither names anything the session lacks (tools, skills, folders),
+ * so the model is not told about capabilities it cannot use.
  */
-const LITE_SYSTEM_PROMPT =
+const LITE_COMMAND_SYSTEM_PROMPT =
   "You are a helpful desktop assistant. The user's message is a saved command the user ran: follow its instructions and answer directly. The app may send hidden context just before the user message it belongs to: <run_material> holds further instructions for it, such as how the answer will be used.";
+
+const LITE_ASK_SYSTEM_PROMPT =
+  "You are a helpful desktop assistant. Answer the user's request directly from the provided text and context; this view has no tools or local file access. The app may send hidden context just before the user message it belongs to: <run_material> holds the recognized text, attached context, and how the answer will be used.";
 
 /**
  * `LiveState.bindingKey` of a lite session. A full session's key is a JSON object (run-binding.ts)
@@ -33,7 +37,7 @@ const LITE_BINDING_KEY = 'lite';
 export async function createLiteState(deps: SessionFactoryDeps, run: TaskRun): Promise<LiveState> {
   const base = await openSessionBase(deps, run);
   return buildRunSession(deps, run, base, {
-    systemPrompt: LITE_SYSTEM_PROMPT,
+    systemPrompt: run.snapshot.fromCommand ? LITE_COMMAND_SYSTEM_PROMPT : LITE_ASK_SYSTEM_PROMPT,
     extensionFactories: [
       base.compaction.extension(),
       // Only `memory_core`: the lite freeze leaves the policy and index empty (run-prepare.ts).

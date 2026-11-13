@@ -8,7 +8,7 @@ import {
   type SubmitTaskRequest,
   type TaskOrigin,
 } from '@atd/agent-contracts';
-import { followUpInstruction } from '../commands/output-instruction.js';
+import { screenshotTaskInstruction } from '../commands/output-instruction.js';
 import { needsSummaryTitle } from './title-policy.js';
 
 /**
@@ -29,9 +29,9 @@ export interface InternalSubmitOptions {
    */
   instructions?: string;
   /**
-   * Frozen as `RunSnapshot.lite`: the run takes the lightweight session (lite-session.ts). Only
-   * `launchCommand` sets it, for a run it found eligible (commands/lite.ts); a follow-up does not
-   * carry it.
+   * Frozen as `RunSnapshot.lite`: the run takes the lightweight session (lite-session.ts). Set by
+   * `launchCommand` for eligible saved commands (commands/lite.ts) and by `requestedOptions` for
+   * eligible inline screenshot-text asks; an ordinary follow-up does not carry it.
    */
   lite?: true;
   /**
@@ -57,22 +57,39 @@ export function checkSideChatOf(
 }
 
 /**
- * `internal` with what the request asks service code to tell the run: a follow-up that makes a new
- * version of a screenshot-text run's answer (`SubmitTaskRequest.screenshotText`) is told that
- * answer's format as hidden instructions (`followUpInstruction`), since a follow-up carries none
- * of the run it follows, along with the text it reads when it carries a selection of its own. It
- * only follows a run, so it needs the task (`previous`). Service code that sets its own
- * instructions sends no `screenshotText`.
+ * `internal` with what the request asks service code to tell the run: a run or follow-up carrying
+ * `SubmitTaskRequest.screenshotText` receives its answer-format instruction in hidden run material
+ * (`screenshotTaskInstruction`), with the selected `@@<id>` blocks appended on new Ask tasks,
+ * `run` repeats, and `reread` follow-ups. Free-form inline screenshot-text asks (`!fromCommand`,
+ * `output !== 'panel'`) also take `lite` while the conversation has used only `lite` runs and the
+ * request stages no tools, computer bindings, folders or chips; saved commands leave `lite` solely
+ * to `launchCommand`. Service code that sets its own instructions sends no `screenshotText`.
  */
 export function requestedOptions(
   request: SubmitTaskRequest,
   previous: AgentTask | null,
   internal: InternalSubmitOptions,
 ): InternalSubmitOptions {
-  const followUp = request.screenshotText;
-  if (followUp === undefined) return internal;
-  if (!previous) throw new TypeError('Invalid data: screenshotText only applies to a follow-up.');
-  return { ...internal, instructions: followUpInstruction(followUp, request.input.selection) };
+  const screenshotText = request.screenshotText;
+  if (screenshotText === undefined) return internal;
+  if (!previous && screenshotText.turn === 'followUp')
+    throw new TypeError('Invalid data: screenshotText followUp only applies to an existing task.');
+  const isRun = !previous || screenshotText.turn === 'run';
+  if (isRun && request.input.selection.trim() === '')
+    throw new TypeError('Invalid data: screenshotText run needs selection.');
+  const lite =
+    !request.fromCommand &&
+    screenshotText.output !== 'panel' &&
+    (!previous || previous.runs.every((item) => item.snapshot.lite === true)) &&
+    !request.tools?.length &&
+    !request.computer &&
+    !request.input.folders?.length &&
+    !request.input.chips?.length;
+  return {
+    ...internal,
+    instructions: screenshotTaskInstruction(screenshotText, request.input.selection, !previous),
+    ...(lite ? { lite: true } : {}),
+  };
 }
 
 /**

@@ -34,17 +34,21 @@ export const CommandScreenshotTextSchema = Type.Object(
 export type CommandScreenshotText = Static<typeof CommandScreenshotTextSchema>;
 
 /**
- * `SubmitTaskRequest.screenshotText`: a follow-up that makes a new version of the answer of a run
- * on screenshot text (an adjustment on its review card) carries that run's `scope` and
- * `paragraphs` and where its answer goes (`output`), so the service tells the follow-up the same
- * answer format the run was told. When the person picked other text since the run last read it,
- * the follow-up carries that text as its input's `selection` (in the blocks
- * `formatCaptureSelection` writes) and the screenshot as it shows now in its files, and `scope`
- * and `paragraphs` describe that text, which the service tells the follow-up to answer for. Only a
- * follow-up on an existing task carries it.
+ * `SubmitTaskRequest.screenshotText`: configures how an answer on screenshot text is formatted and
+ * delivered on `POST /v1/tasks`:
+ * - A free-form Ask on screenshot text (a new task, or a Regenerate repeat with `turn: 'run'`)
+ *   carries `@@<id>` blocks in `input.selection`, so the service places the `run` instruction and
+ *   selection in hidden `RunSnapshot.instructions` while keeping `input.text` clean.
+ * - An adjustment follow-up on a screenshot-text run (`turn: 'followUp'` or omitted on an
+ *   existing task) tells the follow-up the same answer format (`followUp`, or `reread` when the
+ *   user picked other text and `input.selection` is non-empty).
  */
 export const ScreenshotTextFollowUpSchema = Type.Object(
-  { ...CommandScreenshotTextSchema.properties, output: CommandOutputActionSchema },
+  {
+    ...CommandScreenshotTextSchema.properties,
+    output: CommandOutputActionSchema,
+    turn: Type.Optional(Type.Union([Type.Literal('run'), Type.Literal('followUp')])),
+  },
   { additionalProperties: false },
 );
 export type ScreenshotTextFollowUp = Static<typeof ScreenshotTextFollowUpSchema>;

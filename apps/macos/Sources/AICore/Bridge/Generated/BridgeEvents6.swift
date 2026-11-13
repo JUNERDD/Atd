@@ -150,19 +150,21 @@ public struct RecordingAskOpenEvent: Codable, Equatable, Sendable {
 public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
   public let runId: String
   public let surface: Surface
-  public let commandId: String
+  public let commandId: String?
+  public let question: String?
   public let arguments: CommandArguments?
   public let scope: Scope
   public let paragraphs: [Paragraph]
   public let files: [FileRef]
 
   public init(
-    runId: String, surface: Surface, commandId: String, arguments: CommandArguments?, scope: Scope,
-    paragraphs: [Paragraph], files: [FileRef]
+    runId: String, surface: Surface, commandId: String?, question: String?,
+    arguments: CommandArguments?, scope: Scope, paragraphs: [Paragraph], files: [FileRef]
   ) {
     self.runId = runId
     self.surface = surface
     self.commandId = commandId
+    self.question = question
     self.arguments = arguments
     self.scope = scope
     self.paragraphs = paragraphs
@@ -173,7 +175,12 @@ public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     runId = try container.string(.runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
     surface = try container.value(.surface, Surface.self)
-    commandId = try container.string(.commandId, minLength: 1, maxLength: 128)
+    commandId = try container.optional(.commandId) {
+      try container.string($0, minLength: 1, maxLength: 128)
+    }
+    question = try container.optional(.question) {
+      try container.string($0, minLength: 1, maxLength: 100_000)
+    }
     arguments = try container.optional(.arguments) {
       try container.value($0, CommandArguments.self)
     }
@@ -186,7 +193,8 @@ public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(runId, forKey: .runId)
     try container.encode(surface, forKey: .surface)
-    try container.encode(commandId, forKey: .commandId)
+    try container.encodeIfPresent(commandId, forKey: .commandId)
+    try container.encodeIfPresent(question, forKey: .question)
     try container.encodeIfPresent(arguments, forKey: .arguments)
     try container.encode(scope, forKey: .scope)
     try container.encode(paragraphs, forKey: .paragraphs)
@@ -197,6 +205,7 @@ public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
     case runId
     case surface
     case commandId
+    case question
     case arguments
     case scope
     case paragraphs

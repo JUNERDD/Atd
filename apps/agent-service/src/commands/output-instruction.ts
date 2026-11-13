@@ -46,16 +46,30 @@ export function outputInstruction(
 }
 
 /**
- * What a follow-up that makes a new version of a screenshot-text run's answer is told, hidden as
- * the run's instruction was (`SubmitTaskRequest.screenshotText`): the same answer format for the
- * same output, so the new version lands where the first one would. Its paragraphs are the ones
- * read earlier, or `selection`, the follow-up's own, when the user picked other text since: they
- * then come with the instruction, as the run's came with its command.
+ * What a task run on screenshot text (`SubmitTaskRequest.screenshotText`) is told in hidden run
+ * material:
+ * - A fresh Ask or Regenerate (`isNewTask || screenshotText.turn === 'run'`) uses `'run'` with
+ *   `selection` appended after the format rules.
+ * - An adjustment follow-up on an existing task uses `'followUp'` when `selection` is empty, or
+ *   `'reread'` with `selection` appended when the user picked other text since.
+ */
+export function screenshotTaskInstruction(
+  screenshotText: ScreenshotTextFollowUp,
+  selection: string,
+  isNewTask: boolean,
+): string {
+  const { output } = screenshotText;
+  const verbatim = verbatimInstruction(output);
+  if (isNewTask || screenshotText.turn === 'run')
+    return `${screenshotTextInstruction(output, screenshotText, verbatim, 'run')}\n\n${selection}`;
+  const reread = selection.trim() !== '';
+  if (!reread) return screenshotTextInstruction(output, screenshotText, verbatim, 'followUp');
+  return `${screenshotTextInstruction(output, screenshotText, verbatim, 'reread')}\n\n${selection}`;
+}
+
+/**
+ * Compatibility helper for a follow-up on an existing screenshot-text run (`isNewTask = false`).
  */
 export function followUpInstruction(followUp: ScreenshotTextFollowUp, selection: string): string {
-  const { output } = followUp;
-  const reread = selection.trim() !== '';
-  const verbatim = verbatimInstruction(output);
-  if (!reread) return screenshotTextInstruction(output, followUp, verbatim, 'followUp');
-  return `${screenshotTextInstruction(output, followUp, verbatim, 'reread')}\n\n${selection}`;
+  return screenshotTaskInstruction(followUp, selection, false);
 }

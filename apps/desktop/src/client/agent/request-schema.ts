@@ -16,6 +16,19 @@ import { ChildKeySchema } from './transcript-schema';
 import { MAX_CAPTURE_LENGTH, NativeCalls, SaveContentSchema } from '../../native-bridge/calls';
 
 /**
+ * What `submit` carries for a screenshot-text run (`SubmitTaskRequest.screenshotText`): a command
+ * run reads it as `CommandScreenshotText`; a free-form Ask (`turn: 'run'`) or a follow-up making a
+ * new version of a screenshot-text run's answer adds optional `turn`.
+ */
+const SubmitScreenshotTextSchema = Type.Object(
+  {
+    ...CommandScreenshotTextSchema.properties,
+    turn: Type.Optional(Type.Union([Type.Literal('run'), Type.Literal('followUp')])),
+  },
+  { additionalProperties: false },
+);
+
+/**
  * Every request a window hands the agent request handler (`AgentRequests`), as the `AgentBridge`
  * methods build them. Clients take its type, `AgentRequest`, from `bridge.ts`.
  */
@@ -78,12 +91,12 @@ export const AgentRequestSchema = Type.Union([
     /** A command run only: the command's shortcut that launched it (`CommandRunRequest.shortcutId`). */
     shortcutId: Type.Optional(Identifier),
     /**
-     * A command run: it reads text picked in a screenshot, whose files it attaches whatever the
-     * command accepts (`CommandRunRequest.screenshotText`). A follow-up, with `output`: it makes a
-     * new version of such a run's answer, told the same answer format
-     * (`SubmitTaskRequest.screenshotText`).
+     * A command run (`CommandRunRequest.screenshotText`) or a task run on screenshot text
+     * (`SubmitTaskRequest.screenshotText` with `output`): a free-form Ask on screenshot text sets
+     * `turn: 'run'` and sends recognized `@@<id>` blocks in `input.selection`, while a follow-up
+     * makes a new version of an answer on the same format.
      */
-    screenshotText: Type.Optional(CommandScreenshotTextSchema),
+    screenshotText: Type.Optional(SubmitScreenshotTextSchema),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
     branchBefore: Type.Optional(SessionEntryId),
     /**

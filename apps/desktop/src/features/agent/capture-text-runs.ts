@@ -66,7 +66,7 @@ export function listenCaptureTextRuns(
    * being made, and leaves its last (failed or stopped) without one.
    */
   function send(run: TextRun, state: CaptureTextProgress['state'], text: string) {
-    if (run.answered || run.closed || run.review) return;
+    if (run.answered || run.closed || run.handedOver || run.review) return;
     const making = state === 'thinking' || state === 'streaming';
     run.answered = !making;
     const { command, input } = run.launch;
@@ -120,18 +120,22 @@ export function listenCaptureTextRuns(
     },
     going: (runId) => going.has(runId),
     letGo,
-    // Every version keeps the run's answer format: a command run reads the text again, and a
-    // follow-up is told the format for the text it read before (`SubmitTaskRequest.screenshotText`),
-    // or carries the text itself when the run took other text since its task last read it.
+    // Every version keeps the run's answer format: a command or Ask repeat reads its `selection`
+    // (`turn: 'run'` for an Ask repeat), and a follow-up is told the format for the text it read
+    // before, or carries the text itself when the run took other text since its task last read it.
     async submit(run, request) {
       const { selection, files } = run.launch.input;
-      const carries = request.commandId === null && selection !== run.sent;
+      const askRepeat = Boolean(run.launch.ask && request.input.selection);
+      const carries = !askRepeat && request.commandId === null && selection !== run.sent;
       const input = carries ? { ...request.input, selection, files } : request.input;
+      const screenshotText = askRepeat
+        ? { ...run.screenshotText, turn: 'run' as const }
+        : run.screenshotText;
       const detail = await light.submit(key(run), {
         ...request,
         input,
         output: run.launch.output,
-        screenshotText: run.screenshotText,
+        screenshotText,
       });
       run.sent = selection;
       return detail;
@@ -220,7 +224,7 @@ export function listenCaptureTextRuns(
 
   async function start(event: CaptureTextRun) {
     if (runs.has(event.runId) || preparing.has(event.runId)) return;
-    const early: Preparing = { stopped: false, closed: false };
+    const early: Preparing = { stopped: false, closed: false, opened: false };
     preparing.set(event.runId, early);
     let prepared: PreparedCommand;
     try {
@@ -247,12 +251,14 @@ export function listenCaptureTextRuns(
         invocationId: crypto.randomUUID(),
         policy: null,
         taskId: null,
-        commandId: run.launch.command.id,
-        commandRevision: run.launch.command.revision,
+        commandId: run.launch.ask ? null : run.launch.command.id,
+        commandRevision: run.launch.ask ? null : run.launch.command.revision,
         savedRun: null,
         input: run.launch.input,
         output: run.launch.output,
-        screenshotText: run.screenshotText,
+        screenshotText: run.launch.ask
+          ? { ...run.screenshotText, turn: 'run' }
+          : run.screenshotText,
       });
     } catch (error) {
       console.error('The command on the screenshot text could not start:', error);

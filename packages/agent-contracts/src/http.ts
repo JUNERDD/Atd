@@ -34,7 +34,7 @@ export const SubmitTaskRequestSchema = Type.Object(
      * default model (`runModelSelection`).
      */
     model: Type.Optional(ModelSelectionSchema),
-    /** Absent uses the connection's saved level, else off. */
+    /** Absent uses the connection's saved level, else the model's default or `off`. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     /**
      * Snapshot tools frozen onto the run (`snapshotToolsFor` maps a five-tool grant). Absent keeps
@@ -66,9 +66,10 @@ export const SubmitTaskRequestSchema = Type.Object(
      */
     computer: Type.Optional(ComputerRunRequestSchema),
     /**
-     * A follow-up that makes a new version of a screenshot-text run's answer
-     * (`ScreenshotTextFollowUp`): the run is told that answer's format as hidden instructions, as
-     * the run it follows was. Requires an existing task (`taskId`); absent for every other run.
+     * Screenshot-text answer format (`ScreenshotTextFollowUp`): used both when starting/repeating
+     * a free-form Ask on screenshot text (requires non-empty `input.selection`) and on a follow-up
+     * that makes a new version of a screenshot-text run's answer on an existing task; absent for
+     * every other run.
      */
     screenshotText: Type.Optional(ScreenshotTextFollowUpSchema),
   },

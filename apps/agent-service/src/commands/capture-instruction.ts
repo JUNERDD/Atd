@@ -37,21 +37,21 @@ function layout(paragraphs: number, turn: ScreenshotTextTurn): string {
 
 /**
  * What the answer covers. Picked paragraphs each get an answer; with nothing picked, the run reads
- * all the text, so the answer leads with the overall meaning and says how much it covered. Neither
- * may quietly shrink to one paragraph.
+ * all the text: specific requests are answered directly, while broad requests lead with the
+ * overall meaning, say how much they covered, and do not quietly shrink to one paragraph.
  */
 function scope(run: CommandScreenshotText, action: CommandOutputAction): string {
   if (action === 'replaceSelection')
     return 'Give every paragraph its block, even one that stays as it is.';
   if (run.scope === 'picked')
     return 'The user picked these paragraphs, so your answer must cover every one of them; never leave one out or answer only one.';
-  return `The user picked nothing, so this is all the text in the screenshot: start with its overall meaning in a sentence or two, saying how many of the ${run.paragraphs} paragraphs your answer covers, then treat every paragraph worth treating; never answer only one.`;
+  return `The user picked nothing, so this is all the text in the screenshot: when the request asks about a specific detail or task, answer that request directly without summarizing unrelated paragraphs; when the request covers the screenshot broadly, start with its overall meaning in a sentence or two, saying how many of the ${run.paragraphs} paragraphs your answer covers, then treat every paragraph worth treating instead of shrinking to one.`;
 }
 
-/** Where the answer's overall note goes: before its first block; required when it reads all the text. */
+/** Where the answer's overall note goes: before its first block when the answer covers the screenshot broadly. */
 function lead(run: CommandScreenshotText): string {
   return run.scope === 'all'
-    ? 'Write that overall meaning as plain lines before the first block.'
+    ? 'When your answer covers the screenshot broadly, write that overall meaning as plain lines before the first block; omit it when answering a specific narrow request.'
     : 'You may start with a short overall note, as plain lines before the first block.';
 }
 
@@ -86,6 +86,7 @@ export function screenshotTextInstruction(
   const parts = [
     head,
     'The marker lines only show where each recognized paragraph starts: never repeat or mention them, and answer about the text itself.',
+    "Your reply is delivered only as text beside the screenshot and cannot edit image pixels, redact regions, or draw canvas marks on its own; if the user asks to mask/redact or visually mark the screenshot, provide what helps in text and briefly note they can use the capture toolbar's Mosaic or annotation tools or switch 'When done' to Annotate.",
     scope(run, action),
   ];
   return [...parts, ...(verbatim ? [verbatim] : [])].join(' ');

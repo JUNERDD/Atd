@@ -82,9 +82,8 @@ export async function submitTask<S>(
 }
 
 /**
- * What a follow-up on a screenshot-text run's answer asks the service to tell it (its scope,
- * paragraph count and where the answer goes), or undefined for any other follow-up. It needs the
- * answer's `output` beside `screenshotText`.
+ * What a run or follow-up on screenshot text asks the service to tell it (`scope`, `paragraphs`,
+ * optional `turn`, and `output`), or undefined for any other run. Requires `output`.
  */
 function screenshotFollowUp(request: SubmitRequest): ScreenshotTextFollowUp | undefined {
   const { screenshotText, output } = request;
@@ -133,7 +132,14 @@ async function runSavedCommand<S>(
     ...(policy?.computer ? { computer: policy.computer } : {}),
     ...(request.output ? { output: request.output } : {}),
     ...(request.shortcutId ? { shortcutId: request.shortcutId } : {}),
-    ...(request.screenshotText ? { screenshotText: request.screenshotText } : {}),
+    ...(request.screenshotText
+      ? {
+          screenshotText: {
+            scope: request.screenshotText.scope,
+            paragraphs: request.screenshotText.paragraphs,
+          },
+        }
+      : {}),
     ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
   });
   return settled(tasks, submitted.taskId, holder);

@@ -6241,7 +6241,7 @@
             },
             "payload": {
               "type": "object",
-              "required": ["runId", "surface", "commandId", "scope", "paragraphs", "files"],
+              "required": ["runId", "surface", "scope", "paragraphs", "files"],
               "properties": {
                 "runId": {
                   "type": "string",
@@ -6265,6 +6265,11 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 128
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100000
                 },
                 "arguments": {
                   "type": "object",
@@ -12733,7 +12738,7 @@
     },
     "CaptureTextRunEvent": {
       "type": "object",
-      "required": ["runId", "surface", "commandId", "scope", "paragraphs", "files"],
+      "required": ["runId", "surface", "scope", "paragraphs", "files"],
       "properties": {
         "runId": {
           "type": "string",
@@ -12757,6 +12762,11 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 128
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100000
         },
         "arguments": {
           "type": "object",

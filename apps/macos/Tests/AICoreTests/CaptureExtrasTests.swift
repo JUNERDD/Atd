@@ -213,4 +213,33 @@ struct CaptureExtrasTests {
     #expect(
       model.resizedLeading(rect, dx: 40, dy: 0) == CGRect(x: 29.5, y: 10, width: 0.5, height: 20))
   }
+
+  @Test("Ask runs omit commandId, carry question, and never reuse an earlier run via again")
+  func askRunIdentityAndVersioning() {
+    let paragraph = CaptureTextParagraph(lines: [
+      (text: "Picked sentence", box: CGRect(x: 0, y: 0, width: 120, height: 18))
+    ])
+    var run = CaptureTextRun(
+      id: "ct-ask-1", commandId: CaptureTextRun.askID, command: "Ask Atd",
+      scope: CaptureTextScope(kind: .picked, count: 1),
+      paragraphs: [paragraph], output: .replaceSelection)
+    let event = run.event(
+      surface: .capture, question: "Summarize",
+      arguments: CommandArguments(output: .replaceSelection, choices: [:], toggles: [:]),
+      files: [])
+    #expect(event.commandId == nil)
+    #expect(event.question == "Summarize")
+    #expect(event.arguments?.output == .replaceSelection)
+
+    let review = CaptureTextProgressParams.Review(
+      source: nil, changes: nil, version: 1, count: 1, options: [], summary: nil, adjustments: [],
+      pending: nil)
+    let update = CaptureTextProgressParams(
+      runId: run.id, state: .done, output: .card, text: "Answer", result: nil, awaitsApply: false,
+      review: review, draft: nil)
+    _ = run.apply(update, in: AnnotationDocument())
+    var runs = CaptureTextRuns()
+    runs.start(run)
+    #expect(runs.again(CaptureTextRun.askID, output: .card, reading: [paragraph]) == nil)
+  }
 }

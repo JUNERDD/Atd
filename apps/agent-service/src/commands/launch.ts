@@ -203,13 +203,21 @@ export async function launchCommand(
   )
     throw new CommandLaunchError('invalidInput', 'The framed command exceeds the input budget.');
   if (taskId) await stageTokens(deps.paths, taskId, skills, references);
+  const joined = request.taskId
+    ? deps.ledger.data.tasks.find((item) => item.id === request.taskId)
+    : undefined;
   const lite = isLiteRun({
     taskId: request.taskId,
     input: request.input,
     tools: snapshot.tools,
     tokens,
     framed: request.frame !== undefined,
+    computer: request.computer !== undefined,
     internal,
+    screenshotText:
+      request.screenshotText !== undefined &&
+      (request.taskId === undefined ||
+        (joined !== undefined && joined.runs.every((item) => item.snapshot.lite === true))),
   });
   return deps.manager.submit(submit, {
     ...internal,

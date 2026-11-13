@@ -25,6 +25,10 @@ final class AnnotationCommandSlot {
   /// A text command to run on the picked text, with the values its menu picked (none: the
   /// remembered ones): the capture stays open.
   var onTextRun: ((CommandLaunch) -> Void)?
+  /// A free-form question about picked text with its "When done" output (`card` by default).
+  var onTextAsk: ((String, CommandOutputAction) -> Void)?
+  /// Whether text mode is currently active, so `AnnotationAskBar` offers "When done" options.
+  var isTextMode: (() -> Bool)?
   /// The ask field is opening: the editor drops its tool, its selection and open text.
   var onAskOpen: (() -> Void)?
   /// The ask field closed: the editor shows the row again and takes the keyboard back.
@@ -48,6 +52,8 @@ final class AnnotationCommandSlot {
   private(set) var textRow: AnnotationCommandRow?
   private(set) var ask: AnnotationAskBar?
   private(set) var isAsking = false
+  /// Selected destination for Ask Atd in Select Text mode (`card` by default).
+  var askOutput: CommandOutputAction = .card
   /// Copy text was clicked while the text was still being read: it copies once it is.
   var copyPending = false
   let hover = SelectionToolbarHover()
@@ -100,16 +106,28 @@ final class AnnotationCommandSlot {
     row.onCopy = { [weak self] in self?.onCopyText?() }
     row.onSelectText = { [weak self] in self?.onSelectText?() }
     row.onRedact = { [weak self] in self?.onRedact?() }
+    textRow.onAskOptions = { [weak self] chevron in self?.openAskOptions(from: chevron) }
     textRow.onRun = { [weak self] command in self?.onTextRun?(CommandLaunch(id: command.id)) }
     textRow.onCopy = { [weak self] in self?.onTextCopy?() }
     textRow.onScopeClear = { [weak self] in self?.onScopeClear?() }
     let ask = AnnotationAskBar()
-    ask.onSubmit = { [weak self] question in self?.onLaunch?(.ask(question)) }
+    ask.onSubmit = { [weak self] question in self?.submitAsk(question) }
     ask.onClose = { [weak self] in self?.closeAsk() }
+    ask.onEscape = { [weak self] in
+      guard let self else { return }
+      if self.menus.isOpen {
+        self.closeMenus()
+        self.ask?.focus()
+      } else {
+        self.closeAsk()
+      }
+    }
+    ask.onOutputMenu = { [weak self] button in self?.openAskOutput(from: button) }
     ask.onDrag = { [weak self] in self?.onDrag?($0) }
     self.row = row
     self.textRow = textRow
     self.ask = ask
+    askOutput = .card
     redaction = .hidden
   }
 
@@ -134,14 +152,16 @@ final class AnnotationCommandSlot {
   /// field; zero without a row.
   var size: NSSize {
     guard let row, let textRow, let ask else { return .zero }
-    let sizes = [row.reservedSize, textRow.reservedSize, ask.fittingSize]
+    let sizes = [row.reservedSize, textRow.reservedSize, ask.reservedSize]
     return NSSize(
       width: sizes.map(\.width).max() ?? 0, height: sizes.map(\.height).max() ?? 0)
   }
 
   /// Shows one row or the field; nil shows none (the style bar has the slot).
   func show(_ shown: Shown?) {
-    let menusShown: Shown? = menus.isOpen ? (menusFromText ? .text : .commands) : nil
+    let menusShown: Shown? =
+      menus.isOpen
+      ? (menus.opener === ask?.outputControl ? .ask : (menusFromText ? .text : .commands)) : nil
     if menusShown != nil, menusShown != shown { closeMenus() }
     row?.isHidden = shown != .commands
     textRow?.isHidden = shown != .text
@@ -243,16 +263,36 @@ final class AnnotationCommandSlot {
 
   // MARK: Ask
 
-  private func openAsk() {
+  func openAsk(keepingOutput: Bool = false) {
     guard let ask else { return }
     closeMenus()
     endFeedback()
+    if !keepingOutput { askOutput = .card }
+    ask.configure(
+      textMode: isTextMode?() ?? false, outputLabel: Self.askOutputLabel(askOutput))
     isAsking = true
     onAskOpen?()
     ask.focus()
   }
 
+  /// Clears active ask state after submitting in Select Text mode without invoking `onAskClose`.
+  func finishAsk() {
+    closeMenus()
+    isAsking = false
+    ask?.reset()
+  }
+
+  private func submitAsk(_ question: String) {
+    closeMenus()
+    if isTextMode?() == true {
+      onTextAsk?(question, askOutput)
+    } else {
+      onLaunch?(.ask(question))
+    }
+  }
+
   private func closeAsk() {
+    closeMenus()
     isAsking = false
     ask?.reset()
     onAskClose?()

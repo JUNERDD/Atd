@@ -138,15 +138,16 @@ export const NativeCaptureTextCalls = {
 
 export const NativeCaptureTextEvents = {
   /**
-   * The person ran command `commandId` (placed on `screenshotText`) on text in the screenshot
-   * shown on `surface`: the capture editor (`capture`) or a long screenshot's full-screen preview
-   * (`longScreenshot`). `paragraphs` are what it reads, which the page hands the command as its
-   * selection in the order given: reading order, except that the full-screen preview puts the
-   * paragraphs in view first so their answers land first; `scope` says whether the person picked them (`picked`) or picked
-   * none, so the run reads all the text (`all`). `arguments` are the values picked in the
-   * command's options menu over the remembered ones (absent: the remembered ones), its `output`
-   * where the answer goes for this run. `files` are the screenshot as it shows (with its mosaics)
-   * and its screen context, as the shell imported them, attached to the run whatever the
+   * The person ran command `commandId` (placed on `screenshotText`) or asked a free-form `question`
+   * on text in the screenshot shown on `surface`: the capture editor (`capture`) or a long
+   * screenshot's full-screen preview (`longScreenshot`). `paragraphs` are what it reads, which the
+   * page hands the command or question as its selection in the order given: reading order, except
+   * that the full-screen preview puts the paragraphs in view first so their answers land first;
+   * `scope` says whether the person picked them (`picked`) or picked none, so the run reads all
+   * the text (`all`). `arguments` are the values picked in the command's options menu over the
+   * remembered ones (absent: the remembered ones), its `output` where the answer goes for this
+   * run (default `card` for a `question`). `files` are the screenshot as it shows (with its
+   * mosaics) and its screen context, as the shell imported them, attached to the run whatever the
    * command's input accepts. The page runs it as a new task the panel does not show and answers
    * with `captureText.progress`. Sent to the panel only.
    */
@@ -154,7 +155,8 @@ export const NativeCaptureTextEvents = {
     {
       runId: RunId,
       surface: Type.Union([Type.Literal('capture'), Type.Literal('longScreenshot')]),
-      commandId: Type.String({ minLength: 1, maxLength: 128 }),
+      commandId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+      question: Type.Optional(Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH })),
       arguments: Type.Optional(CommandArgumentsSchema),
       scope: CaptureTextScopeSchema,
       paragraphs: CaptureParagraphsSchema,

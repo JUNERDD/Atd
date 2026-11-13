@@ -85,6 +85,7 @@ export interface VersionRun {
 export interface Preparing {
   stopped: boolean;
   closed: boolean;
+  opened: boolean;
 }
 
 /** The runs by the shell's id, until the card closes or the panel took one over and it ended. */
@@ -113,7 +114,13 @@ export function newTextRun(
   return {
     id: event.runId,
     surface: event.surface,
-    launch: { command, input, output, ...(shortcutId === undefined ? {} : { shortcutId }) },
+    launch: {
+      command,
+      input,
+      output,
+      ...(shortcutId === undefined ? {} : { shortcutId }),
+      ...(event.question === undefined ? {} : { ask: true }),
+    },
     paragraphs: event.paragraphs,
     screenshotText: { scope: event.scope, paragraphs: event.paragraphs.length },
     readings: new Map(),
@@ -124,7 +131,7 @@ export function newTextRun(
     taskId: null,
     runId: null,
     cancelled: false,
-    handedOver: false,
+    handedOver: early.opened,
     review: null,
     text: '',
     stream: streamThrottle(),

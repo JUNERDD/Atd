@@ -148,12 +148,12 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // selection runs on paragraphs picked in the capture editor or a long screenshot's preview while
   // the screenshot stays open, its answer replacing them, marking them (insertAfterSelection's
   // numbered steps, the new `annotate` output's highlights and steps) or showing on the result card
-  // beside them; such runs attach the screenshot (so they are never lite), review previews only
-  // annotate's marks on the screenshot (replacements and steps land at once), and a screenshot
-  // command reading {{selection}} gets the text picked there.
+  // beside them; review previews only annotate's marks on the screenshot (replacements and steps
+  // land at once), and a screenshot command reading {{selection}} gets the text picked there.
   // Every such run keeps its versions on the result card whatever the review setting, so a command
-  // that reads the selection gets adjustment suggestions too.
-  skill('create-command', 12, [
+  // that reads the selection gets adjustment suggestions too. Version 13 keeps eligible
+  // screenshot-text runs on the lightweight path and answers targeted screenshot-text asks directly.
+  skill('create-command', 13, [
     '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
     '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
     '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1

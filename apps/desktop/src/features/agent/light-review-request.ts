@@ -15,10 +15,13 @@ import { argumentText } from '../commands/shortcut-names';
 import { draftChips, quoteChip, serialize } from '../composer-editor/draft';
 
 /**
- * The launch a review makes its versions from: the command, the input its first run read, where
- * its answer goes and the shortcut that launched it.
+ * The launch a review makes its versions from: the command (or synthetic Ask), the input its
+ * first run read, where its answer goes and the shortcut that launched it.
  */
-export type ReviewLaunch = Pick<PreparedCommand, 'command' | 'input' | 'output' | 'shortcutId'>;
+export type ReviewLaunch = Pick<PreparedCommand, 'command' | 'input' | 'output' | 'shortcutId'> & {
+  /** True when the run is a free-form Ask rather than a saved command. */
+  ask?: boolean;
+};
 
 /** What the review card staged for the next version (`CommandProgressAction.adjust`). */
 type ReviewAdjust = NonNullable<CommandProgressAction['adjust']>;
@@ -105,7 +108,15 @@ export function versionRequest(
   plan: VersionPlan,
 ): Omit<SubmitRequest, 'action'> {
   const base = { invocationId: crypto.randomUUID(), policy: null, taskId, savedRun: null };
-  if (plan.kind === 'command')
+  if (plan.kind === 'command') {
+    if (launch.ask)
+      return {
+        ...base,
+        commandId: null,
+        commandRevision: null,
+        input: launch.input,
+        output: launch.output,
+      };
     return {
       ...base,
       commandId: launch.command.id,
@@ -114,6 +125,7 @@ export function versionRequest(
       output: launch.output,
       ...(launch.shortcutId === undefined ? {} : { shortcutId: launch.shortcutId }),
     };
+  }
   const draft =
     plan.quote === null
       ? { text: plan.text, chips: [] }
