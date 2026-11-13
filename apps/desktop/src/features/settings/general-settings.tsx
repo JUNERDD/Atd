@@ -249,7 +249,11 @@ export function GeneralSettings({
           {/* Restores both global and in-app shortcuts, so it sits directly below the shortcut groups. */}
           <div className="settings-shortcut-restore">
             {settings.errors.restore && (
-              <p id="settings-shortcut-restore-error" className="settings-inline-error" role="alert">
+              <p
+                id="settings-shortcut-restore-error"
+                className="settings-inline-error"
+                role="alert"
+              >
                 <CircleAlert aria-hidden="true" />
                 <span>{settings.errors.restore}</span>
               </p>
