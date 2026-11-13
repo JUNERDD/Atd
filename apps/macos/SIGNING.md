@@ -61,11 +61,20 @@ validating credentials or signing anything. Direct Xcode builds do not load the 
 use the project scripts or supply the signing environment explicitly.
 
 Apple submissions save an artifact digest, submission ID and status in `.notary.json` next
-to the submitted archive. If Apple takes longer than `AI_NOTARY_TIMEOUT` (default `30m`),
+to the submitted archive. New receipts also record the upload's exit code and completion state:
+a submission ID alone does not prove that the upload completed. An unsuccessful command or an
+unverified response preserves the attempt and any returned ID, stops before waiting or stapling,
+and blocks automatic resubmission
+on the next run. Inspect that attempt and its existing Apple submission before explicitly
+moving the failed receipt aside to retry. Older receipts have no upload-completion evidence;
+they can still resume their existing submission without uploading again.
+
+If Apple takes longer than `AI_NOTARY_TIMEOUT` (default `30m`),
 rerun `node apps/macos/scripts/signing/distribute.mjs` with the same `--app` and `--out`
 arguments, without rebuilding. It reuses the archive and DMG under the app signature’s
 `DerivedData/notarization/<CDHash>/` directory. The final output directory receives only a
-verified installer and checksum. You can also resume an individual exact submission:
+verified installer and checksum. The timeout stops local waiting; Apple continues processing.
+It does not mean the submission was rejected. You can also resume an individual exact submission:
 
 ```sh
 pnpm --filter @atd/macos notarize <submitted.zip> <Atd.app>

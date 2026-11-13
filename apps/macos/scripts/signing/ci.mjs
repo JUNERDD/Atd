@@ -22,17 +22,19 @@ if (process.argv.includes('--cleanup')) {
   if (existsSync(keychain)) run('security', ['delete-keychain', keychain]);
   process.exit(0);
 }
+const skipNotarize = process.argv.includes('--skip-notarize');
 const required = [
   'DEVELOPER_ID_P12',
   'DEVELOPER_ID_P12_PASSWORD',
   'DEVELOPER_ID_SHA1',
   'APPLE_TEAM_ID',
-  'NOTARY_APPLE_ID',
-  'NOTARY_APP_PASSWORD',
+  ...(skipNotarize ? [] : ['NOTARY_APPLE_ID', 'NOTARY_APP_PASSWORD']),
 ];
 for (const name of required)
   if (!process.env[name]?.trim())
-    throw new Error(`Missing ${name}; refusing an unsigned or unnotarized release.`);
+    throw new Error(
+      `Missing ${name}; refusing an unsigned${skipNotarize ? '' : ' or unnotarized'} release.`,
+    );
 const original = [...run('security', ['list-keychains', '-d', 'user']).matchAll(/"([^"]+)"/g)].map(
   (value) => value[1],
 );
@@ -72,26 +74,36 @@ validateIdentity({
   teamId: process.env.APPLE_TEAM_ID,
   keychain,
 });
-run('xcrun', [
-  'notarytool',
-  'store-credentials',
-  'Atd-release',
-  '--keychain',
-  keychain,
-  '--apple-id',
-  process.env.NOTARY_APPLE_ID,
-  '--team-id',
-  process.env.APPLE_TEAM_ID,
-  '--password',
-  process.env.NOTARY_APP_PASSWORD,
-  '--validate',
-]);
+if (!skipNotarize) {
+  run('xcrun', [
+    'notarytool',
+    'store-credentials',
+    'Atd-release',
+    '--keychain',
+    keychain,
+    '--apple-id',
+    process.env.NOTARY_APPLE_ID,
+    '--team-id',
+    process.env.APPLE_TEAM_ID,
+    '--password',
+    process.env.NOTARY_APP_PASSWORD,
+    '--validate',
+  ]);
+}
 for (const [name, value] of Object.entries({
   AI_CODE_SIGN_IDENTITY: process.env.DEVELOPER_ID_SHA1,
   AI_DEVELOPMENT_TEAM: process.env.APPLE_TEAM_ID,
   AI_SIGNING_KEYCHAIN: keychain,
-  AI_NOTARY_PROFILE: 'Atd-release',
-  AI_NOTARY_KEYCHAIN: keychain,
+  ...(skipNotarize
+    ? {}
+    : {
+        AI_NOTARY_PROFILE: 'Atd-release',
+        AI_NOTARY_KEYCHAIN: keychain,
+      }),
 }))
   appendFileSync(process.env.GITHUB_ENV, `${name}=${value}\n`);
-console.log('Developer ID and notarization credentials are ready in the temporary CI keychain.');
+console.log(
+  skipNotarize
+    ? 'Developer ID credentials are ready in the temporary CI keychain (notarization skipped).'
+    : 'Developer ID and notarization credentials are ready in the temporary CI keychain.',
+);

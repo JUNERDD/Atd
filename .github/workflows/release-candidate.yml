@@ -11,6 +11,10 @@ on:
       build_version:
         type: string
         required: true
+      notarize:
+        description: Temporarily false for 0.11.0 while Apple notarization is pending; set true for 0.11.1.
+        type: boolean
+        default: false
     outputs:
       artifact-id:
         value: ${{ jobs.collect.outputs.artifact-id }}
@@ -20,9 +24,9 @@ on:
       DEVELOPER_ID_P12_PASSWORD:
         required: true
       NOTARY_APPLE_ID:
-        required: true
+        required: false
       NOTARY_APP_PASSWORD:
-        required: true
+        required: false
       SPARKLE_ED_PRIVATE_KEY:
         required: true
 
@@ -90,7 +94,10 @@ jobs:
           DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
-        run: node apps/macos/scripts/signing/ci.mjs
+        run: |
+          args=()
+          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
+          node apps/macos/scripts/signing/ci.mjs "${args[@]}"
       # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
       # add-on lock it embeds names this version's GitHub release assets.
       - name: Bundle the service, the renderer and the add-ons
@@ -153,7 +160,9 @@ jobs:
           python3 -m venv "$venv"
           "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
           mkdir -p "$RUNNER_TEMP/release-diagnostics"
-          DMG_PYTHON="$venv/bin/python" node apps/macos/scripts/signing/distribute.mjs --app "$APP" --out dist 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/distribution.log"
+          args=(--app "$APP" --out dist)
+          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
+          DMG_PYTHON="$venv/bin/python" node apps/macos/scripts/signing/distribute.mjs "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/distribution.log"
           (cd dist && shasum -a 256 -c "Atd-$VERSION-$RELEASE_ARCH.dmg.sha256")
       - name: Remove temporary signing credentials
         if: always()
@@ -250,9 +259,13 @@ jobs:
               exit 1
             fi
           done
-          node apps/macos/scripts/signing/check.mjs "$APP" --notarized
-          xcrun stapler validate "dmg/$DMG"
-          spctl --assess --type open --context context:primary-signature "dmg/$DMG"
+          if [ "${{ inputs.notarize }}" = "true" ]; then
+            node apps/macos/scripts/signing/check.mjs "$APP" --notarized
+            xcrun stapler validate "dmg/$DMG"
+            spctl --assess --type open --context context:primary-signature "dmg/$DMG"
+          else
+            node apps/macos/scripts/signing/check.mjs "$APP"
+          fi
           key=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)
           "$APP/Contents/Resources/node/bin/node" apps/macos/scripts/verify-app.mjs app \
             --app "$APP" \

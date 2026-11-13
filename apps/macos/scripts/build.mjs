@@ -25,7 +25,7 @@
  * at a `-`, so a build version must not contain one.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -147,6 +147,17 @@ function pinPackages() {
   copyFileSync(path.join(packageRoot, 'Package.resolved'), path.join(pins, 'Package.resolved'));
 }
 
+/** Removes leftover `.cstemp` files from interrupted codesign runs so Xcode can re-sign cleanly. */
+function removeSigningTemporaries(configuration) {
+  const products = path.join(packageRoot, 'DerivedData', 'Build', 'Products', configuration);
+  if (!existsSync(products)) return;
+  for (const entry of readdirSync(products, { withFileTypes: true, recursive: true })) {
+    if (entry.isFile() && entry.name.endsWith('.cstemp')) {
+      rmSync(path.join(entry.parentPath, entry.name), { force: true });
+    }
+  }
+}
+
 const options = readOptions();
 const native = hostArch();
 const arch = options.arch ?? native;
@@ -174,6 +185,7 @@ if (options.configuration === 'Debug') {
 }
 run('xcodegen', ['generate', '--quiet']);
 pinPackages();
+removeSigningTemporaries(options.configuration);
 run('xcodebuild', args);
 
 if (options.configuration === 'Release') {
