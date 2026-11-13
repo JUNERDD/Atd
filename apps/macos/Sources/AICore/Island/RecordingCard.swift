@@ -21,8 +21,8 @@ public struct RecordingCardSource: Equatable, Sendable {
   public let steps: [RecordingCardStep]
   /// The microphone was on, so narration could be heard; false notes that there is none.
   public let narration: Bool
-  /// The folder Save writes to, by name, for its tooltip; nil names none.
-  public let saveFolder: String?
+  /// The folder Save writes to, by name, for its tooltip; nil prompts each time.
+  public var saveFolder: String?
   /// Localized explanations of unavailable narration or recoverable recording issues.
   public let notes: [String]
 
@@ -102,12 +102,16 @@ public struct RecordingTrim: Equatable, Sendable {
 /// the next recording's; the answers asked about the recording (``RecordingAnswers``) live beside
 /// it in the card's asking model, which persists with the card just as long (R10).
 public struct RecordingCardState: Equatable, Sendable {
-  public let source: RecordingCardSource
+  public private(set) var source: RecordingCardSource
   public private(set) var trim: RecordingTrim
 
   public init(source: RecordingCardSource) {
     self.source = source
     trim = RecordingTrim(start: 0, end: source.duration)
+  }
+
+  public mutating func setSaveFolder(_ folder: String?) {
+    source.saveFolder = folder
   }
 
   /// The kept range is never shorter than this (or the whole recording, when shorter).

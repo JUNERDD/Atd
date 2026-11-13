@@ -1,5 +1,6 @@
 import AICore
 import AppKit
+import UniformTypeIdentifiers
 
 /// One capture session as ``ScreenshotTaker`` runs it: what a request's session offers, the
 /// session from the panel's withdrawal to its return, and its outcome in the calls' terms.
@@ -15,14 +16,16 @@ extension ScreenshotTaker {
   func options(for request: ScreenshotRequest, reopening: ReopenBase?) -> CaptureSessionOptions {
     var options = CaptureSessionOptions()
     options.copyShortcut = copyShortcut()
+    options.reopening = reopening != nil
     if reopening != nil { return options }
+    options.saveFolder = saveFolderURL().map { SaveFolderDisplay.name(for: $0) }
     options.canRecord = recorder != nil && request.toolbar
     options.mode = options.canRecord ? request.mode : .screenshot
     options.makeRecordAccessory = makeRecordAccessory
     guard request.toolbar else { return options }
     // A long screenshot goes to the island's result card; a caller waiting for an image gets none.
     options.offersLongScreenshot = true
-    options.copiesLongScreenshotOnConfirm = copiesLongScreenshotOnConfirm()
+    options.longScreenshotConfirm = longScreenshotConfirm()
     let arbiter = arbiter
     options.commands = CaptureCommandRowSetup(
       commands: toolbarCommands, catalog: commandOptions(),
@@ -114,8 +117,8 @@ extension ScreenshotTaker {
     switch outcome {
     case .confirmed, .launched, .textResult(.insert):
       presented.target = await targetRead?.value
-    case .cancelled, .wantsAccessibility, .failed, .copied, .record, .longScreenshot,
-      .copiedLongScreenshot, .textResult(.open):
+    case .cancelled, .wantsAccessibility, .failed, .copied, .saved, .record, .longScreenshot,
+      .copiedLongScreenshot, .savedLongScreenshot, .textResult(.open):
       targetRead?.cancel()
     }
     // The previous app gets activation back before the panel reappears, so a panel that had the
@@ -162,6 +165,12 @@ extension ScreenshotTaker {
         showCopied?()
       }
       return .cancelled
+    case .saved(let capture, let destination):
+      if !editing {
+        regions.remember(
+          capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
+      }
+      return .saved(capture, destination: destination)
     case .record(let request):
       regions.remember(
         request.rect, displayID: request.displayID, displayFrame: request.displayFrame)
@@ -176,8 +185,49 @@ extension ScreenshotTaker {
       return .longScreenshot(shot)
     case .copiedLongScreenshot(let shot):
       return .copiedLongScreenshot(shot)
+    case .savedLongScreenshot(let shot):
+      return .savedLongScreenshot(shot)
     case .textResult(let handoff):
       return .textResult(handoff)
+    }
+  }
+
+  /// Writes a screenshot or live long screenshot at full pixel resolution to `destination`, the
+  /// configured save folder, or a chosen file URL when "Ask each time" is selected.
+  func save(_ image: CGImage, scale: CGFloat, long: Bool, destination: URL?) {
+    let capturedAt = Date()
+    let folder = destination == nil ? saveFolderURL() : nil
+    let chooseSaveFile = chooseSaveFile
+    let showSaved = showSaved
+    let showSaveFailed = showSaveFailed
+    Task {
+      let targetURL: URL?
+      if let destination {
+        targetURL = destination
+      } else if let folder {
+        do {
+          let savedURL = try await CaptureExport.saveScreenshot(
+            image, scale: scale, capturedAt: capturedAt, long: long, in: folder)
+          showSaved?(SaveFolderDisplay.parentName(of: savedURL))
+        } catch {
+          showSaveFailed?(ShellStrings.shared.text(ScreenshotSaveStringKey.saveFailed))
+        }
+        return
+      } else {
+        let suggestedName =
+          long
+          ? LongScreenshotExportRules.fileName(capturedAt: capturedAt, encoding: .png)
+          : ScreenshotRules.fileName(capturedAt: capturedAt, encoding: .png)
+        targetURL = await chooseSaveFile?(suggestedName, .png)
+      }
+      guard let targetURL else { return }
+      do {
+        let savedURL = try await CaptureExport.saveScreenshotToFile(
+          image, scale: scale, destination: targetURL)
+        showSaved?(SaveFolderDisplay.parentName(of: savedURL))
+      } catch {
+        showSaveFailed?(ShellStrings.shared.text(ScreenshotSaveStringKey.saveFailed))
+      }
     }
   }
 

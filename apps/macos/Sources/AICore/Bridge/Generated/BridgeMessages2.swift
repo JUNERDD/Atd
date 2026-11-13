@@ -70,6 +70,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .screenshotEdit(container.value(.params, ScreenshotEditParams.self))
       case "screenshotToolbar.set":
         call = try .screenshotToolbarSet(container.value(.params, ScreenshotToolbarSetParams.self))
+      case "saveLocation.state":
+        call = try .saveLocationState(container.value(.params, SaveLocationStateParams.self))
+      case "saveLocation.set":
+        call = try .saveLocationSet(container.value(.params, SaveLocationSetParams.self))
+      case "saveLocation.pick":
+        call = try .saveLocationPick(container.value(.params, SaveLocationPickParams.self))
       case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
       case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
       case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))

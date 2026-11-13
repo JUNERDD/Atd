@@ -22,6 +22,7 @@ struct IslandLongScreenshotLabels: Equatable {
   var cover = ""
   var annotate = ""
   var annotateTooltip = ""
+  var save = ""
   var copy = ""
   var copyTooltip = ""
   var attach = ""
@@ -72,7 +73,8 @@ struct IslandLongScreenshotLabels: Equatable {
       preview: text(.preview), trimTop: text(.trimTop), trimBottom: text(.trimBottom),
       reads: text(.reads), readsInfo: text(.readsInfo), noText: text(.noText),
       cover: text(.cover), annotate: text(.annotate),
-      annotateTooltip: text(.annotateTooltip), copy: text(.copy), copyTooltip: text(.copyTooltip),
+      annotateTooltip: text(.annotateTooltip), save: recording(.save), copy: text(.copy),
+      copyTooltip: text(.copyTooltip),
       attach: recording(.attach), attachTooltip: recording(.attachTooltip),
       actionWorking: recording(.actionWorking), lightbox: text(.lightbox),
       lightboxTooltip: text(.lightboxTooltip), back: text(.back), backTooltip: text(.backTooltip),
@@ -171,6 +173,18 @@ struct IslandLongScreenshotLabels: Equatable {
   /// An answer's range: the kept height, "1,234 pt".
   func keptHeight(_ kept: LongScreenshotKept) -> String {
     ShellStrings.shared.text(LongScreenshotCardStringKey.keptHeight, Self.points(kept.height))
+  }
+
+  /// Save's tooltip, naming `folder` when configured, otherwise "Save…", with the ⌘S shortcut.
+  func save(to folder: String?) -> String {
+    let strings = ShellStrings.shared
+    let base =
+      folder.map {
+        String(
+          format: strings.text(RecordingIslandStringKey.saveTo),
+          locale: Locale(identifier: strings.language.rawValue), $0)
+      } ?? strings.text(ScreenshotSaveStringKey.saveEllipsis)
+    return String(format: strings.text(.captureTooltipShortcut), base, "⌘S")
   }
 
   /// Whole points as the live chrome writes them: grouped, the same in every language.

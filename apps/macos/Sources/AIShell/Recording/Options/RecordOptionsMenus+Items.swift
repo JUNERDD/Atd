@@ -24,7 +24,7 @@ extension RecordOptionsMenus {
   }
 
   /// The countdown and what the movie shows, its quality and frame rate with the size they make
-  /// (a note, which only informs), then what follows the recording and where it is saved.
+  /// (a note, which only informs), then what follows the recording.
   func optionItems() -> [ToolbarMenuItem] {
     let copy = RecordOptionsCopy.self
     let estimate = ToolbarMenuItem.note(
@@ -51,41 +51,7 @@ extension RecordOptionsMenus {
       .separator,
       choice(
         copy.text(.after), \.after, RecordingAfterAction.allCases, name: { copy.after($0) }),
-      saveLocation(),
     ]
-  }
-
-  /// The Save Location row, whose submenu lists the standard folders, the recent ones, then
-  /// "Other…".
-  private func saveLocation() -> ToolbarMenuItem {
-    let folders = settings.folders
-    let copy = RecordOptionsCopy.self
-    let title = copy.text(.saveLocation)
-    return ToolbarMenuItem(
-      content: .init(
-        title: title, detail: copy.folderName(folders.current),
-        reserved: folders.offered.map(copy.folderName), submenu: true,
-        tip: "\(title) — \(folders.current)"),
-      submenu: { [weak self] in self?.folderItems() ?? [] })
-  }
-
-  private func folderItems() -> [ToolbarMenuItem] {
-    let folders = settings.folders
-    func row(_ path: String) -> ToolbarMenuItem {
-      ToolbarMenuItem(
-        content: .init(
-          title: RecordOptionsCopy.folderName(path), mark: mark(folders.current == path),
-          tip: path),
-        action: { [weak self] in
-          self?.update(closingSubmenu: true) { $0.folders.select(path) }
-        })
-    }
-    let standard = RecordingFolders.Standard.allCases.map { row($0.path) }
-    let recent = folders.recent.map(row)
-    let other = ToolbarMenuItem(
-      content: .init(title: RecordOptionsCopy.text(.folderOther), mark: .blank),
-      action: { [weak self] in self?.chooseOtherFolder() })
-    return standard + (recent.isEmpty ? [] : [.separator] + recent) + [.separator, other]
   }
 
   /// A row showing `key`'s value, whose submenu lists `values` (each by `long`, the row's value

@@ -44,7 +44,7 @@ final class RecordingPreparationFixture {
     self.progress = progress
     let controller = ScreenRecordingController(
       island: progress.recording, arbiter: arbiter, attachments: attachments, panelHost: host,
-      screenAccess: ScreenRecordingTrust(), defaults: defaults, showPanel: {})
+      systemPanels: panels, screenAccess: ScreenRecordingTrust(), defaults: defaults, showPanel: {})
     self.controller = controller
     host.onDocumentUnload = { [weak controller] in controller?.pageDidUnload() }
   }

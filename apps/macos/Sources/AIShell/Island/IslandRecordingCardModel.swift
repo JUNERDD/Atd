@@ -265,6 +265,12 @@ final class IslandRecordingCardModel {
     return frames[slot].map { ($0, (Double(slot) + 0.5) * share) }
   }
 
+  /// Updates the folder name shown in Save tooltips when preferences change.
+  func updateSaveFolder(_ folderName: String?) {
+    guard state.source.saveFolder != folderName else { return }
+    state.setSaveFolder(folderName)
+  }
+
   /// The card went for good: playback and frame making stop.
   func close() {
     pause()

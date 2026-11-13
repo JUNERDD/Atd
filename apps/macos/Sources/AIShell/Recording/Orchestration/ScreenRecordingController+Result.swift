@@ -1,5 +1,6 @@
 import AICore
 import AppKit
+import UniformTypeIdentifiers
 
 /// After the recording (architecture R1, R9–R11, B4, B5): the take is processed and kept for its
 /// result card, then handled as the settings say (the card, a save to the remembered folder, or
@@ -13,9 +14,9 @@ extension ScreenRecordingController {
   func process(_ take: RecordingTake, generation: Int) async {
     let result = await RecordingProcessor.process(take)
     guard generation == self.generation else { return RecordingKept.delete(result.take.folder) }
+    let saveFolder = currentSaveFolderURL().map { SaveFolderDisplay.name(for: $0) }
     let source = RecordingCardSource(
-      result, id: UUID().uuidString,
-      saveFolder: RecordOptionsCopy.folderName(settings.folders.current))
+      result, id: UUID().uuidString, saveFolder: saveFolder)
     let kept = RecordingKept(result, source: source)
     self.kept = kept
     switch settings.after {
@@ -25,7 +26,7 @@ extension ScreenRecordingController {
     case .save:
       guard kept.hold() else { return }
       defer { kept.letGo() }
-      await save(kept, range: result.fullRange, generation: generation)
+      await saveAfterStop(kept, range: result.fullRange, generation: generation)
       if generation == self.generation { stage = .idle }
     case .attach:
       guard kept.hold() else { return }
@@ -39,30 +40,96 @@ extension ScreenRecordingController {
   /// Each button owns its progress, so the same action cannot be submitted twice.
   func perform(_ action: CardAction, on trim: RecordingTrim) {
     guard let kept, stage == .idle, !exportingActions.contains(action), kept.hold() else { return }
-    exportingActions.insert(action)
     let generation = generation
+    exportingActions.insert(action)
+    if action == .save, let folder = currentSaveFolderURL() {
+      island.cardFeedback(action, .working)
+      Task {
+        defer { kept.letGo() }
+        defer { if generation == self.generation { exportingActions.remove(action) } }
+        await save(kept, range: trim.range, to: folder, generation: generation, feedback: action)
+      }
+      return
+    }
+    if action == .save {
+      let suggestedName = kept.result.take.movieName
+      Task {
+        defer { kept.letGo() }
+        defer { if generation == self.generation { exportingActions.remove(action) } }
+        let fileURL = await systemPanels.chooseSaveFile(
+          suggestedName: suggestedName, contentType: .mpeg4Movie, aboveIsland: true)
+        island.restoreKeyboardAfterModal()
+        guard generation == self.generation, let fileURL else { return }
+        island.cardFeedback(action, .working)
+        await save(
+          kept, range: trim.range, toFile: fileURL, generation: generation, feedback: action)
+      }
+      return
+    }
     island.cardFeedback(action, .working)
     Task {
       defer { kept.letGo() }
       defer { if generation == self.generation { exportingActions.remove(action) } }
       switch action {
-      case .save: await save(kept, range: trim.range, generation: generation, feedback: action)
+      case .save: break
       case .copy: await copy(kept, range: trim.range, generation: generation, feedback: action)
       case .attach: await attach(kept, range: trim.range, generation: generation, feedback: action)
       }
     }
   }
 
-  /// Saves `range` to the folder the recording began with (the card's Save names it), under a
-  /// name no file there has.
-  private func save(
-    _ kept: RecordingKept, range: ClosedRange<Double>, generation: Int, feedback: CardAction? = nil
+  /// Updates the kept result card's Save label after the recording save location changes.
+  func refreshSaveFolder() {
+    island.updateSaveFolder(currentSaveFolderURL().map { SaveFolderDisplay.name(for: $0) })
+  }
+
+  /// Current configured recording save folder, or `nil` when set to Ask each time.
+  private func currentSaveFolderURL() -> URL? {
+    RecordingSettingsMemory.load(from: defaults).folders.currentURL
+  }
+
+  /// Saves `range` after recording stops: writes immediately when a folder is set, or releases the
+  /// processing capsule and prompts for a destination when set to Ask each time.
+  private func saveAfterStop(
+    _ kept: RecordingKept, range: ClosedRange<Double>, generation: Int
   ) async {
-    let folders = settings.folders
+    if let folder = currentSaveFolderURL() {
+      await save(kept, range: range, to: folder, generation: generation)
+      return
+    }
+    island.release()
+    let fileURL = await systemPanels.chooseSaveFile(
+      suggestedName: kept.result.take.movieName, contentType: .mpeg4Movie, aboveIsland: true)
+    guard generation == self.generation, let fileURL else { return }
+    island.showProcessing()
+    await save(kept, range: range, toFile: fileURL, generation: generation)
+  }
+
+  /// Saves `range` into `folder` under a name no file there has.
+  private func save(
+    _ kept: RecordingKept, range: ClosedRange<Double>, to folder: URL, generation: Int,
+    feedback: CardAction? = nil
+  ) async {
     do throws(RecordingError) {
-      _ = try await RecordingExporter.save(kept.result, range: range, to: folders.currentURL)
+      _ = try await RecordingExporter.save(kept.result, range: range, to: folder)
       guard generation == self.generation else { return }
-      report(Self.text(.saved, RecordOptionsCopy.folderName(folders.current)), action: feedback)
+      report(Self.text(.saved, SaveFolderDisplay.name(for: folder)), action: feedback)
+    } catch {
+      guard generation == self.generation else { return }
+      report(RecordingEngineText.message(error), action: feedback, failed: true)
+    }
+  }
+
+  /// Saves `range` directly to a user-chosen file destination.
+  private func save(
+    _ kept: RecordingKept, range: ClosedRange<Double>, toFile destination: URL, generation: Int,
+    feedback: CardAction? = nil
+  ) async {
+    do throws(RecordingError) {
+      let savedURL = try await RecordingExporter.save(
+        kept.result, range: range, toFile: destination)
+      guard generation == self.generation else { return }
+      report(Self.text(.saved, SaveFolderDisplay.parentName(of: savedURL)), action: feedback)
     } catch {
       guard generation == self.generation else { return }
       report(RecordingEngineText.message(error), action: feedback, failed: true)
@@ -141,7 +208,11 @@ extension ScreenRecordingController {
     }
     return { [weak self] in
       guard let self, let kept, stage == .idle else { return }
-      island.showResult(kept.source)
+      let folderName = currentSaveFolderURL().map { SaveFolderDisplay.name(for: $0) }
+      var source = kept.source
+      source.saveFolder = folderName
+      island.showResult(source)
+      island.updateSaveFolder(folderName)
     }
   }
 

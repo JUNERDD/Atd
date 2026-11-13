@@ -4,6 +4,7 @@ import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
+import { recordingSearchEntries } from './recording-search-entries';
 import { screenshotSearchEntries } from './screenshot-search-entries';
 import { selectionToolbarSearchEntries } from './selection-toolbar-search-entries';
 import type { SettingsSearchPage } from './settings-navigation';
@@ -132,6 +133,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   ...notificationSearchEntries,
   ...selectionToolbarSearchEntries,
   ...screenshotSearchEntries,
+  ...recordingSearchEntries,
   ...(
     [
       'togglePanel',

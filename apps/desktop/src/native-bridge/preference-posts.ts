@@ -58,13 +58,18 @@ export const NativePreferencePosts = {
   /**
    * How screenshot confirmation behaves (`screenshotCopyOnConfirm`, `longScreenshotConfirmAction`):
    * whether clicking ✓ on the screenshot toolbar also copies the image to the clipboard, and
-   * whether clicking ✓ in long screenshot opens the result card or closes and copies directly.
-   * Swift keeps them and restores the last ones at launch until the first push.
+   * whether clicking ✓ in long screenshot opens the result card, closes and copies directly, or
+   * saves to the configured folder and closes. Swift keeps them and restores the last ones at
+   * launch until the first push.
    */
   'screenshotPreferences.set': Type.Object(
     {
       copyOnConfirm: Type.Boolean(),
-      longScreenshotConfirmAction: Type.Union([Type.Literal('card'), Type.Literal('copy')]),
+      longScreenshotConfirmAction: Type.Union([
+        Type.Literal('card'),
+        Type.Literal('copy'),
+        Type.Literal('save'),
+      ]),
     },
     { additionalProperties: false },
   ),

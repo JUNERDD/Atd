@@ -29,6 +29,8 @@ final class CaptureSession {
     case confirmed(CaptureConfirmation)
     /// The same result as `confirmed`, for the clipboard rather than an attachment.
     case copied(CaptureConfirmation)
+    /// The same result as `confirmed`, saved locally to the user's configured folder or chosen file.
+    case saved(CaptureConfirmation, destination: URL?)
     /// The same result as `confirmed`, with a command or a question to run on it (S1, S3).
     case launched(CaptureConfirmation, CaptureLaunch)
     /// Record mode's Start: the selection to record. The overlays are gone by the time the caller
@@ -39,6 +41,8 @@ final class CaptureSession {
     case longScreenshot(LongScreenshotImage)
     /// The same image as `longScreenshot`, for the clipboard rather than the result card.
     case copiedLongScreenshot(LongScreenshotImage)
+    /// The same image as `longScreenshot`, saved locally to the user's configured folder.
+    case savedLongScreenshot(LongScreenshotImage)
     /// A text command's result card ended the capture to open its task or write its answer
     /// (decision D10); nothing is attached.
     case textResult(CaptureTextHandoff)
@@ -125,6 +129,9 @@ final class CaptureSession {
   weak var chainOverlay: CaptureOverlayView?
   var chainIndex = 0
   var hoverInFlight = false
+  /// True while the app-modal save panel is open for "Ask each time" screenshot saving.
+  var choosingSaveDestination = false
+  private var savePanel: CaptureSavePanel?
   private var beginTask: Task<Void, Never>?
   var handoffTask: Task<Void, Never>?
   var targetTask: Task<Void, Never>?
@@ -156,7 +163,10 @@ final class CaptureSession {
       observers.append(
         center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
           MainActor.assumeIsolated {
-            guard let self, !resigns || (self.hasKeyboard && !self.passesInputThrough) else {
+            guard let self,
+              !resigns
+                || (self.hasKeyboard && !self.passesInputThrough && !self.choosingSaveDestination)
+            else {
               return
             }
             self.cancel()
@@ -224,8 +234,8 @@ final class CaptureSession {
     case .confirmed(let confirmation): outcome = .confirmed(await described(confirmation))
     case .launched(let confirmation, let launch):
       outcome = .launched(await described(confirmation), launch)
-    case .cancelled, .wantsAccessibility, .copied, .record, .longScreenshot,
-      .copiedLongScreenshot, .textResult, .failed:
+    case .cancelled, .wantsAccessibility, .copied, .saved, .record, .longScreenshot,
+      .copiedLongScreenshot, .savedLongScreenshot, .textResult, .failed:
       break
     }
     await targeting.end()
@@ -243,6 +253,35 @@ final class CaptureSession {
 
   /// Ends the session like ``confirm()``, with the result meant for the clipboard.
   func copy() { end(as: Outcome.copied) }
+
+  /// Ends the session like ``confirm()``, with the result saved locally to a folder or chosen file.
+  func save() {
+    if options.saveFolder != nil {
+      end { .saved($0, destination: nil) }
+      return
+    }
+    editor?.endText()
+    guard case .selected(let rect) = phase,
+      !desktop.geometry.displays(overlapping: rect).isEmpty,
+      !choosingSaveDestination
+    else { return }
+    choosingSaveDestination = true
+    let suggestedName = ScreenshotRules.fileName(capturedAt: Date(), encoding: .png)
+    Task { @MainActor [weak self] in
+      guard let self, !isFinished, choosingSaveDestination else { return }
+      let panel = CaptureSavePanel()
+      savePanel = panel
+      let destination = panel.choose(suggestedName: suggestedName, contentType: .png)
+      savePanel = nil
+      choosingSaveDestination = false
+      guard !isFinished else { return }
+      if let destination {
+        end { .saved($0, destination: destination) }
+      } else if hasKeyboard, case .selected(let currentRect) = phase {
+        primaryOverlay(for: currentRect)?.window?.makeKey()
+      }
+    }
+  }
 
   /// Ends the session like ``confirm()``, with `launch` to run on the result.
   func launch(_ launch: CaptureLaunch) { end { .launched($0, launch) } }
@@ -273,6 +312,9 @@ final class CaptureSession {
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    choosingSaveDestination = false
+    savePanel?.cancel()
+    savePanel = nil
     handoffTask?.cancel()
     handoffTask = nil
     targetTask?.cancel()

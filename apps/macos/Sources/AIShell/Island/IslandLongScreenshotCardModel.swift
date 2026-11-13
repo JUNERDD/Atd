@@ -12,8 +12,8 @@ import Observation
 @Observable
 final class IslandLongScreenshotCardModel {
   private(set) var state: LongScreenshotCardState
-  /// The state's source, which never changes: reading it here does not follow the kept range.
-  let source: LongScreenshotCardSource
+  /// The state's source; only its save-folder display name updates if Preferences change.
+  private(set) var source: LongScreenshotCardSource
   /// The pages Atd reads the kept range as, worked out again when the range or a mosaic changes.
   private(set) var pages: [LongScreenshotCardPage] = []
   /// The page whose row or part of the preview has the pointer: the two are marked together.
@@ -270,6 +270,12 @@ final class IslandLongScreenshotCardModel {
       annotatedCardThumbnail = madeCard
       if annotationsChanged { drawAnnotations() }
     }
+  }
+
+  /// Updates the folder name shown in Save tooltips when preferences change.
+  func updateSaveFolder(_ folderName: String?) {
+    guard source.saveFolder != folderName else { return }
+    source.saveFolder = folderName
   }
 
   /// The card went for good: its images are no longer made.

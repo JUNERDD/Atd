@@ -1323,6 +1323,78 @@
         }
       }
     },
+    "capture.save" : {
+      "comment" : "Annotation toolbar button: save screenshot locally",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存"
+          }
+        }
+      }
+    },
+    "capture.save.ellipsis" : {
+      "comment" : "Save action tooltip when no save folder is chosen and saving prompts for a destination",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存…"
+          }
+        }
+      }
+    },
+    "capture.save.failed" : {
+      "comment" : "Status when saving a screenshot or long screenshot locally fails",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not save screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法保存截图"
+          }
+        }
+      }
+    },
+    "capture.save.folder.message" : {
+      "comment" : "Message of the open panel that chooses the screenshots' save location",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose where to save screenshots"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择截图的保存位置"
+          }
+        }
+      }
+    },
     "capture.size" : {
       "comment" : "Style bar slider: how big an annotation is drawn (line width, text size, mosaic blocks…)",
       "extractionState" : "manual",
@@ -11566,13 +11638,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Save to Folder"
+            "value" : "Save Recording"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存到文件夹"
+            "value" : "保存录屏"
           }
         }
       }
@@ -11667,42 +11739,6 @@
         }
       }
     },
-    "recording.options.folder.desktop" : {
-      "comment" : "Save location: the user's Desktop folder, as Finder names it",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desktop"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "桌面"
-          }
-        }
-      }
-    },
-    "recording.options.folder.documents" : {
-      "comment" : "Save location: the user's Documents folder, as Finder names it",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Documents"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文稿"
-          }
-        }
-      }
-    },
     "recording.options.folder.message" : {
       "comment" : "Message of the open panel that chooses the recordings' save location",
       "extractionState" : "manual",
@@ -11717,42 +11753,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择录屏的保存位置"
-          }
-        }
-      }
-    },
-    "recording.options.folder.movies" : {
-      "comment" : "Save location: the user's Movies folder, as Finder names it",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Movies"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "影片"
-          }
-        }
-      }
-    },
-    "recording.options.folder.other" : {
-      "comment" : "Save location menu item that opens a folder panel to choose any folder",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Other…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "其他位置…"
           }
         }
       }
@@ -11915,24 +11915,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@（文件小）"
-          }
-        }
-      }
-    },
-    "recording.options.saveLocation" : {
-      "comment" : "Recording options menu row: the folder recordings are saved to",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save Location"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保存位置"
           }
         }
       }

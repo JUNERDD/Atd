@@ -141,6 +141,20 @@ final class IslandRecording {
     island.model.recordingCard = nil
   }
 
+  /// Updates the displayed save folder name on the kept card, if one exists.
+  func updateSaveFolder(_ folderName: String?) {
+    island.model.recordingCard?.updateSaveFolder(folderName)
+  }
+
+  /// Restores keyboard focus to the lightbox or island window after a modal save panel closes.
+  func restoreKeyboardAfterModal() {
+    if lightbox.isOpen {
+      lightbox.makeKeyIfVisible()
+    } else if island.window.isVisible, island.window.canBecomeKey {
+      island.window.makeKey()
+    }
+  }
+
   /// Shows `feedback` for the result card's `action` on that footer button, the card staying
   /// on the island; a kept card that does not show takes it too.
   func cardFeedback(_ action: CardAction, _ feedback: CardFeedback) {
@@ -285,6 +299,7 @@ final class IslandRecording {
       let key = IslandShellFooterKey(event, field: island.editingField)
     else { return false }
     switch key {
+    case .save: card.onEvent(.save(card.state.trim))
     case .copy: card.onEvent(.copy(card.state.trim))
     case .attach: card.onEvent(.attach(card.state.trim))
     }

@@ -14,7 +14,15 @@ import type { Screenshot } from './agent/screenshot-input';
 import type { CaptureBridge } from './capture-bridge';
 import type { FileRef } from './agent/task-schema';
 import type { NotificationsBridge } from './notifications-contract';
+import type {
+  SaveLocationBridge,
+  SaveLocationFolder,
+  SaveLocationKind,
+  SaveLocationState,
+} from './save-location-contract';
 import type { MiniPanelOpenOn, PanelPlacement, SettingsBridge } from './settings-contract';
+
+export type { SaveLocationBridge, SaveLocationFolder, SaveLocationKind, SaveLocationState };
 import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
@@ -197,6 +205,8 @@ export interface DesktopBridge {
   readonly computer?: ComputerBridge;
   /** The shell's task notifications and their settings; absent in tests that need none. */
   readonly notifications?: NotificationsBridge;
+  /** The shell's save-location preferences and folder picker; absent in tests that need none. */
+  readonly saveLocation?: SaveLocationBridge;
   /** Generative views' windows; absent in tests that need none. */
   readonly views?: ViewsBridge;
   show: () => Promise<void>;

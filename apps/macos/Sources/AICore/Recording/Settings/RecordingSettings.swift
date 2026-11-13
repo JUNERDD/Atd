@@ -50,7 +50,7 @@ public enum RecordingFrameRate: Int, CaseIterable, Sendable {
 public enum RecordingAfterAction: String, CaseIterable, Sendable {
   /// The Island shows the result card (player, steps, trim, ask).
   case card
-  /// The movie is saved to ``RecordingFolders/current`` and nothing else shows.
+  /// The movie is saved via ``SaveLocationFolders/current`` (or a save panel) and nothing else shows.
   case save
   /// The recording is attached to the panel's conversation.
   case attach
@@ -86,20 +86,20 @@ public struct RecordingSettings: Equatable, Sendable {
   public var quality: RecordingQuality
   public var frameRate: RecordingFrameRate
   public var after: RecordingAfterAction
-  /// Where movies are saved, and the folders the Save Location menu offers.
-  public var folders: RecordingFolders
+  /// Where movies are saved, and recently chosen folders.
+  public var folders: SaveLocationFolders
 
   /// No microphone or system audio; pointer, clicks and keys shown; no countdown; 1080p at
-  /// 30 fps; the result card; Movies.
+  /// 30 fps; the result card; Ask each time.
   public static let defaults = Self(
     microphone: nil, lastMicrophone: nil, systemAudio: false, showPointer: true,
     showClicks: true, showKeys: true, countdown: .none, quality: .hd1080, frameRate: .thirty,
-    after: .card, folders: RecordingFolders())
+    after: .card, folders: SaveLocationFolders())
 
   public init(
     microphone: String?, lastMicrophone: String?, systemAudio: Bool, showPointer: Bool,
     showClicks: Bool, showKeys: Bool, countdown: RecordingCountdown, quality: RecordingQuality,
-    frameRate: RecordingFrameRate, after: RecordingAfterAction, folders: RecordingFolders
+    frameRate: RecordingFrameRate, after: RecordingAfterAction, folders: SaveLocationFolders
   ) {
     self.microphone = microphone
     self.lastMicrophone = lastMicrophone

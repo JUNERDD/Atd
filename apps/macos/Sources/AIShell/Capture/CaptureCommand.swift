@@ -27,6 +27,8 @@ enum CaptureCommand: Equatable {
   case longScreenshot
   /// Space: auto-scroll on or off in the long screenshot's live phase; nothing elsewhere.
   case toggleAutoScroll
+  /// ⌘S: saves the screenshot or live long screenshot locally to the configured save folder.
+  case save
 
   /// The command a key press means on an overlay, or nil for a key the overlay leaves alone.
   /// Arrows nudge the selection (Shift: 10 points), Option-arrows move its trailing edges and
@@ -37,6 +39,10 @@ enum CaptureCommand: Equatable {
     let key = event.charactersIgnoringModifiers?.lowercased()
     if flags == .command, key == "a" {
       self = .selectDisplay
+      return
+    }
+    if flags == .command, key == "s" {
+      self = .save
       return
     }
     if flags == .command, let mode = [18: CaptureMode.screenshot, 19: .record][event.keyCode] {

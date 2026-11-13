@@ -70,6 +70,10 @@ extension AnnotationCanvasView {
       onCopy()
       return true
     }
+    if modifiers == .command, key == "s", let onSave {
+      onSave()
+      return true
+    }
     if modifiers == .command, key == "a", !textEditor.isEditing, onSelectAll?() == true {
       return true
     }

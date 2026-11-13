@@ -26,6 +26,7 @@ import { nativeFocusWrite } from './native-focus-write';
 import { nativeFolders } from './native-folders';
 import { nativeMiniPanel } from './native-mini-panel';
 import { nativeNotifications } from './native-notifications';
+import { nativeSaveLocation } from './native-save-location';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePanelModals } from './native-panel-modals';
 import { nativePlatform } from './native-platform';
@@ -235,6 +236,7 @@ export async function installNativeHost(
     automations: nativeAutomations(connection, native, messages),
     computer,
     notifications: nativeNotifications(native, surface),
+    saveLocation: nativeSaveLocation(native),
     views: nativeViews(native),
     agent: {
       ...createAgentBridge(async (request) => {

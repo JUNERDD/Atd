@@ -12,9 +12,15 @@ final class AnnotationToolbar: NSView {
   var onUndo: (() -> Void)?
   var onRedo: (() -> Void)?
   var onCancel: (() -> Void)?
+  var onSave: (() -> Void)? {
+    didSet { bar.setHidden(onSave == nil, for: saveButton) }
+  }
   var onCopy: (() -> Void)?
   var onConfirm: (() -> Void)?
   var onLongScreenshot: (() -> Void)?
+  var saveFolder: String? {
+    didSet { if saveFolder != oldValue { applySaveLabel() } }
+  }
   /// The long screenshot button (decisions D5, D7): hidden while nil, for a session that does not
   /// offer it; otherwise enabled only while `.available`, its tooltip saying why not.
   var longScreenshot: LongScreenshotAvailability? {
@@ -36,12 +42,14 @@ final class AnnotationToolbar: NSView {
     selection: nil, action: #selector(longScreenshotClicked))
   private let cancelButton = AnnotationToolbarButton(
     selection: nil, action: #selector(cancelClicked))
+  private let saveButton = AnnotationToolbarButton(
+    selection: nil, action: #selector(saveClicked))
   private let copyButton = AnnotationToolbarButton(selection: nil, action: #selector(copyClicked))
   private let confirmButton = AnnotationToolbarButton(
     selection: nil, action: #selector(confirmClicked))
   private let bar: AnnotationGlassBar
   /// The bar's groups after the tools and undo: the long screenshot alone, so its divider comes
-  /// and goes with it, then cancel, copy and confirm.
+  /// and goes with it, then cancel, save, copy and confirm.
   private static let longGroup = 2
   private static let sessionGroup = 3
   /// The orange dot on the mosaic tool while sensitive text lies unmasked (architecture S6).
@@ -49,13 +57,16 @@ final class AnnotationToolbar: NSView {
   private var sensitiveCount = 0
 
   override init(frame: NSRect) {
-    let actions = [undoButton, redoButton, longButton, cancelButton, copyButton, confirmButton]
+    let actions = [
+      undoButton, redoButton, longButton, cancelButton, saveButton, copyButton, confirmButton,
+    ]
     bar = AnnotationGlassBar(
       groups: [
         [grip] + (tools as [NSView]), [undoButton, redoButton], [longButton],
-        [cancelButton, copyButton, confirmButton],
+        [cancelButton, saveButton, copyButton, confirmButton],
       ], blending: .withinWindow)
     super.init(frame: frame)
+    bar.setHidden(true, for: saveButton)
     // Confirm, the bar's primary action, as the ask bar's Send.
     confirmButton.presentation = .primary
     for button in tools + actions { button.target = self }
@@ -110,7 +121,22 @@ final class AnnotationToolbar: NSView {
       button.image = AnnotationIcons.glyph(icon, label: name)
       label(button, name, tip: tip(name, shortcut))
     }
+    applySaveLabel()
     applyLongScreenshot()
+  }
+
+  private func applySaveLabel() {
+    let strings = ShellStrings.shared
+    let name = strings.text(ScreenshotSaveStringKey.toolbarSave)
+    let base =
+      saveFolder.map {
+        String(
+          format: strings.text(RecordingIslandStringKey.saveTo),
+          locale: Locale(identifier: strings.language.rawValue), $0)
+      } ?? strings.text(ScreenshotSaveStringKey.saveEllipsis)
+    let tip = String(format: strings.text(.captureTooltipShortcut), base, "⌘S")
+    saveButton.image = AnnotationIcons.glyph(AnnotationIcons.save, label: name)
+    label(saveButton, name, tip: tip)
   }
 
   /// The long screenshot button as ``longScreenshot`` has it, in the current shell language.
@@ -177,6 +203,7 @@ final class AnnotationToolbar: NSView {
   @objc private func redoClicked() { onRedo?() }
   @objc private func longScreenshotClicked() { onLongScreenshot?() }
   @objc private func cancelClicked() { onCancel?() }
+  @objc private func saveClicked() { onSave?() }
   @objc private func copyClicked() { onCopy?() }
   @objc private func confirmClicked() { onConfirm?() }
 

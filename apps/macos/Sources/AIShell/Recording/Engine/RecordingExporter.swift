@@ -75,6 +75,33 @@ enum RecordingExporter {
     return file
   }
 
+  /// Saves `range` directly to `destination`, exporting to a sibling staging file first so
+  /// overwriting an existing file chosen in `NSSavePanel` succeeds cleanly.
+  static func save(_ result: RecordingResult, range: ClosedRange<Double>, toFile destination: URL)
+    async throws(RecordingError) -> URL
+  {
+    let parent = destination.deletingLastPathComponent()
+    let staging = parent.appending(path: ".\(UUID().uuidString).mp4")
+    let fileManager = FileManager.default
+    defer { try? fileManager.removeItem(at: staging) }
+    do throws(RecordingError) {
+      try await trimmed(result, range: range, to: staging)
+    } catch {
+      if case .exportFailed(let detail) = error { throw .saveFailed(detail) }
+      throw error
+    }
+    do {
+      if fileManager.fileExists(atPath: destination.path(percentEncoded: false)) {
+        _ = try fileManager.replaceItemAt(destination, withItemAt: staging)
+      } else {
+        try fileManager.moveItem(at: staging, to: destination)
+      }
+    } catch {
+      throw .saveFailed(error.localizedDescription)
+    }
+    return destination
+  }
+
   /// A copy of `range` for the pasteboard, in a folder of its own in the temporary directory
   /// so it outlives the take: what is pasted is read after the card may be gone. The system
   /// clears it with the temporary directory.

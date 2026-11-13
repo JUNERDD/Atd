@@ -9,7 +9,7 @@ extension ShellController {
     if let installed = installedScreenRecording { return installed }
     let recording = ScreenRecordingController(
       island: commandProgress.recording, arbiter: deviceArbiter, attachments: attachments,
-      panelHost: panelHost, screenAccess: screenRecording,
+      panelHost: panelHost, systemPanels: systemPanels, screenAccess: screenRecording,
       showPanel: { [weak self] in self?.showPanel() })
     installedScreenRecording = recording
     screenshots.recorder = recording

@@ -96,6 +96,7 @@ extension CaptureSession {
     switch command {
     case .cancel: leaveLongScreenshot()
     case .confirm: finishLongScreenshot()
+    case .save: finishLongScreenshot(action: .save)
     case .toggleAutoScroll: toggleAutoScroll()
     case .walk, .nudge, .resize, .resizeLeading, .selectDisplay, .recall, .toggleWindowsOnly,
       .mode, .requestAccessibility, .longScreenshot:
@@ -119,11 +120,11 @@ extension CaptureSession {
   }
 
   /// Return or the chrome's Done: the session ends with the stitched image once the engine has
-  /// put it together, for the island's result card, or for the clipboard when `copying` (the
-  /// screenshot shortcut pressed again, or when the long-screenshot confirm preference is copy);
-  /// back to the screenshot when it has none.
-  func finishLongScreenshot(copying: Bool? = nil) {
-    let copies = copying ?? options.copiesLongScreenshotOnConfirm
+  /// put it together, for the island's result card, for the clipboard, or saved locally according to
+  /// `action` (or the long-screenshot confirm preference when nil); back to the screenshot when
+  /// nothing could be stitched.
+  func finishLongScreenshot(action: CaptureSessionOptions.LongScreenshotConfirm? = nil) {
+    let resolved = action ?? options.longScreenshotConfirm
     guard let live = longScreenshot.live, !live.finishing else { return }
     live.finishing = true
     Task { [weak self] in
@@ -134,7 +135,11 @@ extension CaptureSession {
         return leaveLongScreenshot()
       }
       live.finished = true
-      finish(copies ? .copiedLongScreenshot(shot) : .longScreenshot(shot))
+      switch resolved {
+      case .card: finish(.longScreenshot(shot))
+      case .copy: finish(.copiedLongScreenshot(shot))
+      case .save: finish(.savedLongScreenshot(shot))
+      }
     }
   }
 

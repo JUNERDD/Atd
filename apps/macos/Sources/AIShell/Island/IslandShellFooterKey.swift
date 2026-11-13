@@ -8,7 +8,7 @@ import Carbon.HIToolbox
 /// and the menus (``IslandWindow/onKeyEquivalent``); none is read while the field composes
 /// marked text. Their buttons show the same keys (``copyKeys``, ``attachKeys``).
 enum IslandShellFooterKey {
-  case copy, attach
+  case save, copy, attach
 
   static let copyKeys = "⌘C"
   static let attachKeys = "⌘↩"
@@ -18,11 +18,12 @@ enum IslandShellFooterKey {
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     guard event.type == .keyDown, modifiers == .command, field?.hasMarkedText() != true
     else { return nil }
+    let character = event.charactersIgnoringModifiers?.lowercased()
     if [kVK_Return, kVK_ANSI_KeypadEnter].contains(Int(event.keyCode)) {
       self = .attach
-    } else if event.charactersIgnoringModifiers?.lowercased() == "c",
-      (field?.selectedRange().length ?? 0) == 0
-    {
+    } else if character == "s" {
+      self = .save
+    } else if character == "c", (field?.selectedRange().length ?? 0) == 0 {
       // By character, so ⌘C is found on any keyboard layout.
       self = .copy
     } else {

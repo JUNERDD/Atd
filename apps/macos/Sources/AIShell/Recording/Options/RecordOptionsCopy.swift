@@ -59,17 +59,6 @@ enum RecordOptionsCopy {
     }
   }
 
-  /// A folder's name as the menu lists it: a standard folder by the app's name for it, any
-  /// other as Finder shows it.
-  static func folderName(_ path: String) -> String {
-    switch RecordingFolders.Standard(path: path) {
-    case .movies: text(.folderMovies)
-    case .desktop: text(.folderDesktop)
-    case .documents: text(.folderDocuments)
-    case nil: FileManager.default.displayName(atPath: path)
-    }
-  }
-
   private static func format(_ key: RecordingOptionsStringKey, _ arguments: any CVarArg...)
     -> String
   {

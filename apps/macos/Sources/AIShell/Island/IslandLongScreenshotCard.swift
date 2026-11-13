@@ -118,6 +118,11 @@ private struct IslandLongScreenshotFooter: View {
         tooltip: labels.annotateTooltip, compact: compact, feedback: nil
       ) { card.openLightbox(nil, true) }
       IslandFeedbackButton(
+        title: labels.save, glyph: IslandIcons.save, workingLabel: labels.actionWorking,
+        tooltip: labels.save(to: card.source.saveFolder), keys: nil, compact: compact,
+        feedback: feedback[.save]
+      ) { card.onEvent(.save(kept)) }
+      IslandFeedbackButton(
         title: labels.copy, glyph: "copy", workingLabel: labels.actionWorking,
         tooltip: labels.copyTooltip, keys: IslandShellFooterKey.copyKeys, compact: compact,
         feedback: feedback[.copy]

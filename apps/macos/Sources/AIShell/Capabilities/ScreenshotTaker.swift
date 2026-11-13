@@ -1,5 +1,6 @@
 import AICore
 import AppKit
+import UniformTypeIdentifiers
 
 /// `screenshot.capture` and `screenshot.edit`: the native capture session (decisions D6–D11,
 /// F1–F3). It freezes every display, lets the user pick and annotate an area on the overlays,
@@ -22,23 +23,28 @@ import AppKit
 final class ScreenshotTaker {
   /// How a session ended, for the calls to answer in their own result types.
   enum SessionEnd {
-    /// Also a copy: the page gets nothing to attach either way.
+    /// Also a copy or local save: the page gets nothing to attach either way.
     case cancelled
     case notPermitted
     case confirmed(Confirmed)
+    case saved(CaptureConfirmation, destination: URL?)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     /// A long screenshot for the clipboard: nothing to attach either.
     case copiedLongScreenshot(LongScreenshotImage)
+    /// A long screenshot saved locally: nothing to attach either.
+    case savedLongScreenshot(LongScreenshotImage)
     /// A text command's result card ended the capture (decision D10): nothing to attach.
     case textResult(CaptureTextHandoff)
   }
 
   /// What takes over once a session's claim and overlays are gone.
   private enum Handoff {
+    case save(CaptureConfirmation, destination: URL?)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     case copyLongScreenshot(LongScreenshotImage)
+    case saveLongScreenshot(LongScreenshotImage)
     case textResult(CaptureTextHandoff)
   }
 
@@ -104,11 +110,19 @@ final class ScreenshotTaker {
   var openCommandSettings: (() -> Void)?
   /// Shows the Dynamic Island "Copied" capsule once a capture or long screenshot wrote to clipboard.
   var showCopied: (() -> Void)?
+  /// Shows the Dynamic Island "Saved to ..." capsule once a screenshot saved locally.
+  var showSaved: ((String) -> Void)?
+  /// Shows the Dynamic Island failure capsule when saving a screenshot locally fails.
+  var showSaveFailed: ((String) -> Void)?
+  /// Folder where local screenshot saves are written; `nil` asks each time.
+  var saveFolderURL: () -> URL? = { ScreenshotPreferences.shared.currentSaveFolderURL() }
+  /// Prompts for a file URL when saving a live long screenshot with `saveFolderURL() == nil`.
+  var chooseSaveFile: ((String, UTType) async -> URL?)?
   /// Whether confirming a toolbar screenshot capture also writes it silently to the clipboard.
   var copyOnConfirm: () -> Bool = { ScreenshotPreferences.shared.copyOnConfirm }
-  /// Whether confirming a live long screenshot copies directly instead of opening the result card.
-  var copiesLongScreenshotOnConfirm: () -> Bool = {
-    ScreenshotPreferences.shared.copiesLongScreenshotOnConfirm
+  /// What confirming a live long screenshot does.
+  var longScreenshotConfirm: () -> CaptureSessionOptions.LongScreenshotConfirm = {
+    ScreenshotPreferences.shared.longScreenshotConfirm
   }
   /// More's last row was picked: the session ends and the settings open after it.
   var opensCommandSettings = false
@@ -149,9 +163,13 @@ final class ScreenshotTaker {
   {
     let (outcome, handoff) = try await attach(request, writeTargets: writeTargets)
     switch handoff {
+    case .save(let capture, let destination):
+      save(capture.image, scale: capture.pixelScale, long: false, destination: destination)
     case .record(let recording): recorder?.begin(recording)
     case .longScreenshot(let shot): longScreenshots?.show(shot)
     case .copyLongScreenshot(let shot): copy(shot)
+    case .saveLongScreenshot(let shot):
+      save(shot.image, scale: shot.scale, long: true, destination: nil)
     case .textResult(.open(let runId)): textRuns?.act(.open, runId: runId)
     case .textResult(.insert(let answer)): writeAnswer?(answer)
     case nil: break
@@ -177,7 +195,8 @@ final class ScreenshotTaker {
     }
     let base = try await library.base(for: resourceId)
     switch try await runSession(reopening: base, request: .image, writeTargets: nil) {
-    case .cancelled, .record, .longScreenshot, .copiedLongScreenshot, .textResult:
+    case .cancelled, .saved, .record, .longScreenshot, .copiedLongScreenshot, .savedLongScreenshot,
+      .textResult:
       return .notOk(.init(reason: .cancelled))
     case .notPermitted:
       return .notOk(.init(reason: .notPermitted))
@@ -202,12 +221,16 @@ final class ScreenshotTaker {
       return (.cancelled, nil)
     case .notPermitted:
       return (.notPermitted, nil)
+    case .saved(let capture, let destination):
+      return (.cancelled, .save(capture, destination: destination))
     case .record(let recording):
       return (.recording, .record(recording))
     case .longScreenshot(let shot):
       return (.longScreenshot, .longScreenshot(shot))
     case .copiedLongScreenshot(let shot):
       return (.cancelled, .copyLongScreenshot(shot))
+    case .savedLongScreenshot(let shot):
+      return (.cancelled, .saveLongScreenshot(shot))
     case .textResult(let handoff):
       return (.cancelled, .textResult(handoff))
     case .confirmed(let confirmed):

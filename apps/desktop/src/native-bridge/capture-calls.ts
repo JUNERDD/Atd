@@ -58,6 +58,31 @@ const ScreenshotLaunchSchema = Type.Union([
   ),
 ]);
 
+/** Which capture surface owns a save-location preference: screenshot or screen recording. */
+export const SaveLocationKindSchema = Type.Union([
+  Type.Literal('screenshot'),
+  Type.Literal('recording'),
+]);
+
+/** One remembered save folder: its resolved path, folder name, and abbreviated display path. */
+export const SaveLocationFolderSchema = Type.Object(
+  {
+    path: Type.String({ minLength: 1, maxLength: 4096 }),
+    name: Type.String({ minLength: 1, maxLength: 512 }),
+    displayPath: Type.String({ minLength: 1, maxLength: 4096 }),
+  },
+  { additionalProperties: false },
+);
+
+/** Current save-location preference (`null` means ask each time) and remembered folders. */
+export const SaveLocationStateSchema = Type.Object(
+  {
+    current: Type.Union([Type.String({ minLength: 1, maxLength: 4096 }), Type.Null()]),
+    folders: Type.Array(SaveLocationFolderSchema, { maxItems: 8 }),
+  },
+  { additionalProperties: false },
+);
+
 /** A command a screenshot surface offers: its id and name. */
 const ToolbarCommand = Type.Object(
   {
@@ -162,6 +187,27 @@ export const NativeCaptureCalls = {
       { additionalProperties: false },
     ),
     result: Empty,
+  },
+  /** Returns the current save-location preference and remembered folders for `kind`. */
+  'saveLocation.state': {
+    params: Type.Object({ kind: SaveLocationKindSchema }, { additionalProperties: false }),
+    result: SaveLocationStateSchema,
+  },
+  /** Selects a remembered folder path (or `null` for ask each time) for `kind` and returns the updated state. */
+  'saveLocation.set': {
+    params: Type.Object(
+      {
+        kind: SaveLocationKindSchema,
+        path: Type.Union([Type.String({ minLength: 1, maxLength: 4096 }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+    result: SaveLocationStateSchema,
+  },
+  /** Opens a native folder picker for `kind` and returns the updated save-location state. */
+  'saveLocation.pick': {
+    params: Type.Object({ kind: SaveLocationKindSchema }, { additionalProperties: false }),
+    result: SaveLocationStateSchema,
   },
 };
 

@@ -4,7 +4,7 @@ import Foundation
 extension RecordingCardSource {
   /// The result card of a processed take: the engine's steps as the card lists them, worded in
   /// the shell language, and whether narration could be heard at all.
-  init(_ result: RecordingResult, id: String, saveFolder: String) {
+  init(_ result: RecordingResult, id: String, saveFolder: String?) {
     var notes = result.take.issues.map(RecordingEngineText.issueNote).sorted()
     if result.narration != .microphoneOff,
       let note = RecordingEngineText.narrationNote(result.narration)

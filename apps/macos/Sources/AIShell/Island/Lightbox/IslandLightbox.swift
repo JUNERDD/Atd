@@ -36,6 +36,12 @@ final class IslandLightbox {
   /// The lightbox has the keyboard.
   var isKey: Bool { window?.isKeyWindow == true }
 
+  /// Restores key-window focus to the lightbox when it is open and visible after a modal dialog.
+  func makeKeyIfVisible() {
+    guard isOpen, let window, window.isVisible, window.canBecomeKey else { return }
+    window.makeKey()
+  }
+
   /// Opens over `screen`, the media growing from `origin` (screen points, Cocoa coordinates; nil
   /// fades it in), with the content `make` builds for the lightbox's model; the keyboard goes
   /// back to `returningKeyTo` once it closes. Nothing happens while one is open.

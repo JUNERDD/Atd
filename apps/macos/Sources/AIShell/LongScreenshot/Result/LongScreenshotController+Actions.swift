@@ -1,9 +1,74 @@
 import AICore
 import AppKit
+import UniformTypeIdentifiers
 
 /// The result card's footer (decisions D11, D12): each action works on the kept range as it was
 /// when pressed and reports on its own button, the card staying.
 extension LongScreenshotController {
+  /// Writes the kept image at full native pixels as a PNG into the configured save folder, or
+  /// prompts for a destination file when "Ask each time" is selected.
+  func save(_ kept: LongScreenshotKept) {
+    guard let source, !exportingActions.contains(.save) else { return }
+    if let folder = saveFolderURL() {
+      run(.save) { [self] generation in
+        await exportSave(
+          source: source, kept: kept, generation: generation, folder: folder, destination: nil)
+      }
+      return
+    }
+    exportingActions.insert(.save)
+    let generation = generation
+    let suggestedName = LongScreenshotExportRules.fileName(
+      capturedAt: source.shot.capturedAt, encoding: .png)
+    Task { [self] in
+      let chosen = await systemPanels.chooseSaveFile(
+        suggestedName: suggestedName, contentType: .png, aboveIsland: true)
+      guard generation == self.generation else { return }
+      island.restoreKeyboardAfterModal()
+      guard let destination = chosen else {
+        exportingActions.remove(.save)
+        return
+      }
+      island.cardFeedback(.save, .working)
+      let feedback = await exportSave(
+        source: source, kept: kept, generation: generation, folder: nil, destination: destination)
+      guard generation == self.generation else { return }
+      exportingActions.remove(.save)
+      if let feedback { island.cardFeedback(.save, feedback) }
+    }
+  }
+
+  private func exportSave(
+    source: LongScreenshotCardSource, kept: LongScreenshotKept, generation: Int, folder: URL?,
+    destination: URL?
+  ) async -> IslandRecording.CardFeedback? {
+    guard let image = await CaptureExport.longScreenshotKept(source.shot, kept: kept) else {
+      return .failed(ShellStrings.shared.text(ScreenshotSaveStringKey.saveFailed))
+    }
+    do throws(ImageExportFailure) {
+      let savedURL: URL
+      if let destination {
+        savedURL = try await CaptureExport.saveScreenshotToFile(
+          image, scale: source.shot.scale, destination: destination)
+      } else if let folder {
+        savedURL = try await CaptureExport.saveScreenshot(
+          image, scale: source.shot.scale, capturedAt: source.shot.capturedAt, long: true,
+          in: folder)
+      } else {
+        return nil
+      }
+      guard generation == self.generation else { return nil }
+      let message = String(
+        format: ShellStrings.shared.text(RecordingOrchestrationStringKey.saved),
+        locale: Locale(identifier: ShellStrings.shared.language.rawValue),
+        SaveFolderDisplay.parentName(of: savedURL))
+      return .done(message)
+    } catch {
+      guard generation == self.generation else { return nil }
+      return .failed(ShellStrings.shared.text(ScreenshotSaveStringKey.saveFailed))
+    }
+  }
+
   /// The kept image at full pixels on the clipboard (PNG, with TIFF while it is not too large),
   /// encoded off the main actor, then written under the screenshot's clipboard claim.
   func copy(_ kept: LongScreenshotKept) {

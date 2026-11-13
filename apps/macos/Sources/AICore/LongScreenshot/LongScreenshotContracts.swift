@@ -172,15 +172,17 @@ public struct LongScreenshotCardSource: @unchecked Sendable {
   public let shot: LongScreenshotImage
   public let lines: [LongScreenshotLine]
   public let sensitive: [SensitiveText.Box]
+  public var saveFolder: String?
 
   public init(
     id: String, shot: LongScreenshotImage, lines: [LongScreenshotLine],
-    sensitive: [SensitiveText.Box]
+    sensitive: [SensitiveText.Box], saveFolder: String? = nil
   ) {
     self.id = id
     self.shot = shot
     self.lines = lines
     self.sensitive = sensitive
+    self.saveFolder = saveFolder
   }
 }
 
@@ -230,6 +232,7 @@ public enum LongScreenshotCardEvent: Equatable, Sendable {
   case regenerate(LongScreenshotAsk)
   /// Hand the task of this ask to the panel.
   case openAnswer(String)
+  case save(LongScreenshotKept)
   case copy(LongScreenshotKept)
   case attach(LongScreenshotKept)
   /// The card went: its close button, or Escape with nothing smaller to go back to.

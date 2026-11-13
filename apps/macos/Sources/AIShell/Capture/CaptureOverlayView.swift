@@ -264,6 +264,20 @@ final class CaptureOverlayView: NSView {
 
   // MARK: Keyboard
 
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    if super.performKeyEquivalent(with: event) { return true }
+    if let editor = window?.firstResponder as? NSTextView,
+      editor.hasMarkedText() || editor.isFieldEditor
+    {
+      return false
+    }
+    guard event.type == .keyDown, window?.isKeyWindow == true,
+      let command = CaptureCommand(event), command == .save
+    else { return false }
+    delegate?.overlay(self, perform: command)
+    return true
+  }
+
   override func keyDown(with event: NSEvent) {
     // Space and W toggle modes once per press; navigation still repeats while held.
     if [49, 13].contains(event.keyCode), event.isARepeat { return }

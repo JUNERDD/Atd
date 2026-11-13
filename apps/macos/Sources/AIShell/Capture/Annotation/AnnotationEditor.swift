@@ -22,6 +22,15 @@ final class AnnotationEditor: AnnotationEditing {
   var onConfirm: (() -> Void)?
   var onCancel: (() -> Void)?
   var onCopy: (() -> Void)?
+  var onSave: (() -> Void)? {
+    didSet {
+      toolbar.onSave = onSave
+      for canvas in canvases { canvas.onSave = onSave }
+    }
+  }
+  var saveFolder: String? {
+    didSet { toolbar.saveFolder = saveFolder }
+  }
   var onInteriorClaimChange: ((Bool) -> Void)?
   var onLaunch: ((CaptureLaunch) -> Void)?
   var commandRow: CaptureCommandRowSetup? {
@@ -118,6 +127,8 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.styles = AnnotationStyleMemory.load(from: defaults)
     toolbar.applyStrings()
     styleBar.applyStrings()
+    toolbar.onSave = onSave
+    toolbar.saveFolder = saveFolder
     slot.prepare(commandRow, maxWidth: toolbar.fittingSize.width)
     canvases = hosts.map { host in
       let canvas = makeCanvas()
@@ -137,6 +148,7 @@ final class AnnotationEditor: AnnotationEditing {
     canvas.onPress = { [weak self, weak canvas] in self?.pressedCanvas = canvas }
     canvas.onConfirm = { [weak self] in self?.confirmFromKey() }
     canvas.onCopy = { [weak self] in self?.copyFromKey() }
+    canvas.onSave = onSave
     canvas.onSelectAll = { [weak self] in self?.selectAllFromKey() ?? false }
     canvas.onPrimary = { [weak self] in self?.text.card.primaryKey() ?? false }
     canvas.onGestureEnd = { [weak self] in self?.landWaiting() }

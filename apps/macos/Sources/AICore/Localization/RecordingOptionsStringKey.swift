@@ -1,5 +1,5 @@
 /// The record bar's keys (capture overlay, record mode): its buttons, the Sound and Options
-/// menus with their values, and the "Other…" folder panel. Quality names such as "720p" are
+/// menus with their values, and the recording folder panel. Quality names such as "720p" are
 /// technical tokens shown as they are.
 public enum RecordingOptionsStringKey: String, CaseIterable, Sendable {
   case title = "recording.options.title"
@@ -31,11 +31,6 @@ public enum RecordingOptionsStringKey: String, CaseIterable, Sendable {
   case afterCard = "recording.options.after.card"
   case afterSave = "recording.options.after.save"
   case afterAttach = "recording.options.after.attach"
-  case saveLocation = "recording.options.saveLocation"
-  case folderMovies = "recording.options.folder.movies"
-  case folderDesktop = "recording.options.folder.desktop"
-  case folderDocuments = "recording.options.folder.documents"
-  case folderOther = "recording.options.folder.other"
   case folderMessage = "recording.options.folder.message"
   case folderPrompt = "recording.options.folder.prompt"
 }

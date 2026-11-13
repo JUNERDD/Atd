@@ -49,6 +49,7 @@ final class ScreenRecordingController: CaptureRecording {
   let arbiter: DeviceArbiter
   let attachments: AttachmentImporter
   let panelHost: WebViewHost
+  let systemPanels: SystemPanels
   let showPanel: () -> Void
   let defaults: UserDefaults
   private let screenAccess: ScreenRecordingTrust
@@ -85,13 +86,14 @@ final class ScreenRecordingController: CaptureRecording {
 
   init(
     island: IslandRecording, arbiter: DeviceArbiter, attachments: AttachmentImporter,
-    panelHost: WebViewHost, screenAccess: ScreenRecordingTrust,
+    panelHost: WebViewHost, systemPanels: SystemPanels, screenAccess: ScreenRecordingTrust,
     defaults: UserDefaults = .standard, showPanel: @escaping () -> Void
   ) {
     self.island = island
     self.arbiter = arbiter
     self.attachments = attachments
     self.panelHost = panelHost
+    self.systemPanels = systemPanels
     self.screenAccess = screenAccess
     self.defaults = defaults
     self.showPanel = showPanel

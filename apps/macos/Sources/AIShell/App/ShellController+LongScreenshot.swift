@@ -9,7 +9,8 @@ extension ShellController {
     if let installed = installedLongScreenshots { return installed }
     let controller = LongScreenshotController(
       island: commandProgress.longScreenshot, arbiter: deviceArbiter, attachments: attachments,
-      panelHost: panelHost, showPanel: { [weak self] in self?.showPanel() })
+      panelHost: panelHost, systemPanels: systemPanels,
+      showPanel: { [weak self] in self?.showPanel() })
     installedLongScreenshots = controller
     screenshots.longScreenshots = controller
     // The full-screen preview offers the screenshot's text commands and runs them through the

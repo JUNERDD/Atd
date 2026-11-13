@@ -84,7 +84,8 @@ final class ShellBridge {
         return try Self.encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
       case .computerPrimeCaptureConsent:
         return try Self.encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
-      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick:
+      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick,
+        .saveLocationPick:
         throw BridgeError("Finish the screenshot first.")
       default:
         break
@@ -164,6 +165,12 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .screenshotEdit(let params):
       return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
+    case .saveLocationState(let params):
+      return try Self.encode(Self.saveLocationState(params, shell: shell))
+    case .saveLocationSet(let params):
+      return try Self.encode(Self.setSaveLocation(params, shell: shell))
+    case .saveLocationPick(let params):
+      return try Self.encode(await Self.pickSaveLocation(params, shell: shell))
     case .textWrite(let params):
       return try Self.encode(await shell.writeText(params))
     // The panel's write buttons follow the focus `text.writeOffer` reports only to the panel.

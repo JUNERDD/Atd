@@ -25,6 +25,7 @@ import {
   isLongScreenshotConfirmAction,
   type SettingsSnapshot,
 } from '../../client/settings-contract';
+import { SaveLocationRow } from './save-location-row';
 import { useSettingsSectionExit } from './settings-navigation';
 import { SettingsSwitchRow } from './settings-switch-row';
 
@@ -50,8 +51,8 @@ function useSaving(failedMessage: string) {
 }
 
 /**
- * General › Screenshot: whether confirming a screenshot copies it to the clipboard too, and what
- * clicking Done in long screenshot does.
+ * General › Screenshot: the local save folder, whether confirming a screenshot copies it to the
+ * clipboard too, and what clicking Done in long screenshot does.
  */
 export function ScreenshotSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
@@ -70,6 +71,13 @@ export function ScreenshotSettings({ snapshot }: { snapshot: SettingsSnapshot | 
       </h3>
       <Card size="sm" className="settings-card">
         <ItemGroup>
+          <SaveLocationRow
+            kind="screenshot"
+            anchor="settings-screenshot-save-location"
+            label={t('saveLocation.label')}
+            description={t('screenshot.saveLocation.description')}
+            saveFailedMessage={t('screenshot.saveLocation.saveFailed')}
+          />
           <SettingsSwitchRow
             id="settings-screenshot-copy-on-confirm"
             anchor="settings-screenshot-copy-on-confirm"

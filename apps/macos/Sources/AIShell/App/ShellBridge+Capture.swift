@@ -30,6 +30,24 @@ extension ShellBridge {
     }
   }
 
+  static func saveLocationState(
+    _ params: SaveLocationStateParams, shell: ShellController
+  ) -> SaveLocationStateResult {
+    shell.saveLocationState(params)
+  }
+
+  static func setSaveLocation(
+    _ params: SaveLocationSetParams, shell: ShellController
+  ) -> SaveLocationSetResult {
+    shell.setSaveLocation(params)
+  }
+
+  static func pickSaveLocation(
+    _ params: SaveLocationPickParams, shell: ShellController
+  ) async -> SaveLocationPickResult {
+    await shell.pickSaveLocation(params)
+  }
+
   /// `recording.answer`: the answer of a recording's ask as it grows, for its result card.
   static func answerRecording(_ params: RecordingAnswerParams, shell: ShellController) {
     let phase: RecordingAnswer.Phase =

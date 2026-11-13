@@ -8,9 +8,9 @@ import AppKit
 /// new value in place. Every change is saved at once (``RecordingSettingsMemory``), so a
 /// recording that starts reads what the bar shows.
 ///
-/// While a menu or the folder panel is open the bar is modal (``isModal``): a press anywhere but
-/// on the menus or the bar closes the menus and goes no further, as a press outside a system
-/// menu dismisses it, and Escape closes the deepest menu (``closeDeepest()``).
+/// While a menu is open the bar is modal (``isModal``): a press anywhere but on the menus or the
+/// bar closes the menus and goes no further, as a press outside a system menu dismisses it, and
+/// Escape closes the deepest menu (``closeDeepest()``).
 final class RecordOptionsMenus {
   enum Menu {
     case sound, options
@@ -31,9 +31,6 @@ final class RecordOptionsMenus {
   /// The button the open menu came from, and the bar's glass it hangs from.
   private weak var opener: RecordBarButton?
   private weak var capsule: NSView?
-  /// From "Other…" until the folder panel closes.
-  private var picker: RecordFolderPicker?
-  private var choosingFolder = false
 
   init(defaults: UserDefaults) {
     self.defaults = defaults
@@ -44,7 +41,7 @@ final class RecordOptionsMenus {
     cascade.onClose = { [weak self] in self?.closed() }
   }
 
-  var isModal: Bool { cascade.isOpen || choosingFolder }
+  var isModal: Bool { cascade.isOpen }
 
   /// The chosen microphone when it is connected; nil records none.
   var microphone: RecordingMicrophone? { settings.microphone(among: microphones) }
@@ -69,11 +66,9 @@ final class RecordOptionsMenus {
     cascade.close()
   }
 
-  /// The bar went away: the menus close and a folder panel ends as cancelled.
+  /// The bar went away: the menus close.
   func dismiss() {
     close()
-    choosingFolder = false
-    picker?.cancel()
   }
 
   /// Changes the settings, saves them, and shows the change: in place in every open menu, or
@@ -136,35 +131,5 @@ final class RecordOptionsMenus {
     }
     close()
     return false
-  }
-
-  // MARK: Other folder
-
-  /// "Other…": the menus close and the system folder panel runs, modal over the capture; a
-  /// folder chosen there is saved to from now on and the Options menu opens again, showing it.
-  func chooseOtherFolder() {
-    let button = opener
-    let capsule = capsule
-    close()
-    choosingFolder = true
-    // Once the click that chose "Other…" has unwound: the panel runs a modal loop of its own.
-    Task { @MainActor [weak self] in
-      guard let self, choosingFolder else { return }
-      runFolderPanel(reopening: button, under: capsule)
-    }
-  }
-
-  private func runFolderPanel(reopening button: RecordBarButton?, under capsule: NSView?) {
-    let picker = RecordFolderPicker()
-    self.picker = picker
-    let chosen = picker.choose(current: settings.folders.current)
-    self.picker = nil
-    choosingFolder = false
-    // The overlay takes the keyboard back from the panel.
-    capsule?.window?.makeKey()
-    guard let chosen else { return }
-    update { $0.folders.choose(chosen) }
-    guard let button, let capsule, button.window != nil else { return }
-    open(.options, from: button, capsule: capsule)
   }
 }

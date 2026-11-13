@@ -3,6 +3,14 @@ import type { SettingsSearchEntry } from './settings-search-index';
 /** General › Screenshot, in page order (`screenshot-settings.tsx` marks the anchors). */
 export const screenshotSearchEntries: readonly SettingsSearchEntry[] = [
   {
+    id: 'screenshot-save-location',
+    section: 'general',
+    anchor: 'settings-screenshot-save-location',
+    label: 'screenshot.saveLocation.searchLabel',
+    description: 'screenshot.saveLocation.description',
+    keywords: 'search.keywords.screenshotSaveLocation',
+  },
+  {
     id: 'screenshot-copy-on-confirm',
     section: 'general',
     anchor: 'settings-screenshot-copy-on-confirm',

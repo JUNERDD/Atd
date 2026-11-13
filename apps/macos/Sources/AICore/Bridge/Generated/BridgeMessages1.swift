@@ -66,6 +66,9 @@ public enum NativeCall: Equatable, Sendable {
   case screenshotCapture(ScreenshotCaptureParams)
   case screenshotEdit(ScreenshotEditParams)
   case screenshotToolbarSet(ScreenshotToolbarSetParams)
+  case saveLocationState(SaveLocationStateParams)
+  case saveLocationSet(SaveLocationSetParams)
+  case saveLocationPick(SaveLocationPickParams)
   case shareText(ShareTextParams)
   case speechSpeak(SpeechSpeakParams)
   case speechStop(SpeechStopParams)
@@ -137,6 +140,9 @@ public enum NativeCall: Equatable, Sendable {
     case .screenshotCapture: "screenshot.capture"
     case .screenshotEdit: "screenshot.edit"
     case .screenshotToolbarSet: "screenshotToolbar.set"
+    case .saveLocationState: "saveLocation.state"
+    case .saveLocationSet: "saveLocation.set"
+    case .saveLocationPick: "saveLocation.pick"
     case .shareText: "share.text"
     case .speechSpeak: "speech.speak"
     case .speechStop: "speech.stop"

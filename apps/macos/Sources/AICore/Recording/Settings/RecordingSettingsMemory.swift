@@ -38,11 +38,10 @@ public enum RecordingSettingsMemory {
     if let after = defaults.string(forKey: Key.after).flatMap(RecordingAfterAction.init) {
       settings.after = after
     }
-    if let folder = defaults.string(forKey: Key.saveFolder) {
-      let recent = defaults.stringArray(forKey: Key.recentFolders) ?? []
-      settings.folders = RecordingFolders(current: folder, recent: recent)
-    }
-    settings.folders = settings.folders.pruned(keeping: folderExists)
+    let current = defaults.string(forKey: Key.customSaveFolder)
+    let recent = defaults.stringArray(forKey: Key.recentSaveFolders) ?? []
+    settings.folders = SaveLocationFolders(current: current, recent: recent)
+      .pruned(keeping: folderExists)
     return settings
   }
 
@@ -57,8 +56,8 @@ public enum RecordingSettingsMemory {
     defaults.set(settings.quality.rawValue, forKey: Key.quality)
     defaults.set(settings.frameRate.rawValue, forKey: Key.fps)
     defaults.set(settings.after.rawValue, forKey: Key.after)
-    defaults.set(settings.folders.current, forKey: Key.saveFolder)
-    defaults.set(settings.folders.recent, forKey: Key.recentFolders)
+    set(settings.folders.current, Key.customSaveFolder, in: defaults)
+    defaults.set(settings.folders.recent, forKey: Key.recentSaveFolders)
   }
 
   /// Whether a folder (not a file) is at `path`.
@@ -85,7 +84,7 @@ public enum RecordingSettingsMemory {
     static let quality = prefix + "quality"
     static let fps = prefix + "fps"
     static let after = prefix + "after"
-    static let saveFolder = prefix + "saveFolder"
-    static let recentFolders = prefix + "recentFolders"
+    static let customSaveFolder = prefix + "customSaveFolder"
+    static let recentSaveFolders = prefix + "recentSaveFolders"
   }
 }

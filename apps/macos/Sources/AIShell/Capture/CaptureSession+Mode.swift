@@ -5,8 +5,18 @@ import AppKit
 /// S8, R1). The default is a plain screenshot: what a screenshot command's own capture, the
 /// Island's attach and an edit get.
 struct CaptureSessionOptions {
+  enum LongScreenshotConfirm: Equatable {
+    case card
+    case copy
+    case save
+  }
+
   /// The mode the session opens in.
   var mode = CaptureMode.screenshot
+  /// Whether this session is reopening an existing attachment (`screenshot.edit`).
+  var reopening = false
+  /// Display name of the local screenshot save folder; nil hides folder specificity.
+  var saveFolder: String?
   /// The currently registered screenshot shortcut, drawn beside the quick-copy action.
   var copyShortcut: String?
   /// Whether the bottom bar offers the 截图 | 录屏 pair. Off for a caller that needs an image.
@@ -18,9 +28,8 @@ struct CaptureSessionOptions {
   /// Whether a screenshot selection can become a long screenshot (decision D5): only for a
   /// toolbar request, whose result goes to the island's card rather than back to a caller.
   var offersLongScreenshot = false
-  /// Whether confirming a live long screenshot copies directly to the clipboard instead of
-  /// opening the result card.
-  var copiesLongScreenshotOnConfirm = false
+  /// What confirming a live long screenshot does: open the result card, copy, or save locally.
+  var longScreenshotConfirm = LongScreenshotConfirm.card
 }
 
 /// The session's two modes on one selection (architecture C1): ⌘1 / ⌘2 or the bottom bar's
@@ -32,7 +41,7 @@ struct CaptureSessionOptions {
 /// rule, and Start ends the session with the region to record.
 extension CaptureSession {
   func setMode(_ next: CaptureMode) {
-    guard options.canRecord, next != mode else { return }
+    guard options.canRecord, !choosingSaveDestination, next != mode else { return }
     switch phase {
     case .idle:
       mode = next
@@ -96,6 +105,8 @@ extension CaptureSession {
     editor.onConfirm = { [weak self] in self?.confirm() }
     editor.onCancel = { [weak self] in self?.cancel() }
     editor.onCopy = { [weak self] in self?.copy() }
+    editor.onSave = options.reopening ? nil : { [weak self] in self?.save() }
+    editor.saveFolder = options.saveFolder
     editor.onLaunch = { [weak self] in self?.launch($0) }
     editor.onInteriorClaimChange = { [weak self] claimed in
       guard let self else { return }

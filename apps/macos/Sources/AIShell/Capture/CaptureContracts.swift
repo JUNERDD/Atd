@@ -112,6 +112,10 @@ protocol AnnotationEditing: AnyObject {
   var onCancel: (() -> Void)? { get set }
   /// The user asked to copy the result instead of attaching it (toolbar or ⌘C).
   var onCopy: (() -> Void)? { get set }
+  /// The user asked to save the result to a local folder (toolbar or ⌘S); nil when editing.
+  var onSave: (() -> Void)? { get set }
+  /// Display name of the current save folder for the Save button's tooltip; nil uses a generic label.
+  var saveFolder: String? { get set }
   /// True while a tool is chosen or text mode is on: presses inside the selection (away from its
   /// handles and edge band) go to the editor. False: they move the selection, except where
   /// ``claimsPress(at:)`` holds. Called on every change.

@@ -67,6 +67,11 @@ struct IslandLongScreenshotBottomBar: View {
       feedback: nil
     ) { content.setAnnotating(!annotating) }
     IslandFeedbackButton(
+      title: labels.save, glyph: IslandIcons.save, workingLabel: labels.actionWorking,
+      tooltip: labels.save(to: content.card.source.saveFolder), keys: nil, compact: compact,
+      feedback: feedback[.save]
+    ) { content.send(.save) }
+    IslandFeedbackButton(
       title: labels.copy, glyph: IslandIcons.copy, workingLabel: labels.actionWorking,
       tooltip: labels.copyTooltip, keys: IslandShellFooterKey.copyKeys, compact: compact,
       feedback: feedback[.copy]

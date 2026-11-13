@@ -32,12 +32,12 @@ final class IslandLongScreenshot {
 
   /// The card's footer actions, which report back on their own buttons.
   enum CardAction: Hashable {
-    case copy, attach
+    case save, copy, attach
   }
 
   /// What of the long screenshot the island shows; nil while nothing.
   enum Showing: Equatable {
-    case processing, copied, result
+    case processing, copied, status, result
   }
 
   private(set) var showing: Showing?
@@ -72,6 +72,33 @@ final class IslandLongScreenshot {
   /// Shows the "Copied" status capsule (`IslandContent.copied`) for
   /// ``CommandProgressState/doneDuration`` (1.5 s), then leaves.
   func showCopied() {
+    showTransient(.copied, .copied, duration: CommandProgressState.doneDuration)
+  }
+
+  /// Shows a saved status capsule naming `folderName` for ``IslandRecording/statusDuration``.
+  func showSaved(to folderName: String) {
+    let message = String(
+      format: ShellStrings.shared.text(RecordingOrchestrationStringKey.saved),
+      locale: Locale(identifier: ShellStrings.shared.language.rawValue), folderName)
+    showStatus(message, kind: .done)
+  }
+
+  /// Shows a failed status capsule with `message` for ``IslandRecording/statusDuration``.
+  func showFailed(_ message: String) {
+    showStatus(message, kind: .failed)
+  }
+
+  /// Shows a status capsule (check or warning) for ``IslandRecording/statusDuration``, preserving a
+  /// waiting result card if one was visible.
+  func showStatus(_ message: String, kind: IslandRecording.StatusKind = .done) {
+    showTransient(
+      .status, .recordingStatus(message: message, outcome: kind),
+      duration: IslandRecording.statusDuration)
+  }
+
+  private func showTransient(
+    _ state: Showing, _ content: IslandContent, duration: Duration
+  ) {
     if showing == .result {
       leaveCard()
       island.setKeyCapable(false)
@@ -80,12 +107,26 @@ final class IslandLongScreenshot {
     }
     copiedToken += 1
     let token = copiedToken
-    present(.copied, .copied, takingKeyboard: false)
-    guard showing == .copied else { return }
+    present(state, content, takingKeyboard: false)
+    guard showing == state else { return }
     Task { [weak self] in
-      try? await Task.sleep(for: CommandProgressState.doneDuration)
-      guard let self, token == copiedToken, showing == .copied else { return }
+      try? await Task.sleep(for: duration)
+      guard let self, token == copiedToken, showing == state else { return }
       release()
+    }
+  }
+
+  /// Updates the displayed save folder name on the kept card, if one exists.
+  func updateSaveFolder(_ folderName: String?) {
+    island.model.longScreenshotCard?.updateSaveFolder(folderName)
+  }
+
+  /// Restores keyboard focus to the lightbox or island window after a modal save panel closes.
+  func restoreKeyboardAfterModal() {
+    if lightbox.isOpen {
+      lightbox.makeKeyIfVisible()
+    } else if island.window.isVisible, island.window.canBecomeKey {
+      island.window.makeKey()
     }
   }
 
@@ -138,7 +179,7 @@ final class IslandLongScreenshot {
   /// Takes the long screenshot's content off the island, keeping the card's state; what the page
   /// shows draws again.
   func release() {
-    if showing != .copied { waiting = false }
+    if showing != .copied, showing != .status { waiting = false }
     copiedToken += 1
     guard let previous = showing else { return }
     showing = nil
@@ -286,6 +327,7 @@ final class IslandLongScreenshot {
       let key = IslandShellFooterKey(event, field: island.editingField)
     else { return false }
     switch key {
+    case .save: card.onEvent(.save(card.state.kept))
     case .copy: card.onEvent(.copy(card.state.kept))
     case .attach: card.onEvent(.attach(card.state.kept))
     }

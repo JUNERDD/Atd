@@ -96,6 +96,8 @@
       "selectionToolbarSmallIcon": "小图标 图标 先显示 选中后 点击 悬停 停留 展开 完整 工具栏 选择 small icon",
       "selectionToolbarPosition": "出现位置 位置 显示 上方 下方 鼠标旁 鼠标 光标 选区 工具栏 选择 position",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
+      "screenshotSaveLocation": "截图 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
+      "recordingSaveLocation": "录屏 屏幕录制 视频 mp4 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
       "screenshotCopyOnConfirm": "截图 截屏 复制 剪贴板 确认 添加 输入框 工具栏 勾选",
       "longScreenshotConfirmAction": "长截图 滚动截图 完成 确认 回车 结果卡片 复制 剪贴板",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
@@ -376,8 +378,18 @@
       "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）。"
     }
   },
+  "saveLocation": {
+    "label": "保存位置",
+    "askEachTime": "每次询问",
+    "chooseFolder": "选择文件夹…"
+  },
   "screenshot": {
     "title": "截图",
+    "saveLocation": {
+      "searchLabel": "截图保存位置",
+      "description": "每次保存时选择位置，或直接保存到指定文件夹",
+      "saveFailed": "无法更新截图保存位置。"
+    },
     "copyOnConfirm": {
       "title": "确认截图时同时复制到剪贴板",
       "description": "在截图工具栏点击 ✓ 将截图添加到输入框时，也同时复制到剪贴板。",
@@ -385,13 +397,22 @@
     },
     "longScreenshotConfirmAction": {
       "title": "长截图完成操作",
-      "description": "选择长截图完成后点击 ✓ 或按回车键时的行为。",
+      "description": "点击“完成”或按下回车时，是打开结果卡片、复制到剪贴板，还是保存并关闭",
       "label": "长截图完成操作",
       "saveFailed": "无法保存长截图完成操作设置。",
       "modes": {
         "card": "打开结果卡片",
-        "copy": "直接复制到剪贴板并关闭"
+        "copy": "直接复制到剪贴板并关闭",
+        "save": "保存并关闭"
       }
+    }
+  },
+  "recording": {
+    "title": "录屏",
+    "saveLocation": {
+      "searchLabel": "录屏保存位置",
+      "description": "每次保存时选择位置，或直接保存到指定文件夹",
+      "saveFailed": "无法更新录屏保存位置。"
     }
   },
   "notifications": {

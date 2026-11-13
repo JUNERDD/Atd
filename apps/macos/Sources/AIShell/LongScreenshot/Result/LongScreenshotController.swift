@@ -29,6 +29,7 @@ final class LongScreenshotController: LongScreenshotResults {
   let arbiter: DeviceArbiter
   let attachments: AttachmentImporter
   let panelHost: WebViewHost
+  let systemPanels: SystemPanels
   let showPanel: () -> Void
   /// The screenshot capability, whose text commands, options and runner the full-screen
   /// preview's text commands use (``textServices``); the shell sets it, and without it the
@@ -47,15 +48,17 @@ final class LongScreenshotController: LongScreenshotResults {
   /// Sent asks and their latest text, ended explicitly if their renderer document goes away.
   var runningAsks: [String: String] = [:]
   var exportingActions: Set<CardAction> = []
+  var saveFolderURL: () -> URL? = { ScreenshotPreferences.shared.currentSaveFolderURL() }
 
   init(
     island: IslandLongScreenshot, arbiter: DeviceArbiter, attachments: AttachmentImporter,
-    panelHost: WebViewHost, showPanel: @escaping () -> Void
+    panelHost: WebViewHost, systemPanels: SystemPanels, showPanel: @escaping () -> Void
   ) {
     self.island = island
     self.arbiter = arbiter
     self.attachments = attachments
     self.panelHost = panelHost
+    self.systemPanels = systemPanels
     self.showPanel = showPanel
     island.onEvent = { [weak self] in self?.handle($0) }
     island.textServices = textServices
@@ -74,11 +77,20 @@ final class LongScreenshotController: LongScreenshotResults {
       let text = await LongScreenshotText.read(shot.image, scale: shot.scale)
       guard let self, generation == self.generation else { return }
       reading = nil
+      let folderName = saveFolderURL().map { SaveFolderDisplay.name(for: $0) }
       let source = LongScreenshotCardSource(
-        id: UUID().uuidString, shot: shot, lines: text.lines, sensitive: text.sensitive)
+        id: UUID().uuidString, shot: shot, lines: text.lines, sensitive: text.sensitive,
+        saveFolder: folderName)
       self.source = source
       island.showResult(source)
     }
+  }
+
+  /// Updates the card's displayed save folder name when screenshot folder settings change.
+  func refreshSaveFolder() {
+    let folderName = saveFolderURL().map { SaveFolderDisplay.name(for: $0) }
+    source?.saveFolder = folderName
+    island.updateSaveFolder(folderName)
   }
 
   /// The card went (its close button, Escape, an attached edit), or another long screenshot
@@ -101,6 +113,7 @@ final class LongScreenshotController: LongScreenshotResults {
     case .ask(let ask), .regenerate(let ask): send(ask)
     case .stopAnswer(let askID): stopAsk(askID)
     case .openAnswer(let askID): panelHost.send(.recordingAskOpen(.init(askId: askID)))
+    case .save(let kept): save(kept)
     case .copy(let kept): copy(kept)
     case .attach(let kept): attach(kept)
     case .close: drop()

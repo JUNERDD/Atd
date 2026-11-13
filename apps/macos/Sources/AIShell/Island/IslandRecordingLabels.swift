@@ -101,8 +101,14 @@ struct IslandRecordingLabels: Equatable {
   /// The title row's duration once trimmed: the kept length and the whole.
   func trimmed(kept: String, whole: String) -> String { Self.format(.trimmed, kept, whole) }
 
-  /// Save's tooltip, naming the folder when it is known.
-  func save(to folder: String?) -> String { folder.map { Self.format(.saveTo, $0) } ?? saveTooltip }
+  /// Save's tooltip, naming `folder` when configured, otherwise "Save…", with the ⌘S shortcut.
+  func save(to folder: String?) -> String {
+    let strings = ShellStrings.shared
+    let base =
+      folder.map { Self.format(.saveTo, $0) }
+      ?? strings.text(ScreenshotSaveStringKey.saveEllipsis)
+    return String(format: strings.text(.captureTooltipShortcut), base, "⌘S")
+  }
 
   private static func format(_ key: RecordingIslandStringKey, _ arguments: String...) -> String {
     let strings = ShellStrings.shared

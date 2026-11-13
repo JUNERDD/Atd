@@ -42,6 +42,9 @@
       "screenshot.capture",
       "screenshot.edit",
       "screenshotToolbar.set",
+      "saveLocation.state",
+      "saveLocation.set",
+      "saveLocation.pick",
       "share.text",
       "speech.speak",
       "speech.stop",
@@ -1243,6 +1246,132 @@
                     "additionalProperties": false
                   },
                   "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.state"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind", "path"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
+                },
+                "path": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.pick"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -3981,6 +4110,10 @@
                     {
                       "type": "string",
                       "const": "copy"
+                    },
+                    {
+                      "type": "string",
+                      "const": "save"
                     }
                   ]
                 }
@@ -8659,6 +8792,210 @@
       "properties": {},
       "additionalProperties": false
     },
+    "SaveLocationStateParams": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationStateResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationSetParams": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationSetResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationPickParams": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationPickResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
     "ShareTextParams": {
       "type": "object",
       "required": ["text", "anchor"],
@@ -11531,6 +11868,10 @@
             {
               "type": "string",
               "const": "copy"
+            },
+            {
+              "type": "string",
+              "const": "save"
             }
           ]
         }

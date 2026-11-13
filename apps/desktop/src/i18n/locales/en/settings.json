@@ -96,6 +96,8 @@
       "selectionToolbarSmallIcon": "small icon compact minimal bubble dot button first click hover rest expand open full toolbar selection",
       "selectionToolbarPosition": "position place placement location where appear show above below top bottom over under pointer cursor mouse near toolbar selection",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
+      "screenshotSaveLocation": "save folder ask each time choose folder path local disk screenshot",
+      "recordingSaveLocation": "screen recording video mp4 save folder ask each time choose folder path local disk",
       "screenshotCopyOnConfirm": "screenshot copy clipboard confirm attach composer toolbar check",
       "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
@@ -376,8 +378,18 @@
       "accessibility": "System Settings couldn't open. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
     }
   },
+  "saveLocation": {
+    "label": "Save location",
+    "askEachTime": "Ask each time",
+    "chooseFolder": "Choose folder…"
+  },
   "screenshot": {
     "title": "Screenshot",
+    "saveLocation": {
+      "searchLabel": "Screenshot save location",
+      "description": "Choose each time or save screenshots and long screenshots directly to a folder",
+      "saveFailed": "The screenshot save location could not be updated."
+    },
     "copyOnConfirm": {
       "title": "Copy to clipboard when confirming",
       "description": "When clicking ✓ on the screenshot toolbar to attach a screenshot to the composer, also copy it to the clipboard.",
@@ -385,13 +397,22 @@
     },
     "longScreenshotConfirmAction": {
       "title": "Long screenshot confirmation",
-      "description": "Choose what clicking ✓ or pressing Return after a long screenshot does.",
+      "description": "Whether Done or Return opens the result card, copies to the clipboard, or saves and closes",
       "label": "Long screenshot confirmation action",
       "saveFailed": "The long screenshot confirmation setting could not be saved.",
       "modes": {
         "card": "Open result card",
-        "copy": "Copy to clipboard and close"
+        "copy": "Copy to clipboard and close",
+        "save": "Save and close"
       }
+    }
+  },
+  "recording": {
+    "title": "Screen recording",
+    "saveLocation": {
+      "searchLabel": "Screen recording save location",
+      "description": "Choose each time or save screen recordings directly to a folder",
+      "saveFailed": "The screen recording save location could not be updated."
     }
   },
   "notifications": {

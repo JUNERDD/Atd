@@ -1,4 +1,5 @@
 import AICore
+import Foundation
 
 /// The bridge's screenshot entry points: `screenshot.capture` and `screenshot.edit`, which run
 /// ``ScreenshotTaker``'s session once nothing else needs the screen or the panel.
@@ -28,9 +29,20 @@ extension ShellController {
     screenshots.showCopied = { [weak self] in
       self?.commandProgress.longScreenshot.showCopied()
     }
+    screenshots.showSaved = { [weak self] folder in
+      self?.commandProgress.longScreenshot.showSaved(to: folder)
+    }
+    screenshots.showSaveFailed = { [weak self] message in
+      self?.commandProgress.longScreenshot.showFailed(message)
+    }
+    screenshots.saveFolderURL = { ScreenshotPreferences.shared.currentSaveFolderURL() }
+    screenshots.chooseSaveFile = { [weak self] suggestedName, contentType in
+      await self?.systemPanels.chooseSaveFile(
+        suggestedName: suggestedName, contentType: contentType, aboveIsland: true)
+    }
     screenshots.copyOnConfirm = { ScreenshotPreferences.shared.copyOnConfirm }
-    screenshots.copiesLongScreenshotOnConfirm = {
-      ScreenshotPreferences.shared.copiesLongScreenshotOnConfirm
+    screenshots.longScreenshotConfirm = {
+      ScreenshotPreferences.shared.longScreenshotConfirm
     }
   }
 

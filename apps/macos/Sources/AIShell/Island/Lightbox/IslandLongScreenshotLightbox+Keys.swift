@@ -117,6 +117,8 @@ extension IslandLongScreenshotLightbox {
     guard let key = IslandShellFooterKey(event, field: nil) else { return false }
     let showsCard = panelPlacement != .hidden
     switch key {
+    case .save:
+      break
     case .copy:
       if showsCard, results.model.copyKey() { return true }
       if !annotating, !text.picks.isEmpty {
@@ -130,10 +132,11 @@ extension IslandLongScreenshotLightbox {
     return true
   }
 
-  /// Copy or Attach, on the range kept now with everything on it.
+  /// Save, Copy or Attach, on the range kept now with everything on it.
   func send(_ key: IslandShellFooterKey) {
     annotator.finish()
     switch key {
+    case .save: card.onEvent(.save(card.state.kept))
     case .copy: card.onEvent(.copy(card.state.kept))
     case .attach: card.onEvent(.attach(card.state.kept))
     }

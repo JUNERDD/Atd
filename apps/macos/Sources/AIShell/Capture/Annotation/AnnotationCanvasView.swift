@@ -56,6 +56,8 @@ final class AnnotationCanvasView: NSView {
   var onPress: (() -> Void)?
   /// ⌘C outside open text.
   var onCopy: (() -> Void)?
+  /// ⌘S outside field editors and IME marked text.
+  var onSave: (() -> Void)?
   var onConfirm: (() -> Void)?
   var onChooseTool: ((AnnotationTool) -> Void)?
   /// Esc: steps back one level; false when there was nothing to step back.

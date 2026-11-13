@@ -180,83 +180,80 @@ public struct ScreenshotToolbarSetParams: Codable, Equatable, Sendable {
 /// Result of the `screenshotToolbar.set` call.
 public typealias ScreenshotToolbarSetResult = NativeEmpty
 
-/// Params of the `share.text` call.
-public struct ShareTextParams: Codable, Equatable, Sendable {
-  public let text: String
-  public let anchor: Anchor
+/// Params of the `saveLocation.state` call.
+public struct SaveLocationStateParams: Codable, Equatable, Sendable {
+  public let kind: Kind
 
-  public init(text: String, anchor: Anchor) {
-    self.text = text
-    self.anchor = anchor
+  public init(kind: Kind) {
+    self.kind = kind
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
-    anchor = try container.value(.anchor, Anchor.self)
+    kind = try container.value(.kind, Kind.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case text
-    case anchor
+    case kind
   }
 
-  public struct Anchor: Codable, Equatable, Sendable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
+  public enum Kind: String, Codable, Equatable, Sendable {
+    case screenshot
+    case recording
+  }
+}
 
-    public init(x: Double, y: Double, width: Double, height: Double) {
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
+/// Result of the `saveLocation.state` call.
+public struct SaveLocationStateResult: Codable, Equatable, Sendable {
+  public let current: String?
+  public let folders: [Folder]
+
+  public init(current: String?, folders: [Folder]) {
+    self.current = current
+    self.folders = folders
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    current = try container.nullable(.current) {
+      try container.string($0, minLength: 1, maxLength: 4_096)
+    }
+    folders = try container.array(.folders, of: Folder.self, maxItems: 8)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(current, forKey: .current)
+    try container.encode(folders, forKey: .folders)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case current
+    case folders
+  }
+
+  public struct Folder: Codable, Equatable, Sendable {
+    public let path: String
+    public let name: String
+    public let displayPath: String
+
+    public init(path: String, name: String, displayPath: String) {
+      self.path = path
+      self.name = name
+      self.displayPath = displayPath
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      x = try container.number(.x)
-      y = try container.number(.y)
-      width = try container.number(.width, minimum: 0)
-      height = try container.number(.height, minimum: 0)
+      path = try container.string(.path, minLength: 1, maxLength: 4_096)
+      name = try container.string(.name, minLength: 1, maxLength: 512)
+      displayPath = try container.string(.displayPath, minLength: 1, maxLength: 4_096)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
-      case x
-      case y
-      case width
-      case height
+      case path
+      case name
+      case displayPath
     }
   }
 }
-
-/// Result of the `share.text` call.
-public typealias ShareTextResult = NativeEmpty
-
-/// Params of the `speech.speak` call.
-public struct SpeechSpeakParams: Codable, Equatable, Sendable {
-  public let text: String
-
-  public init(text: String) {
-    self.text = text
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case text
-  }
-}
-
-/// Result of the `speech.speak` call.
-public typealias SpeechSpeakResult = NativeEmpty
-
-/// Params of the `speech.stop` call.
-public typealias SpeechStopParams = NativeEmpty
-
-/// Result of the `speech.stop` call.
-public typealias SpeechStopResult = NativeEmpty

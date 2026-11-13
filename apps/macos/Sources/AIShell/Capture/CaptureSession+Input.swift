@@ -14,13 +14,13 @@ extension CaptureSession: CaptureOverlayDelegate {
   /// being captured without its result card. The same copy paths commit open annotation text
   /// and let ScreenshotTaker own the clipboard claim.
   func copyFromShortcut() {
-    guard isActive, !isFinished, mode == .screenshot else { return }
+    guard isActive, !isFinished, !choosingSaveDestination, mode == .screenshot else { return }
     switch phase {
     case .selected:
       if editor?.dismissMenus() == true { return }
       copy()
     case .longScreenshot:
-      finishLongScreenshot(copying: true)
+      finishLongScreenshot(action: .copy)
     case .idle, .pressing, .creating, .adjusting:
       return
     }
@@ -123,7 +123,7 @@ extension CaptureSession: CaptureOverlayDelegate {
 
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand) {
     // The wheel walks the chain through here; keys cannot arrive before activation.
-    guard isActive else { return }
+    guard isActive, !choosingSaveDestination else { return }
     // While the record bar's menu or folder panel is open the keyboard is its; Escape closes it.
     if accessory?.isModal == true {
       if command == .cancel { _ = accessory?.dismissMenus() }
@@ -167,8 +167,6 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .requestAccessibility:
       requestAccessibility()
     case .longScreenshot:
-      // Only a screenshot selection takes ⌘↓, beeping while it does not offer the long
-      // screenshot; where the session never offers it, ⌘↓ stays the nudge it was.
       if offersLongScreenshot, case .selected = phase {
         startLongScreenshot()
       } else {
@@ -176,6 +174,10 @@ extension CaptureSession: CaptureOverlayDelegate {
       }
     case .toggleAutoScroll:
       break
+    case .save:
+      guard !options.reopening, mode == .screenshot, case .selected = phase else { return }
+      if editor?.dismissMenus() == true { return }
+      save()
     }
   }
 

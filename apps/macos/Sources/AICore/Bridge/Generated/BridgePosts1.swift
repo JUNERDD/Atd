@@ -119,6 +119,7 @@ public struct ScreenshotPreferencesSetPost: Codable, Equatable, Sendable {
   public enum LongScreenshotConfirmAction: String, Codable, Equatable, Sendable {
     case card
     case copy
+    case save
   }
 }
 

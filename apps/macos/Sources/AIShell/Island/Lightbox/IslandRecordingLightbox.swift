@@ -72,6 +72,7 @@ final class IslandRecordingLightbox: IslandLightboxContent {
     }
     guard let key = IslandShellFooterKey(event, field: nil) else { return false }
     switch key {
+    case .save: card.onEvent(.save(card.state.trim))
     case .copy: card.onEvent(.copy(card.state.trim))
     case .attach: card.onEvent(.attach(card.state.trim))
     }
