@@ -1,5 +1,5 @@
 import { Brain, Check, Copy, Ellipsis, Square, TextQuote, Volume2 } from 'lucide-react';
-import { useMemo, useRef, useState, type SyntheticEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QuoteSource } from '@atd/agent-contracts';
 import {
@@ -21,6 +21,8 @@ import { TOOLBAR, useMessageSelection, type MessageSelection } from './use-messa
 
 /** The read-aloud key of a selection, apart from every turn's own; one selection reads at a time. */
 const SELECTION_SPEECH = 'selection';
+/** Upper bound for the closing fade before releasing retained `Range`/DOM references. */
+const EXIT_RELEASE_MS = 250;
 
 /** Keeps focus, and with it the page's selection, where it is. */
 function keep(event: Event | SyntheticEvent) {
@@ -61,6 +63,12 @@ export function SelectionToolbar({
   // The last selection stays the anchor while the toolbar closes, so it fades where it was.
   const [shown, setShown] = useState<MessageSelection | null>(selection);
   if (selection && selection !== shown) setShown(selection);
+  useEffect(() => {
+    if (selection || !shown) return;
+    const delay = !root || !shown.range.startContainer.isConnected ? 0 : EXIT_RELEASE_MS;
+    const timer = window.setTimeout(() => setShown(null), delay);
+    return () => clearTimeout(timer);
+  }, [selection, shown, root]);
   const anchor = useMemo(() => shown && { current: shown.anchor }, [shown]);
   // Tooltips open away from the selection too, so they never cover the text the actions take.
   const side = shown?.side ?? 'top';
@@ -122,6 +130,9 @@ export function SelectionToolbar({
         sideOffset={8}
         hideWhenDetached
         className="min-w-0 rounded-full p-1"
+        onAnimationEnd={() => {
+          if (!selection) setShown(null);
+        }}
         onOpenAutoFocus={keep}
         onCloseAutoFocus={keep}
         onMouseDown={keep}

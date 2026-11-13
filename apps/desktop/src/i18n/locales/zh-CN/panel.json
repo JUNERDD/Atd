@@ -11,6 +11,9 @@
     "updateDownloading": "正在下载 {{version}} 版本…",
     "updateDownloadingPercent": "正在下载 {{version}} 版本 · {{percent}}%",
     "updatePreparing": "正在准备 {{version}} 版本…",
+    "releaseNotes": "更新日志",
+    "releaseNotesTooltip": "查看 {{version}} 更新日志",
+    "dismissReleaseNotes": "隐藏本次更新提示",
     "loadingConversation": "正在加载对话…"
   },
   "find": {
@@ -53,7 +56,7 @@
     "folderLimit": "最多添加 {{max}} 个文件夹。",
     "editImage": "编辑 {{name}}",
     "attachMenu": {
-      "screenshot": "截图",
+      "screenshot": "截图或录屏",
       "upload": "上传文件",
       "folder": "添加文件夹…",
       "mention": "提及文件、对话或工具…"
@@ -391,5 +394,36 @@
   "attachments": {
     "noVision": "{{model}} 无法识别图片，附加的图片不会发送给它。",
     "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等其他附件仍会发送。"
+  },
+  "modals": {
+    "close": "关闭",
+    "carousel": {
+      "regionLabel": "应用提示",
+      "paginationLabel": "第 {{current}} / {{total}} 项提示",
+      "dotLabel": "查看第 {{index}} 项（共 {{total}} 项）",
+      "slideAnnouncement": "第 {{current}} 项，共 {{total}} 项"
+    },
+    "notarizationReauth": {
+      "title": "签名证书已更新，需重新授权",
+      "description": "Atd 最近更换了开发者签名证书，macOS 会将旧授权视为失效。请在系统设置中重新勾选缺失的权限，以继续使用划词和截图功能。",
+      "later": "稍后再说",
+      "done": "完成",
+      "authorize": "打开系统设置",
+      "authorizeAccessibility": "授权辅助功能",
+      "authorizeScreenRecording": "授权屏幕录制",
+      "openRow": "前往授权",
+      "grantedBadge": "已授权",
+      "error": "无法打开系统设置，请手动前往“隐私与安全性”检查权限。",
+      "accessibility": {
+        "title": "辅助功能",
+        "description": "在任意应用中读取选中文本与上下文",
+        "grantedDescription": "辅助功能权限已更新为最新证书"
+      },
+      "screenRecording": {
+        "title": "屏幕录制",
+        "description": "在你主动发起时截取屏幕上下文",
+        "grantedDescription": "屏幕录制权限已更新为最新证书"
+      }
+    }
   }
 }

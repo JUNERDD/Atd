@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { File, FileSearch, FolderOpen, History, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
@@ -95,6 +95,10 @@ export function useFileGroups({
   const { t, i18n } = useTranslation('panel');
   const [busy, setBusy] = useState<string | null>(null);
   const search = useFileSearch(live, query);
+  const recentAttached = useMemo(
+    () => (enabled && !query ? recentAttachments(tasks) : []),
+    [enabled, query, tasks],
+  );
   if (!enabled) return null;
   const language = i18n.resolvedLanguage ?? i18n.language;
   const full = attachmentCount >= ATTACHMENT_LIMIT;
@@ -116,7 +120,7 @@ export function useFileGroups({
 
   const attached = query
     ? []
-    : recentAttachments(tasks).map(({ file, at, source }): QuickOption => ({
+    : recentAttached.map(({ file, at, source }): QuickOption => ({
         value: `attached:${file.id}`,
         icon: <Paperclip />,
         title: file.name,
@@ -151,7 +155,7 @@ export function useFileGroups({
             // The index marks and ranks the matches; the score only places this group among the
             // others.
             ranges: result.match ? { title: result.match } : undefined,
-            score: matchFields(query, { name: result.name })?.score,
+            score: query ? matchFields(query, { name: result.name })?.score : undefined,
             description: reason ?? locationLabel(result.location),
             status:
               busy === result.resultId

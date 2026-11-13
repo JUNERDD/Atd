@@ -20,8 +20,11 @@ final class AnnotationInteraction {
 
   let store: AnnotationStore
   /// Nil until a tool is chosen, and again after Esc drops it; the canvas ignores the pointer
-  /// then.
-  var tool: AnnotationTool?
+  /// then. Another tool deselects: a selection would keep the style bar and the grips on the
+  /// annotation the last tool made, rather than on what the new tool draws.
+  var tool: AnnotationTool? {
+    didSet { if tool != oldValue { store.selectedID = nil } }
+  }
   /// The styles new annotations take, per slot (E8); the editor remembers them.
   var styles = AnnotationStyles.defaults {
     didSet { if styles != oldValue { onStylesChange?(styles) } }
@@ -120,7 +123,9 @@ final class AnnotationInteraction {
       let offset = CGVector(dx: point.x - start.x, dy: point.y - start.y)
       store.preview = Self.document(document, replacing: original.moved(by: offset))
     case .resizing(let original, let handle):
-      store.preview = Self.document(document, replacing: original.resized(handle, to: point))
+      // A text box's lines wrap to the new width; its frame grows to the height they take.
+      let resized = AnnotationRenderer.fittingTextBox(original.resized(handle, to: point))
+      store.preview = Self.document(document, replacing: resized)
     }
   }
 
@@ -140,7 +145,7 @@ final class AnnotationInteraction {
       }
       store.commit(preview)
       // The new annotation stays selected, so the toolbar shows and changes its style at once
-      // and its grips adjust it; the next press elsewhere deselects it.
+      // and its grips adjust it; the next press elsewhere, or another tool, deselects it.
       store.selectedID = annotation.id
     case .moving, .resizing:
       store.commit(store.preview ?? store.document)

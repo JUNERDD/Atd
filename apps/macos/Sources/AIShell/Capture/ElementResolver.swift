@@ -90,6 +90,21 @@ actor ElementResolver: ElementTargeting {
     return described.first { $0.title != nil } ?? described.first
   }
 
+  /// The window under `point` (Quartz) and the element its app shows there, for a probe
+  /// beyond hover targets (the long screenshot's scroll area); nil without Accessibility, a
+  /// window there, or an answer. Supersedes queued hover requests, as ``describe(at:frame:)``
+  /// does, and prepares a web app's tree.
+  func element(at point: CGPoint) -> (window: ElementChain.Window, element: AXUIElement)? {
+    advanceRequest()
+    guard let session, session.trusted,
+      let window = ElementChain.topmostWindow(at: point, in: session.windows)
+    else { return nil }
+    prepare(pid: window.pid)
+    guard let hit = AccessibilityProbe.element(at: point, in: application(pid: window.pid))
+    else { return nil }
+    return (window, hit)
+  }
+
   func end() async {
     advanceRequest()
     restoreChangedApplications()

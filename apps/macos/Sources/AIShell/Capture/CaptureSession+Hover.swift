@@ -99,8 +99,12 @@ extension CaptureSession {
   /// `area` on every overlay (each draws its part), with its size label on the overlay holding
   /// most of it; nil dims every display.
   func show(_ area: CGRect?, handles: Bool) {
+    show(area, handles: handles, label: area.map(sizeLabel(for:)))
+  }
+
+  /// The same with `label` in place of the size label (the long screenshot's own).
+  func show(_ area: CGRect?, handles: Bool, label: String?) {
     let labelled = area.flatMap(primaryOverlay(for:))
-    let label = area.map(sizeLabel(for:))
     for overlay in overlays {
       overlay.show(area: area, handles: handles, label: overlay === labelled ? label : nil)
     }

@@ -42,10 +42,13 @@ final class AppPresence {
     // A background close must not activate the app, even when its non-activating task panel
     // currently receives the keyboard while another application owns the menu bar.
     if closingWindow != nil, !NSApp.isActive { return nil }
+    // Focus is ordered front, so it stays only with a window nothing of another app covers: a
+    // task panel left behind another app would otherwise jump over it as a summon does, and the
+    // app steps aside for that app instead.
     func isEligible(_ window: NSWindow) -> Bool {
       window !== closingWindow && window.isVisible && !window.isMiniaturized
         && window.canBecomeKey && window.alphaValue > 0 && !window.ignoresMouseEvents
-        && window.isOnActiveSpace
+        && window.isOnActiveSpace && !WindowStack.isCovered(window)
     }
     if let key = NSApp.keyWindow, isEligible(key) { return key }
     // Closing the foreground window transfers focus within the app; the resident task panel's

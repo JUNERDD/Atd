@@ -1,6 +1,7 @@
+import AICore
 import AppKit
 
-/// What the keyboard or the scroll wheel asks of a capture session.
+/// What the keyboard, the scroll wheel or the bottom bar asks of a capture session.
 enum CaptureCommand: Equatable {
   case cancel
   case confirm
@@ -17,15 +18,39 @@ enum CaptureCommand: Equatable {
   case recall
   /// `W`: offers only windows (and the display) instead of elements, or elements again.
   case toggleWindowsOnly
+  /// ⌘1 / ⌘2 or the bottom bar's pair: the session's mode (architecture C1).
+  case mode(CaptureMode)
+  /// The Accessibility request beside the bottom bar was clicked.
+  case requestAccessibility
+  /// ⌘↓: the long screenshot, where the session offers it; elsewhere the session nudges the
+  /// selection down a point, as ⌘↓ always did (decision D10).
+  case longScreenshot
+  /// Space: auto-scroll on or off in the long screenshot's live phase; nothing elsewhere.
+  case toggleAutoScroll
+  /// ⌘S: saves the screenshot or live long screenshot locally to the configured save folder.
+  case save
 
   /// The command a key press means on an overlay, or nil for a key the overlay leaves alone.
   /// Arrows nudge the selection (Shift: 10 points), Option-arrows move its trailing edges and
-  /// Option-Shift-arrows its leading ones.
+  /// Option-Shift-arrows its leading ones; ⌘↓ is ``longScreenshot`` and the other ⌘-arrows nudge.
+  /// ⌘1 and ⌘2 are the keys in the digit row, whatever the layout types there.
   init?(_ event: NSEvent) {
     let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
     let key = event.charactersIgnoringModifiers?.lowercased()
     if flags == .command, key == "a" {
       self = .selectDisplay
+      return
+    }
+    if flags == .command, key == "s" {
+      self = .save
+      return
+    }
+    if flags == .command, let mode = [18: CaptureMode.screenshot, 19: .record][event.keyCode] {
+      self = .mode(mode)
+      return
+    }
+    if flags == .command, event.keyCode == 125 {
+      self = .longScreenshot
       return
     }
     if let (dx, dy) = Self.arrow(event.keyCode) {
@@ -41,6 +66,7 @@ enum CaptureCommand: Equatable {
     case 53: self = .cancel
     case 36, 76: self = .confirm
     case 48: self = .walk(flags.contains(.shift) ? -1 : 1)
+    case 49 where flags.isEmpty: self = .toggleAutoScroll
     default:
       guard flags.isEmpty else { return nil }
       switch key {

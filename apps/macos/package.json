@@ -1,6 +1,6 @@
 {
   "name": "@atd/macos",
-  "version": "0.10.7",
+  "version": "0.11.0",
   "private": true,
   "description": "Native macOS shell (Swift/AppKit). Requires Xcode 26, XcodeGen and SwiftLint.",
   "scripts": {
@@ -14,6 +14,10 @@
     "bundle": "pnpm -w exec turbo run build --filter=@atd/agent-service... --filter=@atd/agent-client && pnpm --filter @atd/desktop build && node scripts/prepare-service-pack.mjs",
     "addons:pack": "node scripts/addons/pack.mjs",
     "codegen": "node scripts/generate-bridge-types.mjs && node scripts/provider-brands.mjs",
-    "codegen:check": "node scripts/generate-bridge-types.mjs --check && node scripts/provider-brands.mjs --check"
+    "codegen:check": "node scripts/generate-bridge-types.mjs --check && node scripts/provider-brands.mjs --check",
+    "signing:setup": "node scripts/signing/setup.mjs",
+    "signing:check": "node scripts/signing/setup.mjs --check",
+    "dist:release": "pnpm run build:release && node scripts/signing/distribute.mjs",
+    "notarize": "node scripts/signing/notarize.mjs"
   }
 }

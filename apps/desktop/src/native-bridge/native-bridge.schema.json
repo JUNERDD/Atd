@@ -9,6 +9,7 @@
     "deliverArgument": "message",
     "panelShortcutId": "togglePanel",
     "screenshotShortcutId": "captureScreenshot",
+    "recordShortcutId": "recordScreen",
     "maxCaptureLength": 100000,
     "calls": [
       "app.startup",
@@ -40,6 +41,10 @@
       "clipboard.write",
       "screenshot.capture",
       "screenshot.edit",
+      "screenshotToolbar.set",
+      "saveLocation.state",
+      "saveLocation.set",
+      "saveLocation.pick",
       "share.text",
       "speech.speak",
       "speech.stop",
@@ -73,13 +78,18 @@
       "accessibility.request",
       "screenRecording.request",
       "apps.pick",
-      "shortcuts.recording"
+      "shortcuts.recording",
+      "recording.answer",
+      "captureText.progress",
+      "panelModal.setAvailable"
     ],
     "posts": [
       "bridge.ready",
       "language.set",
       "appearance.set",
       "glowEffects.set",
+      "resultMarkdown.set",
+      "screenshotPreferences.set",
       "panelBackground.set",
       "typing.set",
       "window.dragRegions",
@@ -89,6 +99,8 @@
       "socket.send",
       "update.check",
       "update.install",
+      "update.releaseNotesShown",
+      "update.dismissReleaseNotes",
       "task.shown",
       "socket.close",
       "userApp.pinDrag"
@@ -110,6 +122,7 @@
       "accessibility.trust",
       "screenRecording.trust",
       "update.state",
+      "update.releaseNotes",
       "computer.state",
       "shortcuts.changed",
       "socket.frames",
@@ -119,7 +132,13 @@
       "task.queueWithdrawn",
       "commandProgress.action",
       "text.writeOffer",
-      "commandOptions.picked"
+      "commandOptions.picked",
+      "recording.ask",
+      "recording.askStop",
+      "recording.askOpen",
+      "captureText.run",
+      "captureText.action",
+      "panelModal.open"
     ]
   },
   "anyOf": [
@@ -1094,9 +1113,42 @@
               "const": "screenshot.capture"
             },
             "params": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["purpose", "mode"],
+                  "properties": {
+                    "purpose": {
+                      "type": "string",
+                      "const": "capture"
+                    },
+                    "mode": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "screenshot"
+                        },
+                        {
+                          "type": "string",
+                          "const": "record"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["purpose"],
+                  "properties": {
+                    "purpose": {
+                      "type": "string",
+                      "const": "image"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "additionalProperties": false
@@ -1126,6 +1178,200 @@
                   "minLength": 1,
                   "maxLength": 128,
                   "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshotToolbar.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["commands", "textCommands"],
+              "properties": {
+                "commands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                },
+                "textCommands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.state"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind", "path"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
+                },
+                "path": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "saveLocation.pick"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1664,11 +1910,19 @@
                                 },
                                 {
                                   "type": "string",
+                                  "const": "card"
+                                },
+                                {
+                                  "type": "string",
                                   "const": "replaceSelection"
                                 },
                                 {
                                   "type": "string",
                                   "const": "insertAfterSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "annotate"
                                 },
                                 {
                                   "type": "string",
@@ -1688,11 +1942,19 @@
                                 },
                                 {
                                   "type": "string",
+                                  "const": "card"
+                                },
+                                {
+                                  "type": "string",
                                   "const": "replaceSelection"
                                 },
                                 {
                                   "type": "string",
                                   "const": "insertAfterSelection"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "annotate"
                                 },
                                 {
                                   "type": "string",
@@ -1763,7 +2025,6 @@
                         },
                         "answer": {
                           "type": "string",
-                          "minLength": 1,
                           "maxLength": 1000000
                         },
                         "note": {
@@ -1956,6 +2217,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "streaming": {
+                          "type": "boolean"
                         }
                       },
                       "additionalProperties": false
@@ -2201,11 +2465,19 @@
                               },
                               {
                                 "type": "string",
+                                "const": "card"
+                              },
+                              {
+                                "type": "string",
                                 "const": "replaceSelection"
                               },
                               {
                                 "type": "string",
                                 "const": "insertAfterSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "annotate"
                               },
                               {
                                 "type": "string",
@@ -2225,11 +2497,19 @@
                               },
                               {
                                 "type": "string",
+                                "const": "card"
+                              },
+                              {
+                                "type": "string",
                                 "const": "replaceSelection"
                               },
                               {
                                 "type": "string",
                                 "const": "insertAfterSelection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "annotate"
                               },
                               {
                                 "type": "string",
@@ -3032,6 +3312,633 @@
         },
         {
           "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "recording.answer"
+            },
+            "params": {
+              "type": "object",
+              "required": ["askId", "source", "state", "text"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    },
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    }
+                  ]
+                },
+                "state": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "thinking"
+                    },
+                    {
+                      "type": "string",
+                      "const": "streaming"
+                    },
+                    {
+                      "type": "string",
+                      "const": "done"
+                    },
+                    {
+                      "type": "string",
+                      "const": "stopped"
+                    },
+                    {
+                      "type": "string",
+                      "const": "failed"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "captureText.progress"
+            },
+            "params": {
+              "type": "object",
+              "required": ["runId", "state", "output", "text", "awaitsApply"],
+              "properties": {
+                "runId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "state": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "thinking"
+                    },
+                    {
+                      "type": "string",
+                      "const": "streaming"
+                    },
+                    {
+                      "type": "string",
+                      "const": "done"
+                    },
+                    {
+                      "type": "string",
+                      "const": "stopped"
+                    },
+                    {
+                      "type": "string",
+                      "const": "failed"
+                    }
+                  ]
+                },
+                "output": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "panel"
+                    },
+                    {
+                      "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
+                      "const": "replaceSelection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "insertAfterSelection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "annotate"
+                    },
+                    {
+                      "type": "string",
+                      "const": "insertAtCursor"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                },
+                "result": {
+                  "type": "object",
+                  "required": ["lead", "items"],
+                  "properties": {
+                    "lead": {
+                      "type": "string",
+                      "maxLength": 100000
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["tool", "text"],
+                        "properties": {
+                          "tool": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "replace"
+                              },
+                              {
+                                "type": "string",
+                                "const": "step"
+                              },
+                              {
+                                "type": "string",
+                                "const": "highlight"
+                              },
+                              {
+                                "type": "string",
+                                "const": "box"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ellipse"
+                              },
+                              {
+                                "type": "string",
+                                "const": "arrow"
+                              },
+                              {
+                                "type": "string",
+                                "const": "spotlight"
+                              },
+                              {
+                                "type": "string",
+                                "const": "mosaic"
+                              }
+                            ]
+                          },
+                          "paragraph": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
+                          },
+                          "phrase": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100000
+                          },
+                          "point": {
+                            "type": "object",
+                            "required": ["x", "y"],
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "coords": {
+                            "type": "object",
+                            "required": ["x1", "y1", "x2", "y2"],
+                            "properties": {
+                              "x1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "x2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "text": {
+                            "type": "string",
+                            "maxLength": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 4000
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "awaitsApply": {
+                  "type": "boolean"
+                },
+                "review": {
+                  "type": "object",
+                  "required": ["version", "count", "options", "adjustments"],
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100000
+                    },
+                    "changes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["kind", "text"],
+                        "properties": {
+                          "kind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "same"
+                              },
+                              {
+                                "type": "string",
+                                "const": "insert"
+                              },
+                              {
+                                "type": "string",
+                                "const": "delete"
+                              }
+                            ]
+                          },
+                          "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 4000
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 20
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 20
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["kind", "key", "label", "value", "options"],
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "choice"
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64,
+                                "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "value": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["value", "label"],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string",
+                                      "maxLength": 256
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "maxLength": 256
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "minItems": 1,
+                                "maxItems": 50
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": ["kind", "key", "label", "value"],
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "toggle"
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64,
+                                "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "value": {
+                                "type": "boolean"
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": ["kind", "key", "label"],
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "input"
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64,
+                                "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "maxItems": 20
+                    },
+                    "summary": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "adjustments": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "maxItems": 8
+                    },
+                    "pending": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "regenerate"
+                        },
+                        {
+                          "type": "string",
+                          "const": "adjust"
+                        },
+                        {
+                          "type": "string",
+                          "const": "options"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "draft": {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 1000000
+                    },
+                    "result": {
+                      "type": "object",
+                      "required": ["lead", "items"],
+                      "properties": {
+                        "lead": {
+                          "type": "string",
+                          "maxLength": 100000
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["tool", "text"],
+                            "properties": {
+                              "tool": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "const": "replace"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "step"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "highlight"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "box"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "ellipse"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "arrow"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "spotlight"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "mosaic"
+                                  }
+                                ]
+                              },
+                              "paragraph": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 16,
+                                "pattern": "^[a-zA-Z0-9_-]+$"
+                              },
+                              "phrase": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100000
+                              },
+                              "point": {
+                                "type": "object",
+                                "required": ["x", "y"],
+                                "properties": {
+                                  "x": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "coords": {
+                                "type": "object",
+                                "required": ["x1", "y1", "x2", "y2"],
+                                "properties": {
+                                  "x1": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y1": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "x2": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y2": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 100000
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "maxItems": 4000
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "panelModal.setAvailable"
+            },
+            "params": {
+              "type": "object",
+              "required": ["available"],
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["type", "method", "params"],
           "properties": {
             "type": {
@@ -3143,6 +4050,72 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "resultMarkdown.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["enabled"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshotPreferences.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+              "properties": {
+                "copyOnConfirm": {
+                  "type": "boolean"
+                },
+                "longScreenshotConfirmAction": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    },
+                    {
+                      "type": "string",
+                      "const": "save"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -3570,6 +4543,58 @@
             },
             "method": {
               "type": "string",
+              "const": "update.releaseNotesShown"
+            },
+            "params": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "update.dismissReleaseNotes"
+            },
+            "params": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
               "const": "task.shown"
             },
             "params": {
@@ -3903,11 +4928,19 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
                           "type": "string",
                           "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
                         },
                         {
                           "type": "string",
@@ -3977,7 +5010,21 @@
             },
             "payload": {
               "type": "object",
-              "properties": {},
+              "required": ["mode"],
+              "properties": {
+                "mode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    {
+                      "type": "string",
+                      "const": "record"
+                    }
+                  ]
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -4423,6 +5470,39 @@
                   "additionalProperties": false
                 }
               ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "update.releaseNotes"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -5007,11 +6087,19 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
                           "type": "string",
                           "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
                         },
                         {
                           "type": "string",
@@ -5114,11 +6202,19 @@
                             },
                             {
                               "type": "string",
+                              "const": "card"
+                            },
+                            {
+                              "type": "string",
                               "const": "replaceSelection"
                             },
                             {
                               "type": "string",
                               "const": "insertAfterSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "annotate"
                             },
                             {
                               "type": "string",
@@ -5235,11 +6331,19 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
                           "type": "string",
                           "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
                         },
                         {
                           "type": "string",
@@ -5274,6 +6378,658 @@
                   "additionalProperties": false
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.ask"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId", "source", "sourceId", "question", "files"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "recording"
+                    },
+                    {
+                      "type": "string",
+                      "const": "screenshot"
+                    }
+                  ]
+                },
+                "sourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100000
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "size", "type"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "type": {
+                        "type": "string",
+                        "maxLength": 100
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.askStop"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "recording.askOpen"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["askId"],
+              "properties": {
+                "askId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "captureText.run"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["runId", "surface", "scope", "paragraphs", "files"],
+              "properties": {
+                "runId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "surface": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "capture"
+                    },
+                    {
+                      "type": "string",
+                      "const": "longScreenshot"
+                    }
+                  ]
+                },
+                "commandId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100000
+                },
+                "arguments": {
+                  "type": "object",
+                  "required": ["choices", "toggles"],
+                  "properties": {
+                    "output": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
+                    "choices": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "string",
+                          "maxLength": 256
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "toggles": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "scope": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "picked"
+                    },
+                    {
+                      "type": "string",
+                      "const": "all"
+                    }
+                  ]
+                },
+                "paragraphs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "text"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 16,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100000
+                      },
+                      "bounds": {
+                        "type": "object",
+                        "required": ["x1", "y1", "x2", "y2"],
+                        "properties": {
+                          "x1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "x2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 4000
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "size", "type"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "type": {
+                        "type": "string",
+                        "maxLength": 100
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 4
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "captureText.action"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["runId", "action"],
+              "properties": {
+                "runId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "action": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "stop"
+                    },
+                    {
+                      "type": "string",
+                      "const": "open"
+                    },
+                    {
+                      "type": "string",
+                      "const": "regenerate"
+                    },
+                    {
+                      "type": "string",
+                      "const": "adjust"
+                    },
+                    {
+                      "type": "string",
+                      "const": "version"
+                    },
+                    {
+                      "type": "string",
+                      "const": "again"
+                    },
+                    {
+                      "type": "string",
+                      "const": "close"
+                    }
+                  ]
+                },
+                "adjust": {
+                  "type": "object",
+                  "required": ["text", "adjustments"],
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "adjustments": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "maxItems": 8
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "required": ["choices", "toggles"],
+                      "properties": {
+                        "output": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "panel"
+                            },
+                            {
+                              "type": "string",
+                              "const": "card"
+                            },
+                            {
+                              "type": "string",
+                              "const": "replaceSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAfterSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "annotate"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAtCursor"
+                            },
+                            {
+                              "type": "string",
+                              "const": "copy"
+                            }
+                          ]
+                        },
+                        "choices": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "string",
+                              "maxLength": 256
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "toggles": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "arguments": {
+                  "type": "object",
+                  "required": ["choices", "toggles"],
+                  "properties": {
+                    "output": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "panel"
+                        },
+                        {
+                          "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
+                          "const": "replaceSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
+                        },
+                        {
+                          "type": "string",
+                          "const": "insertAtCursor"
+                        },
+                        {
+                          "type": "string",
+                          "const": "copy"
+                        }
+                      ]
+                    },
+                    "choices": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "string",
+                          "maxLength": 256
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "toggles": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                },
+                "reading": {
+                  "type": "object",
+                  "required": ["scope", "paragraphs", "files"],
+                  "properties": {
+                    "scope": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "picked"
+                        },
+                        {
+                          "type": "string",
+                          "const": "all"
+                        }
+                      ]
+                    },
+                    "paragraphs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "text"],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
+                          },
+                          "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100000
+                          },
+                          "bounds": {
+                            "type": "object",
+                            "required": ["x1", "y1", "x2", "y2"],
+                            "properties": {
+                              "x1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "x2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 4000
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "name", "size", "type"],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "maxLength": 255
+                          },
+                          "size": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "type": {
+                            "type": "string",
+                            "maxLength": 100
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 4
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "panelModal.open"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -5477,11 +7233,19 @@
             },
             {
               "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
               "const": "replaceSelection"
             },
             {
               "type": "string",
               "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "annotate"
             },
             {
               "type": "string",
@@ -5523,11 +7287,19 @@
         },
         {
           "type": "string",
+          "const": "card"
+        },
+        {
+          "type": "string",
           "const": "replaceSelection"
         },
         {
           "type": "string",
           "const": "insertAfterSelection"
+        },
+        {
+          "type": "string",
+          "const": "annotate"
         },
         {
           "type": "string",
@@ -5551,11 +7323,19 @@
             },
             {
               "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
               "const": "replaceSelection"
             },
             {
               "type": "string",
               "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "annotate"
             },
             {
               "type": "string",
@@ -5575,11 +7355,19 @@
             },
             {
               "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
               "const": "replaceSelection"
             },
             {
               "type": "string",
               "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "annotate"
             },
             {
               "type": "string",
@@ -5593,6 +7381,123 @@
         },
         "selection": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureTextResult": {
+      "type": "object",
+      "required": ["lead", "items"],
+      "properties": {
+        "lead": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tool", "text"],
+            "properties": {
+              "tool": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "replace"
+                  },
+                  {
+                    "type": "string",
+                    "const": "step"
+                  },
+                  {
+                    "type": "string",
+                    "const": "highlight"
+                  },
+                  {
+                    "type": "string",
+                    "const": "box"
+                  },
+                  {
+                    "type": "string",
+                    "const": "ellipse"
+                  },
+                  {
+                    "type": "string",
+                    "const": "arrow"
+                  },
+                  {
+                    "type": "string",
+                    "const": "spotlight"
+                  },
+                  {
+                    "type": "string",
+                    "const": "mosaic"
+                  }
+                ]
+              },
+              "paragraph": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "phrase": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "point": {
+                "type": "object",
+                "required": ["x", "y"],
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "coords": {
+                "type": "object",
+                "required": ["x1", "y1", "x2", "y2"],
+                "properties": {
+                  "x1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "x2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 100000
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 4000
         }
       },
       "additionalProperties": false
@@ -6421,9 +8326,42 @@
       "additionalProperties": false
     },
     "ScreenshotCaptureParams": {
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["purpose", "mode"],
+          "properties": {
+            "purpose": {
+              "type": "string",
+              "const": "capture"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "screenshot"
+                },
+                {
+                  "type": "string",
+                  "const": "record"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["purpose"],
+          "properties": {
+            "purpose": {
+              "type": "string",
+              "const": "image"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ScreenshotCaptureResult": {
       "anyOf": [
@@ -6495,6 +8433,162 @@
             "capturedAt": {
               "type": "string",
               "maxLength": 64
+            },
+            "launch": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["kind", "id"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "command"
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "required": ["choices", "toggles"],
+                      "properties": {
+                        "output": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "panel"
+                            },
+                            {
+                              "type": "string",
+                              "const": "card"
+                            },
+                            {
+                              "type": "string",
+                              "const": "replaceSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAfterSelection"
+                            },
+                            {
+                              "type": "string",
+                              "const": "annotate"
+                            },
+                            {
+                              "type": "string",
+                              "const": "insertAtCursor"
+                            },
+                            {
+                              "type": "string",
+                              "const": "copy"
+                            }
+                          ]
+                        },
+                        "choices": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "string",
+                              "maxLength": 256
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "toggles": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "intent": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "run"
+                        },
+                        {
+                          "type": "string",
+                          "const": "choose"
+                        },
+                        {
+                          "type": "string",
+                          "const": "edit"
+                        }
+                      ]
+                    },
+                    "selection": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100000
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["kind", "question"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "ask"
+                    },
+                    "question": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100000
+                    },
+                    "selection": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100000
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "target": {
+              "type": "object",
+              "required": ["id", "app", "writable"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "app": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "writable": {
+                  "type": "boolean"
+                },
+                "selectionKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    {
+                      "type": "string",
+                      "const": "cells"
+                    },
+                    {
+                      "type": "string",
+                      "const": "unknown"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -6516,6 +8610,14 @@
                 {
                   "type": "string",
                   "const": "notPermitted"
+                },
+                {
+                  "type": "string",
+                  "const": "recording"
+                },
+                {
+                  "type": "string",
+                  "const": "longScreenshot"
                 }
               ]
             }
@@ -6635,6 +8737,264 @@
           "additionalProperties": false
         }
       ]
+    },
+    "ScreenshotToolbarSetParams": {
+      "type": "object",
+      "required": ["commands", "textCommands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        },
+        "textCommands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotToolbarSetResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SaveLocationStateParams": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationStateResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationSetParams": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationSetResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationPickParams": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "recording"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveLocationPickResult": {
+      "type": "object",
+      "required": ["current", "folders"],
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "name", "displayPath"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "displayPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
     },
     "ShareTextParams": {
       "type": "object",
@@ -7260,11 +9620,19 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
                           "type": "string",
                           "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
                         },
                         {
                           "type": "string",
@@ -7284,11 +9652,19 @@
                         },
                         {
                           "type": "string",
+                          "const": "card"
+                        },
+                        {
+                          "type": "string",
                           "const": "replaceSelection"
                         },
                         {
                           "type": "string",
                           "const": "insertAfterSelection"
+                        },
+                        {
+                          "type": "string",
+                          "const": "annotate"
                         },
                         {
                           "type": "string",
@@ -7359,7 +9735,6 @@
                 },
                 "answer": {
                   "type": "string",
-                  "minLength": 1,
                   "maxLength": 1000000
                 },
                 "note": {
@@ -7552,6 +9927,9 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "streaming": {
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -7812,11 +10190,19 @@
                       },
                       {
                         "type": "string",
+                        "const": "card"
+                      },
+                      {
+                        "type": "string",
                         "const": "replaceSelection"
                       },
                       {
                         "type": "string",
                         "const": "insertAfterSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "annotate"
                       },
                       {
                         "type": "string",
@@ -7836,11 +10222,19 @@
                       },
                       {
                         "type": "string",
+                        "const": "card"
+                      },
+                      {
+                        "type": "string",
                         "const": "replaceSelection"
                       },
                       {
                         "type": "string",
                         "const": "insertAfterSelection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "annotate"
                       },
                       {
                         "type": "string",
@@ -8803,6 +11197,591 @@
       "properties": {},
       "additionalProperties": false
     },
+    "RecordingAnswerParams": {
+      "type": "object",
+      "required": ["askId", "source", "state", "text"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "recording"
+            },
+            {
+              "type": "string",
+              "const": "screenshot"
+            }
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "thinking"
+            },
+            {
+              "type": "string",
+              "const": "streaming"
+            },
+            {
+              "type": "string",
+              "const": "done"
+            },
+            {
+              "type": "string",
+              "const": "stopped"
+            },
+            {
+              "type": "string",
+              "const": "failed"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAnswerResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "CaptureTextProgressParams": {
+      "type": "object",
+      "required": ["runId", "state", "output", "text", "awaitsApply"],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "thinking"
+            },
+            {
+              "type": "string",
+              "const": "streaming"
+            },
+            {
+              "type": "string",
+              "const": "done"
+            },
+            {
+              "type": "string",
+              "const": "stopped"
+            },
+            {
+              "type": "string",
+              "const": "failed"
+            }
+          ]
+        },
+        "output": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "panel"
+            },
+            {
+              "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
+              "const": "replaceSelection"
+            },
+            {
+              "type": "string",
+              "const": "insertAfterSelection"
+            },
+            {
+              "type": "string",
+              "const": "annotate"
+            },
+            {
+              "type": "string",
+              "const": "insertAtCursor"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1000000
+        },
+        "result": {
+          "type": "object",
+          "required": ["lead", "items"],
+          "properties": {
+            "lead": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["tool", "text"],
+                "properties": {
+                  "tool": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "replace"
+                      },
+                      {
+                        "type": "string",
+                        "const": "step"
+                      },
+                      {
+                        "type": "string",
+                        "const": "highlight"
+                      },
+                      {
+                        "type": "string",
+                        "const": "box"
+                      },
+                      {
+                        "type": "string",
+                        "const": "ellipse"
+                      },
+                      {
+                        "type": "string",
+                        "const": "arrow"
+                      },
+                      {
+                        "type": "string",
+                        "const": "spotlight"
+                      },
+                      {
+                        "type": "string",
+                        "const": "mosaic"
+                      }
+                    ]
+                  },
+                  "paragraph": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "phrase": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100000
+                  },
+                  "point": {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "properties": {
+                      "x": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "coords": {
+                    "type": "object",
+                    "required": ["x1", "y1", "x2", "y2"],
+                    "properties": {
+                      "x1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "x2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 100000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 4000
+            }
+          },
+          "additionalProperties": false
+        },
+        "awaitsApply": {
+          "type": "boolean"
+        },
+        "review": {
+          "type": "object",
+          "required": ["version", "count", "options", "adjustments"],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000
+            },
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["kind", "text"],
+                "properties": {
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "same"
+                      },
+                      {
+                        "type": "string",
+                        "const": "insert"
+                      },
+                      {
+                        "type": "string",
+                        "const": "delete"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 4000
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": ["kind", "key", "label", "value", "options"],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "value": {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["value", "label"],
+                          "properties": {
+                            "value": {
+                              "type": "string",
+                              "maxLength": 256
+                            },
+                            "label": {
+                              "type": "string",
+                              "maxLength": 256
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "minItems": 1,
+                        "maxItems": 50
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "key", "label", "value"],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "toggle"
+                      },
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "value": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "key", "label"],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "input"
+                      },
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "maxItems": 20
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "adjustments": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "maxItems": 8
+            },
+            "pending": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "regenerate"
+                },
+                {
+                  "type": "string",
+                  "const": "adjust"
+                },
+                {
+                  "type": "string",
+                  "const": "options"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "draft": {
+          "type": "object",
+          "required": ["text"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1000000
+            },
+            "result": {
+              "type": "object",
+              "required": ["lead", "items"],
+              "properties": {
+                "lead": {
+                  "type": "string",
+                  "maxLength": 100000
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["tool", "text"],
+                    "properties": {
+                      "tool": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "replace"
+                          },
+                          {
+                            "type": "string",
+                            "const": "step"
+                          },
+                          {
+                            "type": "string",
+                            "const": "highlight"
+                          },
+                          {
+                            "type": "string",
+                            "const": "box"
+                          },
+                          {
+                            "type": "string",
+                            "const": "ellipse"
+                          },
+                          {
+                            "type": "string",
+                            "const": "arrow"
+                          },
+                          {
+                            "type": "string",
+                            "const": "spotlight"
+                          },
+                          {
+                            "type": "string",
+                            "const": "mosaic"
+                          }
+                        ]
+                      },
+                      "paragraph": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 16,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "phrase": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100000
+                      },
+                      "point": {
+                        "type": "object",
+                        "required": ["x", "y"],
+                        "properties": {
+                          "x": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "coords": {
+                        "type": "object",
+                        "required": ["x1", "y1", "x2", "y2"],
+                        "properties": {
+                          "x1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "x2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 100000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 4000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureTextProgressResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "PanelModalSetAvailableParams": {
+      "type": "object",
+      "required": ["available"],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PanelModalSetAvailableResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "BridgeReadyPost": {
       "type": "object",
       "properties": {},
@@ -8859,6 +11838,42 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResultMarkdownSetPost": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotPreferencesSetPost": {
+      "type": "object",
+      "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+      "properties": {
+        "copyOnConfirm": {
+          "type": "boolean"
+        },
+        "longScreenshotConfirmAction": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            },
+            {
+              "type": "string",
+              "const": "save"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -9131,6 +12146,28 @@
       "properties": {},
       "additionalProperties": false
     },
+    "UpdateReleaseNotesShownPost": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateDismissReleaseNotesPost": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
     "TaskShownPost": {
       "type": "object",
       "required": ["taskId"],
@@ -9318,11 +12355,19 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
                   "type": "string",
                   "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "annotate"
                 },
                 {
                   "type": "string",
@@ -9377,7 +12422,21 @@
     },
     "ShortcutScreenshotEvent": {
       "type": "object",
-      "properties": {},
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "screenshot"
+            },
+            {
+              "type": "string",
+              "const": "record"
+            }
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "ResourcesImportedEvent": {
@@ -9673,6 +12732,24 @@
           "additionalProperties": false
         }
       ]
+    },
+    "UpdateReleaseNotesEvent": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ComputerStateEvent": {
       "type": "object",
@@ -10137,11 +13214,19 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
                   "type": "string",
                   "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "annotate"
                 },
                 {
                   "type": "string",
@@ -10244,11 +13329,19 @@
                     },
                     {
                       "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
                       "const": "replaceSelection"
                     },
                     {
                       "type": "string",
                       "const": "insertAfterSelection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "annotate"
                     },
                     {
                       "type": "string",
@@ -10335,11 +13428,19 @@
                 },
                 {
                   "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
                   "const": "replaceSelection"
                 },
                 {
                   "type": "string",
                   "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "annotate"
                 },
                 {
                   "type": "string",
@@ -10374,6 +13475,568 @@
           "additionalProperties": false
         }
       },
+      "additionalProperties": false
+    },
+    "RecordingAskEvent": {
+      "type": "object",
+      "required": ["askId", "source", "sourceId", "question", "files"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "recording"
+            },
+            {
+              "type": "string",
+              "const": "screenshot"
+            }
+          ]
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100000
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size", "type"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAskStopEvent": {
+      "type": "object",
+      "required": ["askId"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecordingAskOpenEvent": {
+      "type": "object",
+      "required": ["askId"],
+      "properties": {
+        "askId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureTextRunEvent": {
+      "type": "object",
+      "required": ["runId", "surface", "scope", "paragraphs", "files"],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "surface": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "capture"
+            },
+            {
+              "type": "string",
+              "const": "longScreenshot"
+            }
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100000
+        },
+        "arguments": {
+          "type": "object",
+          "required": ["choices", "toggles"],
+          "properties": {
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "panel"
+                },
+                {
+                  "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
+                  "const": "replaceSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "annotate"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAtCursor"
+                },
+                {
+                  "type": "string",
+                  "const": "copy"
+                }
+              ]
+            },
+            "choices": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "additionalProperties": false
+            },
+            "toggles": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "picked"
+            },
+            {
+              "type": "string",
+              "const": "all"
+            }
+          ]
+        },
+        "paragraphs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "text"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "bounds": {
+                "type": "object",
+                "required": ["x1", "y1", "x2", "y2"],
+                "properties": {
+                  "x1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "x2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 4000
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size", "type"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureTextActionEvent": {
+      "type": "object",
+      "required": ["runId", "action"],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "stop"
+            },
+            {
+              "type": "string",
+              "const": "open"
+            },
+            {
+              "type": "string",
+              "const": "regenerate"
+            },
+            {
+              "type": "string",
+              "const": "adjust"
+            },
+            {
+              "type": "string",
+              "const": "version"
+            },
+            {
+              "type": "string",
+              "const": "again"
+            },
+            {
+              "type": "string",
+              "const": "close"
+            }
+          ]
+        },
+        "adjust": {
+          "type": "object",
+          "required": ["text", "adjustments"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "adjustments": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "maxItems": 8
+            },
+            "arguments": {
+              "type": "object",
+              "required": ["choices", "toggles"],
+              "properties": {
+                "output": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "panel"
+                    },
+                    {
+                      "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
+                      "const": "replaceSelection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "insertAfterSelection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "annotate"
+                    },
+                    {
+                      "type": "string",
+                      "const": "insertAtCursor"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    }
+                  ]
+                },
+                "choices": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                      "type": "string",
+                      "maxLength": 256
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "toggles": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "arguments": {
+          "type": "object",
+          "required": ["choices", "toggles"],
+          "properties": {
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "panel"
+                },
+                {
+                  "type": "string",
+                  "const": "card"
+                },
+                {
+                  "type": "string",
+                  "const": "replaceSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAfterSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "annotate"
+                },
+                {
+                  "type": "string",
+                  "const": "insertAtCursor"
+                },
+                {
+                  "type": "string",
+                  "const": "copy"
+                }
+              ]
+            },
+            "choices": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "additionalProperties": false
+            },
+            "toggles": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]{0,63}$": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "reading": {
+          "type": "object",
+          "required": ["scope", "paragraphs", "files"],
+          "properties": {
+            "scope": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "picked"
+                },
+                {
+                  "type": "string",
+                  "const": "all"
+                }
+              ]
+            },
+            "paragraphs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "text"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100000
+                  },
+                  "bounds": {
+                    "type": "object",
+                    "required": ["x1", "y1", "x2", "y2"],
+                    "properties": {
+                      "x1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "x2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 4000
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "name", "size", "type"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "type": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 4
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "PanelModalOpenEvent": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     }
   }

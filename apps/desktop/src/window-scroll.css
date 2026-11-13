@@ -1,0 +1,45 @@
+/* Secondary windows use the native result card's fade and its high-contrast fallback. */
+:root[data-window]:not([data-window='panel']) {
+  --secondary-scroll-fade: 16px;
+  --secondary-scroll-separator-opacity: 0;
+}
+
+:root[data-window]:not([data-window='panel']) .scroll-shadowed {
+  --scroll-shadow-size: var(--secondary-scroll-fade);
+}
+
+:root[data-window]:not([data-window='panel'])
+  [data-slot='scroll-area']:has(> .scroll-shadowed[data-top-scroll='true'])::before,
+:root[data-window]:not([data-window='panel'])
+  [data-slot='scroll-area']:has(> .scroll-shadowed[data-bottom-scroll='true'])::after {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: var(--border);
+  opacity: var(--secondary-scroll-separator-opacity);
+}
+
+:root[data-window]:not([data-window='panel'])
+  [data-slot='scroll-area']:has(> .scroll-shadowed[data-top-scroll='true'])::before {
+  top: 0;
+}
+
+:root[data-window]:not([data-window='panel'])
+  [data-slot='scroll-area']:has(> .scroll-shadowed[data-bottom-scroll='true'])::after {
+  bottom: 0;
+}
+
+:root[data-window]:not([data-window='panel'])[data-reduced-transparency='true'] {
+  --secondary-scroll-fade: 0px;
+  --secondary-scroll-separator-opacity: 1;
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-window]:not([data-window='panel']) {
+    --secondary-scroll-fade: 0px;
+    --secondary-scroll-separator-opacity: 1;
+  }
+}

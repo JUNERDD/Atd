@@ -4,6 +4,7 @@ import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
 import { NextStepClickSchema } from './next-steps.js';
 import { PanelBackgroundSchema } from './panel-background.js';
+import { LongScreenshotConfirmActionSchema } from './screenshot-preferences.js';
 import { ModelSelectionSchema } from './task.js';
 import { ViewInitiativeSchema } from './views.js';
 
@@ -33,6 +34,8 @@ export function resolveLanguage(locale: string): AppLanguage {
 }
 
 const AcceleratorSchema = Type.String({ minLength: 1, maxLength: 100 });
+/** An action an upgrade added (`ADDED_SHORTCUT_ACTIONS`), which may have no keys (''). */
+const AddedAcceleratorSchema = Type.Union([AcceleratorSchema, Type.Literal('')]);
 
 /**
  * Application shortcut bindings. The accelerator grammar lives in `shortcuts.ts`; clients validate
@@ -42,6 +45,7 @@ export const ShortcutBindingsSchema = Type.Object(
   {
     togglePanel: AcceleratorSchema,
     captureScreenshot: AcceleratorSchema,
+    recordScreen: AddedAcceleratorSchema,
     newConversation: AcceleratorSchema,
     openSettings: AcceleratorSchema,
     sendMessage: AcceleratorSchema,
@@ -180,6 +184,9 @@ export const DEFAULT_SUMMARY_TITLES = true;
 /** Show the app's decorative glows and shimmering running text until the user turns them off. */
 export const DEFAULT_GLOW_EFFECTS = true;
 
+/** Render Markdown in the floating result cards until the user turns it off. */
+export const DEFAULT_RESULT_MARKDOWN = true;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `appearance: null` follows the system's light or dark scheme; `shortcuts: null`
@@ -194,6 +201,12 @@ export const UserSettingsSchema = Type.Object(
      * HUD's and mini panel's working light) and shimmers running text (`DEFAULT_GLOW_EFFECTS`).
      */
     glowEffects: Type.Boolean(),
+    /**
+     * Whether the floating result cards (the command island's answer and review cards, and the
+     * capture, recording and long screenshot results) render their text as Markdown rather than
+     * plain text (`DEFAULT_RESULT_MARKDOWN`).
+     */
+    resultMarkdown: Type.Boolean(),
     /** The panel's and floating surfaces' fill and glass (`DEFAULT_PANEL_BACKGROUND`). */
     panelBackground: PanelBackgroundSchema,
     /** Summarize lengthy or structured initial requests; short plain requests keep direct titles. */
@@ -206,6 +219,10 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
+    /** Copy screenshot to clipboard when confirming to composer (`DEFAULT_SCREENSHOT_COPY_ON_CONFIRM`). */
+    screenshotCopyOnConfirm: Type.Boolean(),
+    /** Done action in long screenshot (`DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION`). */
+    longScreenshotConfirmAction: LongScreenshotConfirmActionSchema,
     /**
      * Whether write-back command answers are typed into other apps rather than pasted at once
      * (`DEFAULT_COMMAND_TYPING`).
@@ -252,6 +269,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     language: Type.Optional(Type.Union([AppLanguageSchema, Type.Null()])),
     appearance: Type.Optional(Type.Union([AppAppearanceSchema, Type.Null()])),
     glowEffects: Type.Optional(Type.Boolean()),
+    resultMarkdown: Type.Optional(Type.Boolean()),
     panelBackground: Type.Optional(PanelBackgroundSchema),
     summaryTitles: Type.Optional(Type.Boolean()),
     computerVisionModel: Type.Optional(Type.Union([ModelSelectionSchema, Type.Null()])),
@@ -259,6 +277,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    screenshotCopyOnConfirm: Type.Optional(Type.Boolean()),
+    longScreenshotConfirmAction: Type.Optional(LongScreenshotConfirmActionSchema),
     commandTyping: Type.Optional(Type.Boolean()),
     commandTypingAnimation: Type.Optional(Type.Boolean()),
     viewInitiative: Type.Optional(ViewInitiativeSchema),

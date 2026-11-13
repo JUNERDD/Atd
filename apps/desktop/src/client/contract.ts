@@ -11,9 +11,18 @@ import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
 import type { ComputerBridge } from './computer-contract';
 import type { Screenshot } from './agent/screenshot-input';
+import type { CaptureBridge } from './capture-bridge';
 import type { FileRef } from './agent/task-schema';
 import type { NotificationsBridge } from './notifications-contract';
+import type {
+  SaveLocationBridge,
+  SaveLocationFolder,
+  SaveLocationKind,
+  SaveLocationState,
+} from './save-location-contract';
 import type { MiniPanelOpenOn, PanelPlacement, SettingsBridge } from './settings-contract';
+
+export type { SaveLocationBridge, SaveLocationFolder, SaveLocationKind, SaveLocationState };
 import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
@@ -120,6 +129,12 @@ export interface UpdateBridge {
   show(): void;
   /** The update's state on every change and once on subscribe; returns the unsubscribe. */
   onState(listener: (state: AppUpdateState) => void): () => void;
+  /** The installed version's pending release-note reminder, replayed on subscribe; null when hidden. */
+  onReleaseNotes(listener: (version: string | null) => void): () => void;
+  /** Starts the reminder's lifetime after the header actually renders it in the visible panel. */
+  releaseNotesShown(version: string): void;
+  /** Hides that installed version's reminder after an explicit dismissal or successful link opening. */
+  dismissReleaseNotes(version: string): void;
 }
 
 /** The running app as the settings window's About page shows it. */
@@ -137,6 +152,8 @@ export interface AboutBridge {
   info(): Promise<AppAbout>;
   /** Checks for updates with the shell's own progress and result windows. */
   checkForUpdates(): void;
+  /** A successful release-note open from any window dismisses the installed version's reminder. */
+  dismissReleaseNotes(version: string): void;
 }
 
 /**
@@ -188,6 +205,8 @@ export interface DesktopBridge {
   readonly computer?: ComputerBridge;
   /** The shell's task notifications and their settings; absent in tests that need none. */
   readonly notifications?: NotificationsBridge;
+  /** The shell's save-location preferences and folder picker; absent in tests that need none. */
+  readonly saveLocation?: SaveLocationBridge;
   /** Generative views' windows; absent in tests that need none. */
   readonly views?: ViewsBridge;
   show: () => Promise<void>;
@@ -223,11 +242,11 @@ export interface DesktopBridge {
    * preparing a command uses); null when the user cancelled. Rejects with an English message when
    * Screen Recording is not permitted or the import fails.
    */
-  screenshot: () => Promise<Screenshot | null>;
+  captureScreenshotInput: () => Promise<Screenshot | null>;
   /**
    * Reopens an image attachment (`resourceId`) on the capture overlay for more annotation and
    * cropping and imports the result as a new resource (`context` is always null); null when the
-   * user cancelled, which leaves the attachment as it was. Rejects like `screenshot`.
+   * user cancelled, which leaves the attachment as it was. Rejects like `captureScreenshotInput`.
    */
   editScreenshot: (resourceId: string) => Promise<Screenshot | null>;
   /** A stored resource's bytes through the relay (`GET /v1/resources/:id`), typed by its mime. */
@@ -246,10 +265,10 @@ export interface DesktopBridge {
    */
   onEditCommand?: (listener: (command: EditCommand) => void) => () => void;
   /**
-   * The global screenshot shortcut, which the shell hands to the panel page only (absent in the
-   * settings window and in tests); returns the unsubscribe. The page takes the screenshot itself.
+   * The composer's capture toolbar, global capture shortcuts and recording questions, available
+   * on the panel page only (absent in the settings window and in tests).
    */
-  onScreenshotShortcut?: (listener: () => void) => () => void;
+  readonly capture?: CaptureBridge;
   /**
    * The mini panel's New task, which the shell hands to the panel page only, without showing the
    * panel (absent in the settings window and in tests); returns the unsubscribe. The page starts a
@@ -271,6 +290,10 @@ export interface DesktopBridge {
   onTaskOpen?: (listener: (taskId: string) => void) => () => void;
   /** Native Stop's withdrawn messages; panel only, held until its draft owner subscribes. */
   onTaskQueueWithdrawn?: (listener: (event: TaskQueueWithdrawn) => void) => () => void;
+  /** Controls whether the generic panel modal menu item appears in the macOS menus; panel only. */
+  setPanelModalsAvailable?: (available: boolean) => Promise<void>;
+  /** Fires when the user triggers the generic panel modal menu item; held until subscribed. */
+  onPanelModalOpen?: (listener: () => void) => () => void;
   /** The welcome guide window's own controls; present only in that window. */
   readonly onboarding?: OnboardingBridge;
 }

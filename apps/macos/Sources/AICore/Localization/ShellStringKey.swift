@@ -4,6 +4,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case appName = "app.name"
   case windowPanelTitle = "window.panel.title"
   case windowSettingsTitle = "window.settings.title"
+  case windowSettingsLoading = "window.settings.loading"
   case windowOnboardingTitle = "window.onboarding.title"
 
   case menuShowPanel = "menu.showPanel"
@@ -11,6 +12,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case menuShowMiniPanel = "menu.showMiniPanel"
   case menuSettings = "menu.settings"
   case menuOnboarding = "menu.onboarding"
+  case menuPanelModals = "menu.panelModals"
   case menuSelectionListening = "menu.selectionListening"
   case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"
@@ -184,6 +186,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   /// `%@` the destination's name.
   case commandOptionsOutputSaved = "commandOptions.output.saved"
   case commandOptionsOutputPanel = "commandOptions.output.panel"
+  case commandOptionsOutputCard = "commandOptions.output.card"
   case commandOptionsOutputReplaceSelection = "commandOptions.output.replaceSelection"
   case commandOptionsOutputInsertAfterSelection = "commandOptions.output.insertAfterSelection"
   case commandOptionsOutputInsertAtCursor = "commandOptions.output.insertAtCursor"

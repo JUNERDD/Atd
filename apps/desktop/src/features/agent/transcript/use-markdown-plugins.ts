@@ -18,7 +18,7 @@ export function useMarkdownPlugins(text: string) {
   // The engine chunk loads only for turns that actually contain a mermaid fence; until it
   // resolves the fence renders as a code block, and a failed load keeps that degrade path.
   useEffect(() => {
-    if (!hasMermaidFence(text)) return;
+    if (mermaid || !hasMermaidFence(text)) return;
     let live = true;
     void loadMermaidPlugin().then((plugin) => {
       if (live) setMermaid(plugin);
@@ -26,7 +26,7 @@ export function useMarkdownPlugins(text: string) {
     return () => {
       live = false;
     };
-  }, [text]);
+  }, [mermaid, text]);
 
   useEffect(() => {
     if (math || !hasMathDelimiter(text)) return;

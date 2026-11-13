@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { isCaptureSnapshot } from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../../client/agent/task-schema';
 import { daysAgo, historySections, type HistoryPeriod } from './history-sections';
 
@@ -15,6 +16,7 @@ export const HistoryViewSchema = Type.Object(
     group: Type.Enum(HISTORY_GROUPS),
     sort: Type.Enum(HISTORY_SORTS),
     showCommandTasksInAll: Type.Optional(Type.Boolean()),
+    showCaptureTasksInAll: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -24,6 +26,7 @@ export const DEFAULT_HISTORY_VIEW: HistoryView = {
   group: 'date',
   sort: 'updated',
   showCommandTasksInAll: false,
+  showCaptureTasksInAll: false,
 };
 
 /**
@@ -79,8 +82,8 @@ export function modelNameOf(task: AgentTask): string | null {
 }
 
 /**
- * All follows the view's command visibility preference; the other tabs independently select
- * pinned, active, failed, command-started, or automated tasks.
+ * All follows the view's command and capture visibility preferences; the other tabs independently
+ * select pinned, active, failed, command-started, capture-started, or automated tasks.
  */
 export const HISTORY_FILTERS = [
   'all',
@@ -88,6 +91,7 @@ export const HISTORY_FILTERS = [
   'active',
   'failed',
   'commands',
+  'captures',
   'automated',
 ] as const;
 export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
@@ -98,14 +102,25 @@ export function isCommandTask(task: AgentTask): boolean {
   return snapshot !== undefined && (snapshot.fromCommand === true || snapshot.command !== null);
 }
 
+/** Follow-up messages do not change a task's original capture category. */
+export function isCaptureTask(task: AgentTask): boolean {
+  const snapshot = task.runs[0]?.snapshot;
+  return snapshot !== undefined && isCaptureSnapshot(snapshot);
+}
+
 export function matchesFilter(
   task: AgentTask,
   filter: HistoryFilter,
   showCommandTasksInAll = false,
+  showCaptureTasksInAll = false,
 ): boolean {
   switch (filter) {
-    case 'all':
-      return showCommandTasksInAll || !isCommandTask(task);
+    case 'all': {
+      const command = isCommandTask(task);
+      const capture = isCaptureTask(task);
+      if (!command && !capture) return true;
+      return (command && showCommandTasksInAll) || (capture && showCaptureTasksInAll);
+    }
     case 'pinned':
       return task.pinned === true;
     case 'active': {
@@ -116,6 +131,8 @@ export function matchesFilter(
       return statusGroupOf(task) === 'failed';
     case 'commands':
       return isCommandTask(task);
+    case 'captures':
+      return isCaptureTask(task);
     case 'automated':
       return originGroupOf(task) !== 'personal';
   }
@@ -153,15 +170,39 @@ function timeOf(date: Date): number {
   return date.getTime() || 0;
 }
 
+const MAX_LOCALE_CACHE = 16;
+const collators = new Map<string, Intl.Collator>();
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+function collatorFor(language: string): Intl.Collator {
+  let collator = collators.get(language);
+  if (!collator) {
+    collator = new Intl.Collator(language, { numeric: true, sensitivity: 'base' });
+    if (collators.size >= MAX_LOCALE_CACHE) collators.clear();
+    collators.set(language, collator);
+  }
+  return collator;
+}
+
+function yesterdayLabel(language: string): string {
+  let format = relativeFormats.get(language);
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+    if (relativeFormats.size >= MAX_LOCALE_CACHE) relativeFormats.clear();
+    relativeFormats.set(language, format);
+  }
+  return format.format(-1, 'day');
+}
+
 /** `items` in the view's order. Rows that compare equal keep their incoming order. */
 export function sortHistory<T extends { task: AgentTask }>(
   items: readonly T[],
   sort: HistorySort,
   language: string,
 ): T[] {
-  const collator = new Intl.Collator(language, { numeric: true, sensitivity: 'base' });
+  const collator = sort === 'title' ? collatorFor(language) : null;
   return [...items].sort((a, b) =>
-    sort === 'title'
+    collator
       ? collator.compare(a.task.title, b.task.title)
       : timeOf(dateOfTask(b.task, sort)) - timeOf(dateOfTask(a.task, sort)),
   );
@@ -259,8 +300,7 @@ export function rowDate(date: Date, now: Date, language: string, dayHeading: boo
   if (days <= 0) return time;
   if (days === 1) {
     if (dayHeading) return time;
-    const yesterday = new Intl.RelativeTimeFormat(language, { numeric: 'auto' }).format(-1, 'day');
-    return `${yesterday} ${time}`;
+    return `${yesterdayLabel(language)} ${time}`;
   }
   if (days < 7) return date.toLocaleDateString(language, { weekday: 'long' });
   return date.toLocaleDateString(language, {

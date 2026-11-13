@@ -68,6 +68,14 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .screenshotCapture(container.value(.params, ScreenshotCaptureParams.self))
       case "screenshot.edit":
         call = try .screenshotEdit(container.value(.params, ScreenshotEditParams.self))
+      case "screenshotToolbar.set":
+        call = try .screenshotToolbarSet(container.value(.params, ScreenshotToolbarSetParams.self))
+      case "saveLocation.state":
+        call = try .saveLocationState(container.value(.params, SaveLocationStateParams.self))
+      case "saveLocation.set":
+        call = try .saveLocationSet(container.value(.params, SaveLocationSetParams.self))
+      case "saveLocation.pick":
+        call = try .saveLocationPick(container.value(.params, SaveLocationPickParams.self))
       case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
       case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
       case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))
@@ -135,6 +143,13 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
       case "shortcuts.recording":
         call = try .shortcutsRecording(container.value(.params, ShortcutsRecordingParams.self))
+      case "recording.answer":
+        call = try .recordingAnswer(container.value(.params, RecordingAnswerParams.self))
+      case "captureText.progress":
+        call = try .captureTextProgress(container.value(.params, CaptureTextProgressParams.self))
+      case "panelModal.setAvailable":
+        call = try .panelModalSetAvailable(
+          container.value(.params, PanelModalSetAvailableParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -151,6 +166,11 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         post = try .appearanceSet(container.value(.params, AppearanceSetPost.self))
       case "glowEffects.set":
         post = try .glowEffectsSet(container.value(.params, GlowEffectsSetPost.self))
+      case "resultMarkdown.set":
+        post = try .resultMarkdownSet(container.value(.params, ResultMarkdownSetPost.self))
+      case "screenshotPreferences.set":
+        post = try .screenshotPreferencesSet(
+          container.value(.params, ScreenshotPreferencesSetPost.self))
       case "panelBackground.set":
         post = try .panelBackgroundSet(container.value(.params, PanelBackgroundSetPost.self))
       case "typing.set": post = try .typingSet(container.value(.params, TypingSetPost.self))
@@ -165,6 +185,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "update.check": post = try .updateCheck(container.value(.params, UpdateCheckPost.self))
       case "update.install":
         post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
+      case "update.releaseNotesShown":
+        post = try .updateReleaseNotesShown(
+          container.value(.params, UpdateReleaseNotesShownPost.self))
+      case "update.dismissReleaseNotes":
+        post = try .updateDismissReleaseNotes(
+          container.value(.params, UpdateDismissReleaseNotesPost.self))
       case "task.shown": post = try .taskShown(container.value(.params, TaskShownPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
       case "userApp.pinDrag":
@@ -216,6 +242,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityTrust(AccessibilityTrustEvent)
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
+  case updateReleaseNotes(UpdateReleaseNotesEvent)
   case computerState(ComputerStateEvent)
   case shortcutsChanged(ShortcutsChangedEvent)
   case socketFrames(SocketFramesEvent)
@@ -226,6 +253,12 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case commandProgressAction(CommandProgressActionEvent)
   case textWriteOffer(TextWriteOfferEvent)
   case commandOptionsPicked(CommandOptionsPickedEvent)
+  case recordingAsk(RecordingAskEvent)
+  case recordingAskStop(RecordingAskStopEvent)
+  case recordingAskOpen(RecordingAskOpenEvent)
+  case captureTextRun(CaptureTextRunEvent)
+  case captureTextAction(CaptureTextActionEvent)
+  case panelModalOpen(PanelModalOpenEvent)
 
   /// The contract name.
   public var name: String {
@@ -246,6 +279,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust: "accessibility.trust"
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
+    case .updateReleaseNotes: "update.releaseNotes"
     case .computerState: "computer.state"
     case .shortcutsChanged: "shortcuts.changed"
     case .socketFrames: "socket.frames"
@@ -256,6 +290,12 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .commandProgressAction: "commandProgress.action"
     case .textWriteOffer: "text.writeOffer"
     case .commandOptionsPicked: "commandOptions.picked"
+    case .recordingAsk: "recording.ask"
+    case .recordingAskStop: "recording.askStop"
+    case .recordingAskOpen: "recording.askOpen"
+    case .captureTextRun: "captureText.run"
+    case .captureTextAction: "captureText.action"
+    case .panelModalOpen: "panelModal.open"
     }
   }
 
@@ -277,6 +317,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
+    case .updateReleaseNotes(let payload): try payload.encode(to: encoder)
     case .computerState(let payload): try payload.encode(to: encoder)
     case .shortcutsChanged(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
@@ -287,6 +328,12 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .commandProgressAction(let payload): try payload.encode(to: encoder)
     case .textWriteOffer(let payload): try payload.encode(to: encoder)
     case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
+    case .recordingAsk(let payload): try payload.encode(to: encoder)
+    case .recordingAskStop(let payload): try payload.encode(to: encoder)
+    case .recordingAskOpen(let payload): try payload.encode(to: encoder)
+    case .captureTextRun(let payload): try payload.encode(to: encoder)
+    case .captureTextAction(let payload): try payload.encode(to: encoder)
+    case .panelModalOpen(let payload): try payload.encode(to: encoder)
     }
   }
 }

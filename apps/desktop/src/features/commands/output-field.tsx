@@ -18,8 +18,10 @@ import { FOLLOW, FollowItem } from './follow-item';
 /**
  * Where a run's answer goes, as a labelled Select of the actions this input can serve: the ones
  * on the selection (`actsOnSelection`) need a command that reads it, so they are left out until
- * it does. With `follow`, the first item (labelled by it) leaves the result to the command and
- * reports `undefined`, as a shortcut that does not override it.
+ * it does. Marking the selection (`annotate`) is left out where `offerAnnotate` is false: a
+ * shortcut's runs never read text in a screenshot, the only text it marks. With `follow`, the
+ * first item (labelled by it) leaves the result to the command and reports `undefined`, as a
+ * shortcut that does not override it.
  */
 export function OutputField({
   id,
@@ -28,6 +30,7 @@ export function OutputField({
   onChange,
   follow,
   describedBy,
+  offerAnnotate = true,
 }: {
   id: string;
   input: CommandDefinition['input'];
@@ -36,11 +39,16 @@ export function OutputField({
   follow?: string;
   /** Notes about the chosen result, for the trigger's `aria-describedby`. */
   describedBy?: string | undefined;
+  /** Whether `annotate` is offered; it still shows while it is `value`. */
+  offerAnnotate?: boolean;
 }) {
   const { t } = useTranslation('commands');
-  const groups = OUTPUT_ACTION_GROUPS.map((group) =>
-    group.filter((candidate) => readsSelection(input) || !actsOnSelection(candidate)),
-  ).filter((group) => group.length > 0);
+  const offered = (candidate: CommandOutputAction) =>
+    (readsSelection(input) || !actsOnSelection(candidate)) &&
+    (candidate !== 'annotate' || offerAnnotate || value === candidate);
+  const groups = OUTPUT_ACTION_GROUPS.map((group) => group.filter(offered)).filter(
+    (group) => group.length > 0,
+  );
   return (
     <div className="settings-field">
       <Label htmlFor={id}>{t('output.title')}</Label>

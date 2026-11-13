@@ -4,6 +4,53 @@
 
 import Foundation
 
+/// Params of the `window.dragRegions` post.
+public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
+  public let rects: [Rect]
+
+  public init(rects: [Rect]) {
+    self.rects = rects
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rects = try container.array(.rects, of: Rect.self, maxItems: 64)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rects
+  }
+
+  public struct Rect: Codable, Equatable, Sendable {
+    public let x: Double
+    public let y: Double
+    public let width: Double
+    public let height: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      x = try container.number(.x)
+      y = try container.number(.y)
+      width = try container.number(.width)
+      height = try container.number(.height)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case x
+      case y
+      case width
+      case height
+    }
+  }
+}
+
 /// Params of the `onboarding.surface` post.
 public struct OnboardingSurfacePost: Codable, Equatable, Sendable {
   public let rect: Rect?
@@ -177,53 +224,38 @@ public typealias UpdateCheckPost = NativeEmpty
 /// Params of the `update.install` post.
 public typealias UpdateInstallPost = NativeEmpty
 
-/// Params of the `task.shown` post.
-public struct TaskShownPost: Codable, Equatable, Sendable {
-  public let taskId: String?
+/// Params of the `update.releaseNotesShown` post.
+public struct UpdateReleaseNotesShownPost: Codable, Equatable, Sendable {
+  public let version: String
 
-  public init(taskId: String?) {
-    self.taskId = taskId
+  public init(version: String) {
+    self.version = version
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    taskId = try container.nullable(.taskId) {
-      try container.string($0, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(taskId, forKey: .taskId)
+    version = try container.string(.version, maxLength: 64)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case taskId
+    case version
   }
 }
 
-/// Params of the `socket.close` post.
-public struct SocketClosePost: Codable, Equatable, Sendable {
-  public let socketId: String
-  public let code: Int
-  public let reason: String
+/// Params of the `update.dismissReleaseNotes` post.
+public struct UpdateDismissReleaseNotesPost: Codable, Equatable, Sendable {
+  public let version: String
 
-  public init(socketId: String, code: Int, reason: String) {
-    self.socketId = socketId
-    self.code = code
-    self.reason = reason
+  public init(version: String) {
+    self.version = version
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    socketId = try container.string(.socketId, minLength: 1, maxLength: 64)
-    code = try container.integer(.code, minimum: 1_000, maximum: 4_999)
-    reason = try container.string(.reason, maxLength: 123)
+    version = try container.string(.version, maxLength: 64)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case socketId
-    case code
-    case reason
+    case version
   }
 }

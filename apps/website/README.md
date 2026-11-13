@@ -32,9 +32,10 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, plus the blog's list and posts and both diagnostic routes, then `sitemap.xml` (only
-   indexable pages, each with its own page's hreflang alternates) and
-   `robots.txt`, and deletes `dist-ssr`.
+   `dist/zh/index.html`, plus the blog's list and posts, both diagnostic routes, and `dist/404.html`.
+   Using `scripts/seo-outputs.ts`, it also writes `sitemap.xml` (only indexable pages, each with
+   `<lastmod>` and `hreflang` alternates), bilingual RSS 2.0 feeds (`feed.xml` and `zh/feed.xml`),
+   `robots.txt`, and dynamic `llms.txt` / `llms-full.txt`, then deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
 interactive demos and the interface showcase's timeline only enhance what is already there. Canonical and Open Graph URLs
@@ -47,8 +48,8 @@ src/
   app.tsx              Page composition (nav, sections in order, footer)
   entry-client.tsx     Hydration (or a fresh render on the dev server)
   entry-server.tsx     Prerender entry: markup, head and html attributes per language
-  head.ts              Title, description, robots, canonical, hreflang, Open Graph and X card tags
-  structured-data.ts   The schema.org graph (site, author, page, app), built from content/site.ts
+  head.ts              Title, description, robots, canonical, hreflang, RSS, Open Graph and X cards
+  structured-data.ts   The schema.org graphs (home app, blog index, post BlogPosting + breadcrumbs)
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
@@ -56,7 +57,7 @@ src/
   motion/              The reveal controller, text effects (decode, type) and the grid halo
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
-  pages/<name>/        Pages other than the home page: the blog and the diagnostic downloads
+  pages/<name>/        Other routes: blog, diagnostic downloads (`/debug`), and 404 fallback
   content/             Site facts (links, version), the interface scenes and archived captures
   content/blog/        The blog's posts, one YAML file per language and release (the CMS's)
 public/
@@ -96,11 +97,13 @@ own page at `/blog/atd-<version with dashes>` (`/blog/atd-0-10-6`; no dots, so V
 never reads one as a file extension): a back button, a centered header (release, title, summary,
 date), then the contents and the sections. The contents are the sections' titles as plain links on
 one track, with the section under the reading line lit (`aria-current="location"`); below 1100px
-they sit under the header, from 1100px in a column of their own that stays beside the text, and
-the header lines up with the text. Each highlight has its text at a 680px measure and its image
-wider; the fixes follow in a card, any of them with an image, and the page ends with one primary
-action, the release's installers on GitHub. A section's anchor is its English title in lowercase
-with dashes (`#choose-your-panel-background`), the same in both languages; the fixes are `#fixes`.
+they sit under the header, from 1100px in a column of their own that stays beside the sections, and
+the header aligns with the sections. Each highlight's text and image fill the main column; any
+non-empty tail sections (`improvements`, `fixes`, `other`) follow in that order, each in a
+full-width card whose items may carry an image, and the page ends with one primary action, the
+release's installers on GitHub. A highlight's anchor is its English title in lowercase with dashes
+(`#choose-your-panel-background`), the same in both languages; the tail sections use
+`#improvements`, `#fixes`, and `#other`.
 
 The nav links to the blog after the home page's sections, marking it current on the list and on
 posts; the footer's links and language switch keep the visitor on the page they are reading. From
@@ -108,29 +111,47 @@ another page the nav's section links and download key lead back to the home page
 post's head tags make it an article (`og:type`, `article:published_time`) whose share image is its
 first highlight's.
 
+The desktop app's release-note links open the article for its installed stable version, in the
+app's language. A stable release therefore requires both articles to be deployed before its
+installer or update feeds are published. Verify that `/blog/atd-<version with dashes>` and
+`/zh/blog/atd-<version with dashes>` each return HTTP 200 and show the intended version, and
+preserve these URLs after publication. A release candidate has no article; the app does not
+offer a version-specific release-note link for it.
+
 ### Content
 
 The releases are files in this repository, edited with [Sveltia CMS](https://sveltiacms.app), a
 Git-based CMS that writes them in place. Each post announces one release and has one YAML file per language
 under `src/content/blog/<lang>/`, with the same file name in both:
 
-| Field        | In each language | Holds                                                             |
-| ------------ | ---------------- | ----------------------------------------------------------------- |
-| `version`    | The same         | The released version without a leading `v`, such as `0.10.6`      |
-| `date`       | The same         | The release day, `YYYY-MM-DD`                                     |
-| `title`      | Translated       | The release's headline                                            |
-| `summary`    | Translated       | One or two sentences under it                                     |
-| `highlights` | Translated       | `title`, `body` (a blank line starts a paragraph), `image`, `alt` |
-| `fixes`      | Translated       | `text`, and optionally `image` with its `alt`; optional           |
+| Field          | In each language | Holds                                                                                    |
+| -------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| `version`      | The same         | The released version without a leading `v`, such as `0.10.6`                             |
+| `date`         | The same         | The release day, `YYYY-MM-DD`                                                            |
+| `title`        | Translated       | The release's headline                                                                   |
+| `summary`      | Translated       | One or two sentences under it                                                            |
+| `highlights`   | Translated       | `title`, `body` (paragraphs and `- ` / `1. ` lists with inline Markdown), `image`, `alt` |
+| `improvements` | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+| `fixes`        | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+| `other`        | Translated       | `text` (one inline Markdown paragraph), and optionally `image` with its `alt`; optional  |
+
+`highlights[].body` and the tail note fields (`improvements[].text`, `fixes[].text`,
+`other[].text`) accept a constrained editorial Markdown subset parsed at build time
+(`blog-markdown.ts`): inline `**bold**`, `*italic*`, `` `code` ``, and `[link](url)` (`https://`,
+`http://`, `/`, or `#`), plus flat `- ` bulleted and `1. ` numbered lists in `highlights[].body`.
+Headings, raw HTML, fenced code blocks, tables, blockquotes, images, task checkboxes, nested
+sublists, and unsafe link schemes fail the build; plain-text posts such as `0.10.6` and `0.10.7`
+remain valid without edits.
 
 `blog-content.ts` reads them at build time (the client and server builds alike) and fails the
-build, naming the file, when a file does not match `src/content/blog-schema.ts`, a post lacks a
-language or disagrees on its version, date or number of highlights, a version repeats, two English
-highlight titles give the same anchor, a fix has an image without its description (or the
-reverse), or an image is missing. It reads
+build, naming the file, when a file does not match `src/content/blog-schema.ts`, uses unsupported
+Markdown, lacks a language or disagrees on its version, date or item counts across `highlights`,
+`improvements`, `fixes`, and `other`, repeats a version, collides on an English highlight anchor
+(including `#improvements`, `#fixes`, and `#other`), has a note image without its description (or
+the reverse), or references a missing image. It reads
 each image's size so the page reserves its box, formats the dates once so prerendered and hydrated
-pages agree, and serves the result as `virtual:atd-blog`; the validator never reaches the
-browser. On the dev server, edits reload the page.
+pages agree, and serves the result as `virtual:atd-blog`; neither the validator nor the Markdown
+parser reaches the browser. On the dev server, edits reload the page.
 
 Images live in `public/media/blog/<release file name>/`, one per highlight and language, named
 `<highlight>.<lang>.webp`. A fix or a small improvement may carry one too, wherever seeing the
@@ -148,11 +169,20 @@ editions side by side. They retain the Tahoe Beach Dusk backdrop and use editabl
 components with handwritten notes. Export each 1440 × 900 frame at 1x, then encode WebP at
 quality 85; keep the localized alt text aligned with the scene.
 
+The 0.11.0 images are in `project/4171:512653`, in the
+`W · Website · Blog · 0.11.0 images (2026-11-12)` section (`4171:512654`–`4171:512661`). The four
+scenes cover screen recording review and questions, scrolling long screenshots, running commands on
+screenshot text, and Markdown in floating result cards, with Chinese and English editions side by
+side over Nathan Anderson's _Red sunset on a mountain_ backdrop
+([Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Red_sunset_on_a_mountain_(Unsplash).jpg>),
+CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as WebP at quality 85.
+
 ### Design
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`
 section (`3685:8952`, on the Website page): the list and a post, each at Desktop (English, 1280)
-and Compact (Chinese, 320). They are built from `Website / Site nav`, `Website / Site footer`,
+and Compact (Chinese, 320). They are built from `Website / Site nav` (including
+`Website / GitHub button`, backed by `Brand / GitHub`), `Website / Site footer`,
 `Website / Blog card` (Featured and Standard, with hover and focus), `Website / Post contents` and
 its `Website / Post contents link` (default, current and hover, for pointer and touch),
 `Website / Post fix` (an optional image), `Website / Plain button` and `Website / Download key`
@@ -181,13 +211,24 @@ The pages' own copy (heading, lede, labels and head tags) is in `src/pages/blog/
 `atd-preview-clean-urls` plugin in `vite.config.ts`), so `/blog/atd-0-10-6` previews the post rather
 than the home page's HTML.
 
-## Header language menu
+## Header language menu and GitHub entry
 
-The header uses a 44 px Lucide language icon button and an end-aligned dropdown. Radix handles
-keyboard navigation, dismissal, focus restoration and viewport collision. The English and 简体中文
-links keep their language routes and remember explicit choices; the current language has a checkmark.
-The button and menu states (`2495:144651`)
-reuse the website's monochrome tokens and remain connected to the shared Lucide library.
+The header end cluster places a 44 px Lucide language icon button, a bordered GitHub Star link, and
+the primary white download key side by side. Radix handles keyboard navigation, dismissal, focus
+restoration and viewport collision for the end-aligned language dropdown; the English and 简体中文
+links keep their language routes and remember explicit choices, with a checkmark on the current
+language. The language button and menu states (`2495:144651`) reuse the website's monochrome tokens
+and remain connected to the shared Lucide library.
+
+The GitHub entry (`src/sections/nav/github-mark.tsx`, canonical `Brand / GitHub` from
+`logos.lndev.me`) links to the repository in a new tab using a secondary bordered key beside
+`Download` (`Website / GitHub button`): `44 × 44 px` icon-only below `416 px`, `Star` from `416 px`,
+and `Star | <count>` from `480 px` upward, with explicit screen-reader context (`Star Atd on
+GitHub (<count>)` / `在 GitHub 为 Atd 点亮 Star（<count>）`). Build prerendering (`scripts/prerender.ts`)
+embeds the initial snapshot via `<meta name="atd:stars">` (falling back to `GITHUB_STARS_FALLBACK`
+offline) so first paint never shifts, and the Vercel Function at `api/github.ts` (mirrored on Vite
+dev and preview servers at `/api/github`) revalidates the live count through the Vercel CDN cache
+(`s-maxage=1800, stale-while-revalidate=86400`).
 
 ## Interface showcase
 

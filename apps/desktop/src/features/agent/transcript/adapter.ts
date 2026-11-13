@@ -300,9 +300,9 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
   const firstItem = turn.items[0];
   const head = turn.user ?? (firstItem?.type === 'block' ? firstItem.block : firstItem?.blocks[0]);
   const run = runs.find((candidate) => candidate.id === (head?.runId ?? '')) ?? runs[0];
-  // The folded turn changes with every source block or relevant request, including requests on
-  // standalone blocks. Only its run is needed beyond that stable input to adapt it.
-  return reuseProjection(turnCache, turn.first, [turn, run], () => {
+  const modelName = modelNameForRun(run);
+  // Only `modelName` from `run` is read, so cloned `TaskRun` objects across broadcasts keep settled turns cached.
+  return reuseProjection(turnCache, turn.first, [turn, modelName], () => {
     const items: AdaptedItem[] = turn.items.map((item) =>
       item.type === 'block' ? item : adaptActivity(item, requests),
     );
@@ -324,7 +324,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
       startedAt,
       durationMs: startedAt !== null && end !== null ? Math.max(0, end - startedAt) : null,
       waiting: waitingKindFor(view),
-      modelName: modelNameForRun(run),
+      modelName,
       generation: measureTurn(source),
       usage: sumTurnUsage(source),
     };

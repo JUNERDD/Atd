@@ -8,11 +8,13 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDevCache } from './dev-cache.mjs';
+import { configureSigning } from './signing/config.mjs';
 import { installDevCopy } from './dev-install.mjs';
 import { startDevApp } from './dev-launch.mjs';
 import { lockNativeDev, runningAppPid, startChild } from './dev-process.mjs';
 import { waitForServices } from './dev-ready.mjs';
 import { watchNativeInputs } from './dev-watch.mjs';
+import { configureDevelopmentSigning } from './development-signing.mjs';
 
 const BUNDLE_ID = 'com.junerdd.ai.dev';
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -59,6 +61,8 @@ if (process.platform !== 'darwin') {
 } else {
   try {
     unlock = lockNativeDev();
+    configureSigning('Debug');
+    configureDevelopmentSigning(log);
     cache = await createDevCache({
       packageRoot,
       builtApp: builtAppPath,
@@ -189,6 +193,7 @@ async function rebuild() {
         builtApp: builtAppPath,
         installedApp: appPath,
         bundleId: BUNDLE_ID,
+        expectedIdentity: process.env.AI_CODE_SIGN_IDENTITY,
         signal: lifetime.signal,
       });
       if (!result.installed) {

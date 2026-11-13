@@ -18,6 +18,7 @@ final class WebViewHost: NSObject {
   /// Counts committed documents, so a call's answer never reaches a later page.
   private(set) var document = 0
   var onDocumentUnload: (() -> Void)?
+  var onDragRegionsReady: (() -> Void)?
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -41,6 +42,7 @@ final class WebViewHost: NSObject {
   private let fragment: String?
   private let services: ShellServices
   private let bridge: ShellBridge
+  private var isClosed = false
   private var outbox = BridgeOutbox()
   private var backlog = FrameBacklog()
   private var crashes: [ContinuousClock.Instant] = []
@@ -71,10 +73,17 @@ final class WebViewHost: NSObject {
   }
 
   func load() {
+    guard !isClosed else { return }
     webView.load(URLRequest(url: RendererOrigin.pageURL(fragment: fragment)))
   }
 
   func close() {
+    guard !isClosed else { return }
+    // Stop delivery before teardown callbacks can enqueue more work for the departing page.
+    isClosed = true
+    document += 1
+    outbox = BridgeOutbox()
+    onDragRegionsReady = nil
     reduceTransparency?.stop()
     reduceTransparency = nil
     systemAppearance?.stop()
@@ -83,11 +92,15 @@ final class WebViewHost: NSObject {
   }
 
   /// Takes the current web view down: its stream connections and its bridge handler.
-  private func tearDown() {
-    bridge.shell?.cancelShortcutRecording(from: self)
-    onDocumentUnload?()
+  private func tearDown(notifyUnload: Bool = true) {
+    if notifyUnload {
+      bridge.shell?.cancelShortcutRecording(from: self)
+      onDocumentUnload?()
+    }
     pipe?.invalidate()
     pipe = nil
+    webView.navigationDelegate = nil
+    webView.uiDelegate = nil
     webView.configuration.userContentController.removeAllScriptMessageHandlers()
     webView.removeFromSuperview()
   }
@@ -96,6 +109,7 @@ final class WebViewHost: NSObject {
 
   /// A state event (window activity, visibility): the latest value reaches every ready page.
   func setState(_ event: NativeEvent) {
+    guard !isClosed else { return }
     if case .windowActive(let state) = event, !state.active {
       bridge.shell?.cancelShortcutRecording(from: self)
     }
@@ -104,12 +118,13 @@ final class WebViewHost: NSObject {
 
   /// An event for whichever page is ready next (`app`), or only for the current one.
   func send(_ event: NativeEvent, scope: BridgeOutbox.Scope = .app) {
+    guard !isClosed else { return }
     act(outbox.post(.event(event), scope: scope))
   }
 
   /// A call's answer, dropped when the page that called is gone.
   func reply(_ message: SwiftMessage, document: Int) {
-    guard document == self.document else { return }
+    guard !isClosed, document == self.document else { return }
     act(outbox.post(message, scope: .document))
   }
 
@@ -117,6 +132,7 @@ final class WebViewHost: NSObject {
   var isPageReady: Bool { outbox.pageReady }
 
   func pageDidBecomeReady() {
+    guard !isClosed else { return }
     act(outbox.pageDidBecomeReady())
   }
 
@@ -124,48 +140,61 @@ final class WebViewHost: NSObject {
     webView.dragRegions = rects.filter { $0.width > 0 && $0.height > 0 }.map {
       CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
     }
+    if !webView.dragRegions.isEmpty { onDragRegionsReady?() }
   }
 
   private func post(frame: SocketFrame) {
+    guard !isClosed else { return }
     act(outbox.post(frame: frame, bytes: frame.byteCost))
     guard backlog.exceeded(pendingBytes: outbox.pendingFrameBytes, at: .now) else { return }
     // The page stopped taking frames; its stream client resumes once it runs again.
     Self.log.error(
       "The \(self.role.rawValue) page fell behind its streams; closing them.")
+    outbox.dropPendingFrames()
     pipe?.closeAll(code: WebSocketCloseCode.policyViolation, reason: "The page fell behind.")
   }
 
   private func act(_ action: BridgeOutbox.Action) {
-    guard action == .flush else { return }
+    guard !isClosed, action == .flush else { return }
     // The next main-queue turn, so what arrives in this one shares the call.
-    DispatchQueue.main.async { MainActor.assumeIsolated { self.flush() } }
+    DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.flush() } }
   }
 
   /// Delivers one message as `window.aiNative.deliver(message)`; the page handles it
   /// synchronously, and its completion lets the next one go.
   private func flush() {
-    guard let message = outbox.next() else { return }
+    guard !isClosed, let message = outbox.next() else { return }
+    let callDocument = document
+    let outboxGeneration = outbox.generation
     let argument: Any
     do {
       argument = try JSONSerialization.jsonObject(
         with: JSONEncoder().encode(message), options: .fragmentsAllowed)
     } catch {
       Self.log.fault("A bridge message could not be encoded: \(error)")
-      return act(outbox.completed(delivered: true))
+      return act(outbox.completed(delivered: true, generation: outboxGeneration))
     }
-    webView.callAsyncJavaScript(
+    // A closing window releases its host immediately. Keep this view alive until WebKit has
+    // settled the call, so releasing it cannot cancel that same call during process shutdown.
+    let deliveringView = webView
+    let deliveringViewID = ObjectIdentifier(deliveringView)
+    deliveringView.callAsyncJavaScript(
       NativeBridgeContract.deliverScript,
       arguments: [NativeBridgeContract.deliverArgument: argument], in: nil, in: .page
-    ) { [weak self] result in
+    ) { [weak self, deliveringView] result in
+      defer { withExtendedLifetime(deliveringView) {} }
       MainActor.assumeIsolated {
-        guard let self else { return }
+        guard let self, !self.isClosed,
+          self.document == callDocument,
+          ObjectIdentifier(self.webView) == deliveringViewID
+        else { return }
         var delivered = true
         if case .failure(let error) = result {
           delivered = false
           self.bridge.shell?.cancelShortcutRecording(from: self)
           Self.log.error("The \(self.role.rawValue) page did not take a message: \(error)")
         }
-        self.act(self.outbox.completed(delivered: delivered))
+        self.act(self.outbox.completed(delivered: delivered, generation: outboxGeneration))
       }
     }
   }
@@ -222,6 +251,7 @@ final class WebViewHost: NSObject {
     bridge.shell?.cancelShortcutRecording(from: self)
     onDocumentUnload?()
     document += 1
+    webView.dragRegions = []
     pipe?.resetForNewDocument()
     outbox.pageDidUnload()
   }
@@ -238,11 +268,10 @@ final class WebViewHost: NSObject {
     }
     let old = webView
     let wasFirstResponder = old.window?.firstResponder === old
-    tearDown()
+    tearDown(notifyUnload: false)
     let handler = BridgeMessageHandler(bridge: bridge)
     let replacement = Self.makeWebView(role: role, services: services, handler: handler)
     handler.host = self
-    replacement.dragRegions = old.dragRegions
     webView = replacement
     install(replacement)
     if wasFirstResponder { replacement.window?.makeFirstResponder(replacement) }
@@ -269,13 +298,13 @@ extension WebViewHost: WKNavigationDelegate, WKUIDelegate {
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-    guard webView === self.webView else { return }
+    guard !isClosed, webView === self.webView else { return }
     // A committed main-frame load replaced the page; it announces itself again when ready.
     pageDidUnload()
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    guard webView === self.webView else { return }
+    guard !isClosed, webView === self.webView else { return }
     Self.log.error("The \(self.role.rawValue) WebContent process terminated; rebuilding.")
     pageDidUnload()
     rebuild()

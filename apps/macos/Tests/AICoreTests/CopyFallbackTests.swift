@@ -47,6 +47,8 @@ struct CopyFallbackTests {
     #expect(CopyFallback.copiedText(string: " a\n", hasFiles: false) == " a\n")
     #expect(CopyFallback.copiedText(string: nil, hasFiles: false) == nil)
     #expect(CopyFallback.copiedText(string: " \n\t", hasFiles: false) == nil)
+    #expect(CopyFallback.copiedText(string: "\u{FFFC}", hasFiles: false) == nil)
+    #expect(CopyFallback.copiedText(string: "\u{FFFC}hello", hasFiles: false) == "\u{FFFC}hello")
     // Finder's copy of a file names it as a string too.
     #expect(CopyFallback.copiedText(string: "a.txt", hasFiles: true) == nil)
   }

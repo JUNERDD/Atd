@@ -52,10 +52,19 @@ export function readPersistedRecord<S extends TSchema>(
   return Object.fromEntries(entries);
 }
 
+const PERSIST_DEBOUNCE_MS = 350;
+
+function isQuotaError(error: unknown): boolean {
+  return (
+    error instanceof DOMException && (error.name === 'QuotaExceededError' || error.code === 22)
+  );
+}
+
 /**
- * Writes `record` back whenever it changes, each changed key alone and a removed or empty key as a
- * removed item. The record passed on the first render is taken as already stored (it is what
- * `readPersistedRecord` returned). `options` must be stable: the write-back effect reads it.
+ * Writes `record` back whenever it changes, debounced to avoid blocking typing with synchronous
+ * `localStorage` serialization on every keystroke, and flushes pending writes on unmount,
+ * `pagehide`, and hiding the page. Each changed key writes alone and a removed or empty key removes
+ * its item; a key hitting `QuotaExceededError` stops retrying `setItem` until its payload shrinks.
  */
 export function usePersistRecord<T>(
   prefix: string,
@@ -63,20 +72,84 @@ export function usePersistRecord<T>(
   options: Pick<PersistedRecordOptions<T>, 'isEmpty'>,
 ) {
   const written = useRef(record);
+  const latest = useRef(record);
+  const optionsRef = useRef(options);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quotaLimit = useRef(new Map<string, number>());
+  const flushRef = useRef<() => void>(() => {});
+
   useEffect(() => {
-    const previous = written.current;
-    if (previous === record) return;
-    written.current = record;
-    try {
-      for (const [key, value] of Object.entries(record)) {
-        if (previous[key] === value) continue;
-        if (options.isEmpty(value)) localStorage.removeItem(prefix + key);
-        else localStorage.setItem(prefix + key, JSON.stringify(value));
+    const clearTimer = () => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+        timer.current = null;
       }
-      for (const key of Object.keys(previous))
-        if (!(key in record)) localStorage.removeItem(prefix + key);
-    } catch {
-      // Storage is unavailable or full; the state still holds the value for this page.
+    };
+    const flush = () => {
+      clearTimer();
+      const previous = written.current;
+      const next = latest.current;
+      if (previous === next) return;
+      written.current = next;
+      const { isEmpty } = optionsRef.current;
+      for (const [key, value] of Object.entries(next)) {
+        if (previous[key] === value) continue;
+        try {
+          if (isEmpty(value)) {
+            localStorage.removeItem(prefix + key);
+            quotaLimit.current.delete(key);
+            continue;
+          }
+          const serialized = JSON.stringify(value);
+          const limit = quotaLimit.current.get(key);
+          if (limit !== undefined && serialized.length >= limit) continue;
+          try {
+            localStorage.setItem(prefix + key, serialized);
+            quotaLimit.current.delete(key);
+          } catch (error) {
+            if (isQuotaError(error)) quotaLimit.current.set(key, serialized.length);
+          }
+        } catch {
+          // Storage is unavailable or serialization failed; memory still holds the value.
+        }
+      }
+      for (const key of Object.keys(previous)) {
+        if (key in next) continue;
+        try {
+          localStorage.removeItem(prefix + key);
+          quotaLimit.current.delete(key);
+        } catch {
+          // Ignore unavailable storage during cleanup.
+        }
+      }
+    };
+    flushRef.current = flush;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      flush();
+    };
+  }, [prefix]);
+
+  useEffect(() => {
+    latest.current = record;
+    optionsRef.current = options;
+    if (written.current === record) {
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      return;
     }
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      flushRef.current();
+    }, PERSIST_DEBOUNCE_MS);
   }, [record, prefix, options]);
 }

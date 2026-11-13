@@ -2,7 +2,7 @@ import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { ServiceBlock } from '@atd/agent-contracts';
 import { GenerationClock } from '../generation.js';
-import { STREAM_COALESCE_MS } from '../live-transcript.js';
+import { clampToolPartial, STREAM_COALESCE_MS } from '../live-transcript.js';
 import { TrailingFlush } from '../trailing-flush.js';
 import {
   diffServiceBlocks,
@@ -81,10 +81,15 @@ class LiveChildTranscript {
         this.endedAt.set(event.message, Date.now());
         if (event.message.role === 'assistant') this.partial = undefined;
       }
-      if (event.type === 'tool_execution_update')
-        this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
-      if (event.type === 'message_update' || event.type === 'tool_execution_update')
-        this.streamed.schedule();
+      if (event.type === 'tool_execution_update') {
+        const clamped = clampToolPartial(toolPartialText(event.partialResult));
+        if (this.partials.get(event.toolCallId) !== clamped) {
+          this.partials.set(event.toolCallId, clamped);
+          this.streamed.schedule();
+        }
+        return;
+      }
+      if (event.type === 'message_update') this.streamed.schedule();
       else this.reproject(true);
     });
   }

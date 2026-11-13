@@ -1,28 +1,53 @@
-import { writesBack, type CommandWriteAction } from '@atd/agent-contracts';
+import {
+  answersInPlace,
+  answersOnCard,
+  writesBack,
+  type CommandInPlaceAction,
+} from '@atd/agent-contracts';
 import type {
   CommandProgressState,
   LightCommandBridge,
   PreparedCommand,
   WriteTarget,
 } from '../../client/agent/bridge';
-import type { Review } from './light-review';
+import type { CardStream } from './card-stream';
+import type { Review } from './review-versions';
+import { islandHoldKey, isCurrentIsland } from './island-owner';
 import { agentApi } from './use-agent';
 
 /**
- * A launch that runs without the panel: it runs as-is and its answer goes back into the field it
- * ran from (recorded as `target`). The shell's progress HUD stands in for the panel
- * (`LightCommandBridge`). An unreviewed answer is written there; where the field cannot take it
- * (`target.writable` is false, or the write is refused), the HUD shows it as an answer card
- * instead. An answer under review (`output.review`) is never written by itself: the HUD's review
- * card shows it, and the person writes, adjusts or regenerates it there (`light-review.ts`).
+ * A launch that runs without the panel: it runs as-is and its answer lands where it ran from
+ * (recorded as `target`, `answersInPlace`). The shell's progress HUD stands in for the panel
+ * (`LightCommandBridge`). An answer meant for a card shows on the HUD's answer card; an unreviewed
+ * write-back is written into the field, and where the field cannot take it (`target.writable` is
+ * false, or the write is refused) the answer card shows it instead. An answer under review
+ * (`output.review`, write-backs only) is never written by itself: the HUD's review card shows it,
+ * and the person writes, adjusts or regenerates it there (`light-review.ts`).
  */
 export type LightLaunch = PreparedCommand & {
   target: WriteTarget;
-  output: { action: CommandWriteAction };
+  output: { action: CommandInPlaceAction };
 };
 
 export function isLightLaunch(prepared: PreparedCommand): prepared is LightLaunch {
-  return writesBack(prepared.output.action) && prepared.target !== undefined;
+  return answersInPlace(prepared.output.action) && prepared.target !== undefined;
+}
+
+/**
+ * Whether the launch's answer lands on the answer card whatever it turns out to be, as known when
+ * it starts: an answer meant for a card (`card`, and `annotate`, which marks text only in a
+ * screenshot, `answersOnCard`), or a write-back its field cannot take (not `writable`, or an
+ * insert after a selection that is not text). An answer under review goes to the review card.
+ */
+export function landsOnCard({ target, output }: LightLaunch): boolean {
+  if (writesBack(output.action) && output.review) return false;
+  return (
+    answersOnCard(output.action) ||
+    !target.writable ||
+    (target.selectionKind !== undefined &&
+      target.selectionKind !== 'text' &&
+      output.action === 'insertAfterSelection')
+  );
 }
 
 /** One light launch, from its first run to its end (or its review's end). */
@@ -42,16 +67,12 @@ export interface LightRun {
   handedOver: boolean;
   /** The review its first answer started (`output.review`); null before, and without review. */
   review: Review | null;
+  /** Its answer on the answer card as it streams in, when it lands there (`landsOnCard`). */
+  stream: CardStream | null;
 }
 
-interface LightRuns {
-  /** The run whose HUD shows; a newer light launch replaces it. */
-  current: LightRun | null;
-  /** Light runs by the id of each of their runs still going, until that run ends. */
-  readonly holding: Map<string, LightRun>;
-}
-
-export const lightRuns: LightRuns = { current: null, holding: new Map() };
+/** Light runs by the id of each of their runs still going, until that run ends. */
+export const lightRuns = { holding: new Map<string, LightRun>() };
 
 export function lightBridge(): LightCommandBridge | undefined {
   return window.desktop?.agent?.light;
@@ -84,7 +105,6 @@ export function stopRun(taskId: string, runId: string): void {
  * same field) leaves it to that run. Letting go twice is harmless.
  */
 export function letGo(run: LightRun): void {
-  const { current } = lightRuns;
-  if (current !== run && current?.launch.target.id === run.launch.target.id) return;
+  if (!isCurrentIsland(run) && islandHoldKey() === run.launch.target.id) return;
   lightBridge()?.release(run.launch.target.id);
 }

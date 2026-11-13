@@ -5,8 +5,9 @@ import QuartzCore
 /// app with the selection keeps focus), and the window server delivers an inactive app's
 /// tracking events late or drops them when the pointer moves fast, so the buttons' own tracking
 /// areas lag behind the pointer. Instead, while the toolbar shows, this reads the pointer on
-/// every display frame, washes the button under it and shows the pointing hand there, or the
-/// open hand over the drag handle (``BackgroundCursor`` lets an inactive app set the cursor).
+/// every display frame, washes the control under it and shows the pointing hand there
+/// (``PointerRole/action``), or the open hand over the drag handle (``BackgroundCursor`` lets an
+/// inactive app set the cursor).
 ///
 /// It is the one owner of the wash and the cursor across the toolbar's windows: the capsule's
 /// buttons (``start(_:grip:in:)``) and, while they are open, the rows of its menus and submenus
@@ -14,8 +15,8 @@ import QuartzCore
 /// time their submenus off the same frames (``onFrame``).
 ///
 /// The frame callbacks pause once the pointer has rested away from those windows for
-/// ``idleFrames``; the next move over another app (seen by the controller's monitor) resumes
-/// them before the pointer can reach the toolbar or its menu, so hover never waits on a frame.
+/// ``idleFrames``; local and global pointer moves resume them as the pointer nears any followed
+/// window. The HUD and the selection toolbar share the same wake and hover behavior.
 @MainActor
 final class SelectionToolbarHover: NSObject {
   /// Called on every display frame while following, after the wash moved, with the followed view
@@ -31,7 +32,9 @@ final class SelectionToolbarHover: NSObject {
   private var anchor: NSView?
   /// The view under the pointer: a button or the grip.
   private var hovered: NSView?
+  private let windowHit = FloatingWindowHitTest()
   private var link: CADisplayLink?
+  private var moveMonitors: [Any] = []
   /// Where the pointer was at the last frame, and for how many frames it stayed there.
   private var lastPointer: CGPoint?
   private var stillFrames = 0
@@ -52,12 +55,30 @@ final class SelectionToolbarHover: NSObject {
     link.add(to: .main, forMode: .common)
     self.link = link
     add(buttons)
+    let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged]
+    if let global = NSEvent.addGlobalMonitorForEvents(
+      matching: mask,
+      handler: { [weak self] _ in
+        MainActor.assumeIsolated { self?.pointerMoved() }
+      })
+    {
+      moveMonitors.append(global)
+    }
+    if let local = NSEvent.addLocalMonitorForEvents(
+      matching: mask,
+      handler: { [weak self] event in
+        MainActor.assumeIsolated { self?.pointerMoved() }
+        return event
+      })
+    {
+      moveMonitors.append(local)
+    }
   }
 
   /// Follows `buttons` too, shown in another window that goes with the toolbar (a menu's rows),
   /// until ``remove(_:)`` or ``stop()``.
   func add(_ buttons: [any ToolbarHoverable]) {
-    for case let button as AnnotationToolbarButton in buttons { button.followsPointer = false }
+    for case let button as any ToolbarPointerTracking in buttons { button.followsPointer = false }
     self.buttons += buttons
     resume()
   }
@@ -69,9 +90,10 @@ final class SelectionToolbarHover: NSObject {
     if let button = hovered as? any ToolbarHoverable,
       !self.buttons.contains(where: { $0 === button })
     {
+      let window = hovered?.window
       button.isHovered = false
       hovered = nil
-      NSCursor.arrow.set()
+      windowHit.releaseCursor(from: window)
     }
     update()
   }
@@ -81,7 +103,9 @@ final class SelectionToolbarHover: NSObject {
   func stop() {
     link?.invalidate()
     link = nil
-    if hovered != nil { NSCursor.arrow.set() }
+    for monitor in moveMonitors { NSEvent.removeMonitor(monitor) }
+    moveMonitors = []
+    if hovered != nil { windowHit.releaseCursor(from: hovered?.window) }
     (hovered as? any ToolbarHoverable)?.isHovered = false
     hovered = nil
     buttons = []
@@ -91,11 +115,10 @@ final class SelectionToolbarHover: NSObject {
     stillFrames = 0
   }
 
-  /// The pointer moved outside the toolbar and its menu: resume the frame callbacks if they
-  /// paused.
-  func pointerMoved() {
-    guard let link, link.isPaused else { return }
-    resume()
+  /// A move near the toolbar or a menu updates hover immediately, and wakes a sleeping clock.
+  private func pointerMoved() {
+    guard let link, isNear(NSEvent.mouseLocation) else { return }
+    if link.isPaused { resume() } else { update() }
   }
 
   private func resume() {
@@ -130,30 +153,38 @@ final class SelectionToolbarHover: NSObject {
     let pointer = NSEvent.mouseLocation
     let candidates: [NSView] =
       buttons.filter(\.isEnabled).map { $0 as NSView } + (grip.map { [$0] } ?? [])
-    let target = candidates.first { view in
+    let underPointer = candidates.filter { view in
       // Only the part not clipped away: a menu row scrolled out of its list is not under the
       // pointer. Views no longer clip to their bounds, so neither does their visible rect.
       let visible = view.visibleRect.intersection(view.bounds)
       guard let window = view.window, window.isVisible, !visible.isEmpty else { return false }
       return window.convertToScreen(view.convert(visible, to: nil)).contains(pointer)
     }
+    let top = underPointer.isEmpty ? nil : windowHit.window(at: pointer)
+    let target = underPointer.first { $0.window?.windowNumber == top }
     if target !== hovered {
+      let previousWindow = hovered?.window
       (hovered as? any ToolbarHoverable)?.isHovered = false
       (target as? any ToolbarHoverable)?.isHovered = true
       hovered = target
       switch target {
-      case nil: NSCursor.arrow.set()
-      case let view? where view === grip: NSCursor.openHand.set()
-      default: NSCursor.pointingHand.set()
+      case nil: windowHit.releaseCursor(from: previousWindow)
+      case let view? where view === grip: PointerRole.grab.cursor.set()
+      default: PointerRole.action.cursor.set()
       }
     }
   }
 }
 
 /// A control the toolbar's hover washes: a capsule button or a menu row. It draws its own wash
-/// from ``isHovered``, which only the hover sets.
+/// from ``isHovered``; every one, menu rows included, acts on a click and shows the pointing hand.
 protocol ToolbarHoverable: NSControl {
   var isHovered: Bool { get set }
 }
 
-extension AnnotationToolbarButton: ToolbarHoverable {}
+/// Controls with native tracking yield it when the shared tracker takes ownership.
+protocol ToolbarPointerTracking: ToolbarHoverable {
+  var followsPointer: Bool { get set }
+}
+
+extension AnnotationToolbarButton: ToolbarPointerTracking {}

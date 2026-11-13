@@ -250,6 +250,13 @@ extension CommandProgressShowParams.State.Answer.Review {
   /// ``maxVersions``.
   public var takesVersion: Bool { pending == nil && count < Self.maxVersions }
 
+  /// The pages the card steps between: the kept versions, then the pending one's while one is.
+  public var pages: Int { count + (pending == nil ? 0 : 1) }
+
+  /// The card is on the pending version's page (`version` past `count`), whose answer is what
+  /// came of it so far.
+  public var showsPending: Bool { pending != nil && version > count }
+
   /// The review card's row of chips (``ReviewChip/row(_:adjustments:)``).
   public var chipRow: [ReviewChip] {
     ReviewChip.row(ReviewOptionChips(options), adjustments: adjustments)

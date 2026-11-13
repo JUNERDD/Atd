@@ -7,6 +7,10 @@ import { processFile, type FileDiffMetadata } from '@pierre/diffs';
  * their plain rendering.
  */
 
+/** Upper bound before synchronous unified-patch construction/parsing degrades to plain fallback. */
+export const MAX_PATCH_PROCESS_CHARS = 150_000;
+const MAX_PATCH_PROCESS_LINES = 3_000;
+
 /** One line of Pi's display diff: sign, left-padded line number, one space, then the text. */
 const PI_LINE = /^([+\- ]) *(\d+)(?: (.*))?$/;
 /** Pi's marker for skipped unchanged lines: padding and `...`, with no line number. */
@@ -41,6 +45,9 @@ function patchText(path: string, hunks: Hunk[]): string {
  * diff in any other shape (or a reordered one) returns `null` instead of a patch with wrong numbers.
  */
 export function piDiffToPatch(path: string, diff: string): string | null {
+  if (diff.length > MAX_PATCH_PROCESS_CHARS) return null;
+  const lines = diff.split('\n');
+  if (lines.length > MAX_PATCH_PROCESS_LINES) return null;
   const hunks: Hunk[] = [];
   let hunk: Hunk | null = null;
   // Lines added minus lines removed so far: the new file's offset from the old one.
@@ -48,7 +55,7 @@ export function piDiffToPatch(path: string, diff: string): string | null {
   // The next line number expected on each side.
   let oldLine = 1;
   let newLine = 1;
-  for (const raw of diff.split('\n')) {
+  for (const raw of lines) {
     if (raw === '') continue;
     if (PI_GAP.test(raw)) {
       hunk = null;
@@ -95,9 +102,12 @@ export function piDiffToPatch(path: string, diff: string): string | null {
  * them from that line (the plain file renderer always starts at 1). `null` for an empty text.
  */
 export function excerptPatch(path: string, text: string, startLine: number): string | null {
+  if (text.length > MAX_PATCH_PROCESS_CHARS) return null;
   const body = text.replace(/\r\n/g, '\n').replace(/\n$/, '');
   if (!body || !Number.isInteger(startLine) || startLine < 1) return null;
-  const lines = body.split('\n').map((line) => ` ${line}`);
+  const rawLines = body.split('\n');
+  if (rawLines.length > MAX_PATCH_PROCESS_LINES) return null;
+  const lines = rawLines.map((line) => ` ${line}`);
   const hunk = {
     oldStart: startLine,
     newStart: startLine,
@@ -113,6 +123,7 @@ export function excerptPatch(path: string, text: string, startLine: number): str
  * names the diff in the highlight pool's cache (`codeCacheKey`).
  */
 export function parsePatch(patch: string, cacheKey?: string): FileDiffMetadata | null {
+  if (patch.length > MAX_PATCH_PROCESS_CHARS) return null;
   try {
     return processFile(patch, { throwOnError: true, ...(cacheKey ? { cacheKey } : {}) }) ?? null;
   } catch {

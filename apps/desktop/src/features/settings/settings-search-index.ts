@@ -4,6 +4,8 @@ import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
+import { recordingSearchEntries } from './recording-search-entries';
+import { screenshotSearchEntries } from './screenshot-search-entries';
 import { selectionToolbarSearchEntries } from './selection-toolbar-search-entries';
 import type { SettingsSearchPage } from './settings-navigation';
 import type { SettingsSectionId } from './settings-sections';
@@ -79,25 +81,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
         } satisfies SettingsSearchEntry,
       ]
     : []),
-  ...(
-    [
-      'togglePanel',
-      'captureScreenshot',
-      'newConversation',
-      'openSettings',
-      'sendMessage',
-      'newLine',
-    ] as const
-  ).map((action): SettingsSearchEntry => ({
-    id: `shortcut-${action}`,
-    section: 'general',
-    anchor: `shortcut-${action}`,
-    label: `shortcuts.actions.${action}.label`,
-    description: `shortcuts.actions.${action}.description`,
-    keywords: 'search.keywords.shortcutAction',
-  })),
   ...appearanceSearchEntries,
-  ...conversationSearchEntries,
   {
     id: 'window-open-at-login',
     section: 'general',
@@ -148,6 +132,26 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   },
   ...notificationSearchEntries,
   ...selectionToolbarSearchEntries,
+  ...screenshotSearchEntries,
+  ...recordingSearchEntries,
+  ...(
+    [
+      'togglePanel',
+      'captureScreenshot',
+      'recordScreen',
+      'newConversation',
+      'openSettings',
+      'sendMessage',
+      'newLine',
+    ] as const
+  ).map((action): SettingsSearchEntry => ({
+    id: `shortcut-${action}`,
+    section: 'general',
+    anchor: `shortcut-${action}`,
+    label: `shortcuts.actions.${action}.label`,
+    description: `shortcuts.actions.${action}.description`,
+    keywords: 'search.keywords.shortcutAction',
+  })),
   {
     id: 'shortcuts-restore-defaults',
     section: 'general',
@@ -155,6 +159,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'shortcuts.restoreDefaults',
     keywords: 'search.keywords.restoreDefaults',
   },
+  ...conversationSearchEntries,
   {
     id: 'providers-default-model',
     section: 'providers',
@@ -295,6 +300,13 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     section: 'extensions',
     label: 'extensions.plugins.kinds.mcp',
     keywords: 'search.keywords.mcp',
+  },
+  {
+    id: 'about-release-notes',
+    section: 'about',
+    anchor: 'about-release-notes',
+    label: 'about.releaseNotes',
+    keywords: 'about.releaseNotesKeywords',
   },
   {
     id: 'about-check-updates',

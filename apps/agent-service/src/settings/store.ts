@@ -3,16 +3,21 @@ import path from 'node:path';
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_GLOW_EFFECTS,
+  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
+  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   parse,
   parseShortcutBindings,
   UserSettingsSchema,
+  withTakenAddedShortcutsReleased,
   type ShortcutBindingsWire,
+  type ShortcutCommand,
   type PatchSettingsRequest,
   type PermissionTier,
   type SelectionToolbarSettings,
@@ -110,6 +115,7 @@ export class SettingsStore {
         language: null,
         appearance: null,
         glowEffects: DEFAULT_GLOW_EFFECTS,
+        resultMarkdown: DEFAULT_RESULT_MARKDOWN,
         panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND),
         summaryTitles: DEFAULT_SUMMARY_TITLES,
         computerVisionModel: null,
@@ -117,6 +123,8 @@ export class SettingsStore {
         shellAllowlist: [],
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+        screenshotCopyOnConfirm: DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+        longScreenshotConfirmAction: DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
         commandTyping: DEFAULT_COMMAND_TYPING,
         commandTypingAnimation: null,
         viewInitiative: DEFAULT_VIEW_INITIATIVE,
@@ -188,6 +196,22 @@ export class SettingsStore {
         { ...this.state.settings, ...withFirstTypingAnimation(this.state.settings, fields) },
         true,
       );
+    });
+  }
+
+  /**
+   * Leaves each application action an upgrade added without keys where they are already in use
+   * (`withTakenAddedShortcutsReleased` against `commands`, the stored ones), so the action never
+   * takes them from an older binding or command shortcut. The service's start runs it once the
+   * commands are known; it writes only on a change and leaves `initialized` as it was.
+   */
+  releaseTakenAddedShortcuts(commands: ReadonlyArray<ShortcutCommand>): Promise<SettingsResponse> {
+    return this.serialize(() => {
+      const { settings } = this.state;
+      const current = settings.shortcuts ?? DEFAULT_SHORTCUTS;
+      const next = withTakenAddedShortcutsReleased(current, commands, process.platform);
+      if (next === current) return this.current();
+      return this.write({ ...settings, shortcuts: next }, this.state.initialized);
     });
   }
 

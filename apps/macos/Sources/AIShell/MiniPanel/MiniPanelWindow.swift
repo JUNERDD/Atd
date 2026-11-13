@@ -61,8 +61,11 @@ enum MiniPanelScrollerPhase: Equatable {
 /// ``onScroller``, and is never replayed. A right click or a control-click opens the context
 /// menu. Pins resize from their corners and report frames,
 /// so this keeps its own, smaller version of their press handling rather than sharing it.
-final class MiniPanelWindow: ActiveGlassPanel {
+final class MiniPanelWindow: ActiveGlassPanel, FloatingHoverHost {
   static let level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
+  let hoverRegions = FloatingHoverRegions()
+  let cursorHit = FloatingWindowHitTest()
+  var hoverInteractive: Bool { true }
 
   /// What lies under a point in global coordinates (y up).
   var pressTarget: ((NSPoint) -> MiniPanelPress)?

@@ -10,6 +10,7 @@ import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
 import {
   MAX_SHORTCUT_REGISTRATIONS,
   PANEL_SHORTCUT_ID,
+  RECORD_SHORTCUT_ID,
   SCREENSHOT_SHORTCUT_ID,
 } from '../native-bridge/calls';
 import type { NativeCommands } from './native-commands';
@@ -21,10 +22,11 @@ type RegistrationFailure = Extract<ShortcutResult, { registered: false }>['reaso
 export interface GlobalShortcutState {
   panelAvailable: boolean;
   screenshotAvailable: boolean;
+  recordAvailable: boolean;
 }
 
-/** Command shortcuts the shell can take beside the app's own two (`MAX_SHORTCUT_REGISTRATIONS`). */
-const MAX_COMMAND_REGISTRATIONS = MAX_SHORTCUT_REGISTRATIONS - 2;
+/** Command shortcuts the shell can take beside the app's own three (`MAX_SHORTCUT_REGISTRATIONS`). */
+const MAX_COMMAND_REGISTRATIONS = MAX_SHORTCUT_REGISTRATIONS - 3;
 
 /** A command shortcut the shell registers, under the shortcut's id, with the command it runs. */
 export interface ShortcutRegistration {
@@ -75,7 +77,7 @@ export interface ShortcutSync {
 
 /**
  * The panel's side of the global shortcuts. The shell registers whatever set the panel pushes (the
- * panel and screenshot shortcuts plus each keyed shortcut of each enabled command, registered
+ * panel, screenshot and record-screen shortcuts plus each keyed shortcut of each enabled command, registered
  * under the shortcut's own id) and reports every item; conflicts between the app's own shortcuts
  * stay with the service and the settings checks. `commands.errors` takes each registration
  * failure under the shortcut's id and each launch failure under the command's id. A command
@@ -89,8 +91,8 @@ export interface ShortcutSync {
  * step and never runs it; `choose` asks the panel to offer its options first
  * (`CommandLaunch.choose`). A `run` or `choose` launch whose selection was missing carries that
  * to the launch channel, which asks for the text (a `choose` launch's after its options); `edit`
- * shows the input step, where the text is typed, without reporting it. The screenshot shortcut is the panel page's to run
- * (`DesktopBridge.onScreenshotShortcut`).
+ * shows the input step, where the text is typed, without reporting it. The screenshot and
+ * record-screen shortcuts are the panel page's to run (`CaptureBridge.onShortcut`).
  */
 export function nativeShortcuts(
   bridge: NativeBridge,
@@ -98,7 +100,11 @@ export function nativeShortcuts(
   messages: WindowMessages,
   host: {
     /** The app's global accelerators, or null while the service's settings have not loaded. */
-    appShortcuts: () => { togglePanel: string; captureScreenshot: string } | null;
+    appShortcuts: () => {
+      togglePanel: string;
+      captureScreenshot: string;
+      recordScreen: string;
+    } | null;
     /** Every push result: which app shortcuts hold, after `commands.errors` changed. */
     applied: (state: GlobalShortcutState) => void;
     launch: (launch: CommandLaunch) => void;
@@ -124,10 +130,15 @@ export function nativeShortcuts(
     if (app === null) return;
     const list = commands.list();
     const { registered, excess } = shortcutRegistrations(list);
+    const own = [
+      { id: PANEL_SHORTCUT_ID, accelerator: app.togglePanel },
+      { id: SCREENSHOT_SHORTCUT_ID, accelerator: app.captureScreenshot },
+      { id: RECORD_SHORTCUT_ID, accelerator: app.recordScreen },
+    ];
     const params = {
       registrations: [
-        { id: PANEL_SHORTCUT_ID, accelerator: app.togglePanel },
-        { id: SCREENSHOT_SHORTCUT_ID, accelerator: app.captureScreenshot },
+        // An action left without keys (`ADDED_SHORTCUT_ACTIONS`) registers nothing.
+        ...own.filter(({ accelerator }) => accelerator !== ''),
         ...registered.map(({ shortcut }) => ({
           id: shortcut.id,
           accelerator: shortcut.accelerator,
@@ -151,12 +162,17 @@ export function nativeShortcuts(
         doubleTapModifier(accelerator) ? [id] : [],
       ),
     );
-    const available: GlobalShortcutState = { panelAvailable: false, screenshotAvailable: false };
+    const available: GlobalShortcutState = {
+      panelAvailable: false,
+      screenshotAvailable: false,
+      recordAvailable: false,
+    };
     for (const id of Object.keys(commands.errors)) delete commands.errors[id];
     for (const result of results) {
       if (result.id === PANEL_SHORTCUT_ID) available.panelAvailable = result.registered;
       else if (result.id === SCREENSHOT_SHORTCUT_ID)
         available.screenshotAvailable = result.registered;
+      else if (result.id === RECORD_SHORTCUT_ID) available.recordAvailable = result.registered;
       else if (!result.registered)
         commands.errors[result.id] = registrationError(
           result.reason,
@@ -257,6 +273,7 @@ export function followShortcutState(
     applied({
       panelAvailable: message.panelAvailable,
       screenshotAvailable: message.screenshotAvailable,
+      recordAvailable: message.recordAvailable,
     });
   });
   messages.post({ type: 'shortcutStateRequest' });

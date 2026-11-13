@@ -14,26 +14,10 @@ import {
   withoutSelectionNotice,
 } from '../../client/agent/command-prepare';
 import { outputOption, withOutputAction } from '../../client/agent/run-output';
-import {
-  actOnProgress,
-  changeLightRun,
-  startLightRun,
-  supersedeLightRun,
-  type LightHost,
-} from './light-command';
+import { startLightRun, type LightHost } from './light-command';
 import { isLightLaunch, type LightLaunch } from './light-command-run';
-
-/**
- * The light launch whose options card the progress HUD shows, kept until the card answers for its
- * write target; a newer card replaces it.
- */
-let choosing: LightLaunch | null = null;
-
-/**
- * Asks on the island for the text of a launch whose selection is missing, with the values its
- * options card picked (`composeLightRun`, whose module offers this card first and so passes it in).
- */
-type ComposeLaunch = (launch: PreparedCommand, light: LightCommandBridge) => void;
+import { composeLightRun } from './light-command-compose';
+import { clearIsland, replaceIsland } from './island-owner';
 
 function bridge(): LightCommandBridge | undefined {
   return window.desktop?.agent?.light;
@@ -43,13 +27,20 @@ function bridge(): LightCommandBridge | undefined {
  * Offers a light launch's options before it runs (its shortcut was held, or the person changed
  * the values of its run): the progress HUD of its target shows the options card with the values
  * the launch would use and where its answer goes, replacing any other HUD as a newer launch does.
- * The launch waits for the card's answer (`actOnLightAction`). A launch with nothing selected
+ * The launch waits for the card's answer (`answerChoice`). A launch with nothing selected
  * (composed on the island, or whose text the island asks for after the card) has no selection to
  * write over or after.
  */
 export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): void {
-  supersedeLightRun();
-  choosing = launch;
+  replaceIsland({
+    key: launch.target.id,
+    identity: launch,
+    act: (action, host) => {
+      if (action.action === 'pick') return rememberPicks(launch, action.arguments);
+      answerChoice(launch, action, host);
+    },
+    supersede: () => undefined,
+  });
   const state = {
     phase: 'choose' as const,
     command: launch.command.name,
@@ -61,13 +52,8 @@ export function chooseLightRun(launch: LightLaunch, light: LightCommandBridge): 
   };
   light.show(launch.target.id, state).catch((error: unknown) => {
     console.error('The options card did not show:', error);
-    if (choosing === launch) choosing = null;
+    clearIsland(launch);
   });
-}
-
-/** Another card (the compose card) replaced the options card, whose launch then waits no more. */
-export function dropLightChoice(): void {
-  choosing = null;
 }
 
 /** Takes the island of `launch` away; a repeat for an island already gone does nothing. */
@@ -104,15 +90,15 @@ function answerChoice(
   launch: LightLaunch,
   { action, arguments: picked }: CommandProgressAction,
   host: LightHost,
-  compose: ComposeLaunch,
 ): void {
   if (action !== 'run' && action !== 'edit' && action !== 'cancel') return;
-  choosing = null;
+  clearIsland(launch);
   const light = bridge();
   const chosen = withPicks(launch, picked);
   if (action === 'cancel') return hideCard(launch, light);
   // The compose card takes the island over from the card's working state, so it is not hidden.
-  if (action === 'run' && chosen.selectionMissing && light) return compose(chosen, light);
+  if (action === 'run' && chosen.selectionMissing && light)
+    return composeLightRun(chosen, false, light);
   const ready = action === 'run' && runsAsIs(chosen);
   if (ready && light && isLightLaunch(chosen)) {
     startLightRun(chosen, light).catch((error: unknown) => {
@@ -140,26 +126,4 @@ function rememberPicks(launch: LightLaunch, picked: CommandArguments | undefined
     .catch((error: unknown) => {
       console.error('The picked command options were not remembered:', error);
     });
-}
-
-/**
- * A press on the progress HUD that the compose card did not take (`actOnIslandAction`): a change
- * of the options card's values (`pick`), remembered at once, or the card's answer when the card of
- * that target waits for one (`compose` asks for the text of a launch with nothing selected); a
- * change of a working run's values stops the run and offers its options again with the values it
- * ran with (`changeLightRun`); anything else is the light run's (`actOnProgress`).
- */
-export function actOnLightAction(
-  action: CommandProgressAction,
-  host: LightHost,
-  compose: ComposeLaunch,
-): void {
-  if (choosing?.target.id === action.target) {
-    if (action.action === 'pick') return rememberPicks(choosing, action.arguments);
-    return answerChoice(choosing, action, host, compose);
-  }
-  if (action.action !== 'change') return actOnProgress(action, host);
-  const light = bridge();
-  const changed = changeLightRun(action.target);
-  if (changed && light) chooseLightRun(changed, light);
 }

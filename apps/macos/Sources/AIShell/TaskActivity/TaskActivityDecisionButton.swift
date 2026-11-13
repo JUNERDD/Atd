@@ -72,8 +72,7 @@ struct TaskActivityDecisionButton: View {
     .buttonStyle(TaskActivityDecisionStyle(kind: kind, side: side, hovered: hovered && isEnabled))
     .opacity(isEnabled || busy != nil ? 1 : kind.disabledOpacity)
     .allowsHitTesting(busy == nil)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled && busy == nil ? .link : nil)
+    .modifier(FloatingHover(enabled: busy == nil) { hovered = $0 })
     .help(tooltip ?? title)
     .accessibilityLabel(Text(verbatim: progress ? busy ?? title : title))
     .task(id: busy != nil) {
@@ -156,8 +155,7 @@ struct TaskActivityMenuButton: View {
       }
     }
     .background { TaskActivityMenuAnchorView(anchor: anchor) }
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .modifier(FloatingHover { hovered = $0 })
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
   }

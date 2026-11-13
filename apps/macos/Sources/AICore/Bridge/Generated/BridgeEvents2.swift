@@ -4,6 +4,88 @@
 
 import Foundation
 
+/// Payload of the `resources.imported` event.
+public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
+  public let resources: [FileRef]
+  public let folders: [Folder]
+  public let failures: [Failure]
+
+  public init(resources: [FileRef], folders: [Folder], failures: [Failure]) {
+    self.resources = resources
+    self.folders = folders
+    self.failures = failures
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
+    folders = try container.array(.folders, of: Folder.self, maxItems: 10)
+    failures = try container.array(.failures, of: Failure.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resources
+    case folders
+    case failures
+  }
+
+  public struct Folder: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let path: String
+
+    public init(id: String, name: String, path: String) {
+      self.id = id
+      self.name = name
+      self.path = path
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      name = try container.string(.name, minLength: 1, maxLength: 255)
+      path = try container.string(.path, minLength: 1, maxLength: 4_096)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case path
+    }
+  }
+
+  public struct Failure: Codable, Equatable, Sendable {
+    public let name: String
+    public let reason: Reason
+
+    public init(name: String, reason: Reason) {
+      self.name = name
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      name = try container.string(.name, maxLength: 255)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case name
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case unreadable
+      case unsupported
+      case tooLarge
+      case notDirectory
+      case forbidden
+      case failed
+      case tooMany
+    }
+  }
+}
+
 /// Payload of the `files.drag` event.
 public struct FilesDragEvent: Codable, Equatable, Sendable {
   public let phase: Phase

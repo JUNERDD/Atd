@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { History, ListFilter, SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -59,7 +59,13 @@ export function TaskHistory({
       : filter === 'all' && !view.showCommandTasksInAll
         ? 'exclude'
         : 'all';
-  const content = useTaskContentSearch(query, tasks, commandScope);
+  const captureScope =
+    filter === 'captures'
+      ? 'only'
+      : filter === 'all' && !view.showCaptureTasksInAll
+        ? 'exclude'
+        : 'all';
+  const content = useTaskContentSearch(query, tasks, commandScope, captureScope);
   // Sections are dated against when the history opened, so they hold still while it is browsed.
   const [now] = useState(() => new Date());
   function statusLabelOf(task: AgentTask) {
@@ -71,7 +77,8 @@ export function TaskHistory({
   // matches with that message, which shows only where it is why the task is listed (a title match
   // would mostly repeat itself); the view orders and sections them, never by relevance.
   const visible = tasks.flatMap((task): HistoryEntry[] => {
-    if (!matchesFilter(task, filter, view.showCommandTasksInAll)) return [];
+    if (!matchesFilter(task, filter, view.showCommandTasksInAll, view.showCaptureTasksInAll))
+      return [];
     const statusLabel = statusLabelOf(task);
     const match = matchFields(query, { title: task.title, status: statusLabel || undefined });
     const hit = query ? (content.hits.get(task.id) ?? null) : null;
@@ -112,14 +119,50 @@ export function TaskHistory({
   const rows = historyRows(
     sections.map((section) => ({ title: sectionTitle(section), items: section.items })),
   );
+  const menuWaitRef = useRef<{ cancel: () => void } | null>(null);
+  useEffect(() => () => menuWaitRef.current?.cancel(), []);
+  function afterMenuClose(openDialog: () => void) {
+    menuWaitRef.current?.cancel();
+    const selector = '[data-slot="context-menu-content"], [data-slot="dropdown-menu-content"]';
+    if (!document.querySelector(selector)) {
+      openDialog();
+      return;
+    }
+    let frame = 0;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
+      menuWaitRef.current = null;
+      openDialog();
+    };
+    const poll = () => {
+      if (!document.querySelector(selector)) {
+        finish();
+        return;
+      }
+      frame = requestAnimationFrame(poll);
+    };
+    const fallback = window.setTimeout(finish, 180);
+    frame = requestAnimationFrame(poll);
+    menuWaitRef.current = {
+      cancel: () => {
+        settled = true;
+        cancelAnimationFrame(frame);
+        clearTimeout(fallback);
+      },
+    };
+  }
   const actions: HistoryActions = {
     togglePin: (task) =>
       void agentApi()
         .pinTask(task.id, !task.pinned)
         .catch((error) => setError(messageOf(error))),
-    rename: (task) => setRenaming({ task, open: true }),
+    rename: (task) => afterMenuClose(() => setRenaming({ task, open: true })),
     copyId: (task) => void copyId(task),
-    delete: (task) => setDeleting({ task, open: true }),
+    delete: (task) => afterMenuClose(() => setDeleting({ task, open: true })),
   };
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>
@@ -208,7 +251,7 @@ function HistoryEmpty({
     icon = <SearchIcon />;
     title = t('history.noMatches', { query });
     description = t('history.noMatchesDescription');
-  } else if (tasks || filter === 'commands') {
+  } else if (tasks || filter === 'commands' || filter === 'captures') {
     icon = <ListFilter />;
     title = t(`history.filterEmpty.${filter}.title`);
     description = t(`history.filterEmpty.${filter}.description`);

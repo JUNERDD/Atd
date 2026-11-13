@@ -28,13 +28,8 @@ import Carbon.HIToolbox
 /// while a check is pending or the toolbar shows, so typing and scrolling elsewhere never wake
 /// the app. Without the setting or the trust, no monitor is installed.
 ///
-/// The welcome guide's practice area shows the same toolbar over text selected in the guide
-/// itself (``showPractice(selection:text:)``), which the global monitors never see: the guide's
-/// page drives it, hiding it as its selection goes, so no dismissal monitor watches it; the
-/// activation gates it by the combination held as it arrives or the listening state, and
-/// its Ask Atd hands on the practice text, which no Accessibility read would find. The guide never
-/// spends tokens, so a practice toolbar's commands only hide it; Ask Atd quotes the text into the
-/// panel's draft and sends nothing.
+/// ``SelectionToolbarPractice`` owns selections in the welcome guide itself. Activation still
+/// gates those selections; their commands only hide the toolbar and Ask Atd quotes into a draft.
 final class SelectionToolbarController {
   /// Ask Atd was clicked, with the practice text when the toolbar was the guide's (nil for a
   /// selection in another app); the toolbar is already hidden.
@@ -50,6 +45,7 @@ final class SelectionToolbarController {
   static let debounce: Duration = .milliseconds(150)
 
   private let trust: AccessibilityTrust
+  private let wps: WpsSelectionAdapter
   private let panel = SelectionToolbarPanel()
   /// Nil until the page first pushes the setting.
   private var settings: SelectionToolbarSettings?
@@ -57,11 +53,9 @@ final class SelectionToolbarController {
   /// Keys, scrolls and other buttons, watched only while a check is pending or the toolbar
   /// shows: each makes a check stale or hides the toolbar.
   private var interruptMonitor: Any?
-  /// Pointer moves over other apps, watched only while the toolbar shows: hover tracking pauses
-  /// while the pointer rests away from the toolbar and its menu, and needs a move to resume.
-  private var moveMonitor: Any?
   private var activationObserver: NSObjectProtocol?
   private var pressedAt: CGPoint?
+  private var pressedTime: TimeInterval = 0
   /// The activation key combination was down when the last press went down.
   private var heldAtPress = false
   private let listening = SelectionToolbarListening()
@@ -70,26 +64,23 @@ final class SelectionToolbarController {
   /// dropped.
   private var generation = 0
   private var pending: Task<Void, Never>?
-  /// The guide's practice selection while the toolbar shows for it.
-  private var practiceText: String?
-  /// Pointer moves over this app's own windows, watched while the practice toolbar shows: the
-  /// global monitors see only other apps, and hover tracking needs a move to resume.
-  private var practiceMoveMonitor: Any?
+  private let practice = SelectionToolbarPractice()
 
-  init(trust: AccessibilityTrust) {
+  init(trust: AccessibilityTrust, services: ShellServices) {
     self.trust = trust
+    wps = WpsSelectionAdapter(services: services)
     panel.onAsk = { [weak self] in
-      let text = self?.practiceText
+      let text = self?.practice.text
       self?.dismiss()
       self?.onAsk?(text)
     }
     panel.onCommand = { [weak self] launch in
-      let practice = self?.practiceText != nil
+      let practice = self?.practice.text != nil
       self?.dismiss()
       if !practice { self?.onCommand?(launch) }
     }
     panel.onPick = { [weak self] id, values in
-      if self?.practiceText == nil { self?.onPick?(id, values) }
+      if self?.practice.text == nil { self?.onPick?(id, values) }
     }
     listening.onChange = { [weak self] on in
       self?.hud.setListening(on)
@@ -100,6 +91,8 @@ final class SelectionToolbarController {
   /// A command's progress HUD came onto the screen or left it; the status HUD, which shares its
   /// place, yields it meanwhile.
   func hudYields(_ yields: Bool) { hud.setYielding(yields) }
+
+  func setAddons(_ installs: AddonInstalls) { wps.apply(installs) }
 
   /// Whether the `toggle` mode listens for selections, or nil while it is not in effect.
   var isListening: Bool? { listening.isArmed ? listening.isOn : nil }
@@ -146,30 +139,12 @@ final class SelectionToolbarController {
       settings.activation.admits(heldAtPress: held, heldAtRelease: held, listening: listening.isOn)
     else { return hidePractice() }
     dismiss()
-    practiceText = text
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-    // The pointer that ended the selection places the toolbar or its icon as over another app;
-    // one away from it (a keyboard selection) gives way to the selection's middle.
-    let line = SelectionToolbarPlacement.pointerLineHalfHeight * 2
-    let mouse = NSEvent.mouseLocation
-    let pointer =
-      selection.insetBy(dx: -line, dy: -line).contains(mouse)
-      ? mouse : CGPoint(x: selection.midX, y: selection.midY)
-    // The panel takes Quartz bounds, as Accessibility reports them.
-    panel.show(
-      selection: CaptureCoordinates.flip(selection, primaryHeight: primaryHeight),
-      pointer: pointer)
-    practiceMoveMonitor = NSEvent.addLocalMonitorForEvents(
-      matching: [.mouseMoved, .leftMouseDragged]
-    ) { [weak self] event in
-      MainActor.assumeIsolated { self?.panel.pointerMoved() }
-      return event
-    }
+    practice.show(selection: selection, text: text, panel: panel)
   }
 
   /// Hides a practice toolbar; a toolbar over another app's selection stays.
   func hidePractice() {
-    if practiceText != nil { dismiss() }
+    if practice.text != nil { dismiss() }
   }
 
   // MARK: Monitoring
@@ -230,6 +205,9 @@ final class SelectionToolbarController {
     case .leftMouseDown:
       dismiss()
       pressedAt = pointer
+      // WPS may emit before this callback runs. Use the source event's uptime, not receipt time.
+      pressedTime =
+        Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime + event.timestamp
       heldAtPress = held(in: event)
     case .leftMouseUp:
       let selected = SelectionGesture.mayHaveSelected(
@@ -240,11 +218,13 @@ final class SelectionToolbarController {
       // The press identifies the table even when a drag ends outside it. Without a recorded
       // press, only the release can associate this gesture with a surface.
       let origin = pressedAt ?? pointer
+      let startedAt = pressedAt == nil ? Date().timeIntervalSince1970 : pressedTime
       pressedAt = nil
       heldAtPress = false
       if admitted == true {
         schedule(
-          at: pointer, origin: origin, immediately: event.clickCount < 2, cellsOnly: !selected)
+          at: pointer, origin: origin, startedAt: startedAt,
+          immediately: event.clickCount < 2, cellsOnly: !selected)
       }
     default:
       dismiss()
@@ -256,13 +236,18 @@ final class SelectionToolbarController {
     settings?.activation.isHeld(in: event.modifierFlags) ?? false
   }
 
-  private func schedule(at pointer: CGPoint, origin: CGPoint, immediately: Bool, cellsOnly: Bool) {
+  private func schedule(
+    at pointer: CGPoint, origin: CGPoint, startedAt: TimeInterval, immediately: Bool,
+    cellsOnly: Bool
+  ) {
     pending?.cancel()
     watchInterruptions()
     let token = generation
     pending = Task { [weak self] in
       if immediately,
-        await self?.check(pointer: pointer, origin: origin, token: token, cellsOnly: cellsOnly)
+        await self?.check(
+          pointer: pointer, origin: origin, startedAt: startedAt, token: token, cellsOnly: cellsOnly
+        )
           == true
       {
         return
@@ -270,7 +255,9 @@ final class SelectionToolbarController {
       try? await Task.sleep(for: Self.debounce)
       guard !Task.isCancelled else { return }
       let shown =
-        await self?.check(pointer: pointer, origin: origin, token: token, cellsOnly: cellsOnly)
+        await self?.check(
+          pointer: pointer, origin: origin, startedAt: startedAt, token: token, cellsOnly: cellsOnly
+        )
         == true
       if !shown, token == self?.generation { self?.stopWatchingInterruptions() }
     }
@@ -292,15 +279,23 @@ final class SelectionToolbarController {
   /// The rules first, then Accessibility, then the toolbar if nothing newer happened meanwhile.
   /// True when the toolbar showed.
   @discardableResult
-  private func check(pointer: CGPoint, origin: CGPoint, token: Int, cellsOnly: Bool) async -> Bool {
+  private func check(
+    pointer: CGPoint, origin: CGPoint, startedAt: TimeInterval, token: Int, cellsOnly: Bool
+  ) async -> Bool {
     guard token == generation, let settings,
       let app = NSWorkspace.shared.frontmostApplication
     else { return false }
     guard SelectionToolbarRules.shouldProbe(context(of: app, settings)) else { return false }
+    let deadline = ContinuousClock.now + .milliseconds(300)
+    let evidence = await wps.evidence(app: app, pressedAt: startedAt)
+    guard token == generation, !Task.isCancelled, ContinuousClock.now < deadline,
+      NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
+    else { return false }
     let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
     let probe = await SelectionPresence.check(
       pid: app.processIdentifier,
-      gestureAt: CaptureCoordinates.flip(origin, primaryHeight: primaryHeight))
+      gestureAt: CaptureCoordinates.flip(origin, primaryHeight: primaryHeight), wps: evidence,
+      limit: ContinuousClock.now.duration(to: deadline))
     guard token == generation, monitor != nil,
       NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
       !cellsOnly || probe == .cells,
@@ -309,32 +304,17 @@ final class SelectionToolbarController {
     var bounds: CGRect?
     if case .selected(_, let rect) = probe { bounds = rect }
     panel.show(selection: bounds, pointer: pointer)
-    watchPointer()
     return true
   }
 
   // MARK: Dismissal
-
-  /// Wakes hover tracking on pointer moves over other apps; the pointer's distance from the
-  /// toolbar never dismisses it.
-  private func watchPointer() {
-    guard moveMonitor == nil else { return }
-    moveMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) {
-      [weak self] _ in
-      MainActor.assumeIsolated { self?.panel.pointerMoved() }
-    }
-  }
 
   /// Hides the toolbar and drops any check still running.
   private func dismiss() {
     generation += 1
     pending?.cancel()
     pending = nil
-    if let moveMonitor { NSEvent.removeMonitor(moveMonitor) }
-    moveMonitor = nil
-    if let practiceMoveMonitor { NSEvent.removeMonitor(practiceMoveMonitor) }
-    practiceMoveMonitor = nil
-    practiceText = nil
+    practice.clear()
     stopWatchingInterruptions()
     panel.hide()
   }

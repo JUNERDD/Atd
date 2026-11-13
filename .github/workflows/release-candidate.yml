@@ -11,14 +11,22 @@ on:
       build_version:
         type: string
         required: true
+      notarize:
+        description: Temporarily false for 0.11.0 while Apple notarization is pending; set true for 0.11.1.
+        type: boolean
+        default: false
     outputs:
       artifact-id:
         value: ${{ jobs.collect.outputs.artifact-id }}
     secrets:
-      RELEASE_SIGNING_P12:
+      DEVELOPER_ID_P12:
         required: true
-      RELEASE_SIGNING_P12_PASSWORD:
+      DEVELOPER_ID_P12_PASSWORD:
         required: true
+      NOTARY_APPLE_ID:
+        required: false
+      NOTARY_APP_PASSWORD:
+        required: false
       SPARKLE_ED_PRIVATE_KEY:
         required: true
 
@@ -42,16 +50,15 @@ jobs:
     runs-on: ${{ matrix.runner }}
     # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
     # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       VERSION: ${{ inputs.marketing_version }}
       BUILD_VERSION: ${{ inputs.build_version }}
       # Not ARCH or MACHINE: tools the build runs read those from the environment.
       RELEASE_ARCH: ${{ matrix.arch }}
       RELEASE_MACHINE: ${{ matrix.machine }}
-      # The SHA-1 of the self-signed release certificate. It is public: every signed app names it
-      # in its designated requirement.
-      RELEASE_SIGNING_SHA1: 2CB9D1EA2DA706E7C5B422E6A80AA48638FE83E9
+      DEVELOPER_ID_SHA1: ${{ vars.DEVELOPER_ID_SHA1 }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
     steps:
       # build.mjs builds only for the host's native architecture.
       - name: Check the runner architecture
@@ -80,44 +87,17 @@ jobs:
           rustup toolchain install
           cargo --version
       - run: pnpm install --frozen-lockfile
-      # TCC records an Accessibility or Screen Recording grant with the app's designated
-      # requirement. An ad hoc build's requirement is its cdhash, so every update dropped the
-      # grants; this certificate makes it `identifier "com.junerdd.ai" and certificate leaf =
-      # H"<SHA-1>"`, the same for every release and both architectures. A different certificate
-      # drops every installed copy's grants once (StaleGrantRecovery asks again), so the step
-      # accepts only this one. `RELEASE_SIGNING_P12` is its base64 PKCS#12,
-      # `RELEASE_SIGNING_P12_PASSWORD` the password. The certificate is public
-      # (apps/macos/release-certificate.pem); only its private key is kept outside the repository,
-      # and apps/macos/scripts/restore-release-signing.mjs packs the two under a new password and
-      # sets both secrets again. codesign finds an identity only in a keychain on the search list;
-      # a self-signed certificate needs no trust settings to sign.
-      - name: Import the release signing certificate
+      # Separate secret names leave legacy branches and installed users' EdDSA trust intact.
+      - name: Import Developer ID and notarization credentials
         env:
-          RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
-          RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
         run: |
-          if [ -z "$RELEASE_SIGNING_P12" ] || [ -z "$RELEASE_SIGNING_P12_PASSWORD" ]; then
-            echo "::error::The RELEASE_SIGNING_P12 secrets are missing; an ad hoc build would drop every installed copy's privacy grants."
-            exit 1
-          fi
-          keychain="$RUNNER_TEMP/release-signing.keychain-db"
-          password=$(openssl rand -hex 24)
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings -lut 21600 "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          p12="$RUNNER_TEMP/release-signing.p12"
-          printf '%s' "$RELEASE_SIGNING_P12" | base64 --decode > "$p12"
-          security import "$p12" -k "$keychain" -P "$RELEASE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign > /dev/null
-          rm "$p12"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
-          # Ahead of the runner's own keychains, which stay on the list (xargs unquotes them).
-          security list-keychains -d user | xargs security list-keychains -d user -s "$keychain"
-          if ! security find-identity -p codesigning "$keychain" | grep -q "$RELEASE_SIGNING_SHA1"; then
-            echo "::error::RELEASE_SIGNING_P12 does not hold the release certificate $RELEASE_SIGNING_SHA1."
-            exit 1
-          fi
-          # project.yml signs with AI_CODE_SIGN_IDENTITY; the hash names an untrusted identity.
-          echo "AI_CODE_SIGN_IDENTITY=$RELEASE_SIGNING_SHA1" >> "$GITHUB_ENV"
+          args=()
+          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
+          node apps/macos/scripts/signing/ci.mjs "${args[@]}"
       # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
       # add-on lock it embeds names this version's GitHub release assets.
       - name: Bundle the service, the renderer and the add-ons
@@ -161,14 +141,7 @@ jobs:
             exit 1
           fi
           codesign --verify --deep --strict "$app"
-          # Installed copies keep their privacy grants only under this exact requirement.
-          leaf=$(printf '%s' "$RELEASE_SIGNING_SHA1" | tr 'A-F' 'a-f')
-          expected="identifier \"com.junerdd.ai\" and certificate leaf = H\"$leaf\""
-          requirement=$(codesign -d -r- "$app" 2> /dev/null | sed -n 's/^designated => //p')
-          if [ "$requirement" != "$expected" ]; then
-            echo "::error::The app's designated requirement is '$requirement', not '$expected'."
-            exit 1
-          fi
+          node apps/macos/scripts/signing/check.mjs "$app"
       # The lock inside the signed app must be the one the archives were packed with; the archives
       # are then checked against it with the app's own Node.
       - name: Check the add-ons against the app's lock
@@ -178,29 +151,22 @@ jobs:
           cmp "$lock" tmp/addons-release/addons.lock.json
           "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
             --dir tmp/addons-release --arch "$RELEASE_ARCH"
-      # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon positions
-      # and the Applications link, written straight into the image's .DS_Store without driving
-      # Finder. build.py corrects its background bookmark before compression; dmgbuild is pinned
-      # by hash in its own virtual environment. package.mjs names the dmg after the app's version
-      # and its main executable's architecture. Packaging takes under 2 minutes, but hdiutil can
-      # hang silently on the image it attaches or detaches (once for 27 minutes on macos-26-intel;
-      # a rerun passed). dmgbuild retries a detach only when it fails and waits on hdiutil with no
-      # timeout, so the step fails fast here instead.
-      - name: Package the dmg
-        timeout-minutes: 10
+      # App ticket first; the final DMG is then signed, notarized and stapled before its
+      # checksum and Sparkle signature are calculated. A failure prevents artifact promotion.
+      - name: Sign, notarize and package the dmg
+        timeout-minutes: 70
         run: |
           venv="$RUNNER_TEMP/dmgbuild"
           python3 -m venv "$venv"
           "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
-          dmg="Atd-$VERSION-$RELEASE_ARCH.dmg"
           mkdir -p "$RUNNER_TEMP/release-diagnostics"
-          built=$(DMG_PYTHON="$venv/bin/python" node apps/macos/dmg/package.mjs "$APP" dist \
-            2> >(tee "$RUNNER_TEMP/release-diagnostics/dmg.log" >&2) | tail -n 1)
-          if ! [ "$built" -ef "dist/$dmg" ]; then
-            echo "::error::package.mjs wrote $built, not dist/$dmg."
-            exit 1
-          fi
-          (cd dist && shasum -a 256 "$dmg" > "$dmg.sha256" && cat "$dmg.sha256")
+          args=(--app "$APP" --out dist)
+          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
+          DMG_PYTHON="$venv/bin/python" node apps/macos/scripts/signing/distribute.mjs "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/distribution.log"
+          (cd dist && shasum -a 256 -c "Atd-$VERSION-$RELEASE_ARCH.dmg.sha256")
+      - name: Remove temporary signing credentials
+        if: always()
+        run: node apps/macos/scripts/signing/ci.mjs --cleanup
       # The lock pins each archive's digest, so the archives need no .sha256 files of their own.
       - name: Stage the add-ons beside the dmg
         run: |
@@ -282,6 +248,8 @@ jobs:
           echo "APP=$app" >> "$GITHUB_ENV"
       - name: Verify the app
         env:
+          AI_CODE_SIGN_IDENTITY: ${{ vars.DEVELOPER_ID_SHA1 }}
+          AI_DEVELOPMENT_TEAM: ${{ vars.APPLE_TEAM_ID }}
           FEED_URL: ${{ matrix.feed }}
         run: |
           for pair in "CFBundleShortVersionString=$VERSION" "CFBundleVersion=$BUILD_VERSION"; do
@@ -291,7 +259,13 @@ jobs:
               exit 1
             fi
           done
-          codesign --verify --deep --strict "$APP"
+          if [ "${{ inputs.notarize }}" = "true" ]; then
+            node apps/macos/scripts/signing/check.mjs "$APP" --notarized
+            xcrun stapler validate "dmg/$DMG"
+            spctl --assess --type open --context context:primary-signature "dmg/$DMG"
+          else
+            node apps/macos/scripts/signing/check.mjs "$APP"
+          fi
           key=$(sed -n 's/^ *SUPublicEDKey: *//p' apps/macos/project.yml | head -n 1)
           "$APP/Contents/Resources/node/bin/node" apps/macos/scripts/verify-app.mjs app \
             --app "$APP" \

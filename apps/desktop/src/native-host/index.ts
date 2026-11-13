@@ -2,12 +2,6 @@ import { downloadResource } from '@atd/agent-client';
 import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import {
-  AutomationSessionTargetSchema,
-  parseExtensionSession,
-  type AutomationSessionTarget,
-  type ExtensionSession,
-} from '../client/agent/session-handoff';
-import {
   createAgentBridge,
   type AgentChannel,
   type AgentChannelValues,
@@ -16,17 +10,13 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
-import { parse } from '../client/agent/validation';
-import { publishFileDrag } from '../lib/file-drag';
-import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
-import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
-import { setSystemAppearance } from '../theme/panel-background/system-appearance';
-import { publishDragRegions } from './drag-regions';
 import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
 import { nativeAutomations } from './native-automations';
+import { nativeCapture } from './native-capture';
+import { nativeCaptureEvents } from './native-capture-events';
 import { nativeCommandOptions } from './native-command-options';
 import { nativeComputer } from './native-computer';
 import { NativeCommands } from './native-commands';
@@ -36,11 +26,15 @@ import { nativeFocusWrite } from './native-focus-write';
 import { nativeFolders } from './native-folders';
 import { nativeMiniPanel } from './native-mini-panel';
 import { nativeNotifications } from './native-notifications';
+import { nativeSaveLocation } from './native-save-location';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
+import { nativePanelModals } from './native-panel-modals';
 import { nativePlatform } from './native-platform';
+import { listenNativeSessionHandoffs } from './native-session-handoffs';
 import { nativeSettings } from './native-settings';
 import { nativeShortcutRecording } from './native-shortcut-recording';
 import { nativeShellPreferences } from './native-shell-preferences';
+import { attachNativeSurfaceDom, subscribeNativeWindowState } from './native-surface';
 import { nativeHeldRequest } from './native-held-request';
 import { nativeTaskEvents } from './native-task-events';
 import { nativeLightCommand, type PageHolder } from './native-light-command';
@@ -82,8 +76,12 @@ export async function installNativeHost(
     surface === 'panel' ? nativeHeldRequest(native, 'selection.ask') : undefined;
   const onNewTask = surface === 'panel' ? nativeHeldRequest(native, 'task.new') : undefined;
   const focusWrite = surface === 'panel' ? nativeFocusWrite(native) : undefined;
-  // Native task navigation and withdrawn queues wait for the panel's view to subscribe.
+  // Native task navigation, withdrawn queues, window visibility and modal triggers must subscribe
+  // before the first await so shell replay events on `bridge.ready` are never lost.
+  subscribeNativeWindowState(native);
   const taskEvents = surface === 'panel' ? nativeTaskEvents(native) : {};
+  const panelModals = surface === 'panel' ? nativePanelModals(native) : {};
+  const captureEvents = surface === 'panel' ? nativeCaptureEvents(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -144,10 +142,11 @@ export async function installNativeHost(
     },
     (_page, event) => emit('changed', event),
   );
-  const shortcutsApplied = ({ panelAvailable, screenshotAvailable }: GlobalShortcutState) => {
+  const shortcutsApplied = (state: GlobalShortcutState) => {
     settings.setShell({
-      shortcutAvailable: panelAvailable,
-      screenshotShortcutAvailable: screenshotAvailable,
+      shortcutAvailable: state.panelAvailable,
+      screenshotShortcutAvailable: state.screenshotAvailable,
+      recordShortcutAvailable: state.recordAvailable,
     });
     requests.broadcast();
   };
@@ -194,38 +193,9 @@ export async function installNativeHost(
 
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
   connection.onConnected(() => void commands.refreshFromService().catch(() => undefined));
-  messages.listen((message) => {
-    if (message.type === 'launchCommand') {
-      void requests.handle(message.request, 'page').catch((error: unknown) => {
-        console.error('The command launched from settings could not open:', error);
-      });
-    } else if (message.type === 'commandSession') {
-      const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
-      emit('session', { commandId: message.commandId, name });
-      void native.call('window.show', {});
-    } else if (message.type === 'automationSession') {
-      // Like an extension session below, a message the panel cannot seed is dropped.
-      let automation: AutomationSessionTarget;
-      try {
-        automation = parse(AutomationSessionTargetSchema, message.automation);
-      } catch {
-        return;
-      }
-      emit('automationSession', automation);
-      void native.call('window.show', {});
-    } else if (message.type === 'extensionSession') {
-      // A window running an older build can post this too: drop a message the panel cannot seed
-      // instead of throwing from the channel listener.
-      let session: ExtensionSession;
-      try {
-        session = parseExtensionSession(message.kind, message.target);
-      } catch {
-        return;
-      }
-      emit('extensionSession', session);
-      void native.call('window.show', {});
-    }
-  });
+  if (surface === 'panel') {
+    listenNativeSessionHandoffs({ messages, native, commands, requests, emit });
+  }
 
   const serviceListeners = new Set<(event: ServiceEvent) => void>();
   const serviceEmit = (event: ServiceEvent) => {
@@ -236,18 +206,16 @@ export async function installNativeHost(
     if (frame.scope === 'extensions') serviceEmit({ type: 'extensions' });
   });
 
-  native.on('window.active', ({ active }) => setWindowActive(active));
-  native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
-  native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
-  native.on('appearance.system', setSystemAppearance);
-  if (surface === 'panel') {
-    native.on('resources.imported', ({ resources, folders, failures }) =>
-      publishImportedFiles({ files: resources, folders, failures }),
-    );
-    native.on('files.drag', publishFileDrag);
-  }
-  publishDragRegions(native, document.getElementById('root') ?? document.body);
+  attachNativeSurfaceDom(native, surface);
   connection.connect();
+  const settingsPrimed = surface !== 'panel' ? settings.prime() : Promise.resolve();
+  if (surface !== 'panel') {
+    void settings.providers
+      .sync()
+      .then(() => settings.providers.syncCatalogs())
+      .catch(() => undefined);
+    void commands.refreshFromService().catch(() => undefined);
+  }
   // The service may still be starting: its data follows the stream, and the shell's preferences
   // follow `app.state`, both through settings change events.
   void settings.ready.catch((error: unknown) => {
@@ -268,6 +236,7 @@ export async function installNativeHost(
     automations: nativeAutomations(connection, native, messages),
     computer,
     notifications: nativeNotifications(native, surface),
+    saveLocation: nativeSaveLocation(native),
     views: nativeViews(native),
     agent: {
       ...createAgentBridge(async (request) => {
@@ -315,7 +284,7 @@ export async function installNativeHost(
     ...nativeShellPreferences(native, settings),
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
-    screenshot: () => commands.screenshot(),
+    captureScreenshotInput: () => commands.screenshot(),
     editScreenshot: (resourceId) => commands.editScreenshot(resourceId),
     resource: async (resourceId) => {
       const { bytes, mime } = await downloadResource(connection.options(), resourceId);
@@ -325,17 +294,31 @@ export async function installNativeHost(
     share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
-    ...(surface === 'panel'
+    ...(captureEvents
       ? {
-          onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()),
+          capture: nativeCapture(
+            native,
+            commands,
+            (launch) => emit('launch', launch),
+            captureEvents,
+          ),
         }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(onNewTask ? { onNewTask } : {}),
     ...taskEvents,
+    ...panelModals,
     ...(surface === 'onboarding'
       ? { onboarding: nativeOnboarding(native, messages, connection) }
       : {}),
   };
   window.desktop = bridge;
+  if (surface === 'settings') {
+    // Allow fast local settings/shell hydration to settle before the first render while capping
+    // cold-start delay if the service is still coming up.
+    await Promise.race([
+      Promise.allSettled([settingsPrimed, settings.ready]),
+      new Promise<void>((resolve) => setTimeout(resolve, 80)),
+    ]);
+  }
 }

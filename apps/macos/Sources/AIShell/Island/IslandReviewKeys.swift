@@ -41,14 +41,17 @@ extension ReviewChip {
 /// nothing without either, or while a version is pending); ⌘Return and ⌥⌘Return write, as on the
 /// answer card (``holdWriteKeys(_:)``); Escape peels one layer (``peelReview()``); ⌘R
 /// regenerates; ⌘K opens the options sheet, as the summary chip does, whenever the version has
-/// options; ⌘[ and ⌘] step to the previous and next version; ⌫ at the start of the field,
-/// with nothing selected, takes back the last staged change; ⌘C copies the whole answer unless
-/// the field or the answer has a selection, which it copies instead; ⌘V, ⌘X, ⌘A, ⌘Z and ⇧⌘Z edit
-/// the field, as on the compose card, since the card's window has them while another app keeps
-/// the menu bar.
+/// options; ⌘[ and ⌘] step to the previous and next page (a kept version, or the page of one
+/// still being made), and so do ⌘← and ⌘→ where the field's caret has nowhere to go that way
+/// (nothing selected, at its start or its end: always in an empty field), a key with no page
+/// that way going on to the field; ⌫ at the start of
+/// the field, with nothing selected, takes back the last staged change; ⌘C copies the whole
+/// answer unless the field or the answer has a selection, which it copies instead; ⌘V, ⌘X, ⌘A,
+/// ⌘Z and ⇧⌘Z edit the field, as on the compose card, since the card's window has them while
+/// another app keeps the menu bar. The pager's arrows name ⌘← and ⌘→ in their tooltips.
 ///
 /// The chip row is reached from the field without taking its caret, so the keys work whether or
-/// not the system's keyboard navigation is on (``chipKey(_:modifiers:)``): ↓ or Tab highlights
+/// not the system's keyboard navigation is on (``chipKey(_:modifiers:repeating:)``): ↓ or Tab highlights
 /// the first chip and ⇧Tab the last (``IslandModel/reviewChip``); then ← and → move along the
 /// row, Tab and ⇧Tab too and past its ends back to the field, ↑ goes back to the field, and Space
 /// presses the chip as a click does, including opening the summary chip's options sheet. Return
@@ -72,7 +75,7 @@ extension CommandProgressController {
   /// staged (``ReviewDraft/rebase(_:)``) and its options sheet, rebased the same way; any other
   /// review starts a new draft, and anything else takes the sheet away.
   func prepareReview(_ phase: CommandProgressState.Phase, target: String) {
-    guard case .answer(_, _, _, let review?) = phase else {
+    guard case .answer(_, _, _, let review?, _) = phase else {
       island.model.cardStages = false
       island.model.reviewChip = nil
       return
@@ -124,19 +127,23 @@ extension CommandProgressController {
     if field?.hasMarkedText() == true { return false }
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     let code = Int(event.keyCode)
-    if chipKey(code, modifiers: modifiers) { return true }
+    if chipKey(code, modifiers: modifiers, repeating: event.isARepeat) { return true }
     if [kVK_Return, kVK_ANSI_KeypadEnter].contains(code) {
+      guard modifiers.isEmpty || modifiers == .command || modifiers == [.option, .command]
+      else { return false }
+      guard !event.isARepeat else { return true }
       switch modifiers {
       case []: sendReview()
       // ⌘Return and ⌥⌘Return reach the card only where their hot keys could not be held.
-      case .command: return writeFromKey(.primary)
-      case [.option, .command]: return writeFromKey(.insert)
+      case .command: return writeFromKey(.primary, keyCode: event.keyCode)
+      case [.option, .command]: return writeFromKey(.insert, keyCode: event.keyCode)
       default: return false
       }
       return true
     }
     switch (code, modifiers) {
     case (kVK_Escape, []):
+      guard !event.isARepeat else { return true }
       peelReview()
       return true
     case (kVK_Delete, []):
@@ -147,6 +154,10 @@ extension CommandProgressController {
       return true
     case (kVK_ANSI_LeftBracket, .command): step(by: -1)
     case (kVK_ANSI_RightBracket, .command): step(by: 1)
+    // Where the caret has nowhere to go that way, ⌘← and ⌘→ page as ⌘[ and ⌘] do.
+    case (kVK_LeftArrow, .command), (kVK_RightArrow, .command):
+      let back = code == kVK_LeftArrow
+      return !caretMoves(field, back: back) && step(by: back ? -1 : 1)
     default: return reviewCommand(event, modifiers: modifiers, field: field)
     }
     return true
@@ -155,7 +166,7 @@ extension CommandProgressController {
   /// True when the chip row took the key `code`: moving into it, along it or out of it, or
   /// pressing the highlighted chip. A key it leaves takes the highlight away, except Escape,
   /// which ``peelReview()`` takes it away with.
-  private func chipKey(_ code: Int, modifiers: NSEvent.ModifierFlags) -> Bool {
+  private func chipKey(_ code: Int, modifiers: NSEvent.ModifierFlags, repeating: Bool) -> Bool {
     guard let row = state.reviewShown?.chipRow, !row.isEmpty else { return false }
     let tab = code == kVK_Tab && (modifiers.isEmpty || modifiers == .shift)
     guard let chip = island.model.reviewChip, row.indices.contains(chip) else {
@@ -174,7 +185,8 @@ extension CommandProgressController {
     case (kVK_UpArrow, []): island.model.reviewChip = nil
     // The row wraps, but the highlight only moves along it.
     case (kVK_DownArrow, []): break
-    case (kVK_Space, []): reviewEvent(row[chip].event)
+    case (kVK_Space, []):
+      if !repeating { reviewEvent(row[chip].event) }
     default:
       if code != kVK_Escape { island.model.reviewChip = nil }
       return false
@@ -189,10 +201,11 @@ extension CommandProgressController {
   ) -> Bool {
     guard let key = event.charactersIgnoringModifiers?.lowercased() else { return false }
     switch (modifiers, key) {
-    case (.command, "r"): request(.regenerate)
+    case (.command, "r"):
+      if !event.isARepeat { request(.regenerate) }
     case (.command, "k"):
       guard state.reviewShown?.options.isEmpty == false else { return false }
-      openReviewSheet()
+      if !event.isARepeat { openReviewSheet() }
     case (.command, "c"):
       if let field, field.selectedRange().length > 0 { field.copy(nil) } else { copyAnswer() }
     case (.command, "v"): field?.paste(nil)
@@ -205,8 +218,9 @@ extension CommandProgressController {
     return true
   }
 
-  private func writeFromKey(_ key: AnswerWriteOffer.Key) -> Bool {
+  private func writeFromKey(_ key: AnswerWriteOffer.Key, keyCode: UInt16) -> Bool {
     guard let mode = island.model.answerOffer?.write(for: key) else { return false }
+    ShortcutRelease.pressed(keyCode)
     writeAnswer(mode)
     return true
   }
@@ -256,10 +270,20 @@ extension CommandProgressController {
     remeasureReview()
   }
 
-  /// The previous or next version, while there is one and none is pending.
-  private func step(by delta: Int) {
-    guard let review = state.reviewShown else { return }
-    request(.version, version: review.version + delta)
+  /// The previous or next page, a kept version or the pending one's; false when there is none
+  /// that way.
+  @discardableResult private func step(by delta: Int) -> Bool {
+    guard let review = state.reviewShown else { return false }
+    return request(.version, version: review.version + delta)
+  }
+
+  /// Whether ⌘← (`back`) or ⌘→ moves the field's caret: something is selected, or there is text
+  /// before or after the caret that way.
+  private func caretMoves(_ field: NSTextView?, back: Bool) -> Bool {
+    guard let field, field.isEditable else { return false }
+    let selected = field.selectedRange()
+    guard selected.length == 0 else { return true }
+    return back ? selected.location > 0 : selected.location < field.string.utf16.count
   }
 
   /// The card changes in place, its shape following the chips' rows and the original.
@@ -272,7 +296,7 @@ extension CommandProgressController {
 
   /// The options sheet takes the card's place, with the values the next version runs with.
   private func openReviewSheet() {
-    guard case .answer(let command, _, _, .some) = state.shown?.phase else { return }
+    guard case .answer(let command, _, _, .some, _) = state.shown?.phase else { return }
     island.model.cardStages = true
     island.updateCard(OptionsCard(options: island.model.review.values))
     island.show(.choose(command: command))

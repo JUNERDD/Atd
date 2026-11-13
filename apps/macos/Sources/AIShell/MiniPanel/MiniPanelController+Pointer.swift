@@ -68,6 +68,8 @@ extension MiniPanelController {
     case .expanded: hoverExpanded(point, at: time)
     default: break
     }
+    // The activity card shares this pointer clock; react to a move without waiting for a frame.
+    if model.phase == .expanded, model.activity?.cardInteractive == true { track(point) }
   }
 
   /// The open capsule: it closes once the pointer has stayed away from it for the delay.
@@ -189,29 +191,35 @@ extension MiniPanelController {
   }
 
   /// The wash follows the control under the pointer, and the cursor says what a press would do
-  /// there (``BackgroundCursor`` lets the inactive app set it): the pointing hand over a button
-  /// or a row, and over the tucked pill and the space a click opens it from while it opens on
-  /// click, the open hand over the rest of the pill and the capsule, the closed hand while
-  /// dragging. A drag session owns the cursor while it runs.
+  /// there (``PointerRole``; ``BackgroundCursor`` lets the inactive app set it): the pointing
+  /// hand over a button, a row or the activity entry, and over the tucked pill and the space a
+  /// click opens it from while it opens on click, the open hand over the rest of the pill and the
+  /// capsule, the closed hand while dragging. A drag session owns the cursor while it runs.
   private func track(_ pointer: CGPoint) {
     var hovered: MiniPanelControl?
     var cursor: NSCursor?
+    let activityCursor = window?.hoverRegions.update(
+      pointer,
+      active: model.phase == .expanded && model.activity?.cardInteractive == true
+        && activityContains(pointer, MiniPanelMetrics.nearMargin))
     switch model.phase {
     case .tucked:
-      if isInClickZone(pointer) {
-        cursor = .pointingHand
+      if isInClickZone(pointer) || activityEntryContains(pointer) {
+        cursor = PointerRole.action.cursor
       } else if drawnBody.contains(pointer) {
-        cursor = .openHand
+        cursor = PointerRole.grab.cursor
       }
     case .expanded where snap == nil:
       hovered = control(at: pointer)
-      if hovered != nil || activityEntryContains(pointer) {
-        cursor = .pointingHand
+      if let activityCursor {
+        cursor = activityCursor
+      } else if hovered != nil || activityEntryContains(pointer) {
+        cursor = PointerRole.action.cursor
       } else if drawnBody.contains(pointer) {
-        cursor = .openHand
+        cursor = PointerRole.grab.cursor
       }
     case .dragging, .draggingPill:
-      cursor = .closedHand
+      cursor = PointerRole.grabbing.cursor
     default:
       break
     }
@@ -225,7 +233,13 @@ extension MiniPanelController {
   func setCursor(_ cursor: NSCursor?) {
     guard cursor !== self.cursor else { return }
     self.cursor = cursor
-    (cursor ?? .arrow).set()
+    if let cursor {
+      cursor.set()
+    } else if let window {
+      window.cursorHit.releaseCursor(from: window)
+    } else {
+      NSCursor.arrow.set()
+    }
   }
 
   // MARK: Presses

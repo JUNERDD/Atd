@@ -199,7 +199,7 @@ function resolveCandidate() {
         'Build the Release app',
         'Check the built app',
         "Check the add-ons against the app's lock",
-        'Package the dmg',
+        'Sign, notarize and package the dmg',
       ]),
       check(
         `${source.prefix}Verify ${arch} on ${arch === 'arm64' ? 'macos-15' : 'macos-15-intel'}`,

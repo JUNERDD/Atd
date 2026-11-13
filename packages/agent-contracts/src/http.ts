@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ScreenshotTextFollowUpSchema } from './capture-answer.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import {
@@ -33,7 +34,7 @@ export const SubmitTaskRequestSchema = Type.Object(
      * default model (`runModelSelection`).
      */
     model: Type.Optional(ModelSelectionSchema),
-    /** Absent uses the connection's saved level, else off. */
+    /** Absent uses the connection's saved level, else the model's default or `off`. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     /**
      * Snapshot tools frozen onto the run (`snapshotToolsFor` maps a five-tool grant). Absent keeps
@@ -64,6 +65,13 @@ export const SubmitTaskRequestSchema = Type.Object(
      * keeps the task's last run's bindings (never an automation's grant), else no computer use.
      */
     computer: Type.Optional(ComputerRunRequestSchema),
+    /**
+     * Screenshot-text answer format (`ScreenshotTextFollowUp`): used both when starting/repeating
+     * a free-form Ask on screenshot text (requires non-empty `input.selection`) and on a follow-up
+     * that makes a new version of a screenshot-text run's answer on an existing task; absent for
+     * every other run.
+     */
+    screenshotText: Type.Optional(ScreenshotTextFollowUpSchema),
   },
   { additionalProperties: false },
 );

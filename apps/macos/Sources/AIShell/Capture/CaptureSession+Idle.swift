@@ -1,71 +1,100 @@
 import AICore
 import AppKit
 
-/// What idle offers besides the detected area (decisions E5, F3): the hints, `R` for the last
-/// region on the pointer's display and `W` for windows only. Points are desktop points.
+/// What idle offers besides the detected area (decisions E5, F3), and the bottom bar of every
+/// phase (architecture C2, C3): `R` for the last region on the pointer's display, `W` for windows
+/// only or elements again, and the bar's keys. Points are desktop points.
 extension CaptureSession {
-  /// The hint lines of `overlay`, the first one lowest. Idle: one line of how to pick an area
-  /// (`W`'s status and key only once it chose windows only, `R` only while this display has a
-  /// last region), and while detection offers only windows, at index 1 the Accessibility hint
-  /// (``isTrustRequest(_:on:)`` relies on that place). Once a selection exists: one line of how
-  /// to adjust and confirm it, on the display holding most of it; there `⌘A` appears when it
-  /// is exactly one of several displays, the step that takes it to every display.
-  func hintLines(on overlay: CaptureOverlayView) -> [CaptureHintLine] {
+  /// The bar on `overlay`, nil where none shows. Idle: on every display, how to pick an area in
+  /// targeting scope, `W` while limited to windows, `⌘A`, `R` while this display
+  /// has a last region, and Esc. With a selection: only on the display holding most of it, what
+  /// Return does in this mode and what Esc does; screenshots also name their quick-copy keys and,
+  /// unless the selection is known not to offer it, ⌘↓ for the long screenshot. The long
+  /// screenshot's live phase shows its keys alone (``longScreenshotBarKeys()``). None while a
+  /// selection is pressed or dragged out.
+  /// Each mode fits its visible hints; the recording bar reserves no space for screenshot copy.
+  func barContent(on overlay: CaptureOverlayView) -> CaptureBar.Content? {
     let strings = ShellStrings.shared
-    func segment(_ key: String?, _ text: CaptureHintStringKey, rank: Int = 0)
-      -> CaptureHintSegment
-    {
-      CaptureHintSegment(key: key, label: strings.text(text), rank: rank)
-    }
+    let pair = options.canRecord ? mode : nil
     switch phase {
     case .idle:
-      var line = [segment(nil, .captureHintPick)]
-      if onlyWindows {
-        line += [
-          segment(nil, .captureHintWindowsOnly, rank: 1),
-          segment("W", .captureHintElements, rank: 1),
-        ]
+      let pick = [strings.text(.captureBarPickElement), strings.text(.captureBarPickWindow)]
+      let detectsElements = detection == .elements && !onlyWindows
+      var keys = [
+        CaptureBarSegment(key: nil, label: pick[detectsElements ? 0 : 1], reserved: pick)
+      ]
+      if detection == .elements, onlyWindows {
+        keys.append(CaptureBarSegment(key: "W", label: strings.text(.captureHintElements)))
       }
-      line.append(segment(nil, .captureHintScroll, rank: 4))
-      line.append(segment("⌘A", .captureHintScreen, rank: 2))
-      if lastRegion(on: overlay) != nil { line.append(segment("R", .captureHintRecall, rank: 3)) }
-      line.append(segment("Esc", .captureHintCancel))
-      return detection == .windowsOnly ? [line, [segment(nil, .captureHintAccessibility)]] : [line]
+      keys.append(CaptureBarSegment(key: "⌘A", label: strings.text(.captureHintScreen)))
+      if lastRegion(on: overlay) != nil {
+        keys.append(CaptureBarSegment(key: "R", label: strings.text(.captureHintRecall)))
+      }
+      keys.append(CaptureBarSegment(key: "Esc", label: strings.text(.captureHintCancel)))
+      return CaptureBar.Content(mode: pair, keys: keys)
     case .selected(let rect), .adjusting(.move(_, let rect)), .adjusting(.resize(_, let rect)):
-      guard primaryOverlay(for: rect) === overlay else { return [] }
-      var line = [segment(nil, .captureHintResize, rank: 2), segment("↵", .captureHintConfirm)]
-      if overlays.count > 1, rect == wholeDisplay(holding: rect, fallback: overlay.bounds) {
-        line.append(segment("⌘A", .captureHintAllDisplays, rank: 1))
+      guard primaryOverlay(for: rect) === overlay else { return nil }
+      let finish = strings.text(
+        mode == .record ? .captureBarStartRecording : .captureBarFinishScreenshot)
+      let back = strings.text(mode == .record ? .captureHintCancel : .captureHintBack)
+      var keys = [
+        CaptureBarSegment(key: "↵", label: finish),
+        CaptureBarSegment(key: "Esc", label: back),
+      ]
+      if namesLongScreenshot(for: rect) {
+        let long = strings.text(LongScreenshotCaptureStringKey.name)
+        keys.insert(CaptureBarSegment(key: "⌘↓", label: long), at: 0)
       }
-      line.append(segment("Esc", .captureHintBack))
-      return [line]
+      if mode == .screenshot, let shortcut = options.copyShortcut {
+        let copy = CaptureBarSegment(
+          key: shortcut, label: strings.text(.captureBarCopyScreenshot))
+        keys.insert(copy, at: 0)
+      }
+      return CaptureBar.Content(mode: pair, keys: keys)
+    case .longScreenshot(let rect):
+      guard primaryOverlay(for: rect) === overlay else { return nil }
+      return CaptureBar.Content(mode: nil, keys: longScreenshotBarKeys())
     case .pressing, .creating, .adjusting(.create):
-      return []
-    }
-  }
-
-  func refreshHints() {
-    for overlay in overlays {
-      overlay.showHints(hintLines(on: overlay), avoiding: hintClearance(on: overlay))
-    }
-  }
-
-  /// The band a hint must stay out of on `overlay`: the selection's rows with room for its size
-  /// label and the annotation bars (toolbar, gap, style bar), which can sit above or below it and
-  /// wider than it. Re-placed when a selection drag ends (`move`); while one runs, the hint stays.
-  private func hintClearance(on overlay: CaptureOverlayView) -> CGRect? {
-    guard case .selected(let rect) = phase, primaryOverlay(for: rect) === overlay else {
       return nil
     }
-    let reach = AnnotationToolbarLayout.sizeLabelReach + 8 + 40 + 6 + 40
-    return CGRect(
-      x: overlay.bounds.minX, y: rect.minY - reach, width: overlay.bounds.width,
-      height: rect.height + reach * 2)
   }
 
-  /// Whether a press at `point` is on the Accessibility hint while it can still ask for trust.
-  func isTrustRequest(_ point: CGPoint, on overlay: CaptureOverlayView) -> Bool {
-    offersTrustRequest && detection == .windowsOnly && overlay.hint(1, contains: point)
+  /// Every overlay's bar, placed for the selection of the moment.
+  func refreshBars() {
+    for overlay in overlays { refreshBar(on: overlay) }
+  }
+
+  func refreshBar(on overlay: CaptureOverlayView) {
+    // During a move or a resize the bar stays where it was; the drag's end places it again.
+    if case .adjusting = phase { return }
+    let selection: CGRect? =
+      switch phase {
+      case .selected(let rect), .longScreenshot(let rect): rect
+      case .idle, .pressing, .creating, .adjusting: nil
+      }
+    let content = barContent(on: overlay)
+    // Either mode can request element detection while only windows are available, before a
+    // selection, clickable once per launch.
+    let request: Bool? =
+      if content != nil, case .idle = phase, detection == .windowsOnly {
+        offersTrustRequest
+      } else {
+        nil
+      }
+    overlay.showBar(content, selection: selection, trustRequest: request)
+  }
+
+  /// What the bars beside `rect` keep clear of: the bottom bar and the size label on the display
+  /// holding most of it, where they sit.
+  func keepClear(for rect: CGRect) -> AnnotationToolbarLayout.KeepClear {
+    let owner = primaryOverlay(for: rect)
+    return AnnotationToolbarLayout.KeepClear(bar: owner?.barFrame, label: owner?.sizeLabelFrame)
+  }
+
+  /// The Accessibility request was clicked: the caller asks for trust once the overlays are gone.
+  func requestAccessibility() {
+    guard offersTrustRequest, detection == .windowsOnly, case .idle = phase else { return }
+    finish(.wantsAccessibility)
   }
 
   // MARK: Recall and windows only
@@ -91,7 +120,7 @@ extension CaptureSession {
     guard case .idle = phase, detection == .elements else { return }
     onlyWindows.toggle()
     resetChain()
-    refreshHints()
+    refreshBars()
     renderIdle()
     requestHover()
   }

@@ -70,7 +70,8 @@ enum ClipboardPaste {
     var index = 0
     while let chunk = pace.next(at: .now - start) {
       if start + chunk.due > .now { try? await Task.sleep(until: start + chunk.due) }
-      guard !input.acted, NSWorkspace.shared.frontmostApplication?.processIdentifier == target.pid
+      guard !Task.isCancelled, !input.acted, !ShortcutRelease.isHeld,
+        NSWorkspace.shared.frontmostApplication?.processIdentifier == target.pid
       else {
         outcome = .interrupted
         break
@@ -131,7 +132,7 @@ private final class UserInputWatch {
 
   func start() {
     monitor = NSEvent.addGlobalMonitorForEvents(
-      matching: [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]
+      matching: [.keyDown, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown]
     ) { [weak self] event in
       guard !KeyPress.isSynthesized(event) else { return }
       MainActor.assumeIsolated { self?.acted = true }

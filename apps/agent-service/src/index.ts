@@ -7,6 +7,7 @@ import { automationComputer } from './automations/computer-deps.js';
 import { createComputerGrantCheck } from './computer/grants-live.js';
 import { ComputerRuntime } from './computer/runtime.js';
 import { syncStarterCommands } from './commands/starters.js';
+import { CommandStore } from './commands/store.js';
 import {
   clearEndpoint,
   readBuildId,
@@ -162,6 +163,15 @@ export async function createService(
       error: errorMessage(error),
     }),
   );
+  // Before any client reads the settings: an action this build added starts without keys where an
+  // older binding or command shortcut holds its default.
+  await CommandStore.load(config.paths.root)
+    .then((commands) => settings.releaseTakenAddedShortcuts(commands.list()))
+    .catch((error: unknown) =>
+      log.warn('A new app shortcut may share keys in use; the next start checks again.', {
+        error: errorMessage(error),
+      }),
+    );
   // After recovery and before any run dispatches: its reconciliation may cancel queued runs.
   const automations = await AutomationService.create({
     paths: config.paths,

@@ -3,16 +3,17 @@ import AppKit
 import ApplicationServices
 import Synchronization
 
-/// The selection toolbar's Accessibility check (grill decision Q4): whether the frontmost app's
-/// focused element has a non-empty selection, and where it is. It asks only for the selection's
-/// range, length, bounds or the custom editor's Copy availability, never for the text, which
-/// ``SelectionReader`` reads only when the user picks a toolbar action.
+/// The selection toolbar's Accessibility check: whether the frontmost app's focused element has a
+/// readable selection, and where it is. ``SelectionProbe`` carries only the selection's length and
+/// bounds (or the custom editor's Copy availability); ``SelectionTextProbe`` verifies bounded
+/// selections against ``TextCapture/hasContent(_:)`` without retaining text so attachment-only and
+/// whitespace-only selections do not summon a toolbar whose actions would find nothing.
 ///
 /// - Every AX message is bounded by a 100 ms messaging timeout set on each element it asks
 ///   (never on the system-wide element, which would change the default of every read).
 /// - A secure text field answers ``SelectionProbe/secureField`` before anything else is asked.
-/// - `AXSelectedTextRange` first; web content (WebKit, Chromium) reports its selection as a
-///   text-marker range, whose length and bounds it answers without the text.
+/// - `AXSelectedTextRange` first, then web content's `AXSelectedTextMarkerRange`
+///   (``SelectionTextProbe``).
 /// - Cell-based tables report selected cell identities. Opaque editors can supply only a Copy
 ///   menu hint (``SelectionEditMenu``); the action verifies that it really copies text.
 /// - Electron and Chromium build their web tree only once an assistive tool asks the
@@ -30,6 +31,10 @@ package nonisolated struct SelectionPresence: Sendable {
   /// A toolbar gesture supplies its starting point in Quartz screen coordinates. Focus-only
   /// checks (such as the answer card's write target) do not depend on the pointer.
   package func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
+    probe(gestureAt: origin, wps: nil)
+  }
+
+  func probe(gestureAt origin: CGPoint?, wps: WpsSelectionEvidence?) -> SelectionProbe {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
     Self.wakeWebContent(app)
@@ -43,7 +48,8 @@ package nonisolated struct SelectionPresence: Sendable {
     if role == secure || subrole == secure { return .secureField }
 
     let surface = SelectionSurface(focused)
-    if let probe = textProbe(focused) { return probe }
+    if let probe = SelectionTextProbe.probe(focused, surface: surface, in: app) { return probe }
+    if let wps, let probe = WpsSelectionProbe.probe(app: app, evidence: wps) { return probe }
     if let table = surface.selectedCellContainer() {
       if let origin, !gestureTargets(table, at: origin, in: app) { return .none }
       return .cells
@@ -53,14 +59,14 @@ package nonisolated struct SelectionPresence: Sendable {
     let deadline = ContinuousClock.now + .milliseconds(150)
     let children: [AXUIElement] = Self.copy(focused, kAXChildrenAttribute) ?? []
     for child in children.prefix(20) where ContinuousClock.now < deadline {
-      if let probe = textProbe(child) { return probe }
+      if let probe = SelectionTextProbe.probe(child, in: app) { return probe }
     }
     var current = focused
     for _ in 0..<6 where ContinuousClock.now < deadline {
       guard let parent: AXUIElement = Self.copy(current, kAXParentAttribute) else { break }
       let role: String? = Self.copy(parent, kAXRoleAttribute)
       if role == kAXWindowRole || role == kAXApplicationRole { break }
-      if let probe = textProbe(parent) { return probe }
+      if let probe = SelectionTextProbe.probe(parent, in: app) { return probe }
       current = parent
     }
     return surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
@@ -91,32 +97,6 @@ package nonisolated struct SelectionPresence: Sendable {
     return false
   }
 
-  private func textProbe(_ element: AXUIElement) -> SelectionProbe? {
-    AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
-    let surface = SelectionSurface(element)
-    let subrole: String? = Self.copy(element, kAXSubroleAttribute)
-    if subrole == kAXSecureTextFieldSubrole { return .secureField }
-    if surface.advertisesTextRange,
-      let rangeValue: AXValue = Self.copy(element, kAXSelectedTextRangeAttribute)
-    {
-      var range = CFRange()
-      let valid = AXValueGetValue(rangeValue, .cfRange, &range)
-      if valid, range.length > 0 {
-        let bounds: AXValue? = Self.copy(
-          element, kAXBoundsForRangeParameterizedAttribute, rangeValue)
-        return .selected(length: range.length, bounds: bounds.flatMap(Self.rect))
-      }
-      if valid, surface.nativeText, range.length == 0 { return SelectionProbe.none }
-    }
-    if let marker: CFTypeRef = Self.copy(element, "AXSelectedTextMarkerRange"),
-      let length: Int = Self.copy(element, "AXLengthForTextMarkerRange", marker), length > 0
-    {
-      let bounds: AXValue? = Self.copy(element, "AXBoundsForTextMarkerRange", marker)
-      return .selected(length: length, bounds: bounds.flatMap(Self.rect))
-    }
-    return nil
-  }
-
   /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`
   /// override treats that as Apple recommends for assistive tools such as Voice Control: an app
   /// with no accessibility mode yet turns on its basic one (native elements and web content)
@@ -131,25 +111,11 @@ package nonisolated struct SelectionPresence: Sendable {
     _ = AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
   }
 
-  private static func rect(_ value: AXValue) -> CGRect? {
-    var rect = CGRect.zero
-    return AXValueGetValue(value, .cgRect, &rect) ? rect : nil
-  }
-
   private static func copy<T>(_ element: AXUIElement, _ attribute: String) -> T? {
     var value: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
     else { return nil }
     return value as? T
-  }
-
-  private static func copy<T>(_ element: AXUIElement, _ attribute: String, _ parameter: CFTypeRef)
-    -> T?
-  {
-    var value: CFTypeRef?
-    let error = AXUIElementCopyParameterizedAttributeValue(
-      element, attribute as CFString, parameter, &value)
-    return error == .success ? value as? T : nil
   }
 }
 
@@ -198,7 +164,10 @@ extension SelectionPresence {
 
   /// Checks off the main thread and gives up after `limit`, a net under the per-message
   /// timeouts; a late answer is dropped.
-  static func check(pid: pid_t, gestureAt origin: CGPoint, limit: Duration = .milliseconds(300))
+  static func check(
+    pid: pid_t, gestureAt origin: CGPoint, wps: WpsSelectionEvidence? = nil,
+    limit: Duration = .milliseconds(300)
+  )
     async
     -> SelectionProbe
   {
@@ -212,7 +181,7 @@ extension SelectionPresence {
     return await Deadline.value(within: limit, fallback: .none) {
       await withCheckedContinuation { continuation in
         queue.async {
-          let probe = presence.probe(gestureAt: origin)
+          let probe = presence.probe(gestureAt: origin, wps: wps)
           busy.withLock { $0 = false }
           continuation.resume(returning: probe)
         }

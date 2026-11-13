@@ -6,5 +6,5 @@
     // its `.ts` file name.
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "scripts", "*.ts"]
+  "include": ["src", "scripts", "api", "*.ts"]
 }

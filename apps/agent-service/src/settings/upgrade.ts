@@ -1,12 +1,16 @@
 import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_GLOW_EFFECTS,
+  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
+  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
+  LONG_SCREENSHOT_CONFIRM_ACTIONS,
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 
@@ -16,19 +20,54 @@ import {
  * stores every field.
  */
 export function upgradeSettingsFile(raw: unknown): unknown {
-  return withAddedPanelBackground(
-    withAddedTaskPreferences(
-      withAddedVisionModel(
-        withAddedAppearance(
-          withAddedCommandTypingAnimation(
-            withAddedCommandTyping(
-              withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+  return withAddedScreenshotPreferences(
+    withAddedResultMarkdown(
+      withAddedPanelBackground(
+        withAddedTaskPreferences(
+          withAddedVisionModel(
+            withAddedAppearance(
+              withAddedCommandTypingAnimation(
+                withAddedCommandTyping(
+                  withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(raw))),
+                ),
+              ),
             ),
           ),
         ),
       ),
     ),
   );
+}
+
+/** Older settings files default screenshot confirmation copy on and long screenshot to the card. */
+function withAddedScreenshotPreferences(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  const record = settings as Record<string, unknown>;
+  const screenshotCopyOnConfirm =
+    typeof record.screenshotCopyOnConfirm === 'boolean'
+      ? record.screenshotCopyOnConfirm
+      : DEFAULT_SCREENSHOT_COPY_ON_CONFIRM;
+  const longScreenshotConfirmAction =
+    typeof record.longScreenshotConfirmAction === 'string' &&
+    (LONG_SCREENSHOT_CONFIRM_ACTIONS as readonly string[]).includes(
+      record.longScreenshotConfirmAction,
+    )
+      ? record.longScreenshotConfirmAction
+      : DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION;
+  return {
+    ...file,
+    settings: { ...settings, screenshotCopyOnConfirm, longScreenshotConfirmAction },
+  };
+}
+
+/** A file written before the result Markdown setting existed renders the result cards' Markdown. */
+function withAddedResultMarkdown(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null) return file;
+  return { ...file, settings: { resultMarkdown: DEFAULT_RESULT_MARKDOWN, ...settings } };
 }
 
 /** A file written before the panel background setting existed takes the measured recipe. */
@@ -166,9 +205,10 @@ function withAddedSelectionToolbar(file: unknown): unknown {
 }
 
 /**
- * A file written before an application shortcut action existed (`captureScreenshot`) stores
- * bindings without it; the missing actions take their defaults, so the file still reads and the
- * next write stores every action.
+ * A file written before an application shortcut action existed (`captureScreenshot`,
+ * `recordScreen`) stores bindings without it; the missing actions take their defaults, so the file
+ * still reads and the next write stores every action. Where an added action's default is already
+ * in use, the service's start leaves it without keys (`SettingsStore.releaseTakenAddedShortcuts`).
  */
 function withAddedShortcuts(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;

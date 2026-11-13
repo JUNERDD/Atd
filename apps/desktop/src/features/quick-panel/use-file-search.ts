@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import type { FileRef } from '../../client/agent/task-schema';
 import type { FileSearchReply, FileSearchResult } from '@atd/agent-contracts';
+import { onWindowVisible } from '../../window-state';
+
+function isWindowVisible(): boolean {
+  return (
+    document.documentElement.dataset.windowVisible !== 'false' &&
+    document.visibilityState !== 'hidden'
+  );
+}
 
 const DEBOUNCE_MS = 120;
 /** Recent files for an empty query, search matches otherwise (plan 1.9). */
@@ -66,6 +74,16 @@ function settling(settled: Settled): boolean {
  */
 export function useFileSearch(live: boolean, query: string): FileSearchState {
   const bridge = window.desktop?.files;
+  const [visible, setVisible] = useState(isWindowVisible);
+  useEffect(() => {
+    const sync = () => setVisible(isWindowVisible());
+    const unlisten = onWindowVisible(sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      unlisten();
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, []);
   const [opening, setOpening] = useState({ live, count: 0 });
   if (opening.live !== live) setOpening({ live, count: opening.count + (live ? 1 : 0) });
   const [latest, setSettled] = useState<Settled | null>(null);
@@ -73,7 +91,7 @@ export function useFileSearch(live: boolean, query: string): FileSearchState {
   const sequence = useRef(0);
   const count = opening.count;
   useEffect(() => {
-    if (!live || !bridge) return;
+    if (!live || !visible || !bridge) return;
     const request = ++sequence.current;
     const timer = setTimeout(() => {
       bridge.search({ query, limit: query ? MATCH_LIMIT : RECENT_LIMIT }).then(
@@ -89,15 +107,15 @@ export function useFileSearch(live: boolean, query: string): FileSearchState {
       );
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [live, bridge, query, count, round]);
+  }, [live, visible, bridge, query, count, round]);
 
   const settled = latest?.opening === count ? latest : null;
-  // Each reply that is still settling arms the next round; typing or closing cancels it.
+  // Each reply that is still settling arms the next round; typing, hiding, or closing cancels it.
   useEffect(() => {
-    if (!live || !settled || settled.query !== query || !settling(settled)) return;
+    if (!live || !visible || !settled || settled.query !== query || !settling(settled)) return;
     const timer = setTimeout(() => setRound((value) => value + 1), REFRESH_MS);
     return () => clearTimeout(timer);
-  }, [live, settled, query]);
+  }, [live, visible, settled, query]);
 
   if (!bridge) return { status: 'unavailable', reason: 'desktop' };
   if (!settled) return { status: 'loading' };

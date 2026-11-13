@@ -1,7 +1,7 @@
 import type { TaskInput } from '@atd/agent-contracts';
 
 const INTRO =
-  "The user quoted the following passages from answers earlier in this task. Each quote's @ token in the message stands for the passage quoted under it.";
+  "The user quoted the following passages. Each quote's @ token in the message stands for the passage quoted under it.";
 
 /** A message's quoted passages as its run reads them. */
 export interface QuoteMaterial {

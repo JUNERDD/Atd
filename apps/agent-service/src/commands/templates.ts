@@ -139,8 +139,8 @@ export function validateCommandShape(command: ServiceCommandFull): void {
 
 /**
  * What every save checks (the store's create and update, and the Agent's `command` tool before it
- * asks the user to approve): the shape, that an answer written over or after the selection
- * (`actsOnSelection`) belongs to a command that reads the selection (`readsSelection`), and the
+ * asks the user to approve): the shape, that an answer written over or after the selection, or
+ * marked on it (`actsOnSelection`), belongs to a command that reads the selection (`readsSelection`), and the
  * command's own shortcut rules (`validateShortcuts`). Runs and plugin commands check only the
  * shape, so a command stored before saves checked these still runs.
  */
@@ -149,7 +149,7 @@ export function validateCommandSave(command: ServiceCommandFull): void {
   const { action } = command.output;
   if (actsOnSelection(action) && !readsSelection(command.input))
     throw new TypeError(
-      `Output ${action} writes over or after the selected text, so the command must read it: set input.source to selection or input.selection to true, or choose another output action (insertAtCursor, copy or panel).`,
+      `Output ${action} acts on the selected text (writing over or after it, or marking it), so the command must read it: set input.source to selection or input.selection to true, or choose another output action (card, insertAtCursor, copy or panel).`,
     );
   validateShortcuts(command);
 }
@@ -178,6 +178,15 @@ export interface ResolveInput {
   arguments: Record<string, string | number | boolean>;
 }
 
+/** How a launch relaxes what its input must be. */
+export interface ResolveOptions {
+  /**
+   * The launch attaches files whatever the command's input accepts: a run on text recognized in a
+   * screenshot carries the screenshot and its screen context (`CommandRunRequest.screenshotText`).
+   */
+  anyFiles?: boolean;
+}
+
 /**
  * Resolves instructions against run input (desktop `resolveInstructions`
  * parity). Throws 400-class errors when the input cannot run the command.
@@ -185,11 +194,12 @@ export interface ResolveInput {
 export function resolveCommandInstructions(
   command: ServiceCommandFull,
   input: ResolveInput,
+  options: ResolveOptions = {},
 ): string {
   validateCommandShape(command);
   if (command.input.required && !input.text.trim())
     throw new TypeError('Add the required text before running.');
-  if (!command.input.files && input.files.length)
+  if (!command.input.files && !options.anyFiles && input.files.length)
     throw new TypeError('This command does not accept files.');
   if (command.input.source === 'screenshot' && !input.files.some(isImageFile))
     throw new TypeError('Take a screenshot before running this command.');

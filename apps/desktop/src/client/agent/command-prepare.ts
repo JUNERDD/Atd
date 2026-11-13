@@ -3,6 +3,7 @@ import {
   commandShortcut,
   MAX_ATTACHMENTS,
   shortcutRunSettings,
+  writesBack,
   type CommandShortcut,
   type ShortcutRunSettings,
 } from '@atd/agent-contracts';
@@ -154,11 +155,12 @@ export function withoutSelectionNotice(prepared: PreparedCommand): PreparedComma
 /**
  * `prepared`, launched with nothing selected, with an answer meant to go over or after the
  * selection going in at the cursor for this run instead: the shell refuses a selection write on a
- * target that recorded no selection.
+ * target that recorded no selection. An answer meant to mark the selection (`annotate`) shows on
+ * the card there anyway, so it stays as it is.
  */
 export function withoutSelectionWrite(prepared: PreparedCommand): PreparedCommand {
   const { action } = prepared.output;
-  if (!actsOnSelection(action)) return prepared;
+  if (!actsOnSelection(action) || !writesBack(action)) return prepared;
   return { ...prepared, output: { ...prepared.output, action: 'insertAtCursor' } };
 }
 

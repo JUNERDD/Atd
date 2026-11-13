@@ -8,8 +8,9 @@ import path from 'node:path';
 
 /** `COMPUTER_BROWSER_ADDON`: the Playwright (CDP) worker the shell runs with the app's own Node. */
 export const COMPUTER_BROWSER = 'computer-browser';
+export const WPS_SELECTION = 'wps-selection';
 /** Every add-on a build packs, in lock order. */
-export const ADDON_IDS = Object.freeze([COMPUTER_BROWSER]);
+export const ADDON_IDS = Object.freeze([COMPUTER_BROWSER, WPS_SELECTION]);
 
 /** The manifest at every archive's root; it is the first entry and lists every other file. */
 export const MANIFEST_FILE = 'addon.json';

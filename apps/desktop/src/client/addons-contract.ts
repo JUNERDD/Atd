@@ -1,4 +1,4 @@
-import type { AddonListResponse, AddonResponse } from '@atd/agent-contracts';
+import type { AddonListResponse, AddonResponse, WpsSelectionStatus } from '@atd/agent-contracts';
 
 /**
  * Add-ons: optional parts of the product the service downloads, verifies and activates while the
@@ -15,6 +15,9 @@ export interface AddonsBridge {
   cancel(id: string): Promise<AddonResponse>;
   /** Removes the add-on's files; rejects while a consumer still uses it. */
   remove(id: string): Promise<AddonResponse>;
+  /** WPS connection state only; the renderer never receives selection metadata. */
+  wpsStatus(): Promise<WpsSelectionStatus>;
+  reconnectWps(): Promise<WpsSelectionStatus>;
   /** Add-ons may have changed: an `addons` invalidation, or a reconnect. */
   onChange(listener: () => void): () => void;
 }

@@ -7,10 +7,21 @@ const UNITS: readonly (readonly [Intl.RelativeTimeFormatUnit, number])[] = [
   ['minute', 60],
 ];
 
+const formatters = new Map<string, Intl.RelativeTimeFormat>();
+
+function getFormatter(language: string): Intl.RelativeTimeFormat {
+  let format = formatters.get(language);
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' });
+    formatters.set(language, format);
+  }
+  return format;
+}
+
 /** Compact "3 days ago" / "3 天前" for quick-panel rows, in the UI language. */
 export function relativeTime(timestamp: number, language: string, now = Date.now()): string {
   const seconds = Math.round((timestamp - now) / 1000);
-  const format = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' });
+  const format = getFormatter(language);
   for (const [unit, size] of UNITS) {
     if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
   }

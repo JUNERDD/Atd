@@ -31,6 +31,13 @@ enum CopySelection {
     /// Plain text alone cannot distinguish a character selection from a single grid cell.
     let hasHTML: Bool
   }
+  enum MenuCopyOutcome {
+    /// Menu Copy ran or ``CopyFallback`` ruled copying out; do not follow with synthetic ⌘C.
+    case finished(Content?)
+    /// No actionable Copy menu item could run; synthetic ⌘C after modifier release may still try.
+    case needsKeyPress
+  }
+
   private static let pollInterval: Duration = .milliseconds(10)
 
   /// The text Copy in `pid`, the app the read just found `focus` in, copies; nil when
@@ -38,30 +45,68 @@ enum CopySelection {
   static func copy(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter) async
     -> Content?
   {
-    guard allowed(into: pid, focus: focus) else { return nil }
-    let command = await Task.detached { SelectionEditMenu.copyCommand(pid: pid) }.value
-    if command == nil {
-      guard await modifiersReleased(within: CopyFallback.releaseLimit) else { return nil }
+    switch await copyViaMenu(from: pid, after: focus, arbiter: arbiter) {
+    case .finished(let content): return content
+    case .needsKeyPress: return await copyViaKeyPress(from: pid, after: focus, arbiter: arbiter)
     }
-    // The user may have switched apps, or Atd taken the keyboard, during menu lookup or release.
-    guard allowed(into: pid, focus: focus),
-      let input = try? arbiter.tryClaim([.globalInput], owner: .user(.copySelection))
-    else { return nil }
+  }
+
+  /// Attempts standard `Edit > Copy` through Accessibility, which works while shortcut modifiers
+  /// remain held.
+  static func copyViaMenu(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter)
+    async -> MenuCopyOutcome
+  {
+    guard allowed(into: pid, focus: focus) else { return .finished(nil) }
+    let command = await Task.detached { SelectionEditMenu.copyCommand(pid: pid) }.value
+    guard allowed(into: pid, focus: focus) else { return .finished(nil) }
+    guard let command else { return .needsKeyPress }
+    guard let input = try? arbiter.tryClaim([.globalInput], owner: .user(.copySelection)) else {
+      return .finished(nil)
+    }
     defer { input.release() }
-    guard let clipboard = try? arbiter.tryClaim([.clipboard], owner: .user(.copySelection))
-    else { return nil }
+    guard let clipboard = try? arbiter.tryClaim([.clipboard], owner: .user(.copySelection)) else {
+      return .finished(nil)
+    }
     let pasteboard = NSPasteboard.general
     let saved = PasteboardSnapshot(of: pasteboard)
     let before = pasteboard.changeCount
-    if command?.perform() != true {
-      guard await modifiersReleased(within: CopyFallback.releaseLimit),
-        allowed(into: pid, focus: focus)
-      else {
-        clipboard.release()
-        return nil
-      }
-      KeyPress.post(KeyPress.copyKeyCode(), flags: .maskCommand)
+    guard command.perform() else {
+      clipboard.release()
+      return .needsKeyPress
     }
+    return .finished(
+      await readCopiedContent(saved: saved, on: pasteboard, since: before, clipboard: clipboard))
+  }
+
+  /// Posts synthetic ⌘C once shortcut modifiers come up within ``CopyFallback/releaseLimit``.
+  static func copyViaKeyPress(from pid: pid_t, after focus: SelectionFocus, arbiter: DeviceArbiter)
+    async -> Content?
+  {
+    guard allowed(into: pid, focus: focus),
+      await modifiersReleased(within: CopyFallback.releaseLimit),
+      allowed(into: pid, focus: focus),
+      let input = try? arbiter.tryClaim([.globalInput], owner: .user(.copySelection))
+    else { return nil }
+    defer { input.release() }
+    guard let clipboard = try? arbiter.tryClaim([.clipboard], owner: .user(.copySelection)) else {
+      return nil
+    }
+    let pasteboard = NSPasteboard.general
+    let saved = PasteboardSnapshot(of: pasteboard)
+    let before = pasteboard.changeCount
+    guard !ShortcutRelease.isHeld, allowed(into: pid, focus: focus) else {
+      clipboard.release()
+      return nil
+    }
+    KeyPress.post(KeyPress.copyKeyCode(), flags: .maskCommand)
+    return await readCopiedContent(
+      saved: saved, on: pasteboard, since: before, clipboard: clipboard)
+  }
+
+  private static func readCopiedContent(
+    saved: PasteboardSnapshot, on pasteboard: NSPasteboard, since before: Int,
+    clipboard: ResourceClaim
+  ) async -> Content? {
     guard await copyLanded(on: pasteboard, since: before, within: CopyFallback.copyLimit) else {
       Task {
         await restoreLateCopy(saved, to: pasteboard, since: before)
@@ -95,12 +140,7 @@ enum CopySelection {
   /// Waits until the keyboard holds no shortcut modifier: true once it does, false when `limit`
   /// passed first.
   private static func modifiersReleased(within limit: Duration) async -> Bool {
-    let deadline = ContinuousClock.now + limit
-    while CopyFallback.shortcutModifiersHeld(CGEventSource.flagsState(.hidSystemState).rawValue) {
-      guard ContinuousClock.now < deadline else { return false }
-      try? await Task.sleep(for: pollInterval)
-    }
-    return true
+    await ShortcutRelease.wait(until: .now + limit)
   }
 
   /// Polls until the copy is in: the change count moved from `before` and the pasteboard has a

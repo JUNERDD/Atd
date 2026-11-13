@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { queryOptions, replaceEqualDeep, useQuery } from '@tanstack/react-query';
 import type { AgentSnapshot, TaskDetail, TaskState } from '../../client/agent/bridge';
 import { applyTranscriptPatch } from '../../client/agent/transcript-schema';
@@ -78,10 +78,22 @@ export function useTaskDetail(
   initial: TaskDetail | null = null,
 ): { detail: TaskDetail | null } {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
+  if (detail && detail.task.id !== taskId) setDetail(null);
   // The latest detail across loads: a reload of the same task keeps its unchanged blocks.
   const held = useRef<TaskDetail | null>(null);
+  const lastEpoch = useRef(epoch);
+  const initialRef = useRef(initial);
+  useLayoutEffect(() => {
+    initialRef.current = initial;
+  });
   useEffect(() => {
-    if (!taskId || !window.desktop?.agent) return;
+    const epochChanged = lastEpoch.current !== epoch;
+    lastEpoch.current = epoch;
+    if (!taskId || !window.desktop?.agent) {
+      held.current = null;
+      return;
+    }
+    if (held.current?.task.id !== taskId) held.current = null;
     const bridge = window.desktop.agent;
     let active = true;
     let seq = 0;
@@ -123,7 +135,9 @@ export function useTaskDetail(
           publish(state && state.task.id === taskId ? mergeState(loaded, state) : loaded);
         },
         (error) => {
-          if (active && request === seq) showErrorToast(error);
+          if (!active || request !== seq) return;
+          waitingForSeed = false;
+          showErrorToast(error);
         },
       );
     };
@@ -156,7 +170,10 @@ export function useTaskDetail(
         : patched.blocks;
       publish({ ...current, revision: patched.revision, blocks }, true);
     });
-    seed();
+    const fresh =
+      !epochChanged && initialRef.current?.task.id === taskId ? initialRef.current : null;
+    if (fresh) publish(fresh);
+    else seed();
     return () => {
       active = false;
       cancelAnimationFrame(frame);

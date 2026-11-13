@@ -18,6 +18,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto';
 import { createReadStream, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import { legacyUpdateKey } from '../signing/upgrade-compat.mjs';
 
 /** Every installer supports macOS 15.0 or later; Sparkle compares it as a three-part version. */
 const MINIMUM_SYSTEM_VERSION = '15.0.0';
@@ -69,6 +70,7 @@ function readOptions() {
     fail('SPARKLE_ED_PRIVATE_KEY is missing; installed apps reject unsigned updates.');
   const publicKeys = (values['public-ed-key'] ?? []).map(parsePublicKey);
   if (publicKeys.length === 0) fail('Pass at least one --public-ed-key <label>=<base64>.');
+  publicKeys.push(parsePublicKey(`installed 0.10.x=${legacyUpdateKey}`));
   return {
     dir: values.dir,
     marketingVersion: values['marketing-version'],

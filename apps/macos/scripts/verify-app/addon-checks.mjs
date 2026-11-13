@@ -13,9 +13,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 import { EXECUTABLE_MODE, FILE_MODE, readArchive } from '../addons/archive.mjs';
 import {
   COMPUTER_BROWSER,
+  WPS_SELECTION,
   MANIFEST_FILE,
   RUNTIME_PACKAGES,
   archiveName,
@@ -123,7 +125,19 @@ async function checkBrowser({ root, manifest, node }) {
   });
 }
 
-const CHECKS = { [COMPUTER_BROWSER]: checkBrowser };
+async function checkWpsSelection({ root, manifest }) {
+  const expected = { index: 'index.html', script: 'main.js', ribbon: 'ribbon.xml' };
+  if (
+    manifest.files.length !== 3 ||
+    manifest.executables.length !== 0 ||
+    Object.keys(manifest.entries).length !== 3 ||
+    Object.entries(expected).some(([key, file]) => manifest.entries[key] !== file)
+  )
+    throw new Error('The WPS selection add-on must contain only its three web assets.');
+  new Script(await readFile(path.join(root, expected.script), 'utf8'));
+}
+
+const CHECKS = { [COMPUTER_BROWSER]: checkBrowser, [WPS_SELECTION]: checkWpsSelection };
 
 /**
  * Verifies the archives `lock` (a lock file) pins for `arch` against the files in `dir`; `node`

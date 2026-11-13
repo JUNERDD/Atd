@@ -55,18 +55,27 @@ export function useOverlayReserve<T extends HTMLElement>() {
       const footerH = parseFloat(style.getPropertyValue('--overlay-footer-height')) || 0;
       const padNow = box ? parseFloat(getComputedStyle(box).paddingBottom) || 0 : 0;
       const contentH = (box?.scrollHeight ?? 0) - padNow;
-      const off = contentH <= viewport.clientHeight - footerH;
-      if (off && viewport.dataset.reserve !== 'off') viewport.dataset.reserve = 'off';
-      else if (!off && viewport.dataset.reserve !== undefined) delete viewport.dataset.reserve;
+      const available = viewport.clientHeight - footerH;
+      const isOff = viewport.dataset.reserve === 'off';
+      // Hysteresis absorbs subpixel scrollHeight rounding from toggling box's own paddingBottom.
+      const off = isOff ? contentH <= available + 2 : contentH <= available;
+      if (off && !isOff) viewport.dataset.reserve = 'off';
+      else if (!off && isOff) delete viewport.dataset.reserve;
     };
     sync();
-    const observer = new ResizeObserver(sync);
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(sync);
+    };
+    const observer = new ResizeObserver(schedule);
     observer.observe(viewport);
     const box = viewport.firstElementChild;
     if (box instanceof HTMLElement) observer.observe(box);
     if (footer instanceof HTMLElement) observer.observe(footer);
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(frame);
       delete viewport.dataset.reserve;
     };
   }, []);

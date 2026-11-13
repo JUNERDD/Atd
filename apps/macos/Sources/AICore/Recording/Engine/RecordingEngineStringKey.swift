@@ -1,0 +1,33 @@
+/// The recording engine's copy: processing, the steps as the result card lists them, why a
+/// recording has no narration, export notes and errors. Keys with `%@` or `%lld` take one
+/// argument. The context file is not here: the model reads it in English.
+public enum RecordingEngineStringKey: String, CaseIterable, Sendable {
+  case processing = "recording.engine.processing"
+  case countdown = "recording.engine.countdown"
+  case keySpace = "recording.engine.key.space"
+  case stepClick = "recording.engine.step.click"
+  case stepClickPlain = "recording.engine.step.clickPlain"
+  case stepDoubleClick = "recording.engine.step.doubleClick"
+  case stepDoubleClickPlain = "recording.engine.step.doubleClickPlain"
+  case stepRightClick = "recording.engine.step.rightClick"
+  case stepRightClickPlain = "recording.engine.step.rightClickPlain"
+  case stepKeys = "recording.engine.step.keys"
+  case stepTyping = "recording.engine.step.typing"
+  case stepAppSwitch = "recording.engine.step.appSwitch"
+  case stepWindowSwitch = "recording.engine.step.windowSwitch"
+  case stepScreenChange = "recording.engine.step.screenChange"
+  case stepNarration = "recording.engine.step.narration"
+  case narrationNone = "recording.engine.narration.none"
+  case narrationMicrophoneOff = "recording.engine.narration.microphoneOff"
+  case narrationNotAllowed = "recording.engine.narration.notAllowed"
+  case narrationUnavailable = "recording.engine.narration.unavailable"
+  case narrationFailed = "recording.engine.narration.failed"
+  case exportVideoTooLarge = "recording.engine.export.videoTooLarge"
+  case issueMicrophoneNotInMovie = "recording.engine.issue.microphoneNotInMovie"
+  case errorMicrophone = "recording.engine.error.microphone"
+  case errorScreenRecording = "recording.engine.error.screenRecording"
+  case errorDisplay = "recording.engine.error.display"
+  case errorRecording = "recording.engine.error.recording"
+  case errorExport = "recording.engine.error.export"
+  case errorSave = "recording.engine.error.save"
+}

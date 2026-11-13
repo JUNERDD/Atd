@@ -22,7 +22,12 @@ struct IslandCapsule: View {
       case .done: status(model.labels.done, running: false)
       case .copied: status(model.labels.copied, running: false)
       case .notice(let message): notice(message)
-      case .choose, .answer, .review, .compose: EmptyView()
+      case .recording: IslandRecordingCapsule(model: model)
+      case .recordingStatus(let message, let outcome):
+        IslandRecordingStatus(message: message, outcome: outcome)
+      case .recordingDiscard(let elapsed): IslandRecordingDiscard(model: model, elapsed: elapsed)
+      case .choose, .answer, .review, .compose, .recordingResult, .longScreenshotResult:
+        EmptyView()
       }
     }
     .frame(height: IslandMetrics.capsuleHeight)
@@ -48,19 +53,7 @@ struct IslandCapsule: View {
 
   /// Writing, with the activity indicator, or written (or copied), with a check.
   private func status(_ text: String, running: Bool) -> some View {
-    HStack(spacing: 8) {
-      if running {
-        IslandSpinner()
-      } else {
-        IslandGlyph(name: "check")
-      }
-      Text(verbatim: text).font(IslandType.label).lineLimit(1).fixedSize()
-    }
-    // As the HUD's status-only capsule: 8 pt in, 10 pt out, inside the bar's padding.
-    .padding(.leading, IslandMetrics.padding + 8)
-    .padding(.trailing, IslandMetrics.padding + 10)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text(verbatim: text))
+    IslandStatusCapsule(text: text, running: running)
   }
 
   /// The app's mark, the page's message, Open and a close button that only dismisses.
@@ -181,10 +174,33 @@ private struct IslandChip: View {
         .frame(height: 22)
     }
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered, rest: 0.08))
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover { hovered = $0 })
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
     .accessibilityValue(Text(verbatim: summary))
+  }
+}
+
+/// A status capsule's content: the activity indicator while `running`, else a check, beside the
+/// status in the label type (the island's writing, written and copied phases, and the screenshot
+/// text command's copied capsule).
+struct IslandStatusCapsule: View {
+  let text: String
+  let running: Bool
+
+  var body: some View {
+    HStack(spacing: 8) {
+      if running {
+        IslandSpinner()
+      } else {
+        IslandGlyph(name: "check")
+      }
+      Text(verbatim: text).font(IslandType.label).lineLimit(1).fixedSize()
+    }
+    // As the HUD's status-only capsule: 8 pt in, 10 pt out, inside the bar's padding.
+    .padding(.leading, IslandMetrics.padding + 8)
+    .padding(.trailing, IslandMetrics.padding + 10)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(Text(verbatim: text))
   }
 }

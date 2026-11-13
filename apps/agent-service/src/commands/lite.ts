@@ -12,28 +12,38 @@ export interface LiteRunFacts {
   tokens: readonly InstructionToken[];
   /** Whether the caller wraps the template in text of its own (an automation's frame). */
   framed: boolean;
+  /** Whether the launch binds computer targets (`LaunchCommandRequest.computer`). */
+  computer?: boolean;
   internal: InternalSubmitOptions;
+  /**
+   * True when the command runs on recognized screenshot text (`screenshotText`) in a new task or
+   * one whose earlier runs were all `lite`: its preloaded screenshot and context need no tools.
+   */
+  screenshotText?: boolean;
 }
 
 /**
- * Whether a command run needs nothing the full session wires: it gets no tools, the template
- * stages no skill, reference, subagent or MCP server, nothing attaches files, a screenshot or
- * folders, and it is a person's run, not an automation's. Only the first run of a new task
- * qualifies, so a lite session never has to serve a conversation that already used tools; the
- * task's follow-ups take the full session, as do messages queued while it answers
- * (tasks/held-queue.ts). The run's memory flag still freezes as resolved: the lite session shows
- * only core memory and learns none, as no command run is learned from.
+ * Whether a command run needs nothing the full session wires: it gets no tools or computer
+ * bindings, the template stages no skill, reference, subagent or MCP server, nothing attaches
+ * arbitrary files, a screenshot source or folders, and it is a person's run, not an automation's.
+ * Runs on recognized screenshot text (`screenshotText`) attach only the capture's preloaded image
+ * and context, so they qualify on a new task or a `lite`-only task; any other run qualifies only as
+ * the first run of a new task with no attached files. Ordinary follow-ups and queued messages take
+ * the full session (tasks/held-queue.ts). The run's memory flag still freezes as resolved: the lite
+ * session shows only core memory and learns none, as no command run is learned from.
  */
 export function isLiteRun(facts: LiteRunFacts): boolean {
   const { input } = facts;
+  const screenshotText = facts.screenshotText === true;
   return (
     !facts.internal.trigger &&
-    facts.taskId === undefined &&
+    !facts.computer &&
+    (facts.taskId === undefined || screenshotText) &&
     !facts.framed &&
     facts.tools.length === 0 &&
     facts.tokens.length === 0 &&
-    input.files.length === 0 &&
-    input.source !== 'screenshot' &&
+    (screenshotText || input.files.length === 0) &&
+    (screenshotText || input.source !== 'screenshot') &&
     !input.folders?.length
   );
 }

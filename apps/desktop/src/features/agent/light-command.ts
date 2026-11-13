@@ -1,3 +1,4 @@
+import { writesBack } from '@atd/agent-contracts';
 import type {
   AgentEvent,
   CommandProgressAction,
@@ -9,11 +10,17 @@ import { valuesSummary } from '../../client/agent/command-arguments';
 import { isActive, type RunStatus } from '../../client/agent/task-schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import i18n from '../../i18n';
+import { CardStream } from './card-stream';
 import { refusalText, unwrittenText, writeInto } from './command-answer';
+import { runWaits } from './light-answer';
+import { actOnIsland, followIsland, isCurrentIsland, replaceIsland } from './island-owner';
+import { chooseLightRun } from './light-command-choose';
 import { trackCommandRun, type SettledCommandRun } from './command-results';
 import {
   hideHud,
+  landsOnCard,
   letGo,
+  lightBridge,
   lightRuns,
   showHud,
   stopRun,
@@ -48,7 +55,7 @@ export interface LightHost {
 const { holding } = lightRuns;
 
 function notice(run: LightRun, message: string) {
-  if (lightRuns.current === run) showHud(run, { phase: 'notice', message });
+  if (isCurrentIsland(run)) showHud(run, { phase: 'notice', message });
   // A run whose HUD a newer launch replaced reports where a background run would.
   else showToast({ kind: 'warning', text: message });
 }
@@ -59,7 +66,7 @@ function notice(run: LightRun, message: string) {
  * clipboard instead, where a background run's would go.
  */
 function offer(run: LightRun, answer: string, note?: string) {
-  if (lightRuns.current === run) {
+  if (isCurrentIsland(run)) {
     const { name } = run.launch.command;
     showHud(run, { phase: 'answer', command: name, answer, ...(note ? { note } : {}) });
     return;
@@ -70,8 +77,15 @@ function offer(run: LightRun, answer: string, note?: string) {
     .catch((error: unknown) => console.error('The unwritten answer was not copied:', error));
 }
 
-function text(key: 'failed' | 'stopped' | 'startFailed' | 'empty', run: LightRun): string {
-  return i18n.t(`tasks:commandOutput.progress.${key}`, { command: run.launch.command.name });
+/** Why a command's run gave no answer to use, as the island and the result card say it. */
+export type ProgressReason = 'failed' | 'stopped' | 'startFailed' | 'empty';
+
+export function progressText(key: ProgressReason, command: string): string {
+  return i18n.t(`tasks:commandOutput.progress.${key}`, { command });
+}
+
+function text(key: ProgressReason, run: LightRun): string {
+  return progressText(key, run.launch.command.name);
 }
 
 /**
@@ -79,10 +93,10 @@ function text(key: 'failed' | 'stopped' | 'startFailed' | 'empty', run: LightRun
  * task held apart from the panel's view, so the panel keeps showing what it showed. The run it
  * replaces is cancelled while it is still going: finishing unseen, it would pull the focus back
  * to its field and write there while the person works elsewhere. A run that cannot start leaves a
- * notice whose Open shows the command's input step.
+ * notice whose Open shows the command's input step. An answer that lands on the answer card
+ * (`landsOnCard`) streams onto it as it comes (`CardStream`).
  */
 export async function startLightRun(launch: LightLaunch, light: LightCommandBridge): Promise<void> {
-  supersedeLightRun();
   const run: LightRun = {
     launch,
     taskId: null,
@@ -91,10 +105,24 @@ export async function startLightRun(launch: LightLaunch, light: LightCommandBrid
     cancelled: false,
     handedOver: false,
     review: null,
+    stream: null,
   };
-  lightRuns.current = run;
+  const { name } = launch.command;
+  if (landsOnCard(launch))
+    run.stream = new CardStream(
+      (answer) => showHud(run, { phase: 'answer', command: name, answer, streaming: true }),
+      () => isCurrentIsland(run) && !run.cancelled && !run.handedOver,
+    );
+  replaceIsland({
+    key: launch.target.id,
+    holdKey: launch.target.id,
+    identity: run,
+    act: (action, host) => actOnRun(run, action, host),
+    supersede: () => supersede(run),
+    follow: (event, host) => followLightRun(run, event, host),
+  });
   const summary = valuesSummary(launch.command, launch.input.arguments);
-  showHud(run, { phase: 'working', command: launch.command.name, ...(summary ? { summary } : {}) });
+  showHud(run, { phase: 'working', command: name, ...(summary ? { summary } : {}) });
   let detail: TaskDetail;
   try {
     detail = await light.submit(launch.target.id, {
@@ -114,7 +142,7 @@ export async function startLightRun(launch: LightLaunch, light: LightCommandBrid
     if (!run.cancelled) notice(run, text('startFailed', run));
     return;
   }
-  trackCommandRun(launch, detail, true);
+  trackCommandRun(launch, detail, true, (grown) => run.stream?.push(grown));
   const started = detail.task.runs.at(-1);
   run.taskId = detail.task.id;
   run.runId = started?.id ?? null;
@@ -127,14 +155,7 @@ export async function startLightRun(launch: LightLaunch, light: LightCommandBrid
   }
   holding.set(started.id, run);
   if (run.cancelled) stop(run);
-}
-
-/**
- * Another HUD (a newer launch's, or an options card) replaces the one of the light run on screen,
- * which is cancelled as `supersede` says.
- */
-export function supersedeLightRun(): void {
-  if (lightRuns.current) supersede(lightRuns.current);
+  followIsland({ type: 'task', state: detail });
 }
 
 /** Whether a light run is still going: it has not ended (its hold is there) or failed to start. */
@@ -151,12 +172,29 @@ function supersede(run: LightRun) {
   if (run.handedOver) return;
   if (run.review) return closeReview(run);
   if (run.cancelled || !going(run)) return;
-  run.cancelled = true;
-  stop(run);
+  cancel(run);
 }
 
 function stop(run: LightRun) {
   if (run.taskId && run.runId) stopRun(run.taskId, run.runId);
+}
+
+/** The run stops, quietly: its answer streams no more, and its end shows nothing. */
+function cancel(run: LightRun) {
+  run.cancelled = true;
+  run.stream?.end();
+  stop(run);
+}
+
+/**
+ * Stop (or Escape) on the answer card while the run's answer streams onto it: the run stops, and
+ * the card keeps what came of the answer, saying the run was stopped.
+ */
+function stopStreaming(run: LightRun) {
+  const { stream } = run;
+  if (!stream?.shown || run.cancelled || !going(run)) return;
+  cancel(run);
+  offer(run, stream.text, text('stopped', run));
 }
 
 /**
@@ -194,8 +232,11 @@ function end(run: LightRun, runId: string, status: RunStatus, answer: string) {
 }
 
 /**
- * The end of a light launch's own run. An answer under review starts the review while the run's
- * HUD shows, keeping the task held for the versions to come; anything else lets the task go.
+ * The end of a light launch's own run. An answer under review (a write-back's) starts the review
+ * while the run's HUD shows, keeping the task held for the versions to come; anything else lets
+ * the task go. An answer that lands on the answer card (`landsOnCard`) shows there whole, where
+ * the shell offers Copy, Insert and Open; a run that gave none after some of it streamed onto the
+ * card leaves that on the card, saying why, rather than a notice.
  */
 async function endLightRun(
   run: LightRun,
@@ -203,25 +244,22 @@ async function endLightRun(
   status: RunStatus,
   answer: string,
 ): Promise<void> {
-  const reviewed = status === 'completed' && answer !== '' && run.launch.output.review;
-  if (reviewed && lightRuns.current === run) return beginReview(run, runId, answer);
+  const { target, output } = run.launch;
+  const streamed = run.stream?.shown && isCurrentIsland(run) ? run.stream.text : '';
+  run.stream?.end();
+  const reviewed =
+    status === 'completed' && answer !== '' && writesBack(output.action) && output.review;
+  if (reviewed && isCurrentIsland(run)) return beginReview(run, runId, answer);
   letGo(run);
   // Never written by itself: one whose HUD a newer launch replaced goes on the clipboard.
   if (reviewed) return offer(run, answer);
-  if (status !== 'completed')
-    return notice(
-      run,
-      text(status === 'stopped' || status === 'cancelled' ? 'stopped' : 'failed', run),
-    );
-  if (!answer) return notice(run, text('empty', run));
-  const { target, output } = run.launch;
-  if (
-    !target.writable ||
-    (target.selectionKind !== undefined &&
-      target.selectionKind !== 'text' &&
-      output.action === 'insertAfterSelection')
-  )
-    return offer(run, answer);
+  if (status !== 'completed' || !answer) {
+    const stopped = status === 'stopped' || status === 'cancelled';
+    const why = stopped ? 'stopped' : status === 'completed' && !streamed ? 'empty' : 'failed';
+    return streamed ? offer(run, streamed, text(why, run)) : notice(run, text(why, run));
+  }
+  // Only a write-back is written (`writesBack` narrows the action to one).
+  if (!writesBack(output.action) || landsOnCard(run.launch)) return offer(run, answer);
   await hideHud(run);
   const reason = await writeInto(runId, target, output.action, answer);
   if (!reason) return;
@@ -232,17 +270,10 @@ async function endLightRun(
   notice(run, refusalText(reason, target.app));
 }
 
-/** The light run whose HUD `target` names, while it shows. */
-function shown(target: string): LightRun | null {
-  const { current } = lightRuns;
-  return current?.launch.target.id === target && !current.handedOver && !current.review?.closed
-    ? current
-    : null;
-}
-
 /** The panel takes the run over and shows it; the HUD goes. */
 function handOver(run: LightRun, host: LightHost) {
   run.handedOver = true;
+  run.stream?.end();
   void hideHud(run);
   handReviewOver(run);
   if (run.taskId) host.openTask(run.taskId);
@@ -255,18 +286,25 @@ function handOver(run: LightRun, host: LightHost) {
 
 /**
  * A press on the HUD of a light run: Open (on a notice, the answer card or the review card) shows
- * it in the panel; cancel stops the working run; the review card's actions are its review's
- * (`actOnReview`). The options card's actions, and a change of values (`changeLightRun`), are not
- * the run's to take.
+ * it in the panel; cancel stops the working run (or the one streaming onto the answer card, whose
+ * card went), stop the one streaming onto the card, which keeps what came; the review card's
+ * actions are its review's (`actOnReview`). Changing the working run's values stops it and
+ * offers its options again.
  */
-export function actOnProgress(action: CommandProgressAction, host: LightHost): void {
-  const run = shown(action.target);
-  if (!run) return;
+export const actOnProgress = actOnIsland;
+
+function actOnRun(run: LightRun, action: CommandProgressAction, host: LightHost): void {
+  if (run.handedOver || run.review?.closed) return;
+  if (action.action === 'change') {
+    const light = lightBridge();
+    const launch = changeLightRun(run);
+    if (launch && light) chooseLightRun(launch, light);
+    return;
+  }
   if (action.action === 'open') return handOver(run, host);
   if (run.review) return actOnReview(run, action);
-  if (action.action !== 'cancel') return;
-  run.cancelled = true;
-  stop(run);
+  if (action.action === 'stop') return stopStreaming(run);
+  if (action.action === 'cancel') cancel(run);
 }
 
 /**
@@ -275,11 +313,9 @@ export function actOnProgress(action: CommandProgressAction, host: LightHost): v
  * offered again. Nothing was written yet, since the HUD goes as the write starts. Null when no
  * such run is still going there, or the run is under review (its card changes values itself).
  */
-export function changeLightRun(target: string): LightLaunch | null {
-  const run = shown(target);
-  if (!run || run.review || run.cancelled || !going(run)) return null;
-  run.cancelled = true;
-  stop(run);
+function changeLightRun(run: LightRun): LightLaunch | null {
+  if (run.review || run.cancelled || !going(run)) return null;
+  cancel(run);
   return run.launch;
 }
 
@@ -288,21 +324,7 @@ export function changeLightRun(target: string): LightLaunch | null {
  * question), its own run or a version of its review, can only go on in the panel, which then
  * shows it.
  */
-export function followLightRun(event: AgentEvent, host: LightHost): void {
-  const run = lightRuns.current;
+function followLightRun(run: LightRun, event: AgentEvent, host: LightHost): void {
   if (!run?.taskId || !run.runId || run.handedOver || run.cancelled) return;
-  const asks = (status: RunStatus | undefined) =>
-    status === 'awaiting_input' || status === 'awaiting_confirmation';
-  const waiting =
-    event.type === 'task'
-      ? event.state.task.id === run.taskId &&
-        (asks(event.state.task.runs.find((item) => item.id === run.runId)?.status) ||
-          event.state.requests.some((request) => request.runId === run.runId))
-      : event.type === 'snapshot' &&
-        asks(
-          event.snapshot.tasks
-            .find((task) => task.id === run.taskId)
-            ?.runs.find((item) => item.id === run.runId)?.status,
-        );
-  if (waiting && holding.has(run.runId)) handOver(run, host);
+  if (runWaits(event, run.taskId, run.runId) && holding.has(run.runId)) handOver(run, host);
 }

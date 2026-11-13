@@ -83,6 +83,7 @@ export class NativeBridge {
     'accessibility.trust': new Set(),
     'screenRecording.trust': new Set(),
     'update.state': new Set(),
+    'update.releaseNotes': new Set(),
     'socket.frames': new Set(),
     'userApp.state': new Set(),
     'userApp.pins': new Set(),
@@ -95,6 +96,12 @@ export class NativeBridge {
     'text.writeOffer': new Set(),
     'computer.state': new Set(),
     'shortcuts.changed': new Set(),
+    'recording.ask': new Set(),
+    'recording.askStop': new Set(),
+    'recording.askOpen': new Set(),
+    'captureText.run': new Set(),
+    'captureText.action': new Set(),
+    'panelModal.open': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

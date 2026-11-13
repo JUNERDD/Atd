@@ -8,12 +8,17 @@ import AppKit
 /// keeps the text; an edit left empty removes the annotation. With a text background the canvas
 /// draws the plate behind the text view (the view itself stays transparent). The finished edit
 /// is one undo step in the document; keystrokes have their own history while the editor is open.
+/// Text that is a box (``AnnotationStyle/fixedWidth``, a command's text in place) keeps its frame's
+/// width while it is edited and never gets shorter than it was, so its plate keeps covering what
+/// it covered.
 final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   private struct Session {
     let view: NSTextView
     let id: UUID
     let existing: Bool
     var style: AnnotationStyle
+    /// A box's frame as the edit began: its width and the least height it keeps.
+    let box: CGRect?
   }
 
   private let store: AnnotationStore
@@ -47,21 +52,25 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     var origin = point
     var text = ""
     var style = style
+    var box: CGRect?
     if let existing, case .text(let string, let frame) = existing.shape {
       (origin, text, style) = (frame.origin, string, existing.style)
+      if style.fixedWidth { box = frame }
     } else {
       origin.y -= Self.lineHeight(style, in: view) / 2
     }
     let area = canvas.bounds
-    origin.x = min(max(origin.x, area.minX), max(area.maxX - 24, area.minX))
-    origin.y = max(origin.y, area.minY)
-    configure(view, style: style, width: area.maxX - origin.x)
+    if box == nil {
+      origin.x = min(max(origin.x, area.minX), max(area.maxX - 24, area.minX))
+      origin.y = max(origin.y, area.minY)
+    }
+    configure(view, style: style, width: box?.width ?? area.maxX - origin.x)
     view.textStorage?.setAttributedString(
       NSAttributedString(string: text, attributes: AnnotationRenderer.textAttributes(style)))
     view.frame = CGRect(origin: origin, size: CGSize(width: 2, height: 2))
     canvas.addSubview(view)
     let id = existing?.id ?? UUID()
-    session = Session(view: view, id: id, existing: existing != nil, style: style)
+    session = Session(view: view, id: id, existing: existing != nil, style: style, box: box)
     store.selectedID = nil
     store.editingID = id
     fit()
@@ -92,9 +101,9 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   }
 
   /// The selection moved or resized under open text: the text keeps its place on the screen
-  /// and wraps at the selection's new right edge.
+  /// and wraps at the selection's new right edge; a box keeps its own width.
   func selectionDidChange() {
-    guard let view = session?.view, let canvas = view.superview else { return }
+    guard let view = session?.view, session?.box == nil, let canvas = view.superview else { return }
     view.textContainer?.containerSize.width = max(canvas.bounds.maxX - view.frame.minX, 24)
     fit()
   }
@@ -148,8 +157,8 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     view.isVerticallyResizable = false
     view.typingAttributes = AnnotationRenderer.textAttributes(style)
     view.insertionPointColor = AnnotationRenderer.textColor(style)
-    // The text wraps at the selection's right edge (``selectionDidChange()`` keeps it there);
-    // ``fit`` sizes the view to what is typed.
+    // The text wraps at the selection's right edge (``selectionDidChange()`` keeps it there), a
+    // box at its own width; ``fit`` sizes the view to what is typed.
     view.textContainer?.lineFragmentPadding = 0
     view.textContainer?.widthTracksTextView = false
     view.textContainer?.heightTracksTextView = false
@@ -159,22 +168,25 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
 
   /// Sizes the view to the laid-out text (one empty line at least). The width keeps 2 pt for
   /// the caret; lines never get wider than the container, so the renderer, wrapping at this
-  /// width, breaks lines where the editor did.
+  /// width, breaks lines where the editor did. A box stays its width and at least its height.
   private func fit() {
     guard let session, let container = session.view.textContainer,
       let layout = session.view.layoutManager
     else { return }
     layout.ensureLayout(for: container)
     let used = layout.usedRect(for: container)
-    let width = min(ceil(used.width) + 2, container.containerSize.width)
-    let height = max(ceil(used.height), Self.lineHeight(session.style, in: session.view))
+    let width =
+      session.box?.width ?? min(ceil(used.width) + 2, container.containerSize.width)
+    let height = max(
+      ceil(used.height), Self.lineHeight(session.style, in: session.view),
+      session.box?.height ?? 0)
     session.view.setFrameSize(CGSize(width: width, height: height))
     session.view.superview?.needsDisplay = true
   }
 
   private static func lineHeight(_ style: AnnotationStyle, in view: NSTextView) -> CGFloat {
-    let font = NSFont.systemFont(ofSize: style.stroke.fontSize, weight: .semibold)
-    return ceil(view.layoutManager?.defaultLineHeight(for: font) ?? style.stroke.fontSize * 1.2)
+    let font = NSFont.systemFont(ofSize: style.textFontSize, weight: .semibold)
+    return ceil(view.layoutManager?.defaultLineHeight(for: font) ?? style.textFontSize * 1.2)
   }
 
   // MARK: NSTextViewDelegate

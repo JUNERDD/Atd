@@ -164,7 +164,7 @@ export function useSectionPin({
     // The area also holds the scrollbar, whose drag must stop a glide too.
     area.addEventListener('wheel', stop, { passive: true });
     area.addEventListener('pointerdown', stop);
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(schedule);
     observer.observe(list);
     observer.observe(viewport);
     sync.current = update;

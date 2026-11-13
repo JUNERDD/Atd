@@ -21,13 +21,19 @@ import Carbon.HIToolbox
 /// app and come back to paste it: a click on the card gives it the keyboard again.
 extension CommandProgressController {
   func wireCard() {
+    // While the shell is on the island its result card reads the keys; the page's cards,
+    // waiting in the state, read none.
     island.onKeyDown = { [weak self] event in
       guard let self else { return false }
+      guard state.drawsProgress else { return shellKey(event) }
       return reviewKey(event) || answerKey(event) || composeKey(event) || cardKey(event)
     }
-    island.onScroll = { [weak self] event in self?.cardScroll(event) ?? false }
+    island.onScroll = { [weak self] event in
+      guard let self, state.drawsProgress else { return false }
+      return cardScroll(event)
+    }
     island.onResignKey = { [weak self] in
-      guard let self, state.isChoosing else { return }
+      guard let self, state.drawsProgress, state.isChoosing else { return }
       press(.cancel, returning: false)
     }
     island.model.cardEvent = { [weak self] event in self?.cardEvent(event) }
@@ -42,6 +48,13 @@ extension CommandProgressController {
     if field?.hasMarkedText() == true { return false }
     guard let key = Self.key(event) else { return field == nil }
     let response = card.handle(key)
+    if event.isARepeat {
+      switch key {
+      case .space, .enter, .escape, .digit:
+        if response != .ignored { return true }
+      default: break
+      }
+    }
     update(card)
     switch response {
     case .ignored: return field == nil

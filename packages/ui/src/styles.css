@@ -380,7 +380,9 @@
   --accent: var(--ata-glass-control-wash);
   --muted: var(--ata-glass-control-wash);
   --ata-scroll-thumb: var(--ata-glass-scroll-thumb);
-  position: relative;
+  &:where(:not(.fixed, .absolute, .sticky)) {
+    position: relative;
+  }
   isolation: isolate;
 }
 

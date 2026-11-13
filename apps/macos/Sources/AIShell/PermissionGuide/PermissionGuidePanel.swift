@@ -13,6 +13,9 @@ final class PermissionGuidePanel: NSObject {
   var onClose: (() -> Void)?
 
   private let window: NSPanel
+  private let hover = SelectionToolbarHover()
+  private let closeButton: PermissionGuideCloseButton
+  private let card: PermissionGuideCard
   private let stack = NSStackView()
   private let message: NSTextField
   private let width: NSLayoutConstraint
@@ -49,7 +52,7 @@ final class PermissionGuidePanel: NSObject {
       image: NSImage(systemSymbolName: "arrow.up", accessibilityDescription: nil) ?? NSImage())
     arrow.symbolConfiguration = .init(pointSize: 13, weight: .semibold)
     arrow.contentTintColor = .controlAccentColor
-    let close = NSButton(
+    let close = PermissionGuideCloseButton(
       image: NSImage(
         systemSymbolName: "xmark.circle.fill",
         accessibilityDescription: strings(.permissionGuideClose)) ?? NSImage(),
@@ -58,6 +61,7 @@ final class PermissionGuidePanel: NSObject {
     close.symbolConfiguration = .init(pointSize: 15, weight: .regular)
     close.contentTintColor = .tertiaryLabelColor
     close.toolTip = strings(.permissionGuideClose)
+    closeButton = close
 
     let header = NSStackView(views: [arrow, message, close])
     header.orientation = .horizontal
@@ -70,6 +74,7 @@ final class PermissionGuidePanel: NSObject {
     }
     let card = PermissionGuideCard(
       appURL: appURL, name: appName, dragHint: strings(.permissionGuideDrag))
+    self.card = card
 
     stack.orientation = .vertical
     stack.alignment = .leading
@@ -97,6 +102,7 @@ final class PermissionGuidePanel: NSObject {
   /// Docks the panel to System Settings' window frame, or hides it for nil.
   func place(under settings: CGRect?) {
     guard let settings, let screen = Self.screen(for: settings) else {
+      hover.stop()
       window.orderOut(nil)
       return
     }
@@ -109,10 +115,14 @@ final class PermissionGuidePanel: NSObject {
     origin.x = min(max(origin.x, visible.minX), visible.maxX - width)
     window.setFrame(
       CGRect(origin: origin, size: CGSize(width: width, height: height)), display: true)
-    if !window.isVisible { window.orderFrontRegardless() }
+    if !window.isVisible {
+      window.orderFrontRegardless()
+      if let content = window.contentView { hover.start([closeButton], grip: card, in: content) }
+    }
   }
 
   func close() {
+    hover.stop()
     window.orderOut(nil)
     onClose = nil
   }
@@ -148,4 +158,14 @@ final class PermissionGuidePanel: NSObject {
     }
     return result
   }
+}
+
+/// The guide stays inactive beside System Settings, so its close button shares the same
+/// pointer clock as the drag card instead of waiting for AppKit's inactive-window hover.
+private final class PermissionGuideCloseButton: NSButton, ToolbarHoverable {
+  var isHovered = false {
+    didSet { contentTintColor = isHovered ? .secondaryLabelColor : .tertiaryLabelColor }
+  }
+
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

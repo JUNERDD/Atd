@@ -150,6 +150,14 @@
       "title": "其他 App 中的选择文字工具栏",
       "description": "对你在其他 App 中选中的文字运行。"
     },
+    "screenshotToolbar": {
+      "title": "截图工具栏",
+      "description": "对你用截图快捷键截取的截图运行。"
+    },
+    "screenshotText": {
+      "title": "截图里的文字",
+      "description": "对你在截图里选取的文字运行，截图保持打开。"
+    },
     "turnSelection": {
       "title": "对话中的选择文字工具栏",
       "description": "对你在回答中选中的文字运行。"
@@ -158,7 +166,8 @@
       "title": "每轮对话的操作",
       "description": "从一轮对话的“更多操作”菜单，对该轮的回答运行。"
     },
-    "unavailable": "命令需要读取选中的文本，才能显示在这些位置：请将“输入来源”设为“选中的文本”，或在“输入选项”中开启选中文本变量。"
+    "unavailable": "文字操作需读取选中文本。",
+    "screenshotUnavailable": "截图工具栏需截图输入。"
   },
   "output": {
     "title": "结果",
@@ -166,6 +175,10 @@
     "panel": {
       "title": "显示在对话中",
       "description": "回答只保留在对话中。"
+    },
+    "card": {
+      "title": "显示在卡片中",
+      "description": "在运行命令的 App 上方用卡片显示回答，可拷贝、插入或在对话中打开。"
     },
     "replaceSelection": {
       "title": "替换选中的文字",
@@ -175,6 +188,10 @@
       "title": "插入到选中文字之后",
       "description": "在选中的文字之后写入回答，保留原文。"
     },
+    "annotate": {
+      "title": "标注选中的文字",
+      "description": "在截图里选取的文字上用荧光笔和编号标出重点，说明显示在旁边的卡片中。"
+    },
     "insertAtCursor": {
       "title": "插入到光标处",
       "description": "在光标所在处输入回答。"
@@ -183,11 +200,18 @@
       "title": "拷贝到剪贴板",
       "description": "同时将回答拷贝到剪贴板。"
     },
-    "writeBackNote": "仅在通过快捷键或选择文字工具栏从其他 App 运行时写入；在其他地方运行时，回答保留在对话中。",
+    "writeBackNote": "仅在通过快捷键或工具栏从其他 App 运行时写入；在其他地方运行时，回答保留在对话中。",
     "cardNote": "如果该 App 无法在此写入文字，回答会显示在卡片中，供你拷贝。",
+    "cardPlaceNote": "仅在通过快捷键或工具栏从其他 App 运行时显示卡片；在其他地方运行时，回答保留在对话中。",
+    "annotateNote": "仅在对截图里选取的文字运行时做标注；在其他地方运行时，回答显示在卡片中。",
+    "screenshotNote": {
+      "replaceSelection": "对截图里选取的文字运行时，回答会在图上原位替换这些文字。",
+      "insertAfterSelection": "对截图里选取的文字运行时，回答会在图上为这些文字标上编号，说明按编号列在卡片中。"
+    },
     "review": {
       "title": "应用前确认",
-      "description": "回答先显示在灵动岛里，可重新生成或调整，确认后再写入。"
+      "description": "回答先显示在灵动岛里，可重新生成或调整，确认后再写入。",
+      "annotateDescription": "标注先在截图上预览，可重新生成或调整，确认后再应用。"
     },
     "adjustments": {
       "title": "调整建议",
@@ -199,7 +223,7 @@
       "tooLong": "每项建议最多 {{max}} 个字符。"
     },
     "savedTitle": "{{title}}（默认）",
-    "needsTarget": "从这里运行不会写回，回答保留在对话中。写回需要通过命令快捷键或选择文字工具栏从其他 App 运行。",
+    "needsTarget": "从这里运行时，回答保留在对话中。写回或显示在卡片中需要通过命令快捷键或工具栏从其他 App 运行。",
     "needsSelection": "此命令不读取选中的文字，回答将保留在对话中。"
   },
   "typing": {

@@ -38,6 +38,6 @@ final class AnnotationSizeSlider: NSSlider {
   }
 
   override func resetCursorRects() {
-    addCursorRect(bounds, cursor: .arrow)
+    addCursorRect(bounds, cursor: PointerRole.passive.cursor)
   }
 }

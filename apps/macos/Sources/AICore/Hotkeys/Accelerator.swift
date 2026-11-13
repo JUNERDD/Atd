@@ -72,6 +72,23 @@ public enum Accelerator {
     return .doubleTap(modifier)
   }
 
+  /// Keycap text for a valid global accelerator, matching the renderer's `shortcutKeys`.
+  /// A double-tap repeats its modifier glyph; aliases show the physical macOS modifier.
+  public static func label(_ accelerator: String) throws(AcceleratorError) -> String {
+    let trigger = try parse(accelerator)
+    let symbols = [
+      "CommandOrControl": "⌘", "Command": "⌘", "Super": "⌘", "Control": "⌃",
+      "Alt": "⌥", "Shift": "⇧", "Enter": "↩", "Up": "↑", "Down": "↓",
+      "Left": "←", "Right": "→",
+    ]
+    let parts = accelerator.split(separator: "+").map { symbols[String($0)] ?? String($0) }
+    if case .doubleTap = trigger {
+      let keys = Array(parts.dropFirst())
+      return (keys + keys).joined(separator: " ")
+    }
+    return parts.joined()
+  }
+
   private static func chord(_ accelerator: String) throws(AcceleratorError) -> HotKeyCombination {
     var parts = accelerator.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
     let key = parts.removeLast()

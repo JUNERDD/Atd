@@ -1,9 +1,11 @@
 import { createUnsafeCSSStyleNode, FileStream, wrapUnsafeCSS } from '@pierre/diffs';
-import { useCallback, useEffect, useLayoutEffect, useRef, type UIEvent } from 'react';
+import { useWorkerPool } from '@pierre/diffs/react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type UIEvent } from 'react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
 import { useColorScheme, type ColorScheme } from '../../../theme/color-scheme';
 import { CODE_CSS, CodeFile } from './code-block';
+import { codeCacheKey } from './code-cache-key';
 import { CODE_THEMES } from './code-theme';
 import { CopyButton } from './copy-button';
 import { CodeDownloadButton } from './download-button';
@@ -11,6 +13,8 @@ import { codeSource } from './selection-toolbar/code-sources';
 
 /** Within this many pixels of the bottom the reader still counts as following the stream. */
 const FOLLOW_SLACK = 8;
+/** Closed fences larger than this offload final tokenization to the worker pool when ready. */
+const LARGE_CLOSED_FENCE_CHARS = 12_000;
 
 /** One `FileStream` and the stream feeding it; `sent` is the text it has been given so far. */
 type Feed = {
@@ -120,6 +124,12 @@ export function StreamingCodeBlock({
   // Where the box was scrolled as the stream's mount left it, until the closed fence takes over.
   const closing = useRef<ScrollSnapshot | null>(null);
   const themeType = useColorScheme();
+  const poolReady = Boolean(useWorkerPool());
+  const offloadClosed = !open && poolReady && contents.length > LARGE_CLOSED_FENCE_CHARS;
+  const cacheKey = useMemo(
+    () => (offloadClosed ? codeCacheKey('file', `fence:${language}`, contents) : undefined),
+    [offloadClosed, language, contents],
+  );
   // A fence's final newline ends its last line, as in `CodeFile`; dropping it keeps each patch a
   // pure append of the text before it.
   const text = contents.replace(/\r?\n$/, '');
@@ -201,7 +211,12 @@ export function StreamingCodeBlock({
         {open ? (
           <div ref={mountStream} />
         ) : (
-          <CodeFile contents={contents} language={language} disableWorkerPool />
+          <CodeFile
+            contents={contents}
+            language={language}
+            disableWorkerPool={!offloadClosed}
+            cacheKey={cacheKey}
+          />
         )}
       </ScrollArea>
       <div className="code-block-actions">

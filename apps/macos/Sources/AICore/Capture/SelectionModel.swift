@@ -70,7 +70,7 @@ public struct SelectionModel: Equatable, Sendable {
   /// How far from a handle's center a press still grabs it.
   public static let handleReach: CGFloat = 6
 
-  /// The desktop in its own points: origin zero.
+  /// Where every selection stays: the desktop in its own points (origin zero).
   public let bounds: CGRect
   public let displays: [Display]
   /// The largest image pixels per point of any display.

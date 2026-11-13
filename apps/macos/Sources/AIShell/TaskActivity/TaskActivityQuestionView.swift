@@ -69,6 +69,7 @@ struct TaskActivityQuestionView: View {
       .textFieldStyle(.plain).font(TaskActivityRequestStyle.body).lineLimit(1)
       .focused($focused)
       .onSubmit { model.reply(typed, to: request, of: item.key) }
+      .modifier(FloatingHover(pointer: .text) { _ in })
       .disabled(sending != nil)
       .accessibilityIdentifier("activity.reply.\(item.key.taskID)/\(item.key.runID)/\(request.id)")
       ZStack {
@@ -122,8 +123,7 @@ private struct TaskActivityChoice: View {
     .foregroundStyle(.primary)
     .opacity(isEnabled || busy != nil ? 1 : 0.55)
     .allowsHitTesting(busy == nil)
-    .onHover { hovered = $0 }
-    .pointerStyle(isEnabled ? .link : nil)
+    .modifier(FloatingHover(enabled: busy == nil) { hovered = $0 })
     .help(title)
     .accessibilityLabel(Text(verbatim: label))
     .task(id: busy != nil) {

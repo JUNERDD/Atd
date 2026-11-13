@@ -1,5 +1,10 @@
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
-import type { TaskSearchHit, TaskSearchQuery, TaskSearchResponse } from '@atd/agent-contracts';
+import {
+  isCaptureSnapshot,
+  type TaskSearchHit,
+  type TaskSearchQuery,
+  type TaskSearchResponse,
+} from '@atd/agent-contracts';
 import type { Ledger } from '../ledger.js';
 import type { LiveState } from '../live-state.js';
 import type { Logger } from '../logging.js';
@@ -19,9 +24,9 @@ export interface TaskSearchDeps {
 }
 
 /**
- * History search (`GET /v1/tasks/search`) over tasks in the requested command scope, side chats
- * included. Tasks are visited most recently updated first and the search stops once one more than
- * `limit` matched, so older sessions are read only when the newer ones do not fill the page.
+ * History search (`GET /v1/tasks/search`) over tasks in the requested command and capture scopes,
+ * side chats included. Tasks are visited most recently updated first and the search stops once one
+ * more than `limit` matched, so older sessions are read only when newer ones do not fill the page.
  */
 export class TaskSearch {
   private readonly text: TaskSearchText;
@@ -43,9 +48,16 @@ export class TaskSearch {
     const hits: TaskSearchHit[] = [];
     let visited = 0;
     for (const task of ordered) {
-      const fromCommand = task.runs[0]?.snapshot.fromCommand === true;
-      if (query.commands === 'exclude' && fromCommand) continue;
+      const snapshot = task.runs[0]?.snapshot;
+      const fromCommand = snapshot?.fromCommand === true;
+      const fromCapture = snapshot !== undefined && isCaptureSnapshot(snapshot);
       if (query.commands === 'only' && !fromCommand) continue;
+      if (query.captures === 'only' && !fromCapture) continue;
+      const commandExcluded = query.commands === 'exclude';
+      const captureExcluded = query.captures === 'exclude';
+      if (commandExcluded && captureExcluded && (fromCommand || fromCapture)) continue;
+      if (commandExcluded && !captureExcluded && fromCommand && !fromCapture) continue;
+      if (captureExcluded && !commandExcluded && fromCapture && !fromCommand) continue;
       const messages = await this.text.messages(task, this.deps.live(task.id));
       const hit = matchTask(task.id, messages, terms);
       if (hit) {

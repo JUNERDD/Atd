@@ -72,6 +72,7 @@ final class DesktopPinWindow: NSPanel {
     // The owner sizes the window; SwiftUI must not add size constraints of its own.
     host.sizingOptions = []
     contentView = host
+    DesktopPinHover.shared.add(corners, in: host)
   }
 
   override var canBecomeKey: Bool { false }
@@ -87,6 +88,7 @@ final class DesktopPinWindow: NSPanel {
 
   /// A pin removed under the pointer leaves the arrow, not its resize cursor.
   override func close() {
+    DesktopPinHover.shared.remove(corners)
     corners.hide()
     super.close()
   }

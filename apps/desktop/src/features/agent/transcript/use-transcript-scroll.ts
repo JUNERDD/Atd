@@ -53,6 +53,7 @@ function createGlide() {
    * started in, so a carry moves the view without disturbing the motion.
    */
   let carried = 0;
+  let target = Number.NaN;
   let aim: Aim = bottomOf;
   let rest: (() => void) | null = null;
   y.on('change', (value) => {
@@ -62,6 +63,7 @@ function createGlide() {
     observed = offsetOf(viewport);
   });
   y.on('animationComplete', () => {
+    target = Number.NaN;
     const done = rest;
     rest = null;
     done?.();
@@ -94,15 +96,22 @@ function createGlide() {
       // A jump to the value the spring already holds notifies no change, so no write records it.
       written = node.scrollTop;
       observed = offsetOf(node);
-      y.set(aim(node));
+      const next = aim(node);
+      target = next;
+      y.set(next);
     },
     /**
      * Pinned follow: instant so streaming never lags behind, except under a running glide, which
      * is re-aimed at its target's new position instead of cut off.
      */
     follow(node: HTMLElement) {
-      if (y.isAnimating()) y.set(aim(node) - carried);
-      else {
+      if (y.isAnimating()) {
+        const next = aim(node) - carried;
+        if (Math.abs(next - target) >= 0.5) {
+          target = next;
+          y.set(next);
+        }
+      } else {
         node.scrollTop = node.scrollHeight;
         observed = offsetOf(node);
       }
@@ -116,7 +125,11 @@ function createGlide() {
       if (!viewport || !y.isAnimating()) return;
       carried += moved;
       written += moved;
-      y.set(aim(viewport) - carried);
+      const next = aim(viewport) - carried;
+      if (Math.abs(next - target) >= 0.5) {
+        target = next;
+        y.set(next);
+      }
     },
     /** Whether the view moved away from the glide's last write: wheel, keys, the scrollbar. */
     isOverridden(node: HTMLElement) {
@@ -125,6 +138,7 @@ function createGlide() {
     stop() {
       rest = null;
       viewport = null;
+      target = Number.NaN;
       y.stop();
     },
   };

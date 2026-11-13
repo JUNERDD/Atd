@@ -44,6 +44,9 @@ enum TextWriter {
     if let reason = TextWritePlan.refusal(params.mode, facts) { return refuse(reason) }
     guard let target, let app else { return refuse(.targetGone) }
 
+    guard await ShortcutRelease.wait(until: .now + activationLimit) else {
+      return refuse(.interrupted)
+    }
     hidePanel()
     guard await bringForward(app) else { return refuse(.targetChanged) }
     let restore = FieldRestore(target: target, mode: params.mode)
@@ -53,6 +56,7 @@ enum TextWriter {
     case .refused(let reason):
       return refuse(reason)
     case .ready(let collapseWithArrow):
+      guard !Task.isCancelled, !ShortcutRelease.isHeld else { return refuse(.interrupted) }
       if collapseWithArrow { KeyPress.post(CGKeyCode(kVK_RightArrow), flags: []) }
     }
     let insertion = TextWritePlan.insertion(
@@ -77,7 +81,7 @@ enum TextWriter {
     case .copied, .untyped, .cells: return true
     case .field(let range):
       if let range, range.length > 0 { return true }
-      return !(target.selectedText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      return TextCapture.hasContent(target.selectedText ?? "")
     }
   }
 
@@ -86,6 +90,7 @@ enum TextWriter {
   /// the panel hid. `reassert` activates it even while it is frontmost, which gives it back the
   /// keyboard a non-activating Atd window took (the command island's options card).
   static func bringForward(_ app: NSRunningApplication, reassert: Bool = false) async -> Bool {
+    guard await ShortcutRelease.wait(until: .now + activationLimit) else { return false }
     let pid = app.processIdentifier
     if reassert || NSApp.isActive
       || NSWorkspace.shared.frontmostApplication?.processIdentifier != pid
@@ -95,10 +100,10 @@ enum TextWriter {
     }
     let deadline = ContinuousClock.now + activationLimit
     while NSWorkspace.shared.frontmostApplication?.processIdentifier != pid {
-      guard ContinuousClock.now < deadline else { return false }
-      try? await Task.sleep(for: .milliseconds(20))
+      guard !Task.isCancelled, ContinuousClock.now < deadline else { return false }
+      do { try await Task.sleep(for: .milliseconds(20)) } catch { return false }
     }
-    try? await Task.sleep(for: settle)
+    do { try await Task.sleep(for: settle) } catch { return false }
     return true
   }
 }

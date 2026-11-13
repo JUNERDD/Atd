@@ -52,7 +52,8 @@ public enum ArtifactOpenPolicy {
     "com.microsoft.word.doc",
     "com.microsoft.excel.xls",
     "com.microsoft.powerpoint.ppt",
-    "org.oasis-open.opendocument",
+    // macOS registers OpenDocument text without a shared OpenDocument supertype.
+    "org.oasis-open.opendocument.text",
     "com.apple.iwork.pages.sffpages",
     "com.apple.iwork.numbers.sffnumbers",
     "com.apple.iwork.keynote.sffkey",

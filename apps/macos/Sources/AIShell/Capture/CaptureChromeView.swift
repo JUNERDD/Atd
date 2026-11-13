@@ -83,18 +83,19 @@ final class CaptureChromeView: NSView {
     return placement.label == nil ? area : area.union(placement.labelFrame)
   }
 
-  /// The size label above the area's top-left corner (the part of it on this display), or just
-  /// inside it when the display's top edge is in the way; always within the display.
+  /// The size label's frame while one shows (desktop points), which the bars beside the
+  /// selection keep clear of.
+  var labelFrame: CGRect? {
+    placement?.label == nil ? nil : placement?.labelFrame
+  }
+
+  /// The size label where ``CaptureSizeLabelLayout`` puts it on this display.
   private func place(_ area: CGRect, label: String?) -> Placement {
     guard let label else { return Placement(area: area, label: nil, labelFrame: .zero) }
-    let visible = area.intersection(bounds).isNull ? area : area.intersection(bounds)
     let size = CaptureBadge.size(of: label, font: Self.labelFont)
-    let above = visible.minY - size.height - 6
-    let y = above >= bounds.minY + 4 ? above : visible.minY + 6
-    let x = min(max(visible.minX, bounds.minX + 4), bounds.maxX - size.width - 4)
     return Placement(
       area: area, label: label,
-      labelFrame: CGRect(origin: CGPoint(x: x, y: y), size: size).integral)
+      labelFrame: CaptureSizeLabelLayout.frame(area: area, size: size, display: bounds))
   }
 }
 

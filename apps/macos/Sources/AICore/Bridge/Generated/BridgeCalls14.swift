@@ -4,8 +4,172 @@
 
 import Foundation
 
-/// Result of the `approval.request` call.
-public enum ApprovalRequestResult: Codable, Equatable, Sendable {
+/// Result of the `computer.prepareApplication` call.
+public enum ComputerPrepareApplicationResult: Codable, Equatable, Sendable {
+  case ok(Ok)
+  case notOk(NotOk)
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Discriminator.self)
+    switch try container.decode(Bool.self, forKey: .ok) {
+    case true: self = try .ok(Ok(from: decoder))
+    case false: self = try .notOk(NotOk(from: decoder))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .ok(let value): try value.encode(to: encoder)
+    case .notOk(let value): try value.encode(to: encoder)
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case ok
+  }
+
+  public struct Ok: Codable, Equatable, Sendable {
+    public let bindingId: String
+    public let revision: Int
+    public let probe: Probe?
+
+    public init(bindingId: String, revision: Int, probe: Probe?) {
+      self.bindingId = bindingId
+      self.revision = revision
+      self.probe = probe
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, true)
+      bindingId = try container.string(
+        .bindingId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      revision = try container.integer(.revision, minimum: 1)
+      probe = try container.optional(.probe) { try container.value($0, Probe.self) }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(true, forKey: .ok)
+      try container.encode(bindingId, forKey: .bindingId)
+      try container.encode(revision, forKey: .revision)
+      try container.encodeIfPresent(probe, forKey: .probe)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+      case bindingId
+      case revision
+      case probe
+    }
+
+    public struct Probe: Codable, Equatable, Sendable {
+      public let windows: Int
+      public let tree: Bool
+      public let screenshot: Bool
+
+      public init(windows: Int, tree: Bool, screenshot: Bool) {
+        self.windows = windows
+        self.tree = tree
+        self.screenshot = screenshot
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        windows = try container.integer(.windows, minimum: 0)
+        tree = try container.boolean(.tree)
+        screenshot = try container.boolean(.screenshot)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case windows
+        case tree
+        case screenshot
+      }
+    }
+  }
+
+  public struct NotOk: Codable, Equatable, Sendable {
+    public let reason: Reason
+
+    public init(reason: Reason) {
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.ok, false)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(false, forKey: .ok)
+      try container.encode(reason, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case ok
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case cancelled
+      case unavailable
+      case busy
+      case unsupported
+      case notInstalled
+    }
+  }
+}
+
+/// Params of the `computer.openProfile` call.
+public struct ComputerOpenProfileParams: Codable, Equatable, Sendable {
+  public let bindingId: String
+
+  public init(bindingId: String) {
+    self.bindingId = bindingId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    bindingId = try container.string(
+      .bindingId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case bindingId
+  }
+}
+
+/// Result of the `computer.openProfile` call.
+public typealias ComputerOpenProfileResult = NativeEmpty
+
+/// Params of the `computer.authorizeAutomation` call.
+public struct ComputerAuthorizeAutomationParams: Codable, Equatable, Sendable {
+  public let automationId: String
+  public let expectedRevision: Int
+
+  public init(automationId: String, expectedRevision: Int) {
+    self.automationId = automationId
+    self.expectedRevision = expectedRevision
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    automationId = try container.string(
+      .automationId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    expectedRevision = try container.integer(.expectedRevision, minimum: 1)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case automationId
+    case expectedRevision
+  }
+}
+
+/// Result of the `computer.authorizeAutomation` call.
+public enum ComputerAuthorizeAutomationResult: Codable, Equatable, Sendable {
   case approved(Approved)
   case notApproved(NotApproved)
 
@@ -29,20 +193,33 @@ public enum ApprovalRequestResult: Codable, Equatable, Sendable {
   }
 
   public struct Approved: Codable, Equatable, Sendable {
-    public init() {}
+    public let grantId: String
+    public let version: Int
+
+    public init(grantId: String, version: Int) {
+      self.grantId = grantId
+      self.version = version
+    }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
       try container.literal(.approved, true)
+      grantId = try container.string(
+        .grantId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      version = try container.integer(.version, minimum: 1)
     }
 
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.container(keyedBy: CodingKeys.self)
       try container.encode(true, forKey: .approved)
+      try container.encode(grantId, forKey: .grantId)
+      try container.encode(version, forKey: .version)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case approved
+      case grantId
+      case version
     }
   }
 
@@ -73,185 +250,9 @@ public enum ApprovalRequestResult: Codable, Equatable, Sendable {
     public enum Reason: String, Codable, Equatable, Sendable {
       case cancelled
       case changed
+      case notQualified
       case unavailable
       case busy
     }
   }
 }
-
-/// Params of the `toolbar.set` call.
-public struct ToolbarSetParams: Codable, Equatable, Sendable {
-  public let enabled: Bool
-  public let activation: Activation
-  public let activationKeys: [ActivationKey]
-  public let showHud: Bool
-  public let smallIcon: SmallIcon
-  public let position: Position
-  public let excludedBundleIds: [String]
-  public let commands: [Command]
-
-  public init(
-    enabled: Bool, activation: Activation, activationKeys: [ActivationKey], showHud: Bool,
-    smallIcon: SmallIcon, position: Position, excludedBundleIds: [String], commands: [Command]
-  ) {
-    self.enabled = enabled
-    self.activation = activation
-    self.activationKeys = activationKeys
-    self.showHud = showHud
-    self.smallIcon = smallIcon
-    self.position = position
-    self.excludedBundleIds = excludedBundleIds
-    self.commands = commands
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    enabled = try container.boolean(.enabled)
-    activation = try container.value(.activation, Activation.self)
-    activationKeys = try container.array(
-      .activationKeys, of: ActivationKey.self, minItems: 1, maxItems: 3)
-    showHud = try container.boolean(.showHud)
-    smallIcon = try container.value(.smallIcon, SmallIcon.self)
-    position = try container.value(.position, Position.self)
-    excludedBundleIds = try container.array(.excludedBundleIds, of: String.self, maxItems: 100)
-    commands = try container.array(.commands, of: Command.self, maxItems: 64)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case enabled
-    case activation
-    case activationKeys
-    case showHud
-    case smallIcon
-    case position
-    case excludedBundleIds
-    case commands
-  }
-
-  public enum Activation: String, Codable, Equatable, Sendable {
-    case always
-    case hold
-    case toggle
-  }
-
-  public enum ActivationKey: String, Codable, Equatable, Sendable {
-    case option
-    case command
-    case shift
-  }
-
-  public enum SmallIcon: String, Codable, Equatable, Sendable {
-    case off
-    case click
-    case hover
-  }
-
-  public enum Position: String, Codable, Equatable, Sendable {
-    case pointer
-    case above
-    case below
-  }
-
-  public struct Command: Codable, Equatable, Sendable {
-    public let id: String
-    public let name: String
-
-    public init(id: String, name: String) {
-      self.id = id
-      self.name = name
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      id = try container.string(.id, minLength: 1, maxLength: 128)
-      name = try container.string(.name, minLength: 1, maxLength: 256)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case id
-      case name
-    }
-  }
-}
-
-/// Result of the `toolbar.set` call.
-public typealias ToolbarSetResult = NativeEmpty
-
-/// Params of the `accessibility.request` call.
-public typealias AccessibilityRequestParams = NativeEmpty
-
-/// Result of the `accessibility.request` call.
-public typealias AccessibilityRequestResult = NativeEmpty
-
-/// Params of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestParams = NativeEmpty
-
-/// Result of the `screenRecording.request` call.
-public typealias ScreenRecordingRequestResult = NativeEmpty
-
-/// Params of the `apps.pick` call.
-public typealias AppsPickParams = NativeEmpty
-
-/// Result of the `apps.pick` call.
-public struct AppsPickResult: Codable, Equatable, Sendable {
-  public let apps: [App]
-
-  public init(apps: [App]) {
-    self.apps = apps
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    apps = try container.array(.apps, of: App.self, maxItems: 20)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case apps
-  }
-
-  public struct App: Codable, Equatable, Sendable {
-    public let bundleId: String
-    public let name: String
-
-    public init(bundleId: String, name: String) {
-      self.bundleId = bundleId
-      self.name = name
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
-      name = try container.string(.name, minLength: 1, maxLength: 255)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case bundleId
-      case name
-    }
-  }
-}
-
-/// Params of the `shortcuts.recording` call.
-public struct ShortcutsRecordingParams: Codable, Equatable, Sendable {
-  public let session: Int
-  public let active: Bool
-
-  public init(session: Int, active: Bool) {
-    self.session = session
-    self.active = active
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    session = try container.integer(.session, minimum: 1)
-    active = try container.boolean(.active)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case session
-    case active
-  }
-}
-
-/// Result of the `shortcuts.recording` call.
-public typealias ShortcutsRecordingResult = NativeEmpty

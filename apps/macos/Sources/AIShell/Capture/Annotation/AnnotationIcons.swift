@@ -8,15 +8,32 @@ import AppKit
 ///
 /// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
 /// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
-/// for the names below. Swatches and the cover box depict their values, so they are drawn here.
+/// for the names below. The capture bar's and command row's glyphs that set lacked (`video`,
+/// `scan-text`, `scan-eye`, `shield-check`, `square-dashed-text`) are written out from the icon
+/// nodes of the pinned `lucide-react` 1.61.0; `camera`, `sparkles`, `ellipsis` and `arrow-up` are the other sets'.
+/// Swatches and the cover box depict their values, so they are drawn here.
 enum AnnotationIcons {
   static let undo = "undo-2"
   static let redo = "redo-2"
   static let cancel = "x"
+  static let save = "save"
   static let copy = "copy"
   static let confirm = "check"
   static let textBackground = "square-text"
   static let grip = "grip-vertical"
+  static let screenshot = "camera"
+  static let record = "video"
+  static let ask = "sparkles"
+  static let more = "ellipsis"
+  static let send = "arrow-up"
+  static let copyText = "scan-text"
+  static let autoRedact = "scan-eye"
+  static let redacted = "shield-check"
+  static let longScreenshot = "unfold-vertical"
+  /// Text mode's way in and its scope chip (the plan's 「选取文字」).
+  static let selectText = "square-dashed-text"
+  /// The text row's toggle for the result card (`Lucide / panel-right`, as in the long screenshot preview).
+  static let results = "panel-right"
 
   /// The Lucide glyph for pixelate and blur; a drawn black box for solid, which depicts itself.
   static func redaction(_ redaction: AnnotationRedaction, label: String) -> NSImage {
@@ -65,10 +82,10 @@ enum AnnotationIcons {
   /// light glass and black on a dark one (the image is drawn in the current appearance).
   static func swatch(_ color: AnnotationColor, label: String) -> NSImage {
     let image = NSImage(size: NSSize(width: 14, height: 14), flipped: false) { rect in
-      let dot = NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1))
       color.nsColor.setFill()
-      dot.fill()
-      NSColor.labelColor.withAlphaComponent(0.4).setStroke()
+      NSBezierPath(ovalIn: rect).fill()
+      let dot = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+      NSColor.tertiaryLabelColor.setStroke()
       dot.lineWidth = 1
       dot.stroke()
       return true
@@ -79,8 +96,14 @@ enum AnnotationIcons {
 }
 
 extension AnnotationColor {
-  var nsColor: NSColor {
+  nonisolated var nsColor: NSColor {
     let rgb = components
     return NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
+  }
+}
+
+extension AnnotationRGBA {
+  nonisolated var nsColor: NSColor {
+    NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
   }
 }

@@ -7,8 +7,8 @@ import ApplicationServices
 /// - Every AX message is bounded by a 250 ms messaging timeout, so an unresponsive app
 ///   cannot stall a summon (the AX default is about 6 s). A timeout aborts the whole read and
 ///   counts as no selection.
-/// - The system-wide focused element comes first. It fails while an Electron app is
-///   frontmost, so the read then starts from the frontmost app's pid.
+/// - Focus is resolved inside the caller's frontmost external app. A nonactivating Atd panel
+///   can own system-wide keyboard focus while that external app remains frontmost.
 /// - Per element: `AXSelectedText`, then `AXSelectedTextRange` + `AXStringForRange`, then
 ///   `AXValue` sliced by the range, then the text-marker range web content uses. Elements:
 ///   the focused one, its first 20 children, then up to 10 ancestors.
@@ -51,39 +51,26 @@ nonisolated struct SelectionReader: Sendable {
   }
 
   func read() -> Outcome {
+    guard let frontmostPID, frontmostPID != ProcessInfo.processInfo.processIdentifier else {
+      return .none(.unknown)
+    }
     var read = Read()
     let systemWide = AXUIElementCreateSystemWide()
     // On the system-wide element this sets the default for every AXUIElement of the process.
     AXUIElementSetMessagingTimeout(systemWide, Self.messagingTimeout)
-    var focused: AXUIElement? = read.copy(systemWide, kAXFocusedUIElementAttribute)
-    if focused == nil {
-      // A failure here is the system-wide query, not a hung target.
-      read.aborted = false
-      guard let frontmostPID else { return .none(.unknown) }
-      let app = AXUIElementCreateApplication(frontmostPID)
-      AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
-      focused = read.copy(app, kAXFocusedUIElementAttribute)
-      if focused == nil, !read.aborted { focused = read.copy(app, kAXFocusedWindowAttribute) }
-    }
+    // A system-wide focus query can synchronously reenter our AppKit window on this worker
+    // before it even returns an AX handle. Resolve the external process before any AX read.
+    let app = AXUIElementCreateApplication(frontmostPID)
+    AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
+    var focused: AXUIElement? = read.copy(app, kAXFocusedUIElementAttribute)
+    if focused == nil, !read.aborted { focused = read.copy(app, kAXFocusedWindowAttribute) }
     guard let focused, !read.aborted else { return .none(read.aborted ? .unresponsive : .unknown) }
     if read.isSecure(focused) { return .none(.secureField) }
     // Copy preserves the app's row/column serialization. Never substitute the active cell's
     // value or a surrounding text view for an entire selected region.
     if SelectionSurface(focused).selectedCellContainer() != nil { return .none(.unknown) }
 
-    var candidates = [focused]
-    if let children: [AXUIElement] = read.copy(focused, kAXChildrenAttribute) {
-      candidates += children.prefix(20)
-    }
-    for element in candidates where !read.aborted {
-      if let text = read.selection(of: element) { return .text(text) }
-    }
-    var current = focused
-    for _ in 0..<10 where !read.aborted {
-      guard let parent: AXUIElement = read.copy(current, kAXParentAttribute) else { break }
-      if let text = read.selection(of: parent) { return .text(text) }
-      current = parent
-    }
+    if let text = read.search(focused) { return .text(text) }
     guard !read.aborted else { return .none(.unresponsive) }
     let focus = read.focus(of: focused)
     return .none(read.aborted ? .unresponsive : focus)
@@ -91,40 +78,103 @@ nonisolated struct SelectionReader: Sendable {
 
   /// One read's AX calls; any `cannotComplete` marks the read aborted.
   private struct Read {
+    private enum ElementSelection {
+      case text(String)
+      case empty
+      case none
+    }
+
     var aborted = false
 
-    mutating func selection(of element: AXUIElement) -> String? {
-      if let text: String = copy(element, kAXSelectedTextAttribute), hasContent(text) {
-        return text
+    mutating func search(_ focused: AXUIElement) -> String? {
+      var candidates = [focused]
+      if let children: [AXUIElement] = copy(focused, kAXChildrenAttribute) {
+        candidates += children.prefix(20)
       }
-      if aborted { return nil }
+      for element in candidates where !aborted {
+        switch selection(of: element) {
+        case .text(let text): return text
+        case .empty: return nil
+        case .none: continue
+        }
+      }
+      var current = focused
+      for _ in 0..<10 where !aborted {
+        guard let parent: AXUIElement = copy(current, kAXParentAttribute) else { break }
+        switch selection(of: parent) {
+        case .text(let text): return text
+        case .empty: return nil
+        case .none: current = parent
+        }
+      }
+      return nil
+    }
+
+    private mutating func selection(of element: AXUIElement) -> ElementSelection {
+      if let text: String = copy(element, kAXSelectedTextAttribute), !text.isEmpty {
+        return hasContent(text) ? .text(text) : .none
+      }
+      if aborted { return .none }
+      var selectedRange: (value: AXValue, range: CFRange)?
+      var emptyTextControlRange = false
       if let rangeValue: AXValue = copy(element, kAXSelectedTextRangeAttribute) {
         var range = CFRange()
-        if AXValueGetValue(rangeValue, .cfRange, &range), range.length > 0 {
-          if let text: String = copy(element, kAXStringForRangeParameterizedAttribute, rangeValue),
-            hasContent(text)
-          {
-            return text
-          }
-          if aborted { return nil }
-          if let value: String = copy(element, kAXValueAttribute) {
-            let string = value as NSString
-            if range.location >= 0, range.location + range.length <= string.length {
-              let text = string.substring(
-                with: NSRange(location: range.location, length: range.length))
-              if hasContent(text) { return text }
-            }
+        if AXValueGetValue(rangeValue, .cfRange, &range), range.location >= 0 {
+          if range.length == 0, advertisesEmptyTextControlRange(of: element, at: range.location) {
+            emptyTextControlRange = true
+          } else if range.length > 0 {
+            selectedRange = (rangeValue, range)
           }
         }
       }
-      if aborted { return nil }
-      // WebKit and Chromium expose web selections as text-marker ranges.
+      if aborted { return .none }
+      // WebKit and Chromium expose web selections as text-marker ranges. Check them before
+      // AXStringForRange because Chromium's AXStringForRange omits U+FFFC placeholders.
       if let marker: CFTypeRef = copy(element, "AXSelectedTextMarkerRange"),
-        let text: String = copy(element, "AXStringForTextMarkerRange", marker), hasContent(text)
+        let text: String = copy(element, "AXStringForTextMarkerRange", marker), !text.isEmpty
       {
-        return text
+        guard hasContent(text) else { return .none }
+        if emptyTextControlRange, SelectionTextProbe.markersStayWithin(marker, container: element) {
+          return .empty
+        }
+        return .text(text)
       }
-      return nil
+      if aborted { return .none }
+      if let (rangeValue, range) = selectedRange {
+        if let text: String = copy(element, kAXStringForRangeParameterizedAttribute, rangeValue),
+          !text.isEmpty
+        {
+          return hasContent(text) ? .text(text) : .none
+        }
+        if aborted { return .none }
+        if let value: String = copy(element, kAXValueAttribute) {
+          let string = value as NSString
+          if range.length <= string.length, range.location <= string.length - range.length {
+            let slice = string.substring(
+              with: NSRange(location: range.location, length: range.length))
+            if !slice.isEmpty { return hasContent(slice) ? .text(slice) : .none }
+          }
+        }
+      }
+      return .none
+    }
+
+    private mutating func advertisesEmptyTextControlRange(
+      of element: AXUIElement, at location: Int
+    ) -> Bool {
+      guard let role: String = copy(element, kAXRoleAttribute),
+        WriteTargetWritability.textRoles.contains(role)
+      else { return false }
+      var names: CFArray?
+      let error = AXUIElementCopyAttributeNames(element, &names)
+      if error == .cannotComplete { aborted = true }
+      guard error == .success, let names = names as? [String],
+        names.contains(kAXSelectedTextRangeAttribute)
+      else { return false }
+      if let count: Int = copy(element, kAXNumberOfCharactersAttribute), count >= 0 {
+        return location <= count
+      }
+      return true
     }
 
     mutating func isSecure(_ element: AXUIElement) -> Bool {
@@ -133,9 +183,10 @@ nonisolated struct SelectionReader: Sendable {
     }
 
     /// What `element`, the focus, shows when no selected text was found: an empty native
-    /// selection only for a native text role that advertises its selected range and lists none
-    /// of the web content attributes. Custom editors such as WPS answer an unadvertised empty
-    /// range on their container even while text is selected; that is still unknown.
+    /// selection only for a native text role with an empty range that advertises its selected
+    /// range and lists none of the web content attributes. Custom editors such as WPS answer an
+    /// unadvertised empty range on their container even while text is selected; that is still
+    /// unknown.
     mutating func focus(of element: AXUIElement) -> SelectionFocus {
       guard let role: String = copy(element, kAXRoleAttribute),
         WriteTargetWritability.textRoles.contains(role),
@@ -176,7 +227,7 @@ nonisolated struct SelectionReader: Sendable {
     }
 
     private func hasContent(_ text: String) -> Bool {
-      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      TextCapture.hasContent(text)
     }
   }
 }

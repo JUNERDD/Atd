@@ -39,8 +39,12 @@ final class RendererAssets {
       let body = try? Data(contentsOf: file, options: .mappedIfSafe)
     else { return responder.error(status: 404, "No such renderer file.") }
     let type = RendererMIMEType.forFile(named: file.lastPathComponent)
+    let cacheControl =
+      path.encoded.hasPrefix("/assets/") && !RendererMIMEType.isHTML(type)
+      ? "public, max-age=31536000, immutable"
+      : "no-cache"
     var headers = [
-      "Content-Type": type, "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff",
+      "Content-Type": type, "Cache-Control": cacheControl, "X-Content-Type-Options": "nosniff",
     ]
     if RendererMIMEType.isHTML(type) {
       headers["Content-Security-Policy"] = ContentSecurityPolicy.production
@@ -81,8 +85,17 @@ final class RendererAssets {
         let type =
           http.value(forHTTPHeaderField: "Content-Type")
           ?? RendererMIMEType.forFile(named: url.lastPathComponent)
+        let upstreamCache = http.value(forHTTPHeaderField: "Cache-Control")
+        let cacheControl =
+          if !RendererMIMEType.isHTML(type), let upstreamCache,
+            upstreamCache.localizedCaseInsensitiveContains("immutable")
+          {
+            upstreamCache
+          } else {
+            "no-cache"
+          }
         var headers = [
-          "Content-Type": type, "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff",
+          "Content-Type": type, "Cache-Control": cacheControl, "X-Content-Type-Options": "nosniff",
         ]
         if RendererMIMEType.isHTML(type) {
           headers["Content-Security-Policy"] = ContentSecurityPolicy.development(hmr: origin)

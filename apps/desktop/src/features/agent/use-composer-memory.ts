@@ -61,6 +61,13 @@ export function usableChoice(
   return connection?.catalog.some((item) => item.id === model.modelId) ? choice : undefined;
 }
 
+/** Moves a draft typed while a launched command's task id was still provisional onto `to`. */
+export function rekeyDraft(drafts: ComposerDrafts, from: string, to: string): ComposerDrafts {
+  if (from === to || !(from in drafts)) return drafts;
+  const { [from]: draft, ...rest } = drafts;
+  return draft ? { ...rest, [to]: draft } : rest;
+}
+
 /** Drops a deleted task's remembered composer from storage; the page never shows it again. */
 export function forgetComposerMemory(taskId: string) {
   try {

@@ -30,12 +30,6 @@ export function AddonDetail({
   switch (state) {
     case 'unavailable':
       return <DetailText>{t('detail.unavailable')}</DetailText>;
-    case 'installed':
-      return (
-        <DetailText>
-          {t('detail.installed', { version: addon.installed?.version ?? addon.version })}
-        </DetailText>
-      );
     case 'outdated': {
       const versions = { installed: addon.outdated?.version, version: addon.version };
       return (
@@ -52,6 +46,7 @@ export function AddonDetail({
       );
     case 'working':
       return <AddonWorking addon={addon} size={size} />;
+    case 'installed':
     case 'loading':
       return null;
   }

@@ -1,17 +1,77 @@
 import { ArrowUpRight, ChevronLeft } from 'lucide-react';
+import type { ReactNode } from 'react';
 import posts from 'virtual:atd-blog';
+import type { BlogBlock, BlogInline } from '../../content/blog-schema';
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
 import { pagePath } from '../../i18n/routes';
 import { PostContents, type PostSection } from './contents';
-import { blogCopy } from './copy';
+import { BLOG_NOTE_KINDS, blogCopy } from './copy';
 import './blog.css';
+
+function renderInlines(nodes: BlogInline[]): ReactNode {
+  return nodes.map((node, index) => renderInline(node, index));
+}
+
+function renderInline(node: BlogInline, key: number): ReactNode {
+  if (typeof node === 'string') return node;
+  switch (node.kind) {
+    case 'strong':
+      return <strong key={key}>{renderInlines(node.children)}</strong>;
+    case 'em':
+      return <em key={key}>{renderInlines(node.children)}</em>;
+    case 'code':
+      return (
+        <code key={key} className="post__code">
+          {node.text}
+        </code>
+      );
+    case 'link': {
+      const external = /^https?:\/\//i.test(node.href);
+      return (
+        <a
+          key={key}
+          className="post__link"
+          href={node.href}
+          rel={external ? 'noopener noreferrer' : undefined}
+        >
+          {renderInlines(node.children)}
+        </a>
+      );
+    }
+  }
+}
+
+function renderBlock(block: BlogBlock, key: number): ReactNode {
+  switch (block.kind) {
+    case 'paragraph':
+      return (
+        <p key={key} className="post__text">
+          {renderInlines(block.children)}
+        </p>
+      );
+    case 'list':
+      return block.ordered ? (
+        <ol key={key} className="post__list" data-ordered="">
+          {block.items.map((item, itemIndex) => (
+            <li key={itemIndex}>{renderInlines(item)}</li>
+          ))}
+        </ol>
+      ) : (
+        <ul key={key} className="post__list">
+          {block.items.map((item, itemIndex) => (
+            <li key={itemIndex}>{renderInlines(item)}</li>
+          ))}
+        </ul>
+      );
+  }
+}
 
 /**
  * One post's page, read top to bottom like a release note: the back button, a centered header
  * (release, title, summary, date), then the body: the contents, which link to each section, beside
- * the sections themselves (each highlight's heading and text at a reading measure, its image wider,
- * then the fixes in a card), and last one primary action, the release's installers on GitHub.
+ * the sections themselves (each highlight's heading, text, and image filling the main column,
+ * then any tail note cards), and last one primary action, the release's installers on GitHub.
  */
 export function BlogPostPage({ slug }: { slug: string }) {
   const t = useCopy(blogCopy);
@@ -36,12 +96,16 @@ export function BlogPostPage({ slug }: { slug: string }) {
       </article>
     );
   const copy = post.copy[lang];
+  const noteSections = BLOG_NOTE_KINDS.filter((kind) => copy[kind].length > 0);
   const sections: PostSection[] = [
     ...copy.highlights.map((highlight) => ({
       href: `#${highlight.anchor}`,
       label: highlight.title,
     })),
-    ...(copy.fixes.length > 0 ? [{ href: '#fixes', label: t.fixes }] : []),
+    ...noteSections.map((kind) => ({
+      href: `#${kind}`,
+      label: t[kind],
+    })),
   ];
   return (
     <article className="post plate" aria-labelledby="post-title">
@@ -76,11 +140,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
                   <h2 id={`${highlight.anchor}-title`} className="post__heading">
                     {highlight.title}
                   </h2>
-                  {highlight.paragraphs.map((paragraph) => (
-                    <p key={paragraph} className="post__text">
-                      {paragraph}
-                    </p>
-                  ))}
+                  {highlight.blocks.map((block, blockIndex) => renderBlock(block, blockIndex))}
                 </div>
                 <img
                   className="post__shot"
@@ -93,24 +153,29 @@ export function BlogPostPage({ slug }: { slug: string }) {
                 />
               </section>
             ))}
-            {copy.fixes.length > 0 ? (
-              <section id="fixes" className="post__section" aria-labelledby="fixes-title">
+            {noteSections.map((kind) => (
+              <section
+                key={kind}
+                id={kind}
+                className="post__section"
+                aria-labelledby={`${kind}-title`}
+              >
                 <div className="post__copy">
-                  <h2 id="fixes-title" className="post__heading">
-                    {t.fixes}
+                  <h2 id={`${kind}-title`} className="post__heading">
+                    {t[kind]}
                   </h2>
                 </div>
                 <ul className="card post__fixes">
-                  {copy.fixes.map((fix) => (
-                    <li key={fix.text} className="post__fix">
-                      <p>{fix.text}</p>
-                      {fix.figure ? (
+                  {copy[kind].map((note, noteIndex) => (
+                    <li key={noteIndex} className="post__fix">
+                      <p className="post__fix-text">{renderInlines(note.content)}</p>
+                      {note.figure ? (
                         <img
                           className="post__fix-shot"
-                          src={fix.figure.image.src}
-                          width={fix.figure.image.width}
-                          height={fix.figure.image.height}
-                          alt={fix.figure.alt}
+                          src={note.figure.image.src}
+                          width={note.figure.image.width}
+                          height={note.figure.image.height}
+                          alt={note.figure.alt}
                           loading="lazy"
                           decoding="async"
                         />
@@ -119,7 +184,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
                   ))}
                 </ul>
               </section>
-            ) : null}
+            ))}
           </div>
         </div>
         <footer className="post__end">

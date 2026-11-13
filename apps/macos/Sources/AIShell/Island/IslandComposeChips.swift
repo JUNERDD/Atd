@@ -76,6 +76,7 @@ struct IslandComposeChips: View {
     return IslandChipArrow(
       glyph: edge == .leading ? IslandIcons.scrollLeft : IslandIcons.scrollRight,
       label: edge == .leading ? labels.composeScrollLeft : labels.composeScrollRight,
+      active: shown && active,
       action: action
     )
     .padding(.horizontal, 2)
@@ -93,6 +94,7 @@ struct IslandComposeChips: View {
 private struct IslandChipArrow: View {
   let glyph: String
   let label: String
+  let active: Bool
   let action: () -> Void
   @State private var hovered = false
 
@@ -105,8 +107,7 @@ private struct IslandChipArrow: View {
         .frame(width: Self.width, height: IslandMetrics.composeChipHeight)
     }
     .buttonStyle(IslandWashStyle(shape: Capsule(), hovered: hovered))
-    .onHover { hovered = $0 }
-    .pointerStyle(.link)
+    .modifier(FloatingHover(enabled: active) { hovered = $0 })
     .help(label)
     .accessibilityLabel(Text(verbatim: label))
   }
@@ -165,8 +166,7 @@ struct IslandComposeChip: View {
             cornerRadius: IslandMetrics.composeRadius - Self.trailing, style: .continuous),
           hovered: hovered)
       )
-      .onHover { hovered = $0 }
-      .pointerStyle(active ? .link : nil)
+      .modifier(FloatingHover { hovered = $0 })
       .disabled(!active)
       .help(remove)
       .accessibilityLabel(Text(verbatim: remove))

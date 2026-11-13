@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Download, MoreHorizontal, Puzzle, RefreshCw, Trash2 } from 'lucide-react';
+import { Download, MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@atd/ui/components/badge';
 import { Button } from '@atd/ui/components/button';
@@ -15,13 +15,18 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemMedia,
   ItemTitle,
 } from '@atd/ui/components/item';
 import { Skeleton } from '@atd/ui/components/skeleton';
 import { Spinner } from '@atd/ui/components/spinner';
 import { IconButton } from '../../components/icon-button';
-import { ItemContextMenu, ItemMenuItem } from '../../components/item-menu';
+import {
+  ItemContextMenu,
+  ItemMenuGroup,
+  ItemMenuItem,
+  ItemMenuLabel,
+  ItemMenuSeparator,
+} from '../../components/item-menu';
 import { ExtensionRemoveDialog } from '../service/extension-remove-dialog';
 import { AddonDetail } from './addon-detail';
 import { AddonFailureNotice } from './addon-failure-notice';
@@ -32,7 +37,7 @@ import { useAddonCard } from './use-addon-card';
  * the add-on from the service's list, `title` and `description` say what it adds. The row follows
  * the add-on through its states and keeps the action in one place:
  * not installed → Install; downloading, verifying or installing → status (and a progress bar for
- * a download) with Cancel; installed → its version and a More menu with Remove, which asks first;
+ * a download) with Cancel; installed → a More menu with its version and Remove, which asks first;
  * an older archive after an app update → Update, with the same More menu; a failed install or removal → the reason under
  * the row, retried with its Install or Update; not offered in this build → said
  * in place of the action. Rows belong in an `AddonCardGroup`.
@@ -41,12 +46,13 @@ export function AddonCard({
   id,
   title,
   description,
-  icon = <Puzzle />,
+  children,
 }: {
   id: string;
   title: string;
-  description: string;
-  icon?: ReactNode;
+  description: ReactNode;
+  /** Integration-specific recovery actions; install/remove behavior stays with this card. */
+  children?: ReactNode;
 }) {
   const { t } = useTranslation('addons');
   const card = useAddonCard(id);
@@ -58,15 +64,24 @@ export function AddonCard({
   // update), and its files should not be stuck on the Mac.
   const removable =
     card.addon?.phase === 'idle' && Boolean(card.addon.installed || card.addon.outdated);
+  const installed = card.addon?.installed ?? card.addon?.outdated;
   const menu = removable ? (
-    <ItemMenuItem
-      variant="destructive"
-      disabled={card.disabled}
-      onSelect={() => setConfirming(true)}
-    >
-      <Trash2 />
-      {t('actions.remove')}
-    </ItemMenuItem>
+    <ItemMenuGroup>
+      {installed && (
+        <>
+          <ItemMenuLabel>{t('detail.installed', { version: installed.version })}</ItemMenuLabel>
+          <ItemMenuSeparator />
+        </>
+      )}
+      <ItemMenuItem
+        variant="destructive"
+        disabled={card.disabled}
+        onSelect={() => setConfirming(true)}
+      >
+        <Trash2 />
+        {t('actions.remove')}
+      </ItemMenuItem>
+    </ItemMenuGroup>
   ) : null;
 
   const install = (label: string, Icon: typeof Download) => (
@@ -125,18 +140,14 @@ export function AddonCard({
       <ItemContextMenu menu={menu}>
         <Item asChild size="sm" className="settings-card-row">
           <li aria-busy={state === 'working' || undefined}>
-            <ItemMedia variant="icon">{icon}</ItemMedia>
-            <ItemContent className="min-w-[min(12rem,100%)]">
-              <ItemTitle className="min-w-0">
-                <span className="truncate" title={title}>
-                  {title}
-                </span>
-              </ItemTitle>
+            <ItemContent className="min-w-[min(120px,100%)]">
+              <ItemTitle className="whitespace-normal">{title}</ItemTitle>
               <ItemDescription className="whitespace-normal">{description}</ItemDescription>
               <AddonDetail state={state} addon={card.addon} loadError={card.loadError} />
             </ItemContent>
-            <ItemActions className="shrink-0">
+            <ItemActions className="ml-auto shrink-0">
               {action}
+              {children}
               {more}
             </ItemActions>
             {notice ? <div className="basis-full">{notice}</div> : null}

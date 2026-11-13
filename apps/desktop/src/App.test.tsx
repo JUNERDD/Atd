@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { EditorView } from '@codemirror/view';
+import type { CommandLaunch, TaskDetail } from './client/agent/bridge';
+import { emptyInput } from './client/agent/task-schema';
 import { App } from './App';
 import { installBridge } from '../tests/app-test-bridge';
+import { fixtureCommands } from '../tests/command-fixtures';
 import { SettingsWindow } from './features/settings/settings-window';
 import { chipTable, chipTokens, editorDraft } from './features/composer-editor/chip-state';
 
@@ -210,5 +213,77 @@ describe('task panel', () => {
     await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
     await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
     expect(screen.getByRole('button', { name: 'Permission level' })).toBeEnabled();
+  });
+
+  it('reveals the starting task immediately on an auto-run command launch before submit settles', async () => {
+    const { api } = installBridge();
+    const defaultSubmit = vi.mocked(api.submit).getMockImplementation()!;
+    let emitLaunch: (launch: CommandLaunch) => void = () => {};
+    vi.spyOn(api, 'onLaunch').mockImplementation((listener) => {
+      emitLaunch = listener;
+      return () => {};
+    });
+    let resolveSubmit: (value: TaskDetail) => void = () => {};
+    vi.mocked(api.submit).mockImplementationOnce(
+      (request) =>
+        new Promise<TaskDetail>((resolve) => {
+          resolveSubmit = () =>
+            void defaultSubmit({ ...request, taskId: 'server-extract-task' }).then((detail) =>
+              resolve({
+                ...detail,
+                task: { ...detail.task, title: 'Extract action items' },
+              }),
+            );
+        }),
+    );
+    const user = userEvent.setup();
+    const command = fixtureCommands()[1]!;
+    const prepared = {
+      command,
+      input: { ...emptyInput(), text: 'Ship notes by Friday', arguments: { group_by: 'Owner' } },
+      output: { action: 'panel' as const, review: false },
+      notice: '',
+    };
+    render(<App />);
+    act(() => {
+      emitLaunch({ prepared, autoRun: true });
+      emitLaunch({ prepared, autoRun: true });
+    });
+    expect(screen.getByRole('heading', { name: 'Extract action items' })).toBeVisible();
+    expect(window.desktop?.show).toHaveBeenCalledOnce();
+    expect(api.submit).toHaveBeenCalledOnce();
+    expect(api.submit).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: null, commandId: 'extract' }),
+    );
+    expect(api.detail).not.toHaveBeenCalled();
+    await user.type(screen.getByRole('textbox', { name: 'Task prompt' }), 'Follow-up note');
+    await act(async () => resolveSubmit(null as never));
+    expect(
+      await screen.findByText('Ship notes by Friday', { selector: '.message-bubble' }),
+    ).toBeVisible();
+    expect(draftText(screen.getByRole('textbox', { name: 'Task prompt' }))).toBe('Follow-up note');
+    expect(window.desktop?.show).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to the command input view when an auto-run command launch fails', async () => {
+    const { api } = installBridge();
+    let emitLaunch: (launch: CommandLaunch) => void = () => {};
+    vi.spyOn(api, 'onLaunch').mockImplementation((listener) => {
+      emitLaunch = listener;
+      return () => {};
+    });
+    vi.mocked(api.submit).mockRejectedValueOnce(new Error('This command is disabled.'));
+    const command = fixtureCommands()[1]!;
+    const prepared = {
+      command,
+      input: { ...emptyInput(), text: 'Notes', arguments: { group_by: 'Owner' } },
+      output: { action: 'panel' as const, review: false },
+      notice: '',
+    };
+    render(<App />);
+    act(() => emitLaunch({ prepared, autoRun: true }));
+    expect(await screen.findByText('This command is disabled.')).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'Command input' })).toBeVisible();
+    expect(window.desktop?.show).toHaveBeenCalledTimes(2);
   });
 });

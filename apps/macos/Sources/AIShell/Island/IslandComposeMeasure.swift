@@ -29,7 +29,7 @@ extension IslandController {
       command: command, attach: attach, note: draft.note, labels: model.labels)
     if composeMeasures.key != key {
       let probe = IslandComposeCard(model: model, command: command, attach: attach, active: false)
-      let ideal = NSHostingView(rootView: probe.widthProbe.fixedSize()).fittingSize.width
+      let ideal = Self.fittingSize(of: probe.widthProbe.fixedSize()).width
       let width = IslandMetrics.composeCardWidth(ideal: ideal)
       let note = IslandComposeNote(model: model, note: draft.note, attach: attach)
       composeMeasures = ComposeMeasureCache(

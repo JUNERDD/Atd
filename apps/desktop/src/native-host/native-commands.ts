@@ -32,8 +32,11 @@ const SELECTION_ERRORS = {
   tooLong: 'input.errors.selectionTooLong',
 } as const satisfies Record<SelectionFailure, string>;
 
-/** A capture or edit result as the page's screenshot; null when the user cancelled. */
-function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
+/**
+ * A capture or edit result as the page's screenshot; null when the user cancelled or the capture
+ * became a recording.
+ */
+export function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
   if (result.ok)
     return { file: result.file, context: result.context, capturedAt: result.capturedAt };
   if (result.reason === 'notPermitted')
@@ -90,12 +93,15 @@ export class NativeCommands implements CommandCatalog {
 
   /**
    * Prepared like a shortcut launch (a failed capture becomes a notice), but the selection the
-   * command reads is `text`, captured now, so the shell's stashed selection stays untouched.
+   * command reads is `text`, captured now, so the shell's stashed selection stays untouched. A
+   * command that also takes a screenshot reads `shot` when one is given (the screenshot the text
+   * was picked in, or null for none) instead of a new capture.
    */
   async prepareWithText(
     id: string,
     text: string,
     overrides?: ArgumentValues,
+    shot?: Screenshot | null,
   ): Promise<PreparedCommand> {
     if (text.length > MAX_CAPTURE_LENGTH)
       throw new Error(i18n.t('input.errors.textTooLong', { ns: 'panel' }));
@@ -104,7 +110,31 @@ export class NativeCommands implements CommandCatalog {
       this.find(id),
       {
         capture: async (source) => (source === 'selection' ? selection : this.capture(source)),
-        screenshot: () => this.screenshot(),
+        screenshot: async () => (shot === undefined ? this.screenshot() : shot),
+      },
+      true,
+      overrides,
+    );
+  }
+
+  /**
+   * Prepared like a shortcut launch (a failed capture becomes a notice), but the screenshot the
+   * command reads is `shot`, the capture that launched it, so no second capture opens, and the
+   * selection it reads is `selection`, the text picked in that screenshot, when there is any.
+   */
+  async prepareWithScreenshot(
+    id: string,
+    shot: Screenshot,
+    overrides?: ArgumentValues,
+    selection?: string,
+  ): Promise<PreparedCommand> {
+    const picked = selection && { text: selection, capturedAt: shot.capturedAt };
+    return prepareCommand(
+      this.find(id),
+      {
+        capture: async (source) =>
+          source === 'selection' && picked ? picked : this.capture(source),
+        screenshot: async () => shot,
       },
       true,
       overrides,
@@ -127,9 +157,9 @@ export class NativeCommands implements CommandCatalog {
     return { text, capturedAt: new Date().toISOString() };
   }
 
-  /** The shell hides the panel while the user picks an area, a window or the screen. */
+  /** An image for this command's input; it cannot start another command or a recording. */
   async screenshot() {
-    return shotOf(await this.bridge.call('screenshot.capture', {}));
+    return shotOf(await this.bridge.call('screenshot.capture', { purpose: 'image' }));
   }
 
   /** Reopens an image attachment on the capture overlay; the result is a new resource. */

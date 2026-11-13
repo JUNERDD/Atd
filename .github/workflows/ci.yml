@@ -151,8 +151,10 @@ jobs:
       marketing_version: ${{ needs.changes.outputs.marketing-version }}
       build_version: ${{ needs.changes.outputs.build-version }}
     secrets:
-      RELEASE_SIGNING_P12: ${{ secrets.RELEASE_SIGNING_P12 }}
-      RELEASE_SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_P12_PASSWORD }}
+      DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+      DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+      NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+      NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
       SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
 
   # The Swift and Rust checks run as two parallel macOS jobs instead of one after the other.
@@ -274,9 +276,9 @@ jobs:
           rustup toolchain install
           cargo --version
       - run: pnpm install --frozen-lockfile
-      # With no AI_CODE_SIGN_IDENTITY, project.yml signs ad hoc; build.mjs targets the host (x64).
+      # Explicit ad hoc signing is reserved for this unsigned packaging rehearsal.
       - name: Build the Release app
-        run: pnpm --filter @atd/macos build:release
+        run: AI_CODE_SIGN_IDENTITY=- pnpm --filter @atd/macos build:release
       - name: Verify the app
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app

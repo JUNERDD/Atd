@@ -25,12 +25,16 @@
  * at a `-`, so a build version must not contain one.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { MACHO_ARCHS, nativeHostArch } from './arch.mjs';
 import { invalidateDevBuild } from './dev-cache.mjs';
+import { configureSigning } from './signing/config.mjs';
+import { signApp } from './signing/sign-app.mjs';
+import { checkUpgradeCompatibility } from './signing/upgrade-compat.mjs';
+import { configureDevelopmentSigning } from './development-signing.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const X64_FEED_URL = 'https://downloads.atd.best/appcast-x64.xml';
@@ -143,6 +147,17 @@ function pinPackages() {
   copyFileSync(path.join(packageRoot, 'Package.resolved'), path.join(pins, 'Package.resolved'));
 }
 
+/** Removes leftover `.cstemp` files from interrupted codesign runs so Xcode can re-sign cleanly. */
+function removeSigningTemporaries(configuration) {
+  const products = path.join(packageRoot, 'DerivedData', 'Build', 'Products', configuration);
+  if (!existsSync(products)) return;
+  for (const entry of readdirSync(products, { withFileTypes: true, recursive: true })) {
+    if (entry.isFile() && entry.name.endsWith('.cstemp')) {
+      rmSync(path.join(entry.parentPath, entry.name), { force: true });
+    }
+  }
+}
+
 const options = readOptions();
 const native = hostArch();
 const arch = options.arch ?? native;
@@ -157,9 +172,24 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
+const releaseSigning = configureSigning(options.configuration);
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
-if (options.configuration === 'Debug') invalidateDevBuild(packageRoot);
+if (options.configuration === 'Debug') {
+  try {
+    configureDevelopmentSigning();
+  } catch (error) {
+    fail(error.message);
+  }
+  invalidateDevBuild(packageRoot);
+}
 run('xcodegen', ['generate', '--quiet']);
 pinPackages();
+removeSigningTemporaries(options.configuration);
 run('xcodebuild', args);
+
+if (options.configuration === 'Release') {
+  const app = path.join(packageRoot, 'DerivedData/Build/Products/Release/Atd.app');
+  checkUpgradeCompatibility(app);
+  if (releaseSigning) await signApp(app, releaseSigning);
+}

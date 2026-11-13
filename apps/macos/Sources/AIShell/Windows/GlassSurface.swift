@@ -44,13 +44,16 @@ enum GlassSurface {
   /// The page windows' glass (``adoptWindow(_:page:)``), told the variant again whenever the
   /// panel background changes. Not retained.
   private static let windows = NSHashTable<NSView>.weakObjects()
+  /// Live AppKit glass that keeps the dark scheme whatever the app's is (``pinDark(_:)``). Not
+  /// retained.
+  private static let dark = NSHashTable<NSView>.weakObjects()
 
   /// The panel's base fill in the current scheme, as the Panel background setting resolves it
   /// (``PanelBackground/tone(dark:)``; the measured default is `rgb(24 24 24 / 60%)` dark and
   /// `rgb(255 255 255 / 56%)` light), at ``materialOpacity(_:)`` over the material and opaque
   /// under Reduce Transparency.
-  static func fill(reduceTransparency: Bool) -> NSColor {
-    let tone = PanelBackground.shared.tone(dark: isDark)
+  static func fill(reduceTransparency: Bool, dark: Bool? = nil) -> NSColor {
+    let tone = PanelBackground.shared.tone(dark: dark ?? isDark)
     return NSColor(
       srgbRed: CGFloat(tone.red) / 255, green: CGFloat(tone.green) / 255,
       blue: CGFloat(tone.blue) / 255,
@@ -70,8 +73,8 @@ enum GlassSurface {
   }
 
   /// ``fill(reduceTransparency:)`` for SwiftUI.
-  static func fillColor(reduceTransparency: Bool) -> Color {
-    Color(nsColor: fill(reduceTransparency: reduceTransparency))
+  static func fillColor(reduceTransparency: Bool, dark: Bool? = nil) -> Color {
+    Color(nsColor: fill(reduceTransparency: reduceTransparency, dark: dark))
   }
 
   /// Pins `material` to `appearance` and, on Liquid Glass, stops it adapting to the backdrop's
@@ -127,7 +130,7 @@ enum GlassSurface {
   /// switches at once rather than through the glass's own adaptation, which stays off.
   static func schemeDidChange() {
     for case let glass as NSView in live.keyEnumerator().allObjects {
-      glass.appearance = appearance
+      glass.appearance = dark.contains(glass) ? NSAppearance(named: .darkAqua) : appearance
     }
     repaint()
   }
@@ -143,11 +146,29 @@ enum GlassSurface {
 
   /// Paints every live AppKit glass's fill and variant as they stand now.
   private static func repaint() {
-    let fill = fill(reduceTransparency: ReduceTransparencyObserver.isReduced).cgColor
     for case let glass as NSView in live.keyEnumerator().allObjects {
       applyVariant(to: glass)
-      live.object(forKey: glass)?.layer?.backgroundColor = fill
+      live.object(forKey: glass)?.layer?.backgroundColor = surfaceFill(of: glass)
     }
+  }
+
+  /// Keeps `material`, attached by ``attach(_:content:)``, its fill and its content in the dark
+  /// scheme whatever the app's is, now and after every change of the scheme or the panel
+  /// background: AppKit glass that always stands over a dark backdrop, as the lightbox's editor
+  /// bars do. Its SwiftUI counterpart is ``SwiftUI/View/glassSurface(in:animation:dark:)``.
+  static func pinDark(_ material: NativeMaterialView) {
+    dark.add(material.view)
+    pin(material, to: NSAppearance(named: .darkAqua))
+    live.object(forKey: material.view)?.layer?.backgroundColor = surfaceFill(of: material.view)
+  }
+
+  /// The base fill of live AppKit glass `glass`: in its pinned scheme, as Reduce Transparency
+  /// stands now.
+  private static func surfaceFill(of glass: NSView) -> CGColor {
+    fill(
+      reduceTransparency: ReduceTransparencyObserver.isReduced,
+      dark: dark.contains(glass) ? true : nil
+    ).cgColor
   }
 
   /// Sets the panel background's variant on `view` when it is Liquid Glass; macOS 15's material
@@ -164,8 +185,7 @@ enum GlassSurface {
     material.cornerRadius = cornerRadius
     content.layer?.cornerRadius = cornerRadius
     content.layer?.cornerCurve = .continuous
-    content.layer?.backgroundColor =
-      fill(reduceTransparency: ReduceTransparencyObserver.isReduced).cgColor
+    content.layer?.backgroundColor = surfaceFill(of: material.view)
   }
 }
 
@@ -176,12 +196,17 @@ extension View {
   /// outline changes from frame to frame. A glass container drops an opacity (as it drops a
   /// transform) set on the glass itself, so a piece's glass goes only by its outline, its fill and
   /// content with it.
-  func glassSurface(in outline: some Shape, animation: Animation?) -> some View {
+  ///
+  /// `dark` pins the surface to the dark scheme (or the light one) whatever the app's is, for a
+  /// surface that is always dark: the lightbox's bars over its dark scrim.
+  func glassSurface(in outline: some Shape, animation: Animation?, dark: Bool? = nil)
+    -> some View
+  {
     // Read here, in the body of the view the surface belongs to, which observation then redraws
     // when the variant changes.
     let clear = PanelBackground.shared.clearGlass
-    return modifier(GlassSurfaceFace())
-      .animation(animation) { $0.clippedGlass(in: outline, clear: clear) }
+    return modifier(GlassSurfaceFace(dark: dark))
+      .animation(animation) { $0.clippedGlass(in: outline, clear: clear, dark: dark) }
   }
 
   /// This content clipped to `outline` and on Liquid Glass of the same outline, regular or
@@ -200,46 +225,18 @@ extension View {
   /// what the macOS 15 verification build checks (plan M2); should it not, the agreed fallback is
   /// a fill of the surface tokens inside the window with no desktop blur, keeping the morph and
   /// the interaction.
-  @ViewBuilder func clippedGlass(in outline: some Shape, clear: Bool) -> some View {
+  @ViewBuilder func clippedGlass(in outline: some Shape, clear: Bool, dark: Bool? = nil)
+    -> some View
+  {
     let shape = AnyShape(outline)
     if #available(macOS 26, *) {
       clipShape(shape).glassEffect(clear ? .clear : .regular, in: shape)
     } else {
-      clipShape(shape).background { SwiftUIGlassMaterial().clipShape(shape) }
+      clipShape(shape).background {
+        SwiftUIGlassMaterial(shape: shape, dark: dark).clipShape(shape)
+      }
     }
   }
-}
-
-/// SwiftUI glass's material on macOS 15: an `NSVisualEffectView` blurring the desktop behind the
-/// window, configured as ``NativeMaterialView`` records for SwiftUI glass and pinned to
-/// ``GlassSurface/appearance``, again whenever the app's scheme changes (this body reads it). It
-/// lies under the surface's fill and content and takes no clicks or VoiceOver focus, as the glass
-/// takes none.
-private struct SwiftUIGlassMaterial: View {
-  var body: some View { SwiftUIGlassEffect(isDark: GlassSurface.isDark) }
-}
-
-/// ``SwiftUIGlassMaterial``'s effect view, in the scheme it is given.
-private struct SwiftUIGlassEffect: NSViewRepresentable {
-  let isDark: Bool
-
-  func makeNSView(context: Context) -> NSVisualEffectView {
-    let effect = PassiveEffectView()
-    NativeMaterialView.configure(effect, for: .swiftUIGlass)
-    effect.setAccessibilityElement(false)
-    updateNSView(effect, context: context)
-    return effect
-  }
-
-  func updateNSView(_ effect: NSVisualEffectView, context: Context) {
-    effect.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
-  }
-}
-
-/// An effect view that never takes the pointer: clicks go to the content over it, or to the
-/// window, as they do through the glass.
-private final class PassiveEffectView: NSVisualEffectView {
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// The shell's glass surface under SwiftUI content: the main panel's base fill, opaque under
@@ -253,12 +250,15 @@ private final class PassiveEffectView: NSVisualEffectView {
 /// into the root's children, past an override on the root itself or anywhere around the glass
 /// (measured on macOS 26). Beneath the fill, the glass still adapts.
 struct GlassSurfaceFace: ViewModifier {
+  /// The scheme the surface keeps whatever the app's is; nil follows the app's.
+  var dark: Bool?
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   func body(content: Content) -> some View {
-    ZStack { content.environment(\.colorScheme, GlassSurface.colorScheme) }
+    let scheme = dark.map { $0 ? ColorScheme.dark : .light } ?? GlassSurface.colorScheme
+    ZStack { content.environment(\.colorScheme, scheme) }
       .background {
-        GlassSurface.fillColor(reduceTransparency: reduceTransparency)
+        GlassSurface.fillColor(reduceTransparency: reduceTransparency, dark: dark)
           .allowsHitTesting(false)
           .accessibilityHidden(true)
       }

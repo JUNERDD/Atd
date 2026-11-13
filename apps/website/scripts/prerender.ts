@@ -1,10 +1,15 @@
 /**
- * Writes one prerendered page per route into `dist`. The client build's `index.html` is the
- * template; the server bundle in `dist-ssr` renders each page's markup and head. The server bundle is
- * removed afterwards so it never ships with the site.
+ * Writes one prerendered page per route into `dist`, alongside the static `404.html`, sitemap,
+ * RSS feeds, `robots.txt`, and `llms.txt` / `llms-full.txt`. The client build's `index.html` is the
+ * template; the server bundle in `dist-ssr` renders each page's markup and head and is removed
+ * afterward so it never ships with the site.
  */
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import type * as ServerEntry from '../src/entry-server.tsx';
+import { feedPath } from '../src/head.ts';
+import { LANGS } from '../src/i18n/routes.ts';
+import { fetchGitHubStars, GITHUB_STARS_FALLBACK } from '../src/lib/github-stars.ts';
+import { buildLlmsFullTxt, buildLlmsTxt, buildRssFeedXml, buildSitemapXml } from './seo-outputs.ts';
 
 type Entry = typeof ServerEntry;
 
@@ -21,13 +26,15 @@ function isEntry(value: unknown): value is Entry {
     'render' in value &&
     typeof value.render === 'function' &&
     'routes' in value &&
-    Array.isArray(value.routes)
+    Array.isArray(value.routes) &&
+    'posts' in value &&
+    Array.isArray(value.posts)
   );
 }
 
 /**
- * The production origin for canonical and Open Graph URLs. Vercel builds know the project's
- * production domain; `SITE_URL` overrides it, and local builds fall back to the preview server.
+ * The production origin for canonical, sitemap, RSS and Open Graph URLs. Vercel builds know the
+ * project's production domain; `SITE_URL` overrides it, and local builds fall back to preview.
  */
 function siteUrl(): string {
   const explicit = process.env.SITE_URL;
@@ -45,7 +52,9 @@ async function fontPreload(): Promise<string> {
 }
 
 const entry: unknown = await import(new URL('entry-server.js', serverDir).href);
-if (!isEntry(entry)) throw new Error('dist-ssr/entry-server.js must export render and routes.');
+if (!isEntry(entry)) {
+  throw new Error('dist-ssr/entry-server.js must export render, routes, and posts.');
+}
 
 const template = await readFile(new URL('index.html', dist), 'utf8');
 for (const mark of [HTML_OPEN, HEAD_MARK, APP_MARK]) {
@@ -53,49 +62,44 @@ for (const mark of [HTML_OPEN, HEAD_MARK, APP_MARK]) {
 }
 const origin = siteUrl();
 const preload = await fontPreload();
+const initialStars =
+  (await fetchGitHubStars({ token: process.env.GITHUB_TOKEN })) ?? GITHUB_STARS_FALLBACK;
+console.log(`stars snapshot: ${initialStars}`);
+
+const renderDocument = (rendered: ReturnType<Entry['render']>) =>
+  template
+    .replace(HTML_OPEN, `<html ${rendered.htmlAttrs}>`)
+    .replace(HEAD_MARK, rendered.head + preload)
+    .replace(APP_MARK, rendered.html);
 
 for (const route of entry.routes) {
-  const page = entry.render(route.lang, origin, route.page);
-  const html = template
-    .replace(HTML_OPEN, `<html ${page.htmlAttrs}>`)
-    .replace(HEAD_MARK, page.head + preload)
-    .replace(APP_MARK, page.html);
+  const page = entry.render(route.lang, origin, route.page, initialStars);
   const dir = new URL(route.dir, dist);
   await mkdir(dir, { recursive: true });
-  await writeFile(new URL('index.html', dir), html);
+  await writeFile(new URL('index.html', dir), renderDocument(page));
   console.log(`prerendered ${route.lang} → dist/${route.dir === './' ? '' : route.dir}index.html`);
 }
 
-// Crawlers get the indexable pages in each language, each listing the same page's other languages as
-// alternates and its English version as the default for any other language, as the pages' own
-// hreflang links do.
+// Static fallback served by Vercel (and Vite preview) with HTTP 404 when no route matches.
+await writeFile(
+  new URL('404.html', dist),
+  renderDocument(entry.render('en', origin, 'not-found', initialStars)),
+);
+console.log('prerendered en → dist/404.html');
+
 const indexedRoutes = entry.routes.filter((route) => route.indexable);
-function alternatesOf(page: (typeof indexedRoutes)[number]['page']): string {
-  const versions = indexedRoutes.filter((route) => route.page === page);
-  const fallback = versions.find((route) => route.lang === 'en');
-  if (!fallback) throw new Error(`The English ${page} page, the x-default alternate, is missing.`);
-  return [...versions.map((route) => [route.hreflang, route.path]), ['x-default', fallback.path]]
-    .map(
-      ([hreflang, path]) =>
-        `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${origin}${path}" />`,
-    )
-    .join('\n');
-}
-const sitemap = [
-  '<?xml version="1.0" encoding="UTF-8"?>',
-  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-  ...indexedRoutes.map(
-    (route) =>
-      `  <url>\n    <loc>${origin}${route.path}</loc>\n${alternatesOf(route.page)}\n  </url>`,
-  ),
-  '</urlset>',
-  '',
-].join('\n');
-await writeFile(new URL('sitemap.xml', dist), sitemap);
+await writeFile(new URL('sitemap.xml', dist), buildSitemapXml(origin, indexedRoutes, entry.posts));
 await writeFile(
   new URL('robots.txt', dist),
   `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`,
 );
+for (const lang of LANGS) {
+  const target = feedPath(lang).slice(1);
+  await mkdir(new URL(target.includes('/') ? `${lang}/` : './', dist), { recursive: true });
+  await writeFile(new URL(target, dist), buildRssFeedXml(origin, lang, entry.posts));
+}
+await writeFile(new URL('llms.txt', dist), buildLlmsTxt(origin, entry.posts));
+await writeFile(new URL('llms-full.txt', dist), buildLlmsFullTxt(origin, entry.posts));
 
 // `public/cases/README.md` guides maintainers adding recordings; it is not part of the site.
 await rm(new URL('cases/README.md', dist), { force: true });

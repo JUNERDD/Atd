@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { CommandOutputSchema } from './command-output.js';
+import { CommandPlacementSchema } from './command-placement.js';
 import { CommandModelSchema, CommandThinkingLevelSchema } from './command-run.js';
 import {
   CommandArgumentValuesSchema,
@@ -8,6 +9,17 @@ import {
 } from './command-shortcuts.js';
 import { Identifier } from './identifiers.js';
 import { SkillName } from './skills.js';
+
+// The placement lives in its own module; the package index reaches it through this one.
+export {
+  CommandPlacementSchema,
+  defaultCommandPlacement,
+  offeredAt,
+  placeAvailable,
+  readsSelection,
+  type CommandPlace,
+  type CommandPlacement,
+} from './command-placement.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
@@ -102,49 +114,6 @@ export const CommandInputSchema = Type.Object(
   { additionalProperties: false },
 );
 export type CommandInput = Static<typeof CommandInputSchema>;
-
-/**
- * Where a command is offered beyond the command list, its shortcut and the launcher. Each place
- * hands the command text that stands in for the selection it reads: the text selected in another
- * app (`selectionToolbar`), the text selected in a conversation's answers (`turnSelection`), or a
- * settled turn's answer (`turnActions`). Clients offer a command only where it is placed and only
- * while it reads the selection (`offeredAt`).
- */
-export const CommandPlacementSchema = Type.Object(
-  {
-    /** The selection toolbar over text selected in other apps. */
-    selectionToolbar: Type.Boolean(),
-    /** The toolbar over text selected in a conversation's answers. */
-    turnSelection: Type.Boolean(),
-    /** A settled turn's actions, which run the command on the turn's answer. */
-    turnActions: Type.Boolean(),
-  },
-  { additionalProperties: false },
-);
-export type CommandPlacement = Static<typeof CommandPlacementSchema>;
-export type CommandPlace = keyof CommandPlacement;
-
-/**
- * The placement of a command that never chose one (stored before placements existed, or created
- * without one): a command that takes the selection as its input shows on the selection toolbar
- * over other apps, as every such command did before, and in no conversation until it is put there.
- */
-export function defaultCommandPlacement(source: CommandInput['source']): CommandPlacement {
-  return { selectionToolbar: source === 'selection', turnSelection: false, turnActions: false };
-}
-
-/** Whether a command reads the selection: as its input, or through the `{{selection}}` variable. */
-export function readsSelection(input: CommandInput): boolean {
-  return input.source === 'selection' || input.selection;
-}
-
-/** Whether a client offers `command` at `place`: it is enabled, placed there and reads the selection. */
-export function offeredAt(
-  command: { enabled: boolean; input: CommandInput; placement: CommandPlacement },
-  place: CommandPlace,
-): boolean {
-  return command.enabled && command.placement[place] && readsSelection(command.input);
-}
 
 /**
  * `PUT /v1/commands/:id/arguments`: the values the command's next run from the app starts from,

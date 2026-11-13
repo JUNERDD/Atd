@@ -37,6 +37,17 @@ function settingsOf({ wrap, locked, limit, label, placeholder, aria }: EditorSet
   return { wrap, locked, limit, label, placeholder, aria };
 }
 
+function sameSettings(a: EditorSettings, b: EditorSettings): boolean {
+  return (
+    a.wrap === b.wrap &&
+    a.locked === b.locked &&
+    a.limit === b.limit &&
+    a.label === b.label &&
+    a.placeholder === b.placeholder &&
+    a.aria === b.aria
+  );
+}
+
 /**
  * Owns the composer's CodeMirror view: created when its host element mounts, destroyed by the ref
  * cleanup (StrictMode-safe), focused with the caret at the end. While the user types the editor
@@ -54,6 +65,7 @@ class ComposerEditor implements EditorHost {
   /** Drafts this editor emitted; any other draft prop is an external change. */
   private readonly emitted = new WeakSet<ComposerDraft>();
   private content: ComposerDraft;
+  private syncedDraft: ComposerDraft | null = null;
   private applied: EditorSettings;
   private reported: TriggerState | null = null;
 
@@ -69,8 +81,9 @@ class ComposerEditor implements EditorHost {
   /** Stable ref callback for the host element; the returned cleanup destroys the view. */
   readonly container: RefCallback<HTMLDivElement> = (parent) => {
     if (!parent) return;
-    this.apply(settingsOf(this.options));
+    this.apply(settingsOf(this.options), true);
     this.content = normalizeDraft(this.options.draft);
+    this.syncedDraft = this.options.draft;
     this.reported = null;
     const view = new EditorView({ parent, state: this.create(this.content) });
     this.view = view;
@@ -79,6 +92,7 @@ class ComposerEditor implements EditorHost {
     view.focus();
     return () => {
       this.view = null;
+      this.syncedDraft = null;
       view.destroy();
     };
   };
@@ -86,7 +100,11 @@ class ComposerEditor implements EditorHost {
   /** Latest props after each render; the host element's ref callback has already run. */
   update(options: ComposerEditorOptions) {
     this.options = options;
-    if (this.view) this.sync(this.view);
+    if (!this.view) return;
+    if (options.draft === this.syncedDraft && sameSettings(this.applied, settingsOf(options))) {
+      return;
+    }
+    this.sync(this.view);
   }
 
   panel() {
@@ -127,9 +145,10 @@ class ComposerEditor implements EditorHost {
     });
   }
 
-  private apply(settings: EditorSettings) {
+  private apply(settings: EditorSettings, force = false) {
+    const changed = force || settings.wrap !== this.applied.wrap;
     this.applied = settings;
-    this.options.onWrapApplied(settings.wrap);
+    if (changed) this.options.onWrapApplied(settings.wrap);
   }
 
   private create(draft: ComposerDraft) {
@@ -153,6 +172,7 @@ class ComposerEditor implements EditorHost {
     if (view.compositionStarted) return;
     const { draft } = this.options;
     const settings = settingsOf(this.options);
+    this.syncedDraft = draft;
     if (!this.emitted.has(draft) && !sameContent(draft, this.content)) {
       this.apply(settings);
       this.content = normalizeDraft(draft);

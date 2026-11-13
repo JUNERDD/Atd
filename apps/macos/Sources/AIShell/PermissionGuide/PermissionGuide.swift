@@ -37,6 +37,8 @@ enum PermissionPane: String, CaseIterable {
 final class PermissionGuide {
   static let shared = PermissionGuide()
 
+  var onActiveChange: ((Bool) -> Void)?
+
   private let tracker = SettingsWindowTracker()
   private var panel: PermissionGuidePanel?
   private var pane: PermissionPane?
@@ -61,6 +63,7 @@ final class PermissionGuide {
     asker = NSApp.keyWindow
     NSWorkspace.shared.open(url)
     tracker.start()
+    onActiveChange?(true)
   }
 
   /// The permission is held: ends its guide, and returns to Atd when the user is still in System
@@ -78,11 +81,12 @@ final class PermissionGuide {
     panel.close()
     self.panel = nil
     pane = nil
+    onActiveChange?(false)
     guard returning else { return }
     NSApp.activate()
     // Since macOS 14 activation is cooperative and the app now in front may refuse it; ordering
     // the window front regardless still lifts it above that app's windows, without taking focus.
-    if let asker, asker.isVisible {
+    if let asker, asker.isVisible, asker.canBecomeKey {
       asker.orderFrontRegardless()
       asker.makeKeyAndOrderFront(nil)
     }

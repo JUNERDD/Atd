@@ -21,24 +21,28 @@ final class SelectionToolbarMenu: NSObject {
   /// margin can lie over the toolbar or another panel of the cascade.
   var onPressOutside: ((NSPoint) -> Void)?
 
-  private let window = ToolbarWindow.selectionToolbar()
+  private let window: ToolbarWindow
   private let hover: SelectionToolbarHover
   private var rows: [any ToolbarHoverable] = []
   /// The glass on screen while the panel shows.
   private(set) var surface: NSRect?
 
   /// `hover` is the toolbar's: one owner for the wash and the cursor across every window.
-  init(hover: SelectionToolbarHover) {
+  /// `level` is the window level (``ToolbarWindow/selectionToolbar(level:)``).
+  init(hover: SelectionToolbarHover, level: NSWindow.Level = .popUpMenu) {
     self.hover = hover
+    window = ToolbarWindow.selectionToolbar(level: level)
     super.init()
+    // Hover-driven menu replacements must not wait for AppKit's inferred window animations.
+    window.animationBehavior = .none
   }
 
   var isOpen: Bool { window.isVisible }
 
   /// Shows `items` (rows and separators, each `rowWidth` wide) top down on a glass panel at
-  /// `placed` (screen points, the glass's frame), which scrolls when it is shorter than
-  /// `content`, the whole list's size; `label` names the menu for VoiceOver.
-  func open(_ items: [NSView], content: WindowSize, at placed: ScreenRect, label: String) {
+  /// `placed` (screen points, the glass's frame), which scrolls when shorter than the list;
+  /// `label` names the menu for VoiceOver.
+  func open(_ items: [NSView], at placed: ScreenRect, label: String) {
     close()
     rows = items.compactMap { $0 as? any ToolbarHoverable }
     let inset = SelectionToolbarPanel.inset
@@ -46,7 +50,7 @@ final class SelectionToolbarMenu: NSObject {
     let container = MenuContainer(frame: NSRect(origin: .zero, size: frame.size))
     container.wantsLayer = true
     container.onPressOutside = { [weak self] point in self?.onPressOutside?(point) }
-    let glass = makeGlass(items: items, scrolls: placed.height < content.height, label: label)
+    let glass = makeGlass(items: items, label: label)
     glass.frame = container.bounds.insetBy(dx: inset, dy: inset)
     container.surface = glass
     container.addSubview(glass)
@@ -71,7 +75,7 @@ final class SelectionToolbarMenu: NSObject {
   /// list. The list is clipped to the glass's own corners (the glass does not clip its content),
   /// so a row scrolled half out of sight never shows past them, and stands on the toolbar's glass
   /// surface (``GlassSurface``), the fill drawn in the same rounded clip.
-  private func makeGlass(items: [NSView], scrolls: Bool, label: String) -> NSView {
+  private func makeGlass(items: [NSView], label: String) -> NSView {
     let layout = SelectionToolbarMenuLayout.self
     let list = MenuList(views: items)
     list.orientation = .vertical
@@ -80,17 +84,12 @@ final class SelectionToolbarMenu: NSObject {
     list.edgeInsets = NSEdgeInsets(
       top: layout.padding, left: layout.padding, bottom: layout.padding, right: layout.padding)
     list.frame = NSRect(origin: .zero, size: list.fittingSize)
-    let scroll = NSScrollView()
+    let scroll = FloatingNativeScrollView()
     scroll.drawsBackground = false
     scroll.borderType = .noBorder
     scroll.automaticallyAdjustsContentInsets = false
     scroll.horizontalScrollElasticity = .none
     scroll.verticalScrollElasticity = .none
-    scroll.scrollerStyle = .overlay
-    scroll.hasVerticalScroller = scrolls
-    // The scroller runs along the straight part of the edge, clear of the rounded corners.
-    scroll.scrollerInsets = NSEdgeInsets(
-      top: layout.cornerRadius, left: 0, bottom: layout.cornerRadius, right: 0)
     scroll.documentView = list
     scroll.autoresizingMask = [.width, .height]
     // The rows are the menu's items, not a scroll area's.
@@ -127,6 +126,10 @@ private final class MenuContainer: NSView {
   weak var surface: NSView?
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  override func resetCursorRects() {
+    addCursorRect(bounds, cursor: PointerRole.passive.cursor)
+  }
 
   override func mouseDown(with event: NSEvent) {
     guard let surface, !surface.frame.contains(convert(event.locationInWindow, from: nil))

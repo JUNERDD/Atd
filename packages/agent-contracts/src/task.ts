@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { AppIdSchema } from './app-identity.js';
 import { MAX_ATTACHMENTS } from './attachments.js';
+import { CaptureAnswerActionSchema } from './capture-answer.js';
 import type { CommandTool } from './commands.js';
 import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
@@ -68,6 +69,7 @@ export const TaskInputSchema = Type.Object(
       Type.Literal('selection'),
       Type.Literal('clipboard'),
       Type.Literal('screenshot'),
+      Type.Literal('recording'),
       Type.Literal('none'),
     ]),
     capturedAt: Type.String(),
@@ -186,6 +188,16 @@ export const RunSnapshotSchema = Type.Object(
      * the grant it was enqueued under, which a follow-up never inherits.
      */
     computer: Type.Optional(RunComputerSchema),
+    /**
+     * Screenshot output mode when the run's answer lands on an open screenshot
+     * (`landsOnScreenshot`): absent for ordinary runs and card/copy/insertAtCursor runs.
+     */
+    captureOutput: Type.Optional(CaptureAnswerActionSchema),
+    /**
+     * Set when the run started on a screenshot or screen recording (`isCaptureInput`,
+     * `screenshotText`, or `captureOutput`), including saved selection commands run on capture text.
+     */
+    fromCapture: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

@@ -169,6 +169,8 @@ extension CommandProgressController {
       case .nothing: break
       }
       announceNote()
+      // A recording that took the island meanwhile keeps it; the card draws once it goes.
+      guard state.drawsProgress else { return }
       island.setKeyCapable(true)
       remeasureCompose()
     }

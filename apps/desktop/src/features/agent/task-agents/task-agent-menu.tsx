@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react';
+import { useRef, useState, type ReactElement } from 'react';
 import { BookmarkPlus, Ellipsis } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TaskAgentDefinition } from '@atd/agent-contracts';
@@ -19,6 +19,7 @@ import { SaveTaskAgentDialog } from './save-task-agent-dialog';
 export function TaskAgentMenu({ definition }: { definition: TaskAgentDefinition }): ReactElement {
   const { t } = useTranslation('tasks');
   const [saveOpen, setSaveOpen] = useState(false);
+  const openSaveAfterClose = useRef(false);
   return (
     <>
       <DropdownMenu>
@@ -27,8 +28,18 @@ export function TaskAgentMenu({ definition }: { definition: TaskAgentDefinition 
             <Ellipsis />
           </IconButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="end">
-          <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
+        <DropdownMenuContent
+          side="bottom"
+          align="end"
+          onCloseAutoFocus={(event) => {
+            if (!openSaveAfterClose.current) return;
+            openSaveAfterClose.current = false;
+            // Defer dialog mount until the menu layer exits so DismissableLayer/FocusScope do not collide.
+            event.preventDefault();
+            setSaveOpen(true);
+          }}
+        >
+          <DropdownMenuItem onSelect={() => (openSaveAfterClose.current = true)}>
             <BookmarkPlus />
             {t('subagent.save.action')}
           </DropdownMenuItem>

@@ -11,6 +11,9 @@
     "updateDownloading": "Downloading version {{version}}…",
     "updateDownloadingPercent": "Downloading version {{version}} · {{percent}}%",
     "updatePreparing": "Preparing version {{version}}…",
+    "releaseNotes": "Release notes",
+    "releaseNotesTooltip": "View release notes for {{version}}",
+    "dismissReleaseNotes": "Hide this update notification",
     "loadingConversation": "Loading conversation…"
   },
   "find": {
@@ -53,7 +56,7 @@
     "folderLimit": "Add at most {{max}} folders.",
     "editImage": "Edit {{name}}",
     "attachMenu": {
-      "screenshot": "Screenshot",
+      "screenshot": "Screenshot or recording",
       "upload": "Upload files",
       "folder": "Add folder…",
       "mention": "Mention files, conversations or tools…"
@@ -391,5 +394,36 @@
   "attachments": {
     "noVision": "{{model}} can't see images, so attached images won't reach it.",
     "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Other attachments, such as the screen context, are still sent."
+  },
+  "modals": {
+    "close": "Close",
+    "carousel": {
+      "regionLabel": "Tips and notices",
+      "paginationLabel": "Tip {{current}} of {{total}}",
+      "dotLabel": "Show item {{index}} of {{total}}",
+      "slideAnnouncement": "Item {{current}} of {{total}}"
+    },
+    "notarizationReauth": {
+      "title": "Re-authorize permissions after certificate update",
+      "description": "Atd recently updated its Developer ID signing certificate, so macOS treats earlier permission grants as invalid. Re-grant the missing items in System Settings to keep using text selection and screenshots.",
+      "later": "Later",
+      "done": "Done",
+      "authorize": "Open System Settings",
+      "authorizeAccessibility": "Grant Accessibility",
+      "authorizeScreenRecording": "Grant Screen Recording",
+      "openRow": "Open",
+      "grantedBadge": "Granted",
+      "error": "Couldn't open System Settings. Please check Privacy & Security manually.",
+      "accessibility": {
+        "title": "Accessibility",
+        "description": "Read selected text and context across apps",
+        "grantedDescription": "Accessibility access is up to date"
+      },
+      "screenRecording": {
+        "title": "Screen Recording",
+        "description": "Capture screen context when you ask",
+        "grantedDescription": "Screen Recording access is up to date"
+      }
+    }
   }
 }

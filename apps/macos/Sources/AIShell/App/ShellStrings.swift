@@ -45,6 +45,40 @@ final class ShellStrings {
     table.localizedString(forKey: key.rawValue, value: nil, table: nil)
   }
 
+  func text(_ key: RecordingOptionsStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: RecordingIslandStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: CaptureBarStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: CaptureCommandsStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  /// A capture command string with one `%lld` (plural variations).
+  func text(_ key: CaptureCommandsStringKey, count: Int) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), count)
+  }
+
+  /// A capture command string with one `%@`.
+  func text(_ key: CaptureCommandsStringKey, _ argument: String) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), argument)
+  }
+
+  func text(_ key: RecordingEngineStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  func text(_ key: RecordingOrchestrationStringKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
   func text(_ key: ComputerMonitorStringKey, count: Int) -> String {
     String(format: text(key), locale: Locale(identifier: language.rawValue), count)
   }
@@ -59,12 +93,26 @@ final class ShellStrings {
     String(format: text(key), locale: Locale(identifier: language.rawValue), argument)
   }
 
+  func text(_ key: some ShellCatalogKey) -> String {
+    table.localizedString(forKey: key.rawValue, value: nil, table: nil)
+  }
+
+  /// A ``ShellCatalogKey`` string with one `%@`.
+  func text(_ key: some ShellCatalogKey, _ argument: String) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), argument)
+  }
+
+  /// A ``ShellCatalogKey`` string with one `%lld` (plural variations).
+  func text(_ key: some ShellCatalogKey, count: Int) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), count)
+  }
+
   /// The current language's table, for copy AICore formats (``McpApprovalDialog``).
   var catalog: ShellText {
     let table = table
-    return ShellText(language: language) {
-      table.localizedString(forKey: $0.rawValue, value: nil, table: nil)
-    }
+    return ShellText(
+      language: language,
+      catalog: { table.localizedString(forKey: $0, value: nil, table: nil) })
   }
 
   /// The compiled `<language>.lproj` of the app bundle. Outside an app bundle (tests, `swift

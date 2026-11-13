@@ -199,8 +199,10 @@ public struct CommandArguments: Codable, Equatable, Sendable {
 
 public enum CommandOutputAction: String, Codable, Equatable, Sendable {
   case panel
+  case card
   case replaceSelection
   case insertAfterSelection
+  case annotate
   case insertAtCursor
   case copy
 }

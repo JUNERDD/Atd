@@ -71,7 +71,6 @@
 
 .nav__links {
   display: none;
-  flex: 1;
   justify-content: center;
   gap: 4px;
 }
@@ -112,11 +111,31 @@
   .nav__link:hover {
     color: var(--fg-1);
   }
+
+  .nav__github:hover {
+    border-color: var(--fg-3);
+  }
+
+  .nav__github:hover .nav__github-count {
+    color: var(--fg-1);
+  }
 }
 
 @media (forced-colors: active) {
   .nav__link[aria-current]::before {
     background-color: CanvasText;
+  }
+
+  .nav__github {
+    border-color: ButtonText;
+  }
+
+  .nav__github-count {
+    color: inherit;
+  }
+
+  .nav__github-count::before {
+    background-color: ButtonText;
   }
 }
 
@@ -127,18 +146,143 @@
   margin-inline-start: auto;
 }
 
+/* Keeps the open-source Star invitation visible beside Download across every page while respecting
+   the kit's 44 px hit height and stepping cleanly across quantized bar widths. */
+.nav__github {
+  inline-size: var(--_btn-h);
+  min-inline-size: var(--_btn-h);
+  padding-inline: 0;
+  gap: 0;
+  border-color: var(--line-2);
+  color: var(--fg-1);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) linear,
+    background-color var(--dur-fast) linear,
+    color var(--dur-fast) linear;
+}
+
+.nav__github > .nav__github-mark {
+  inline-size: 18px;
+  block-size: auto;
+  aspect-ratio: 256 / 250;
+}
+
+.nav__github-label,
+.nav__github-count {
+  display: none;
+}
+
+.nav__github-count {
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur-fast) linear;
+}
+
+.nav__github-count::before {
+  content: '';
+  inline-size: 1px;
+  block-size: 12px;
+  background-color: var(--line-2);
+}
+
 .nav__cta {
   padding-inline: 18px;
   font-size: var(--fs-small);
   font-weight: 600;
 }
 
+@media (width < 416px) {
+  .nav__bar {
+    padding-inline-start: 10px;
+    gap: 4px;
+  }
+
+  .nav__brand {
+    gap: 6px;
+    padding-inline-end: 0;
+  }
+
+  .nav__cta {
+    padding-inline: 12px;
+  }
+}
+
+@media (width >= 416px) {
+  .nav__github {
+    inline-size: auto;
+    padding-inline: 12px;
+    gap: 6px;
+  }
+
+  .nav__github > .nav__github-mark {
+    inline-size: 16px;
+    block-size: auto;
+  }
+
+  .nav__github-label {
+    display: inline;
+  }
+}
+
+@media (width >= 480px) {
+  .nav__github-count {
+    display: inline-flex;
+  }
+}
+
+/* Equal 1fr outer tracks hold the navigation links centered on the bar even as the right CTA cluster
+   widens on desktop; moving the 10 px left inset inside .nav__brand keeps both outer grid columns
+   symmetric against the 4 px bar padding. */
 @media (width >= 840px) {
+  .nav__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    padding-inline-start: 4px;
+  }
+
+  .nav__brand {
+    justify-self: start;
+    padding-inline-start: 10px;
+  }
+
   .nav__links {
     display: flex;
+    grid-column: 2;
   }
 
   .nav__end {
+    grid-column: 3;
+    justify-self: end;
     margin-inline-start: 0;
+  }
+}
+
+/* Keep extra horizontal clearance beside the centered 3-item nav on compact tablet viewports so
+   growing two- and three-digit star counts stay away from adjacent links without dropping counts. */
+@media (840px <= width < 1040px) {
+  .nav__github {
+    padding-inline: 10px;
+    gap: 5px;
+  }
+
+  .nav__github-count {
+    gap: 5px;
+  }
+}
+
+@media (width >= 1040px) {
+  .nav__github {
+    padding-inline: 14px;
+    gap: 7px;
+  }
+
+  .nav__github-count {
+    gap: 7px;
   }
 }

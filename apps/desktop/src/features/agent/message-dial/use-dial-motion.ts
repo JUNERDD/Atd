@@ -84,6 +84,7 @@ export function useDialMotion(
   const [origin] = useState(() => (viewport ? readingPlace(viewport) : null));
 
   function paint(next: number) {
+    if (Math.abs(next - live.current) < 1e-4) return;
     live.current = next;
     setPosition(next);
   }
@@ -153,8 +154,9 @@ export function useDialMotion(
     const follow = () => {
       if (press.current || turning.current || wheelRest.current !== undefined) return;
       if (Math.abs(viewport.scrollTop - written.current) < ECHO_PX) return;
-      cancelAnimationFrame(frame);
+      if (frame) return;
       frame = requestAnimationFrame(() => {
+        frame = 0;
         written.current = Number.NaN;
         paint(positionFor(viewport, latest.current.prompts));
       });

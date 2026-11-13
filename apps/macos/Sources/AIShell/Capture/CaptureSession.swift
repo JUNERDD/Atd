@@ -2,8 +2,11 @@ import AICore
 import AppKit
 
 /// One interactive capture over frozen displays (decisions D7, D8): an overlay per display, the
-/// detected area under the pointer, a free or detected selection, and the annotation editor on
-/// the committed selection. It ends once, with an ``Outcome``; the overlays are gone by then.
+/// detected area under the pointer, a free or detected selection, and on the committed selection
+/// the annotation editor or, in record mode, the record bar (``CaptureSession+Mode.swift``), with
+/// the bottom bar beside it all (``CaptureSession+Idle.swift``); a screenshot selection can turn
+/// into the long screenshot's live phase (``CaptureSession+LongScreenshot.swift``). It ends once,
+/// with an ``Outcome``; the overlays are gone by then.
 ///
 /// The displays form one desktop (``FrozenDesktop``) whose points every overlay view uses, so
 /// the detected area, the selection and the annotations are each one rect in desktop points
@@ -26,6 +29,23 @@ final class CaptureSession {
     case confirmed(CaptureConfirmation)
     /// The same result as `confirmed`, for the clipboard rather than an attachment.
     case copied(CaptureConfirmation)
+    /// The same result as `confirmed`, saved locally to the user's configured folder or chosen file.
+    case saved(CaptureConfirmation, destination: URL?)
+    /// The same result as `confirmed`, with a command or a question to run on it (S1, S3).
+    case launched(CaptureConfirmation, CaptureLaunch)
+    /// Record mode's Start: the selection to record. The overlays are gone by the time the caller
+    /// sees it, so the recording shows the live screen (R1).
+    case record(CaptureRecordRequest)
+    /// The live long screenshot's Done: the stitched image, for the island's result card. The
+    /// overlays are gone by the time the caller sees it.
+    case longScreenshot(LongScreenshotImage)
+    /// The same image as `longScreenshot`, for the clipboard rather than the result card.
+    case copiedLongScreenshot(LongScreenshotImage)
+    /// The same image as `longScreenshot`, saved locally to the user's configured folder.
+    case savedLongScreenshot(LongScreenshotImage)
+    /// A text command's result card ended the capture to open its task or write its answer
+    /// (decision D10); nothing is attached.
+    case textResult(CaptureTextHandoff)
     case failed
   }
 
@@ -51,6 +71,9 @@ final class CaptureSession {
     case selected(CGRect)
     /// The committed selection is being moved or resized with the mouse.
     case adjusting(SelectionDrag)
+    /// The long screenshot's live phase over the committed selection, which stays put
+    /// (``CaptureSession+LongScreenshot.swift``).
+    case longScreenshot(CGRect)
   }
 
   let targeting: any ElementTargeting
@@ -59,8 +82,24 @@ final class CaptureSession {
   let offersTrustRequest: Bool
   /// The last confirmed selection per display, offered by `R` (decision F3).
   let regions: CaptureRegionMemory
-  /// `W` reduced the candidates to the window and the display; per session.
+  /// What the session offers besides annotating (``CaptureSessionOptions``).
+  var options: CaptureSessionOptions
+  /// Screenshot or record (C1); a session that cannot record stays a screenshot.
+  var mode: CaptureMode
+  /// `W` limits candidates to windows and displays. Both capture modes start with elements;
+  /// switching modes preserves the user's targeting scope.
   var onlyWindows = false
+  /// The record bar on a record-mode selection (``CaptureRecordAccessory``).
+  var accessory: (any CaptureRecordAccessory)?
+  /// Where the record bar last went beside the selection, held while it is dragged.
+  var accessoryAnchor: AnnotationToolbarLayout.Anchor?
+  /// The screenshot's annotations (desktop points) while record mode shows, back on the
+  /// selection when the session returns to screenshot mode (C1).
+  var shotDocument: AnnotationDocument?
+  /// Reads the selection's text while it is edited (S5).
+  let reader = CaptureTextReader()
+  /// What the long screenshot keeps: its probes and its live phase (``CaptureLongScreenshot``).
+  let longScreenshot = CaptureLongScreenshot()
   /// The element the current selection was committed from, if it was.
   var pick: Pick?
   /// Set by ``arrange(quartzBounds:)`` before any display is added.
@@ -68,9 +107,12 @@ final class CaptureSession {
   /// The selection geometry over the displays added so far.
   private(set) var model = SelectionModel(bounds: .zero, displays: [])
   private(set) var overlays: [CaptureOverlayView] = []
-  /// Set by ``activate()`` once every display is frozen. Until then the overlays are inert: the
-  /// pointer is ignored, so nothing is selected over displays that have no overlay yet.
-  private(set) var isActive = false
+  /// Set by ``beginInteractive()`` once every display is frozen. Until then the overlays are inert:
+  /// the pointer is ignored, so nothing is selected over displays that have no overlay yet.
+  var isActive = false
+  /// Set by ``activateKeyboard()`` once the invoking shortcut's keys are released and the overlays
+  /// may become key.
+  var hasKeyboard = false
   var phase = Phase.idle
   /// A tool is chosen: presses inside the selection, away from its handles and edge band, are
   /// the editor's. The selection itself stays adjustable either way (D14).
@@ -87,29 +129,48 @@ final class CaptureSession {
   weak var chainOverlay: CaptureOverlayView?
   var chainIndex = 0
   var hoverInFlight = false
+  /// True while the app-modal save panel is open for "Ask each time" screenshot saving.
+  var choosingSaveDestination = false
+  private var savePanel: CaptureSavePanel?
   private var beginTask: Task<Void, Never>?
+  var handoffTask: Task<Void, Never>?
+  var targetTask: Task<Void, Never>?
   private var outcome: Outcome?
   private var continuation: CheckedContinuation<Outcome, Never>?
   private var observers: [any NSObjectProtocol] = []
 
   init(
     targeting: any ElementTargeting, offersTrustRequest: Bool, regions: CaptureRegionMemory,
+    options: CaptureSessionOptions = CaptureSessionOptions(),
     makeEditor: @escaping @MainActor () -> any AnnotationEditing
   ) {
     self.targeting = targeting
     self.offersTrustRequest = offersTrustRequest
     self.regions = regions
+    self.options = options
     self.makeEditor = makeEditor
+    mode = options.canRecord ? options.mode : .screenshot
+    reader.onChange = { [weak self] text in self?.editor?.recognizedText = text }
     // A frozen image no longer matches a rearranged display, and an app switch takes the
-    // keyboard away from the overlays: both end the session.
+    // keyboard away from the overlays: both end the session. A live long screenshot passes
+    // clicks through to the app under it, which then becomes active: that switch is its own.
     let center = NotificationCenter.default
     for name in [
       NSApplication.didChangeScreenParametersNotification,
       NSApplication.didResignActiveNotification,
     ] {
+      let resigns = name == NSApplication.didResignActiveNotification
       observers.append(
         center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-          MainActor.assumeIsolated { self?.cancel() }
+          MainActor.assumeIsolated {
+            guard let self,
+              !resigns
+                || (self.hasKeyboard && !self.passesInputThrough && !self.choosingSaveDestination)
+            else {
+              return
+            }
+            self.cancel()
+          }
         })
     }
   }
@@ -124,8 +185,9 @@ final class CaptureSession {
       let detection = await targeting.begin(windows: windows)
       guard !isFinished else { return }
       self.detection = detection
-      refreshHints()
+      refreshBars()
       requestHover()
+      if case .selected(let rect) = phase { probeScrollArea(in: rect) }
     }
   }
 
@@ -136,7 +198,7 @@ final class CaptureSession {
     desktop = FrozenDesktop(quartzBounds: quartzBounds)
   }
 
-  /// Puts a frozen display's overlay on its screen, inert until ``activate()``.
+  /// Puts a frozen display's overlay on its screen, inert until ``beginInteractive()``.
   func add(_ display: FrozenDisplay, on screen: NSScreen) {
     guard !isFinished else { return }
     desktop.add(display)
@@ -147,29 +209,12 @@ final class CaptureSession {
     panel.orderFrontRegardless()
     overlays.append(view)
     view.show(area: nil, handles: false)
-    view.showHints(hintLines(on: view))
+    refreshBar(on: view)
   }
 
-  /// Every display is frozen: the overlay under the pointer takes the keyboard and the
-  /// detected area follows the pointer.
-  func activate() {
-    guard !isFinished else { return }
-    isActive = true
-    let mouse = NSEvent.mouseLocation
-    let overlay =
-      overlays.first { NSMouseInRect(mouse, $0.window?.frame ?? .zero, false) } ?? overlays.first
-    guard let overlay, let window = overlay.window else { return }
-    window.makeKeyAndOrderFront(nil)
-    window.makeFirstResponder(overlay)
-    pointer = (overlay, overlay.convert(window.mouseLocationOutsideOfEventStream, from: nil))
-    refreshHints()
-    renderIdle()
-    requestHover()
-  }
-
-  /// Suspends until the session ends, then ends element detection. A confirmed selection that
-  /// is still the element it was picked from is described first, while detection still has
-  /// that app prepared.
+  /// Suspends until the session ends, then ends element detection. A confirmed (or launched)
+  /// selection that is still the element it was picked from is described first, while detection
+  /// still has that app prepared.
   func run() async -> Outcome {
     var outcome: Outcome
     if let finished = self.outcome {
@@ -179,11 +224,19 @@ final class CaptureSession {
     }
     await beginTask?.value
     guard began else { return outcome }
-    if case .confirmed(var confirmation) = outcome, let pick,
-      pick.selection == confirmation.desktopSelection
-    {
-      confirmation.element = await targeting.describe(at: pick.point, frame: pick.frame)
-      outcome = .confirmed(confirmation)
+    func described(_ confirmation: CaptureConfirmation) async -> CaptureConfirmation {
+      guard let pick, pick.selection == confirmation.desktopSelection else { return confirmation }
+      var described = confirmation
+      described.element = await targeting.describe(at: pick.point, frame: pick.frame)
+      return described
+    }
+    switch outcome {
+    case .confirmed(let confirmation): outcome = .confirmed(await described(confirmation))
+    case .launched(let confirmation, let launch):
+      outcome = .launched(await described(confirmation), launch)
+    case .cancelled, .wantsAccessibility, .copied, .saved, .record, .longScreenshot,
+      .copiedLongScreenshot, .savedLongScreenshot, .textResult, .failed:
+      break
     }
     await targeting.end()
     return outcome
@@ -191,16 +244,54 @@ final class CaptureSession {
 
   func cancel() { finish(.cancelled) }
 
-  /// Renders the selection with and without its annotations and ends the session with them.
-  func confirm() { end(as: Outcome.confirmed) }
+  /// Renders the selection with and without its annotations and ends the session with them; in
+  /// record mode, starts the recording instead (Return, a double-click).
+  func confirm() {
+    guard mode == .screenshot else { return startRecording() }
+    end(as: Outcome.confirmed)
+  }
 
   /// Ends the session like ``confirm()``, with the result meant for the clipboard.
   func copy() { end(as: Outcome.copied) }
 
-  /// The editor's document is read before ``finish(_:)`` hides it. The confirmation names the
-  /// display holding most of the selection, with the selection in its view points. A selection
-  /// moved wholly into a gap between displays holds no pixels and confirms nothing.
+  /// Ends the session like ``confirm()``, with the result saved locally to a folder or chosen file.
+  func save() {
+    if options.saveFolder != nil {
+      end { .saved($0, destination: nil) }
+      return
+    }
+    editor?.endText()
+    guard case .selected(let rect) = phase,
+      !desktop.geometry.displays(overlapping: rect).isEmpty,
+      !choosingSaveDestination
+    else { return }
+    choosingSaveDestination = true
+    let suggestedName = ScreenshotRules.fileName(capturedAt: Date(), encoding: .png)
+    Task { @MainActor [weak self] in
+      guard let self, !isFinished, choosingSaveDestination else { return }
+      let panel = CaptureSavePanel()
+      savePanel = panel
+      let destination = panel.choose(suggestedName: suggestedName, contentType: .png)
+      savePanel = nil
+      choosingSaveDestination = false
+      guard !isFinished else { return }
+      if let destination {
+        end { .saved($0, destination: destination) }
+      } else if hasKeyboard, case .selected(let currentRect) = phase {
+        primaryOverlay(for: currentRect)?.window?.makeKey()
+      }
+    }
+  }
+
+  /// Ends the session like ``confirm()``, with `launch` to run on the result.
+  func launch(_ launch: CaptureLaunch) { end { .launched($0, launch) } }
+
+  /// The editor's document, open text committed, is read before ``finish(_:)`` hides it. The
+  /// confirmation names the display holding most of the selection, with the selection in its
+  /// view points. A selection moved wholly into a gap between displays holds no pixels and
+  /// confirms nothing.
   private func end(as outcome: (CaptureConfirmation) -> Outcome) {
+    editor?.endText()
     guard case .selected(let rect) = phase,
       !desktop.geometry.displays(overlapping: rect).isEmpty
     else { return }
@@ -209,37 +300,32 @@ final class CaptureSession {
       let primary = desktop.geometry.primary(for: rect)
     else { return finish(.failed) }
     let origin = desktop.geometry.desktopPoint(primary.quartzFrame.origin)
-    finish(
-      outcome(
-        CaptureConfirmation(
-          image: rendered.image, raw: rendered.raw, pixelScale: rendered.scale,
-          document: editor?.document ?? AnnotationDocument(), displayID: primary.id,
-          displayFrame: primary.quartzFrame,
-          selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)))
-  }
-
-  /// Edit mode: makes `rect` (view points of the display `displayID`) the selection and puts
-  /// `document` (selection-local) back on it, still editable.
-  func preselect(
-    _ rect: CGRect, onDisplay displayID: CGDirectDisplayID, restoring document: AnnotationDocument
-  ) {
-    guard !isFinished, let owner = overlays.first(where: { $0.display.displayID == displayID })
-    else { return }
-    if let window = owner.window {
-      window.makeKeyAndOrderFront(nil)
-      window.makeFirstResponder(owner)
-      pointer = (owner, owner.convert(window.mouseLocationOutsideOfEventStream, from: nil))
-    }
-    commit(rect.offsetBy(dx: owner.bounds.minX, dy: owner.bounds.minY))
-    if !document.isEmpty { editor?.restore(document) }
+    var confirmation = CaptureConfirmation(
+      image: rendered.image, raw: rendered.raw, pixelScale: rendered.scale,
+      document: editor?.document ?? AnnotationDocument(), displayID: primary.id,
+      displayFrame: primary.quartzFrame,
+      selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)
+    confirmation.pickedText = editor?.pickedText
+    finish(outcome(confirmation))
   }
 
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    choosingSaveDestination = false
+    savePanel?.cancel()
+    savePanel = nil
+    handoffTask?.cancel()
+    handoffTask = nil
+    targetTask?.cancel()
+    targetTask = nil
     phase = .idle
     editor?.hide()
     editor = nil
+    accessory?.hide()
+    accessory = nil
+    reader.cancel()
+    longScreenshot.end()
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers.removeAll()
     for overlay in overlays {
@@ -255,27 +341,4 @@ final class CaptureSession {
     continuation?.resume(returning: outcome)
     continuation = nil
   }
-}
-
-/// A confirmed capture: what is imported, and what reopening it later needs (decision F2).
-struct CaptureConfirmation {
-  /// The selection's pixels with the annotations drawn in.
-  let image: CGImage
-  /// The same pixels without annotations.
-  let raw: CGImage
-  /// Pixels per point of the image: the display's, or the finest of those a selection spans.
-  let pixelScale: CGFloat
-  /// The annotations, selection-local.
-  let document: AnnotationDocument
-  /// The display holding most of the selection.
-  let displayID: CGDirectDisplayID
-  /// That display's Quartz frame.
-  let displayFrame: CGRect
-  /// The selection in that display's view points; it reaches past the display when it spans
-  /// several.
-  let selection: CGRect
-  /// The selection in the session's desktop points.
-  let desktopSelection: CGRect
-  /// The element the selection was picked from, described; set by ``CaptureSession/run()``.
-  var element: ElementDescription?
 }

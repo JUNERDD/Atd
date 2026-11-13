@@ -41,6 +41,7 @@ function schemaDocument() {
     CommandArguments: json(commandOptions.CommandArgumentsSchema),
     CommandOutputAction: json(commandOptions.CommandOutputActionSchema),
     CommandOutputOption: json(commandOptions.CommandOutputOptionSchema),
+    CaptureTextResult: json(calls.CaptureResultSchema),
     SocketFrame: json(contract.SocketFrameSchema),
   };
   for (const [method, { params, result }] of Object.entries(calls.NativeCalls)) {
@@ -63,6 +64,7 @@ function schemaDocument() {
       deliverArgument: contract.DELIVER_ARGUMENT,
       panelShortcutId: calls.PANEL_SHORTCUT_ID,
       screenshotShortcutId: calls.SCREENSHOT_SHORTCUT_ID,
+      recordShortcutId: calls.RECORD_SHORTCUT_ID,
       maxCaptureLength: calls.MAX_CAPTURE_LENGTH,
       calls: Object.keys(calls.NativeCalls),
       posts: Object.keys(contract.NativePosts),

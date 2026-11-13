@@ -1,7 +1,7 @@
 # Atd
 
 > [!WARNING]
-> **Atd does not yet have an Apple Developer ID certificate.** Current releases are signed with the project’s own self-signed certificate and are **not notarized by Apple**, so macOS may block the first launch because it cannot verify the developer or Apple notarization.
+> **Previously published releases use a self-signed certificate and are not notarized by Apple.** macOS may block their first launch because it cannot verify the developer or Apple notarization.
 >
 > Download only from the official link below. If you trust that download, try opening **Atd** once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open** in the next prompt. See [Apple’s full first-launch instructions](https://support.apple.com/en-sa/102445).
 
@@ -146,3 +146,5 @@ Read the [contributor guidelines](AGENTS.md) before making changes, and submit a
 Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0), the memory engine's files from [pi-hermes-memory](licenses/pi-hermes-memory-LICENSE) (MIT), and the background computer-use driver (`apps/macos/Sources/AIComputerDriver`), written in Swift after recipes from [open-computer-use](licenses/open-computer-use-LICENSE), [yabai](licenses/yabai-LICENSE), [Peekaboo](licenses/peekaboo-LICENSE) and [Cua Driver](licenses/cua-driver-LICENSE) (all MIT). The PDF character maps in `apps/agent-service/vendor/pdfjs-cmaps`, taken from pdf.js, keep Adobe's [BSD-3-Clause license](apps/agent-service/vendor/pdfjs-cmaps/LICENSE).
 
 The license covers the code, not the Atd name and logo, nor the logos of other companies and services in `packages/ui/src/assets/brands`, which remain their owners' trademarks.
+
+Developer setup: [macOS signing, notarization and migration to a new Mac](apps/macos/SIGNING.md).

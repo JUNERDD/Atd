@@ -14,6 +14,8 @@
 import { Type, type TSchema } from 'typebox';
 import { NativeAppearanceEvents } from './appearance-events.ts';
 import { NativeCalls } from './calls.ts';
+import { NativeCaptureEvents } from './capture-calls.ts';
+import { NativeCaptureTextEvents } from './capture-text-calls.ts';
 import {
   CommandArgumentsSchema,
   NativeCommandOptionsEvents,
@@ -22,8 +24,10 @@ import {
 import { NativeComputerEvents } from './computer-calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { NativeNotificationPosts } from './notification-calls.ts';
+import { NativePanelModalEvents } from './panel-modal-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
+import { NativeRecordingEvents } from './recording-calls.ts';
 import { NativeShortcutRecordingEvents } from './shortcut-recording.ts';
 import { NativeTaskEvents } from './task-events.ts';
 import { NativeTextEvents, NativeTextPosts, NativeWriteTargetSchema } from './text-calls.ts';
@@ -191,11 +195,7 @@ export const NativeEvents = {
     },
     { additionalProperties: false },
   ),
-  /**
-   * The screenshot shortcut fired; Swift already captured the selection. The panel takes the
-   * screenshot itself (`screenshot.capture`), so it can refuse a full draft before the overlay opens.
-   */
-  'shortcut.screenshot': Empty,
+  ...NativeCaptureEvents,
   /**
    * Swift imported the files of one gesture (a drop, a paste, the Finder service) through
    * `/v1/resources/import` and registered its folders through `/v1/folders/register`. Every item
@@ -302,6 +302,9 @@ export const NativeEvents = {
   ...NativeTaskEvents,
   ...NativeTextEvents,
   ...NativeCommandOptionsEvents,
+  ...NativeRecordingEvents,
+  ...NativeCaptureTextEvents,
+  ...NativePanelModalEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

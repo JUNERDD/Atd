@@ -3,13 +3,14 @@ import {
   BookOpen,
   Bot,
   Brain,
+  FileBox,
   FilePen,
   FilePlus,
   FileSearch,
   FileText,
-  FileBox,
   FolderOpen,
   Globe,
+  Highlighter,
   Library,
   Link,
   ListTodo,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import {
   AUTOMATION_TOOL,
+  CAPTURE_ANSWER_TOOL,
   CODEMODE_TOOL,
   COMPUTER_TOOL,
   LOAD_SKILL_TOOL,
@@ -38,19 +40,17 @@ import {
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { automationStepKey, automationTarget, type AutomationStepKey } from './automation-call';
 import { codemodeTarget } from './codemode-call';
+import { commandStepKey, commandTarget, type CommandStepKey } from './command-call';
 import { computerHasDetail } from './computer-call';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
+
+export { commandTarget };
 
 export type StepKey =
   | 'activity.step.read'
   | 'activity.step.write'
   | 'activity.step.edit'
   | 'activity.step.bash'
-  | 'activity.step.command'
-  | 'activity.step.commandList'
-  | 'activity.step.commandGet'
-  | 'activity.step.commandCreate'
-  | 'activity.step.commandUpdate'
   | 'activity.step.searchMemory'
   | 'activity.step.readMemory'
   | 'activity.step.saveMemory'
@@ -70,6 +70,8 @@ export type StepKey =
   | 'activity.step.app'
   | 'activity.step.appBuild'
   | 'activity.step.updateView'
+  | 'activity.step.markScreenshot'
+  | CommandStepKey
   | AutomationStepKey
   | SubagentStepKey;
 
@@ -106,6 +108,7 @@ const STEP_KEYS: Record<string, StepKey> = {
   [LIST_MCP_RESOURCE_TEMPLATES]: 'activity.step.listMcpResourceTemplates',
   [READ_MCP_RESOURCE]: 'activity.step.readMcpResource',
   [UPDATE_UI_TOOL]: 'activity.step.updateView',
+  [CAPTURE_ANSWER_TOOL]: 'activity.step.markScreenshot',
 };
 
 const ICONS: Record<string, LucideIcon> = {
@@ -138,6 +141,7 @@ const ICONS: Record<string, LucideIcon> = {
   [COMPUTER_TOOL]: MousePointerClick,
   // Same mark as the card of the view it updates (view-card.tsx).
   [UPDATE_UI_TOOL]: PanelsTopLeft,
+  [CAPTURE_ANSWER_TOOL]: Highlighter,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -153,37 +157,6 @@ export function toolStepKey(name: string, args: Record<string, unknown>): StepKe
   if (name === 'app')
     return typeof args.summary === 'string' ? 'activity.step.appBuild' : 'activity.step.app';
   return stepKey(name);
-}
-
-/**
- * Operation-specific label for `command` rows. The tool takes `operation` plus `commandId` /
- * `fields` (see `CommandToolSchema`), so `list` / `get` / `save` read distinctly and a save with
- * a `commandId` is an update while one without is a create. Unknown shapes fall back to the
- * generic manage label.
- */
-function commandStepKey(args: Record<string, unknown>): StepKey {
-  const operation = args.operation;
-  if (operation === 'list') return 'activity.step.commandList';
-  if (operation === 'get') return 'activity.step.commandGet';
-  if (operation === 'save') {
-    const id = args.commandId;
-    return typeof id === 'string' && id
-      ? 'activity.step.commandUpdate'
-      : 'activity.step.commandCreate';
-  }
-  return 'activity.step.command';
-}
-
-/** Identity of a `command` call: the stored id, or the name being saved on create. */
-export function commandTarget(args: Record<string, unknown>): string | null {
-  const id = args.commandId;
-  if (typeof id === 'string' && id) return id;
-  const fields = args.fields;
-  if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
-    const name = (fields as Record<string, unknown>).name;
-    if (typeof name === 'string' && name) return name;
-  }
-  return null;
 }
 
 export function toolIcon(name: string): LucideIcon {

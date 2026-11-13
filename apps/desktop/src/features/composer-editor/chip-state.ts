@@ -37,18 +37,39 @@ export function tokenOf(id: string): string {
 
 export const addChips = StateEffect.define<readonly ChipEntry[]>();
 
-/** Chip data by token id. Entries are never removed, so undo can bring a deleted token back. */
+const MAX_CHIP_TABLE_ENTRIES = 256;
+const RETIRED_CHIP_CAP = 128;
+
+/**
+ * Chip data by token id. Active document tokens and recent deleted tokens are kept so undo can
+ * restore a deleted chip without allowing an unbounded Map across long editing sessions.
+ */
 export const chipTable = StateField.define<ReadonlyMap<string, Chip>>({
   create: () => new Map(),
   update(table, transaction) {
-    let next = table;
+    let added: Map<string, Chip> | null = null;
     for (const effect of transaction.effects) {
       if (!effect.is(addChips)) continue;
-      const added = new Map(next);
+      added ??= new Map(table);
       for (const { id, chip } of effect.value) added.set(id, chip);
-      next = added;
     }
-    return next;
+    const next = added ?? table;
+    if (next.size <= MAX_CHIP_TABLE_ENTRIES) return next;
+    const live = new Set<string>();
+    for (const match of transaction.state.doc.toString().matchAll(TOKEN)) {
+      const id = match[1];
+      if (id) live.add(id);
+    }
+    let retired = next.size - live.size;
+    if (retired <= RETIRED_CHIP_CAP) return next;
+    const pruned = added ?? new Map(next);
+    for (const id of pruned.keys()) {
+      if (retired <= RETIRED_CHIP_CAP) break;
+      if (live.has(id)) continue;
+      pruned.delete(id);
+      retired -= 1;
+    }
+    return pruned;
   },
 });
 

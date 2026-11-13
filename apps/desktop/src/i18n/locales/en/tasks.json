@@ -103,7 +103,8 @@
       "automationEnable": "Turn on automation",
       "automationDisable": "Turn off automation",
       "automationRun": "Run automation",
-      "updateView": "Update view"
+      "updateView": "Update view",
+      "markScreenshot": "Mark up screenshot"
     },
     "target": {
       "user": "User",
@@ -247,7 +248,7 @@
     "cancel": "Cancel",
     "deleteAction": "Delete task",
     "taskGone": "That task was deleted.",
-    "emptyDescription": "Conversations you start appear here. Command runs have their own tab.",
+    "emptyDescription": "Conversations you start appear here. Command runs and captures have their own tabs.",
     "noMatchesDescription": "Check the spelling or try a different search.",
     "noModel": "No model",
     "view": {
@@ -255,6 +256,7 @@
       "groupBy": "Group by",
       "sortBy": "Sort by",
       "showCommandTasksInAll": "Show command runs in All",
+      "showCaptureTasksInAll": "Show captures in All",
       "groups": {
         "date": "Date",
         "status": "Status",
@@ -301,12 +303,13 @@
       "active": "Active",
       "failed": "Failed",
       "commands": "Command runs",
+      "captures": "Captures",
       "automated": "Automated"
     },
     "filterEmpty": {
       "all": {
         "title": "No conversations yet",
-        "description": "Find command runs in their own tab, or show them here by turning on “Show command runs in All” in View options."
+        "description": "Find command runs and captures in their own tabs, or include them here in View options."
       },
       "pinned": {
         "title": "No pinned tasks",
@@ -323,6 +326,10 @@
       "commands": {
         "title": "No command runs yet",
         "description": "Tasks started by a saved command appear here, including runs from shortcuts and automations."
+      },
+      "captures": {
+        "title": "No capture tasks yet",
+        "description": "Questions and commands started from screenshots or screen recordings appear here."
       },
       "automated": {
         "title": "No automated tasks",
@@ -572,7 +579,13 @@
       "failed": "{{command}} didn't finish.",
       "stopped": "{{command}} was stopped.",
       "startFailed": "{{command}} couldn't start.",
-      "empty": "{{command}} had no answer to write."
+      "empty": "{{command}} had no answer to write.",
+      "emptyCopy": "{{command}} had no answer to copy."
+    },
+    "ask": {
+      "title": "Ask Atd",
+      "note": "You asked: {{question}}",
+      "empty": "Atd had no answer."
     },
     "review": {
       "failed": "{{command}} couldn't make a new version."

@@ -32,6 +32,27 @@ struct SelectionPresenceTests {
     #expect(result.focus == "none")
   }
 
+  @Test(
+    "Attachments and whitespace do not offer the toolbar; tokens, chips and real text still do")
+  func nonTextAndReadableSelections() async throws {
+    let result = try await runFixture(arguments: ["text"], as: [String: String].self)
+    #expect(result["nativeImageAttachment"] == "none")
+    #expect(result["nativeFileAttachment"] == "none")
+    #expect(result["nativeWhitespace"] == "none")
+    #expect(result["nativeAttachmentAndSpaces"] == "none")
+    #expect(result["nativeToken"] == "text")
+    #expect(result["nativeBlankToken"] == "none")
+    #expect(result["nativeText"] == "text")
+    #expect(result["webEditableWrappedImage"] == "none")
+    #expect(result["webTwoImages"] == "none")
+    #expect(result["webSpaceAndImage"] == "none")
+    #expect(result["webInputWhitespace"] == "none")
+    #expect(result["webEditableMentionChip"] == "text")
+    #expect(result["webInputText"] == "text")
+    #expect(result["webRoleImgText"] == "text")
+    #expect(result["webHiddenTextareaDomSelection"] == "text")
+  }
+
   private struct Snapshot: Decodable {
     let cell: String
     let blank: String
@@ -39,11 +60,15 @@ struct SelectionPresenceTests {
   }
 
   private func probe(role: String, depth: Int = 0) async throws -> Snapshot {
+    try await runFixture(arguments: [role, String(depth)], as: Snapshot.self)
+  }
+
+  private func runFixture<T: Decodable>(arguments: [String], as type: T.Type) async throws -> T {
     let executable = Bundle(for: FixtureBundle.self).bundleURL.deletingLastPathComponent()
       .appendingPathComponent("SelectionAXFixture")
     let process = Process()
     process.executableURL = executable
-    process.arguments = [role, String(depth)]
+    process.arguments = arguments
     let output = Pipe()
     let errors = Pipe()
     process.standardOutput = output
@@ -64,7 +89,7 @@ struct SelectionPresenceTests {
     let diagnostics = String(
       decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     try #require(status == 0, "AX fixture exited with \(status): \(diagnostics)")
-    return try JSONDecoder().decode(Snapshot.self, from: data)
+    return try JSONDecoder().decode(type, from: data)
   }
 }
 

@@ -74,6 +74,28 @@ struct IslandShimmer: NSViewRepresentable {
   }
 }
 
+/// The running bar under a text command button (``AnnotationRunBar``), animated in the render
+/// server without vibrancy so the lightbox's text command row shares the capture bar's motion.
+struct IslandRunBar: NSViewRepresentable {
+  func makeNSView(context: Context) -> AnnotationRunBar {
+    let bar = AnnotationRunBar()
+    bar.start()
+    return bar
+  }
+
+  func updateNSView(_ nsView: AnnotationRunBar, context: Context) {}
+
+  func sizeThatFits(
+    _ proposal: ProposedViewSize, nsView: AnnotationRunBar, context: Context
+  ) -> CGSize? {
+    CGSize(width: proposal.width ?? 0, height: proposal.height ?? 2)
+  }
+
+  static func dismantleNSView(_ nsView: AnnotationRunBar, coordinator: ()) {
+    nsView.stop()
+  }
+}
+
 /// Holds an AppKit piece of the island as the HUD's glass bar held it. SwiftUI's glass gives the
 /// AppKit views it hosts a vibrant appearance and composites them with plus-lighter (dark) or
 /// plus-darker (light) blending; inside `NSGlassEffectView` the HUD's pieces had the plain

@@ -66,11 +66,26 @@ export class ChipWidget extends WidgetType {
         ? { kind: chip.kind, bundleId: chip.bundleId, name: chip.name }
         : { kind: chip.kind, name: chipName(chip) };
     root.render(createElement(ChipContent, { ...label, image, detail: chipDetail(chip) }));
-    const resize = new ResizeObserver(() => {
-      if (view.composing) return;
-      view.dispatch({
-        selection: view.state.selection,
-        annotations: Transaction.addToHistory.of(false),
+    let frame = 0;
+    let lastWidth = -1;
+    let lastHeight = -1;
+    const resize = new ResizeObserver((entries) => {
+      const box = entries.at(-1)?.contentRect;
+      const width = Math.round(box ? box.width : dom.offsetWidth);
+      const height = Math.round(box ? box.height : dom.offsetHeight);
+      if (width === lastWidth && height === lastHeight) return;
+      const wasUnmeasured = lastWidth === -1 && lastHeight === -1;
+      lastWidth = width;
+      lastHeight = height;
+      if ((wasUnmeasured && width === 0 && height === 0) || view.composing) return;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!dom.isConnected || !view.dom.isConnected || view.composing) return;
+        view.dispatch({
+          selection: view.state.selection,
+          annotations: Transaction.addToHistory.of(false),
+        });
       });
     });
     resize.observe(dom);

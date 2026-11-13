@@ -1,12 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@atd/ui/components/empty';
-import { Spinner } from '@atd/ui/components/spinner';
+import { WindowLoading } from '../../components/window-loading';
 
 /**
  * Fills the whole panel, header included, while the service starts. The surface drags the window
@@ -16,15 +9,11 @@ export function ServiceStarting() {
   const { t } = useTranslation('panel');
   return (
     <div className="service-starting">
-      <Empty className="service-starting-content">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Spinner />
-          </EmptyMedia>
-          <EmptyTitle>{t('service.starting.title')}</EmptyTitle>
-          <EmptyDescription>{t('service.starting.description')}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <WindowLoading
+        className="service-starting-content"
+        title={t('service.starting.title')}
+        description={t('service.starting.description')}
+      />
     </div>
   );
 }

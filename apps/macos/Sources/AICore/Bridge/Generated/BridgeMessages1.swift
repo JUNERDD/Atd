@@ -15,6 +15,8 @@ public enum NativeBridgeContract {
   public static let panelShortcutId = "togglePanel"
   /// The id of the screenshot registration in `shortcuts.set`.
   public static let screenshotShortcutId = "captureScreenshot"
+  /// The id of the screen recording registration in `shortcuts.set`.
+  public static let recordShortcutId = "recordScreen"
   /// The longest text a capture returns.
   public static let maxCaptureLength = 100_000
 }
@@ -63,6 +65,10 @@ public enum NativeCall: Equatable, Sendable {
   case clipboardWrite(ClipboardWriteParams)
   case screenshotCapture(ScreenshotCaptureParams)
   case screenshotEdit(ScreenshotEditParams)
+  case screenshotToolbarSet(ScreenshotToolbarSetParams)
+  case saveLocationState(SaveLocationStateParams)
+  case saveLocationSet(SaveLocationSetParams)
+  case saveLocationPick(SaveLocationPickParams)
   case shareText(ShareTextParams)
   case speechSpeak(SpeechSpeakParams)
   case speechStop(SpeechStopParams)
@@ -97,6 +103,9 @@ public enum NativeCall: Equatable, Sendable {
   case screenRecordingRequest(ScreenRecordingRequestParams)
   case appsPick(AppsPickParams)
   case shortcutsRecording(ShortcutsRecordingParams)
+  case recordingAnswer(RecordingAnswerParams)
+  case captureTextProgress(CaptureTextProgressParams)
+  case panelModalSetAvailable(PanelModalSetAvailableParams)
 
   /// The contract name.
   public var name: String {
@@ -130,6 +139,10 @@ public enum NativeCall: Equatable, Sendable {
     case .clipboardWrite: "clipboard.write"
     case .screenshotCapture: "screenshot.capture"
     case .screenshotEdit: "screenshot.edit"
+    case .screenshotToolbarSet: "screenshotToolbar.set"
+    case .saveLocationState: "saveLocation.state"
+    case .saveLocationSet: "saveLocation.set"
+    case .saveLocationPick: "saveLocation.pick"
     case .shareText: "share.text"
     case .speechSpeak: "speech.speak"
     case .speechStop: "speech.stop"
@@ -164,6 +177,9 @@ public enum NativeCall: Equatable, Sendable {
     case .screenRecordingRequest: "screenRecording.request"
     case .appsPick: "apps.pick"
     case .shortcutsRecording: "shortcuts.recording"
+    case .recordingAnswer: "recording.answer"
+    case .captureTextProgress: "captureText.progress"
+    case .panelModalSetAvailable: "panelModal.setAvailable"
     }
   }
 }
@@ -174,6 +190,8 @@ public enum NativePost: Equatable, Sendable {
   case languageSet(LanguageSetPost)
   case appearanceSet(AppearanceSetPost)
   case glowEffectsSet(GlowEffectsSetPost)
+  case resultMarkdownSet(ResultMarkdownSetPost)
+  case screenshotPreferencesSet(ScreenshotPreferencesSetPost)
   case panelBackgroundSet(PanelBackgroundSetPost)
   case typingSet(TypingSetPost)
   case windowDragRegions(WindowDragRegionsPost)
@@ -183,6 +201,8 @@ public enum NativePost: Equatable, Sendable {
   case socketSend(SocketSendPost)
   case updateCheck(UpdateCheckPost)
   case updateInstall(UpdateInstallPost)
+  case updateReleaseNotesShown(UpdateReleaseNotesShownPost)
+  case updateDismissReleaseNotes(UpdateDismissReleaseNotesPost)
   case taskShown(TaskShownPost)
   case socketClose(SocketClosePost)
   case userAppPinDrag(UserAppPinDragPost)
@@ -194,6 +214,8 @@ public enum NativePost: Equatable, Sendable {
     case .languageSet: "language.set"
     case .appearanceSet: "appearance.set"
     case .glowEffectsSet: "glowEffects.set"
+    case .resultMarkdownSet: "resultMarkdown.set"
+    case .screenshotPreferencesSet: "screenshotPreferences.set"
     case .panelBackgroundSet: "panelBackground.set"
     case .typingSet: "typing.set"
     case .windowDragRegions: "window.dragRegions"
@@ -203,6 +225,8 @@ public enum NativePost: Equatable, Sendable {
     case .socketSend: "socket.send"
     case .updateCheck: "update.check"
     case .updateInstall: "update.install"
+    case .updateReleaseNotesShown: "update.releaseNotesShown"
+    case .updateDismissReleaseNotes: "update.dismissReleaseNotes"
     case .taskShown: "task.shown"
     case .socketClose: "socket.close"
     case .userAppPinDrag: "userApp.pinDrag"

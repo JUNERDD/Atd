@@ -95,6 +95,8 @@ export interface SessionReleaseDeps {
   runner: (taskId: string) => ReleasableRunner | undefined;
   /** Whether an execution of the run has not settled yet (runner-manager.ts `executions`). */
   executing: (runId: string) => boolean;
+  /** Optional hook to evict an idle runner entry once its live session has settled closed. */
+  onReleased?: (taskId: string, runner: ReleasableRunner) => void;
 }
 
 /**
@@ -130,7 +132,12 @@ export class SessionReleases {
   /** Releases the task's live session now; a run started meanwhile reopens it once it settles. */
   async release(taskId: string): Promise<void> {
     this.cancel(taskId);
-    await this.deps.runner(taskId)?.release();
+    const runner = this.deps.runner(taskId);
+    if (!runner) return;
+    await runner.release();
+    if (this.deps.runner(taskId) === runner && this.idle(taskId, false)) {
+      this.deps.onReleased?.(taskId, runner);
+    }
   }
 
   private schedule(taskId: string): void {
@@ -139,7 +146,7 @@ export class SessionReleases {
     if (this.deps.draining() || !this.deps.runner(taskId)) return;
     const timer = setTimeout(() => {
       this.timers.delete(taskId);
-      if (!this.idle(taskId)) return;
+      if (!this.idle(taskId, false)) return;
       void this.release(taskId).catch((error: unknown) => {
         this.deps.ctx.log.warn('Idle session release failed.', {
           taskId,
@@ -152,15 +159,16 @@ export class SessionReleases {
   }
 
   /**
-   * Whether the task's live session is idle: nothing started, queued, executing, compacting or
-   * releasing, and no approval or capability request waiting on it.
+   * Whether the task is idle: nothing started, queued, executing, compacting or releasing, and no
+   * approval or capability request waiting on it.
    */
-  private idle(taskId: string): boolean {
+  private idle(taskId: string, requireLive = true): boolean {
     const { ctx, draining, executing } = this.deps;
     const runner = this.deps.runner(taskId);
     const task = ctx.ledger.data.tasks.find((item) => item.id === taskId);
     if (draining() || !runner || !task) return false;
-    if (!runner.isLive() || runner.isCompacting() || runner.isReleasing()) return false;
+    if (requireLive !== runner.isLive() || runner.isCompacting() || runner.isReleasing())
+      return false;
     if (task.runs.some((run) => isActiveStatus(run.status) || executing(run.id))) return false;
     return !ctx.confirms.forTask(taskId).length && !ctx.capabilities.forTask(taskId).length;
   }

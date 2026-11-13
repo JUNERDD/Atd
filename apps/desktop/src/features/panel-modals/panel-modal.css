@@ -1,0 +1,825 @@
+/*
+ * Reusable main-panel feature modal shell and notarization artwork (`panel-modal.tsx`,
+ * `notarization-art.tsx`), following Apple concentricity and layered glass discipline:
+ * 16px unified outer inset (`--modal-pad`) and 16px inner corner radius (`--modal-inner-radius`)
+ * yielding a concentric 32px dialog radius (`inner + inset`) shared across the top media stage,
+ * inset-grouped card, 32px capsule footer actions, and non-media close control; 8pt/4pt vertical
+ * rhythm (`16px` sections, `8px` title/description), full-width stacked actions below 360px,
+ * Embla drag carousel chrome, and calibrated entrance/exit keyframes.
+ */
+.panel-modal-overlay[data-state='open'] {
+  animation: panel-modal-overlay-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.panel-modal-overlay[data-state='closed'] {
+  animation: panel-modal-overlay-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.panel-modal[data-slot='dialog-content'] {
+  --modal-pad: 16px;
+  --modal-inner-radius: 16px;
+  --modal-radius: calc(var(--modal-inner-radius) + var(--modal-pad));
+  display: flex;
+  width: calc(100% - 32px);
+  max-width: 400px;
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--modal-radius);
+  transform-origin: center;
+}
+
+.panel-modal[data-slot='dialog-content'][data-state='open'] {
+  animation: panel-modal-content-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.panel-modal[data-slot='dialog-content'][data-state='closed'] {
+  animation: panel-modal-content-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes panel-modal-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panel-modal-overlay-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-modal-content-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale3d(0.96, 0.96, 1);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@keyframes panel-modal-content-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale3d(0.975, 0.975, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-modal-overlay[data-state='open'],
+  .panel-modal[data-slot='dialog-content'][data-state='open'] {
+    animation: panel-modal-overlay-in 160ms ease-out both;
+  }
+
+  .panel-modal-overlay[data-state='closed'],
+  .panel-modal[data-slot='dialog-content'][data-state='closed'] {
+    animation: panel-modal-overlay-out 140ms ease-in forwards;
+  }
+}
+
+/* Closing while the macOS panel is hidden skips exit animations so Radix unmounts synchronously
+   instead of waiting on an animationend event that WebKit suppresses at alpha 0. */
+:root[data-window-visible='false'] .panel-modal-overlay[data-state='closed'],
+:root[data-window-visible='false'] .panel-modal[data-slot='dialog-content'][data-state='closed'] {
+  animation: none;
+}
+
+.panel-modal-carousel {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.panel-modal-viewport {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.panel-modal-viewport-draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.panel-modal-viewport-draggable:active {
+  cursor: grabbing;
+}
+
+.panel-modal-slide {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+}
+
+.panel-modal[data-multi='true'] .panel-modal-slide {
+  max-height: calc(100dvh - 64px);
+}
+
+.panel-modal-media-cell {
+  position: relative;
+  flex-shrink: 0;
+  padding: var(--modal-pad) var(--modal-pad) 0;
+}
+
+.panel-modal-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(132px, 24dvh, 148px);
+  overflow: hidden;
+  border-radius: var(--modal-inner-radius);
+  background: rgb(0 0 0);
+  container: panel-modal-stage / size;
+  isolation: isolate;
+}
+
+.panel-modal-stage::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--ata-border-settings-sidebar);
+  content: '';
+  pointer-events: none;
+}
+
+.panel-modal-media-close {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--modal-pad) + 8px);
+  inset-inline-end: calc(var(--modal-pad) + 8px);
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 82%);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 140ms ease-out,
+    color 140ms ease-out,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.panel-modal-media-close::after {
+  position: absolute;
+  inset: -8px;
+  content: '';
+}
+
+.panel-modal-close::after {
+  position: absolute;
+  inset: -6px;
+  content: '';
+}
+
+.panel-modal-media-close > svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .panel-modal-media-close:hover {
+    background: rgb(255 255 255 / 16%);
+    color: rgb(255 255 255);
+  }
+}
+
+.panel-modal-media-close:active {
+  transform: scale(0.94);
+  transition-duration: 90ms;
+}
+
+.panel-modal-media-close:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 35%),
+    0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
+}
+
+.panel-modal-close {
+  position: absolute;
+  z-index: 4;
+  top: var(--modal-pad);
+  inset-inline-end: var(--modal-pad);
+}
+
+.panel-modal-main {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.panel-modal-header {
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: var(--modal-pad) var(--modal-pad) 0;
+  text-align: start;
+}
+
+.panel-modal-main > .panel-modal-header:last-child {
+  padding-bottom: var(--modal-pad);
+}
+
+.panel-modal[data-dismissible='true']
+  .panel-modal-slide[data-has-media='false']
+  .panel-modal-header {
+  padding-top: 20px;
+  padding-inline-end: calc(var(--modal-pad) + 32px + 8px);
+}
+
+.panel-modal[data-dismissible='false']
+  .panel-modal-slide[data-has-media='false']
+  .panel-modal-header {
+  padding-top: 20px;
+}
+
+.panel-modal-header-copy {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.panel-modal-title[data-slot='dialog-title'] {
+  width: 100%;
+  overflow: visible;
+  color: var(--foreground);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  text-wrap: wrap;
+  white-space: normal;
+}
+
+.panel-modal-description[data-slot='dialog-description'] {
+  width: 100%;
+  overflow: visible;
+  color: var(--ata-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  text-wrap: wrap;
+  white-space: normal;
+}
+
+.panel-modal-title[data-slot='dialog-title']:lang(zh),
+.panel-modal-description[data-slot='dialog-description']:lang(zh) {
+  letter-spacing: 0;
+}
+
+.panel-modal-description[data-slot='dialog-description']:lang(zh) {
+  line-height: 22px;
+}
+
+.panel-modal-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.panel-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--modal-pad) var(--modal-pad) 0;
+}
+
+.panel-modal-main > .panel-modal-scroll:last-child .panel-modal-body {
+  padding-bottom: var(--modal-pad);
+}
+
+.panel-modal-footer[data-slot='dialog-footer'] {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: var(--modal-pad);
+  border: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.panel-modal-footer[data-slot='dialog-footer'] > [data-slot='button'] {
+  min-width: 72px;
+}
+
+.panel-modal[data-multi='true'] .panel-modal-footer[data-slot='dialog-footer'] {
+  padding-bottom: 8px;
+}
+
+.panel-modal-pagination {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--modal-pad) 8px;
+}
+
+.panel-modal-pagination-list {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.panel-modal-pagination-item {
+  display: flex;
+}
+
+.panel-modal-dot-btn {
+  display: inline-flex;
+  min-width: 20px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.panel-modal-dot-btn:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 45%, transparent);
+}
+
+.panel-modal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  transition:
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .panel-modal-dot-btn:hover .panel-modal-dot:not([data-current]) {
+    background: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
+  }
+}
+
+.panel-modal-dot[data-current='true'] {
+  width: 16px;
+  background: var(--foreground);
+}
+
+@media (width < 360px) {
+  .panel-modal-stage {
+    height: 124px;
+  }
+
+  .panel-modal-footer[data-slot='dialog-footer'] {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .panel-modal-footer[data-slot='dialog-footer'] > * {
+    width: 100%;
+  }
+}
+
+/* Inset-grouped opaque card inside dialog body */
+.panel-modal-group[data-slot='card'] {
+  gap: 0;
+  padding-block: 0;
+  border-radius: var(--modal-inner-radius);
+  box-shadow: none;
+}
+
+.panel-modal-group > [data-slot='item-group'] {
+  gap: 0;
+}
+
+.panel-modal-group .panel-modal-perm-row {
+  gap: 12px;
+  padding: 12px var(--modal-pad);
+  border-radius: 0;
+}
+
+.panel-modal-group .panel-modal-perm-row + .panel-modal-perm-row {
+  border-top-color: var(--border);
+}
+
+.panel-modal-perm-icon {
+  align-self: center;
+  color: var(--foreground);
+  transform: none;
+}
+
+.panel-modal-perm-icon[data-granted] {
+  color: var(--ata-status-progress);
+}
+
+.panel-modal-perm-granted {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.panel-modal-perm-granted > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ata-status-progress);
+}
+
+.panel-modal-perm-error {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.panel-modal-perm-error > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Miniature System Settings + Docked Liquid Glass Guide Artwork */
+.notarization-art {
+  --u: min(0.38cqw, 0.78cqh);
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  place-items: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.notarization-glow-cool,
+.notarization-glow-warm {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.notarization-glow-cool {
+  top: -32%;
+  right: -6%;
+  width: 68%;
+  height: 92%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in oklab, var(--ata-syntax-variable) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.notarization-glow-warm {
+  bottom: -26%;
+  left: 6%;
+  width: 56%;
+  height: 76%;
+  background: radial-gradient(ellipse at center, rgb(255 255 255 / 7%) 0%, transparent 72%);
+}
+
+.notarization-scene {
+  position: relative;
+  width: calc(var(--u) * 236);
+  height: calc(var(--u) * 112);
+}
+
+.notarization-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: calc(var(--u) * 172);
+  height: calc(var(--u) * 94);
+  box-sizing: border-box;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: calc(var(--u) * 10);
+  background: rgb(255 255 255 / 5.5%);
+}
+
+.notarization-titlebar {
+  display: flex;
+  height: calc(var(--u) * 18);
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+  padding-inline: calc(var(--u) * 7);
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: rgb(255 255 255 / 3.5%);
+}
+
+.notarization-titlebar-dots {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.notarization-titlebar-dot {
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 22%);
+}
+
+.notarization-titlebar-pill {
+  width: calc(var(--u) * 38);
+  height: calc(var(--u) * 4);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 18%);
+}
+
+.notarization-win-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.notarization-sidebar {
+  display: flex;
+  width: calc(var(--u) * 40);
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 10) calc(var(--u) * 6);
+  border-right: 1px solid rgb(255 255 255 / 7%);
+  background: rgb(255 255 255 / 2%);
+}
+
+.notarization-nav {
+  display: flex;
+  height: calc(var(--u) * 12);
+  align-items: center;
+  padding-inline: calc(var(--u) * 4);
+  border-radius: calc(var(--u) * 4);
+}
+
+.notarization-nav[data-active] {
+  background: rgb(255 255 255 / 12%);
+}
+
+.notarization-nav-bar {
+  width: 72%;
+  height: calc(var(--u) * 4);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 18%);
+}
+
+.notarization-nav[data-active] > .notarization-nav-bar {
+  width: 92%;
+  background: rgb(255 255 255 / 52%);
+}
+
+.notarization-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 10) calc(var(--u) * 8);
+}
+
+.notarization-win-row {
+  display: flex;
+  height: calc(var(--u) * 28);
+  box-sizing: border-box;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+  padding-inline: calc(var(--u) * 6);
+  border: 1px solid transparent;
+  border-radius: calc(var(--u) * 7);
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.notarization-win-row[data-active] {
+  border-color: color-mix(in oklab, var(--ata-syntax-variable) 38%, transparent);
+  background: rgb(255 255 255 / 6.5%);
+}
+
+.notarization-brand-mini {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  flex-shrink: 0;
+  border-radius: calc(var(--u) * 4);
+  background: url('@atd/ui/assets/brands/atd/app-icon.png') center / contain no-repeat;
+}
+
+.notarization-muted-square {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  flex-shrink: 0;
+  border-radius: calc(var(--u) * 4);
+  background: rgb(255 255 255 / 10%);
+}
+
+.notarization-win-lines {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: calc(var(--u) * 3.5);
+}
+
+.notarization-win-line {
+  width: 86%;
+  height: calc(var(--u) * 4.5);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 78%);
+}
+
+.notarization-win-line[data-secondary] {
+  width: 56%;
+  height: calc(var(--u) * 3.5);
+  background: rgb(255 255 255 / 28%);
+}
+
+.notarization-win-row:not([data-active]) .notarization-win-line {
+  width: 68%;
+  height: calc(var(--u) * 4);
+  background: rgb(255 255 255 / 22%);
+}
+
+.notarization-switch {
+  position: relative;
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 12);
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 14%);
+}
+
+.notarization-win-row[data-active] .notarization-switch {
+  background: var(--ata-syntax-variable);
+}
+
+.notarization-switch-knob {
+  position: absolute;
+  top: calc(var(--u) * 1.5);
+  left: calc(var(--u) * 1.5);
+  width: calc(var(--u) * 15);
+  height: calc(var(--u) * 9);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 78%);
+}
+
+.notarization-win-row[data-active] .notarization-switch-knob {
+  left: calc(var(--u) * 9.5);
+  background: rgb(255 255 255);
+}
+
+.notarization-guide {
+  position: absolute;
+  top: calc(var(--u) * 58);
+  left: calc(var(--u) * 104);
+  width: calc(var(--u) * 132);
+  height: calc(var(--u) * 50);
+  box-sizing: border-box;
+  padding: calc(var(--u) * 4);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: calc(var(--u) * 12);
+  background: color-mix(in oklab, var(--secondary) 96%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    0 calc(var(--u) * 8) calc(var(--u) * 22) rgb(0 0 0 / 52%);
+}
+
+.notarization-guide-card {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  padding-inline: calc(var(--u) * 7);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: calc(var(--u) * 8);
+  background: rgb(255 255 255 / 5%);
+}
+
+.notarization-guide-avatar {
+  position: relative;
+  width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+  flex-shrink: 0;
+  border-radius: calc(var(--u) * 5);
+  background: url('@atd/ui/assets/brands/atd/app-icon.png') center / contain no-repeat;
+}
+
+.notarization-seal {
+  position: absolute;
+  right: calc(var(--u) * -2);
+  bottom: calc(var(--u) * -2);
+  display: grid;
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  box-sizing: border-box;
+  place-items: center;
+  border: 1.5px solid var(--secondary);
+  border-radius: 50%;
+  background: var(--ata-status-progress);
+  color: rgb(255 255 255);
+}
+
+.notarization-seal > svg {
+  width: calc(var(--u) * 6.5);
+  height: calc(var(--u) * 6.5);
+  stroke-width: 3;
+}
+
+.notarization-guide-lines {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+}
+
+.notarization-guide-line {
+  width: 92%;
+  height: calc(var(--u) * 5);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 86%);
+}
+
+.notarization-guide-line[data-secondary] {
+  width: 62%;
+  height: calc(var(--u) * 3.5);
+  background: rgb(255 255 255 / 36%);
+}
+
+.notarization-guide-cue {
+  display: grid;
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ata-syntax-variable) 18%, transparent);
+  color: var(--ata-syntax-variable);
+}
+
+.notarization-guide-cue > svg {
+  width: calc(var(--u) * 10);
+  height: calc(var(--u) * 10);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notarization-guide {
+    animation: notarization-guide-float 4.2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes notarization-guide-float {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, -1.5px, 0);
+  }
+}

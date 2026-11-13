@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { TaskInput, TaskRun } from '../../client/agent/task-schema';
 import type { ModelReference } from '../../client/providers/schema';
 
@@ -27,12 +27,14 @@ export interface OutgoingMessage {
   discard: () => void;
 }
 
+const MAX_OUTGOING = 32;
+
 /**
- * Each conversation's latest outgoing message. A later send replaces it; an accepted one stays
- * until then, hidden by its run (`useOutgoingMessage`), since dropping it on acceptance could
- * render a frame before the view lists the run.
+ * Each conversation's latest pending/failed outgoing message. An accepted entry is evicted once
+ * its run appears in `runs`, leaving only its compact submission id in `submissionIds`.
  */
 const outgoing = new Map<string, OutgoingMessage>();
+const submissionIds = new Map<string, string>();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -46,9 +48,20 @@ function subscribe(listener: () => void) {
   };
 }
 
+function touch<V>(map: Map<string, V>, key: string, value: V) {
+  map.delete(key);
+  map.set(key, value);
+  while (map.size > MAX_OUTGOING) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
+
 /** Shows `message` as its conversation's outgoing message, replacing any earlier one. */
 export function putOutgoing(message: OutgoingMessage) {
-  outgoing.set(message.taskId, message);
+  touch(outgoing, message.taskId, message);
+  touch(submissionIds, message.taskId, message.id);
   emit();
 }
 
@@ -58,10 +71,20 @@ export function settleOutgoing(message: OutgoingMessage) {
   putOutgoing(message);
 }
 
-/** Discards the conversation's outgoing message `id`, unless a later send replaced it. */
-export function discardOutgoing(taskId: string, id: string) {
+/** Evicts the heavyweight `OutgoingMessage` payload once its accepted run appears in `runs`. */
+function acceptOutgoing(taskId: string, id: string) {
   if (outgoing.get(taskId)?.id !== id) return;
   outgoing.delete(taskId);
+  emit();
+}
+
+/** Discards the conversation's outgoing message `id`, unless a later send replaced it. */
+export function discardOutgoing(taskId: string, id: string) {
+  const droppedMessage = outgoing.get(taskId)?.id === id;
+  const droppedId = submissionIds.get(taskId) === id;
+  if (!droppedMessage && !droppedId) return;
+  if (droppedMessage) outgoing.delete(taskId);
+  if (droppedId) submissionIds.delete(taskId);
   emit();
 }
 
@@ -70,7 +93,7 @@ export function discardOutgoing(taskId: string, id: string) {
  * that react to sending must not mistake acceptance, failure or streamed patches for another send.
  */
 export function useOutgoingSubmissionId(taskId: string): string | null {
-  const read = useCallback(() => outgoing.get(taskId)?.id ?? null, [taskId]);
+  const read = useCallback(() => submissionIds.get(taskId) ?? null, [taskId]);
   return useSyncExternalStore(subscribe, read);
 }
 
@@ -84,5 +107,9 @@ export function useOutgoingMessage(
 ): OutgoingMessage | undefined {
   const read = useCallback(() => (taskId === null ? undefined : outgoing.get(taskId)), [taskId]);
   const message = useSyncExternalStore(subscribe, read);
-  return message && !runs.some((run) => run.invocationId === message.id) ? message : undefined;
+  const accepted = message !== undefined && runs.some((run) => run.invocationId === message.id);
+  useEffect(() => {
+    if (accepted && message && taskId !== null) acceptOutgoing(taskId, message.id);
+  }, [accepted, message, taskId]);
+  return message && !accepted ? message : undefined;
 }

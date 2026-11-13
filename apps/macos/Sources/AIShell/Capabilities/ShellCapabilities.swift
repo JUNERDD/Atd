@@ -130,12 +130,12 @@ final class SystemPanels {
   }
   /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
   var onChange: ((_ open: Bool) -> Void)?
-  private let lowerPanel: () -> NSWindow.Level
-  private let restorePanel: (NSWindow.Level) -> Void
+  private let lowerPanel: () -> Void
+  private let restorePanel: () -> Void
   private let arbiter: DeviceArbiter
 
   init(
-    lowerPanel: @escaping () -> NSWindow.Level, restorePanel: @escaping (NSWindow.Level) -> Void,
+    lowerPanel: @escaping () -> Void, restorePanel: @escaping () -> Void,
     arbiter: DeviceArbiter
   ) {
     self.lowerPanel = lowerPanel
@@ -179,6 +179,23 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
+  /// Single folder picker for save location (`saveLocation.pick`); nil when cancelled or another
+  /// system panel is open.
+  func chooseSaveFolder(startingAt directoryURL: URL?, message: String) async -> URL? {
+    let panel = NSOpenPanel()
+    panel.message = message
+    panel.prompt = ShellStrings.shared.text(RecordingOptionsStringKey.folderPrompt)
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.canCreateDirectories = true
+    panel.allowsMultipleSelection = false
+    if let directoryURL {
+      panel.directoryURL = URL(
+        filePath: directoryURL.path(percentEncoded: false), directoryHint: .notDirectory)
+    }
+    return await run(panel) ? panel.url : nil
+  }
+
   /// Application bundles (`apps.pick`), starting in /Applications; nil when cancelled or
   /// another system panel is open.
   func chooseApps() async -> [URL]? {
@@ -192,6 +209,20 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
+  /// File save dialog for choosing an output file; when `aboveIsland` is true, stays above both
+  /// `IslandWindow` (25) and `IslandLightboxWindow` (26).
+  func chooseSaveFile(suggestedName: String, contentType: UTType, aboveIsland: Bool = false)
+    async -> URL?
+  {
+    let panel = NSSavePanel()
+    panel.title = ShellStrings.shared.text(.fileSaveTitle)
+    panel.allowedContentTypes = [contentType]
+    panel.canCreateDirectories = true
+    panel.isExtensionHidden = false
+    panel.nameFieldStringValue = suggestedName
+    return await run(panel, aboveIsland: aboveIsland) ? panel.url : nil
+  }
+
   /// Where to save under `suggestedName`; `contentType` restricts the panel to that type. Nil
   /// when cancelled or another system panel is open.
   func chooseSaveLocation(suggestedName: String, contentType: UTType? = nil) async -> URL? {
@@ -202,15 +233,26 @@ final class SystemPanels {
     return await run(panel) ? panel.url : nil
   }
 
-  private func run(_ panel: NSSavePanel) async -> Bool {
+  private func run(_ panel: NSSavePanel, aboveIsland: Bool = false) async -> Bool {
     guard !isOpen,
       let screen = try? arbiter.tryClaim([.interactiveScreen], owner: .user(.systemPanel))
     else { return false }
     isOpen = true
-    let level = lowerPanel()
+    lowerPanel()
+    let level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2)
+    var levelObserver: (any NSObjectProtocol)?
+    if aboveIsland {
+      panel.level = level
+      levelObserver = NotificationCenter.default.addObserver(
+        forName: NSWindow.didBecomeKeyNotification, object: panel, queue: .main
+      ) { [weak panel] _ in
+        MainActor.assumeIsolated { panel?.level = level }
+      }
+    }
     defer {
+      if let levelObserver { NotificationCenter.default.removeObserver(levelObserver) }
       isOpen = false
-      restorePanel(level)
+      restorePanel()
       screen.release()
     }
     NSApp.activate()

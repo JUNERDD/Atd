@@ -44,6 +44,10 @@ export const STREAM_COALESCE_MS = 33;
  * shell's 64 MiB frame limit, and a frame that size stalls every connection it is sent to.
  */
 export const INLINE_SNAPSHOT_MAX_LENGTH = 4 * 1024 * 1024;
+/** Live tail bounds for streamed tool partial output; full output settles into the result. */
+export const TOOL_PARTIAL_MAX_LENGTH = 64 * 1024;
+export const TOOL_PARTIAL_MAX_LINES = 500;
+const PARTIAL_TRUNCATED_PREFIX = '…\n';
 
 export interface TranscriptPatchData {
   revision: number;
@@ -149,10 +153,17 @@ export class LiveTranscript {
         const file = this.session.sessionFile;
         if (file) this.sink.sessionFile(file);
       }
+      let partialChanged = false;
       if (event.type === 'tool_execution_update' && !event.parentToolCallId) {
-        this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
-        if (event.toolName === SUBAGENT_TOOL)
+        const clamped = clampToolPartial(toolPartialText(event.partialResult));
+        if (this.partials.get(event.toolCallId) !== clamped) {
+          this.partials.set(event.toolCallId, clamped);
+          partialChanged = true;
+        }
+        if (event.toolName === SUBAGENT_TOOL) {
           this.subagentProgress.set(event.toolCallId, subagentRows(partialDetails(event)));
+          partialChanged = true;
+        }
       }
       if (event.type === 'tool_execution_start' && event.parentToolCallId)
         this.codemodeSteps.start(
@@ -165,12 +176,12 @@ export class LiveTranscript {
         this.codemodeSteps.end(event.toolCallId, resultParts(event.result), event.isError);
       if (
         event.type === 'message_update' ||
-        event.type === 'tool_execution_update' ||
+        partialChanged ||
         ((event.type === 'tool_execution_start' || event.type === 'tool_execution_end') &&
           event.parentToolCallId)
       )
         this.streamed.schedule();
-      else this.reproject(false);
+      else if (event.type !== 'tool_execution_update') this.reproject(false);
     });
   }
 
@@ -225,7 +236,8 @@ export class LiveTranscript {
     this.blocks = next;
     if (!patch.blocks.length && !patch.removed.length && !snapshot) return;
     this.revision += 1;
-    if (snapshot && JSON.stringify(next).length > INLINE_SNAPSHOT_MAX_LENGTH)
+    const blocks = snapshot ? next : patch.blocks;
+    if (JSON.stringify(blocks).length > INLINE_SNAPSHOT_MAX_LENGTH)
       return this.sink.publish(runId, {
         revision: this.revision,
         snapshot,
@@ -236,7 +248,7 @@ export class LiveTranscript {
     this.sink.publish(runId, {
       revision: this.revision,
       snapshot,
-      blocks: snapshot ? next : patch.blocks,
+      blocks,
       removed: snapshot ? [] : patch.removed,
     });
   }
@@ -281,4 +293,27 @@ function partialDetails(event: { partialResult: unknown }): unknown {
 /** A tool result's `content` and `details` (`AgentToolResult`); untrusted until projected. */
 function resultParts(result: unknown): { content?: unknown; details?: unknown } {
   return result && typeof result === 'object' ? result : {};
+}
+
+/** Keeps the live tail of streamed tool output within display bounds on a whole-line boundary. */
+export function clampToolPartial(text: string): string {
+  if (!text) return text;
+  let tail = text;
+  let truncated = false;
+  const maxBody = TOOL_PARTIAL_MAX_LENGTH - PARTIAL_TRUNCATED_PREFIX.length;
+  if (tail.length > TOOL_PARTIAL_MAX_LENGTH) {
+    truncated = true;
+    let start = tail.length - maxBody;
+    const code = tail.charCodeAt(start);
+    if (code >= 0xdc00 && code <= 0xdfff) start += 1;
+    tail = tail.slice(start);
+    const newline = tail.indexOf('\n');
+    if (newline >= 0 && newline < tail.length - 1) tail = tail.slice(newline + 1);
+  }
+  const lines = tail.split('\n');
+  if (lines.length > TOOL_PARTIAL_MAX_LINES) {
+    truncated = true;
+    tail = lines.slice(-TOOL_PARTIAL_MAX_LINES).join('\n');
+  }
+  return truncated ? `${PARTIAL_TRUNCATED_PREFIX}${tail}` : tail;
 }

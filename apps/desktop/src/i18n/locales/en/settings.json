@@ -66,6 +66,7 @@
       "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "appearance": "theme appearance color scheme light dark mode night day system automatic follow",
       "glowEffects": "glow glows light lighting effect effects shimmer shine sparkle highlight animation motion flowing working decorative visual",
+      "resultMarkdown": "markdown format formatting rich text render headings lists code plain text result card island answer",
       "viewInitiative": "view views interactive ui widget window card chart form dashboard visual show display agent proactive proactively balanced request ask unprompted automatic conversation chat",
       "summaryTitles": "summary summarize title titles name naming automatic conversation chat",
       "nextSteps": "suggest suggestion suggestions next steps follow-up followups follow up continue task automation idea after reply finish conversation chat",
@@ -95,6 +96,10 @@
       "selectionToolbarSmallIcon": "small icon compact minimal bubble dot button first click hover rest expand open full toolbar selection",
       "selectionToolbarPosition": "position place placement location where appear show above below top bottom over under pointer cursor mouse near toolbar selection",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
+      "screenshotSaveLocation": "save folder ask each time choose folder path local disk screenshot",
+      "recordingSaveLocation": "screen recording video mp4 save folder ask each time choose folder path local disk",
+      "screenshotCopyOnConfirm": "screenshot copy clipboard confirm attach composer toolbar check",
+      "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
       "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
@@ -223,7 +228,7 @@
   },
   "general": {
     "title": "General",
-    "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+    "description": "Appearance, window, notifications, toolbar, screenshot, and shortcuts. Click a shortcut, then press the new keys; Escape cancels."
   },
   "panelBackground": {
     "title": "Panel background",
@@ -373,6 +378,43 @@
       "accessibility": "System Settings couldn't open. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
     }
   },
+  "saveLocation": {
+    "label": "Save location",
+    "askEachTime": "Ask each time",
+    "chooseFolder": "Choose folder…"
+  },
+  "screenshot": {
+    "title": "Screenshot",
+    "saveLocation": {
+      "searchLabel": "Screenshot save location",
+      "description": "Choose each time or save screenshots and long screenshots directly to a folder",
+      "saveFailed": "The screenshot save location could not be updated."
+    },
+    "copyOnConfirm": {
+      "title": "Copy to clipboard when confirming",
+      "description": "When clicking ✓ on the screenshot toolbar to attach a screenshot to the composer, also copy it to the clipboard.",
+      "saveFailed": "The screenshot copy setting could not be saved."
+    },
+    "longScreenshotConfirmAction": {
+      "title": "Long screenshot confirmation",
+      "description": "Whether Done or Return opens the result card, copies to the clipboard, or saves and closes",
+      "label": "Long screenshot confirmation action",
+      "saveFailed": "The long screenshot confirmation setting could not be saved.",
+      "modes": {
+        "card": "Open result card",
+        "copy": "Copy to clipboard and close",
+        "save": "Save and close"
+      }
+    }
+  },
+  "recording": {
+    "title": "Screen recording",
+    "saveLocation": {
+      "searchLabel": "Screen recording save location",
+      "description": "Choose each time or save screen recordings directly to a folder",
+      "saveFailed": "The screen recording save location could not be updated."
+    }
+  },
   "notifications": {
     "title": "Notifications",
     "finished": {
@@ -425,6 +467,11 @@
       "description": "Show the flowing light while a reply is on its way, the glow around running commands and the mini panel, and shimmering progress text.",
       "saveFailed": "The glow effects setting could not be saved."
     },
+    "resultMarkdown": {
+      "title": "Markdown in results",
+      "description": "Format answers on floating result cards — the command island and capture, recording and long screenshot results — with headings, lists and code. Turn off to show plain text.",
+      "saveFailed": "The Markdown in results setting could not be saved."
+    },
     "summaryTitles": {
       "title": "Summary titles",
       "description": "Summarize longer or complex new conversations. Short messages keep their original titles.",
@@ -462,11 +509,11 @@
       }
     },
     "groups": {
-      "global": "Global",
-      "inApp": "In app",
+      "global": "Global shortcuts",
+      "inApp": "In-app shortcuts",
       "appearance": "Appearance",
       "conversation": "Conversation",
-      "window": "Window"
+      "window": "Window & startup"
     },
     "actions": {
       "togglePanel": {
@@ -476,6 +523,10 @@
       "captureScreenshot": {
         "label": "Take screenshot",
         "description": "Capture the screen and attach it to the composer."
+      },
+      "recordScreen": {
+        "label": "Record screen",
+        "description": "Record an area, a window or the whole screen."
       },
       "newConversation": {
         "label": "New conversation",
@@ -497,6 +548,8 @@
     "capture": {
       "cancelLabel": "Cancel recording {{label}}",
       "changeLabel": "Change {{label}}: {{keys}}",
+      "setLabel": "Record a shortcut for {{label}}",
+      "unset": "Record shortcut",
       "reset": "Reset to default",
       "resetLabel": "Reset {{label}} to default"
     },
@@ -545,7 +598,10 @@
       "shortcutSave": "The shortcut could not be saved.",
       "defaultsRestore": "Default shortcuts could not be restored.",
       "windowPreferenceSave": "The window preference could not be saved.",
-      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut."
+      "selectionToolbarDoubleTap": "The selection toolbar turns on and off with this double‑tap. Choose another shortcut.",
+      "unbound": "This action has no shortcut yet. Record one to use it.",
+      "unboundHeldByAction": "{{keys}} is already used by “{{action}}”, so this action has no shortcut yet. Record other keys for it.",
+      "unboundHeldByCommand": "{{keys}} is already used by the command “{{name}}”, so this action has no shortcut yet. Record other keys for it."
     }
   },
   "extensions": {
@@ -1027,6 +1083,8 @@
     "versionOnly": "Version {{version}}",
     "versionUnavailable": "Version unavailable",
     "developmentVersion": "{{version}} · Development build",
+    "releaseNotes": "View release notes",
+    "releaseNotesKeywords": "release notes changelog changes version update",
     "updatesTitle": "Check for updates",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",

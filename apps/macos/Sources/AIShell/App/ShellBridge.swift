@@ -38,7 +38,9 @@ final class ShellBridge {
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
     case .appearanceSet(let post): AppAppearance.shared.apply(post.appearance)
     case .glowEffectsSet(let post): GlowEffects.shared.apply(post.enabled)
+    case .resultMarkdownSet(let post): ResultMarkdown.shared.apply(post.enabled)
     case .panelBackgroundSet(let post): PanelBackground.shared.apply(post)
+    case .screenshotPreferencesSet(let post): ScreenshotPreferences.shared.apply(post)
     case .typingSet(let post):
       shell?.summoner.writeTargets.animatesTyping = post.animation
       shell?.summoner.writeTargets.typesAnswers = post.typing
@@ -50,6 +52,10 @@ final class ShellBridge {
     case .socketClose(let post): host.pipe?.close(post)
     case .updateCheck: shell?.updater.checkForUpdates()
     case .updateInstall: shell?.updater.installNow()
+    case .updateReleaseNotesShown(let post):
+      guard host === shell?.panelHost else { return }
+      shell?.releaseNotesShown(version: post.version)
+    case .updateDismissReleaseNotes(let post): shell?.releaseNotes.dismiss(version: post.version)
     case .userAppPinDrag(let post): shell?.startPinDrag(post, from: host)
     // Only the panel's page decides which task the person is looking at.
     case .taskShown(let post):
@@ -78,7 +84,8 @@ final class ShellBridge {
         return try Self.encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
       case .computerPrimeCaptureConsent:
         return try Self.encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
-      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick:
+      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick,
+        .saveLocationPick:
         throw BridgeError("Finish the screenshot first.")
       default:
         break
@@ -147,14 +154,23 @@ final class ShellBridge {
       try shell.setShortcutRecording(params, from: host, document: document)
       return try Self.encode(NativeEmpty())
     case .capture:
-      return try Self.encode(shell.captureSelection())
+      return try Self.encode(await shell.captureSelection())
     case .clipboardRead:
       let text = NSPasteboard.general.string(forType: .string) ?? ""
       return try Self.encode(ClipboardReadResult(text: text))
-    case .screenshotCapture:
-      return try Self.encode(await shell.captureScreenshot())
+    case .screenshotCapture(let params):
+      return try Self.encode(await Self.captureScreenshot(params, shell: shell))
+    case .screenshotToolbarSet(let params):
+      Self.setScreenshotToolbar(params, shell: shell)
+      return try Self.encode(NativeEmpty())
     case .screenshotEdit(let params):
       return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
+    case .saveLocationState(let params):
+      return try Self.encode(Self.saveLocationState(params, shell: shell))
+    case .saveLocationSet(let params):
+      return try Self.encode(Self.setSaveLocation(params, shell: shell))
+    case .saveLocationPick(let params):
+      return try Self.encode(await Self.pickSaveLocation(params, shell: shell))
     case .textWrite(let params):
       return try Self.encode(await shell.writeText(params))
     // The panel's write buttons follow the focus `text.writeOffer` reports only to the panel.
@@ -196,7 +212,9 @@ final class ShellBridge {
       guard let url = ExternalLink.openable(params.url) else {
         throw BridgeError("Only web links can be opened.")
       }
-      NSWorkspace.shared.open(url)
+      guard NSWorkspace.shared.open(url) else {
+        throw BridgeError("The link could not be opened.")
+      }
       return try Self.encode(NativeEmpty())
     case .artifact(let params):
       return try Self.encode(
@@ -215,6 +233,19 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .commandOptionsSet(let params):
       shell.applyCommandOptions(CommandOptionsCatalog(params))
+      return try Self.encode(NativeEmpty())
+    // The panel's page runs a recording's and a long screenshot's asks (`recording.ask`).
+    case .recordingAnswer(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can answer a recording's asks.")
+      }
+      switch params.source {
+      case .recording: Self.answerRecording(params, shell: shell)
+      case .screenshot: Self.answerLongScreenshot(params, shell: shell)
+      }
+      return try Self.encode(NativeEmpty())
+    case .captureTextProgress(let params):
+      try Self.progressCaptureText(params, from: host, shell: shell)
       return try Self.encode(NativeEmpty())
     case .accessibilityRequest:
       shell.trust.openSystemSettings()
@@ -255,12 +286,11 @@ final class ShellBridge {
       try shell.openView(params)
       return try Self.encode(NativeEmpty())
     case .notificationsState:
-      return try Self.encode(await Self.notifications(of: shell).state())
+      return try await Self.notificationsState(shell: shell)
     case .notificationsSet(let params):
-      return try Self.encode(await Self.notifications(of: shell).apply(params))
+      return try await Self.setNotifications(params, shell: shell)
     case .notificationsOpenSystemSettings:
-      try Self.notifications(of: shell).openSystemSettings()
-      return try Self.encode(NativeEmpty())
+      return try Self.openNotificationSettings(shell: shell)
     case .computerPreviewShow(let params):
       return try Self.encode(shell.showComputerPreview(params, from: host, document: document))
     case .computerPrepareBrowser(let params):
@@ -284,25 +314,21 @@ final class ShellBridge {
       return try Self.encode(await shell.prepareComputerApplication(params))
     case .computerPrimeCaptureConsent:
       return try Self.encode(await shell.primeComputerCaptureConsent())
+    case .panelModalSetAvailable(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can set panel modals.")
+      }
+      shell.setPanelModalsAvailable(params.available)
+      return try Self.encode(NativeEmpty())
     }
   }
 
-  private static func encode(_ value: some Encodable) throws(BridgeError) -> JSONValue {
+  static func encode(_ value: some Encodable) throws(BridgeError) -> JSONValue {
     do {
       return try JSONValue(encoding: value)
     } catch {
       throw BridgeError("The reply could not be encoded.")
     }
-  }
-
-  /// Notifications exist only in an app bundle.
-  private static func notifications(of shell: ShellController) throws(BridgeError)
-    -> ShellNotifications
-  {
-    guard let notifications = shell.notifications else {
-      throw BridgeError("Notifications are unavailable outside the app.")
-    }
-    return notifications
   }
 
   static func message(_ error: any Error, _ fallback: String) -> String {

@@ -26,7 +26,7 @@ extension MiniPanelController {
       transition(to: .dragging, trigger: "drag")
     }
     setLifted(true)
-    setCursor(.closedHand)
+    setCursor(PointerRole.grabbing.cursor)
   }
 
   /// The drag's release: the capsule carries on with the pointer's velocity to the display,

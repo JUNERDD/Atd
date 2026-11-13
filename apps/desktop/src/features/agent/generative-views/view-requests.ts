@@ -79,15 +79,31 @@ const REFUSALS = {
 
 /** When each view's requests were accepted in the last minute, by view key and request kind. */
 const accepted = new Map<string, number[]>();
+const MAX_RATE_ENTRIES = 64;
+
+function pruneAccepted(now: number): void {
+  const cutoff = now - MINUTE_MS;
+  for (const [key, times] of accepted) {
+    const latest = times.at(-1);
+    if (latest === undefined || latest <= cutoff) accepted.delete(key);
+  }
+}
 
 /** Accepts a request when the user is engaged and the view keeps to its rate; records it then. */
 function admit(gate: string, engaged: boolean, now: number): Refusal | null {
   if (!engaged) return 'engage';
+  pruneAccepted(now);
   const recent = (accepted.get(gate) ?? []).filter((at) => now - at < MINUTE_MS);
   const last = recent.at(-1);
   if (last !== undefined && now - last < MIN_GAP_MS) return 'tooSoon';
   if (recent.length >= PER_MINUTE) return 'tooMany';
+  accepted.delete(gate);
   accepted.set(gate, [...recent, now]);
+  while (accepted.size > MAX_RATE_ENTRIES) {
+    const oldest = accepted.keys().next().value;
+    if (oldest === undefined) break;
+    accepted.delete(oldest);
+  }
   return null;
 }
 

@@ -66,6 +66,7 @@
       "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
       "appearance": "主题 外观 配色 颜色 浅色 深色 亮色 暗色 夜间 日间 白天 黑夜 跟随系统 自动 light dark theme",
       "glowEffects": "光效 光晕 发光 流光 闪光 微光 高光 动效 动画 特效 视觉效果 闪烁 扫光 glow shimmer",
+      "resultMarkdown": "markdown 格式 富文本 渲染 标题 列表 代码 纯文本 结果 卡片 灵动岛 回答",
       "viewInitiative": "视图 交互 界面 小组件 窗口 卡片 图表 表单 看板 可视化 显示 展示 智能体 主动 积极 适中 平衡 按需 要求 对话 聊天",
       "summaryTitles": "总结 摘要 标题 名称 命名 自动 对话 聊天",
       "nextSteps": "建议 推荐 下一步 后续 追问 继续 新任务 自动化 想法 回答结束 对话 聊天",
@@ -95,6 +96,10 @@
       "selectionToolbarSmallIcon": "小图标 图标 先显示 选中后 点击 悬停 停留 展开 完整 工具栏 选择 small icon",
       "selectionToolbarPosition": "出现位置 位置 显示 上方 下方 鼠标旁 鼠标 光标 选区 工具栏 选择 position",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
+      "screenshotSaveLocation": "截图 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
+      "recordingSaveLocation": "录屏 屏幕录制 视频 mp4 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
+      "screenshotCopyOnConfirm": "截图 截屏 复制 剪贴板 确认 添加 输入框 工具栏 勾选",
+      "longScreenshotConfirmAction": "长截图 滚动截图 完成 确认 回车 结果卡片 复制 剪贴板",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
       "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
       "notificationsFinished": "通知 提醒 横幅 完成 结束 失败 出错 系统 离开 没在看 notification notify finished failed",
@@ -223,7 +228,7 @@
   },
   "general": {
     "title": "通用",
-    "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
+    "description": "外观、窗口、通知、工具栏、截图与快捷键。点击快捷键后按下新的组合键，按 Esc 取消。"
   },
   "panelBackground": {
     "title": "面板背景",
@@ -373,6 +378,43 @@
       "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 设备控制和数据访问”（旧版 macOS 中为“辅助功能”）。"
     }
   },
+  "saveLocation": {
+    "label": "保存位置",
+    "askEachTime": "每次询问",
+    "chooseFolder": "选择文件夹…"
+  },
+  "screenshot": {
+    "title": "截图",
+    "saveLocation": {
+      "searchLabel": "截图保存位置",
+      "description": "每次保存时选择位置，或直接保存到指定文件夹",
+      "saveFailed": "无法更新截图保存位置。"
+    },
+    "copyOnConfirm": {
+      "title": "确认截图时同时复制到剪贴板",
+      "description": "在截图工具栏点击 ✓ 将截图添加到输入框时，也同时复制到剪贴板。",
+      "saveFailed": "无法保存截图复制设置。"
+    },
+    "longScreenshotConfirmAction": {
+      "title": "长截图完成操作",
+      "description": "点击“完成”或按下回车时，是打开结果卡片、复制到剪贴板，还是保存并关闭",
+      "label": "长截图完成操作",
+      "saveFailed": "无法保存长截图完成操作设置。",
+      "modes": {
+        "card": "打开结果卡片",
+        "copy": "直接复制到剪贴板并关闭",
+        "save": "保存并关闭"
+      }
+    }
+  },
+  "recording": {
+    "title": "录屏",
+    "saveLocation": {
+      "searchLabel": "录屏保存位置",
+      "description": "每次保存时选择位置，或直接保存到指定文件夹",
+      "saveFailed": "无法更新录屏保存位置。"
+    }
+  },
   "notifications": {
     "title": "通知",
     "finished": {
@@ -425,6 +467,11 @@
       "description": "等待回复时显示流动光效，命令和迷你面板工作时显示光晕，进行中的文字带有闪光。",
       "saveFailed": "无法保存光效设置。"
     },
+    "resultMarkdown": {
+      "title": "结果 Markdown 渲染",
+      "description": "在悬浮结果卡片（命令灵动岛，以及截图、录屏和长截图结果）中按 Markdown 显示标题、列表和代码。关闭后显示纯文本。",
+      "saveFailed": "无法保存结果 Markdown 渲染设置。"
+    },
     "summaryTitles": {
       "title": "总结性标题",
       "description": "为较长或复杂的新对话生成总结性标题，简短消息直接保留为标题。",
@@ -462,11 +509,11 @@
       }
     },
     "groups": {
-      "global": "全局",
-      "inApp": "应用内",
+      "global": "全局快捷键",
+      "inApp": "应用内快捷键",
       "appearance": "外观",
       "conversation": "对话",
-      "window": "窗口"
+      "window": "窗口与启动"
     },
     "actions": {
       "togglePanel": {
@@ -476,6 +523,10 @@
       "captureScreenshot": {
         "label": "截图",
         "description": "截取屏幕并添加到输入框。"
+      },
+      "recordScreen": {
+        "label": "录屏",
+        "description": "录制屏幕上的区域、窗口或整个屏幕。"
       },
       "newConversation": {
         "label": "新建对话",
@@ -497,6 +548,8 @@
     "capture": {
       "cancelLabel": "取消录制“{{label}}”",
       "changeLabel": "更改“{{label}}”快捷键：{{keys}}",
+      "setLabel": "为“{{label}}”录制快捷键",
+      "unset": "录制快捷键",
       "reset": "恢复默认",
       "resetLabel": "将“{{label}}”恢复为默认"
     },
@@ -545,7 +598,10 @@
       "shortcutSave": "无法保存快捷键。",
       "defaultsRestore": "无法恢复默认快捷键。",
       "windowPreferenceSave": "无法保存窗口偏好。",
-      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。"
+      "selectionToolbarDoubleTap": "选择文字工具栏已使用这个双击来开关。请换一个快捷键。",
+      "unbound": "此操作还没有快捷键。录制一个即可使用。",
+      "unboundHeldByAction": "{{keys}} 已被“{{action}}”使用，所以此操作还没有快捷键。请为它录制其他按键。",
+      "unboundHeldByCommand": "{{keys}} 已被命令“{{name}}”使用，所以此操作还没有快捷键。请为它录制其他按键。"
     }
   },
   "extensions": {
@@ -1025,6 +1081,8 @@
     "versionOnly": "版本 {{version}}",
     "versionUnavailable": "无法获取版本",
     "developmentVersion": "{{version}} · 开发版",
+    "releaseNotes": "查看更新日志",
+    "releaseNotesKeywords": "更新日志 版本记录 更新记录 版本 改动",
     "updatesTitle": "检查更新",
     "updatesNote": "更新会在后台下载，并在退出 Atd 时安装。",
     "updatesUnavailable": "开发版不会自动更新。请从官网安装正式版以获取更新。",

@@ -3,10 +3,12 @@ import {
   APP_APPEARANCES,
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
+  LONG_SCREENSHOT_CONFIRM_ACTIONS,
   VIEW_INITIATIVES,
   type AppAppearance,
   type AppLanguage,
   type ExcludedApp,
+  type LongScreenshotConfirmAction,
   type ModelSelection,
   type NextStepClick,
   type PanelBackground,
@@ -58,6 +60,7 @@ export type {
   AppAppearance,
   AppLanguage,
   ExcludedApp,
+  LongScreenshotConfirmAction,
   NextStepClick,
   PanelBackground,
   PanelGlassVariant,
@@ -73,11 +76,15 @@ export {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_GLOW_EFFECTS,
+  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
+  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
+  LONG_SCREENSHOT_CONFIRM_ACTIONS,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_ICON_MODES,
   SELECTION_TOOLBAR_KEYS,
@@ -118,17 +125,19 @@ export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
 /** Apps the selection toolbar can be kept away from (`SelectionToolbarSettingsSchema`). */
 export const MAX_EXCLUDED_APPS = 100;
 
-export function isAppAppearance(value: unknown): value is AppAppearance {
-  return typeof value === 'string' && (APP_APPEARANCES as readonly string[]).includes(value);
+function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
+  return typeof value === 'string' && (values as readonly string[]).includes(value);
 }
 
-export function isAppLanguage(value: unknown): value is AppLanguage {
-  return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);
-}
-
-export function isViewInitiative(value: unknown): value is ViewInitiative {
-  return typeof value === 'string' && (VIEW_INITIATIVES as readonly string[]).includes(value);
-}
+export const isAppAppearance = (value: unknown): value is AppAppearance =>
+  isOneOf(APP_APPEARANCES, value);
+export const isAppLanguage = (value: unknown): value is AppLanguage =>
+  isOneOf(LANGUAGE_CODES, value);
+export const isViewInitiative = (value: unknown): value is ViewInitiative =>
+  isOneOf(VIEW_INITIATIVES, value);
+export const isLongScreenshotConfirmAction = (
+  value: unknown,
+): value is LongScreenshotConfirmAction => isOneOf(LONG_SCREENSHOT_CONFIRM_ACTIONS, value);
 
 export interface SettingsSnapshot {
   connections: Connection[];
@@ -146,6 +155,11 @@ export interface SettingsSnapshot {
    * shell's surfaces alike; the service's default until it loads.
    */
   glowEffects: boolean;
+  /**
+   * Whether the shell's floating result cards render Markdown rather than plain text; the
+   * service's default until it loads.
+   */
+  resultMarkdown: boolean;
   /** The panel's and floating surfaces' fill and glass; the service's default until it loads. */
   panelBackground: PanelBackground;
   /** Null reads screens with the task model; a selection uses a separate image model. */
@@ -185,6 +199,8 @@ export interface SettingsSnapshot {
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */
   screenshotShortcutAvailable: boolean | null;
+  /** Whether the shell registered the record-screen shortcut; null until the panel reports it. */
+  recordShortcutAvailable: boolean | null;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;
   /**
@@ -196,6 +212,10 @@ export interface SettingsSnapshot {
   shellAllowlist: string[];
   /** The toolbar the shell shows over text selected in other apps, and the apps it skips. */
   selectionToolbar: SelectionToolbarSettings;
+  /** Copy screenshot to clipboard on toolbar ✓ confirm (`DEFAULT_SCREENSHOT_COPY_ON_CONFIRM`). */
+  screenshotCopyOnConfirm: boolean;
+  /** Done action in long screenshot (`DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION`). */
+  longScreenshotConfirmAction: LongScreenshotConfirmAction;
   /**
    * Whether write-back command answers are typed into other apps rather than pasted at once; the
    * service's default until it loads.
@@ -265,6 +285,8 @@ export interface SettingsBridge {
   setAppearance: (appearance: AppAppearance | null) => Promise<SettingsSnapshot>;
   /** Shows or leaves out the decorative glows and the running-text shimmer everywhere. */
   setGlowEffects: (enabled: boolean) => Promise<SettingsSnapshot>;
+  /** Renders Markdown on the floating result cards, or shows their text plain. */
+  setResultMarkdown: (enabled: boolean) => Promise<SettingsSnapshot>;
   /** Replaces the whole panel background setting. */
   setPanelBackground: (background: PanelBackground) => Promise<SettingsSnapshot>;
   setComputerVisionModel: (model: ModelSelection | null) => Promise<SettingsSnapshot>;
@@ -284,6 +306,10 @@ export interface SettingsBridge {
   addShellAllowlistEntry: (entry: string) => Promise<SettingsSnapshot>;
   /** Replaces the selection toolbar settings as a whole. */
   saveSelectionToolbar: (value: SelectionToolbarSettings) => Promise<SettingsSnapshot>;
+  setScreenshotCopyOnConfirm: (enabled: boolean) => Promise<SettingsSnapshot>;
+  setLongScreenshotConfirmAction: (
+    action: LongScreenshotConfirmAction,
+  ) => Promise<SettingsSnapshot>;
   /** Sets how write-back command answers arrive in other apps. */
   saveCommandTyping: (value: boolean) => Promise<SettingsSnapshot>;
   /** Sets whether written-back answers leave a trace over the field they land in. */

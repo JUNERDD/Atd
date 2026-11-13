@@ -167,7 +167,7 @@ async function buildContext(packageRoot, signal) {
     ['xcodegen', ['--version']],
   ];
   if (process.env.AI_CODE_SIGN_IDENTITY?.trim() && process.env.AI_CODE_SIGN_IDENTITY !== '-')
-    commands.push(['security', ['find-identity', '-v', '-p', 'codesigning']]);
+    commands.push(['security', ['find-identity', '-p', 'codesigning']]);
   const tools = await Promise.all(
     commands.map(async ([command, args]) => {
       const { stdout } = await run(command, args, { encoding: 'utf8', signal, timeout: 5000 });

@@ -4,8 +4,9 @@ import AppKit
 /// The content of one display's overlay, flipped, with its bounds at the display's area of the
 /// session's desktop: its points (and those of the chrome and the annotation host) are desktop
 /// points, so a selection spanning displays is one rect on every overlay. From back to front: the frozen image, the dim and selection
-/// chrome, the annotation host, the loupe and the hints. Only this view and what the annotation
-/// editor adds take events; the rest is drawn and ignores the mouse.
+/// chrome, the annotation host, the loupe and the bar host with the bottom bar (``CaptureBar``)
+/// and the Accessibility request. Only this view, what the annotation editor adds and the bars
+/// take events; the rest is drawn and ignores the mouse.
 ///
 /// Keys reach this view as the window's first responder. When the annotation editor makes its
 /// canvas (a descendant of ``annotationHost``) first responder, the canvas sees keys first and
@@ -22,9 +23,14 @@ final class CaptureOverlayView: NSView {
   let display: FrozenDisplay
   weak var delegate: (any CaptureOverlayDelegate)?
   let annotationHost = AnnotationHostView()
+  private let frozenImage = FrozenImageView()
   private let chrome: CaptureChromeView
   private let loupe: LoupeView
-  private var hints: [CaptureHintBadge] = []
+  /// Above everything else, so the bottom bar stays clickable over a selection that fills the
+  /// display; its own area never takes the mouse.
+  private let barHost = AnnotationHostView()
+  private let bar = CaptureBar()
+  private var trustRequest: CaptureTrustRequest?
   /// Trackpads scroll in many small steps; the chain walks once per this many points.
   private var scrollAccumulator: CGFloat = 0
   private static let scrollStep: CGFloat = 12
@@ -39,14 +45,23 @@ final class CaptureOverlayView: NSView {
     super.init(frame: CGRect(origin: .zero, size: frame.size))
     setBoundsOrigin(frame.origin)
     wantsLayer = true
-    let image = FrozenImageView(frame: bounds)
-    image.image = NSImage(cgImage: display.image, size: frame.size)
-    image.imageScaling = .scaleAxesIndependently
+    frozenImage.frame = bounds
+    frozenImage.image = NSImage(cgImage: display.image, size: frame.size)
+    frozenImage.imageScaling = .scaleAxesIndependently
     annotationHost.frame = bounds
     annotationHost.setBoundsOrigin(bounds.origin)
-    for view in [image, chrome, annotationHost] as [NSView] { addSubview(view) }
+    for view in [frozenImage, chrome, annotationHost] as [NSView] { addSubview(view) }
     loupe.isHidden = true
     addSubview(loupe)
+    barHost.frame = bounds
+    barHost.setBoundsOrigin(bounds.origin)
+    addSubview(barHost)
+    bar.isHidden = true
+    barHost.addSubview(bar)
+    bar.onMode = { [weak self] mode in
+      guard let self else { return }
+      delegate?.overlay(self, perform: .mode(mode))
+    }
   }
 
   @available(*, unavailable)
@@ -64,9 +79,22 @@ final class CaptureOverlayView: NSView {
     chrome.update(area: area, handles: handles, label: label)
   }
 
-  /// The loupe beside `point` (desktop points, on this display), or hidden for nil.
+  /// Whether the frozen screen shows (decision D1). The long screenshot's live phase hides it
+  /// and the loupe that magnifies it: nothing is then drawn over the selection, a transparent
+  /// hole through which the user's scrolls and clicks reach the app under it, and the dim around
+  /// it lies over the live screen.
+  var showsFrozenScreen: Bool {
+    get { !frozenImage.isHidden }
+    set {
+      frozenImage.isHidden = !newValue
+      if !newValue { loupe.isHidden = true }
+    }
+  }
+
+  /// The loupe beside `point` (desktop points, on this display), or hidden for nil; never while
+  /// the frozen screen is hidden.
   func showLoupe(at point: CGPoint?) {
-    guard let point else {
+    guard let point, showsFrozenScreen else {
       loupe.isHidden = true
       return
     }
@@ -77,49 +105,51 @@ final class CaptureOverlayView: NSView {
     loupe.isHidden = false
   }
 
-  /// One badge per line, centred above the bottom edge, the first one lowest and none wider
-  /// than the display less its margins. When they would cover `avoid` (a selection with its
-  /// size label and bars around it), they move below the top edge instead, and when that is
-  /// covered too they are left out: the user is already working on a selection that fills the
-  /// display.
-  func showHints(_ lines: [CaptureHintLine], avoiding avoid: CGRect? = nil) {
-    for hint in hints { hint.removeFromSuperview() }
-    hints = lines.map { CaptureHintBadge(segments: $0, maxWidth: bounds.width - 32) }
-    let insets = window?.screen?.safeAreaInsets
-    let bottom = stackedFrames(downFrom: nil, upFrom: bounds.maxY - (insets?.bottom ?? 0) - 28)
-    let top = stackedFrames(downFrom: bounds.minY + (insets?.top ?? 0) + 28, upFrom: nil)
-    let clear = { (frames: [CGRect]) -> Bool in
-      guard let avoid else { return true }
-      return !frames.contains { $0.intersects(avoid) }
-    }
-    guard let frames = clear(bottom) ? bottom : clear(top) ? top : nil else {
-      hints = []
+  // MARK: Bottom bar
+
+  /// The bottom bar showing `content`, placed for `selection` (``CaptureBarLayout``), or hidden
+  /// for nil. With `trustRequest` the Accessibility request stands beside it, clickable while
+  /// `trustRequest` is true.
+  func showBar(_ content: CaptureBar.Content?, selection: CGRect?, trustRequest: Bool?) {
+    guard let content else {
+      bar.isHidden = true
+      self.trustRequest?.isHidden = true
       return
     }
-    for (hint, frame) in zip(hints, frames) {
-      hint.frame = frame
-      addSubview(hint)
+    bar.update(content)
+    let insets = window?.screen?.safeAreaInsets
+    let frame = CaptureBarLayout.frame(
+      size: bar.fittingSize, display: bounds, safeTop: insets?.top ?? 0,
+      safeBottom: insets?.bottom ?? 0, selection: selection)
+    bar.frame = frame
+    bar.isHidden = false
+    guard let enabled = trustRequest else {
+      self.trustRequest?.isHidden = true
+      return
     }
+    let request = self.trustRequest ?? makeTrustRequest()
+    request.isEnabled = enabled
+    request.frame = CaptureBarLayout.requestFrame(
+      size: request.fittingSize, bar: frame, display: bounds)
+    request.isHidden = false
   }
 
-  /// The hints' frames centred on the view, stacked down from `top` or up from `bottom` (the
-  /// first hint nearest that edge), 8 pt apart.
-  private func stackedFrames(downFrom top: CGFloat?, upFrom bottom: CGFloat?) -> [CGRect] {
-    var edge = top ?? bottom ?? 0
-    return hints.map { hint in
-      let size = hint.fittingSize
-      let y = top == nil ? edge - size.height : edge
-      edge = top == nil ? y - 8 : y + size.height + 8
-      return CGRect(
-        x: (bounds.midX - size.width / 2).rounded(), y: y, width: size.width,
-        height: size.height)
+  private func makeTrustRequest() -> CaptureTrustRequest {
+    let request = CaptureTrustRequest()
+    request.onRequest = { [weak self] in
+      guard let self else { return }
+      delegate?.overlay(self, perform: .requestAccessibility)
     }
+    barHost.addSubview(request)
+    trustRequest = request
+    return request
   }
 
-  /// Whether `point` is on the hint at `index`.
-  func hint(_ index: Int, contains point: CGPoint) -> Bool {
-    hints.indices.contains(index) && hints[index].frame.contains(point)
-  }
+  /// Where the bottom bar is (desktop points), nil while it is hidden.
+  var barFrame: CGRect? { bar.isHidden ? nil : bar.frame }
+
+  /// Where the selection's size label is drawn on this display (desktop points), if it is.
+  var sizeLabelFrame: CGRect? { chrome.labelFrame }
 
   // MARK: Mouse
 
@@ -214,9 +244,14 @@ final class CaptureOverlayView: NSView {
     hoverCursor(at: convert(window.mouseLocationOutsideOfEventStream, from: nil))
   }
 
-  /// The editor's bars' cursor over them, else the session's cursor where it has one (D15).
+  /// The bottom bar's or the editor's bars' cursor over them, else the session's cursor where it
+  /// has one (D15).
   private func hoverCursor(at point: CGPoint) {
-    if let cursor = annotationHost.barCursor(at: point) {
+    guard CaptureCursorOwnership.ownsPointer(in: window, at: NSEvent.mouseLocation) else { return }
+    // A text command's result card: its controls set their own cursor, the arrow elsewhere on it.
+    if let card = annotationHost.card(at: point) {
+      card.cursor(at: point)?.set()
+    } else if let cursor = barHost.barCursor(at: point) ?? annotationHost.barCursor(at: point) {
       cursor.set()
     } else {
       delegate?.overlay(self, cursorAt: point)?.set()
@@ -229,7 +264,23 @@ final class CaptureOverlayView: NSView {
 
   // MARK: Keyboard
 
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    if super.performKeyEquivalent(with: event) { return true }
+    if let editor = window?.firstResponder as? NSTextView,
+      editor.hasMarkedText() || editor.isFieldEditor
+    {
+      return false
+    }
+    guard event.type == .keyDown, window?.isKeyWindow == true,
+      let command = CaptureCommand(event), command == .save
+    else { return false }
+    delegate?.overlay(self, perform: command)
+    return true
+  }
+
   override func keyDown(with event: NSEvent) {
+    // Space and W toggle modes once per press; navigation still repeats while held.
+    if [49, 13].contains(event.keyCode), event.isARepeat { return }
     guard let command = CaptureCommand(event) else {
       super.keyDown(with: event)
       return

@@ -7,11 +7,21 @@ import AppKit
 /// editor shows it only then, and only with the controls that apply
 /// (``AnnotationStyleControls``): a mosaic has no colour, and a covering mosaic no size. The size
 /// (``AnnotationStroke``) sets each tool's measure: line width, marker width, text size,
-/// step-badge size, mosaic block or blur.
+/// step-badge size, mosaic block or blur. A mosaic also gets auto-redact (architecture S6): one
+/// button that covers every sensitive item the selection's text shows, then says so in place.
 final class AnnotationStyleBar: NSView {
+  /// What auto-redact can do now: wait for the text, nothing (none found, or all covered), or
+  /// cover this many items.
+  enum Redaction: Equatable {
+    case reading, none, allCovered
+    case cover(Int)
+  }
+
   /// A change the user picked: only the part the control stands for, and for a size slider
   /// drag the burst it belongs to (one undo step per drag).
   var onChange: ((AnnotationStyleChange, _ burst: UUID?) -> Void)?
+  /// Auto-redact was clicked.
+  var onRedact: (() -> Void)?
   /// The bar being dragged by its surface; it moves with the toolbar.
   var onDrag: ((AnnotationGlassBar.Drag) -> Void)? {
     get { bar.onDrag }
@@ -25,15 +35,35 @@ final class AnnotationStyleBar: NSView {
     AnnotationToolbarButton(selection: .ring, action: #selector(colorClicked))
   }
   private let size = AnnotationSizeSlider()
+  private let sizeSlot: NSStackView
+  private let measures: NSStackView
   private let background = AnnotationToolbarButton(
     selection: .toggle, action: #selector(backgroundClicked))
+  private let redact = AnnotationToolbarButton(
+    label: "", image: nil, action: #selector(redactClicked))
   private let bar: AnnotationGlassBar
+  private var redaction = Redaction.reading
+  private var controls: AnnotationStyleControls = []
+  /// Ends auto-redact's confirmation after a moment.
+  private var confirmation: Task<Void, Never>?
+  /// How much wider auto-redact's longest label is than the one it shows, which ``fullSize``
+  /// reserves.
+  private var redactSlack: CGFloat = 0
 
   override init(frame: NSRect) {
+    sizeSlot = NSStackView(views: [size])
+    sizeSlot.alignment = .centerY
+    sizeSlot.edgeInsets = NSEdgeInsets(top: 0, left: 6, bottom: 0, right: 6)
+    sizeSlot.translatesAutoresizingMaskIntoConstraints = false
+    sizeSlot.widthAnchor.constraint(equalToConstant: 124).isActive = true
+    sizeSlot.heightAnchor.constraint(equalToConstant: AnnotationToolbarButton.side).isActive = true
+    measures = NSStackView(views: [sizeSlot, background])
+    measures.alignment = .centerY
+    measures.spacing = 2
     bar = AnnotationGlassBar(
-      groups: [redactions, colors, [size], [background]], blending: .withinWindow)
+      groups: [redactions, colors, [measures], [redact]], blending: .withinWindow)
     super.init(frame: frame)
-    for button in redactions + colors + [background] { button.target = self }
+    for button in redactions + colors + [background, redact] { button.target = self }
     size.target = self
     size.action = #selector(sizeChanged)
     addSubview(bar)
@@ -52,13 +82,22 @@ final class AnnotationStyleBar: NSView {
     bar.frame = bounds
   }
 
-  /// The bar's size with every control shown, which the layout reserves so the toolbar keeps
-  /// its place whichever controls show.
+  /// The bar's size in its widest form, a mosaic's (redaction, size, auto-redact at its longest
+  /// label) or any other tool's with every control (colours, size, text background), which the
+  /// layout reserves so the toolbar keeps its place whichever controls show and whatever
+  /// auto-redact says.
   var fullSize: NSSize {
-    let hidden = [redactions[0], colors[0], size, background].map(\.isHidden)
-    for group in hidden.indices { bar.setGroup(group, hidden: false) }
-    defer { for (group, isHidden) in hidden.enumerated() { bar.setGroup(group, hidden: isHidden) } }
-    return bar.fittingSize
+    defer { showControls(controls) }
+    let forms: [(AnnotationStyleControls, CGFloat)] = [
+      ([.redaction, .strokes], redactSlack), ([.colors, .strokes, .textBackground], 0),
+    ]
+    let sizes = forms.map { shown, slack in
+      showControls(shown)
+      let size = bar.fittingSize
+      return NSSize(width: size.width + slack, height: size.height)
+    }
+    return NSSize(
+      width: sizes.map(\.width).max() ?? 0, height: sizes.map(\.height).max() ?? 0)
   }
 
   /// Reads the copy in the current shell language (once per session, as it opens).
@@ -84,14 +123,81 @@ final class AnnotationStyleBar: NSView {
     background.image = AnnotationIcons.glyph(AnnotationIcons.textBackground, label: name)
     background.toolTip = name
     background.setAccessibilityLabel(name)
+    showRedaction()
+  }
+
+  /// Pins the bar's glass dark (``AnnotationGlassBar/pinDark()``).
+  func pinDark() { bar.pinDark() }
+
+  /// What auto-redact can do now; a confirmation on show stays until it ends.
+  func setRedaction(_ redaction: Redaction) {
+    guard redaction != self.redaction else { return }
+    self.redaction = redaction
+    if confirmation == nil { showRedaction() }
+  }
+
+  /// Says in place that `count` items were just covered, with `tooltip`, then what it can do.
+  func confirmRedaction(count: Int, tooltip: String) {
+    confirmation?.cancel()
+    let label = ShellStrings.shared.text(.captureRedactDone, count: count)
+    sizeRedact(to: label, image: AnnotationIcons.glyph(AnnotationIcons.redacted, label: ""))
+    redact.toolTip = tooltip
+    redact.presentation = .success
+    redact.isEnabled = false
+    confirmation = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(1.6))
+      guard !Task.isCancelled else { return }
+      self?.endRedactionFeedback()
+    }
+  }
+
+  /// Withdraws auto-redact's confirmation (the selection moved, a tool or undo changed things).
+  func endRedactionFeedback() {
+    guard let confirmation else { return }
+    confirmation.cancel()
+    self.confirmation = nil
+    showRedaction()
+  }
+
+  /// The button for ``redaction``, as wide as what it says (decision D7); the layout reserves its
+  /// longest label for counts up to two digits (``fullSize``), so the toolbar stays put.
+  private func showRedaction() {
+    let strings = ShellStrings.shared
+    let label =
+      switch redaction {
+      case .reading: strings.text(.captureRedactScanning)
+      case .none: strings.text(.captureRedactNone)
+      case .allCovered: strings.text(.captureRedactAllCovered)
+      case .cover(let count): strings.text(.captureRedactAction, count: count)
+      }
+    sizeRedact(to: label, image: AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: ""))
+    redact.toolTip = strings.text(.captureRedactTooltip)
+    redact.isEnabled = if case .cover = redaction { true } else { false }
+    redact.presentation = .standard
+  }
+
+  /// Auto-redact saying `label`, at its width, and the slack to its longest label.
+  private func sizeRedact(to label: String, image: NSImage) {
+    let strings = ShellStrings.shared
+    let width = { (text: String) in AnnotationToolbarButton.Label.width(text: text, hasImage: true)
+    }
+    let widest =
+      [
+        strings.text(.captureRedactScanning), strings.text(.captureRedactNone),
+        strings.text(.captureRedactAllCovered), strings.text(.captureRedactAction, count: 88),
+        strings.text(.captureRedactDone, count: 88),
+      ].map(width).max() ?? 0
+    let current = width(label)
+    redact.setLabel(label, image: image, width: current)
+    redactSlack = max(widest - current, 0)
+    // The bar grows or shrinks with its label in place (the host is flipped: the top-left stays).
+    if superview != nil { setFrameSize(fittingSize) }
   }
 
   /// Shows `style`, with only the `controls` that apply.
   func update(style: AnnotationStyle, controls: AnnotationStyleControls) {
-    bar.setGroup(0, hidden: !controls.contains(.redaction))
-    bar.setGroup(1, hidden: !controls.contains(.colors))
-    bar.setGroup(2, hidden: !controls.contains(.strokes))
-    bar.setGroup(3, hidden: !controls.contains(.textBackground))
+    self.controls = controls
+    showControls(controls)
     background.isSelected = style.textBackground
     // The knob being dragged is the user's; the style catches up with it, not the other way.
     if size.burst == nil { size.doubleValue = style.stroke.value }
@@ -101,6 +207,17 @@ final class AnnotationStyleBar: NSView {
     for (button, item) in zip(colors, AnnotationColor.allCases) {
       button.isSelected = item == style.color
     }
+  }
+
+  /// The slider and text background share a group; either can disappear without a divider
+  /// between them. The native slider keeps its 112 pt artwork inside a 124 × 28 pt allocation.
+  private func showControls(_ controls: AnnotationStyleControls) {
+    bar.setGroup(0, hidden: !controls.contains(.redaction))
+    bar.setGroup(1, hidden: !controls.contains(.colors))
+    bar.setGroup(2, hidden: controls.intersection([.strokes, .textBackground]).isEmpty)
+    bar.setGroup(3, hidden: !controls.contains(.redaction))
+    sizeSlot.isHidden = !controls.contains(.strokes)
+    background.isHidden = !controls.contains(.textBackground)
   }
 
   @objc private func redactionClicked(_ sender: NSButton) {
@@ -120,6 +237,8 @@ final class AnnotationStyleBar: NSView {
   @objc private func backgroundClicked() {
     onChange?(AnnotationStyleChange(textBackground: !background.isSelected), nil)
   }
+
+  @objc private func redactClicked() { onRedact?() }
 
   private static func key(for redaction: AnnotationRedaction) -> ShellStringKey {
     switch redaction {

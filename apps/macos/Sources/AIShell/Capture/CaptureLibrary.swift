@@ -29,8 +29,9 @@ final class CaptureLibrary {
 
   /// Imports `capture`, with a screen-context file when `snapshot` is given (a new capture;
   /// an edited one has none), and archives it under the image's resource id. Text recognition
-  /// runs while the image is encoded; a context that cannot be written or imported is left
-  /// out without failing the capture.
+  /// runs while the image is encoded; the context leaves out whatever the capture's mosaics
+  /// could hide (``ScreenContext/init(app:window:element:recognized:hiding:)``). A context that
+  /// cannot be written or imported is left out without failing the capture.
   func importCapture(
     _ capture: CaptureConfirmation, capturedAt: Date, snapshot: WindowSnapshot?
   ) async throws(BridgeError) -> Imported {
@@ -42,7 +43,10 @@ final class CaptureLibrary {
       throw BridgeError("The screenshot could not be prepared.")
     }
     let raw = capture.raw
-    async let recognized = snapshot == nil ? [] : ScreenText.lines(in: raw)
+    let redacted = ScreenContext.redactedAreas(
+      of: capture.document, selection: capture.selection.size)
+    async let recognized: [ScreenContext.TextBox] =
+      snapshot == nil ? [] : ScreenText.boxes(in: raw) ?? []
     let image = try await CaptureExport.store(capture.image, capturedAt: capturedAt, in: folder)
     var files = [image]
     if let snapshot {
@@ -52,7 +56,7 @@ final class CaptureLibrary {
       let window = snapshot.describe(at: centre)
       let context = ScreenContext(
         app: window.app, window: window.window, element: capture.element.map(Self.element),
-        lines: await recognized)
+        recognized: await recognized, hiding: redacted)
       if let markdown = context.markdown,
         let file = await Self.write(
           markdown,
@@ -111,9 +115,10 @@ final class CaptureLibrary {
       help: description.help)
   }
 
-  /// Writes the context file off the main actor; nil when it could not be written.
+  /// Writes a context file off the main actor; nil when it could not be written. A text command
+  /// run from the capture writes its context with it too.
   @concurrent
-  private nonisolated static func write(_ markdown: String, to file: URL) async -> URL? {
+  nonisolated static func write(_ markdown: String, to file: URL) async -> URL? {
     do {
       try Data(markdown.utf8).write(to: file)
       return file

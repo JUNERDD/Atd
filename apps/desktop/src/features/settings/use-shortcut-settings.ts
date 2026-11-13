@@ -9,7 +9,11 @@ import {
   doubleTapModifier,
   effectiveAccelerator,
   selectionToolbarDoubleTap,
+  shortcutHolder,
 } from '@atd/agent-contracts';
+import { shortcutKeys } from '../../lib/shortcuts';
+import { useAgentCommands } from '../agent/use-agent';
+import { useShortcutNames } from '../commands/shortcut-names';
 import {
   DEFAULT_SELECTION_TOOLBAR,
   type MiniPanelOpenOn,
@@ -19,7 +23,16 @@ import {
 } from '../../client/settings-contract';
 
 /** The actions the shell registers globally, which alone may be a modifier's double-tap. */
-const GLOBAL_ACTIONS: readonly ShortcutAction[] = ['togglePanel', 'captureScreenshot'];
+const GLOBAL_ACTIONS: readonly ShortcutAction[] = [
+  'togglePanel',
+  'captureScreenshot',
+  'recordScreen',
+];
+
+/** Whether the shell registers `action` globally (`GLOBAL_ACTIONS`). */
+export function isGlobalAction(action: ShortcutAction): boolean {
+  return GLOBAL_ACTIONS.includes(action);
+}
 
 /** A desktop window preference the Shortcuts page switches. */
 type WindowPreference = 'pin' | 'dock' | 'login' | 'miniPanel' | 'miniPanelOpenOn';
@@ -38,7 +51,7 @@ function shortcutError(
   if (shortcut === toolbarTap) return t('shortcuts.errors.selectionToolbarDoubleTap');
   if (doubleTapModifier(shortcut)) return '';
   if (
-    ['togglePanel', 'captureScreenshot', 'newConversation', 'openSettings'].includes(action) &&
+    (isGlobalAction(action) || action === 'newConversation' || action === 'openSettings') &&
     !shortcut
       .split('+')
       .some((key) => ['CommandOrControl', 'Control', 'Alt', 'Super'].includes(key))
@@ -100,14 +113,34 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     effectiveAccelerator(bindings[action], platform) ===
     effectiveAccelerator(DEFAULT_SHORTCUTS[action], platform);
   const allDefault = (Object.keys(DEFAULT_SHORTCUTS) as ShortcutAction[]).every(isDefault);
+  const commands = useAgentCommands();
+  const names = useShortcutNames();
+
+  /**
+   * Why `action` has no keys, for its row: only an action an upgrade added can be without them
+   * (`ADDED_SHORTCUT_ACTIONS`), because its default was already in use. Names what holds the
+   * default now, another action or an enabled command's shortcut; '' while the action has keys.
+   */
+  function unboundText(action: ShortcutAction): string {
+    if (bindings[action] !== '') return '';
+    const accelerator = DEFAULT_SHORTCUTS[action];
+    const keys = shortcutKeys(accelerator, platform).join('');
+    const holder = shortcutHolder(accelerator, bindings, commands, platform);
+    if (!holder) return t('shortcuts.errors.unbound');
+    return holder.kind === 'app'
+      ? t('shortcuts.errors.unboundHeldByAction', {
+          keys,
+          action: t(`shortcuts.actions.${holder.action}.label`),
+        })
+      : t('shortcuts.errors.unboundHeldByCommand', { keys, name: names.holder(holder, commands) });
+  }
 
   const setError = useCallback((owner: ErrorOwner, text: string | undefined) => {
     setErrors((current) => ({ ...current, [owner]: text }));
   }, []);
 
   const { start, cancel, isRecording } = useShortcutCapture({
-    doubleTap:
-      platform === 'darwin' && recordingAction !== null && GLOBAL_ACTIONS.includes(recordingAction),
+    doubleTap: platform === 'darwin' && recordingAction !== null && isGlobalAction(recordingAction),
     onCancel: () => setRecordingAction(null),
     onRecorded: (shortcut) => {
       if (!recordingAction) return;
@@ -223,6 +256,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     accessibilityTrusted: snapshot?.accessibilityTrusted ?? null,
     isDefault,
     allDefault,
+    unboundText,
     startRecording,
     cancelRecording: cancel,
     restoreDefaults,

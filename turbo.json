@@ -49,11 +49,14 @@
       "dependsOn": ["build"],
       "inputs": [
         "src/**",
+        "addons/**",
         "view-kit/**",
         "product-skills/**",
         "package.json",
         "tsconfig.json",
-        "scripts/dev.mjs"
+        "scripts/dev.mjs",
+        "scripts/ensure-dev-addons.mjs",
+        "$TURBO_ROOT$/apps/macos/scripts/addons/**"
       ],
       "cache": false,
       "persistent": true,

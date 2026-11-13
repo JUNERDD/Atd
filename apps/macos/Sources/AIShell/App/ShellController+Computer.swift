@@ -31,7 +31,12 @@ extension ShellController {
     computer.announce = { [weak control] in control?.announceComputerHost() }
     computer.progress.send = { [weak control] in control?.sendComputerProgress($0) }
     computer.onStateChange = { [weak self] in self?.broadcastComputerState() }
-    panelHost.onDocumentUnload = { [weak self] in self?.shownComputerTaskId = nil }
+    panelHost.onDocumentUnload = { [weak self] in
+      self?.shownComputerTaskId = nil
+      self?.installedScreenRecording?.pageDidUnload()
+      self?.installedLongScreenshots?.pageDidUnload()
+      self?.screenshots.textRuns?.pageDidUnload()
+    }
     computer.start()
     startAddons()
   }

@@ -236,10 +236,13 @@ function MarkdownDisplayMath({ children }: { children?: ReactNode }) {
 }
 
 /**
- * Per-character reveal: the default word split cuts on whitespace, so an unspaced CJK paragraph
- * is one token and its streamed growth would appear without animating.
+ * Word-level reveal, disabled above length caps or when footnotes/reference definitions force
+ * Streamdown to collapse the message into one unmemoizable block on every streamed delta.
  */
-const STREAM_ANIMATION: NonNullable<StreamdownProps['animated']> = { sep: 'char' };
+const STREAM_ANIMATION: NonNullable<StreamdownProps['animated']> = { sep: 'word' };
+const MAX_ANIMATED_STREAM_CHARS = 12_000;
+const MAX_DEOPT_ANIMATED_CHARS = 3_000;
+const STREAMDOWN_FULL_BLOCK_DEOPT = /\[\^[\w-]{1,200}\]|^ {0,3}\[[^\]]+\]:/m;
 
 /**
  * Streamdown's root memo compares these props by reference, so inline literals would re-render
@@ -311,6 +314,10 @@ export function StreamdownMarkdown({
   // the static tree has none. Markdown that mounts settled takes the static tree.
   const [streamed, setStreamed] = useState(streaming);
   if (streaming && !streamed) setStreamed(true);
+  const reveal =
+    animated &&
+    text.length <= MAX_ANIMATED_STREAM_CHARS &&
+    (text.length <= MAX_DEOPT_ANIMATED_CHARS || !STREAMDOWN_FULL_BLOCK_DEOPT.test(text));
 
   // `isAnimating` follows the stream even without the reveal: Streamdown reports a still-open
   // fence only while it is set, and `MarkdownPre` streams that fence's lines instead of
@@ -319,7 +326,7 @@ export function StreamdownMarkdown({
     <MermaidPlugin value={mermaid}>
       <Streamdown
         className="markdown"
-        animated={animated ? STREAM_ANIMATION : false}
+        animated={reveal ? STREAM_ANIMATION : false}
         isAnimating={streaming}
         mode={streamed ? 'streaming' : 'static'}
         parseIncompleteMarkdown={streaming}

@@ -1,14 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ScrollShadowDefaultContext } from '@atd/ui/lib/scroll-shadow-context';
 import '@fontsource-variable/inter';
 import '@atd/ui/styles.css';
+import './window-scroll.css';
 import './styles.css';
-import i18n, { initialLanguageReady } from './i18n';
-import { LoadingPlaceholder } from './components/loading-placeholder';
+import i18n, { changeAppLanguage, defaultNS, initialLanguageReady } from './i18n';
+import { WindowLoading } from './components/window-loading';
 import { installEditCommands } from './lib/edit-commands';
 import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
-import { loadMarkdown } from './features/agent/transcript/markdown-loader';
 import { installColorScheme } from './theme/color-scheme';
 
 // The theme follows `prefers-color-scheme` (the shell applies the appearance setting app-wide);
@@ -35,27 +36,46 @@ if (nativeBridge) await renderWindow(nativeBridge);
 else await renderHostRequired();
 
 async function renderWindow(native: NativeBridge) {
+  document.documentElement.dataset.window = windowKind;
   const windowRoot = loadWindowRoot();
   // The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
   // tree, so a transcript rarely has to show plain text first.
-  if (windowKind === 'panel') void loadMarkdown();
+  if (windowKind === 'panel') {
+    void import('./features/agent/transcript/markdown-loader').then(({ loadMarkdown }) =>
+      loadMarkdown(),
+    );
+  }
   await installNativeHost(native, windowKind);
-  document.documentElement.dataset.window = windowKind;
   // Every window runs the application menu's Undo/Redo through this entry.
   const disposeEditCommands = installEditCommands();
   import.meta.hot?.dispose(disposeEditCommands);
   // A non-English first language loads its translations (started when i18n loaded) before any
-  // text renders.
-  const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady]);
+  // text renders; settings also primes its snapshot query and hydrated language in parallel.
+  const settingsReady =
+    windowKind === 'settings'
+      ? import('./features/settings/use-settings')
+          .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
+          .then(async (snapshot) => {
+            await initialLanguageReady;
+            if (
+              !i18n.hasResourceBundle(snapshot.language, defaultNS) ||
+              i18n.resolvedLanguage !== snapshot.language
+            ) {
+              await changeAppLanguage(snapshot.language);
+            }
+          })
+          .catch(() => undefined)
+      : Promise.resolve();
+  const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady, settingsReady]);
   // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
   // over the whole display, so it waits on nothing visible. The others name the window being
   // opened and paint their content surface, except a view's window, whose surface the shell draws
   // (styles.css); their own trees place any shapes.
   const fallback =
     windowKind === 'onboarding' ? null : (
-      <div className="window-loading">
-        <LoadingPlaceholder
-          label={
+      <output className="window-loading" aria-busy="true">
+        <WindowLoading
+          title={
             windowKind === 'settings'
               ? i18n.t('window.loading')
               : windowKind === 'view'
@@ -63,13 +83,15 @@ async function renderWindow(native: NativeBridge) {
                 : i18n.t('panelLoading', { ns: 'common' })
           }
         />
-      </div>
+      </output>
     );
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <React.Suspense fallback={fallback}>
-        <WindowRoot />
-      </React.Suspense>
+      <ScrollShadowDefaultContext.Provider value={windowKind !== 'panel'}>
+        <React.Suspense fallback={fallback}>
+          <WindowRoot />
+        </React.Suspense>
+      </ScrollShadowDefaultContext.Provider>
     </React.StrictMode>,
   );
 }

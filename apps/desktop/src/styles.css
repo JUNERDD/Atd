@@ -31,6 +31,8 @@ body {
    content surface from the first frame, while the loading region inside fades in on its own. The
    shell drags the window by it, as by the title bar it stands in for (drag-regions.ts). */
 .window-loading {
+  display: flex;
+  width: 100%;
   min-height: 100%;
   background: var(--ata-surface-panel);
 }

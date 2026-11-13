@@ -144,9 +144,6 @@ struct MiniPanelFlyout: View {
       if scrolls {
         let shown = rest.height - MiniPanelMetrics.cardPadding * 2
         ScrollView(.vertical) { rows(middleY: model.flyoutScroll + shown / 2) }
-          // `.never`, not `.hidden`: `.hidden` still shows the legacy scroller, track and all,
-          // when a mouse is connected or "Show scroll bars" is Always, beside the card's thumb.
-          .scrollIndicators(.never)
           .scrollPosition($position)
           .onScrollGeometryChange(for: MiniPanelScrollMetrics.Geometry.self) { geometry in
             MiniPanelScrollMetrics.Geometry(geometry)
@@ -158,6 +155,7 @@ struct MiniPanelFlyout: View {
           .onChange(of: model.flyoutScrollTarget) { _, target in
             if let target { position.scrollTo(y: target) }
           }
+          .modifier(FloatingScrollEdges(reduceMotion: model.reduceMotion))
       } else {
         rows(middleY: nil)
       }

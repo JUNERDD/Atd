@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import {
   CommandOutputSchema,
+  CommandScreenshotTextSchema,
   MemoryCreateRequestSchema,
   MemorySaveRequestSchema,
   MemorySettingsRequestSchema,
@@ -13,6 +14,19 @@ import { RunPolicySchema } from './run-policy';
 import { InputSchema } from './task-schema';
 import { ChildKeySchema } from './transcript-schema';
 import { MAX_CAPTURE_LENGTH, NativeCalls, SaveContentSchema } from '../../native-bridge/calls';
+
+/**
+ * What `submit` carries for a screenshot-text run (`SubmitTaskRequest.screenshotText`): a command
+ * run reads it as `CommandScreenshotText`; a free-form Ask (`turn: 'run'`) or a follow-up making a
+ * new version of a screenshot-text run's answer adds optional `turn`.
+ */
+const SubmitScreenshotTextSchema = Type.Object(
+  {
+    ...CommandScreenshotTextSchema.properties,
+    turn: Type.Optional(Type.Union([Type.Literal('run'), Type.Literal('followUp')])),
+  },
+  { additionalProperties: false },
+);
 
 /**
  * Every request a window hands the agent request handler (`AgentRequests`), as the `AgentBridge`
@@ -69,10 +83,20 @@ export const AgentRequestSchema = Type.Union([
     commandRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     savedRun: Type.Union([Type.Object({ taskId: Identifier, runId: Identifier }), Type.Null()]),
     input: InputSchema,
-    /** A command run only: where its answer goes, over the command's saved output, for this run. */
+    /**
+     * A command run: where its answer goes, over the command's saved output, for this run. A
+     * follow-up on a screenshot-text run's answer (`screenshotText`): where that answer goes.
+     */
     output: Type.Optional(CommandOutputSchema),
     /** A command run only: the command's shortcut that launched it (`CommandRunRequest.shortcutId`). */
     shortcutId: Type.Optional(Identifier),
+    /**
+     * A command run (`CommandRunRequest.screenshotText`) or a task run on screenshot text
+     * (`SubmitTaskRequest.screenshotText` with `output`): a free-form Ask on screenshot text sets
+     * `turn: 'run'` and sends recognized `[<id>]` / `[<id> @ x1,y1,x2,y2]` blocks in
+     * `input.selection`, while a follow-up makes a new version of an answer on the same format.
+     */
+    screenshotText: Type.Optional(SubmitScreenshotTextSchema),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
     branchBefore: Type.Optional(SessionEntryId),
     /**

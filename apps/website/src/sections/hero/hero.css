@@ -48,11 +48,25 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  /* The same clearance top and bottom keeps the wordmark on the panel's center line, clear of the
-     floating nav above and the scroll cue below. */
-  padding-block: var(--hero-clear);
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  row-gap: 16px;
+  /* Keep the wordmark balanced under the floating nav while giving the quiet H1 tagline clean
+     vertical breathing room at the bottom edge. */
+  padding-block: var(--hero-clear) max(48px, calc(env(safe-area-inset-bottom) + 36px));
   padding-inline: var(--gutter);
+}
+
+.hero__title {
+  max-inline-size: 36rem;
+  font-family: var(--font-text);
+  font-size: clamp(0.875rem, 0.84rem + 0.16vw, 1.0625rem);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--fg-2);
+  text-align: center;
+  text-wrap: balance;
 }
 
 /* Registration marks at the stage's top corners, just under the floating nav. */
@@ -122,88 +136,6 @@
 
 @keyframes hero-fallback {
   from {
-    opacity: 0;
-  }
-}
-
-/* The scroll cue: a dot-matrix mouse (index.tsx) at the panel's bottom center, its outline drawn in
-   faint dots and only its lit dots shown. A mouse means a pointer, so only pointer devices show it. */
-.hero__scroll {
-  --dot-0: transparent;
-  --dot-1: color-mix(in srgb, var(--fg-3) 60%, transparent);
-  display: none;
-  position: absolute;
-  z-index: 1;
-  inset-block-end: max(24px, env(safe-area-inset-bottom));
-  inset-inline-start: 50%;
-  inline-size: 26px;
-  translate: -50% 0;
-  pointer-events: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .hero__scroll {
-    display: block;
-  }
-}
-
-/* The wheel: the track down the mouse's middle (column 3, rows 2–5), brighter than the body. At rest
-   it is the track's top two dots. */
-.hero__scroll
-  .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
-  fill: var(--fg-2);
-}
-
-.hero__scroll .dot-glyph__dot[data-x='3']:is([data-y='4'], [data-y='5']) {
-  opacity: 0;
-}
-
-/* The wheel turns: a lit dot steps down the track a row every 0.25 s, leaving a fading trail, and the
-   track rests empty a beat before the next turn. Each row runs the same cycle one step later; the
-   negative delays keep the rows in phase from the first frame. */
-@media (prefers-reduced-motion: no-preference) {
-  .hero__scroll
-    .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
-    opacity: 0;
-    animation: hero-wheel 2.2s linear infinite;
-  }
-
-  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='3'] {
-    animation-delay: -1.95s;
-  }
-
-  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='4'] {
-    animation-delay: -1.7s;
-  }
-
-  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='5'] {
-    animation-delay: -1.45s;
-  }
-}
-
-@media (forced-colors: active) {
-  .hero__scroll .dot-glyph__dot[data-lit] {
-    fill: CanvasText;
-  }
-}
-
-/* One step lit, then a trail that fades over the next step. */
-@keyframes hero-wheel {
-  0%,
-  11% {
-    opacity: 1;
-  }
-
-  11.5% {
-    opacity: 0.45;
-  }
-
-  22% {
-    opacity: 0.1;
-  }
-
-  22.5%,
-  100% {
     opacity: 0;
   }
 }

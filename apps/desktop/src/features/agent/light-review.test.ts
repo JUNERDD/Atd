@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installBridge } from '../../../tests/app-test-bridge';
 import { fixtureCommands } from '../../../tests/command-fixtures';
 import type {
+  AgentEvent,
   CommandProgressAction,
   LightCommandBridge,
   TaskDetail,
@@ -9,22 +10,24 @@ import type {
 import { emptyInput, type RunStatus } from '../../client/agent/task-schema';
 import { changeAppLanguage, initialLanguageReady } from '../../i18n';
 import { MAX_REVIEW_VERSIONS } from '../../native-bridge/command-review';
+import { followCommandRuns } from './command-results';
 import { actOnProgress, settleLightRun, startLightRun, type LightHost } from './light-command';
 import { lightRuns, type LightLaunch } from './light-command-run';
+import { clearIsland, islandIdentity } from './island-owner';
 
 beforeEach(async () => {
   await initialLanguageReady;
   await changeAppLanguage('en');
-  lightRuns.current = null;
+  clearIsland();
   lightRuns.holding.clear();
 });
 afterEach(() => {
-  lightRuns.current = null;
+  clearIsland();
   lightRuns.holding.clear();
   delete window.desktop;
 });
 
-function harness(writable = true) {
+function harness(writable = true, runs = 'review-run') {
   const { api } = installBridge({ status: 'running' });
   const command = fixtureCommands()[0]!;
   const launch: LightLaunch = {
@@ -37,7 +40,7 @@ function harness(writable = true) {
   let sequence = 0;
   const submit = vi.fn<LightCommandBridge['submit']>(async (_key, request) => {
     const detail = await api.submit(request);
-    detail.task.runs[0]!.id = `review-run-${++sequence}`;
+    detail.task.runs[0]!.id = `${runs}-${++sequence}`;
     return detail;
   });
   const light = {
@@ -103,10 +106,9 @@ it('regenerates, browses an older version and quotes it when adjusting', async (
   expect(request.input.chips).toEqual([
     expect.objectContaining({ chip: { kind: 'quote', text: 'Hello world' } }),
   ]);
-  expect(lightRuns.current?.review?.versions.map((v) => v.answer)).toEqual([
-    'Hello world',
-    'Second translation',
-  ]);
+  expect(islandIdentity()).toMatchObject({
+    review: { versions: [{ answer: 'Hello world' }, { answer: 'Second translation' }] },
+  });
 });
 
 it('waits for a stopped version to drain before starting its replacement', async () => {
@@ -122,10 +124,9 @@ it('waits for a stopped version to drain before starting its replacement', async
   h.settle('review-run-2', 'completed', 'Late discarded answer');
   await vi.waitFor(() => expect(lightRuns.holding.has('review-run-3')).toBe(true));
   h.settle('review-run-3', 'completed', 'Short answer');
-  expect(lightRuns.current?.review?.versions.map((v) => v.answer)).toEqual([
-    'Hello world',
-    'Short answer',
-  ]);
+  expect(islandIdentity()).toMatchObject({
+    review: { versions: [{ answer: 'Hello world' }, { answer: 'Short answer' }] },
+  });
 });
 
 it('closing during submit stops the late run and releases only after it ends', async () => {
@@ -162,7 +163,7 @@ it('a failed version keeps the previous answer and allows another attempt', asyn
       review: expect.objectContaining({ count: 1 }),
     }),
   );
-  expect(lightRuns.current?.review?.pending).toBeNull();
+  expect(islandIdentity()).toMatchObject({ review: { pending: null } });
   h.act('regenerate');
   await vi.waitFor(() => expect(lightRuns.holding.has('review-run-3')).toBe(true));
 });
@@ -194,5 +195,65 @@ it('makes no more than the supported number of versions', async () => {
   }
   h.act('regenerate');
   expect(h.light.submit).toHaveBeenCalledTimes(MAX_REVIEW_VERSIONS);
-  expect(lightRuns.current?.review?.pending).toBeNull();
+  expect(islandIdentity()).toMatchObject({ review: { pending: null } });
+});
+
+/** The run's answer so far, as a transcript snapshot of the review's task carries it. */
+function partial(runId: string, text: string): AgentEvent {
+  const block = { id: `${runId}-answer`, runId, timestamp: 0, endedAt: 0, text };
+  return {
+    type: 'transcript',
+    patch: {
+      taskId: 'test-task',
+      revision: 1,
+      snapshot: true,
+      removed: [],
+      blocks: [{ ...block, kind: 'assistant', streaming: true, stopReason: null, error: '' }],
+    },
+  };
+}
+
+it('pages through versions while a new one streams onto its own page', async () => {
+  // Run ids of their own: the remembered command runs outlive each test.
+  const h = harness(true, 'paging-run');
+  const shown = () => h.light.show.mock.lastCall?.[1];
+  await h.start();
+  h.settle('paging-run-1');
+  h.act('regenerate');
+  expect(shown()).toMatchObject({ answer: '', review: { version: 2, count: 1 } });
+  await vi.waitFor(() => expect(lightRuns.holding.has('paging-run-2')).toBe(true));
+  followCommandRuns(partial('paging-run-2', 'Second'));
+  expect(shown()).toMatchObject({
+    answer: 'Second',
+    review: { version: 2, pending: 'regenerate' },
+  });
+  h.act('version', { version: 1 });
+  expect(shown()).toMatchObject({ answer: 'Hello world', review: { version: 1, count: 1 } });
+  h.settle('paging-run-2', 'completed', 'Second translation');
+  expect(shown()).toMatchObject({ answer: 'Hello world', review: { version: 1, count: 2 } });
+  h.act('version', { version: 2 });
+  expect(shown()).toMatchObject({ answer: 'Second translation', review: { version: 2, count: 2 } });
+});
+
+it('streams an answer onto the card and keeps what came when stopped', async () => {
+  const h = harness(false, 'card-run');
+  h.launch.output = { action: 'replaceSelection', review: false };
+  const { name } = h.launch.command;
+  const shown = () => h.light.show.mock.lastCall?.[1];
+  await h.start();
+  followCommandRuns(partial('card-run-1', ' \n'));
+  expect(shown()).toMatchObject({ phase: 'working' });
+  followCommandRuns(partial('card-run-1', 'Hel'));
+  expect(shown()).toEqual({ phase: 'answer', command: name, answer: 'Hel', streaming: true });
+  h.act('stop');
+  expect(h.api.stop).toHaveBeenCalledWith('test-task', 'card-run-1');
+  expect(shown()).toEqual({
+    phase: 'answer',
+    command: name,
+    answer: 'Hel',
+    note: `${name} was stopped.`,
+  });
+  const count = h.light.show.mock.calls.length;
+  expect(h.settle('card-run-1', 'stopped', '')).toBe(true);
+  expect(h.light.show).toHaveBeenCalledTimes(count);
 });

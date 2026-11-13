@@ -69,7 +69,7 @@ struct ReviewCardTests {
     #expect(text == String(repeating: "a", count: ReviewDraft.maxText - 1))
   }
 
-  @Test("Pending reviews stop, completed reviews page, capped reviews cannot regenerate")
+  @Test("Pending reviews stop and page to their own page, capped reviews cannot regenerate")
   func reviewActions() {
     var state = CommandProgressState()
     func phase(pending: CommandProgressState.Review.Pending? = nil, count: Int = 2)
@@ -83,7 +83,9 @@ struct ReviewCardTests {
     }
     state.show(target: "target", phase: phase(pending: .adjust))
     #expect(state.press(.regenerate) == nil)
-    #expect(state.press(.version, version: 2) == nil)
+    #expect(state.press(.version, version: 2)?.version == 2)
+    #expect(state.press(.version, version: 3)?.version == 3)
+    #expect(state.press(.version, version: 4) == nil)
     #expect(state.press(.stop)?.action == .stop)
     #expect(state.isReviewing && state.takesKeyboard)
     state.show(target: "target", phase: phase())
@@ -94,6 +96,25 @@ struct ReviewCardTests {
     #expect(state.press(.regenerate) == nil)
     #expect(state.press(.close)?.action == .close)
     #expect(state.shown == nil)
+  }
+
+  @Test("Only the pending version's page streams, from nothing")
+  func pendingPage() throws {
+    typealias Answer = CommandProgressShowParams.State.Answer
+    func shown(_ answer: String, version: Int) -> CommandProgressState.Phase? {
+      let review = CommandProgressState.Review(
+        source: nil, changes: nil, version: version, count: 2, options: [], summary: nil,
+        adjustments: [], pending: .regenerate)
+      return CommandProgressState.phase(
+        .answer(
+          Answer(command: "Fix", answer: answer, note: nil, review: review, streaming: nil)))
+    }
+    var state = CommandProgressState()
+    state.show(target: "a", phase: try #require(shown("", version: 3)))
+    #expect(state.answerStreams && !state.answerSettled && !state.cancelsWithEscape)
+    #expect(shown("", version: 2) == nil)
+    state.show(target: "a", phase: try #require(shown("Kept", version: 2)))
+    #expect(!state.answerStreams && !state.answerSettled)
   }
 
   @Test("A wrapped footer reserves space instead of covering the answer")

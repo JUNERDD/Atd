@@ -11,15 +11,15 @@ export function useRecordingBoundaries(
   useEffect(() => {
     if (!recording) return;
     function guard(event: KeyboardEvent) {
-      if (event.key === 'Tab' || event.key === 'Escape') {
+      if (event.repeat || isComposingKey(event)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      } else if (event.key === 'Tab' || event.key === 'Escape') {
         cancel();
         if (event.key === 'Escape') {
           event.preventDefault();
           event.stopImmediatePropagation();
         }
-      } else if (event.repeat || isComposingKey(event)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
       }
     }
     window.addEventListener('keydown', guard, true);

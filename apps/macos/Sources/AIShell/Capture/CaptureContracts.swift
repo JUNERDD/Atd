@@ -91,6 +91,11 @@ nonisolated protocol ElementTargeting: Sendable {
   /// a window, the display, or when Accessibility cannot tell. Called once, when the selection is
   /// confirmed, for a selection committed from a detected element.
   func describe(at point: CGPoint, frame: CGRect) async -> ElementDescription?
+  /// The scroll area a screenshot selection lies over (`selection` and the answer in Quartz
+  /// points), for the long screenshot (decision D5): its visible frame and its vertical scroll
+  /// value; nil when nothing there scrolls or Accessibility cannot tell. Asked once per settled
+  /// selection of a session that offers the long screenshot, while elements are detected.
+  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollArea?
   /// Ends the session and restores any state it changed in other apps.
   func end() async
 }
@@ -107,8 +112,13 @@ protocol AnnotationEditing: AnyObject {
   var onCancel: (() -> Void)? { get set }
   /// The user asked to copy the result instead of attaching it (toolbar or ⌘C).
   var onCopy: (() -> Void)? { get set }
-  /// True while a tool is chosen: presses inside the selection (away from its handles and edge
-  /// band) go to the editor. False: they move the selection. Called on every change.
+  /// The user asked to save the result to a local folder (toolbar or ⌘S); nil when editing.
+  var onSave: (() -> Void)? { get set }
+  /// Display name of the current save folder for the Save button's tooltip; nil uses a generic label.
+  var saveFolder: String? { get set }
+  /// True while a tool is chosen or text mode is on: presses inside the selection (away from its
+  /// handles and edge band) go to the editor. False: they move the selection, except where
+  /// ``claimsPress(at:)`` holds. Called on every change.
   var onInteriorClaimChange: ((Bool) -> Void)? { get set }
   /// Whether anything is drawn; a right-click clears the selection back to idle only when not.
   var hasAnnotations: Bool { get }
@@ -123,9 +133,15 @@ protocol AnnotationEditing: AnyObject {
     in hosts: [AnnotationHostView], selection: CGRect,
     backdrop: @escaping (CGRect) -> CaptureBackdrop?)
   /// The selection moved or was resized at any time; annotations stay put, the canvas and the
-  /// bars follow the selection.
-  func selectionDidChange(_ selection: CGRect)
-  /// Removes the canvas and the bars; annotations are discarded.
+  /// bars follow the selection. While `dragging` (the mouse is still moving or resizing it) the
+  /// bars keep the place beside it they took for as long as it fits
+  /// (``AnnotationToolbarLayout/Anchor``); a settled change places them afresh.
+  func selectionDidChange(_ selection: CGRect, dragging: Bool)
+  /// Commits open text to the document, as clicking away from it does; nothing to do without
+  /// any. The session calls it before it reads ``document`` or renders the annotations, so
+  /// neither an export nor a switch to record mode loses what is being typed.
+  func endText()
+  /// Removes the canvas and the bars; annotations, and open text, are discarded.
   func hide()
   /// A scroll-wheel event anywhere over an overlay; true when the editor used it
   /// (to resize what the style bar targets), false to leave it to the session.
@@ -141,4 +157,114 @@ protocol AnnotationEditing: AnyObject {
   /// `transform` maps desktop points to those pixels. Mosaics sample the backdrop the editor was
   /// shown with, so they read pixels beyond the selection's edge too.
   func render(into context: CGContext, transform: CGAffineTransform)
+  /// The command row in the style bar's slot while nothing is styled (architecture S1); nil
+  /// shows none (S8). Set before ``show(in:selection:backdrop:)``.
+  var commandRow: CaptureCommandRowSetup? { get set }
+  /// The command row or its ask field launched something: the session ends with it.
+  var onLaunch: ((CaptureLaunch) -> Void)? { get set }
+  /// What the bars beside the selection keep clear of (desktop points): set by the session
+  /// before `show` and before every `selectionDidChange` it makes.
+  var keepClear: AnnotationToolbarLayout.KeepClear { get set }
+  /// The text recognized in the current selection (desktop points), nil while it is being read;
+  /// the session sets it as recognition settles (S5).
+  var recognizedText: CaptureText? { get set }
+  /// Closes an open menu, or else the ask field; true when one closed, so the Escape or Return
+  /// that asked goes no further.
+  func dismissMenus() -> Bool
+  /// The toolbar's long screenshot button (decisions D5, D7): nil hides it, for a session that
+  /// does not offer the long screenshot; otherwise it is enabled only while `.available` and its
+  /// tooltip says why not. Set by the session before ``show(in:selection:backdrop:)`` and again
+  /// whenever the answer for the selection changes.
+  var longScreenshot: LongScreenshotAvailability? { get set }
+  /// The long screenshot button was clicked.
+  var onLongScreenshot: (() -> Void)? { get set }
+  /// Escape: steps back one level (an open menu or field, a running text command, open text, a
+  /// gesture, a result card, text mode's picks, a selection, the tool); false when nothing was
+  /// left, so the session cancels.
+  func stepBack() -> Bool
+  /// Whether a press at `point` inside an interior no tool claimed is still the editor's: a click
+  /// on a numbered step a text command drew opens its result card. The session leaves such a
+  /// press, and the cursor over it, to the editor.
+  func claimsPress(at point: CGPoint) -> Bool
+  /// The text a command or question launched from the capture also reads while text mode is on:
+  /// what is picked, else what a text command would read (every available paragraph), unmasked
+  /// only (decision D6); nil with text mode off or no text.
+  var pickedText: String? { get }
+  /// Set by the session before ``show(in:selection:backdrop:)``: the selection as it shows now,
+  /// with its annotations, for Copy Screenshot (decision D9) and a text command's screenshot; nil
+  /// when there is nothing to render.
+  var renderSelection: (() -> CaptureSelectionShot?)? { get set }
+  /// A text command's result card ended the capture (decision D10): the session ends with it.
+  var onTextResult: ((CaptureTextHandoff) -> Void)? { get set }
+}
+
+/// The selection rendered as it shows (``AnnotationEditing/renderSelection``): its pixels with
+/// the annotations at `scale` pixels per point, its size in points, and the app and window under
+/// it for the screen context (each nil when unknown).
+struct CaptureSelectionShot {
+  let image: CGImage
+  let scale: CGFloat
+  let size: CGSize
+  let app: String?
+  let window: String?
+}
+
+/// What a text command's result card hands on as it ends the capture (decision D10), done once
+/// the overlays are gone: open run `runId`'s task in Atd, or write `text` at the cursor the
+/// capture recorded.
+enum CaptureTextHandoff: Equatable {
+  case open(runId: String)
+  case insert(String)
+}
+
+/// What a screenshot session launches as it ends (architecture S1, S3, B2): a command placed on
+/// the screenshot toolbar, run on the screenshot with the values its menu picked (none: the
+/// remembered ones), or a question about it.
+enum CaptureLaunch: Equatable {
+  case command(CommandLaunch)
+  case ask(String)
+}
+
+/// The screenshot toolbar's command row, for a session the screenshot shortcut or the mini panel
+/// started (architecture S1, S2, S8).
+struct CaptureCommandRowSetup {
+  /// The commands placed on the screenshot toolbar, in order (`screenshotToolbar.set`).
+  let commands: [SelectionToolbarSettings.Command]
+  /// Their options (`commandOptions.set`); a command without an entry has no chevron.
+  let catalog: CommandOptionsCatalog
+  /// A command's option values picked in a menu, to remember (`commandOptions.picked`).
+  let onPick: (String, CommandArguments) -> Void
+  /// Puts recognized text on the clipboard (Copy text); false when the clipboard is busy.
+  let copyText: (String) -> Bool
+  /// More's last row: the session cancels and Settings › Commands opens once it is gone.
+  let openSettings: () -> Void
+  /// The field focused in front before the capture can take text, so an answer can go in at its
+  /// cursor; set once the session read it (``CaptureSession/present(reopening:targetRead:)``).
+  /// Without one the options menus leave Insert at cursor out (``CommandOutputChoice``).
+  var cursor = false
+  /// The app of that field, which a result card's Insert names.
+  var cursorApp: String?
+  /// The commands placed on `screenshotText` that read the selection, in order
+  /// (`screenshotToolbar.set`'s `textCommands`): text mode's command row.
+  var textCommands: [SelectionToolbarSettings.Command] = []
+  /// Runs those commands while the capture stays open; nil runs none (text mode still picks and
+  /// copies).
+  var textRuns: CaptureTextRunner?
+  /// Puts an image on the clipboard at its pixels per point (a result card's Copy Screenshot,
+  /// decision D9); false when the clipboard is busy.
+  var copyImage: (CGImage, CGFloat) -> Bool = { _, _ in false }
+}
+
+/// What recognition read in a selection's frozen pixels while it is edited (architecture S5,
+/// S6), every box in desktop points.
+struct CaptureText: Equatable {
+  /// Every piece of text with its box.
+  var boxes: [ScreenContext.TextBox]
+  /// The parts of it that look sensitive (``SensitiveText``).
+  var sensitive: [SensitiveText.Box]
+  /// Where each piece's characters are, for text mode's selection by the character.
+  var glyphs = CaptureTextGlyphs.empty
+
+  /// Recognition failed or found nothing.
+  static let empty = CaptureText(boxes: [], sensitive: [])
 }

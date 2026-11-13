@@ -8,7 +8,7 @@ import Testing
 @MainActor
 @Suite("Island result layout and transitions", .serialized, .enabled(if: !NSScreen.screens.isEmpty))
 struct IslandResultTests {
-  private func labels(_ language: String) -> IslandLabels {
+  func labels(_ language: String) -> IslandLabels {
     var labels = IslandLabels.current()
     labels.copy = language == "en" ? "Copy" : "复制"
     labels.close = language == "en" ? "Close" : "关闭"
@@ -55,7 +55,8 @@ struct IslandResultTests {
     let required =
       NSHostingView(rootView: footer.widthProbe).fittingSize.width
       + IslandMetrics.cardPadding * 2
-    let answer = controller.measure(.answer(command: "Translate", answer: "Hello", note: nil))
+    let answer = controller.measure(
+      .answer(command: "Translate", answer: IslandAnswer(text: "Hello"), note: nil))
     let review = controller.measure(reviewContent())
     #expect(answer.size.width >= required)
     #expect(review.size.width >= required)
@@ -97,12 +98,12 @@ struct IslandResultTests {
     #expect(controller.model.layers.last?.scales == true)
     #expect(controller.model.layers.last?.answerOffer == offer)
     #expect(controller.model.shape.frame.width < rest.width)
-    #expect(controller.window.ignoresMouseEvents)
+    #expect(!controller.window.acceptsPointerEvents)
 
     controller.model.answerOffer = offer
     controller.show(reviewContent())
     #expect(controller.model.layers.last?.scales == true)
-    #expect(!controller.window.ignoresMouseEvents)
+    #expect(controller.window.acceptsPointerEvents)
     try await Task.sleep(for: .milliseconds(250))
     #expect(controller.window.isVisible)
     #expect(controller.content?.kind == .review)
@@ -134,7 +135,75 @@ struct IslandResultTests {
     #expect(controller.model.shape.frame == frame)
   }
 
-  private func reviewContent(answer: String = "Hello") -> IslandContent {
+  @Test("Settled island resets layout motion to fixed and trims canvas to active shape")
+  func settledCanvasAndLayoutMotion() async throws {
+    let controller = IslandController()
+    controller.model.labels = labels("en")
+    controller.model.reduceMotion = false
+    defer { controller.hide() }
+
+    controller.show(reviewContent())
+    #expect(controller.model.layoutMotion == .fixed)
+    let initialSize = try #require(controller.size)
+    #expect(controller.model.canvas == IslandMetrics.canvas(fitting: initialSize))
+
+    // Wait for entrance to settle (`model.arrived == true`)
+    try await waitUntil { controller.model.arrived }
+    #expect(controller.model.arrived)
+    #expect(controller.model.layoutMotion == .fixed)
+
+    // Reflowing review update turns on `.interpolated` during motion, then resets to `.fixed`.
+    controller.show(
+      reviewContent(answer: String(repeating: "Another longer version.\n", count: 8)))
+    #expect(controller.model.layoutMotion == .interpolated)
+    let updatedSize = try #require(controller.size)
+    try await waitUntil { controller.model.layoutMotion == .fixed }
+    #expect(controller.model.layoutMotion == .fixed)
+    #expect(controller.model.canvas == IslandMetrics.canvas(fitting: updatedSize))
+  }
+
+  @Test("Warm-up, repeated appear, and morph from working settle hoverReady")
+  func appearanceAndHoverReadyTransitions() async throws {
+    let controller = IslandController()
+    controller.model.labels = labels("en")
+    controller.model.reduceMotion = false
+    defer { controller.hide() }
+
+    controller.warmUp()
+    #expect(!controller.window.isVisible)
+
+    controller.show(.working(command: "Summarize", summary: nil))
+    let firstAppearance = controller.model.appearance
+    #expect(!controller.window.hoverReady)
+    controller.show(reviewContent())
+    try await waitUntil { controller.model.arrived }
+    #expect(controller.model.arrived)
+    #expect(controller.window.hoverReady)
+    #expect(controller.model.layoutMotion == .fixed)
+
+    controller.hide()
+    #expect(!controller.window.hoverReady)
+    #expect(controller.model.layers.isEmpty)
+
+    controller.show(reviewContent(answer: "Second appearance"))
+    #expect(controller.model.appearance == firstAppearance + 1)
+    #expect(!controller.window.hoverReady)
+    try await waitUntil { controller.model.arrived }
+    #expect(controller.model.arrived)
+    #expect(controller.window.hoverReady)
+  }
+
+  private func waitUntil(
+    timeout: Duration = .seconds(5),
+    _ condition: () -> Bool
+  ) async throws {
+    let deadline = ContinuousClock.now + timeout
+    while !condition(), ContinuousClock.now < deadline {
+      try await Task.sleep(for: .milliseconds(10))
+    }
+  }
+
+  func reviewContent(answer: String = "Hello") -> IslandContent {
     .review(
       command: "Translate", answer: answer, note: nil,
       review: .init(

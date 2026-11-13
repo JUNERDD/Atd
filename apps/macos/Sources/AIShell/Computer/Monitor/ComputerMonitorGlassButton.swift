@@ -55,6 +55,7 @@ final class ComputerMonitorGlassButton: NSView {
     guard shown != self.shown else { return }
     self.shown = shown
     if shown { isHidden = false }
+    window?.invalidateCursorRects(for: self)
     NSAnimationContext.runAnimationGroup { context in
       context.duration = 0.15
       animator().alphaValue = shown ? 1 : 0
@@ -70,6 +71,11 @@ final class ComputerMonitorGlassButton: NSView {
     super.layout()
     material.view.frame = bounds
     GlassSurface.shape(material, content: surface, cornerRadius: bounds.height / 2)
+  }
+
+  /// The pointing hand while it shows (``PointerRole``); a hidden view keeps no cursor rects.
+  override func resetCursorRects() {
+    addCursorRect(bounds, cursor: PointerRole(button: button).cursor)
   }
 
   @objc private func pressed() { onPress?() }

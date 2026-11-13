@@ -22,15 +22,37 @@ final class AnnotationHostView: NSView {
     return hit
   }
 
-  /// The cursor at `point` (the overlay's coordinates) when it is on one of the editor's bars:
-  /// the arrow over a control, an open hand over the bar's surface, which drags it; nil off them.
+  /// The cursor at `point` (the overlay's coordinates) when it is on one of the bars: the I-beam
+  /// over a text field, the button's ``PointerRole`` over a button (the pointing hand while it is
+  /// enabled), the arrow over another control or a bar that does not move, an open hand over the
+  /// surface of one that does; nil off them.
   func barCursor(at point: CGPoint) -> NSCursor? {
     guard let hit = super.hitTest(point), Self.isInBar(hit) else { return nil }
-    return sequence(first: hit, next: \.superview).contains { $0 is NSControl } ? .arrow : .openHand
+    let chain = Array(sequence(first: hit, next: \.superview))
+    if chain.contains(where: { ($0 as? NSTextField)?.isEditable == true || $0 is NSTextView }) {
+      return .iBeam
+    }
+    if let button = chain.lazy.compactMap({ $0 as? NSButton }).first {
+      return PointerRole(button: button).cursor
+    }
+    let bar = chain.lazy.compactMap { $0 as? AnnotationGlassBar }.first
+    let passive = chain.contains { $0 is NSControl } || bar?.onDrag == nil
+    return (passive ? PointerRole.passive : .grab).cursor
   }
 
+  /// The result card under `point` (the overlay's coordinates), whose controls set their own
+  /// cursors.
+  func card(at point: CGPoint) -> CaptureResultCardHost? {
+    guard let hit = super.hitTest(point) else { return nil }
+    return sequence(first: hit, next: \.superview).lazy.compactMap { $0 as? CaptureResultCardHost }
+      .first
+  }
+
+  /// A bar or the result card: they take their presses wherever they lie, over the selection too.
   private static func isInBar(_ view: NSView) -> Bool {
-    sequence(first: view, next: \.superview).contains { $0 is AnnotationGlassBar }
+    sequence(first: view, next: \.superview).contains {
+      $0 is AnnotationGlassBar || $0 is CaptureResultCardHost
+    }
   }
 }
 

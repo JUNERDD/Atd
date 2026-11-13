@@ -49,9 +49,8 @@ export function BlogIndex() {
                       src={cover.image.src}
                       width={cover.image.width}
                       height={cover.image.height}
-                      alt=""
-                      loading={first ? 'eager' : 'lazy'}
-                      fetchPriority={first ? 'high' : 'auto'}
+                      alt={cover.alt}
+                      {...(first ? {} : { loading: 'lazy' })}
                       decoding="async"
                     />
                   ) : null}

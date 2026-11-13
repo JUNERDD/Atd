@@ -3,9 +3,9 @@ export const LANGS = ['en', 'zh'] as const;
 
 /**
  * A page of the site, which is also its path below the language's root: the home page, the blog's
- * list of posts, one post (`blog/<slug>`), or the diagnostic downloads.
+ * list of posts, one post (`blog/<slug>`), diagnostic downloads, or a missing route.
  */
-export type Page = 'home' | 'blog' | `blog/${string}` | 'debug';
+export type Page = 'home' | 'blog' | `blog/${string}` | 'debug' | 'not-found';
 
 export type Lang = (typeof LANGS)[number];
 
@@ -21,15 +21,23 @@ export const languageNames: Localized<string> = { en: 'English', zh: '简体中�
 export const langPath: Localized<string> = { en: '/', zh: '/zh' };
 
 export function pagePath(lang: Lang, page: Page): string {
-  if (page === 'home') return langPath[lang];
+  if (page === 'home' || page === 'not-found') return langPath[lang];
   return lang === 'en' ? `/${page}` : `/zh/${page}`;
 }
 
 export function pageFromPath(path: string): Page {
-  const page = /^\/(?:zh\/)?(debug|blog(?:\/[a-z0-9-]+)?)\/?$/.exec(path)?.[1];
-  if (page === undefined) return 'home';
+  const clean = path.replace(/\/+$/, '') || '/';
+  if (clean === '/' || clean === '/index.html' || clean === '/zh' || clean === '/zh/index.html')
+    return 'home';
+  const page = /^\/(?:zh\/)?(debug|blog(?:\/[a-z0-9-]+)?)$/.exec(clean)?.[1];
+  if (page === undefined) return 'not-found';
   if (page === 'debug' || page === 'blog') return page;
   return `blog/${page.slice('blog/'.length)}` as const;
+}
+
+export function pageFromDocument(): Page {
+  if (document.documentElement.dataset.page === 'not-found') return 'not-found';
+  return pageFromPath(location.pathname);
 }
 
 /** The post a `blog/<slug>` page shows, or `null` for every other page. */

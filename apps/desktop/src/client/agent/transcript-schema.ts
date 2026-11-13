@@ -181,6 +181,7 @@ export const BlockSchema = Type.Union([
       /** The parsed tool arguments as the model produced them. */
       args: Type.Record(Type.String(), Type.Unknown()),
       status: ToolStatusSchema,
+      streaming: Type.Optional(Type.Boolean()),
       /** Text of the final tool result (error text when failed or declined). */
       output: Type.String(),
       /** Live output streamed through `tool_execution_update`; empty once the result arrives. */

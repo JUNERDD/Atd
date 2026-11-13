@@ -103,7 +103,8 @@
       "automationEnable": "开启自动化",
       "automationDisable": "关闭自动化",
       "automationRun": "运行自动化",
-      "updateView": "更新视图"
+      "updateView": "更新视图",
+      "markScreenshot": "标注截图"
     },
     "target": {
       "user": "用户",
@@ -247,7 +248,7 @@
     "cancel": "取消",
     "deleteAction": "删除任务",
     "taskGone": "该任务已被删除。",
-    "emptyDescription": "你发起的对话会显示在这里。命令执行记录可在“命令执行”中查看。",
+    "emptyDescription": "你发起的对话会显示在这里。命令执行和截图/录屏任务可在各自的分类中查看。",
     "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
     "noModel": "未使用模型",
     "view": {
@@ -255,6 +256,7 @@
       "groupBy": "分组方式",
       "sortBy": "排序方式",
       "showCommandTasksInAll": "在“全部”中显示命令执行",
+      "showCaptureTasksInAll": "在“全部”中显示截图/录屏任务",
       "groups": {
         "date": "日期",
         "status": "状态",
@@ -301,12 +303,13 @@
       "active": "进行中",
       "failed": "失败",
       "commands": "命令执行",
+      "captures": "截图/录屏",
       "automated": "自动运行"
     },
     "filterEmpty": {
       "all": {
         "title": "还没有普通对话",
-        "description": "命令记录可在“命令执行”中查看，也可在视图选项中开启“在‘全部’中显示命令执行”。"
+        "description": "命令执行和截图/录屏任务可在各自的分类中查看，也可在视图选项中设置为在“全部”中显示。"
       },
       "pinned": {
         "title": "没有置顶的任务",
@@ -323,6 +326,10 @@
       "commands": {
         "title": "还没有命令执行记录",
         "description": "通过已保存命令发起的任务会显示在这里，包括快捷键和自动化触发的执行。"
+      },
+      "captures": {
+        "title": "还没有截图/录屏任务",
+        "description": "从截图或录屏发起的提问和命令执行会显示在这里。"
       },
       "automated": {
         "title": "没有自动运行的任务",
@@ -572,7 +579,13 @@
       "failed": "{{command}} 未能完成。",
       "stopped": "{{command}} 已停止。",
       "startFailed": "{{command}} 无法开始运行。",
-      "empty": "{{command}} 没有可写入的回答。"
+      "empty": "{{command}} 没有可写入的回答。",
+      "emptyCopy": "{{command}} 没有可拷贝的回答。"
+    },
+    "ask": {
+      "title": "问 Atd",
+      "note": "你的问题：{{question}}",
+      "empty": "Atd 没有给出回答。"
     },
     "review": {
       "failed": "{{command}} 没能生成新版本。"

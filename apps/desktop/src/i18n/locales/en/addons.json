@@ -11,7 +11,7 @@
   "unavailable": "Not offered",
   "detail": {
     "size": "Download size: {{size}}.",
-    "installed": "Installed · version {{version}}",
+    "installed": "Installed · {{version}}",
     "outdated": "Version {{installed}} is installed, but this version of Atd uses {{version}}.",
     "outdatedSize": "Version {{installed}} is installed, but this version of Atd uses {{version}}. Download size: {{size}}.",
     "unavailable": "This build of Atd does not offer it for your Mac.",
@@ -46,5 +46,12 @@
       "title": "Browser engine",
       "description": "Operates web pages in Atd's own managed Chrome profile, kept apart from your everyday browser."
     }
+  },
+  "wps": {
+    "label": "App integrations",
+    "title": "WPS spreadsheet selection",
+    "description": "Show the toolbar for selected spreadsheet content.",
+    "reopen": "Save your documents, then restart WPS to connect.",
+    "setupFailed": "Setup failed. Open WPS and try again."
   }
 }

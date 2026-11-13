@@ -49,6 +49,31 @@ export const NativePreferencePosts = {
    */
   'glowEffects.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
   /**
+   * Whether the shell's floating result cards (the command island's answer and review cards, and
+   * the capture, recording and long screenshot results) render Markdown or show plain text
+   * (`resultMarkdown`). Swift keeps it and restores the last one at launch, rendering Markdown
+   * until the first push.
+   */
+  'resultMarkdown.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * How screenshot confirmation behaves (`screenshotCopyOnConfirm`, `longScreenshotConfirmAction`):
+   * whether clicking ✓ on the screenshot toolbar also copies the image to the clipboard, and
+   * whether clicking ✓ in long screenshot opens the result card, closes and copies directly, or
+   * saves to the configured folder and closes. Swift keeps them and restores the last ones at
+   * launch until the first push.
+   */
+  'screenshotPreferences.set': Type.Object(
+    {
+      copyOnConfirm: Type.Boolean(),
+      longScreenshotConfirmAction: Type.Union([
+        Type.Literal('card'),
+        Type.Literal('copy'),
+        Type.Literal('save'),
+      ]),
+    },
+    { additionalProperties: false },
+  ),
+  /**
    * The panel background for the shell's own surfaces: the floating glass's fill per appearance
    * (`GlassSurface`), the Liquid Glass variant of the panel's, the Settings window's and the
    * floating surfaces' glass, and its blur and edge refraction relative to the system's, as

@@ -103,7 +103,16 @@ public enum TextCapture {
     return .success(CapturedText(text: text, capturedAt: date))
   }
 
-  private static func hasContent(_ text: String) -> Bool {
-    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  /// Whether `text` contains any readable character beyond whitespace, control codes, invisible
+  /// format markers and `U+FFFC` (the object replacement character AppKit, WebKit and Chromium
+  /// emit for inline images and attachments). Passages that mix text with an attachment still
+  /// count.
+  public static func hasContent(_ text: String) -> Bool {
+    text.unicodeScalars.contains { scalar in
+      scalar.value != 0xFFFC
+        && !CharacterSet.whitespacesAndNewlines.contains(scalar)
+        && !CharacterSet.controlCharacters.contains(scalar)
+        && !scalar.properties.isDefaultIgnorableCodePoint
+    }
   }
 }

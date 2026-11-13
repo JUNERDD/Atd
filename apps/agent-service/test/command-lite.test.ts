@@ -215,7 +215,7 @@ test('a template token, a policy tool or an existing task keeps a run off the li
   assert.ok(declaredTools(model.bodies.at(-1) ?? '').includes('ask_user'));
 });
 
-test('files, a screenshot, folders, a frame or a trigger make a run ineligible', () => {
+test('files, a screenshot, folders, computer, a frame or a trigger make a run ineligible', () => {
   const facts: LiteRunFacts = {
     taskId: undefined,
     input: input('text'),
@@ -226,11 +226,17 @@ test('files, a screenshot, folders, a frame or a trigger make a run ineligible',
   };
   assert.equal(isLiteRun(facts), true);
   const file = { id: 'res-1', name: 'a.txt', type: 'text/plain', size: 1 };
+  assert.equal(
+    isLiteRun({ ...facts, screenshotText: true, input: { ...facts.input, files: [file] } }),
+    true,
+  );
   const off: LiteRunFacts[] = [
     { ...facts, input: { ...facts.input, files: [file] } },
     { ...facts, input: { ...facts.input, source: 'screenshot' } },
     { ...facts, input: { ...facts.input, folders: ['folder-1'] } },
     { ...facts, framed: true },
+    { ...facts, computer: true },
+    { ...facts, computer: true, screenshotText: true, input: { ...facts.input, files: [file] } },
     {
       ...facts,
       internal: {

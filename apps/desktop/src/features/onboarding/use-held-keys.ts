@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
+import { onWindowActive } from '../../window-state';
 
 const MODIFIERS = ['meta', 'ctrl', 'alt', 'shift'] as const;
 type Modifier = (typeof MODIFIERS)[number];
@@ -50,10 +51,14 @@ export function useHeldKeys(accelerator: string, platform: string): boolean[] {
     window.addEventListener('keydown', update);
     window.addEventListener('keyup', update);
     window.addEventListener('blur', release);
+    const unsubscribe = onWindowActive((active) => {
+      if (!active) release();
+    });
     return () => {
       window.removeEventListener('keydown', update);
       window.removeEventListener('keyup', update);
       window.removeEventListener('blur', release);
+      unsubscribe();
     };
   }, []);
   return acceleratorToHotkey(accelerator, platform)

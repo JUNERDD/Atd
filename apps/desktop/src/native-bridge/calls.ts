@@ -3,17 +3,22 @@
  * schemas their params and results use; the file calls and their records live in `file-calls.ts`,
  * the window and app presence calls in `window-calls.ts`, the command options in
  * `command-options.ts`, the app's identity and updates in `update-calls.ts`, the selection
- * toolbar's in `selection-toolbar-calls.ts`.
+ * toolbar's in `selection-toolbar-calls.ts`, the capture overlay's in `capture-calls.ts`, and the
+ * questions about a screen recording in `recording-calls.ts`.
  * Like the rest of the contract, the export script loads this file with Node's type stripping, so
  * it imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
  * erasable TypeScript syntax.
  */
 import { Type, type TSchema } from 'typebox';
+import { NativeCaptureCalls } from './capture-calls.ts';
+import { CaptureResultSchema, NativeCaptureTextCalls } from './capture-text-calls.ts';
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
-import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
+import { NativeFileCalls } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
+import { NativePanelModalCalls } from './panel-modal-calls.ts';
+import { NativeRecordingCalls } from './recording-calls.ts';
 import { NativeSelectionToolbarCalls } from './selection-toolbar-calls.ts';
 import { NativeShortcutRecordingCalls } from './shortcut-recording.ts';
 import { NativeTextCalls } from './text-calls.ts';
@@ -21,6 +26,7 @@ import { NativeUpdateCalls } from './update-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
 import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
+export { CaptureResultSchema };
 export {
   MAX_SAVE_PNG_BASE64_LENGTH,
   NativeFileRefSchema,
@@ -30,19 +36,22 @@ export {
 export type { SaveContent } from './file-calls.ts';
 
 /**
- * Reserved registration ids: the panel toggle and the screenshot. Every other registration is a
- * command shortcut registered under its own id (agent-contracts `CommandShortcut.id`, never one
- * of these or a command id); the page maps it back to its command when `shortcut.command` fires.
+ * Reserved registration ids: the panel toggle, the screenshot and the screen recording. Every
+ * other registration is a command shortcut registered under its own id (agent-contracts
+ * `CommandShortcut.id`, never one of these or a command id); the page maps it back to its command
+ * when `shortcut.command` fires. The shell's hot-key mapping (`SummonTrigger`) reads these ids
+ * from the generated contract.
  */
 export const PANEL_SHORTCUT_ID = 'togglePanel';
 export const SCREENSHOT_SHORTCUT_ID = 'captureScreenshot';
+export const RECORD_SHORTCUT_ID = 'recordScreen';
 
-/** The most registrations `shortcuts.set` takes: the two above plus the command shortcuts. */
+/** The most registrations `shortcuts.set` takes: the three above plus the command shortcuts. */
 export const MAX_SHORTCUT_REGISTRATIONS = 256;
 
 export const ShortcutRegistrationSchema = Type.Object(
   {
-    /** `togglePanel`, `captureScreenshot`, or the id of a command shortcut (`CommandShortcut.id`). */
+    /** A reserved id (`togglePanel`, …) or the id of a command shortcut (`CommandShortcut.id`). */
     id: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }),
     /** Electron accelerator grammar (`CommandOrControl+Shift+Space`), converted by Swift. */
     accelerator: Type.String({ minLength: 1, maxLength: 100 }),
@@ -89,26 +98,6 @@ const ApprovalRequestResultSchema = Type.Union([
         Type.Literal('unavailable'),
         Type.Literal('busy'),
       ]),
-    },
-    { additionalProperties: false },
-  ),
-]);
-
-/** What `screenshot.capture` and `screenshot.edit` answer. */
-const ScreenshotResultSchema = Type.Union([
-  Type.Object(
-    {
-      ok: Type.Literal(true),
-      file: NativeFileRefSchema,
-      context: Type.Union([NativeFileRefSchema, Type.Null()]),
-      capturedAt: Type.String({ maxLength: 64 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      ok: Type.Literal(false),
-      reason: Type.Union([Type.Literal('cancelled'), Type.Literal('notPermitted')]),
     },
     { additionalProperties: false },
   ),
@@ -194,30 +183,7 @@ export const NativeCalls = {
     params: Type.Object({ text: Text(1000000) }, { additionalProperties: false }),
     result: Empty,
   },
-  /**
-   * Lets the user capture an area, a window or the screen on the native capture overlay (element
-   * detection, annotation), with the panel out of the way, and imports the image through
-   * `/v1/resources/import`. The panel's visibility is restored afterwards. `context` is a Markdown
-   * attachment imported beside the image (app and window, the picked interface element,
-   * recognised text), or null when there is nothing to say. `notPermitted`: Screen Recording is
-   * not granted (Swift asks once per launch); `cancelled`: the user dismissed the capture. An
-   * import the service refuses rejects with its message.
-   */
-  'screenshot.capture': { params: Empty, result: ScreenshotResultSchema },
-  /**
-   * Opens an image attachment (`resourceId`, an image resource) on the capture overlay for more
-   * annotation and cropping, and imports the result as a new resource; the original is left as it
-   * is. A capture taken during this app run reopens with its annotations still editable; any other
-   * image is annotated on top of its pixels. `context` is always null (the caller keeps any context
-   * it had); `cancelled` leaves the attachment unchanged.
-   */
-  'screenshot.edit': {
-    params: Type.Object(
-      { resourceId: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }) },
-      { additionalProperties: false },
-    ),
-    result: ScreenshotResultSchema,
-  },
+  ...NativeCaptureCalls,
   /**
    * Shows the system share picker for `text`, anchored to `anchor` in the window the call came
    * from. Resolves as soon as the picker is shown; whether the user picks a service or dismisses
@@ -310,4 +276,7 @@ export const NativeCalls = {
     ),
   },
   ...NativeShortcutRecordingCalls,
+  ...NativeRecordingCalls,
+  ...NativeCaptureTextCalls,
+  ...NativePanelModalCalls,
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

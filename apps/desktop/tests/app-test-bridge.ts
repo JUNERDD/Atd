@@ -58,6 +58,7 @@ export function installBridge(extras?: {
     language: 'en',
     appearance: null,
     glowEffects: true,
+    resultMarkdown: true,
     panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND),
     computerVisionModel: null,
     shortcuts: { ...DEFAULT_SHORTCUTS },
@@ -67,9 +68,12 @@ export function installBridge(extras?: {
     panelPlacement: 'bottomRight',
     shortcutAvailable: true,
     screenshotShortcutAvailable: true,
+    recordShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
     selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+    screenshotCopyOnConfirm: true,
+    longScreenshotConfirmAction: 'card',
     commandTyping: true,
     commandTypingAnimation: true,
     viewInitiative: 'proactive',
@@ -263,7 +267,7 @@ export function installBridge(extras?: {
     show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
-    screenshot: vi.fn(async () => null),
+    captureScreenshotInput: vi.fn(async () => null),
     editScreenshot: vi.fn(async () => null),
     resource: vi.fn(async () => new Blob()),
     settings: {
@@ -286,6 +290,7 @@ export function installBridge(extras?: {
         writeSettings({ appearance }),
       ),
       setGlowEffects: vi.fn(async (glowEffects) => writeSettings({ glowEffects })),
+      setResultMarkdown: vi.fn(async (resultMarkdown) => writeSettings({ resultMarkdown })),
       setPanelBackground: vi.fn(async (panelBackground) => writeSettings({ panelBackground })),
       saveShortcuts: vi.fn(async () => settings),
       setComputerVisionModel: vi.fn(async (computerVisionModel) =>
@@ -309,6 +314,12 @@ export function installBridge(extras?: {
         };
       },
       saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
+      setScreenshotCopyOnConfirm: vi.fn(async (screenshotCopyOnConfirm) =>
+        writeSettings({ screenshotCopyOnConfirm }),
+      ),
+      setLongScreenshotConfirmAction: vi.fn(async (longScreenshotConfirmAction) =>
+        writeSettings({ longScreenshotConfirmAction }),
+      ),
       saveCommandTyping: vi.fn(async (commandTyping) => writeSettings({ commandTyping })),
       saveCommandTypingAnimation: vi.fn(async (commandTypingAnimation) =>
         writeSettings({ commandTypingAnimation }),

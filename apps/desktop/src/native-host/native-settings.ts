@@ -3,9 +3,12 @@ import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_GLOW_EFFECTS,
+  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
+  DEFAULT_RESULT_MARKDOWN,
+  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -25,6 +28,7 @@ import {
   DEFAULT_SELECTION_TOOLBAR,
   isAppAppearance,
   isAppLanguage,
+  isLongScreenshotConfirmAction,
   isViewInitiative,
   resolveLanguage,
   type SettingsBridge,
@@ -42,7 +46,7 @@ import type { WindowMessages } from './window-messages';
 
 /**
  * The preferences the shell owns (the panel's placement null until `app.state` answers), whether
- * it holds the panel and screenshot shortcuts (null until the panel's first registration answer
+ * it holds the panel, screenshot and record-screen shortcuts (null until the panel's first registration answer
  * reaches this window), whether macOS trusts the app for Accessibility and lets it capture the
  * screen (each null until the shell's `accessibility.trust` or `screenRecording.trust` arrives),
  * and whether the mini panel shows and how it opens (null until the shell's first
@@ -52,6 +56,7 @@ export type ShellState = Omit<CallResult<'app.state'>, 'panelPlacement'> & {
   panelPlacement: CallResult<'app.state'>['panelPlacement'] | null;
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
+  recordShortcutAvailable: boolean | null;
   accessibilityTrusted: boolean | null;
   screenRecordingTrusted: boolean | null;
   miniPanelShown: boolean | null;
@@ -75,6 +80,7 @@ export function nativeSettings(
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
   onLoadError: (listener: () => void) => () => void;
+  prime: () => Promise<void>;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -87,6 +93,7 @@ export function nativeSettings(
     panelPlacement: null,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
+    recordShortcutAvailable: null,
     accessibilityTrusted: null,
     screenRecordingTrusted: null,
     miniPanelShown: null,
@@ -106,6 +113,7 @@ export function nativeSettings(
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
       glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
+      resultMarkdown: settings?.resultMarkdown ?? DEFAULT_RESULT_MARKDOWN,
       panelBackground: structuredClone(settings?.panelBackground ?? DEFAULT_PANEL_BACKGROUND),
       computerVisionModel: settings?.computerVisionModel ?? null,
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
@@ -113,13 +121,17 @@ export function nativeSettings(
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
       selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
+      screenshotCopyOnConfirm:
+        settings?.screenshotCopyOnConfirm ?? DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+      longScreenshotConfirmAction:
+        settings?.longScreenshotConfirmAction ?? DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
       commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
       summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
       nextSteps: settings?.nextSteps ?? DEFAULT_NEXT_STEPS,
       nextStepClick: settings?.nextStepClick ?? DEFAULT_NEXT_STEP_CLICK,
-      onboardingCompleted: settings?.onboardingCompleted ?? true,
+      onboardingCompleted: settings?.onboardingCompleted ?? false,
     };
   };
   const publish = () => {
@@ -137,15 +149,31 @@ export function nativeSettings(
   );
   providers.attach(connection);
 
+  let settingsLoad: Promise<void> | null = null;
+  const fetchSettings = () => {
+    if (!settingsLoad) {
+      settingsLoad = getSettings(connection.options())
+        .then((next) => {
+          shared = next;
+          publish();
+        })
+        .finally(() => {
+          settingsLoad = null;
+        });
+    }
+    return settingsLoad;
+  };
   const reload = async () => {
     try {
-      shared = await getSettings(connection.options());
-      publish();
+      await fetchSettings();
     } catch (error) {
       for (const listener of loadErrorListeners) listener();
       throw error;
     }
   };
+  // Eager non-panel HTTP prime: silent on pre-stream failure so cold-boot unavailability still
+  // waits for the authoritative stream-connected `reload()`.
+  const prime = () => fetchSettings().catch(() => undefined);
   const write = async (request: PatchSettingsRequest) => {
     shared = await patchSettings(connection.options(), request);
     return publish();
@@ -228,6 +256,7 @@ export function nativeSettings(
       return write({ appearance });
     },
     setGlowEffects: (glowEffects) => write({ glowEffects }),
+    setResultMarkdown: (resultMarkdown) => write({ resultMarkdown }),
     setPanelBackground: (panelBackground) => write({ panelBackground }),
     saveShortcuts: (shortcuts) => write({ shortcuts: parseShortcutBindings(shortcuts, 'darwin') }),
     setComputerVisionModel: (computerVisionModel) => write({ computerVisionModel }),
@@ -240,6 +269,13 @@ export function nativeSettings(
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    setScreenshotCopyOnConfirm: (screenshotCopyOnConfirm) => write({ screenshotCopyOnConfirm }),
+    setLongScreenshotConfirmAction: async (longScreenshotConfirmAction) => {
+      if (!isLongScreenshotConfirmAction(longScreenshotConfirmAction)) {
+        throw new TypeError('Unsupported long screenshot confirm action.');
+      }
+      return write({ longScreenshotConfirmAction });
+    },
     saveCommandTyping: (value) => write({ commandTyping: value }),
     saveCommandTypingAnimation: (value) => write({ commandTypingAnimation: value }),
     setViewInitiative: async (viewInitiative) => {
@@ -293,6 +329,7 @@ export function nativeSettings(
       shell = { ...shell, ...patch };
       return publish();
     },
+    prime,
     ready,
   };
 }

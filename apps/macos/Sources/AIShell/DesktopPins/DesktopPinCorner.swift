@@ -20,6 +20,7 @@ final class DesktopPinCorner: NSResponder {
   /// for a pin that cannot resize, which then has no resize corners. A change applies at once.
   var directions: NSCursor.FrameResizeDirection.Set? {
     didSet {
+      DesktopPinHover.shared.wake()
       guard let shown else { return }
       if directions == nil { hide() } else { show(shown) }
     }
@@ -28,7 +29,9 @@ final class DesktopPinCorner: NSResponder {
   private weak var view: NSView?
   /// The corner whose cursor this set, until it puts the arrow back.
   private var shown: DesktopPinGeometry.Corner?
+  var isShowing: Bool { shown != nil }
   private var link: CADisplayLink?
+  private let windowHit = FloatingWindowHitTest()
 
   /// Follows the pointer over `view`, the pin's content.
   init(view: NSView) {
@@ -76,7 +79,8 @@ final class DesktopPinCorner: NSResponder {
     link = nil
     guard shown != nil else { return }
     shown = nil
-    NSCursor.arrow.set()
+    windowHit.releaseCursor(from: view?.window)
+    DesktopPinHover.shared.wake()
   }
 
   override func mouseEntered(with event: NSEvent) { update(at: event.locationInWindow) }
@@ -94,7 +98,7 @@ final class DesktopPinCorner: NSResponder {
     guard let window = view?.window, window.isVisible else { return hide() }
     guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
     let mouse = NSEvent.mouseLocation
-    let top = NSWindow.windowNumber(at: mouse, belowWindowWithWindowNumber: 0)
+    let top = windowHit.window(at: mouse)
     let corner =
       top == window.windowNumber ? corner(at: window.convertPoint(fromScreen: mouse)) : nil
     switch corner {

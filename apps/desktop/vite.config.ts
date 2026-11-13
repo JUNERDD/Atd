@@ -38,6 +38,15 @@ export default defineConfig(({ command }) => ({
     host: '127.0.0.1',
     port: devPort,
     strictPort: true,
+    warmup: {
+      clientFiles: [
+        './index.html',
+        './src/main.tsx',
+        './src/native-host/index.ts',
+        './src/features/settings/settings-window.tsx',
+        './src/features/settings/general-settings.tsx',
+      ],
+    },
     // The macOS shell's page is `ai-app://renderer`, which names no port, so the Vite client must
     // be told where its HMR socket is; the page opens it directly (spike S4).
     hmr: { protocol: 'ws', host: '127.0.0.1', clientPort: devPort },

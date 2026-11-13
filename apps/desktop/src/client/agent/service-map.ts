@@ -137,6 +137,8 @@ function mapRunSnapshot(run: ServiceRun): RunSnapshot {
     tools: run.snapshot.tools.filter((tool): tool is ToolId => DESKTOP_TOOL_IDS.has(tool)),
     memory: run.snapshot.memory,
     ...(run.snapshot.fromCommand ? { fromCommand: true as const } : {}),
+    ...(run.snapshot.fromCapture ? { fromCapture: true as const } : {}),
+    ...(run.snapshot.captureOutput ? { captureOutput: run.snapshot.captureOutput } : {}),
     ...(run.snapshot.computer
       ? { computer: { bindingIds: [...run.snapshot.computer.bindingIds] } }
       : {}),
@@ -247,6 +249,7 @@ export function mapBlock(block: ServiceBlock): Block {
         name: block.name,
         args: { ...(block.args as Record<string, unknown>) },
         status: block.status,
+        ...(block.streaming === undefined ? {} : { streaming: block.streaming }),
         output: block.output,
         partial: block.partial,
         details: mapToolDetails(block.details, block.artifact),

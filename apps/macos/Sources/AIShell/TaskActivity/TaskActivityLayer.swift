@@ -66,6 +66,7 @@ struct TaskActivityLayer: View {
       resizing ? popover.shape.frame : popover.rest, corner: MiniPanelMetrics.cardRadius,
       in: .zero)
     return TaskActivityCard(model: activity, live: true)
+      .environment(\.floatingHoverActive, activity.cardInteractive && mini.phase == .expanded)
       .animation(resizing ? popover.shape.animation : nil) {
         $0.modifier(TaskActivityGlassTrack(glass: glass, rest: popover.rest))
       }

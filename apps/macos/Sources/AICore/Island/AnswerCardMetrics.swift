@@ -1,7 +1,8 @@
 /// The answer card's geometry: the card the island grows into where a run's answer could not be
 /// written. It shares the options card's corner, padding, title row and footer
 /// (``IslandMetrics/cardRadius``, ``IslandMetrics/cardPadding``, ``IslandMetrics/headerHeight``,
-/// ``IslandMetrics/footerHeight``); between them, the note under the title and the answer, which
+/// ``IslandMetrics/footerHeight``), with the grabber's strip in place of its top padding
+/// (``IslandMetrics/resultPadding``); between them, the note under the title and the answer, which
 /// scrolls inside the card once the card would be taller than ``IslandMetrics/maxShape``.
 extension IslandMetrics {
   /// Keep the established reading measure when the footer needs a wider card. This includes
@@ -26,10 +27,10 @@ extension IslandMetrics {
     maxShape.height - answerChrome(note: note, footer: footer)
   }
 
-  /// Everything but the answer: the padding, the title row, the note, the gaps either side of
-  /// the answer and the footer.
+  /// Everything but the answer: the grabber's strip and the padding, the title row, the note, the
+  /// gaps either side of the answer and the footer.
   private static func answerChrome(note: Double, footer: Double) -> Double {
-    cardPadding * 2 + headerHeight + (note > 0 ? note + noteGap : 0) + sectionGap * 2
+    resultPadding + headerHeight + (note > 0 ? note + noteGap : 0) + sectionGap * 2
       + max(footer, footerHeight)
   }
 }
@@ -62,9 +63,23 @@ public struct AnswerOverflow: Equatable, Sendable {
     offset: Double, content: Double, container: Double, insetTop: Double = 0,
     insetBottom: Double = 0
   ) {
+    let minOffset = -insetTop
     let maxOffset = content + insetBottom - container
-    top = offset + insetTop > Self.tolerance
+    // Transforms can shift the reported offset while the document still fits its viewport.
+    // Such movement is not overflow and must not reveal a fade or a scroll indicator.
+    guard maxOffset - minOffset > Self.tolerance else { return }
+    top = offset > minOffset + Self.tolerance
     bottom = offset < maxOffset - Self.tolerance
+  }
+
+  /// Keep each active fade at its usual length when possible. In a very short viewport the
+  /// opaque edge yields first; if both edges fade they share the available space.
+  public func fadeLengths(for available: Double) -> (top: Double, bottom: Double) {
+    let size = max(0, available)
+    let length = min(Self.fadeHeight, size)
+    if size >= Self.fadeHeight * 2 { return (length, length) }
+    if top != bottom { return top ? (length, size - length) : (size - length, length) }
+    return (size / 2, size / 2)
   }
 }
 

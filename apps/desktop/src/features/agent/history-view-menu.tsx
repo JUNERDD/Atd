@@ -70,6 +70,14 @@ export function HistoryViewMenu({
           >
             {t('history.view.showCommandTasksInAll')}
           </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={view.showCaptureTasksInAll === true}
+            onCheckedChange={(checked) =>
+              onChange({ ...view, showCaptureTasksInAll: checked === true })
+            }
+          >
+            {t('history.view.showCaptureTasksInAll')}
+          </DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

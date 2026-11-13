@@ -3,6 +3,7 @@ import { ShaderMount, type PaperShaderElement } from '@paper-design/shaders-reac
 import { useReducedMotion } from 'motion/react';
 import { useShaderClock } from '../../../components/use-shader-clock';
 import { useColorScheme } from '../../../theme/color-scheme';
+import { onWindowVisible } from '../../../window-state';
 import { GLOW_SHADER, GLOW_TIMING } from './glow-field';
 import { glowColors } from './glow-colors';
 import { useGlowLevel } from './glow-level';
@@ -35,6 +36,12 @@ const MAX_PIXELS = 1_500_000;
  * tests) gets no field, so the light never becomes ready and never lights.
  */
 const WEBGL2 = typeof WebGL2RenderingContext !== 'undefined';
+/** Upper bound on frames waited for Paper to attach its mount before giving up. */
+const MAX_MOUNT_FRAMES = 30;
+
+function isWindowShown(): boolean {
+  return !document.hidden && document.documentElement.dataset.windowVisible !== 'false';
+}
 
 /**
  * Which fade the light is in, each defined in `waiting-glow.css`: `entry` comes up with the bloom,
@@ -114,6 +121,9 @@ export function WaitingGlow({ phase }: { phase: WaitPhase }) {
     return () => clearTimeout(timer);
   }, [look.on, look.fade, flowing, reduced]);
 
+  const mounted = WEBGL2 && (flowing || look.on || phase === 'waiting' || phase === 'answering');
+  if (!mounted && ready) setReady(false);
+
   return (
     <div
       aria-hidden
@@ -122,7 +132,9 @@ export function WaitingGlow({ phase }: { phase: WaitPhase }) {
       data-writing={look.writing || undefined}
       data-fade={reduced ? 'quick' : look.fade}
     >
-      {WEBGL2 && <GlowField active={flowing} on={look.on} entry={!reduced} onPainted={markReady} />}
+      {mounted && (
+        <GlowField active={flowing} on={look.on} entry={!reduced} onPainted={markReady} />
+      )}
     </div>
   );
 }
@@ -218,18 +230,44 @@ function GlowField({
     [active, on, entry, scheme, origin, level, bandRatio, retreat, retreatTarget],
   );
   useShaderClock(ref, 0, active && entry, FRAME_MS, ENTRY_FULL_RATE_MS, draw);
+  const drawRef = useRef(draw);
+  useLayoutEffect(() => {
+    drawRef.current = draw;
+  });
   useEffect(() => {
-    if (ref.current) draw(ref.current, clock.current);
+    if (ref.current && isWindowShown()) draw(ref.current, clock.current);
   }, [draw]);
   useEffect(() => {
-    let frame = requestAnimationFrame(function waitForMount() {
+    let frame = 0;
+    let attempts = 0;
+    let done = false;
+    const waitForMount = () => {
+      frame = 0;
+      if (done || !isWindowShown()) return;
       if (ref.current?.paperShaderMount) {
-        draw(ref.current, clock.current);
+        done = true;
+        drawRef.current(ref.current, clock.current);
         frame = requestAnimationFrame(onPainted);
-      } else frame = requestAnimationFrame(waitForMount);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [onPainted, draw]);
+        return;
+      }
+      attempts += 1;
+      if (attempts < MAX_MOUNT_FRAMES) frame = requestAnimationFrame(waitForMount);
+    };
+    const syncVisibility = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      if (!done && isWindowShown()) frame = requestAnimationFrame(waitForMount);
+    };
+    const unsubscribe = onWindowVisible(syncVisibility);
+    document.addEventListener('visibilitychange', syncVisibility);
+    syncVisibility();
+    return () => {
+      done = true;
+      unsubscribe();
+      document.removeEventListener('visibilitychange', syncVisibility);
+      cancelAnimationFrame(frame);
+    };
+  }, [onPainted]);
   return (
     <ShaderMount
       ref={ref}

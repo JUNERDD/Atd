@@ -1,8 +1,8 @@
 import type { Static } from 'typebox';
 import {
   actsOnSelection,
+  answersInPlace,
   readsSelection,
-  writesBack,
   type CommandOutputAction,
 } from '@atd/agent-contracts';
 import type { CommandOutputOptionSchema } from '../../native-bridge/command-options';
@@ -13,27 +13,30 @@ import type { CommandDefinition } from './command-schema';
 export type CommandOutputOption = Static<typeof CommandOutputOptionSchema>;
 
 /**
- * The actions in the order every picker lists them, in groups divided by separators: the
- * conversation, the write-backs into the app the command ran from, then the clipboard.
+ * The actions in the order every picker lists them, in groups divided by separators: the ones
+ * that show the answer (the conversation, the island's answer card), the ones that land in the
+ * text the command ran on (written over or after the selection, marked on text in a screenshot,
+ * written at the cursor), then the clipboard. The shell's options menus list them in this order.
  */
 export const OUTPUT_ACTION_GROUPS: readonly (readonly CommandOutputAction[])[] = [
-  ['panel'],
-  ['replaceSelection', 'insertAfterSelection', 'insertAtCursor'],
+  ['panel', 'card'],
+  ['replaceSelection', 'insertAfterSelection', 'annotate', 'insertAtCursor'],
   ['copy'],
 ];
 export const OUTPUT_ACTIONS: readonly CommandOutputAction[] = OUTPUT_ACTION_GROUPS.flat();
 
 /**
  * Why a run of `prepared` cannot send its answer where `action` says, or null when it can: the
- * actions on the selection need a command that reads it (`selection`), and every write-back needs
- * the app the command ran from (`target`), which only a launch from another app records.
+ * actions on the selection need a command that reads it (`selection`), and the answer card and
+ * every write-back need the app the command ran from (`target`, `answersInPlace`), which only a
+ * launch from another app records.
  */
 export function outputUnavailable(
   prepared: Pick<PreparedCommand, 'command' | 'target'>,
   action: CommandOutputAction,
 ): 'selection' | 'target' | null {
   if (actsOnSelection(action) && !readsSelection(prepared.command.input)) return 'selection';
-  if (writesBack(action) && !prepared.target) return 'target';
+  if (answersInPlace(action) && !prepared.target) return 'target';
   return null;
 }
 

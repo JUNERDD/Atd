@@ -1,5 +1,8 @@
 import { Type, type Static } from 'typebox';
 import type { Localized } from '../i18n/routes.ts';
+import { BLOG_NOTE_KINDS, type BlogNoteKind } from '../pages/blog/copy.ts';
+
+export { BLOG_NOTE_KINDS, type BlogNoteKind };
 
 /**
  * One language's file of a blog post, as the CMS writes it (`admin/config.yml`):
@@ -15,7 +18,7 @@ const ImagePath = Type.String({ pattern: '^/(?:[\\w.-]+/)*[\\w.-]+\\.(?:avif|web
 export const BlogHighlightSchema = Type.Object(
   {
     title: Text,
-    /** Plain text; a blank line starts a new paragraph. */
+    /** Constrained Markdown: paragraphs and flat lists with inline bold, italic, code and links. */
     body: Text,
     image: ImagePath,
     /** What the image shows, for readers who cannot see it. */
@@ -25,10 +28,10 @@ export const BlogHighlightSchema = Type.Object(
 );
 
 /**
- * A fix or a small improvement: one line, and where seeing the change helps, an image with its
- * description. The build requires the two together (`blog-content.ts`).
+ * One item in a post's tail sections (`improvements`, `fixes`, or `other`): one inline Markdown
+ * paragraph, and where seeing the change helps, an image with its description (`blog-content.ts`).
  */
-export const BlogFixSchema = Type.Object(
+export const BlogNoteSchema = Type.Object(
   {
     text: Text,
     image: Type.Optional(ImagePath),
@@ -36,6 +39,8 @@ export const BlogFixSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+export const BlogFixSchema = BlogNoteSchema;
 
 export const BlogPostSchema = Type.Object(
   {
@@ -46,12 +51,27 @@ export const BlogPostSchema = Type.Object(
     title: Text,
     summary: Text,
     highlights: Type.Array(BlogHighlightSchema),
-    fixes: Type.Optional(Type.Array(BlogFixSchema)),
+    improvements: Type.Optional(Type.Array(BlogNoteSchema)),
+    fixes: Type.Optional(Type.Array(BlogNoteSchema)),
+    other: Type.Optional(Type.Array(BlogNoteSchema)),
   },
   { additionalProperties: false },
 );
 
 export type BlogPostEntry = Static<typeof BlogPostSchema>;
+
+/** Inline editorial formatting parsed at build time (`blog-markdown.ts`). */
+export type BlogInline =
+  | string
+  | { kind: 'strong'; children: BlogInline[] }
+  | { kind: 'em'; children: BlogInline[] }
+  | { kind: 'code'; text: string }
+  | { kind: 'link'; href: string; children: BlogInline[] };
+
+/** Block structure allowed inside a highlight's body. */
+export type BlogBlock =
+  | { kind: 'paragraph'; children: BlogInline[] }
+  | { kind: 'list'; ordered: boolean; items: BlogInline[][] };
 
 /** A post's image, with the intrinsic size the build reads so the page reserves its box. */
 export interface BlogImage {
@@ -64,8 +84,8 @@ export interface BlogHighlight {
   /** The section's anchor, from the English title, so both languages link to the same one. */
   anchor: string;
   title: string;
-  /** The body split into paragraphs. */
-  paragraphs: string[];
+  /** The body parsed into validated paragraphs and lists. */
+  blocks: BlogBlock[];
   image: BlogImage;
   alt: string;
 }
@@ -76,10 +96,12 @@ export interface BlogFigure {
   alt: string;
 }
 
-export interface BlogFix {
-  text: string;
+export interface BlogNote {
+  content: BlogInline[];
   figure: BlogFigure | null;
 }
+
+export type BlogFix = BlogNote;
 
 export interface BlogPostCopy {
   /** The publishing date as the language writes it, formatted once at build time so the
@@ -88,7 +110,9 @@ export interface BlogPostCopy {
   title: string;
   summary: string;
   highlights: BlogHighlight[];
-  fixes: BlogFix[];
+  improvements: BlogNote[];
+  fixes: BlogNote[];
+  other: BlogNote[];
 }
 
 /** One post in both languages, as the pages render it (`virtual:atd-blog`). */

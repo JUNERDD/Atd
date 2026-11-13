@@ -14,7 +14,7 @@ import type { ShortcutAction } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { shortcutKeys } from '../../lib/shortcuts';
-import type { useShortcutSettings } from './use-shortcut-settings';
+import { isGlobalAction, type useShortcutSettings } from './use-shortcut-settings';
 
 /**
  * One shortcut: its name and purpose, then the shared recorder, which records a new combination
@@ -40,7 +40,9 @@ export function ShortcutRow({
   const { t: tCommon } = useTranslation('common');
   const keysButton = useRef<HTMLButtonElement>(null);
   const recording = settings.recording === action;
-  const keys = shortcutKeys(settings.bindings[action], settings.platform);
+  const binding = settings.bindings[action];
+  // Only an action an upgrade added can be without keys; its pill then offers to record some.
+  const keys = binding ? shortcutKeys(binding, settings.platform) : [];
   const locked = settings.shortcutBusy !== null;
   const busy = settings.shortcutBusy === action || settings.shortcutBusy === 'all';
   // While another row records, this row's controls look unavailable and ignore the pointer:
@@ -54,10 +56,9 @@ export function ShortcutRow({
     },
   };
   // Only the shell's global shortcuts take a double-tap, which needs Accessibility to be detected.
-  const globalAction = action === 'togglePanel' || action === 'captureScreenshot';
+  const globalAction = isGlobalAction(action);
   const tapNeedsAccess =
-    doubleTapModifier(settings.bindings[action]) !== null &&
-    settings.accessibilityTrusted === false;
+    doubleTapModifier(binding) !== null && settings.accessibilityTrusted === false;
   // The latest attempt's error in this row outranks the standing registration error, which a
   // double-tap without Accessibility explains by its cause.
   const shownError =
@@ -77,12 +78,15 @@ export function ShortcutRow({
             ref={keysButton}
             keys={keys}
             recording={recording}
+            emptyText={t('shortcuts.capture.unset')}
             doubleTap={globalAction && settings.platform === 'darwin'}
             className="data-recording-elsewhere:opacity-50"
             aria-label={
               recording
                 ? t('shortcuts.capture.cancelLabel', { label })
-                : t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
+                : keys.length
+                  ? t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
+                  : t('shortcuts.capture.setLabel', { label })
             }
             aria-describedby={shownError ? errorId : undefined}
             disabled={settings.unavailable}

@@ -15,7 +15,7 @@ import {
 import { draftFiles, draftFolders } from '../composer-editor/draft-attachments';
 import { useSeededSessions } from './use-seeded-sessions';
 import { useSettingsSnapshot } from '../settings/use-settings';
-import { readDrafts, useRememberComposers } from './use-composer-memory';
+import { readDrafts, rekeyDraft, useRememberComposers } from './use-composer-memory';
 import { agentApi, useAgent } from './use-agent';
 import { usePageDetail } from './use-page-detail';
 import { useChildView } from './use-child-view';
@@ -58,6 +58,11 @@ export function useTaskPanel() {
   const [drafts, setDrafts] = useState(readDrafts);
   useWithdrawnQueue(setDrafts);
   const [pending, setPending] = useState(false);
+  const busy = useRef(false);
+  const markPending = (value: boolean) => {
+    busy.current = value;
+    setPending(value);
+  };
   /** The latest send's invocation, and the conversation it opens if it starts one. */
   const submission = useRef<{ key: string; id: string; taskId: string } | null>(null);
   /**
@@ -87,6 +92,16 @@ export function useTaskPanel() {
     start: (conversationId, launched) => latestSubmit.current(launched, conversationId),
     rehold: () => setHoldEpoch((epoch) => epoch + 1),
   });
+  const { dismiss: dismissSide } = side;
+  /** Shows a task, as choosing it from the history does, with no side chat over it. */
+  const openTask = useCallback(
+    (id: string) => {
+      dismissSide();
+      setTaskId(id);
+      setView('task');
+    },
+    [dismissSide],
+  );
   // The composer serves one conversation: the side chat's task while it shows one, else the page's.
   const boundTaskId = side.taskId ?? scope;
   // The shell notifies about every task but the one the person is looking at.
@@ -127,15 +142,16 @@ export function useTaskPanel() {
   async function submit(
     launched?: PreparedCommand,
     sideChatOf: string | null = null,
+    onStart?: () => void,
   ): Promise<TaskDetail | null> {
-    if (pending) return null;
+    if (pending || busy.current) return null;
     const commandInput = launched ?? inputStep;
     if (!commandInput && isActive(boundRun?.status)) return null;
     // Chips are the draft's only record of its references: files, skills and references derive
     // from them, and `input.chips` keeps where each chip sits so the transcript can show it again.
     const files = draftFiles(draft);
     if (!commandInput && files.length > 10) throw new Error(t('composer.attachLimit'));
-    setPending(true);
+    markPending(true);
     // Always recorded, even empty: a run without `input.chips` reads as sent before chips were.
     const input = commandInput?.input ?? {
       ...emptyInput(),
@@ -191,8 +207,7 @@ export function useTaskPanel() {
       if (opens) {
         nextRun.remember(runTaskId);
         current.open(runTaskId, input);
-        setTaskId(runTaskId);
-        setView('task');
+        openTask(runTaskId);
       }
       const message = { id: invocationId, taskId: runTaskId, input, model, sentAt: Date.now() };
       return sendOptimistic(message, () => send(runTaskId), {
@@ -202,9 +217,15 @@ export function useTaskPanel() {
         },
         // Discarding a new chat's unsent first message leaves no conversation to show.
         discarded: opens ? newTask : undefined,
-        begin: () => setPending(true),
-        settle: () => setPending(false),
+        begin: () => markPending(true),
+        settle: () => markPending(false),
       });
+    }
+    if (launched && !sideChatOf) {
+      current.open(newTaskId, input, commandInput.command.name);
+      openTask(newTaskId);
+      setPrepared(null);
+      onStart?.();
     }
     return sendSettling(
       () => send(null),
@@ -217,13 +238,13 @@ export function useTaskPanel() {
           nextRun.remember(detail.task.id);
         }
         if (!sideChatOf) {
+          if (launched) setDrafts((previous) => rekeyDraft(previous, newTaskId, detail.task.id));
           current.accept(detail);
-          setTaskId(detail.task.id);
-          setView('task');
+          openTask(detail.task.id);
           setPrepared(null);
         }
       },
-      () => setPending(false),
+      () => markPending(false),
     );
   }
   useLayoutEffect(() => {
@@ -242,20 +263,11 @@ export function useTaskPanel() {
       else void hide();
     },
   });
-  const { dismiss: dismissSide } = side;
-  /** Shows a task, as choosing it from the history does, with no side chat over it. */
-  const openTask = useCallback(
-    (id: string) => {
-      dismissSide();
-      setTaskId(id);
-      setView('task');
-    },
-    [dismissSide],
-  );
   useCommandLaunch({
-    submit: (launched) => submit(launched),
+    submit: (launched, onStart) => submit(launched, null, onStart),
     showInput: (value) => {
       setPrepared(value);
+      setTaskId(null);
       setView('input');
     },
     openTask,

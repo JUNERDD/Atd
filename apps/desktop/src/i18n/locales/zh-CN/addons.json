@@ -11,7 +11,7 @@
   "unavailable": "暂不提供",
   "detail": {
     "size": "下载大小：{{size}}。",
-    "installed": "已安装 · 版本 {{version}}",
+    "installed": "已安装 · {{version}}",
     "outdated": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。",
     "outdatedSize": "已安装版本 {{installed}}，但当前版本的 Atd 使用的是 {{version}}。下载大小：{{size}}。",
     "unavailable": "当前版本的 Atd 未为你的 Mac 提供此组件。",
@@ -46,5 +46,12 @@
       "title": "浏览器引擎",
       "description": "在 Atd 专用的受管 Chrome 配置文件中操作网页，与你日常使用的浏览器互相隔离。"
     }
+  },
+  "wps": {
+    "label": "应用适配",
+    "title": "WPS 表格选区",
+    "description": "选取表格内容，唤出工具栏。",
+    "reopen": "保存文档后，重启 WPS 以连接。",
+    "setupFailed": "设置失败，请打开 WPS 后重试。"
   }
 }

@@ -1,9 +1,12 @@
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
 import { langPath, pagePath, postSlugOf, type Page } from '../../i18n/routes';
-import { navCopy } from './copy';
-import { LanguageMenu } from './language-menu';
+import { formatGitHubStars, GITHUB_STARS_FALLBACK } from '../../lib/github-stars';
 import { useActiveSection } from '../../lib/use-active-section';
+import { useGitHubStars } from '../../lib/use-github-stars';
+import { navCopy } from './copy';
+import { GitHubMark } from './github-mark';
+import { LanguageMenu } from './language-menu';
 import './nav.css';
 
 /**
@@ -14,11 +17,20 @@ import './nav.css';
  * the key lead back to the home page's sections. Under it, the kit's scroll edge softly blurs
  * content as it passes.
  */
-export function SiteNav({ page }: { page: Page }) {
+export function SiteNav({
+  page,
+  initialStars = GITHUB_STARS_FALLBACK,
+}: {
+  page: Page;
+  initialStars?: number;
+}) {
   const t = useCopy(navCopy);
   const lang = useLang();
   const home = page === 'home';
   const active = useActiveSection(home ? t.links.map((link) => link.href) : []);
+  const stars = useGitHubStars(initialStars);
+  const starCount = formatGitHubStars(stars);
+  const githubLabel = t.github.ariaLabel(starCount);
   // `#cases` on the home page; `/#cases` or `/zh#cases` from another page.
   const sectionHref = (hash: string) => (home ? hash : `${langPath[lang]}${hash}`);
 
@@ -62,6 +74,18 @@ export function SiteNav({ page }: { page: Page }) {
           </ul>
           <div className="nav__end">
             <LanguageMenu page={page} />
+            <a
+              className="btn-bordered nav__github"
+              href={site.repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={githubLabel}
+              title={githubLabel}
+            >
+              <GitHubMark />
+              <span className="nav__github-label">{t.github.label}</span>
+              <span className="nav__github-count">{starCount}</span>
+            </a>
             <a className="btn-filled nav__cta" href={sectionHref('#download')}>
               {t.download}
             </a>

@@ -18,11 +18,13 @@ export interface XmlElement extends XmlNode {
   getAttribute(name: string): string | null;
   getAttributeNS(namespace: string, localName: string): string | null;
   appendChild(child: XmlNode): XmlNode;
+  removeChild(child: XmlNode): XmlNode;
+  setAttribute(name: string, value: string): void;
   replaceChild(replacement: XmlNode, child: XmlNode): XmlNode;
 }
 
 /** The part of a parsed document a part rewritten before another parser reads it needs. */
-export interface XmlNodeFactory {
+export interface XmlNodeFactory extends XmlNode {
   createElementNS(namespace: string, qualifiedName: string): XmlElement;
   createTextNode(text: string): XmlNode;
 }
@@ -91,7 +93,7 @@ export function parseXml(source: string): XmlElement {
 }
 
 /** An element and everything in it as XML text, as a parser reads it again. */
-export function serializeXml(element: XmlElement): string {
+export function serializeXml(element: XmlNode): string {
   Serializer ??= serializerClass();
   return new Serializer().serializeToString(element);
 }

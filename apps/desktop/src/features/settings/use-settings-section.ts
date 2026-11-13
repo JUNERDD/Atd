@@ -26,6 +26,11 @@ function readSectionFromHash(): SettingsSectionId | null {
   return section ? (findSettingsSection(section)?.id ?? null) : null;
 }
 
+/** The section a new settings window starts on: a command link, a section link, or General. */
+export function initialSettingsSection(): SettingsSectionId {
+  return readCommandIdFromHash() ? 'commands' : (readSectionFromHash() ?? settingsSections[0].id);
+}
+
 /** How the drawer is shown: closed, or open with focus on the section list or on the search. */
 export type SettingsDrawerState = 'section' | 'search' | null;
 
@@ -40,9 +45,7 @@ export function useSettingsSection(
   leave: (depth: number, proceed: () => void) => void,
 ) {
   // Only the shown section: each section keeps its own page history (`useSettingsPageHistory`).
-  const [section, setSection] = useState<SettingsSectionId>(() =>
-    readCommandIdFromHash() ? 'commands' : (readSectionFromHash() ?? settingsSections[0].id),
-  );
+  const [section, setSection] = useState<SettingsSectionId>(initialSettingsSection);
   const [visited, setVisited] = useState<readonly SettingsSectionId[]>([section]);
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
     const id = readCommandIdFromHash();

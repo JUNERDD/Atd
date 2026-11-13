@@ -4,36 +4,47 @@
 
 import Foundation
 
-/// Params of the `computer.prepareBrowser` call.
-public struct ComputerPrepareBrowserParams: Codable, Equatable, Sendable {
-  public let label: String
-  public let startUrl: String
-  public let allowedOrigins: [String]
+/// Result of the `commandProgress.show` call.
+public typealias CommandProgressShowResult = NativeEmpty
 
-  public init(label: String, startUrl: String, allowedOrigins: [String]) {
-    self.label = label
-    self.startUrl = startUrl
-    self.allowedOrigins = allowedOrigins
+/// Params of the `text.writeFocused` call.
+public struct TextWriteFocusedParams: Codable, Equatable, Sendable {
+  public let mode: Mode
+  public let text: String
+  public let typing: Bool
+  public let animation: Bool
+
+  public init(mode: Mode, text: String, typing: Bool, animation: Bool) {
+    self.mode = mode
+    self.text = text
+    self.typing = typing
+    self.animation = animation
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    label = try container.string(.label, minLength: 1, maxLength: 120)
-    startUrl = try container.string(
-      .startUrl, minLength: 1, maxLength: 2_048, pattern: "^https?://")
-    allowedOrigins = try container.array(
-      .allowedOrigins, of: String.self, minItems: 1, maxItems: 20)
+    mode = try container.value(.mode, Mode.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+    typing = try container.boolean(.typing)
+    animation = try container.boolean(.animation)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case label
-    case startUrl
-    case allowedOrigins
+    case mode
+    case text
+    case typing
+    case animation
+  }
+
+  public enum Mode: String, Codable, Equatable, Sendable {
+    case selection
+    case afterSelection
+    case cursor
   }
 }
 
-/// Result of the `computer.prepareBrowser` call.
-public enum ComputerPrepareBrowserResult: Codable, Equatable, Sendable {
+/// Result of the `text.writeFocused` call.
+public enum TextWriteFocusedResult: Codable, Equatable, Sendable {
   case ok(Ok)
   case notOk(NotOk)
 
@@ -57,63 +68,20 @@ public enum ComputerPrepareBrowserResult: Codable, Equatable, Sendable {
   }
 
   public struct Ok: Codable, Equatable, Sendable {
-    public let bindingId: String
-    public let revision: Int
-    public let probe: Probe?
-
-    public init(bindingId: String, revision: Int, probe: Probe?) {
-      self.bindingId = bindingId
-      self.revision = revision
-      self.probe = probe
-    }
+    public init() {}
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
       try container.literal(.ok, true)
-      bindingId = try container.string(
-        .bindingId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-      revision = try container.integer(.revision, minimum: 1)
-      probe = try container.optional(.probe) { try container.value($0, Probe.self) }
     }
 
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.container(keyedBy: CodingKeys.self)
       try container.encode(true, forKey: .ok)
-      try container.encode(bindingId, forKey: .bindingId)
-      try container.encode(revision, forKey: .revision)
-      try container.encodeIfPresent(probe, forKey: .probe)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case ok
-      case bindingId
-      case revision
-      case probe
-    }
-
-    public struct Probe: Codable, Equatable, Sendable {
-      public let windows: Int
-      public let tree: Bool
-      public let screenshot: Bool
-
-      public init(windows: Int, tree: Bool, screenshot: Bool) {
-        self.windows = windows
-        self.tree = tree
-        self.screenshot = screenshot
-      }
-
-      public init(from decoder: any Decoder) throws {
-        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-        windows = try container.integer(.windows, minimum: 0)
-        tree = try container.boolean(.tree)
-        screenshot = try container.boolean(.screenshot)
-      }
-
-      private enum CodingKeys: String, CodingKey, CaseIterable {
-        case windows
-        case tree
-        case screenshot
-      }
     }
   }
 
@@ -142,33 +110,117 @@ public enum ComputerPrepareBrowserResult: Codable, Equatable, Sendable {
     }
 
     public enum Reason: String, Codable, Equatable, Sendable {
-      case cancelled
-      case unavailable
-      case busy
-      case unsupported
-      case notInstalled
+      case notTrusted
+      case targetGone
+      case targetChanged
+      case noSelection
+      case secureInput
+      case failed
+      case interrupted
+      case unsupportedSelection
     }
   }
 }
 
-/// Params of the `computer.prepareApplication` call.
-public struct ComputerPrepareApplicationParams: Codable, Equatable, Sendable {
-  public let label: String
-  public let bundleId: String
+/// Params of the `commandProgress.hide` call.
+public struct CommandProgressHideParams: Codable, Equatable, Sendable {
+  public let target: String
 
-  public init(label: String, bundleId: String) {
-    self.label = label
-    self.bundleId = bundleId
+  public init(target: String) {
+    self.target = target
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    label = try container.string(.label, minLength: 1, maxLength: 120)
-    bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
+    target = try container.string(.target, minLength: 1, maxLength: 128)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case label
-    case bundleId
+    case target
   }
 }
+
+/// Result of the `commandProgress.hide` call.
+public typealias CommandProgressHideResult = NativeEmpty
+
+/// Params of the `commandOptions.set` call.
+public struct CommandOptionsSetParams: Codable, Equatable, Sendable {
+  public let commands: [Command]
+
+  public init(commands: [Command]) {
+    self.commands = commands
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    commands = try container.array(.commands, of: Command.self, maxItems: 512)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case commands
+  }
+
+  public struct Command: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let options: [CommandOption]
+    public let output: CommandOutputOption
+
+    public init(id: String, name: String, options: [CommandOption], output: CommandOutputOption) {
+      self.id = id
+      self.name = name
+      self.options = options
+      self.output = output
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128)
+      name = try container.string(.name, minLength: 1, maxLength: 256)
+      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+      output = try container.value(.output, CommandOutputOption.self)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case options
+      case output
+    }
+  }
+}
+
+/// Result of the `commandOptions.set` call.
+public typealias CommandOptionsSetResult = NativeEmpty
+
+/// Params of the `app.about` call.
+public typealias AppAboutParams = NativeEmpty
+
+/// Result of the `app.about` call.
+public struct AppAboutResult: Codable, Equatable, Sendable {
+  public let version: String
+  public let build: String
+  public let updates: Bool
+
+  public init(version: String, build: String, updates: Bool) {
+    self.version = version
+    self.build = build
+    self.updates = updates
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    version = try container.string(.version, maxLength: 64)
+    build = try container.string(.build, maxLength: 64)
+    updates = try container.boolean(.updates)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case version
+    case build
+    case updates
+  }
+}
+
+/// Params of the `notifications.state` call.
+public typealias NotificationsStateParams = NativeEmpty

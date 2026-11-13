@@ -32,12 +32,17 @@ public final class ShellController {
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
   let screenshots: ScreenshotTaker
+  /// Created when a recording-capable capture or recording route first needs it.
+  var installedScreenRecording: ScreenRecordingController?
+  /// Created with the screen recording, for the captures that can offer the long screenshot.
+  var installedLongScreenshots: LongScreenshotController?
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
   /// Release builds' Sparkle updater; its download and a waiting update reach the panel as
   /// `update.state`.
   let updater = AppUpdater()
+  let releaseNotes: ReleaseNotesReminder
   let quitGuard: QuitGuard
   /// Accessibility trust; every page learns it as `accessibility.trust`.
   let trust: AccessibilityTrust
@@ -75,6 +80,7 @@ public final class ShellController {
   var statusItem: StatusItemController?
   private(set) var registrar: HotKeyRegistrar?
   var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
+  var hasPanelModals = true
   /// The first `toolbar.set` of this launch has arrived.
   private var toolbarConfigured = false
 
@@ -84,6 +90,7 @@ public final class ShellController {
     self.services = services
     self.defaults = defaults
     presence = AppPresence(defaults: defaults)
+    releaseNotes = ReleaseNotesReminder(defaults: defaults)
     let trust = AccessibilityTrust(defaults: defaults)
     self.trust = trust
     let screenRecording = ScreenRecordingTrust()
@@ -121,9 +128,13 @@ public final class ShellController {
     let computer = Self.makeComputer(host: computerHost, arbiter: arbiter, defaults: defaults)
     self.computer = computer
     let systemPanels = SystemPanels(
-      lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) },
+      lowerPanel: { panel.lowerForSystemPanel() },
+      restorePanel: { panel.restoreAfterSystemPanel() },
       arbiter: arbiter)
     self.systemPanels = systemPanels
+    PermissionGuide.shared.onActiveChange = { open in
+      open ? panel.lowerForSystemPanel() : panel.restoreAfterSystemPanel()
+    }
     let capabilities = ShellCapabilities(
       services: services, panelVisible: { panel.isVisible }, systemPanels: systemPanels,
       arbiter: arbiter)
@@ -149,7 +160,7 @@ public final class ShellController {
     summoner = Summoner(
       panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
       isCapturing: { screenshots.isCapturing }, arbiter: arbiter)
-    toolbar = SelectionToolbarController(trust: trust)
+    toolbar = SelectionToolbarController(trust: trust, services: services)
     miniPanel = MiniPanelController(defaults: defaults)
     // After the panel's web view: WebKit's static data store API needs one to exist.
     userApps = UserAppWindows(
@@ -159,31 +170,18 @@ public final class ShellController {
       services: services, files: .forMainBundle())
     notifications = Self.makeNotifications(services: services, defaults: defaults, panel: panel)
     systemActivity = Self.makeSystemActivity(services: services)
-    // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
-    // beneath the overlays, `hideWindows` on an unattended quit that skips it.
-    quitGuard = QuitGuard(
-      activeRuns: {
-        screenshots.cancel()
-        return await services.link.activeRunsForQuitGuard()
-      },
-      stopService: {
-        await computer.shutdown()
-        control.stop()
-        await services.stopForQuit()
-      },
-      hideWindows: {
-        screenshots.cancel()
-        for window in NSApp.windows { window.orderOut(nil) }
+    quitGuard = Self.makeQuitGuard(
+      services: services, computer: computer, control: control, screenshots: screenshots,
+      cancelRecording: { [weak bridge] in
+        bridge?.shell?.installedScreenRecording?.cancelForQuit()
       })
     bridge.shell = self
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }
-    updater.onChange = { [weak self] in
-      guard let self else { return }
-      panelHost.setState(.updateState(updater.state))
-    }
+    wireUpdates()
     panel.onVisibilityChange = { [weak self, weak panelHost] visible in
+      self?.releaseNotes.panelVisibilityChanged(visible)
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
       // A command the page took to the panel ends its shortcut's press capsule.
       if visible { self?.commandProgress.panelShown() }
@@ -214,6 +212,7 @@ public final class ShellController {
     }
     wireUserApps()
     wireMiniPanel()
+    wireScreenshots()
   }
 
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
@@ -222,7 +221,7 @@ public final class ShellController {
     launchPresentation = LaunchPresentation(revealPanel: revealPanel)
     registrar = HotKeyRegistrar(
       canWatchKeyboard: { [trust] in trust.isTrusted },
-      onPress: { [weak self] id in self?.shortcutHolds.pressed(id) },
+      onPress: { [weak self] id in self?.pressShortcut(id) },
       onRelease: { [weak self] id in self?.shortcutHolds.released(id) })
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },
@@ -311,8 +310,8 @@ public final class ShellController {
   }
 
   /// `capture('selection')` returns the stash of the last summon, never a live read.
-  func captureSelection() -> CaptureResult {
-    summoner.captureResult()
+  func captureSelection() async -> CaptureResult {
+    await summoner.captureResult()
   }
 
   var isPinned: Bool { defaults.bool(forKey: Self.pinnedKey) }
