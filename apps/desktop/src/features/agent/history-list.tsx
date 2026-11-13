@@ -182,6 +182,16 @@ function HistoryTaskRow({
   const stamp = stampOf(task, view.sort);
   const updated = new Date(stamp);
   const menu = <TaskMenuItems task={task} actions={actions} />;
+  const pendingDropdownAction = useRef<(() => void) | null>(null);
+  const dropdownActions: HistoryActions = {
+    ...actions,
+    rename: (target) => {
+      pendingDropdownAction.current = () => actions.rename(target);
+    },
+    delete: (target) => {
+      pendingDropdownAction.current = () => actions.delete(target);
+    },
+  };
   return (
     <ItemContextMenu menu={menu}>
       <div className="history-row">
@@ -248,7 +258,18 @@ function HistoryTaskRow({
               <Ellipsis />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">{menu}</DropdownMenuContent>
+          <DropdownMenuContent
+            align="end"
+            onCloseAutoFocus={(event) => {
+              const action = pendingDropdownAction.current;
+              pendingDropdownAction.current = null;
+              if (!action) return;
+              event.preventDefault();
+              action();
+            }}
+          >
+            <TaskMenuItems task={task} actions={dropdownActions} />
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </ItemContextMenu>

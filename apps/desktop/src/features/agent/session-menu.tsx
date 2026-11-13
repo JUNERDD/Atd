@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react';
+import { useRef, useState, type ReactElement } from 'react';
 import { Copy, Ellipsis, Folder, FoldVertical, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,6 +33,7 @@ export function SessionMenu({
 }): ReactElement {
   const { t } = useTranslation('panel');
   const [renameOpen, setRenameOpen] = useState(false);
+  const openRenameAfterClose = useRef(false);
   const copyId = useCopyTaskId();
   const { compact, pending } = useCompactTask();
   const { folders, revoke, revoking } = useTaskFolders(task.id);
@@ -53,8 +54,18 @@ export function SessionMenu({
             <Ellipsis />
           </IconButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="center">
-          <DropdownMenuItem onSelect={() => setRenameOpen(true)}>
+        <DropdownMenuContent
+          side="bottom"
+          align="center"
+          onCloseAutoFocus={(event) => {
+            if (!openRenameAfterClose.current) return;
+            openRenameAfterClose.current = false;
+            // Let the dropdown unmount and skip returning focus to the trigger before opening the modal.
+            event.preventDefault();
+            setRenameOpen(true);
+          }}
+        >
+          <DropdownMenuItem onSelect={() => (openRenameAfterClose.current = true)}>
             <Pencil />
             {t('session.rename')}
           </DropdownMenuItem>

@@ -40,8 +40,13 @@ function openingDetail(taskId: string, title: string): TaskDetail {
 export function usePageDetail(taskId: string | null, epoch: number) {
   const [sent, setSent] = useState<TaskDetail | null>(null);
   const [opening, setOpening] = useState<TaskDetail | null>(null);
+  const [lastEpoch, setLastEpoch] = useState(epoch);
   if (sent && sent.task.id !== taskId) setSent(null);
   if (opening && opening.task.id !== taskId) setOpening(null);
+  if (lastEpoch !== epoch) {
+    setLastEpoch(epoch);
+    if (sent) setSent(null);
+  }
   const { detail } = useTaskDetail(opening ? null : taskId, epoch, sent);
   return {
     detail: opening ?? detail,

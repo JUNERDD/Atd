@@ -90,6 +90,13 @@
   }
 }
 
+/* Closing while the macOS panel is hidden skips exit animations so Radix unmounts synchronously
+   instead of waiting on an animationend event that WebKit suppresses at alpha 0. */
+:root[data-window-visible='false'] .panel-modal-overlay[data-state='closed'],
+:root[data-window-visible='false'] .panel-modal[data-slot='dialog-content'][data-state='closed'] {
+  animation: none;
+}
+
 .panel-modal-carousel {
   position: relative;
   display: flex;

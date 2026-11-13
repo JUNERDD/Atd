@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { History, ListFilter, SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -119,14 +119,50 @@ export function TaskHistory({
   const rows = historyRows(
     sections.map((section) => ({ title: sectionTitle(section), items: section.items })),
   );
+  const menuWaitRef = useRef<{ cancel: () => void } | null>(null);
+  useEffect(() => () => menuWaitRef.current?.cancel(), []);
+  function afterMenuClose(openDialog: () => void) {
+    menuWaitRef.current?.cancel();
+    const selector = '[data-slot="context-menu-content"], [data-slot="dropdown-menu-content"]';
+    if (!document.querySelector(selector)) {
+      openDialog();
+      return;
+    }
+    let frame = 0;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
+      menuWaitRef.current = null;
+      openDialog();
+    };
+    const poll = () => {
+      if (!document.querySelector(selector)) {
+        finish();
+        return;
+      }
+      frame = requestAnimationFrame(poll);
+    };
+    const fallback = window.setTimeout(finish, 180);
+    frame = requestAnimationFrame(poll);
+    menuWaitRef.current = {
+      cancel: () => {
+        settled = true;
+        cancelAnimationFrame(frame);
+        clearTimeout(fallback);
+      },
+    };
+  }
   const actions: HistoryActions = {
     togglePin: (task) =>
       void agentApi()
         .pinTask(task.id, !task.pinned)
         .catch((error) => setError(messageOf(error))),
-    rename: (task) => setRenaming({ task, open: true }),
+    rename: (task) => afterMenuClose(() => setRenaming({ task, open: true })),
     copyId: (task) => void copyId(task),
-    delete: (task) => setDeleting({ task, open: true }),
+    delete: (task) => afterMenuClose(() => setDeleting({ task, open: true })),
   };
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>

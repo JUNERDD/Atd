@@ -133,26 +133,45 @@ export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () 
   let placing = new Set<Element>();
   const observeAreas = () => {
     areas = [...document.querySelectorAll(DRAG_AREAS)];
+    const portals = [...document.body.children].filter(
+      (element) => element !== root && element instanceof HTMLElement,
+    );
     const next = placingBoxes(areas);
+    for (const portal of portals) next.add(portal);
     if (next.size === placing.size && [...next].every((box) => placing.has(box))) return;
     resizeObserver.disconnect();
     placing = next;
     for (const box of next) resizeObserver.observe(box);
   };
+  const isPortalMutation = (target: Node) =>
+    target === document.body ||
+    (target instanceof Element && target.parentElement === document.body);
   // Streamed transcript DOM, scroll thumbs and other content mutate every frame far from any area,
-  // so only a mutation that can change a region wakes the publisher: outside the root (the body
-  // and its overlay portals), on a placing box, on an element that is or contains an area, or
-  // adding or removing an area.
-  const affectsRegions = ({ target, addedNodes, removedNodes }: MutationRecord) =>
-    !root.contains(target) ||
-    (target instanceof Element && (placing.has(target) || target.matches(DRAG_AREAS))) ||
-    areas.some((area) => target.contains(area)) ||
-    [...addedNodes].some(
-      (node) =>
-        node instanceof Element &&
-        (node.matches(DRAG_AREAS) || node.querySelector(DRAG_AREAS) !== null),
-    ) ||
-    [...removedNodes].some((node) => areas.some((area) => node.contains(area)));
+  // so only a mutation that can change a region wakes the publisher: direct body/portal root
+  // changes outside root, on a placing box, on an element that is or contains an area, or
+  // adding or removing an area outside the scrollable panel body.
+  const affectsRegions = ({ target, addedNodes, removedNodes }: MutationRecord) => {
+    if (!root.contains(target)) return isPortalMutation(target);
+    if (target instanceof Element && (placing.has(target) || target.matches(DRAG_AREAS))) {
+      return true;
+    }
+    if (areas.some((area) => target.contains(area))) return true;
+    const inPanelBody = target instanceof Element && target.closest('.panel-body') !== null;
+    if (!inPanelBody) {
+      for (const node of addedNodes) {
+        if (
+          node instanceof Element &&
+          (node.matches(DRAG_AREAS) || node.querySelector(DRAG_AREAS) !== null)
+        ) {
+          return true;
+        }
+      }
+    }
+    for (const node of removedNodes) {
+      if (areas.some((area) => node.contains(area))) return true;
+    }
+    return false;
+  };
   const mutationObserver = new MutationObserver((records) => {
     if (!records.some(affectsRegions)) return;
     observeAreas();
@@ -166,6 +185,11 @@ export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () 
   });
   const stopVisibility = bridge.on('window.visibility', (state) => {
     visible = state.visible;
+    if (!visible) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      return;
+    }
     schedule();
   });
   const clear = () => bridge.post('window.dragRegions', { rects: [] });

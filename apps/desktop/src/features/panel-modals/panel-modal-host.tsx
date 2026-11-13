@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { PanelView } from '../agent/use-task-panel';
@@ -58,6 +58,17 @@ export function PanelModalHost({
   ) {
     setCachedDeck({ ids: activeIds, sessionKey, initialIndex });
   }
+
+  // Unmount the retained dialog once its exit animation window finishes so closed modals never
+  // keep a hidden Radix Portal/Presence alive if WebKit drops animationend.
+  useEffect(() => {
+    if (isOpen || (cachedDeck === null && cachedSnapshot === null)) return;
+    const timer = window.setTimeout(() => {
+      setCachedDeck(null);
+      setCachedSnapshot(null);
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, cachedDeck, cachedSnapshot]);
 
   const renderSnapshot = snapshot ?? cachedSnapshot;
   const renderedDefinitions = isOpen
