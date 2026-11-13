@@ -279,12 +279,11 @@ final class ShellBridge {
       try shell.openView(params)
       return try Self.encode(NativeEmpty())
     case .notificationsState:
-      return try Self.encode(await Self.notifications(of: shell).state())
+      return try await Self.notificationsState(shell: shell)
     case .notificationsSet(let params):
-      return try Self.encode(await Self.notifications(of: shell).apply(params))
+      return try await Self.setNotifications(params, shell: shell)
     case .notificationsOpenSystemSettings:
-      try Self.notifications(of: shell).openSystemSettings()
-      return try Self.encode(NativeEmpty())
+      return try Self.openNotificationSettings(shell: shell)
     case .computerPreviewShow(let params):
       return try Self.encode(shell.showComputerPreview(params, from: host, document: document))
     case .computerPrepareBrowser(let params):
@@ -317,22 +316,12 @@ final class ShellBridge {
     }
   }
 
-  private static func encode(_ value: some Encodable) throws(BridgeError) -> JSONValue {
+  static func encode(_ value: some Encodable) throws(BridgeError) -> JSONValue {
     do {
       return try JSONValue(encoding: value)
     } catch {
       throw BridgeError("The reply could not be encoded.")
     }
-  }
-
-  /// Notifications exist only in an app bundle.
-  private static func notifications(of shell: ShellController) throws(BridgeError)
-    -> ShellNotifications
-  {
-    guard let notifications = shell.notifications else {
-      throw BridgeError("Notifications are unavailable outside the app.")
-    }
-    return notifications
   }
 
   static func message(_ error: any Error, _ fallback: String) -> String {
