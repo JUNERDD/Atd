@@ -35,12 +35,13 @@ struct MiniPanelDropTests {
     #expect(MiniPanelDropRoute.route(for: Self.offer(text: true), text: "hi") == .quote("hi"))
   }
 
-  @Test("Atd's own drags, empty drops and whitespace take no route")
+  @Test("Atd's own drags, empty drops, placeholders and whitespace take no route")
   func nothingToTake() {
     #expect(MiniPanelDropRoute.route(for: Self.offer(files: true, fromAtd: true), text: nil) == nil)
     #expect(MiniPanelDropRoute.route(for: Self.offer(), text: "hi") == nil)
     #expect(MiniPanelDropRoute.route(for: Self.offer(text: true), text: nil) == nil)
     #expect(MiniPanelDropRoute.route(for: Self.offer(text: true), text: " \n\t") == nil)
+    #expect(MiniPanelDropRoute.route(for: Self.offer(text: true), text: "\u{FFFC}") == nil)
   }
 
   @Test("Text up to 12 000 UTF-16 units is quoted; longer text becomes a file")

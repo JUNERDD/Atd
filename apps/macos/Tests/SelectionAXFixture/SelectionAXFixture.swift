@@ -13,10 +13,16 @@ struct SelectionAXFixture {
     Task {
       do {
         let args = CommandLine.arguments
-        guard args.count == 3, let depth = Int(args[2]), (0...20).contains(depth),
+        let result: [String: String]
+        if args.count == 2, args[1] == "text" {
+          result = try await SelectionAXTextCases.run()
+        } else if args.count == 3, let depth = Int(args[2]), (0...20).contains(depth),
           ["AXTable", "AXList", "AXOutline", "AXGrid"].contains(args[1])
-        else { throw FixtureError.arguments }
-        let result = try await run(role: NSAccessibility.Role(rawValue: args[1]), depth: depth)
+        {
+          result = try await run(role: NSAccessibility.Role(rawValue: args[1]), depth: depth)
+        } else {
+          throw FixtureError.arguments
+        }
         FileHandle.standardOutput.write(try JSONSerialization.data(withJSONObject: result))
         exit(0)
       } catch {
@@ -45,7 +51,7 @@ struct SelectionAXFixture {
     }.value
   }
 
-  private static func kind(_ probe: SelectionProbe) -> String {
+  nonisolated static func kind(_ probe: SelectionProbe) -> String {
     switch probe {
     case .cells: "cells"
     case .none: "none"

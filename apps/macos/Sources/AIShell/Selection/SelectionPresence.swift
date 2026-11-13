@@ -3,16 +3,17 @@ import AppKit
 import ApplicationServices
 import Synchronization
 
-/// The selection toolbar's Accessibility check (grill decision Q4): whether the frontmost app's
-/// focused element has a non-empty selection, and where it is. It asks only for the selection's
-/// range, length, bounds or the custom editor's Copy availability, never for the text, which
-/// ``SelectionReader`` reads only when the user picks a toolbar action.
+/// The selection toolbar's Accessibility check: whether the frontmost app's focused element has a
+/// readable selection, and where it is. ``SelectionProbe`` carries only the selection's length and
+/// bounds (or the custom editor's Copy availability); ``SelectionTextProbe`` verifies bounded
+/// selections against ``TextCapture/hasContent(_:)`` without retaining text so attachment-only and
+/// whitespace-only selections do not summon a toolbar whose actions would find nothing.
 ///
 /// - Every AX message is bounded by a 100 ms messaging timeout set on each element it asks
 ///   (never on the system-wide element, which would change the default of every read).
 /// - A secure text field answers ``SelectionProbe/secureField`` before anything else is asked.
-/// - `AXSelectedTextRange` first; web content (WebKit, Chromium) reports its selection as a
-///   text-marker range, whose length, bounds and endpoint elements are read without the text.
+/// - `AXSelectedTextRange` first, then web content's `AXSelectedTextMarkerRange`
+///   (``SelectionTextProbe``).
 /// - Cell-based tables report selected cell identities. Opaque editors can supply only a Copy
 ///   menu hint (``SelectionEditMenu``); the action verifies that it really copies text.
 /// - Electron and Chromium build their web tree only once an assistive tool asks the
@@ -47,7 +48,7 @@ package nonisolated struct SelectionPresence: Sendable {
     if role == secure || subrole == secure { return .secureField }
 
     let surface = SelectionSurface(focused)
-    if let probe = textProbe(focused) { return probe }
+    if let probe = SelectionTextProbe.probe(focused, surface: surface, in: app) { return probe }
     if let wps, let probe = WpsSelectionProbe.probe(app: app, evidence: wps) { return probe }
     if let table = surface.selectedCellContainer() {
       if let origin, !gestureTargets(table, at: origin, in: app) { return .none }
@@ -58,14 +59,14 @@ package nonisolated struct SelectionPresence: Sendable {
     let deadline = ContinuousClock.now + .milliseconds(150)
     let children: [AXUIElement] = Self.copy(focused, kAXChildrenAttribute) ?? []
     for child in children.prefix(20) where ContinuousClock.now < deadline {
-      if let probe = textProbe(child) { return probe }
+      if let probe = SelectionTextProbe.probe(child, in: app) { return probe }
     }
     var current = focused
     for _ in 0..<6 where ContinuousClock.now < deadline {
       guard let parent: AXUIElement = Self.copy(current, kAXParentAttribute) else { break }
       let role: String? = Self.copy(parent, kAXRoleAttribute)
       if role == kAXWindowRole || role == kAXApplicationRole { break }
-      if let probe = textProbe(parent) { return probe }
+      if let probe = SelectionTextProbe.probe(parent, in: app) { return probe }
       current = parent
     }
     return surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
@@ -96,111 +97,6 @@ package nonisolated struct SelectionPresence: Sendable {
     return false
   }
 
-  private func textProbe(_ element: AXUIElement) -> SelectionProbe? {
-    AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
-    let surface = SelectionSurface(element)
-    let subrole: String? = Self.copy(element, kAXSubroleAttribute)
-    if subrole == kAXSecureTextFieldSubrole { return .secureField }
-    if surface.advertisesTextRange,
-      let rangeValue: AXValue = Self.copy(element, kAXSelectedTextRangeAttribute)
-    {
-      var range = CFRange()
-      let valid = AXValueGetValue(rangeValue, .cfRange, &range)
-      if valid, range.length > 0 {
-        let bounds: AXValue? = Self.copy(
-          element, kAXBoundsForRangeParameterizedAttribute, rangeValue)
-        return .selected(length: range.length, bounds: bounds.flatMap(Self.rect))
-      }
-      if valid, surface.nativeText, range.length == 0 { return SelectionProbe.none }
-    }
-    if let marker: CFTypeRef = Self.copy(element, "AXSelectedTextMarkerRange"),
-      let length: Int = Self.copy(element, "AXLengthForTextMarkerRange", marker), length > 0
-    {
-      guard CFGetTypeID(marker) == AXTextMarkerRangeGetTypeID() else { return nil }
-      let range = marker as! AXTextMarkerRange
-      let start = AXTextMarkerRangeCopyStartMarker(range)
-      let end = AXTextMarkerRangeCopyEndMarker(range)
-      let collapsed = CFEqual(start, end)
-      let nonText = !collapsed && Self.selectsNonTextObject(start, end, in: element)
-      if collapsed || nonText {
-        return SelectionProbe.none
-      }
-      let bounds: AXValue? = Self.copy(element, "AXBoundsForTextMarkerRange", marker)
-      return .selected(length: length, bounds: bounds.flatMap(Self.rect))
-    }
-    return nil
-  }
-
-  /// Chromium gives empty objects a replacement character. Its trailing boundary can be
-  /// represented by the next node. Character navigation skips empty objects: two non-text
-  /// leaves that lead to the same anchored character position have no text between them.
-  /// Unknown metadata must not veto the application's positive marker length.
-  private static func selectsNonTextObject(
-    _ start: AXTextMarker, _ end: AXTextMarker, in element: AXUIElement
-  ) -> Bool {
-    let deadline = ContinuousClock.now + .milliseconds(100)
-    guard let first: CFTypeRef = copy(element, "AXUIElementForTextMarker", start),
-      CFGetTypeID(first) == AXUIElementGetTypeID(), ContinuousClock.now < deadline,
-      let last: CFTypeRef = copy(element, "AXUIElementForTextMarker", end),
-      CFGetTypeID(last) == AXUIElementGetTypeID()
-    else { return false }
-    let firstElement = first as! AXUIElement
-    let lastElement = last as! AXUIElement
-    guard isNonTextLeaf(firstElement, until: deadline),
-      isNonTextLeaf(lastElement, until: deadline)
-    else { return false }
-    for direction in ["AXNextTextMarkerForTextMarker", "AXPreviousTextMarkerForTextMarker"]
-    where ContinuousClock.now < deadline {
-      let first: CFTypeRef? = copy(element, direction, start)
-      let last: CFTypeRef? =
-        ContinuousClock.now < deadline ? copy(element, direction, end) : nil
-      let same = sameTextPosition(first, last, in: element, until: deadline)
-      if same { return true }
-    }
-    return false
-  }
-
-  private static func sameTextPosition(
-    _ first: CFTypeRef?, _ last: CFTypeRef?, in element: AXUIElement,
-    until deadline: ContinuousClock.Instant
-  ) -> Bool {
-    // Chromium can encode an out-of-document position as a marker. Resolve both owners
-    // before comparing positions, and never interpret offsets from different nodes.
-    guard let first, let last,
-      CFGetTypeID(first) == AXTextMarkerGetTypeID(), CFGetTypeID(last) == AXTextMarkerGetTypeID(),
-      ContinuousClock.now < deadline,
-      let firstOwner: CFTypeRef = copy(element, "AXUIElementForTextMarker", first),
-      CFGetTypeID(firstOwner) == AXUIElementGetTypeID(), ContinuousClock.now < deadline,
-      let lastOwner: CFTypeRef = copy(element, "AXUIElementForTextMarker", last),
-      CFGetTypeID(lastOwner) == AXUIElementGetTypeID(), CFEqual(firstOwner, lastOwner)
-    else { return false }
-    if CFEqual(first, last) { return true }
-    // Equivalent markers can differ in affinity or opaque serialization. The host orders
-    // the pair and measures a gap within one known node, without exposing its text.
-    guard ContinuousClock.now < deadline,
-      let gap: CFTypeRef = copy(
-        element, "AXTextMarkerRangeForUnorderedTextMarkers", [first, last] as CFArray),
-      CFGetTypeID(gap) == AXTextMarkerRangeGetTypeID(), ContinuousClock.now < deadline
-    else { return false }
-    let length: Int? = copy(element, "AXLengthForTextMarkerRange", gap)
-    return length == 0
-  }
-
-  private static func isNonTextLeaf(
-    _ owner: AXUIElement, until deadline: ContinuousClock.Instant
-  ) -> Bool {
-    guard ContinuousClock.now < deadline else { return false }
-    AXUIElementSetMessagingTimeout(owner, messagingTimeout)
-    let role: String? = copy(owner, kAXRoleAttribute)
-    guard role == kAXGroupRole || role == kAXImageRole, ContinuousClock.now < deadline else {
-      return false
-    }
-    // A group's or image's descendants can contain text; only a confirmed leaf is eligible.
-    var count: CFIndex = 0
-    let error = AXUIElementGetAttributeValueCount(owner, kAXChildrenAttribute as CFString, &count)
-    return error == .success && count == 0
-  }
-
   /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`
   /// override treats that as Apple recommends for assistive tools such as Voice Control: an app
   /// with no accessibility mode yet turns on its basic one (native elements and web content)
@@ -215,25 +111,11 @@ package nonisolated struct SelectionPresence: Sendable {
     _ = AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
   }
 
-  private static func rect(_ value: AXValue) -> CGRect? {
-    var rect = CGRect.zero
-    return AXValueGetValue(value, .cgRect, &rect) ? rect : nil
-  }
-
   private static func copy<T>(_ element: AXUIElement, _ attribute: String) -> T? {
     var value: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
     else { return nil }
     return value as? T
-  }
-
-  private static func copy<T>(_ element: AXUIElement, _ attribute: String, _ parameter: CFTypeRef)
-    -> T?
-  {
-    var value: CFTypeRef?
-    let error = AXUIElementCopyParameterizedAttributeValue(
-      element, attribute as CFString, parameter, &value)
-    return error == .success ? value as? T : nil
   }
 }
 

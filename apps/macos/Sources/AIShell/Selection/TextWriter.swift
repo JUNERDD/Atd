@@ -81,7 +81,7 @@ enum TextWriter {
     case .copied, .untyped, .cells: return true
     case .field(let range):
       if let range, range.length > 0 { return true }
-      return !(target.selectedText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      return TextCapture.hasContent(target.selectedText ?? "")
     }
   }
 

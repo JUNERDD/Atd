@@ -52,7 +52,7 @@ public enum MiniPanelDropRoute: Equatable, Sendable {
     if offer.files { return .files }
     if offer.promises { return .promises }
     if offer.image { return .image }
-    guard offer.text, let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    guard offer.text, let text, TextCapture.hasContent(text)
     else { return nil }
     return text.utf16.count <= maxQuoteLength ? .quote(text) : .textFile(text)
   }

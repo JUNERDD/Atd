@@ -62,12 +62,11 @@ public enum CopyFallback {
   }
 
   /// The selection a copy put on the pasteboard, once the change count moved (an unchanged
-  /// pasteboard is the user's, never the selection): its plain string, unless that is missing or
-  /// whitespace only, or the copy was of files (Finder puts their names there as a string too).
+  /// pasteboard is the user's, never the selection): its plain string, unless that carries no
+  /// readable text (whitespace, invisible markers or an attachment placeholder only) or the copy
+  /// was of files (Finder puts their names there as a string too).
   public static func copiedText(string: String?, hasFiles: Bool) -> String? {
-    guard !hasFiles, let string,
-      !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    else { return nil }
+    guard !hasFiles, let string, TextCapture.hasContent(string) else { return nil }
     return string
   }
 }
