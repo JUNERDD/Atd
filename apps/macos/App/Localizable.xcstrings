@@ -9643,6 +9643,24 @@
         }
       }
     },
+    "menu.panelModals" : {
+      "comment" : "Menu item that reopens the main-panel tips and notices modal",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tips & Notices…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用提示…"
+          }
+        }
+      }
+    },
     "menu.quit" : {
       "comment" : "Quit menu item",
       "extractionState" : "manual",

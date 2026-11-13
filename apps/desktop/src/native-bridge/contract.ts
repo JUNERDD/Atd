@@ -24,6 +24,7 @@ import {
 import { NativeComputerEvents } from './computer-calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { NativeNotificationPosts } from './notification-calls.ts';
+import { NativePanelModalEvents } from './panel-modal-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { NativePreferencePosts } from './preference-posts.ts';
 import { NativeRecordingEvents } from './recording-calls.ts';
@@ -303,6 +304,7 @@ export const NativeEvents = {
   ...NativeCommandOptionsEvents,
   ...NativeRecordingEvents,
   ...NativeCaptureTextEvents,
+  ...NativePanelModalEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

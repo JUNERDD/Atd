@@ -6,3 +6,24 @@ import Foundation
 
 /// Result of the `captureText.progress` call.
 public typealias CaptureTextProgressResult = NativeEmpty
+
+/// Params of the `panelModal.setAvailable` call.
+public struct PanelModalSetAvailableParams: Codable, Equatable, Sendable {
+  public let available: Bool
+
+  public init(available: Bool) {
+    self.available = available
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    available = try container.boolean(.available)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case available
+  }
+}
+
+/// Result of the `panelModal.setAvailable` call.
+public typealias PanelModalSetAvailableResult = NativeEmpty

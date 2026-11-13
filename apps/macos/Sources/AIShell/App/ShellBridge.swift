@@ -308,6 +308,12 @@ final class ShellBridge {
       return try Self.encode(await shell.prepareComputerApplication(params))
     case .computerPrimeCaptureConsent:
       return try Self.encode(await shell.primeComputerCaptureConsent())
+    case .panelModalSetAvailable(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can set panel modals.")
+      }
+      shell.setPanelModalsAvailable(params.available)
+      return try Self.encode(NativeEmpty())
     }
   }
 

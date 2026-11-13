@@ -130,7 +130,7 @@ export function nativeSettings(
       summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
       nextSteps: settings?.nextSteps ?? DEFAULT_NEXT_STEPS,
       nextStepClick: settings?.nextStepClick ?? DEFAULT_NEXT_STEP_CLICK,
-      onboardingCompleted: settings?.onboardingCompleted ?? true,
+      onboardingCompleted: settings?.onboardingCompleted ?? false,
     };
   };
   const publish = () => {

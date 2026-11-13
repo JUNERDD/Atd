@@ -17,12 +17,7 @@ import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
 import { parse } from '../client/agent/validation';
-import { publishFileDrag } from '../lib/file-drag';
-import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
-import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
-import { setSystemAppearance } from '../theme/panel-background/system-appearance';
-import { publishDragRegions } from './drag-regions';
 import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
 import { nativeApps } from './native-apps';
@@ -39,10 +34,12 @@ import { nativeFolders } from './native-folders';
 import { nativeMiniPanel } from './native-mini-panel';
 import { nativeNotifications } from './native-notifications';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
+import { nativePanelModals } from './native-panel-modals';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
 import { nativeShortcutRecording } from './native-shortcut-recording';
 import { nativeShellPreferences } from './native-shell-preferences';
+import { attachNativeSurfaceDom, subscribeNativeWindowState } from './native-surface';
 import { nativeHeldRequest } from './native-held-request';
 import { nativeTaskEvents } from './native-task-events';
 import { nativeLightCommand, type PageHolder } from './native-light-command';
@@ -84,8 +81,11 @@ export async function installNativeHost(
     surface === 'panel' ? nativeHeldRequest(native, 'selection.ask') : undefined;
   const onNewTask = surface === 'panel' ? nativeHeldRequest(native, 'task.new') : undefined;
   const focusWrite = surface === 'panel' ? nativeFocusWrite(native) : undefined;
-  // Native task navigation and withdrawn queues wait for the panel's view to subscribe.
+  // Native task navigation, withdrawn queues, window visibility and modal triggers must subscribe
+  // before the first await so shell replay events on `bridge.ready` are never lost.
+  subscribeNativeWindowState(native);
   const taskEvents = surface === 'panel' ? nativeTaskEvents(native) : {};
+  const panelModals = surface === 'panel' ? nativePanelModals(native) : {};
   const captureEvents = surface === 'panel' ? nativeCaptureEvents(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
@@ -240,17 +240,7 @@ export async function installNativeHost(
     if (frame.scope === 'extensions') serviceEmit({ type: 'extensions' });
   });
 
-  native.on('window.active', ({ active }) => setWindowActive(active));
-  native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
-  native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
-  native.on('appearance.system', setSystemAppearance);
-  if (surface === 'panel') {
-    native.on('resources.imported', ({ resources, folders, failures }) =>
-      publishImportedFiles({ files: resources, folders, failures }),
-    );
-    native.on('files.drag', publishFileDrag);
-  }
-  publishDragRegions(native, document.getElementById('root') ?? document.body);
+  attachNativeSurfaceDom(native, surface);
   connection.connect();
   // The service may still be starting: its data follows the stream, and the shell's preferences
   // follow `app.state`, both through settings change events.
@@ -342,6 +332,7 @@ export async function installNativeHost(
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(onNewTask ? { onNewTask } : {}),
     ...taskEvents,
+    ...panelModals,
     ...(surface === 'onboarding'
       ? { onboarding: nativeOnboarding(native, messages, connection) }
       : {}),

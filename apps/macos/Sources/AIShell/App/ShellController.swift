@@ -80,6 +80,7 @@ public final class ShellController {
   var statusItem: StatusItemController?
   private(set) var registrar: HotKeyRegistrar?
   var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
+  var hasPanelModals = true
   /// The first `toolbar.set` of this launch has arrived.
   private var toolbarConfigured = false
 
@@ -131,6 +132,9 @@ public final class ShellController {
       restorePanel: { panel.restoreAfterSystemPanel() },
       arbiter: arbiter)
     self.systemPanels = systemPanels
+    PermissionGuide.shared.onActiveChange = { open in
+      open ? panel.lowerForSystemPanel() : panel.restoreAfterSystemPanel()
+    }
     let capabilities = ShellCapabilities(
       services: services, panelVisible: { panel.isVisible }, systemPanels: systemPanels,
       arbiter: arbiter)

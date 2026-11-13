@@ -15,7 +15,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   private var userMoving = false
   private var placing = false
   private var isPinned = false
-  private var systemPanelOpen = false
+  private var systemPanelDepth = 0
   /// A summon put the panel in front, or it gained key uncovered; only then may it float.
   private var holdsFront = false
   private var awaitsKey = false
@@ -84,7 +84,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   func restoreAfterSystemPanel() { setSystemPanel(false) }
 
   private func setSystemPanel(_ open: Bool) {
-    systemPanelOpen = open
+    systemPanelDepth = open ? systemPanelDepth + 1 : max(0, systemPanelDepth - 1)
     updateLevel()
   }
 
@@ -92,7 +92,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     // Non-activating key panels stay above frontmost windows reordering on modifiers; never
     // reassign an unchanged level, which orders the window above peers that cover it.
     let floats = isPinned || (holdsFront && isVisible && panel.isKeyWindow)
-    let level: NSWindow.Level = !systemPanelOpen && floats ? .floating : .normal
+    let level: NSWindow.Level = systemPanelDepth == 0 && floats ? .floating : .normal
     if panel.level != level { panel.level = level }
   }
 

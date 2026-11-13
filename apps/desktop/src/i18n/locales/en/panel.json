@@ -394,5 +394,36 @@
   "attachments": {
     "noVision": "{{model}} can't see images, so attached images won't reach it.",
     "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Other attachments, such as the screen context, are still sent."
+  },
+  "modals": {
+    "close": "Close",
+    "carousel": {
+      "regionLabel": "Tips and notices",
+      "paginationLabel": "Tip {{current}} of {{total}}",
+      "dotLabel": "Show item {{index}} of {{total}}",
+      "slideAnnouncement": "Item {{current}} of {{total}}"
+    },
+    "notarizationReauth": {
+      "title": "Re-authorize permissions after certificate update",
+      "description": "Atd recently updated its Apple notarization certificate, so macOS treats earlier permission grants as invalid. Re-grant the missing items in System Settings to keep using text selection and screenshots.",
+      "later": "Later",
+      "done": "Done",
+      "authorize": "Open System Settings",
+      "authorizeAccessibility": "Grant Accessibility",
+      "authorizeScreenRecording": "Grant Screen Recording",
+      "openRow": "Open",
+      "grantedBadge": "Granted",
+      "error": "Couldn't open System Settings. Please check Privacy & Security manually.",
+      "accessibility": {
+        "title": "Accessibility",
+        "description": "Read selected text and context across apps",
+        "grantedDescription": "Accessibility access is up to date"
+      },
+      "screenRecording": {
+        "title": "Screen Recording",
+        "description": "Capture screen context when you ask",
+        "grantedDescription": "Screen Recording access is up to date"
+      }
+    }
   }
 }

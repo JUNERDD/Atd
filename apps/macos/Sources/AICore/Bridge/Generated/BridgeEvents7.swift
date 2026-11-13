@@ -154,3 +154,6 @@ public struct CaptureTextActionEvent: Codable, Equatable, Sendable {
     }
   }
 }
+
+/// Payload of the `panelModal.open` event.
+public typealias PanelModalOpenEvent = NativeEmpty

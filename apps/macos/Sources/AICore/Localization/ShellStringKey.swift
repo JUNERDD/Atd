@@ -11,6 +11,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case menuShowMiniPanel = "menu.showMiniPanel"
   case menuSettings = "menu.settings"
   case menuOnboarding = "menu.onboarding"
+  case menuPanelModals = "menu.panelModals"
   case menuSelectionListening = "menu.selectionListening"
   case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"

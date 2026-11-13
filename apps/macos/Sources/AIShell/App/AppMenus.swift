@@ -7,6 +7,8 @@ struct AppMenuActions {
   var hidePanel: () -> Void
   var openSettings: () -> Void
   var openOnboarding: () -> Void
+  /// Reopens the main-panel feature modals deck; nil while no reopenable modals exist.
+  var openPanelModals: (() -> Void)?
   /// Nil where the build does not update (Debug).
   var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
@@ -45,6 +47,9 @@ enum AppMenus {
       ActionMenuItem(strings.text(.menuSettings), key: ",", actions.openSettings),
       ActionMenuItem(strings.text(.menuOnboarding), actions.openOnboarding),
     ]
+    if let openPanelModals = actions.openPanelModals {
+      items.append(ActionMenuItem(strings.text(.menuPanelModals), openPanelModals))
+    }
     if let checkForUpdates = actions.checkForUpdates {
       items.append(ActionMenuItem(strings.text(.menuCheckForUpdates), checkForUpdates))
     }
@@ -230,10 +235,9 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {},
-      checkForUpdates: nil,
-      restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false },
-      selectionListening: { nil }, setSelectionListening: { _ in }, miniPanelShown: { false },
-      setMiniPanelShown: { _ in }, showLastRecording: nil)
+      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, openPanelModals: nil,
+      checkForUpdates: nil, restartService: {}, showServiceLogs: {}, editCommand: { _ in },
+      developmentHint: { false }, selectionListening: { nil }, setSelectionListening: { _ in },
+      miniPanelShown: { false }, setMiniPanelShown: { _ in }, showLastRecording: nil)
   }
 }

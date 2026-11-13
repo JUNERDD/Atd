@@ -101,6 +101,7 @@ export class NativeBridge {
     'recording.askOpen': new Set(),
     'captureText.run': new Set(),
     'captureText.action': new Set(),
+    'panelModal.open': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

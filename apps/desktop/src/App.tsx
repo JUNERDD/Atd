@@ -47,6 +47,7 @@ import type { Block } from './client/agent/transcript-schema';
 import { appendChip, quoteChip } from './features/composer-editor/draft';
 import { draftFiles } from './features/composer-editor/draft-attachments';
 import type { FileRef } from './client/agent/task-schema';
+import { PanelModalHost } from './features/panel-modals/panel-modal-host';
 import './features/agent/agent.css';
 
 const NO_BLOCKS: Block[] = [];
@@ -337,6 +338,7 @@ export function App() {
               </div>
             </>
           )}
+          <PanelModalHost snapshot={snapshot} view={view} ready={!starting} />
           <ToastHost top={65} />
         </main>
       </CodeHighlightPool>

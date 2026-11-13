@@ -14,6 +14,7 @@ extension ShellController {
       hidePanel: { [weak self] in self?.hidePanel() },
       openSettings: { [weak self] in self?.openSettings(commandId: nil, section: nil) },
       openOnboarding: { [weak self] in self?.openOnboarding() },
+      openPanelModals: hasPanelModals ? { [weak self] in self?.openPanelModals() } : nil,
       checkForUpdates: updater.isAvailable
         ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },
@@ -56,6 +57,18 @@ extension ShellController {
     onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
     // Notification actions are worded when registered: at launch and on every change.
     notifications?.registerCategories()
+  }
+
+  func setPanelModalsAvailable(_ available: Bool) {
+    guard hasPanelModals != available else { return }
+    hasPanelModals = available
+    NSApp.mainMenu = AppMenus.mainMenu(menuActions)
+  }
+
+  func openPanelModals() {
+    guard !systemPanels.isOpen, !screenshots.isCapturing else { return }
+    showPanel()
+    panelHost.send(.panelModalOpen(.init()))
   }
 
   /// Undo and Redo go to the renderer page of the key window (the panel, settings, the welcome

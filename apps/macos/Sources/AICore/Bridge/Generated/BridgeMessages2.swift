@@ -141,6 +141,9 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .recordingAnswer(container.value(.params, RecordingAnswerParams.self))
       case "captureText.progress":
         call = try .captureTextProgress(container.value(.params, CaptureTextProgressParams.self))
+      case "panelModal.setAvailable":
+        call = try .panelModalSetAvailable(
+          container.value(.params, PanelModalSetAvailableParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -249,6 +252,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case recordingAskOpen(RecordingAskOpenEvent)
   case captureTextRun(CaptureTextRunEvent)
   case captureTextAction(CaptureTextActionEvent)
+  case panelModalOpen(PanelModalOpenEvent)
 
   /// The contract name.
   public var name: String {
@@ -285,6 +289,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .recordingAskOpen: "recording.askOpen"
     case .captureTextRun: "captureText.run"
     case .captureTextAction: "captureText.action"
+    case .panelModalOpen: "panelModal.open"
     }
   }
 
@@ -322,6 +327,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .recordingAskOpen(let payload): try payload.encode(to: encoder)
     case .captureTextRun(let payload): try payload.encode(to: encoder)
     case .captureTextAction(let payload): try payload.encode(to: encoder)
+    case .panelModalOpen(let payload): try payload.encode(to: encoder)
     }
   }
 }

@@ -45,11 +45,13 @@ function DialogContent({
   children,
   showCloseButton = true,
   overlayClassName,
+  material = 'surface',
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
   overlayClassName?: string;
+  material?: 'surface' | 'backdrop';
 }) {
   return (
     <DialogPortal>
@@ -58,12 +60,20 @@ function DialogContent({
         data-slot="dialog-content"
         data-has-close={showCloseButton}
         className={cn(
-          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-6 rounded-[min(var(--radius-4xl),24px)] surface-glass p-6 text-sm text-popover-foreground duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-6 rounded-[min(var(--radius-4xl),24px)] p-6 text-sm text-popover-foreground duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          material === 'surface' ? 'surface-glass' : 'glass-host',
           className,
         )}
         {...props}
         onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
+        {material === 'backdrop' && (
+          <span
+            aria-hidden
+            data-slot="dialog-backdrop"
+            className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] surface-glass"
+          />
+        )}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>

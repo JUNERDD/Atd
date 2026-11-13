@@ -280,6 +280,10 @@ export interface DesktopBridge {
   onTaskOpen?: (listener: (taskId: string) => void) => () => void;
   /** Native Stop's withdrawn messages; panel only, held until its draft owner subscribes. */
   onTaskQueueWithdrawn?: (listener: (event: TaskQueueWithdrawn) => void) => () => void;
+  /** Controls whether the generic panel modal menu item appears in the macOS menus; panel only. */
+  setPanelModalsAvailable?: (available: boolean) => Promise<void>;
+  /** Fires when the user triggers the generic panel modal menu item; held until subscribed. */
+  onPanelModalOpen?: (listener: () => void) => () => void;
   /** The welcome guide window's own controls; present only in that window. */
   readonly onboarding?: OnboardingBridge;
 }

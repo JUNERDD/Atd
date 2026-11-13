@@ -77,7 +77,8 @@
       "apps.pick",
       "shortcuts.recording",
       "recording.answer",
-      "captureText.progress"
+      "captureText.progress",
+      "panelModal.setAvailable"
     ],
     "posts": [
       "bridge.ready",
@@ -133,7 +134,8 @@
       "recording.askStop",
       "recording.askOpen",
       "captureText.run",
-      "captureText.action"
+      "captureText.action",
+      "panelModal.open"
     ]
   },
   "anyOf": [
@@ -3651,6 +3653,35 @@
         },
         {
           "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "panelModal.setAvailable"
+            },
+            "params": {
+              "type": "object",
+              "required": ["available"],
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["type", "method", "params"],
           "properties": {
             "type": {
@@ -6666,6 +6697,26 @@
                   "additionalProperties": false
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "panelModal.open"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -10954,6 +11005,21 @@
       "properties": {},
       "additionalProperties": false
     },
+    "PanelModalSetAvailableParams": {
+      "type": "object",
+      "required": ["available"],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PanelModalSetAvailableResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "BridgeReadyPost": {
       "type": "object",
       "properties": {},
@@ -13148,6 +13214,11 @@
           "additionalProperties": false
         }
       },
+      "additionalProperties": false
+    },
+    "PanelModalOpenEvent": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     }
   }
