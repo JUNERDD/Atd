@@ -404,8 +404,8 @@
       "slideAnnouncement": "第 {{current}} 项，共 {{total}} 项"
     },
     "notarizationReauth": {
-      "title": "公证凭证已更新，需重新授权",
-      "description": "Atd 最近更换了 Apple 公证凭证，macOS 会将旧授权视为失效。请在系统设置中重新勾选缺失的权限，以继续使用划词和截图功能。",
+      "title": "签名证书已更新，需重新授权",
+      "description": "Atd 最近更换了开发者签名证书，macOS 会将旧授权视为失效。请在系统设置中重新勾选缺失的权限，以继续使用划词和截图功能。",
       "later": "稍后再说",
       "done": "完成",
       "authorize": "打开系统设置",
@@ -417,12 +417,12 @@
       "accessibility": {
         "title": "辅助功能",
         "description": "在任意应用中读取选中文本与上下文",
-        "grantedDescription": "辅助功能权限已更新为最新凭证"
+        "grantedDescription": "辅助功能权限已更新为最新证书"
       },
       "screenRecording": {
         "title": "屏幕录制",
         "description": "在你主动发起时截取屏幕上下文",
-        "grantedDescription": "屏幕录制权限已更新为最新凭证"
+        "grantedDescription": "屏幕录制权限已更新为最新证书"
       }
     }
   }

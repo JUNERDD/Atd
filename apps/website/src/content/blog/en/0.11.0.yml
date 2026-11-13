@@ -52,7 +52,7 @@ improvements:
   - text: Filter **Memory** by user profile, preferences and facts, corrections and learnings, or tool preferences, with clearer empty and search-result states.
   - text: Provider connections now accept **plain HTTP endpoints**, including internal hostnames, with an inline warning for non-loopback connections.
   - text: Added **Settings › General › Screenshot** options to copy confirmed screenshots to the clipboard automatically and choose whether confirming a long screenshot opens its result card or copies and closes, with a **Copied** capsule on the Dynamic Island.
-  - text: Added **Tips & Notices…** in the menu bar and an in-app prompt to re-grant **Accessibility** and **Screen Recording** if an Apple notarization certificate update invalidates earlier macOS permissions.
+  - text: Added **Tips & Notices…** in the menu bar and an in-app prompt to re-grant **Accessibility** and **Screen Recording** if a Developer ID signing certificate update invalidates earlier macOS permissions.
   - text: '**Floating island, recording playback, and lightweight capture runs** now size and track hover more efficiently, isolate 60 fps video playback updates, and run eligible screenshot-text commands on faster lightweight sessions.'
   - text: '**Long conversations, streaming, and search** stay smoother with bounded live tool output, background worker highlighting for large diffs and code blocks, lazy JSON trees, debounced draft persistence, and reduced background work while the panel is hidden.'
 fixes:
@@ -65,4 +65,4 @@ fixes:
   - text: Fixed **menu-triggered dialogs** colliding with closing menus or stalling while the panel is hidden, cleared stale task details on task switches, and prevented stale WebView completions or malformed stream frames from wedging reloaded pages.
   - text: Fixed **macOS 15 glass surfaces** leaking blur outside rounded or island bounds and staying attached under Reduce Transparency.
 other:
-  - text: Release installers and updates are now signed with **Apple Developer ID** and notarized by Apple; macOS may ask to reconfirm privacy permissions once when upgrading from an earlier version.
+  - text: Release installers and updates are now signed with **Apple Developer ID** (Apple notarization is pending for a follow-up release, so first launch may still require choosing **Open Anyway** in System Settings); macOS may ask to reconfirm privacy permissions once when upgrading from an earlier version.

@@ -405,7 +405,7 @@
     },
     "notarizationReauth": {
       "title": "Re-authorize permissions after certificate update",
-      "description": "Atd recently updated its Apple notarization certificate, so macOS treats earlier permission grants as invalid. Re-grant the missing items in System Settings to keep using text selection and screenshots.",
+      "description": "Atd recently updated its Developer ID signing certificate, so macOS treats earlier permission grants as invalid. Re-grant the missing items in System Settings to keep using text selection and screenshots.",
       "later": "Later",
       "done": "Done",
       "authorize": "Open System Settings",
