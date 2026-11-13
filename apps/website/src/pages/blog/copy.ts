@@ -10,8 +10,10 @@ interface BlogCopy {
   /** The list's search result and share card title and text. */
   headTitle: string;
   headDescription: string;
-  /** A post's search result and share card title. */
-  postTitle: (title: string) => string;
+  /** The RSS feed title advertised in `<head>` and `<channel>`. */
+  rssTitle: string;
+  /** A post's search result and share card title, pairing headline with version for release search. */
+  postTitle: (title: string, version: string) => string;
   /** Names the release a post announces. */
   release: (version: string) => string;
   /** The back button's accessible name, and the plain link at a post's end. */
@@ -32,10 +34,11 @@ export const blogCopy = {
   en: {
     title: 'Blog',
     lede: 'Release notes and news from Atd, newest first.',
-    headTitle: 'Blog — Atd',
+    headTitle: 'Blog & Release Notes — Atd',
     headDescription:
-      'Release notes and news from Atd, the free, open-source AI agent for macOS: new features, improvements and fixes in each version.',
-    postTitle: (title) => `${title} — Atd Blog`,
+      'Release notes and product updates for Atd, the open-source macOS AI agent: new features, computer use, captures, and fixes.',
+    rssTitle: 'Atd Blog & Release Notes',
+    postTitle: (title, version) => `${title} — Atd ${version}`,
     release: (version) => `Atd ${version}`,
     back: 'Back to Blog',
     contents: 'On this page',
@@ -49,10 +52,11 @@ export const blogCopy = {
   zh: {
     title: '博客',
     lede: 'Atd 的版本更新与动态，最新的在前。',
-    headTitle: '博客 — Atd',
+    headTitle: '博客与更新日志 — Atd',
     headDescription:
-      'Atd 的版本更新与动态：每个版本的新功能、改进与修复。Atd 是一款免费开源的 macOS AI 智能体。',
-    postTitle: (title) => `${title} — Atd 博客`,
+      'Atd 开源 macOS AI 智能体的版本更新与产品动态：每版新功能、电脑操作、截图录屏与问题修复。',
+    rssTitle: 'Atd 博客与更新日志',
+    postTitle: (title, version) => `${title} — Atd ${version}`,
     release: (version) => `Atd ${version}`,
     back: '返回博客',
     contents: '目录',

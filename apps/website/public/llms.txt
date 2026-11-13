@@ -1,12 +1,19 @@
 # Atd
 
-> Atd (anything, anytime, anywhere, to do) is a quiet desktop agent panel for macOS. A native app (macOS 15 or later, on Apple silicon or Intel) puts a small panel in the bottom-right corner of the screen; press ⌘ ⇧ Space anywhere to open it, and it runs coding and general-purpose agent tasks on your own Mac through a local agent service.
+> Atd (anything, anytime, anywhere, to do) is a free, open-source macOS AI desktop agent (MIT licensed). A native app for macOS 15 or later (Apple silicon or Intel) opens a floating panel on ⌘ ⇧ Space anywhere to run coding, computer use, MCP/skill workflows, screenshot and screen-recording captures, and automation with cloud or local models.
 
-- [Website (English)](/): a scroll through the app's interfaces, its features and the download
-- [Website (简体中文)](/zh): the same page in Simplified Chinese
-- [Blog](/blog) ([简体中文](/zh/blog)): release notes, newest first, one post per release with images of the changes
-- [Source on GitHub](https://github.com/JUNERDD/Atd): the native shell, the React UI and the agent service
-- [Download for Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg): the newest stable installer for Macs with Apple silicon (macOS 15 or later); saves as `Atd-<version>-arm64.dmg`
-- [Download for Intel](https://downloads.atd.best/latest/Atd-x64.dmg): the newest stable installer for Intel Macs (macOS 15 or later); saves as `Atd-<version>-x64.dmg`
-- Preview builds for [Apple silicon](https://downloads.atd.best/rc/Atd-arm64.dmg) and [Intel](https://downloads.atd.best/rc/Atd-x64.dmg): the newest release candidate, or the stable release while none is newer; it updates itself to the next stable release
-- [Releases](https://github.com/JUNERDD/Atd/releases): release notes and the arm64 and x64 dmg for each version
+## Core Pages
+
+- [Website (English)](https://atd.best/): product overview, workflow showcase, capabilities, and installers
+- [Website (简体中文)](https://atd.best/zh): product overview and installers in Simplified Chinese
+- [Blog & Release Notes (English)](https://atd.best/blog): release notes, newest first ([RSS feed](https://atd.best/feed.xml))
+- [博客与更新日志 (简体中文)](https://atd.best/zh/blog): release notes in Simplified Chinese ([RSS feed](https://atd.best/zh/feed.xml))
+- [Full LLM Reference](https://atd.best/llms-full.txt): generated full product and release notes reference in production builds
+
+## Downloads & Source
+
+- [Download for Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg): newest stable installer for Apple silicon (macOS 15 or later); saves as `Atd-<version>-arm64.dmg`
+- [Download for Intel](https://downloads.atd.best/latest/Atd-x64.dmg): newest stable installer for Intel Macs (macOS 15 or later); saves as `Atd-<version>-x64.dmg`
+- Preview builds for [Apple silicon](https://downloads.atd.best/rc/Atd-arm64.dmg) and [Intel](https://downloads.atd.best/rc/Atd-x64.dmg): newest release candidate when newer than stable
+- [Source on GitHub](https://github.com/JUNERDD/Atd): the native macOS shell, React UI, and local agent service
+- [Releases](https://github.com/JUNERDD/Atd/releases): release notes and dmg installers per version

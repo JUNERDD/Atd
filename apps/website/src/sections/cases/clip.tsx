@@ -5,6 +5,9 @@ interface CaseClipViewProps {
   clip: CaseClip;
   /** What the clip shows, for assistive technology. */
   alt: string;
+  /** Optional descriptive alt for the primary stage poster image; when set, `<video>` hides from
+      assistive tech so the description is announced once per slide. */
+  posterAlt?: string;
   /** Plays the clip from its start, looping; when it turns off, the clip rests on its poster. */
   play: boolean;
   /** Loads the video before it plays, so the stage's next scenes start at once. */
@@ -21,7 +24,7 @@ interface CaseClipViewProps {
  * shows again. Each clip fades up from black and back down at its ends, so its loop dips instead
  * of cutting.
  */
-export function CaseClipView({ clip, alt, play, preload, onError }: CaseClipViewProps) {
+export function CaseClipView({ clip, alt, posterAlt, play, preload, onError }: CaseClipViewProps) {
   const video = useRef<HTMLVideoElement>(null);
   const [rolling, setRolling] = useState(false);
 
@@ -46,8 +49,10 @@ export function CaseClipView({ clip, alt, play, preload, onError }: CaseClipView
       <img
         className="cases__poster"
         src={clip.poster}
+        width={1280}
+        height={720}
         crossOrigin="anonymous"
-        alt=""
+        alt={posterAlt ?? ''}
         loading="lazy"
         decoding="async"
         draggable={false}
@@ -58,7 +63,8 @@ export function CaseClipView({ clip, alt, play, preload, onError }: CaseClipView
         className="cases__video"
         src={load ? clip.video : undefined}
         crossOrigin="anonymous"
-        aria-label={alt}
+        aria-label={posterAlt ? undefined : alt}
+        aria-hidden={posterAlt ? true : undefined}
         muted
         loop
         playsInline

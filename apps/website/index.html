@@ -19,6 +19,7 @@
       // themselves: the language links record that choice under `atd-lang`.
       try {
         if (
+          !navigator.webdriver &&
           location.pathname === '/' &&
           !localStorage.getItem('atd-lang') &&
           /^zh\b/i.test(navigator.language)

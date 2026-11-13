@@ -32,9 +32,10 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, plus the blog's list and posts and both diagnostic routes, then `sitemap.xml` (only
-   indexable pages, each with its own page's hreflang alternates) and
-   `robots.txt`, and deletes `dist-ssr`.
+   `dist/zh/index.html`, plus the blog's list and posts, both diagnostic routes, and `dist/404.html`.
+   Using `scripts/seo-outputs.ts`, it also writes `sitemap.xml` (only indexable pages, each with
+   `<lastmod>` and `hreflang` alternates), bilingual RSS 2.0 feeds (`feed.xml` and `zh/feed.xml`),
+   `robots.txt`, and dynamic `llms.txt` / `llms-full.txt`, then deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
 interactive demos and the interface showcase's timeline only enhance what is already there. Canonical and Open Graph URLs
@@ -47,8 +48,8 @@ src/
   app.tsx              Page composition (nav, sections in order, footer)
   entry-client.tsx     Hydration (or a fresh render on the dev server)
   entry-server.tsx     Prerender entry: markup, head and html attributes per language
-  head.ts              Title, description, robots, canonical, hreflang, Open Graph and X card tags
-  structured-data.ts   The schema.org graph (site, author, page, app), built from content/site.ts
+  head.ts              Title, description, robots, canonical, hreflang, RSS, Open Graph and X cards
+  structured-data.ts   The schema.org graphs (home app, blog index, post BlogPosting + breadcrumbs)
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
@@ -56,7 +57,7 @@ src/
   motion/              The reveal controller, text effects (decode, type) and the grid halo
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
-  pages/<name>/        Pages other than the home page: the blog and the diagnostic downloads
+  pages/<name>/        Other routes: blog, diagnostic downloads (`/debug`), and 404 fallback
   content/             Site facts (links, version), the interface scenes and archived captures
   content/blog/        The blog's posts, one YAML file per language and release (the CMS's)
 public/
@@ -180,7 +181,8 @@ CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as We
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`
 section (`3685:8952`, on the Website page): the list and a post, each at Desktop (English, 1280)
-and Compact (Chinese, 320). They are built from `Website / Site nav`, `Website / Site footer`,
+and Compact (Chinese, 320). They are built from `Website / Site nav` (including
+`Website / GitHub button`, backed by `Brand / GitHub`), `Website / Site footer`,
 `Website / Blog card` (Featured and Standard, with hover and focus), `Website / Post contents` and
 its `Website / Post contents link` (default, current and hover, for pointer and touch),
 `Website / Post fix` (an optional image), `Website / Plain button` and `Website / Download key`
@@ -209,13 +211,24 @@ The pages' own copy (heading, lede, labels and head tags) is in `src/pages/blog/
 `atd-preview-clean-urls` plugin in `vite.config.ts`), so `/blog/atd-0-10-6` previews the post rather
 than the home page's HTML.
 
-## Header language menu
+## Header language menu and GitHub entry
 
-The header uses a 44 px Lucide language icon button and an end-aligned dropdown. Radix handles
-keyboard navigation, dismissal, focus restoration and viewport collision. The English and 简体中文
-links keep their language routes and remember explicit choices; the current language has a checkmark.
-The button and menu states (`2495:144651`)
-reuse the website's monochrome tokens and remain connected to the shared Lucide library.
+The header end cluster places a 44 px Lucide language icon button, a bordered GitHub Star link, and
+the primary white download key side by side. Radix handles keyboard navigation, dismissal, focus
+restoration and viewport collision for the end-aligned language dropdown; the English and 简体中文
+links keep their language routes and remember explicit choices, with a checkmark on the current
+language. The language button and menu states (`2495:144651`) reuse the website's monochrome tokens
+and remain connected to the shared Lucide library.
+
+The GitHub entry (`src/sections/nav/github-mark.tsx`, canonical `Brand / GitHub` from
+`logos.lndev.me`) links to the repository in a new tab using a secondary bordered key beside
+`Download` (`Website / GitHub button`): `44 × 44 px` icon-only below `416 px`, `Star` from `416 px`,
+and `Star | <count>` from `480 px` upward, with explicit screen-reader context (`Star Atd on
+GitHub (<count>)` / `在 GitHub 为 Atd 点亮 Star（<count>）`). Build prerendering (`scripts/prerender.ts`)
+embeds the initial snapshot via `<meta name="atd:stars">` (falling back to `GITHUB_STARS_FALLBACK`
+offline) so first paint never shifts, and the Vercel Function at `api/github.ts` (mirrored on Vite
+dev and preview servers at `/api/github`) revalidates the live count through the Vercel CDN cache
+(`s-maxage=1800, stale-while-revalidate=86400`).
 
 ## Interface showcase
 

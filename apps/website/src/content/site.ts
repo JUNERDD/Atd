@@ -47,6 +47,8 @@ export const site = {
    * host sends no CORS headers.
    */
   previewManifestUrl: '/downloads/rc.json',
+  /** Same-origin cached endpoint returning the repository's live GitHub star count. */
+  starCountUrl: '/api/github',
   issuesUrl: 'https://github.com/JUNERDD/Atd/issues',
   /** The open-source license the repository is released under, and its text. */
   license: 'MIT',

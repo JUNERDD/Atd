@@ -33,7 +33,12 @@ export function CasesShowcase() {
   const groupName = (id: string) => caseGroups.find((group) => group.id === id)?.name[lang] ?? '';
   const current = cases[active] ?? cases[0];
 
-  const clip = (item: (typeof cases)[number], index: number, preload: boolean) =>
+  const clip = (
+    item: (typeof cases)[number],
+    index: number,
+    preload: boolean,
+    exposePosterAlt: boolean,
+  ) =>
     failed.has(item.id) ? (
       <output className="cases__unavailable">
         {t.clipUnavailable}{' '}
@@ -45,6 +50,7 @@ export function CasesShowcase() {
       <CaseClipView
         clip={caseClip(item.id, lang)}
         alt={item.alt[lang]}
+        {...(exposePosterAlt ? { posterAlt: item.alt[lang] } : {})}
         play={playing && !still && index === active}
         preload={preload && !still}
         onError={() => setFailed((previous) => new Set(previous).add(item.id))}
@@ -65,7 +71,7 @@ export function CasesShowcase() {
           groupStart: cases[index - 1]?.group !== item.group,
           title: item.title[lang],
           description: item.description[lang],
-          media: <div className="cases__shot">{clip(item, index, false)}</div>,
+          media: <div className="cases__shot">{clip(item, index, false, false)}</div>,
         }))}
       />
       <div className="cases__aside">
@@ -91,7 +97,7 @@ export function CasesShowcase() {
                 aria-label={item.label[lang]}
                 aria-hidden={active !== index}
               >
-                {clip(item, index, playing && index >= active - 1 && index <= reach)}
+                {clip(item, index, playing && index >= active - 1 && index <= reach, true)}
               </figure>
             ))}
           </div>

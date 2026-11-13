@@ -10,7 +10,7 @@
     "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.ts",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
-    "lint": "oxlint src scripts *.ts",
+    "lint": "oxlint src scripts api *.ts",
     "assets:upload": "node scripts/upload-assets.mjs",
     "assets:publish": "node scripts/upload-assets.mjs --bucket atd-assets --if-configured",
     "assets:check": "node scripts/check-asset-delivery.mjs"
