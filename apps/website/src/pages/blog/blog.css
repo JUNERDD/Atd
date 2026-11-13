@@ -144,12 +144,10 @@
   }
 }
 
-/* A post: a centered header, then its body, the sections in one column (text at a reading
-   measure, images wider) with the contents above them. From 1100px the contents take a column of
-   their own beside the sections, and the header lines up with the text. */
+/* A post: a centered header, then its body, the sections filling the container column with the
+   contents above them. From 1100px the contents take a column of their own beside the sections,
+   and the header lines up with the sections. */
 .post {
-  --post-text: 680px;
-  --post-wide: 1040px;
   padding-block: calc(var(--nav-top) + var(--nav-h) + 24px) var(--section-pad);
 }
 
@@ -163,7 +161,6 @@
 .post__body,
 .post__end {
   inline-size: 100%;
-  max-inline-size: var(--post-wide);
 }
 
 /* The back button sits at the column's leading edge; its chevron lines up with the image below,
@@ -230,7 +227,6 @@
   align-content: start;
   gap: 12px;
   inline-size: 100%;
-  max-inline-size: var(--post-text);
 }
 
 .post__toc-title {
@@ -276,9 +272,9 @@
   }
 }
 
-/* A section: its heading and text at the reading measure, its image at the column's width.
-   Sections touch, their spacing inside each, so one is always under the reading line and the
-   contents never go dark between two. */
+/* A section: heading, text, and media fill the main column's full width. Sections touch,
+   their spacing inside each, so one is always under the reading line and the contents never go
+   dark between two. */
 .post__section {
   display: grid;
   justify-items: center;
@@ -293,7 +289,6 @@
   display: grid;
   gap: 16px;
   inline-size: 100%;
-  max-inline-size: var(--post-text);
 }
 
 .post__heading {
@@ -435,12 +430,6 @@
 }
 
 @media (width >= 1100px) {
-  .post__bar,
-  .post__body,
-  .post__end {
-    max-inline-size: none;
-  }
-
   .post__hero {
     justify-self: stretch;
     justify-items: start;

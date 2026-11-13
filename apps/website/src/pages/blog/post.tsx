@@ -70,8 +70,8 @@ function renderBlock(block: BlogBlock, key: number): ReactNode {
 /**
  * One post's page, read top to bottom like a release note: the back button, a centered header
  * (release, title, summary, date), then the body: the contents, which link to each section, beside
- * the sections themselves (each highlight's heading and text at a reading measure, its image wider,
- * then the fixes in a card), and last one primary action, the release's installers on GitHub.
+ * the sections themselves (each highlight's heading, text, and image filling the main column,
+ * then any tail note cards), and last one primary action, the release's installers on GitHub.
  */
 export function BlogPostPage({ slug }: { slug: string }) {
   const t = useCopy(blogCopy);

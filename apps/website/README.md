@@ -96,10 +96,10 @@ own page at `/blog/atd-<version with dashes>` (`/blog/atd-0-10-6`; no dots, so V
 never reads one as a file extension): a back button, a centered header (release, title, summary,
 date), then the contents and the sections. The contents are the sections' titles as plain links on
 one track, with the section under the reading line lit (`aria-current="location"`); below 1100px
-they sit under the header, from 1100px in a column of their own that stays beside the text, and
-the header lines up with the text. Each highlight has its text at a 680px measure and its image
-wider; any non-empty tail sections (`improvements`, `fixes`, `other`) follow in that order, each in
-a full-width card whose items may carry an image, and the page ends with one primary action, the
+they sit under the header, from 1100px in a column of their own that stays beside the sections, and
+the header aligns with the sections. Each highlight's text and image fill the main column; any
+non-empty tail sections (`improvements`, `fixes`, `other`) follow in that order, each in a
+full-width card whose items may carry an image, and the page ends with one primary action, the
 release's installers on GitHub. A highlight's anchor is its English title in lowercase with dashes
 (`#choose-your-panel-background`), the same in both languages; the tail sections use
 `#improvements`, `#fixes`, and `#other`.
