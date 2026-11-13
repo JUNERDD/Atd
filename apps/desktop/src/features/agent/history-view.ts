@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { isCaptureInput } from '@atd/agent-contracts';
+import { isCaptureSnapshot } from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../../client/agent/task-schema';
 import { daysAgo, historySections, type HistoryPeriod } from './history-sections';
 
@@ -104,8 +104,8 @@ export function isCommandTask(task: AgentTask): boolean {
 
 /** Follow-up messages do not change a task's original capture category. */
 export function isCaptureTask(task: AgentTask): boolean {
-  const input = task.runs[0]?.snapshot.input;
-  return input !== undefined && isCaptureInput(input);
+  const snapshot = task.runs[0]?.snapshot;
+  return snapshot !== undefined && isCaptureSnapshot(snapshot);
 }
 
 export function matchesFilter(
@@ -115,11 +115,12 @@ export function matchesFilter(
   showCaptureTasksInAll = false,
 ): boolean {
   switch (filter) {
-    case 'all':
-      return (
-        (showCommandTasksInAll || !isCommandTask(task)) &&
-        (showCaptureTasksInAll || !isCaptureTask(task))
-      );
+    case 'all': {
+      const command = isCommandTask(task);
+      const capture = isCaptureTask(task);
+      if (!command && !capture) return true;
+      return (command && showCommandTasksInAll) || (capture && showCaptureTasksInAll);
+    }
     case 'pinned':
       return task.pinned === true;
     case 'active': {

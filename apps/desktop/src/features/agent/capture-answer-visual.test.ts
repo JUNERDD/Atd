@@ -7,7 +7,7 @@ import {
 } from '@atd/agent-contracts';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AgentEvent, SubmitRequest, TaskDetail } from '../../client/agent/bridge';
-import { emptyInput, type FileRef } from '../../client/agent/task-schema';
+import { emptyInput, type AgentTask, type FileRef } from '../../client/agent/task-schema';
 import type { Block } from '../../client/agent/transcript-schema';
 import type { CaptureTextProgress, CaptureTextRun } from '../../client/capture-bridge';
 import { changeAppLanguage, initialLanguageReady } from '../../i18n';
@@ -17,6 +17,7 @@ import { captureRunAnswer } from './capture-run-answer';
 import { usableAnswer } from './capture-text-progress';
 import { runs } from './capture-text-run';
 import { listenCaptureTextRuns } from './capture-text-runs';
+import { isCaptureTask, matchesFilter } from './history-view';
 
 let prevDesktop: unknown;
 const listeners = new Set<(event: AgentEvent) => void>();
@@ -321,4 +322,28 @@ it('merges parallel mark_screenshot progressive streaming and turn-2 retry after
     ['p1', 'p2', 'p3', 'p4'],
     true,
   );
+});
+
+it('classifies historical screenshot Ask and saved capture commands in history-view', () => {
+  const ctx: FileRef = {
+    id: 'ctx-1',
+    name: 'Screenshot 2026-11-13 at 17.35.00 context.md',
+    size: 42,
+    type: 'text/markdown',
+  };
+  const taskOf = (source: 'manual' | 'selection', files: FileRef[], extra = {}) =>
+    makeDetail('r1', 'completed', [], { input: { ...emptyInput(), source, files }, ...extra })
+      .task as unknown as AgentTask;
+  const [ask, cmd, flag] = [
+    taskOf('manual', [ctx]),
+    taskOf('selection', [ctx], { fromCommand: true }),
+    taskOf('selection', [], { fromCommand: true, fromCapture: true }),
+  ];
+  for (const task of [ask, cmd, flag]) {
+    expect(isCaptureTask(task)).toBe(true);
+    expect(matchesFilter(task, 'captures')).toBe(true);
+    expect(matchesFilter(task, 'all', false, false)).toBe(false);
+    expect(matchesFilter(task, 'all', false, true)).toBe(true);
+  }
+  expect(matchesFilter(cmd, 'all', true, false)).toBe(true);
 });

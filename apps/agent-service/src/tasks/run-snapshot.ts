@@ -1,5 +1,6 @@
 import {
   DEFAULT_RUN_TOOLS,
+  isCaptureInput,
   type AgentTask,
   type ModelSelection,
   type RunComputer,
@@ -70,6 +71,9 @@ export function freezeRunSnapshot(
   internal: InternalSubmitOptions = {},
 ): RunSnapshot {
   const { trigger, instructions = '', lite, captureOutput } = internal;
+  const fromCapture =
+    !trigger &&
+    (internal.fromCapture === true || captureOutput !== undefined || isCaptureInput(request.input));
   const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel, catalog);
@@ -91,6 +95,7 @@ export function freezeRunSnapshot(
     ...(lite && !computer ? { lite } : {}),
     ...(computer ? { computer } : {}),
     ...(captureOutput && !trigger ? { captureOutput } : {}),
+    ...(fromCapture ? { fromCapture: true as const } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');

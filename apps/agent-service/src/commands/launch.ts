@@ -233,6 +233,9 @@ export async function launchCommand(
     ...(instructions ? { instructions } : {}),
     ...(lite ? { lite } : {}),
     ...(captureOutput ? { captureOutput } : {}),
+    ...(request.screenshotText !== undefined && !internal.trigger
+      ? { fromCapture: true as const }
+      : {}),
   });
 }
 

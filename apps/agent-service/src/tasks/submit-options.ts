@@ -46,6 +46,8 @@ export interface InternalSubmitOptions {
    * (`landsOnScreenshot`), enabling the `mark_screenshot` tool.
    */
   captureOutput?: CaptureAnswerAction;
+  /** Frozen as `RunSnapshot.fromCapture` when the run started on a screenshot or capture text. */
+  fromCapture?: true;
 }
 
 /**
@@ -113,6 +115,7 @@ export function requestedOptions(
     ),
     ...(lite ? { lite: true } : {}),
     ...(landsOnScreenshot(screenshotText.output) ? { captureOutput: screenshotText.output } : {}),
+    fromCapture: true,
   };
 }
 

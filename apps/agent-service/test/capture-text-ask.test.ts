@@ -174,6 +174,7 @@ test('requestedOptions routes eligible inline Ask runs to lite while preserving 
   assert.ok(inline.instructions?.includes(selection));
   assert.equal(inline.lite, true);
   assert.equal(inline.captureOutput, 'annotate');
+  assert.equal(inline.fromCapture, true);
   assert.equal(opts(st('card')).captureOutput, undefined);
   assert.equal(opts(st('panel', 'all', 2)).lite, undefined);
   assert.equal(opts(st('card'), null, selection, { fromCommand: true }).lite, undefined);
@@ -294,10 +295,17 @@ test('saved commands on screenshotText take lite only without tokens or tools, w
     folders: [],
   };
 
-  replies.push('Plain shot done.', 'Skilled shot done.', 'File run done.');
+  replies.push(
+    'Plain shot done.',
+    'Skilled shot done.',
+    'File run done.',
+    'Translated shot done.',
+    'Translated text done.',
+  );
   const plainRun = await runCmd(plain.id, { input: shotInput, screenshotText: shot });
   assert.equal(plainRun.snapshot.lite, true);
   assert.equal(plainRun.snapshot.captureOutput, undefined);
+  assert.equal(plainRun.snapshot.fromCapture, true);
   const plainBody = model.bodies.at(-1) ?? '';
   assert.deepEqual(declaredTools(plainBody), []);
   assert.match(plainBody, /is a saved command the user ran/);
@@ -308,4 +316,32 @@ test('saved commands on screenshotText take lite only without tokens or tools, w
     undefined,
   );
   assert.equal((await runCmd(fileCmd.id, { input: shotInput })).snapshot.lite, undefined);
+
+  const translateCmd = await createCmd({ name: 'Translate', instructions: 'Translate {{input}}.' });
+  const shotTranslate = await runCmd(translateCmd.id, {
+    input: { ...shotInput, text: 'UniqueCaptureSearchToken', files: [] },
+    screenshotText: shot,
+  });
+  const textTranslate = await runCmd(translateCmd.id, {
+    input: { ...shotInput, text: 'UniqueCaptureSearchToken', files: [] },
+  });
+  assert.equal(shotTranslate.snapshot.fromCapture, true);
+  assert.equal(shotTranslate.snapshot.fromCommand, true);
+  assert.equal(textTranslate.snapshot.fromCapture, undefined);
+
+  const searchIds = async (qs: string) => {
+    const res = await harness.call(`/v1/tasks/search?${qs}`);
+    assert.equal(res.status, 200, await res.clone().text());
+    return ((await res.json()) as { hits: Array<{ taskId: string }> }).hits.map((h) => h.taskId);
+  };
+  assert.ok(
+    (await searchIds('query=First&captures=only')).length >= 1,
+    'captures=only finds Ask-on-screenshot with Screenshot context.md',
+  );
+  const translateCaptureHits = await searchIds('query=UniqueCaptureSearchToken&captures=only');
+  assert.equal(translateCaptureHits.length, 1);
+  assert.deepEqual(
+    await searchIds('query=UniqueCaptureSearchToken&commands=exclude&captures=all'),
+    translateCaptureHits,
+  );
 });

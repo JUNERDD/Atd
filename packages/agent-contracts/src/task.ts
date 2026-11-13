@@ -193,6 +193,11 @@ export const RunSnapshotSchema = Type.Object(
      * (`landsOnScreenshot`): absent for ordinary runs and card/copy/insertAtCursor runs.
      */
     captureOutput: Type.Optional(CaptureAnswerActionSchema),
+    /**
+     * Set when the run started on a screenshot or screen recording (`isCaptureInput`,
+     * `screenshotText`, or `captureOutput`), including saved selection commands run on capture text.
+     */
+    fromCapture: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

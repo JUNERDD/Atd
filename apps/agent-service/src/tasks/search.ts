@@ -1,6 +1,6 @@
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 import {
-  isCaptureInput,
+  isCaptureSnapshot,
   type TaskSearchHit,
   type TaskSearchQuery,
   type TaskSearchResponse,
@@ -48,13 +48,16 @@ export class TaskSearch {
     const hits: TaskSearchHit[] = [];
     let visited = 0;
     for (const task of ordered) {
-      const fromCommand = task.runs[0]?.snapshot.fromCommand === true;
-      if (query.commands === 'exclude' && fromCommand) continue;
+      const snapshot = task.runs[0]?.snapshot;
+      const fromCommand = snapshot?.fromCommand === true;
+      const fromCapture = snapshot !== undefined && isCaptureSnapshot(snapshot);
       if (query.commands === 'only' && !fromCommand) continue;
-      const input = task.runs[0]?.snapshot.input;
-      const fromCapture = input !== undefined && isCaptureInput(input);
-      if (query.captures === 'exclude' && fromCapture) continue;
       if (query.captures === 'only' && !fromCapture) continue;
+      const commandExcluded = query.commands === 'exclude';
+      const captureExcluded = query.captures === 'exclude';
+      if (commandExcluded && captureExcluded && (fromCommand || fromCapture)) continue;
+      if (commandExcluded && !captureExcluded && fromCommand && !fromCapture) continue;
+      if (captureExcluded && !commandExcluded && fromCapture && !fromCommand) continue;
       const messages = await this.text.messages(task, this.deps.live(task.id));
       const hit = matchTask(task.id, messages, terms);
       if (hit) {

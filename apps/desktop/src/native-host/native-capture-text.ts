@@ -52,12 +52,17 @@ function prepareAskCaptureText(run: CaptureTextRun, question: string): PreparedC
     placement: defaultCommandPlacement('selection'),
     output: { action: 'annotate', review: false },
   };
+  const capturedAt = new Date().toISOString();
+  const shot = screenshotOf(run.files, capturedAt);
+  const baseInput: TaskInput = {
+    ...emptyInput(),
+    ...(shot ? { source: 'screenshot', capturedAt } : {}),
+    text: question,
+    selection: formatCaptureSelection(run.paragraphs),
+  };
   return {
     command,
-    input: withFiles(
-      { ...emptyInput(), text: question, selection: formatCaptureSelection(run.paragraphs) },
-      run.files,
-    ),
+    input: withFiles(baseInput, run.files),
     output: { action, review: false },
     notice: '',
   };

@@ -176,6 +176,7 @@ test('schemas and requestedOptions validate 0-paragraph screenshot runs and reje
   const opts = requestedOptions(validReq, null, {});
   assert.equal(opts.lite, true);
   assert.equal(opts.captureOutput, 'annotate');
+  assert.equal(opts.fromCapture, true);
   assert.ok(opts.instructions?.includes('no text paragraphs were recognized'));
   assert.equal(opts.instructions?.endsWith('\n\n'), false);
 
@@ -331,6 +332,7 @@ test('parallel instruction thresholds, multi-call mark_screenshot execution, and
   replies.push({ toolCalls: [call(b1), call(b2)] });
   const parallelRun = await runShot(st('replaceSelection', 4, 'run', 'picked'), fourParagraphs);
   assert.equal(parallelRun.run.status, 'completed', parallelRun.run.error);
+  assert.equal(parallelRun.run.snapshot.fromCapture, true);
   assert.equal(model.bodies.length - parallelBefore, 1);
   assert.deepEqual(await toolStatuses(parallelRun.taskId), ['completed', 'completed']);
 
