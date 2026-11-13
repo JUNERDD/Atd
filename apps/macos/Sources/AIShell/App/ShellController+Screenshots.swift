@@ -25,6 +25,13 @@ extension ShellController {
     screenshots.writeAnswer = { [weak self] answer in
       Task { _ = await self?.writeAnswer(answer, mode: .cursor) }
     }
+    screenshots.showCopied = { [weak self] in
+      self?.commandProgress.longScreenshot.showCopied()
+    }
+    screenshots.copyOnConfirm = { ScreenshotPreferences.shared.copyOnConfirm }
+    screenshots.copiesLongScreenshotOnConfirm = {
+      ScreenshotPreferences.shared.copiesLongScreenshotOnConfirm
+    }
   }
 
   /// `screenshot.capture`, which hides the panel while it runs. A summon still moving the panel

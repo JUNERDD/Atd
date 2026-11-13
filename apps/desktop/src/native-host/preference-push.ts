@@ -16,6 +16,7 @@ export function preferencePusher(native: NativeBridge): (next: SettingsSnapshot)
   let pushedAppearance: AppAppearance | null | undefined;
   let pushedGlow: boolean | undefined;
   let pushedResultMarkdown: boolean | undefined;
+  let pushedScreenshotPreferences: string | null = null;
   let pushedTyping: string | null = null;
   let background: PanelBackground | null = null;
   let pushedBackground: string | null = null;
@@ -46,6 +47,14 @@ export function preferencePusher(native: NativeBridge): (next: SettingsSnapshot)
     if (next.resultMarkdown !== pushedResultMarkdown) {
       pushedResultMarkdown = next.resultMarkdown;
       native.post('resultMarkdown.set', { enabled: next.resultMarkdown });
+    }
+    const screenshotPreferences = {
+      copyOnConfirm: next.screenshotCopyOnConfirm,
+      longScreenshotConfirmAction: next.longScreenshotConfirmAction,
+    };
+    if (JSON.stringify(screenshotPreferences) !== pushedScreenshotPreferences) {
+      pushedScreenshotPreferences = JSON.stringify(screenshotPreferences);
+      native.post('screenshotPreferences.set', screenshotPreferences);
     }
     background = next.panelBackground;
     pushBackground();

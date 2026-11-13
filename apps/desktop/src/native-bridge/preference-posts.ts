@@ -56,6 +56,19 @@ export const NativePreferencePosts = {
    */
   'resultMarkdown.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
   /**
+   * How screenshot confirmation behaves (`screenshotCopyOnConfirm`, `longScreenshotConfirmAction`):
+   * whether clicking ✓ on the screenshot toolbar also copies the image to the clipboard, and
+   * whether clicking ✓ in long screenshot opens the result card or closes and copies directly.
+   * Swift keeps them and restores the last ones at launch until the first push.
+   */
+  'screenshotPreferences.set': Type.Object(
+    {
+      copyOnConfirm: Type.Boolean(),
+      longScreenshotConfirmAction: Type.Union([Type.Literal('card'), Type.Literal('copy')]),
+    },
+    { additionalProperties: false },
+  ),
+  /**
    * The panel background for the shell's own surfaces: the floating glass's fill per appearance
    * (`GlassSurface`), the Liquid Glass variant of the panel's, the Settings window's and the
    * floating surfaces' glass, and its blur and edge refraction relative to the system's, as

@@ -96,6 +96,8 @@
       "selectionToolbarSmallIcon": "small icon compact minimal bubble dot button first click hover rest expand open full toolbar selection",
       "selectionToolbarPosition": "position place placement location where appear show above below top bottom over under pointer cursor mouse near toolbar selection",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
+      "screenshotCopyOnConfirm": "screenshot copy clipboard confirm attach composer toolbar check",
+      "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
       "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
@@ -372,6 +374,24 @@
       "pick": "The app picker couldn't open. Try again.",
       "limit": "Exclude at most {{max}} apps.",
       "accessibility": "System Settings couldn't open. Open Privacy & Security › Device Control and Data Access (Accessibility on earlier macOS versions)."
+    }
+  },
+  "screenshot": {
+    "title": "Screenshot",
+    "copyOnConfirm": {
+      "title": "Copy to clipboard when confirming",
+      "description": "When clicking ✓ on the screenshot toolbar to attach a screenshot to the composer, also copy it to the clipboard.",
+      "saveFailed": "The screenshot copy setting could not be saved."
+    },
+    "longScreenshotConfirmAction": {
+      "title": "Long screenshot confirmation",
+      "description": "Choose what clicking ✓ or pressing Return after a long screenshot does.",
+      "label": "Long screenshot confirmation action",
+      "saveFailed": "The long screenshot confirmation setting could not be saved.",
+      "modes": {
+        "card": "Open result card",
+        "copy": "Copy to clipboard and close"
+      }
     }
   },
   "notifications": {

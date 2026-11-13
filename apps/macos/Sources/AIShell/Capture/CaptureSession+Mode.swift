@@ -18,6 +18,9 @@ struct CaptureSessionOptions {
   /// Whether a screenshot selection can become a long screenshot (decision D5): only for a
   /// toolbar request, whose result goes to the island's card rather than back to a caller.
   var offersLongScreenshot = false
+  /// Whether confirming a live long screenshot copies directly to the clipboard instead of
+  /// opening the result card.
+  var copiesLongScreenshotOnConfirm = false
 }
 
 /// The session's two modes on one selection (architecture C1): ⌘1 / ⌘2 or the bottom bar's

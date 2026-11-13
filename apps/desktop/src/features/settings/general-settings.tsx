@@ -13,6 +13,7 @@ import { PanelBackgroundPage } from './panel-background-page';
 import { PanelBackgroundSummaryRow } from './panel-background-summary-row';
 import { PanelPlacementRow } from './panel-placement-row';
 import { ResultMarkdownRow } from './result-markdown-row';
+import { ScreenshotSettings } from './screenshot-settings';
 import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
 import type { SettingsPageTarget, SettingsSearchPage } from './settings-navigation';
@@ -244,6 +245,8 @@ export function GeneralSettings({
         {window.desktop?.notifications && <NotificationSettings />}
         {/* The toolbar over other apps' selected text is the desktop app's, like its window. */}
         {desktopApp && <SelectionToolbarSettings snapshot={snapshot} />}
+        {/* Screenshot preferences push to the native macOS shell, so they require the desktop app. */}
+        {desktopApp && <ScreenshotSettings snapshot={snapshot} />}
         {/* Restores the global shortcut as well as the in-app ones, so it follows every group. */}
         <div className="settings-shortcut-restore">
           {settings.errors.restore && (

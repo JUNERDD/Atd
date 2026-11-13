@@ -3,10 +3,12 @@ import {
   DEFAULT_COMMAND_TYPING,
   DEFAULT_COMMAND_TYPING_ANIMATION,
   DEFAULT_GLOW_EFFECTS,
+  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
   DEFAULT_NEXT_STEP_CLICK,
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
   DEFAULT_RESULT_MARKDOWN,
+  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -26,6 +28,7 @@ import {
   DEFAULT_SELECTION_TOOLBAR,
   isAppAppearance,
   isAppLanguage,
+  isLongScreenshotConfirmAction,
   isViewInitiative,
   resolveLanguage,
   type SettingsBridge,
@@ -117,6 +120,10 @@ export function nativeSettings(
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
       selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
+      screenshotCopyOnConfirm:
+        settings?.screenshotCopyOnConfirm ?? DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+      longScreenshotConfirmAction:
+        settings?.longScreenshotConfirmAction ?? DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
       commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
       commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
       viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
@@ -245,6 +252,13 @@ export function nativeSettings(
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    setScreenshotCopyOnConfirm: (screenshotCopyOnConfirm) => write({ screenshotCopyOnConfirm }),
+    setLongScreenshotConfirmAction: async (longScreenshotConfirmAction) => {
+      if (!isLongScreenshotConfirmAction(longScreenshotConfirmAction)) {
+        throw new TypeError('Unsupported long screenshot confirm action.');
+      }
+      return write({ longScreenshotConfirmAction });
+    },
     saveCommandTyping: (value) => write({ commandTyping: value }),
     saveCommandTypingAnimation: (value) => write({ commandTypingAnimation: value }),
     setViewInitiative: async (viewInitiative) => {

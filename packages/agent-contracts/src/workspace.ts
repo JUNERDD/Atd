@@ -4,6 +4,7 @@ import { Identifier } from './identifiers.js';
 import { ShellAllowlistSchema } from './shell.js';
 import { NextStepClickSchema } from './next-steps.js';
 import { PanelBackgroundSchema } from './panel-background.js';
+import { LongScreenshotConfirmActionSchema } from './screenshot-preferences.js';
 import { ModelSelectionSchema } from './task.js';
 import { ViewInitiativeSchema } from './views.js';
 
@@ -218,6 +219,10 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
+    /** Copy screenshot to clipboard when confirming to composer (`DEFAULT_SCREENSHOT_COPY_ON_CONFIRM`). */
+    screenshotCopyOnConfirm: Type.Boolean(),
+    /** Done action in long screenshot (`DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION`). */
+    longScreenshotConfirmAction: LongScreenshotConfirmActionSchema,
     /**
      * Whether write-back command answers are typed into other apps rather than pasted at once
      * (`DEFAULT_COMMAND_TYPING`).
@@ -272,6 +277,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    screenshotCopyOnConfirm: Type.Optional(Type.Boolean()),
+    longScreenshotConfirmAction: Type.Optional(LongScreenshotConfirmActionSchema),
     commandTyping: Type.Optional(Type.Boolean()),
     commandTypingAnimation: Type.Optional(Type.Boolean()),
     viewInitiative: Type.Optional(ViewInitiativeSchema),

@@ -37,13 +37,14 @@ final class IslandLongScreenshot {
 
   /// What of the long screenshot the island shows; nil while nothing.
   enum Showing: Equatable {
-    case processing, result
+    case processing, copied, result
   }
 
   private(set) var showing: Showing?
   /// The card gave way to the page's progress or the recording's content, or found the island
   /// taken: it comes back when the island is free (``resumeIfWaiting()``).
   private var waiting = false
+  private var copiedToken = 0
   private unowned let progress: CommandProgressController
   /// The card's full-screen preview.
   let lightbox = IslandLightbox()
@@ -66,6 +67,26 @@ final class IslandLongScreenshot {
     guard !progress.islandTaken else { return }
     let message = island.model.labels.longScreenshot.processing
     present(.processing, .recordingStatus(message: message, outcome: nil))
+  }
+
+  /// Shows the "Copied" status capsule (`IslandContent.copied`) for
+  /// ``CommandProgressState/doneDuration`` (1.5 s), then leaves.
+  func showCopied() {
+    if showing == .result {
+      leaveCard()
+      island.setKeyCapable(false)
+      showing = nil
+      waiting = true
+    }
+    copiedToken += 1
+    let token = copiedToken
+    present(.copied, .copied, takingKeyboard: false)
+    guard showing == .copied else { return }
+    Task { [weak self] in
+      try? await Task.sleep(for: CommandProgressState.doneDuration)
+      guard let self, token == copiedToken, showing == .copied else { return }
+      release()
+    }
   }
 
   /// The result card of `source`. The same source shown again keeps the card's state; another
@@ -117,7 +138,8 @@ final class IslandLongScreenshot {
   /// Takes the long screenshot's content off the island, keeping the card's state; what the page
   /// shows draws again.
   func release() {
-    waiting = false
+    if showing != .copied { waiting = false }
+    copiedToken += 1
     guard let previous = showing else { return }
     showing = nil
     if previous == .result { leaveCard() }
@@ -156,6 +178,7 @@ final class IslandLongScreenshot {
   /// while the card is away (``updateAnswer(askID:phase:text:)``). Processing just goes, its card
   /// showing or waiting once the text is read.
   func replaced() {
+    copiedToken += 1
     guard let previous = showing else { return }
     lightbox.close(animated: false)
     showing = nil

@@ -94,6 +94,34 @@ public struct ResultMarkdownSetPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `screenshotPreferences.set` post.
+public struct ScreenshotPreferencesSetPost: Codable, Equatable, Sendable {
+  public let copyOnConfirm: Bool
+  public let longScreenshotConfirmAction: LongScreenshotConfirmAction
+
+  public init(copyOnConfirm: Bool, longScreenshotConfirmAction: LongScreenshotConfirmAction) {
+    self.copyOnConfirm = copyOnConfirm
+    self.longScreenshotConfirmAction = longScreenshotConfirmAction
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    copyOnConfirm = try container.boolean(.copyOnConfirm)
+    longScreenshotConfirmAction = try container.value(
+      .longScreenshotConfirmAction, LongScreenshotConfirmAction.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case copyOnConfirm
+    case longScreenshotConfirmAction
+  }
+
+  public enum LongScreenshotConfirmAction: String, Codable, Equatable, Sendable {
+    case card
+    case copy
+  }
+}
+
 /// Params of the `panelBackground.set` post.
 public struct PanelBackgroundSetPost: Codable, Equatable, Sendable {
   public let dark: Dark

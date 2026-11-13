@@ -4,6 +4,7 @@ import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
+import { screenshotSearchEntries } from './screenshot-search-entries';
 import { selectionToolbarSearchEntries } from './selection-toolbar-search-entries';
 import type { SettingsSearchPage } from './settings-navigation';
 import type { SettingsSectionId } from './settings-sections';
@@ -149,6 +150,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   },
   ...notificationSearchEntries,
   ...selectionToolbarSearchEntries,
+  ...screenshotSearchEntries,
   {
     id: 'shortcuts-restore-defaults',
     section: 'general',

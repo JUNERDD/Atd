@@ -72,6 +72,8 @@ export function installBridge(extras?: {
     permissionTier: 'manual',
     shellAllowlist: [],
     selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+    screenshotCopyOnConfirm: true,
+    longScreenshotConfirmAction: 'card',
     commandTyping: true,
     commandTypingAnimation: true,
     viewInitiative: 'proactive',
@@ -312,6 +314,12 @@ export function installBridge(extras?: {
         };
       },
       saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
+      setScreenshotCopyOnConfirm: vi.fn(async (screenshotCopyOnConfirm) =>
+        writeSettings({ screenshotCopyOnConfirm }),
+      ),
+      setLongScreenshotConfirmAction: vi.fn(async (longScreenshotConfirmAction) =>
+        writeSettings({ longScreenshotConfirmAction }),
+      ),
       saveCommandTyping: vi.fn(async (commandTyping) => writeSettings({ commandTyping })),
       saveCommandTypingAnimation: vi.fn(async (commandTypingAnimation) =>
         writeSettings({ commandTypingAnimation }),

@@ -40,6 +40,7 @@ final class ShellBridge {
     case .glowEffectsSet(let post): GlowEffects.shared.apply(post.enabled)
     case .resultMarkdownSet(let post): ResultMarkdown.shared.apply(post.enabled)
     case .panelBackgroundSet(let post): PanelBackground.shared.apply(post)
+    case .screenshotPreferencesSet(let post): ScreenshotPreferences.shared.apply(post)
     case .typingSet(let post):
       shell?.summoner.writeTargets.animatesTyping = post.animation
       shell?.summoner.writeTargets.typesAnswers = post.typing

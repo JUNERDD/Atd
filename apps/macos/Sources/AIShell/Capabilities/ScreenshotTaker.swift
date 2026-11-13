@@ -102,6 +102,14 @@ final class ScreenshotTaker {
   var onCommandOptionsPicked: ((String, CommandArguments) -> Void)?
   /// Opens Settings › Commands; called once the session that asked for it is gone.
   var openCommandSettings: (() -> Void)?
+  /// Shows the Dynamic Island "Copied" capsule once a capture or long screenshot wrote to clipboard.
+  var showCopied: (() -> Void)?
+  /// Whether confirming a toolbar screenshot capture also writes it silently to the clipboard.
+  var copyOnConfirm: () -> Bool = { ScreenshotPreferences.shared.copyOnConfirm }
+  /// Whether confirming a live long screenshot copies directly instead of opening the result card.
+  var copiesLongScreenshotOnConfirm: () -> Bool = {
+    ScreenshotPreferences.shared.copiesLongScreenshotOnConfirm
+  }
   /// More's last row was picked: the session ends and the settings open after it.
   var opensCommandSettings = false
 
@@ -208,6 +216,9 @@ final class ScreenshotTaker {
         capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
       let imported = try await library.importCapture(
         capture, capturedAt: confirmed.capturedAt, snapshot: confirmed.snapshot)
+      if request.toolbar, confirmed.launch == nil, copyOnConfirm() {
+        _ = arbiter.writeClipboard(as: .screenshot) { CaptureExport.copy(capture, to: $0) }
+      }
       return (
         .attached(
           ScreenshotAttachment(

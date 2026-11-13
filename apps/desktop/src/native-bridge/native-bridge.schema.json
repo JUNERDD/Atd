@@ -85,6 +85,7 @@
       "appearance.set",
       "glowEffects.set",
       "resultMarkdown.set",
+      "screenshotPreferences.set",
       "panelBackground.set",
       "typing.set",
       "window.dragRegions",
@@ -3786,6 +3787,43 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshotPreferences.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+              "properties": {
+                "copyOnConfirm": {
+                  "type": "boolean"
+                },
+                "longScreenshotConfirmAction": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "card"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -10977,6 +11015,28 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotPreferencesSetPost": {
+      "type": "object",
+      "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+      "properties": {
+        "copyOnConfirm": {
+          "type": "boolean"
+        },
+        "longScreenshotConfirmAction": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "card"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
         }
       },
       "additionalProperties": false

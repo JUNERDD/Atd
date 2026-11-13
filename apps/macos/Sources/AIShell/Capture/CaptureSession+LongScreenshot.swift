@@ -120,8 +120,10 @@ extension CaptureSession {
 
   /// Return or the chrome's Done: the session ends with the stitched image once the engine has
   /// put it together, for the island's result card, or for the clipboard when `copying` (the
-  /// screenshot shortcut pressed again); back to the screenshot when it has none.
-  func finishLongScreenshot(copying: Bool = false) {
+  /// screenshot shortcut pressed again, or when the long-screenshot confirm preference is copy);
+  /// back to the screenshot when it has none.
+  func finishLongScreenshot(copying: Bool? = nil) {
+    let copies = copying ?? options.copiesLongScreenshotOnConfirm
     guard let live = longScreenshot.live, !live.finishing else { return }
     live.finishing = true
     Task { [weak self] in
@@ -132,7 +134,7 @@ extension CaptureSession {
         return leaveLongScreenshot()
       }
       live.finished = true
-      finish(copying ? .copiedLongScreenshot(shot) : .longScreenshot(shot))
+      finish(copies ? .copiedLongScreenshot(shot) : .longScreenshot(shot))
     }
   }
 

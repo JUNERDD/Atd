@@ -22,6 +22,7 @@ extension ScreenshotTaker {
     guard request.toolbar else { return options }
     // A long screenshot goes to the island's result card; a caller waiting for an image gets none.
     options.offersLongScreenshot = true
+    options.copiesLongScreenshotOnConfirm = copiesLongScreenshotOnConfirm()
     let arbiter = arbiter
     options.commands = CaptureCommandRowSetup(
       commands: toolbarCommands, catalog: commandOptions(),
@@ -157,7 +158,9 @@ extension ScreenshotTaker {
         regions.remember(
           capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
       }
-      arbiter.writeClipboard(as: .screenshot) { CaptureExport.copy(capture, to: $0) }
+      if arbiter.writeClipboard(as: .screenshot, { CaptureExport.copy(capture, to: $0) }) {
+        showCopied?()
+      }
       return .cancelled
     case .record(let request):
       regions.remember(
@@ -183,11 +186,12 @@ extension ScreenshotTaker {
   /// large), encoded off the main actor and written under the screenshot's clipboard claim. A
   /// beep says it could not be.
   func copy(_ shot: LongScreenshotImage) {
-    Task { [arbiter] in
+    Task { [weak self, arbiter] in
       guard
         let clipboard = await CaptureExport.longScreenshotClipboard(shot.image, scale: shot.scale),
         arbiter.writeClipboard(as: .screenshot, { CaptureExport.copy(clipboard, to: $0) })
       else { return NSSound.beep() }
+      self?.showCopied?()
     }
   }
 
