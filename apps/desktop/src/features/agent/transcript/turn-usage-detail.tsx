@@ -128,9 +128,12 @@ export function TurnUsageDetail({
           <Collapsible open={cacheOpen} onOpenChange={setCacheOpen}>
             <CollapsibleTrigger asChild>
               {/* Pulled left by its 8px start padding plus the 4.5px the glyph sits inside its box,
-                  so the chevron's stroke lines up with the text above while the hover fill still
-                  surrounds it. */}
-              <Button variant="ghost" size="xs" className="-ml-3 text-muted-foreground">
+                  so the chevron's stroke lines up with the text above without a background fill. */}
+              <Button
+                variant="ghost"
+                size="xs"
+                className="-ml-3 text-muted-foreground hover:bg-transparent aria-expanded:bg-transparent dark:aria-expanded:bg-transparent"
+              >
                 <ChevronRight data-icon="inline-start" className={cn(cacheOpen && 'rotate-90')} />
                 {t('transcript.usage.cacheDetails')}
               </Button>
