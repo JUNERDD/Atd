@@ -56,19 +56,20 @@ extension CaptureTextRuns {
           return false
         }
         if let hit, ids.contains(hit) { return true }
-        return run[paragraph: run.items[item].paragraph]?.box.contains(point) == true
+        return run.items[item].paragraph.flatMap { run[paragraph: $0]?.box }?.contains(point)
+          == true
       }
     }
   }
 
-  /// The run with versions whose step badge or highlighter mark is the front-most annotation under
-  /// `point` in `document`, which a click opens (so the pointer shows it acts); nil when none is,
-  /// or while nothing may open (``reopens``).
+  /// The run with versions whose mark is the front-most annotation under `point` in `document`,
+  /// which a click opens (so the pointer shows it acts); nil when none is, or while nothing may
+  /// open (``reopens``).
   public func mark(at point: CGPoint, in document: AnnotationDocument) -> String? {
     guard reopens, let hit = document.hit(at: point, tolerance: 2), let shape = document[hit]?.shape
     else { return nil }
     switch shape {
-    case .step, .highlighter: break
+    case .step, .highlighter, .rectangle, .ellipse, .arrow, .spotlight, .mosaic: break
     default: return nil
     }
     return runs.last { $0.review != nil && $0.annotationIDs.contains(hit) }?.id

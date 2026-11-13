@@ -81,7 +81,6 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
     outputButton.setTitle(widestOutput)
     let maxBarSize = bar.fittingSize
     outputButton.setTitle("")
-    bar.setHidden(true, for: outputButton)
     super.init(frame: CGRect(origin: .zero, size: bar.fittingSize))
     reservedSize = maxBarSize
     field.delegate = self
@@ -134,13 +133,12 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
     return true
   }
 
-  /// Configures whether the Select Text "When done" destination control shows and its label.
-  func configure(textMode: Bool, outputLabel: String) {
+  /// Configures the "When done" destination control's label and accessibility description.
+  func configure(outputLabel: String) {
     outputButton.setTitle(outputLabel)
     let whenDone = ShellStrings.shared.text(.commandOptionsOutput)
     outputButton.toolTip = whenDone
     outputButton.setAccessibilityLabel("\(whenDone), \(outputLabel)")
-    bar.setHidden(!textMode, for: outputButton)
     if superview != nil { setFrameSize(fittingSize) }
   }
 

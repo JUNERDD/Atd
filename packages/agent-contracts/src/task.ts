@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { AppIdSchema } from './app-identity.js';
 import { MAX_ATTACHMENTS } from './attachments.js';
+import { CaptureAnswerActionSchema } from './capture-answer.js';
 import type { CommandTool } from './commands.js';
 import { RunComputerSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
@@ -187,6 +188,11 @@ export const RunSnapshotSchema = Type.Object(
      * the grant it was enqueued under, which a follow-up never inherits.
      */
     computer: Type.Optional(RunComputerSchema),
+    /**
+     * Screenshot output mode when the run's answer lands on an open screenshot
+     * (`landsOnScreenshot`): absent for ordinary runs and card/copy/insertAtCursor runs.
+     */
+    captureOutput: Type.Optional(CaptureAnswerActionSchema),
   },
   { additionalProperties: false },
 );

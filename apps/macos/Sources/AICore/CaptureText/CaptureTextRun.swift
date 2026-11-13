@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// One command run on text in a screenshot (`captureText.run`) as its surface keeps it: the
@@ -33,7 +34,7 @@ public struct CaptureTextRun: Equatable, Sendable {
   }
 
   /// One completed piece of the answer (contract: `captureText.progress`'s `result.items`).
-  public typealias Item = CaptureTextProgressParams.Result.Item
+  public typealias Item = CaptureTextResult.Item
   public typealias Review = CaptureTextProgressParams.Review
 
   public let id: String
@@ -43,9 +44,13 @@ public struct CaptureTextRun: Equatable, Sendable {
   /// The command's name, user data shown untranslated.
   public let command: String
   /// How the person chose what the run reads now, and the paragraphs it reads, in order: what its
-  /// first version read, then what a retry on another selection read (``rescope(_:scope:)``).
+  /// first version read, then what a retry on another selection read
+  /// (``rescope(_:scope:bounds:)``).
   public private(set) var scope: CaptureTextScope
   public private(set) var paragraphs: [Paragraph]
+  /// The selection bounds the run last read, so a retry after moving or resizing a zero-text crop
+  /// still re-exports the updated screenshot.
+  public private(set) var selectionBounds: CGRect?
   /// The undo burst the run's commits share (``AnnotationStore/commit(_:burst:)``), so what lands
   /// piece by piece is one undo step; a version that replaces another on the image starts a burst
   /// of its own, so undo steps back through the versions.
@@ -95,18 +100,19 @@ public struct CaptureTextRun: Equatable, Sendable {
   /// The version ``lead`` and ``items`` currently show; nil before the first version settles.
   var shownVersion: Int?
 
-  /// A run of command `commandId` (named `command`) reading `paragraphs` (in the order given; at
-  /// least one) as `scope` says, whose answer goes to `output` (the run's picked output, else the
-  /// command's saved one), under `id`.
+  /// A run of command `commandId` (named `command`) reading `paragraphs` (in the order given) as
+  /// `scope` says, whose answer goes to `output` (the run's picked output, else the command's
+  /// saved one), under `id`.
   public init(
     id: String = Self.mintID(), commandId: String, command: String, scope: CaptureTextScope,
-    paragraphs: [CaptureTextParagraph], output: CommandOutputAction
+    paragraphs: [CaptureTextParagraph], output: CommandOutputAction, bounds: CGRect? = nil
   ) {
     self.id = id
     self.commandId = commandId
     self.command = command
     self.scope = scope
     self.output = output
+    self.selectionBounds = bounds
     self.paragraphs = paragraphs.enumerated().map {
       Paragraph(id: Self.paragraphID($0.offset), paragraph: $0.element)
     }
@@ -127,25 +133,34 @@ public struct CaptureTextRun: Equatable, Sendable {
     CaptureTextRunEvent(
       runId: id, surface: surface, commandId: commandId, question: question, arguments: arguments,
       scope: scope.bridge,
-      paragraphs: paragraphs.map { .init(id: $0.id, text: $0.paragraph.text) }, files: files)
+      paragraphs: paragraphs.map {
+        let bounds = Self.normalizedBounds(of: $0.paragraph.box, in: selectionBounds).map {
+          CaptureTextRunEvent.Paragraph.Bounds(x1: $0.x1, y1: $0.y1, x2: $0.x2, y2: $0.y2)
+        }
+        return .init(id: $0.id, text: $0.paragraph.text, bounds: bounds)
+      }, files: files)
   }
 
   /// The paragraph the run knows as `id`, whichever of its versions read it.
   public subscript(paragraph id: String) -> CaptureTextParagraph? { known[id] }
 
   /// A retry reads `reading`, what the person's selection holds now (`scope` says how it was
-  /// chosen): when that is not what the run reads, in any order, the run reads it from its next
-  /// version on and returns it under the run's ids for the page (`captureText.action`'s
-  /// `reading`). A paragraph read before keeps its id and a new one takes the next unused id, so
-  /// earlier versions keep their pieces; what longer ids push past one run's selection is left
-  /// out. Nil when the run reads those paragraphs already.
-  public mutating func rescope(_ reading: [CaptureTextParagraph], scope: CaptureTextScope)
-    -> [Paragraph]?
-  {
+  /// chosen, `bounds` the selection rect): when that differs from what the run read, the run reads
+  /// it from its next version on and returns it under the run's ids for the page
+  /// (`captureText.action`'s `reading`). A paragraph read before keeps its id and a new one takes
+  /// the next unused id, so earlier versions keep their pieces; what longer ids push past one
+  /// run's selection is left out. Nil when nothing changed (or when a text-only command faces an
+  /// empty selection).
+  public mutating func rescope(
+    _ reading: [CaptureTextParagraph], scope: CaptureTextScope, bounds: CGRect? = nil
+  ) -> [Paragraph]? {
     let wanted = Set(reading.map(\.readingKey))
-    guard !reading.isEmpty, wanted != Set(paragraphs.map(\.paragraph.readingKey)) else {
-      return nil
-    }
+    let canEmpty = commandId == Self.askID && destination != .replace && destination != .steps
+    guard !reading.isEmpty || canEmpty else { return nil }
+    let boundsChanged = bounds != nil && bounds != selectionBounds
+    guard
+      wanted != Set(paragraphs.map(\.paragraph.readingKey)) || boundsChanged || scope != self.scope
+    else { return nil }
     var ids = Dictionary(known.map { ($1.readingKey, $0) }, uniquingKeysWith: { first, _ in first })
     var next = known.count
     let named = reading.map { paragraph in
@@ -160,6 +175,7 @@ public struct CaptureTextRun: Equatable, Sendable {
     for paragraph in kept { known[paragraph.id] = paragraph.paragraph }
     paragraphs = kept
     self.scope = scope
+    if let bounds { selectionBounds = bounds }
     return kept
   }
 
@@ -204,7 +220,11 @@ public struct CaptureTextRun: Equatable, Sendable {
     text = update.text
     gated = update.awaitsApply
     review = update.review
-    draft = review?.pending == nil ? nil : Draft(update.draft) { known[$0] != nil }
+    let keeps: (Item) -> Bool = { [known] item in
+      if let id = item.paragraph { return known[id] != nil }
+      return item.point != nil || item.coords != nil
+    }
+    draft = review?.pending == nil ? nil : Draft(update.draft, keeps: keeps)
     if let following, review?.version != following {
       // The page has not shown the version the image went back to yet: the image's stays.
     } else if let result = update.result {
@@ -215,7 +235,7 @@ public struct CaptureTextRun: Equatable, Sendable {
       shownVersion = review?.version
       lead = result.lead
       show(
-        result.items.filter { known[$0.paragraph] != nil }, in: document,
+        result.items.filter(keeps), in: document,
         initialVersion: initialVersion, versionChanged: versionChanged)
     } else if phase.running {
       lead = ""

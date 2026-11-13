@@ -8,6 +8,7 @@ import type {
 } from '../../client/capture-bridge';
 import {
   attachReviewSurface,
+  fileIds,
   followCaptureTextRuns,
   going,
   handOver,
@@ -19,6 +20,7 @@ import {
   type Preparing,
   type TextRun,
 } from './capture-text-run';
+import { captureRunAnswer } from './capture-run-answer';
 import { captureDraft, captureProgress, finalState, usableAnswer } from './capture-text-progress';
 import { capturePresses } from './capture-text-presses';
 import { followAnswer } from './light-answer';
@@ -125,8 +127,12 @@ export function listenCaptureTextRuns(
     // before, or carries the text itself when the run took other text since its task last read it.
     async submit(run, request) {
       const { selection, files } = run.launch.input;
-      const askRepeat = Boolean(run.launch.ask && request.input.selection);
-      const carries = !askRepeat && request.commandId === null && selection !== run.sent;
+      const nextFiles = fileIds(files);
+      const askRepeat = Boolean(run.launch.ask && request.output !== undefined);
+      const carries =
+        !askRepeat &&
+        request.commandId === null &&
+        (selection !== run.sent || nextFiles !== run.sentFiles);
       const input = carries ? { ...request.input, selection, files } : request.input;
       const screenshotText = askRepeat
         ? { ...run.screenshotText, turn: 'run' as const }
@@ -138,6 +144,7 @@ export function listenCaptureTextRuns(
         screenshotText,
       });
       run.sent = selection;
+      run.sentFiles = nextFiles;
       return detail;
     },
     started(run, detail, runId, active) {
@@ -147,24 +154,34 @@ export function listenCaptureTextRuns(
       run.readings.set(runId, run.paragraphs);
       if (!active) return;
       going.add(runId);
-      followAnswer(detail, {
-        text: (text) => {
-          version.text = text;
-          version.stream.push(() => {
-            const { review } = run;
-            if (review?.pending?.runId === runId && reviews.live(run))
-              reviews.show(run, review, false);
-          });
+      followAnswer(
+        detail,
+        {
+          text: (text) => {
+            version.text = text;
+            version.stream.push(() => {
+              const { review } = run;
+              if (review?.pending?.runId === runId && reviews.live(run))
+                reviews.show(run, review, false);
+            });
+          },
+          end: (status, answer) => {
+            going.delete(runId);
+            version.stream.cancel();
+            // What a version kept, whole or stopped, becomes one once it shows something, as the
+            // run's own first answer does; else it fails, and the card stays on the one it showed.
+            const kept =
+              finalState(status) !== 'failed' && usableAnswer(readBy(run, runId), answer);
+            versions.settleReviewRun(reviews, run, runId, kept ? 'completed' : 'failed', answer);
+          },
         },
-        end: (status, answer) => {
-          going.delete(runId);
-          version.stream.cancel();
-          // What a version kept, whole or stopped, becomes one once it shows something, as the
-          // run's own first answer does; else it fails, and the card stays on the one it showed.
-          const kept = finalState(status) !== 'failed' && usableAnswer(readBy(run, runId), answer);
-          versions.settleReviewRun(reviews, run, runId, kept ? 'completed' : 'failed', answer);
-        },
-      });
+        (blocks, id) => captureRunAnswer(blocks, id, readBy(run, id)),
+      );
+    },
+    readAnswer: (run, detail, runId) => {
+      const source = readBy(run, runId);
+      const answer = captureRunAnswer(detail.blocks, runId, source);
+      return usableAnswer(source, answer) ? answer : '';
     },
     follow: () => undefined,
   };
@@ -210,16 +227,20 @@ export function listenCaptureTextRuns(
     if (run.closed || run.stopped) stopRun(run.taskId, first.id);
     if (run.handedOver) handOver(run, host());
     followCaptureTextRuns({ type: 'task', state: detail }, host());
-    followAnswer(detail, {
-      text: (text) => {
-        run.text = text;
-        run.stream.push(() => send(run, 'streaming', run.text));
+    followAnswer(
+      detail,
+      {
+        text: (text) => {
+          run.text = text;
+          run.stream.push(() => send(run, 'streaming', run.text));
+        },
+        end: (status, answer, error) => {
+          run.stream.cancel();
+          ended(run, first.id, status, answer, error);
+        },
       },
-      end: (status, answer, error) => {
-        run.stream.cancel();
-        ended(run, first.id, status, answer, error);
-      },
-    });
+      (blocks, id) => captureRunAnswer(blocks, id, readBy(run, id)),
+    );
   }
 
   async function start(event: CaptureTextRun) {

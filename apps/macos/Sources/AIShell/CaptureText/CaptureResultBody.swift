@@ -258,8 +258,8 @@ private struct CaptureResultItem: View, Equatable {
         Circle().fill(color).frame(width: Self.side, height: Self.side)
       case .pending:
         Circle().strokeBorder(color, lineWidth: 1.5).frame(width: Self.side, height: Self.side)
-      case .highlight:
-        IslandGlyph(name: "highlighter", side: 14)
+      case .highlight, .box, .ellipse, .arrow, .spotlight, .mosaic:
+        IslandGlyph(name: Self.glyphName(for: entry.marker), side: 14)
           .foregroundStyle(.secondary)
           .frame(width: Self.side, height: Self.side)
       }
@@ -268,11 +268,23 @@ private struct CaptureResultItem: View, Equatable {
     .accessibilityHidden(true)
   }
 
+  private static func glyphName(for marker: CaptureResultCard.Entry.Marker) -> String {
+    switch marker {
+    case .highlight: "highlighter"
+    case .box: "square"
+    case .ellipse: "circle"
+    case .arrow: "arrow-up-right"
+    case .spotlight: "focus"
+    case .mosaic: "grid-3x3"
+    case .number, .gone, .pending: ""
+    }
+  }
+
   private var accessibilityText: String {
     switch entry.marker {
     case .number(let number): "\(number). \(entry.text)"
     case .gone: itemGoneLabel + " " + entry.text
-    case .pending, .highlight: entry.text
+    case .pending, .highlight, .box, .ellipse, .arrow, .spotlight, .mosaic: entry.text
     }
   }
 }

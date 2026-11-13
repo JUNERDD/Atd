@@ -4,156 +4,140 @@
 
 import Foundation
 
-/// Payload of the `captureText.action` event.
-public struct CaptureTextActionEvent: Codable, Equatable, Sendable {
+/// Payload of the `captureText.run` event.
+public struct CaptureTextRunEvent: Codable, Equatable, Sendable {
   public let runId: String
-  public let action: Action
-  public let adjust: Adjust?
+  public let surface: Surface
+  public let commandId: String?
+  public let question: String?
   public let arguments: CommandArguments?
-  public let version: Int?
-  public let reading: Reading?
+  public let scope: Scope
+  public let paragraphs: [Paragraph]
+  public let files: [FileRef]
 
   public init(
-    runId: String, action: Action, adjust: Adjust?, arguments: CommandArguments?, version: Int?,
-    reading: Reading?
+    runId: String, surface: Surface, commandId: String?, question: String?,
+    arguments: CommandArguments?, scope: Scope, paragraphs: [Paragraph], files: [FileRef]
   ) {
     self.runId = runId
-    self.action = action
-    self.adjust = adjust
+    self.surface = surface
+    self.commandId = commandId
+    self.question = question
     self.arguments = arguments
-    self.version = version
-    self.reading = reading
+    self.scope = scope
+    self.paragraphs = paragraphs
+    self.files = files
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     runId = try container.string(.runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-    action = try container.value(.action, Action.self)
-    adjust = try container.optional(.adjust) { try container.value($0, Adjust.self) }
+    surface = try container.value(.surface, Surface.self)
+    commandId = try container.optional(.commandId) {
+      try container.string($0, minLength: 1, maxLength: 128)
+    }
+    question = try container.optional(.question) {
+      try container.string($0, minLength: 1, maxLength: 100_000)
+    }
     arguments = try container.optional(.arguments) {
       try container.value($0, CommandArguments.self)
     }
-    version = try container.optional(.version) {
-      try container.integer($0, minimum: 1, maximum: 20)
-    }
-    reading = try container.optional(.reading) { try container.value($0, Reading.self) }
+    scope = try container.value(.scope, Scope.self)
+    paragraphs = try container.array(.paragraphs, of: Paragraph.self, maxItems: 4_000)
+    files = try container.array(.files, of: FileRef.self, maxItems: 4)
   }
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(runId, forKey: .runId)
-    try container.encode(action, forKey: .action)
-    try container.encodeIfPresent(adjust, forKey: .adjust)
+    try container.encode(surface, forKey: .surface)
+    try container.encodeIfPresent(commandId, forKey: .commandId)
+    try container.encodeIfPresent(question, forKey: .question)
     try container.encodeIfPresent(arguments, forKey: .arguments)
-    try container.encodeIfPresent(version, forKey: .version)
-    try container.encodeIfPresent(reading, forKey: .reading)
+    try container.encode(scope, forKey: .scope)
+    try container.encode(paragraphs, forKey: .paragraphs)
+    try container.encode(files, forKey: .files)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case runId
-    case action
-    case adjust
+    case surface
+    case commandId
+    case question
     case arguments
-    case version
-    case reading
+    case scope
+    case paragraphs
+    case files
   }
 
-  public enum Action: String, Codable, Equatable, Sendable {
-    case stop
-    case open
-    case regenerate
-    case adjust
-    case version
-    case again
-    case close
+  public enum Surface: String, Codable, Equatable, Sendable {
+    case capture
+    case longScreenshot
   }
 
-  public struct Adjust: Codable, Equatable, Sendable {
+  public enum Scope: String, Codable, Equatable, Sendable {
+    case picked
+    case all
+  }
+
+  public struct Paragraph: Codable, Equatable, Sendable {
+    public let id: String
     public let text: String
-    public let adjustments: [String]
-    public let arguments: CommandArguments?
+    public let bounds: Bounds?
 
-    public init(text: String, adjustments: [String], arguments: CommandArguments?) {
+    public init(id: String, text: String, bounds: Bounds?) {
+      self.id = id
       self.text = text
-      self.adjustments = adjustments
-      self.arguments = arguments
+      self.bounds = bounds
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      text = try container.string(.text, maxLength: 2_000)
-      adjustments = try container.array(.adjustments, of: String.self, maxItems: 8)
-      arguments = try container.optional(.arguments) {
-        try container.value($0, CommandArguments.self)
-      }
+      id = try container.string(.id, minLength: 1, maxLength: 16, pattern: "^[a-zA-Z0-9_-]+$")
+      text = try container.string(.text, minLength: 1, maxLength: 100_000)
+      bounds = try container.optional(.bounds) { try container.value($0, Bounds.self) }
     }
 
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(id, forKey: .id)
       try container.encode(text, forKey: .text)
-      try container.encode(adjustments, forKey: .adjustments)
-      try container.encodeIfPresent(arguments, forKey: .arguments)
+      try container.encodeIfPresent(bounds, forKey: .bounds)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
       case text
-      case adjustments
-      case arguments
-    }
-  }
-
-  public struct Reading: Codable, Equatable, Sendable {
-    public let scope: Scope
-    public let paragraphs: [Paragraph]
-    public let files: [FileRef]
-
-    public init(scope: Scope, paragraphs: [Paragraph], files: [FileRef]) {
-      self.scope = scope
-      self.paragraphs = paragraphs
-      self.files = files
+      case bounds
     }
 
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      scope = try container.value(.scope, Scope.self)
-      paragraphs = try container.array(
-        .paragraphs, of: Paragraph.self, minItems: 1, maxItems: 4_000)
-      files = try container.array(.files, of: FileRef.self, maxItems: 4)
-    }
+    public struct Bounds: Codable, Equatable, Sendable {
+      public let x1: Int
+      public let y1: Int
+      public let x2: Int
+      public let y2: Int
 
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case scope
-      case paragraphs
-      case files
-    }
-
-    public enum Scope: String, Codable, Equatable, Sendable {
-      case picked
-      case all
-    }
-
-    public struct Paragraph: Codable, Equatable, Sendable {
-      public let id: String
-      public let text: String
-
-      public init(id: String, text: String) {
-        self.id = id
-        self.text = text
+      public init(x1: Int, y1: Int, x2: Int, y2: Int) {
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
       }
 
       public init(from decoder: any Decoder) throws {
         let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-        id = try container.string(.id, minLength: 1, maxLength: 16, pattern: "^[a-zA-Z0-9_-]+$")
-        text = try container.string(.text, minLength: 1, maxLength: 100_000)
+        x1 = try container.integer(.x1, minimum: 0, maximum: 1_000)
+        y1 = try container.integer(.y1, minimum: 0, maximum: 1_000)
+        x2 = try container.integer(.x2, minimum: 0, maximum: 1_000)
+        y2 = try container.integer(.y2, minimum: 0, maximum: 1_000)
       }
 
       private enum CodingKeys: String, CodingKey, CaseIterable {
-        case id
-        case text
+        case x1
+        case y1
+        case x2
+        case y2
       }
     }
   }
 }
-
-/// Payload of the `panelModal.open` event.
-public typealias PanelModalOpenEvent = NativeEmpty

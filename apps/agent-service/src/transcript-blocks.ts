@@ -23,6 +23,7 @@ import type { StepList } from './transcript-details/codemode.js';
 import { projectBlockArtifact, projectBlockDetails } from './transcript-details/index.js';
 import type { SubagentRow } from './transcript-details/subagent.js';
 import { agentEntryOf } from './transcript-details/subagent-define.js';
+import { isToolCallStreaming } from './transcript-tool-streaming.js';
 import type { ServiceBranchItem } from './transcript.js';
 
 const PermissionRecordSchema = Type.Object(
@@ -326,6 +327,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           name: part.name,
           args,
           status,
+          streaming: isToolCallStreaming(part, partStreaming),
           output: result ? outputOf(result) : '',
           partial: result ? '' : (partials.get(part.id) ?? ''),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,

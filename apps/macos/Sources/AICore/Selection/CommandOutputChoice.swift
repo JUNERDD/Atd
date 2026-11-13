@@ -43,12 +43,13 @@ public enum CommandOutputChoice {
   /// action, which then answers on the card.
   public static func appending(
     _ output: CommandOutputOption, to options: [CommandOption], names: Names, cursor: Bool = true,
-    screenshotText: Bool = false
+    screenshotText: Bool = false, canAnnotate: Bool? = nil
   ) -> [CommandOption] {
     let offered = actions.filter { action in
       switch action {
       case .replaceSelection, .insertAfterSelection: output.selection
-      case .annotate: (output.selection && screenshotText) || output.value == action
+      case .annotate:
+        (canAnnotate ?? (output.selection && screenshotText)) || output.value == action
       case .insertAtCursor: cursor || output.value == action
       case .panel, .card, .copy: true
       }

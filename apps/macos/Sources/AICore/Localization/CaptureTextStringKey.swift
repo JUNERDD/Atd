@@ -12,6 +12,9 @@ public enum CaptureTextStringKey: String, CaseIterable, ShellCatalogKey {
   /// One `%lld`, the paragraphs recognized, with plural variations: the scope chip with none
   /// picked.
   case scopeAll = "captureText.scope.all"
+  /// The scope note when Ask Atd runs on the screenshot outside text mode, or on an image with no
+  /// recognized text.
+  case scopeScreenshot = "captureText.scope.screenshot"
   /// The scope chip's ×: clears what is picked.
   case scopeClear = "captureText.scope.clear"
 
@@ -27,6 +30,10 @@ public enum CaptureTextStringKey: String, CaseIterable, ShellCatalogKey {
   case noteSteps = "captureText.note.steps"
   /// One `%lld`, with plural variations: highlighter marks drawn.
   case noteHighlights = "captureText.note.highlights"
+  /// One `%lld`, with plural variations: visual shape marks drawn (boxes, ellipses, arrows, spotlights).
+  case noteMarked = "captureText.note.marked"
+  /// One `%lld`, with plural variations: mosaic redactions drawn.
+  case noteRedacted = "captureText.note.redacted"
   /// The answer stays on the card; the screenshot did not change.
   case noteUnchanged = "captureText.note.unchanged"
   /// A copy output: the answer is on the clipboard.
@@ -77,6 +84,10 @@ public enum CaptureTextStringKey: String, CaseIterable, ShellCatalogKey {
   case dockSteps = "captureText.dock.steps"
   /// One `%lld`, with plural variations: the long screenshot summary row's highlighter marks.
   case dockHighlights = "captureText.dock.highlights"
+  /// One `%lld`, with plural variations: the long screenshot summary row's visual shape marks.
+  case dockMarks = "captureText.dock.marks"
+  /// One `%lld`, with plural variations: the long screenshot summary row's mosaic redactions.
+  case dockRedactions = "captureText.dock.redactions"
   /// The long screenshot summary row while a run reads and nothing has landed yet.
   case dockReading = "captureText.dock.reading"
   /// The long screenshot summary row's Restore: every AI change on the screenshot goes.

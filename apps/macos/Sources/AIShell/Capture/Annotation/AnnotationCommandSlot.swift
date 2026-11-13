@@ -25,10 +25,13 @@ final class AnnotationCommandSlot {
   /// A text command to run on the picked text, with the values its menu picked (none: the
   /// remembered ones): the capture stays open.
   var onTextRun: ((CommandLaunch) -> Void)?
-  /// A free-form question about picked text with its "When done" output (`card` by default).
+  /// A free-form question about the screenshot or picked text with its "When done" output
+  /// (`annotate` by default).
   var onTextAsk: ((String, CommandOutputAction) -> Void)?
-  /// Whether text mode is currently active, so `AnnotationAskBar` offers "When done" options.
+  /// Whether text mode is currently active.
   var isTextMode: (() -> Bool)?
+  /// Whether text mode has unmasked paragraphs that selection-editing outputs can modify.
+  var canModifySelection: (() -> Bool)?
   /// The ask field is opening: the editor drops its tool, its selection and open text.
   var onAskOpen: (() -> Void)?
   /// The ask field closed: the editor shows the row again and takes the keyboard back.
@@ -52,8 +55,8 @@ final class AnnotationCommandSlot {
   private(set) var textRow: AnnotationCommandRow?
   private(set) var ask: AnnotationAskBar?
   private(set) var isAsking = false
-  /// Selected destination for Ask Atd in Select Text mode (`card` by default).
-  var askOutput: CommandOutputAction = .card
+  /// Selected destination for Ask Atd in Select Text mode (`annotate` by default).
+  var askOutput: CommandOutputAction = .annotate
   /// Copy text was clicked while the text was still being read: it copies once it is.
   var copyPending = false
   let hover = SelectionToolbarHover()
@@ -95,6 +98,8 @@ final class AnnotationCommandSlot {
       kind: .text, commands: setup.textCommands, hasOptions: hasOptions, maxWidth: maxWidth)
     for (shown, view) in [(false, row), (true, textRow)] {
       view.onAsk = { [weak self] in self?.openAsk() }
+      view.onAskOptions = { [weak self] chevron in self?.openAskOptions(from: chevron, text: shown)
+      }
       view.onOptions = { [weak self] chevron, command in
         self?.openOptions(of: command, from: chevron, text: shown)
       }
@@ -106,7 +111,6 @@ final class AnnotationCommandSlot {
     row.onCopy = { [weak self] in self?.onCopyText?() }
     row.onSelectText = { [weak self] in self?.onSelectText?() }
     row.onRedact = { [weak self] in self?.onRedact?() }
-    textRow.onAskOptions = { [weak self] chevron in self?.openAskOptions(from: chevron) }
     textRow.onRun = { [weak self] command in self?.onTextRun?(CommandLaunch(id: command.id)) }
     textRow.onCopy = { [weak self] in self?.onTextCopy?() }
     textRow.onScopeClear = { [weak self] in self?.onScopeClear?() }
@@ -127,7 +131,7 @@ final class AnnotationCommandSlot {
     self.row = row
     self.textRow = textRow
     self.ask = ask
-    askOutput = .card
+    askOutput = .annotate
     redaction = .hidden
   }
 
@@ -224,8 +228,12 @@ final class AnnotationCommandSlot {
     textRow?.setResults(visible: visible, isOpen: isOpen)
   }
 
-  /// The running bar under text command `id` (nil: none runs).
-  func setRunning(_ id: String?) { textRow?.setRunning(id) }
+  /// The running bar under command `id` (nil: none runs); on the screenshot row only Ask Atd runs
+  /// in place.
+  func setRunning(_ id: String?) {
+    row?.setRunning(id == CaptureTextRun.askID ? id : nil)
+    textRow?.setRunning(id)
+  }
 
   /// The auto-redact shortcut while `count` sensitive items are unmasked: shown only while there
   /// are any, unless it is confirming (decision D7).
@@ -263,19 +271,17 @@ final class AnnotationCommandSlot {
 
   // MARK: Ask
 
-  func openAsk(keepingOutput: Bool = false) {
+  func openAsk() {
     guard let ask else { return }
     closeMenus()
     endFeedback()
-    if !keepingOutput { askOutput = .card }
-    ask.configure(
-      textMode: isTextMode?() ?? false, outputLabel: Self.askOutputLabel(askOutput))
+    ask.configure(outputLabel: Self.askOutputLabel(effectiveAskOutput))
     isAsking = true
     onAskOpen?()
     ask.focus()
   }
 
-  /// Clears active ask state after submitting in Select Text mode without invoking `onAskClose`.
+  /// Clears active ask state after an in-place submission without invoking `onAskClose`.
   func finishAsk() {
     closeMenus()
     isAsking = false
@@ -284,10 +290,11 @@ final class AnnotationCommandSlot {
 
   private func submitAsk(_ question: String) {
     closeMenus()
-    if isTextMode?() == true {
-      onTextAsk?(question, askOutput)
-    } else {
+    let output = effectiveAskOutput
+    if isTextMode?() != true && output == .panel {
       onLaunch?(.ask(question))
+    } else {
+      onTextAsk?(question, output)
     }
   }
 

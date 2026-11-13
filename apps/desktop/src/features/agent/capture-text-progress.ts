@@ -18,7 +18,7 @@ export interface ProgressSource {
   output: CommandOutputAction;
   /** Its answer waits for the person to apply it before it lands, the same in every update. */
   awaitsApply: boolean;
-  /** What it reads, which its answer's blocks refer to. */
+  /** What it reads, which its answer's marks refer to. */
   paragraphs: readonly CaptureParagraph[];
 }
 
@@ -29,13 +29,17 @@ export function finalState(status: RunStatus): 'done' | 'stopped' | 'failed' {
 }
 
 /**
- * Whether `answer` gives the card something to show for `source`: for an output that lands on the
- * screenshot, at least one piece (`parseCaptureAnswer`, read as final); for any other, some text.
+ * Whether `answer` gives the card something to show for `source`: for `replaceSelection` and
+ * `insertAfterSelection`, at least one parsed piece; for `annotate`, at least one piece or a
+ * plain-text answer (`lead`); for any other output, non-empty text.
  */
 export function usableAnswer(source: ProgressSource, answer: string): boolean {
   const { output, paragraphs } = source;
   if (!landsOnScreenshot(output)) return answer.trim() !== '';
-  return parseCaptureAnswer(answer, { action: output, paragraphs, final: true }).items.length > 0;
+  const parsed = parseCaptureAnswer(answer, { action: output, paragraphs, final: true });
+  return output === 'annotate'
+    ? parsed.items.length > 0 || parsed.lead.trim() !== ''
+    : parsed.items.length > 0;
 }
 
 /**
@@ -62,7 +66,7 @@ function resultOf(
 /**
  * The update that shows `source` in `state` with the answer `text` so far: the text itself, cut
  * to what the bridge takes, and for an output that lands on the screenshot also its pieces
- * (`parseCaptureAnswer`: a block still being written counts only once `final`); `review`, the
+ * (`parseCaptureAnswer`: an incomplete trailing item counts only once `final`); `review`, the
  * card's state of the run's versions, once it has them or while the first version of an answer
  * that awaits applying is made. Without versions a `failed` update's text says why, so it has no
  * pieces; with them `text` is the version shown, which a failed attempt keeps.

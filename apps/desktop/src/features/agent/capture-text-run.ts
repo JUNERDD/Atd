@@ -39,6 +39,8 @@ export interface TextRun extends versions.ReviewedRun {
   readonly readings: Map<string, readonly CaptureParagraph[]>;
   /** The selection the task's runs last read: a follow-up carries the launch's when it differs. */
   sent: string;
+  /** Joined file ids the task's runs last read, so rescoping a 0-text crop still carries files. */
+  sentFiles: string;
   /** A retry reading other text is being prepared: the card's later presses wait for it. */
   rereading: Promise<unknown> | null;
   readonly output: CaptureTextProgress['output'];
@@ -104,6 +106,11 @@ export function attachReviewSurface(host: versions.ReviewHost<TextRun>): () => v
   };
 }
 
+/** Stable key for attached file ids so follow-ups detect rescoped crops even with empty text. */
+export function fileIds(files: readonly { id: string }[]): string {
+  return files.map((file) => file.id).join(',');
+}
+
 /** A run on `event`'s text with its `prepared` command, keeping the presses made meanwhile. */
 export function newTextRun(
   event: CaptureTextRun,
@@ -125,6 +132,7 @@ export function newTextRun(
     screenshotText: { scope: event.scope, paragraphs: event.paragraphs.length },
     readings: new Map(),
     sent: input.selection,
+    sentFiles: fileIds(input.files),
     rereading: null,
     output: output.action,
     awaitsApply: output.review && output.action === 'annotate',

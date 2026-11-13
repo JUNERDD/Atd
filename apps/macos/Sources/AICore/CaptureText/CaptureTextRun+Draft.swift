@@ -13,25 +13,20 @@ extension CaptureTextRun {
     /// Its pieces completed so far about a paragraph the run reads, in the answer's order.
     public let items: [Item]
 
-    /// The draft `update` sends (none: its answer has not begun), keeping only the pieces about a
-    /// paragraph the run `reads`, by its id in the run.
-    init(_ update: CaptureTextProgressParams.Draft?, reads: (String) -> Bool) {
+    /// The draft `update` sends (none: its answer has not begun), keeping only pieces about a
+    /// paragraph the run reads or normalized visual coordinates (`keeps`).
+    init(_ update: CaptureTextProgressParams.Draft?, keeps: (Item) -> Bool) {
       text = update?.text ?? ""
       lead = update?.result?.lead ?? ""
-      items = (update?.result?.items ?? []).map(Item.init(draft:)).filter { reads($0.paragraph) }
+      items = (update?.result?.items ?? []).filter(keeps)
     }
   }
 }
 
 extension CaptureTextRun.Item {
-  /// A piece of a draft as the run keeps the pieces of its versions.
-  fileprivate init(draft item: CaptureTextProgressParams.Draft.Result.Item) {
-    let tool: Tool =
-      switch item.tool {
-      case .replace: .replace
-      case .step: .step
-      case .highlight: .highlight
-      }
-    self.init(paragraph: item.paragraph, tool: tool, phrase: item.phrase, text: item.text)
+  /// A piece about a recognized paragraph, without normalized visual coordinates.
+  public init(paragraph: String, tool: Tool, phrase: String?, text: String) {
+    self.init(
+      tool: tool, paragraph: paragraph, phrase: phrase, point: nil, coords: nil, text: text)
   }
 }

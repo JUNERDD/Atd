@@ -24,36 +24,65 @@ const ParagraphId = Type.String({ minLength: 1, maxLength: 16, pattern: '^[a-zA-
 /** Paragraphs one run reads at most: a long screenshot's whole text fits. */
 export const MAX_CAPTURE_TEXT_PARAGRAPHS = 4000;
 
+/** Normalized 0..1000 integer coordinate from top-left (0,0) to bottom-right (1000,1000). */
+const NormalizedCoord = Type.Integer({ minimum: 0, maximum: 1000 });
+const CapturePointSchema = Type.Object(
+  { x: NormalizedCoord, y: NormalizedCoord },
+  { additionalProperties: false },
+);
+const CaptureBoundsSchema = Type.Object(
+  { x1: NormalizedCoord, y1: NormalizedCoord, x2: NormalizedCoord, y2: NormalizedCoord },
+  { additionalProperties: false },
+);
+
 /**
  * One paragraph the run reads: recognized lines the shell grouped, with any text a mosaic touches
- * already left out (`ScreenContext.unredacted`).
+ * already left out (`ScreenContext.unredacted`), and optional normalized 0..1000 `bounds`.
  */
 const CaptureParagraphSchema = Type.Object(
-  { id: ParagraphId, text: Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH }) },
+  {
+    id: ParagraphId,
+    text: Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH }),
+    bounds: Type.Optional(CaptureBoundsSchema),
+  },
   { additionalProperties: false },
 );
 
 /** Whether the person picked the paragraphs a run reads (`picked`) or it reads all the text. */
 const CaptureTextScopeSchema = Type.Union([Type.Literal('picked'), Type.Literal('all')]);
-/** The paragraphs a run reads, in the order it reads them. */
+/** The recognized paragraphs a run reads (empty on a pure-image screenshot), in reading order. */
 const CaptureParagraphsSchema = Type.Array(CaptureParagraphSchema, {
-  minItems: 1,
   maxItems: MAX_CAPTURE_TEXT_PARAGRAPHS,
 });
 /** The screenshot as it shows (with its mosaics) and its screen context, as the shell imported them. */
 const CaptureFilesSchema = Type.Array(NativeFileRefSchema, { maxItems: 4 });
 
 /**
- * One piece of a structured answer, in the answer's order: `replace` the text that replaces
- * paragraph `paragraph` on the image; `step` a numbered step marker on that paragraph with `text`
- * as its numbered item on the result card; `highlight` a highlighter mark over `phrase` (an exact
- * part of the paragraph's text; absent: the whole paragraph), with `text` as an optional note.
+ * One piece of a structured answer, in the answer's order:
+ * - On recognized paragraph `paragraph`: `replace` replaces its text; `step` places a numbered step
+ *   with `text` as its note; `highlight` marks `phrase` (or the whole paragraph) with optional
+ *   `text`; `mosaic` redacts `phrase` (or the whole paragraph) with optional `text`.
+ * - On normalized `0..1000` visual coordinates: `box`, `ellipse`, `spotlight` and `mosaic` mark
+ *   `coords` (`x1,y1`..`x2,y2`); `arrow` points from tail `x1,y1` to arrowhead `x2,y2` in `coords`;
+ *   `step` places a numbered badge at `point` (`x,y`) or badge `x1,y1` pointing to `x2,y2` in
+ *   `coords`, with `text` as its note.
  */
 const CaptureResultItemSchema = Type.Object(
   {
-    paragraph: ParagraphId,
-    tool: Type.Union([Type.Literal('replace'), Type.Literal('step'), Type.Literal('highlight')]),
+    tool: Type.Union([
+      Type.Literal('replace'),
+      Type.Literal('step'),
+      Type.Literal('highlight'),
+      Type.Literal('box'),
+      Type.Literal('ellipse'),
+      Type.Literal('arrow'),
+      Type.Literal('spotlight'),
+      Type.Literal('mosaic'),
+    ]),
+    paragraph: Type.Optional(ParagraphId),
     phrase: Type.Optional(Type.String({ minLength: 1, maxLength: MAX_CAPTURE_LENGTH })),
+    point: Type.Optional(CapturePointSchema),
+    coords: Type.Optional(CaptureBoundsSchema),
     text: Type.String({ maxLength: MAX_CAPTURE_LENGTH }),
   },
   { additionalProperties: false },
@@ -63,7 +92,7 @@ const CaptureResultItemSchema = Type.Object(
  * An answer that lands on the screenshot, parsed so far: `lead`, any text before the first piece
  * (an overall meaning), and `items`, every piece completed so far, in the answer's order.
  */
-const CaptureResultSchema = Type.Object(
+export const CaptureResultSchema = Type.Object(
   {
     lead: Type.String({ maxLength: MAX_CAPTURE_LENGTH }),
     items: Type.Array(CaptureResultItemSchema, { maxItems: MAX_CAPTURE_TEXT_PARAGRAPHS }),
@@ -146,7 +175,7 @@ export const NativeCaptureTextEvents = {
    * `scope` says whether the person picked them (`picked`) or picked none, so the run reads all
    * the text (`all`). `arguments` are the values picked in the command's options menu over the
    * remembered ones (absent: the remembered ones), its `output` where the answer goes for this
-   * run (default `card` for a `question`). `files` are the screenshot as it shows (with its
+   * run (default `annotate` for a `question`). `files` are the screenshot as it shows (with its
    * mosaics) and its screen context, as the shell imported them, attached to the run whatever the
    * command's input accepts. The page runs it as a new task the panel does not show and answers
    * with `captureText.progress`. Sent to the panel only.

@@ -1975,6 +1975,62 @@
         }
       }
     },
+    "captureText.dock.marks" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row; the number of visual shape marks on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg mark"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg marks"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "标注 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "captureText.dock.reading" : {
       "comment" : "Screenshot text commands: the long screenshot's summary row while a run reads and nothing has landed yet",
       "extractionState" : "manual",
@@ -1989,6 +2045,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在读…"
+          }
+        }
+      }
+    },
+    "captureText.dock.redactions" : {
+      "comment" : "Screenshot text commands: the long screenshot's summary row; the number of mosaic redactions on the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg redaction"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg redactions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "打码 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2361,6 +2473,62 @@
         }
       }
     },
+    "captureText.note.marked" : {
+      "comment" : "Screenshot text commands: result card note after visual shape marks were drawn; the number of marks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Marked %arg place"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Marked %arg places"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已标注 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "captureText.note.nothing" : {
       "comment" : "Screenshot text commands: result card note when the command found nothing to put on the screenshot",
       "extractionState" : "manual",
@@ -2393,6 +2561,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在读%@…"
+          }
+        }
+      }
+    },
+    "captureText.note.redacted" : {
+      "comment" : "Screenshot text commands: result card note after mosaic redactions were drawn; the number of redactions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Redacted %arg place"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Redacted %arg places"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@marks@"
+          },
+          "substitutions" : {
+            "marks" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "已打码 %arg 处"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2741,6 +2965,24 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "captureText.scope.screenshot" : {
+      "comment" : "Screenshot text commands: result card scope when Ask Atd runs on the screenshot outside text mode, or on an image with no recognized text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前截图"
           }
         }
       }

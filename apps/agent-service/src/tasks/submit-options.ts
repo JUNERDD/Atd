@@ -1,6 +1,8 @@
 import {
+  landsOnScreenshot,
   newTaskTitle,
   type AgentTask,
+  type CaptureAnswerAction,
   type PermissionTier,
   type RunComputer,
   type RunSnapshot,
@@ -39,6 +41,11 @@ export interface InternalSubmitOptions {
    * carry. Only automation launches set it; a follow-up keeps the binding ids and drops the rest.
    */
   computer?: RunComputer;
+  /**
+   * Frozen as `RunSnapshot.captureOutput` when the run lands on an open screenshot
+   * (`landsOnScreenshot`), enabling the `mark_screenshot` tool.
+   */
+  captureOutput?: CaptureAnswerAction;
 }
 
 /**
@@ -59,7 +66,7 @@ export function checkSideChatOf(
 /**
  * `internal` with what the request asks service code to tell the run: a run or follow-up carrying
  * `SubmitTaskRequest.screenshotText` receives its answer-format instruction in hidden run material
- * (`screenshotTaskInstruction`), with the selected `@@<id>` blocks appended on new Ask tasks,
+ * (`screenshotTaskInstruction`), with the selected `[<id>]` blocks appended on new Ask tasks,
  * `run` repeats, and `reread` follow-ups. Free-form inline screenshot-text asks (`!fromCommand`,
  * `output !== 'panel'`) also take `lite` while the conversation has used only `lite` runs and the
  * request stages no tools, computer bindings, folders or chips; saved commands leave `lite` solely
@@ -75,8 +82,19 @@ export function requestedOptions(
   if (!previous && screenshotText.turn === 'followUp')
     throw new TypeError('Invalid data: screenshotText followUp only applies to an existing task.');
   const isRun = !previous || screenshotText.turn === 'run';
-  if (isRun && request.input.selection.trim() === '')
+  if (screenshotText.paragraphs === 0) {
+    if (screenshotText.scope !== 'all')
+      throw new TypeError('Invalid data: 0-paragraph screenshotText requires scope "all".');
+    if (
+      screenshotText.output === 'replaceSelection' ||
+      screenshotText.output === 'insertAfterSelection'
+    )
+      throw new TypeError(
+        `Invalid data: ${screenshotText.output} requires recognized screenshot text.`,
+      );
+  } else if (isRun && request.input.selection.trim() === '') {
     throw new TypeError('Invalid data: screenshotText run needs selection.');
+  }
   const lite =
     !request.fromCommand &&
     screenshotText.output !== 'panel' &&
@@ -87,8 +105,14 @@ export function requestedOptions(
     !request.input.chips?.length;
   return {
     ...internal,
-    instructions: screenshotTaskInstruction(screenshotText, request.input.selection, !previous),
+    instructions: screenshotTaskInstruction(
+      screenshotText,
+      request.input.selection,
+      !previous,
+      request.input.files.length > 0,
+    ),
     ...(lite ? { lite: true } : {}),
+    ...(landsOnScreenshot(screenshotText.output) ? { captureOutput: screenshotText.output } : {}),
   };
 }
 

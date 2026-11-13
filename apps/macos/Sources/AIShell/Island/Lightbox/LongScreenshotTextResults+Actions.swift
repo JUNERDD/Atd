@@ -24,9 +24,12 @@ extension LongScreenshotTextResults {
     case .hover(let item, let id):
       text.hover(item.flatMap { paragraph(of: $0, in: id) })
     case .pick(let item, let id):
-      guard let index = paragraph(of: item, in: id) else { return }
-      reveal(text.layout[index].box)
-      text.land([index])
+      if let index = paragraph(of: item, in: id) {
+        reveal(text.layout[index].box)
+        text.land([index])
+      } else if let box = appliedBox(of: item, in: id) {
+        reveal(box)
+      }
     case .version(let version, let id):
       runner?.act(.version, runId: id, version: version)
     case .regenerate(let id):
@@ -141,5 +144,13 @@ extension LongScreenshotTextResults {
       })
     else { return nil }
     return item(drawing: badge.id)
+  }
+
+  /// The union of the bounds of the annotations item `item` of run `runId` put on the image.
+  func appliedBox(of item: Int, in runId: String) -> CGRect? {
+    guard let run = runs[runId] else { return nil }
+    let document = annotator.store.document
+    let boxes = (run.applied[item] ?? []).compactMap { document[$0]?.bounds }
+    return boxes.isEmpty ? nil : boxes.reduce(CGRect.null) { $0.union($1) }
   }
 }

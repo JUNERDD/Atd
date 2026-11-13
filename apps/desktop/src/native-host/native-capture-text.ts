@@ -36,15 +36,21 @@ function withFiles(input: TaskInput, files: readonly FileRef[]): TaskInput {
   return { ...input, files: [...byId.values()].slice(0, MAX_ATTACHMENTS) };
 }
 
-/** Builds the synthetic command launch for a free-form Ask on recognized screenshot text. */
+/** Builds the synthetic command launch for a free-form Ask on a screenshot or its recognized text. */
 function prepareAskCaptureText(run: CaptureTextRun, question: string): PreparedCommand {
+  const picked = run.arguments?.output ?? 'annotate';
+  const action =
+    run.paragraphs.length === 0 &&
+    (picked === 'replaceSelection' || picked === 'insertAfterSelection')
+      ? 'annotate'
+      : picked;
   const command: CommandDefinition = {
     ...newCommand(ASK_CAPTURE_COMMAND_ID),
     name: i18n.t('tasks:commandOutput.ask.title'),
     instructions: question,
     input: { source: 'selection', required: true, files: true, selection: true, clipboard: false },
     placement: defaultCommandPlacement('selection'),
-    output: { action: 'card', review: false },
+    output: { action: 'annotate', review: false },
   };
   return {
     command,
@@ -52,16 +58,16 @@ function prepareAskCaptureText(run: CaptureTextRun, question: string): PreparedC
       { ...emptyInput(), text: question, selection: formatCaptureSelection(run.paragraphs) },
       run.files,
     ),
-    output: { action: run.arguments?.output ?? 'card', review: false },
+    output: { action, review: false },
     notice: '',
   };
 }
 
 /**
  * The command or Ask of a run on text picked in a screenshot (`captureText.run`):
- * - For `run.question`, builds a free-form Ask payload with `input.text` as the question, `@@<id>`
- *   paragraph blocks in `input.selection`, the screenshot + context in `input.files`, and
- *   `output.action` set to `run.arguments?.output ?? 'card'`.
+ * - For `run.question`, builds a free-form Ask payload with `input.text` as the question,
+ *   `[<id>]` / `[<id> @ x1,y1,x2,y2]` paragraph blocks in `input.selection`, the screenshot +
+ *   context in `input.files`, and `output.action` set to `run.arguments?.output ?? 'annotate'`.
  * - For `run.commandId`, prepares the saved command as `prepareWithText`, attaching the
  *   screenshot and context whatever the command accepts and honoring a compatible picked output.
  */

@@ -69,7 +69,7 @@ export function freezeRunSnapshot(
   onBranch: BranchUserEntries | null,
   internal: InternalSubmitOptions = {},
 ): RunSnapshot {
-  const { trigger, instructions = '', lite } = internal;
+  const { trigger, instructions = '', lite, captureOutput } = internal;
   const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel, catalog);
@@ -90,6 +90,7 @@ export function freezeRunSnapshot(
     ...(trigger ? { trigger } : {}),
     ...(lite && !computer ? { lite } : {}),
     ...(computer ? { computer } : {}),
+    ...(captureOutput && !trigger ? { captureOutput } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');

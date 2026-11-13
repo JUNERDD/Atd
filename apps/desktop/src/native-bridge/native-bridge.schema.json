@@ -3351,14 +3351,8 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["paragraph", "tool", "text"],
+                        "required": ["tool", "text"],
                         "properties": {
-                          "paragraph": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 16,
-                            "pattern": "^[a-zA-Z0-9_-]+$"
-                          },
                           "tool": {
                             "anyOf": [
                               {
@@ -3372,13 +3366,83 @@
                               {
                                 "type": "string",
                                 "const": "highlight"
+                              },
+                              {
+                                "type": "string",
+                                "const": "box"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ellipse"
+                              },
+                              {
+                                "type": "string",
+                                "const": "arrow"
+                              },
+                              {
+                                "type": "string",
+                                "const": "spotlight"
+                              },
+                              {
+                                "type": "string",
+                                "const": "mosaic"
                               }
                             ]
+                          },
+                          "paragraph": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
                           },
                           "phrase": {
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 100000
+                          },
+                          "point": {
+                            "type": "object",
+                            "required": ["x", "y"],
+                            "properties": {
+                              "x": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "coords": {
+                            "type": "object",
+                            "required": ["x1", "y1", "x2", "y2"],
+                            "properties": {
+                              "x1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "x2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
                           },
                           "text": {
                             "type": "string",
@@ -3601,14 +3665,8 @@
                           "type": "array",
                           "items": {
                             "type": "object",
-                            "required": ["paragraph", "tool", "text"],
+                            "required": ["tool", "text"],
                             "properties": {
-                              "paragraph": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 16,
-                                "pattern": "^[a-zA-Z0-9_-]+$"
-                              },
                               "tool": {
                                 "anyOf": [
                                   {
@@ -3622,13 +3680,83 @@
                                   {
                                     "type": "string",
                                     "const": "highlight"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "box"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "ellipse"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "arrow"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "spotlight"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "mosaic"
                                   }
                                 ]
+                              },
+                              "paragraph": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 16,
+                                "pattern": "^[a-zA-Z0-9_-]+$"
                               },
                               "phrase": {
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 100000
+                              },
+                              "point": {
+                                "type": "object",
+                                "required": ["x", "y"],
+                                "properties": {
+                                  "x": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "coords": {
+                                "type": "object",
+                                "required": ["x1", "y1", "x2", "y2"],
+                                "properties": {
+                                  "x1": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y1": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "x2": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  },
+                                  "y2": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000
+                                  }
+                                },
+                                "additionalProperties": false
                               },
                               "text": {
                                 "type": "string",
@@ -6388,11 +6516,37 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 100000
+                      },
+                      "bounds": {
+                        "type": "object",
+                        "required": ["x1", "y1", "x2", "y2"],
+                        "properties": {
+                          "x1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "x2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
                       }
                     },
                     "additionalProperties": false
                   },
-                  "minItems": 1,
                   "maxItems": 4000
                 },
                 "files": {
@@ -6657,11 +6811,37 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 100000
+                          },
+                          "bounds": {
+                            "type": "object",
+                            "required": ["x1", "y1", "x2", "y2"],
+                            "properties": {
+                              "x1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y1": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "x2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "y2": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
                           }
                         },
                         "additionalProperties": false
                       },
-                      "minItems": 1,
                       "maxItems": 4000
                     },
                     "files": {
@@ -7068,6 +7248,123 @@
         },
         "selection": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureTextResult": {
+      "type": "object",
+      "required": ["lead", "items"],
+      "properties": {
+        "lead": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tool", "text"],
+            "properties": {
+              "tool": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "replace"
+                  },
+                  {
+                    "type": "string",
+                    "const": "step"
+                  },
+                  {
+                    "type": "string",
+                    "const": "highlight"
+                  },
+                  {
+                    "type": "string",
+                    "const": "box"
+                  },
+                  {
+                    "type": "string",
+                    "const": "ellipse"
+                  },
+                  {
+                    "type": "string",
+                    "const": "arrow"
+                  },
+                  {
+                    "type": "string",
+                    "const": "spotlight"
+                  },
+                  {
+                    "type": "string",
+                    "const": "mosaic"
+                  }
+                ]
+              },
+              "paragraph": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "phrase": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "point": {
+                "type": "object",
+                "required": ["x", "y"],
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "coords": {
+                "type": "object",
+                "required": ["x1", "y1", "x2", "y2"],
+                "properties": {
+                  "x1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "x2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 100000
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 4000
         }
       },
       "additionalProperties": false
@@ -10703,14 +11000,8 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["paragraph", "tool", "text"],
+                "required": ["tool", "text"],
                 "properties": {
-                  "paragraph": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 16,
-                    "pattern": "^[a-zA-Z0-9_-]+$"
-                  },
                   "tool": {
                     "anyOf": [
                       {
@@ -10724,13 +11015,83 @@
                       {
                         "type": "string",
                         "const": "highlight"
+                      },
+                      {
+                        "type": "string",
+                        "const": "box"
+                      },
+                      {
+                        "type": "string",
+                        "const": "ellipse"
+                      },
+                      {
+                        "type": "string",
+                        "const": "arrow"
+                      },
+                      {
+                        "type": "string",
+                        "const": "spotlight"
+                      },
+                      {
+                        "type": "string",
+                        "const": "mosaic"
                       }
                     ]
+                  },
+                  "paragraph": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
                   },
                   "phrase": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100000
+                  },
+                  "point": {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "properties": {
+                      "x": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "coords": {
+                    "type": "object",
+                    "required": ["x1", "y1", "x2", "y2"],
+                    "properties": {
+                      "x1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "x2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "text": {
                     "type": "string",
@@ -10953,14 +11314,8 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["paragraph", "tool", "text"],
+                    "required": ["tool", "text"],
                     "properties": {
-                      "paragraph": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 16,
-                        "pattern": "^[a-zA-Z0-9_-]+$"
-                      },
                       "tool": {
                         "anyOf": [
                           {
@@ -10974,13 +11329,83 @@
                           {
                             "type": "string",
                             "const": "highlight"
+                          },
+                          {
+                            "type": "string",
+                            "const": "box"
+                          },
+                          {
+                            "type": "string",
+                            "const": "ellipse"
+                          },
+                          {
+                            "type": "string",
+                            "const": "arrow"
+                          },
+                          {
+                            "type": "string",
+                            "const": "spotlight"
+                          },
+                          {
+                            "type": "string",
+                            "const": "mosaic"
                           }
                         ]
+                      },
+                      "paragraph": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 16,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
                       },
                       "phrase": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 100000
+                      },
+                      "point": {
+                        "type": "object",
+                        "required": ["x", "y"],
+                        "properties": {
+                          "x": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "coords": {
+                        "type": "object",
+                        "required": ["x1", "y1", "x2", "y2"],
+                        "properties": {
+                          "x1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y1": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "x2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          },
+                          "y2": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000
+                          }
+                        },
+                        "additionalProperties": false
                       },
                       "text": {
                         "type": "string",
@@ -12920,11 +13345,37 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 100000
+              },
+              "bounds": {
+                "type": "object",
+                "required": ["x1", "y1", "x2", "y2"],
+                "properties": {
+                  "x1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y1": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "x2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "y2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
           },
-          "minItems": 1,
           "maxItems": 4000
         },
         "files": {
@@ -13174,11 +13625,37 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100000
+                  },
+                  "bounds": {
+                    "type": "object",
+                    "required": ["x1", "y1", "x2", "y2"],
+                    "properties": {
+                      "x1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y1": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "x2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "y2": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
               },
-              "minItems": 1,
               "maxItems": 4000
             },
             "files": {

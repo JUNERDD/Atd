@@ -108,20 +108,15 @@ final class AnnotationCommandRow: NSView {
     results.setAccessibilityLabel(resultsName)
     self.results = results
     var controls: [NSControl] = [results, ask, more, copy]
-    let askUnit: NSView
-    if kind == .text {
-      let askChevron = ToolbarOptionsChevron(action: #selector(askOptionsClicked))
-      let askMenuLabel = strings.text(.commandOptionsMenu, strings.text(.selectionToolbarAsk))
-      askChevron.toolTip = askMenuLabel
-      askChevron.setAccessibilityLabel(askMenuLabel)
-      let split = NSStackView(views: [ask, askChevron])
-      split.spacing = 0
-      askUnit = split
-      controls.append(askChevron)
-      buttons[CaptureTextRun.askID] = ask
-    } else {
-      askUnit = ask
-    }
+    let askChevron = ToolbarOptionsChevron(action: #selector(askOptionsClicked))
+    let askMenuLabel = strings.text(.commandOptionsMenu, strings.text(.selectionToolbarAsk))
+    askChevron.toolTip = askMenuLabel
+    askChevron.setAccessibilityLabel(askMenuLabel)
+    let askSplit = NSStackView(views: [ask, askChevron])
+    askSplit.spacing = 0
+    let askUnit: NSView = askSplit
+    controls.append(askChevron)
+    buttons[CaptureTextRun.askID] = ask
     var fixed: [NSView] = [results, askUnit, more, copy]
     var groups: [[NSView]]
     switch kind {

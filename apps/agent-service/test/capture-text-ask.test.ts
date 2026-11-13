@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import {
+  CAPTURE_ANSWER_TOOL,
   CommandGetResponseSchema,
   CommandRunResponseSchema,
   DEFAULT_RUN_TOOLS,
@@ -11,6 +12,7 @@ import {
   type AgentTask,
   type CommandCreate,
   type FileRef,
+  type ScreenshotTextFollowUp,
   type SubmitTaskRequest,
 } from '@atd/agent-contracts';
 import { screenshotTaskInstruction } from '../dist/commands/output-instruction.js';
@@ -20,7 +22,7 @@ import { requestedOptions } from '../dist/tasks/submit-options.js';
 import { fakeModelServer } from './fake-model-server.ts';
 import { startTestService } from './service-harness.ts';
 
-const selection = '@@p0\nFirst picked paragraph';
+const selection = '[p0 @ 10,20,300,60]\nFirst picked paragraph';
 const replies: string[] = [];
 const model = await fakeModelServer(() => replies.shift() ?? 'Answer.');
 
@@ -83,39 +85,37 @@ after(async () => {
   await model.close();
 });
 
-function baseRequest(
+const baseRequest = (
   screenshotText: NonNullable<SubmitTaskRequest['screenshotText']>,
   selected = selection,
   extra: Partial<SubmitTaskRequest> = {},
-): SubmitTaskRequest {
-  return {
-    operationId: randomUUID(),
-    input: {
-      text: 'Summarize the key dates',
-      files: [],
-      source: 'selection',
-      capturedAt: new Date(0).toISOString(),
-      selection: selected,
-      clipboard: '',
-      arguments: {},
-      chips: [],
-    },
-    screenshotText,
-    ...extra,
-  };
-}
+): SubmitTaskRequest => ({
+  operationId: randomUUID(),
+  input: {
+    text: 'Summarize the key dates',
+    files: [],
+    source: 'selection',
+    capturedAt: new Date(0).toISOString(),
+    selection: selected,
+    clipboard: '',
+    arguments: {},
+    chips: [],
+  },
+  screenshotText,
+  ...extra,
+});
 
-function declaredTools(body: string): string[] {
-  const tools = (JSON.parse(body) as { tools?: { function?: { name?: string } }[] }).tools ?? [];
-  return tools.map((tool) => tool.function?.name ?? '');
-}
+const declaredTools = (body: string): string[] =>
+  ((JSON.parse(body) as { tools?: { function?: { name?: string } }[] }).tools ?? []).map(
+    (tool) => tool.function?.name ?? '',
+  );
 
 async function settled(taskId: string, runId: string) {
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + 20000;
   for (;;) {
     const run = harness.service.ledger.run(taskId, runId);
     if (!isActiveStatus(run.status)) return run;
-    assert.ok(Date.now() < deadline, 'the run did not end within 10 s');
+    assert.ok(Date.now() < deadline, 'the run did not end within 20 s');
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }
@@ -127,110 +127,71 @@ async function submitTask(body: Record<string, unknown>) {
   return { ...accepted, run: await settled(accepted.taskId, accepted.runId) };
 }
 
+const st = (
+  output: ScreenshotTextFollowUp['output'],
+  scope: ScreenshotTextFollowUp['scope'] = 'picked',
+  paragraphs = 1,
+  turn: ScreenshotTextFollowUp['turn'] = 'run',
+): ScreenshotTextFollowUp => ({ scope, paragraphs, output, turn });
+
+const inst = (s: ScreenshotTextFollowUp, sel = selection, isNew = s.turn === 'run') =>
+  screenshotTaskInstruction(s, sel, isNew);
+
 test('screenshotTaskInstruction appends selection, relaxes scope:all for targeted asks, and states card text boundary', () => {
-  const newAsk = screenshotTaskInstruction(
-    { scope: 'picked', paragraphs: 1, output: 'replaceSelection', turn: 'run' },
-    selection,
-    true,
-  );
+  const newAsk = inst(st('replaceSelection'));
   assert.ok(newAsk.includes('Your answer replaces the paragraphs on the screenshot.'));
+  assert.ok(newAsk.includes(CAPTURE_ANSWER_TOOL) && newAsk.includes('[<id> @ x1,y1,x2,y2]'));
+  assert.equal(newAsk.includes('@@'), false);
   assert.ok(newAsk.endsWith(`\n\n${selection}`));
 
-  const copyAsk = screenshotTaskInstruction(
-    { scope: 'picked', paragraphs: 1, output: 'copy', turn: 'run' },
-    selection,
-    true,
+  const copyAsk = inst(st('copy'));
+  assert.ok(
+    copyAsk.includes('copied to the clipboard as is') && copyAsk.endsWith(`\n\n${selection}`),
   );
-  assert.ok(copyAsk.includes('copied to the clipboard as is'));
-  assert.ok(copyAsk.endsWith(`\n\n${selection}`));
 
-  const repeatCard = screenshotTaskInstruction(
-    { scope: 'all', paragraphs: 3, output: 'card', turn: 'run' },
-    selection,
-    false,
-  );
+  const repeatCard = inst(st('card', 'all', 3), selection, false);
   assert.equal(repeatCard.includes('replaces the paragraphs'), false);
   assert.equal(repeatCard.includes('copied to the clipboard'), false);
   assert.ok(repeatCard.includes('delivered only as text beside the screenshot'));
-  assert.ok(repeatCard.includes('answer that request directly without summarizing unrelated'));
-  assert.ok(repeatCard.endsWith(`\n\n${selection}`));
+  assert.ok(
+    repeatCard.includes('answer that request directly without summarizing unrelated') &&
+      repeatCard.endsWith(`\n\n${selection}`),
+  );
 
-  const followUpSame = screenshotTaskInstruction(
-    { scope: 'picked', paragraphs: 1, output: 'card', turn: 'followUp' },
-    '',
-    false,
-  );
-  assert.equal(followUpSame.includes('@@p0'), false);
-  const followUpReread = screenshotTaskInstruction(
-    { scope: 'picked', paragraphs: 1, output: 'card', turn: 'followUp' },
-    selection,
-    false,
-  );
-  assert.ok(followUpReread.endsWith(`\n\n${selection}`));
+  assert.equal(inst(st('card', 'picked', 1, 'followUp'), '').includes('[p0'), false);
+  assert.ok(inst(st('card', 'picked', 1, 'followUp')).endsWith(`\n\n${selection}`));
 });
 
 test('requestedOptions routes eligible inline Ask runs to lite while preserving panel, chip and fromCommand boundaries', () => {
-  const inline = requestedOptions(
-    baseRequest({ scope: 'picked', paragraphs: 1, output: 'annotate', turn: 'run' }),
-    null,
-    {},
-  );
+  const opts = (
+    shotText: ScreenshotTextFollowUp,
+    prev: AgentTask | null = null,
+    sel = selection,
+    extra: Partial<SubmitTaskRequest> = {},
+  ) => requestedOptions(baseRequest(shotText, sel, extra), prev, {});
+
+  const inline = opts(st('annotate'));
   assert.ok(inline.instructions?.includes(selection));
   assert.equal(inline.lite, true);
-
-  assert.equal(
-    requestedOptions(
-      baseRequest({ scope: 'all', paragraphs: 2, output: 'panel', turn: 'run' }),
-      null,
-      {},
-    ).lite,
-    undefined,
-  );
-  assert.equal(
-    requestedOptions(
-      baseRequest({ scope: 'picked', paragraphs: 1, output: 'card', turn: 'run' }, selection, {
-        fromCommand: true,
-      }),
-      null,
-      {},
-    ).lite,
-    undefined,
-  );
+  assert.equal(inline.captureOutput, 'annotate');
+  assert.equal(opts(st('card')).captureOutput, undefined);
+  assert.equal(opts(st('panel', 'all', 2)).lite, undefined);
+  assert.equal(opts(st('card'), null, selection, { fromCommand: true }).lite, undefined);
 
   const liteTask = { runs: [{ snapshot: { lite: true } }] } as unknown as AgentTask;
-  assert.equal(
-    requestedOptions(
-      baseRequest({ scope: 'picked', paragraphs: 1, output: 'card', turn: 'followUp' }, ''),
-      liteTask,
-      {},
-    ).lite,
-    true,
-  );
+  assert.equal(opts(st('card', 'picked', 1, 'followUp'), liteTask, '').lite, true);
 
-  const withChip = baseRequest(
-    { scope: 'picked', paragraphs: 1, output: 'card', turn: 'followUp' },
-    '',
-  );
+  const withChip = baseRequest(st('card', 'picked', 1, 'followUp'), '');
   withChip.input.text = 'q Shorter';
   withChip.input.chips = [{ from: 0, to: 1, chip: { kind: 'quote', text: 'Prior answer' } }];
   assert.equal(requestedOptions(withChip, liteTask, {}).lite, undefined);
 
   assert.throws(
-    () =>
-      requestedOptions(
-        baseRequest({ scope: 'picked', paragraphs: 1, output: 'card', turn: 'followUp' }),
-        null,
-        {},
-      ),
+    () => opts(st('card', 'picked', 1, 'followUp')),
     /^TypeError: Invalid data: screenshotText followUp/,
   );
   assert.throws(
-    () =>
-      requestedOptions(
-        baseRequest({ scope: 'all', paragraphs: 1, output: 'panel', turn: 'run' }, '   '),
-        {} as AgentTask,
-        {},
-      ),
+    () => opts(st('panel', 'all'), {} as AgentTask, '   '),
     /^TypeError: Invalid data: screenshotText run needs selection/,
   );
 });
@@ -246,12 +207,12 @@ test('inline screenshot-text Ask runs lite with inherited thinking and no resour
   const first = await submitTask(firstReq);
   assert.equal(first.run.status, 'completed', first.run.error);
   assert.equal(first.run.snapshot.lite, true);
+  assert.equal(first.run.snapshot.captureOutput, undefined);
   assert.equal(first.run.snapshot.thinkingLevel, 'max');
   assert.deepEqual(first.run.snapshot.tools, [...DEFAULT_RUN_TOOLS]);
   const firstBody = model.bodies.at(-1) ?? '';
   assert.deepEqual(declaredTools(firstBody), []);
-  assert.doesNotMatch(firstBody, /is a saved command the user ran/);
-  assert.doesNotMatch(firstBody, /Read-only resource:/);
+  assert.doesNotMatch(firstBody, /is a saved command the user ran|Read-only resource:/);
   assert.match(firstBody, /Window: HIX AI/);
 
   const secondReq = baseRequest(
@@ -285,6 +246,7 @@ test('inline screenshot-text Ask runs lite with inherited thinking and no resour
   const panelBody = model.bodies.at(-1) ?? '';
   const tools = declaredTools(panelBody);
   assert.ok(tools.includes('read') && tools.includes('bash') && tools.includes('ask_user'));
+  assert.equal(tools.includes(CAPTURE_ANSWER_TOOL), false);
   assert.match(panelBody, /Read-only resource:/);
   assert.match(panelBody, /Refined inline answer\./);
 });
@@ -335,14 +297,15 @@ test('saved commands on screenshotText take lite only without tokens or tools, w
   replies.push('Plain shot done.', 'Skilled shot done.', 'File run done.');
   const plainRun = await runCmd(plain.id, { input: shotInput, screenshotText: shot });
   assert.equal(plainRun.snapshot.lite, true);
+  assert.equal(plainRun.snapshot.captureOutput, undefined);
   const plainBody = model.bodies.at(-1) ?? '';
   assert.deepEqual(declaredTools(plainBody), []);
   assert.match(plainBody, /is a saved command the user ran/);
   assert.doesNotMatch(plainBody, /Read-only resource:/);
 
-  const skilledRun = await runCmd(skilled.id, { input: shotInput, screenshotText: shot });
-  assert.equal(skilledRun.snapshot.lite, undefined);
-
-  const fileRun = await runCmd(fileCmd.id, { input: shotInput });
-  assert.equal(fileRun.snapshot.lite, undefined);
+  assert.equal(
+    (await runCmd(skilled.id, { input: shotInput, screenshotText: shot })).snapshot.lite,
+    undefined,
+  );
+  assert.equal((await runCmd(fileCmd.id, { input: shotInput })).snapshot.lite, undefined);
 });

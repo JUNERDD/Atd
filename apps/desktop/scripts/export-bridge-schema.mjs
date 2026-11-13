@@ -41,6 +41,7 @@ function schemaDocument() {
     CommandArguments: json(commandOptions.CommandArgumentsSchema),
     CommandOutputAction: json(commandOptions.CommandOutputActionSchema),
     CommandOutputOption: json(commandOptions.CommandOutputOptionSchema),
+    CaptureTextResult: json(calls.CaptureResultSchema),
     SocketFrame: json(contract.SocketFrameSchema),
   };
   for (const [method, { params, result }] of Object.entries(calls.NativeCalls)) {

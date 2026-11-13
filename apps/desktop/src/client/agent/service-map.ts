@@ -247,6 +247,7 @@ export function mapBlock(block: ServiceBlock): Block {
         name: block.name,
         args: { ...(block.args as Record<string, unknown>) },
         status: block.status,
+        ...(block.streaming === undefined ? {} : { streaming: block.streaming }),
         output: block.output,
         partial: block.partial,
         details: mapToolDetails(block.details, block.artifact),

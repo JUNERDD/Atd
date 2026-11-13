@@ -5,18 +5,46 @@ import Foundation
 /// an answer waiting for review while it previews on the image (decision D12), with a body for its
 /// destination.
 extension CaptureResultCard {
-  static func marks(_ run: CaptureTextRun, document: AnnotationDocument) -> Content {
-    let numbers = run.stepNumbers(in: document)
-    let entries = entries(of: run, numbers: numbers)
-    let highlighted = run.items.indices.filter { run.items[$0].tool == .highlight }
-      .reduce(0) { count, index in
+  static func marks(
+    _ run: CaptureTextRun, document: AnnotationDocument, canInsert: Bool = false
+  ) -> Content {
+    let plainLead = run.lead.trimmingCharacters(in: .whitespacesAndNewlines)
+    if run.items.isEmpty, run.annotationIDs.isEmpty, !plainLead.isEmpty {
+      let note: Note =
+        switch run.shownPhase {
+        case .thinking, .streaming: .writing
+        case .done: .unchanged
+        case .stopped: .stopped
+        case .failed: .failed
+        }
+      let insert = run.output == .insertAtCursor && canInsert
+      return Content(
+        notes: [note], body: .answer(run.lead),
+        actions: [.open, .copy] + (insert ? [.insert] : []),
+        primary: insert ? .insert : .copy, busy: run.phase.running, copyText: plainLead,
+        hints: [run.phase.running ? .stop : .close])
+    }
+
+    func countStanding(_ predicate: (CaptureTextRun.Item.Tool) -> Bool) -> Int {
+      run.items.indices.filter { predicate(run.items[$0].tool) }.reduce(0) { count, index in
         count + (run.applied[index] ?? []).filter { document[$0] != nil }.count
       }
+    }
+
+    let numbers = run.stepNumbers(in: document)
+    let entries = entries(of: run, numbers: numbers)
+    let highlighted = countStanding { $0 == .highlight }
+    let marked = countStanding {
+      $0 == .box || $0 == .ellipse || $0 == .arrow || $0 == .spotlight
+    }
+    let redacted = countStanding { $0 == .mosaic }
     var landed: [Note] = []
     if let first = numbers.values.min(), let last = numbers.values.max() {
       landed.append(.steps(first: first, last: last))
     }
     if highlighted > 0 { landed.append(.highlights(highlighted)) }
+    if marked > 0 { landed.append(.marked(marked)) }
+    if redacted > 0 { landed.append(.redacted(redacted)) }
     let restored = !run.phase.running && run.restored(in: document)
     if restored { landed = [.restored] }
     let empty = run.items.isEmpty && run.lead.isEmpty
@@ -88,22 +116,32 @@ extension CaptureResultCard {
       hints: [run.phase.running ? .stop : .close])
   }
 
-  /// The items of an answer about paragraphs as the card lists them: each step with the number
-  /// its badge shows (`numbers`, by item index) or why it has none (deleted, not landed yet), and
-  /// each highlighter mark that has a note.
+  /// The items of an answer as the card lists them: each step with the number its badge shows
+  /// (`numbers`, by item index) or why it has none (deleted, not landed yet), and each non-step
+  /// mark that carries a note.
+  static func notedMarker(for tool: CaptureTextRun.Item.Tool) -> Entry.Marker? {
+    switch tool {
+    case .highlight: .highlight
+    case .box: .box
+    case .ellipse: .ellipse
+    case .arrow: .arrow
+    case .spotlight: .spotlight
+    case .mosaic: .mosaic
+    case .replace, .step: nil
+    }
+  }
+
   private static func entries(of run: CaptureTextRun, numbers: [Int: Int]) -> [Entry] {
     run.items.indices.compactMap { index -> Entry? in
       let item = run.items[index]
       let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
       let marker: Entry.Marker
-      switch item.tool {
-      case .step:
+      if item.tool == .step {
         marker =
           numbers[index].map { .number($0) } ?? (run.applied[index] != nil ? .gone : .pending)
-      case .highlight:
-        guard !text.isEmpty else { return nil }
-        marker = .highlight
-      case .replace:
+      } else if !text.isEmpty, let noted = notedMarker(for: item.tool) {
+        marker = noted
+      } else {
         return nil
       }
       return Entry(id: index, paragraph: item.paragraph, marker: marker, text: text)
@@ -132,7 +170,7 @@ extension CaptureResultCard {
       switch entry.marker {
       case .number(let number): "\(number). \(entry.text)"
       case .gone, .pending: "\(offset + 1). \(entry.text)"
-      case .highlight: "• \(entry.text)"
+      case .highlight, .box, .ellipse, .arrow, .spotlight, .mosaic: "• \(entry.text)"
       }
     }
     let text = ([lead.trimmingCharacters(in: .whitespacesAndNewlines)] + lines)

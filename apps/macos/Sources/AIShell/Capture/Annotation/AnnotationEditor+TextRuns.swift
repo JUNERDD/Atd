@@ -31,7 +31,7 @@ extension AnnotationEditor: CaptureTextConsumer {
       ?? setup.catalog.entry(for: launch.id)?.name ?? launch.id
     let run = CaptureTextRun(
       commandId: launch.id, command: name, scope: mode.scope, paragraphs: paragraphs,
-      output: output)
+      output: output, bounds: selection)
     text.runs.start(run)
     closeReplacedReviews()
     text.cardOrigin = nil
@@ -44,19 +44,21 @@ extension AnnotationEditor: CaptureTextConsumer {
     refresh()
   }
 
-  /// Runs a free-form `question` asked from `AnnotationAskBar` while Select Text mode is active,
-  /// honoring the chosen `output` ("When done"). `panel` starts the task and immediately hands it
-  /// over to the Atd panel as capture ends; every other output runs in-place on the open capture.
+  /// Runs a free-form `question` asked from `AnnotationAskBar` on either the screenshot or picked
+  /// text, honoring `output` ("When done"). `panel` starts the task and immediately hands it over
+  /// to the Atd panel as capture ends; every other output runs in place on the open capture.
   func runTextAsk(_ question: String, output: CommandOutputAction) {
     guard let setup = slot.setup, let runner = setup.textRuns else { return NSSound.beep() }
     let mode = text.mode
     let paragraphs = mode.runReading.map { mode.layout[$0] }
-    guard !paragraphs.isEmpty else { return NSSound.beep() }
+    let scope =
+      mode.isOn && !paragraphs.isEmpty
+      ? mode.scope : CaptureTextScope(kind: .screenshot, count: mode.reading.count)
     slot.finishAsk()
     if let running = text.runs.running { runner.act(.stop, runId: running.id) }
     let run = CaptureTextRun(
       commandId: CaptureTextRun.askID, command: ShellStrings.shared.text(.selectionToolbarAsk),
-      scope: mode.scope, paragraphs: paragraphs, output: output)
+      scope: scope, paragraphs: paragraphs, output: output, bounds: selection)
     let arguments = CommandArguments(output: output, choices: [:], toggles: [:])
     let files = runFiles()
     if output == .panel {
@@ -82,10 +84,9 @@ extension AnnotationEditor: CaptureTextConsumer {
 
   /// A retry on run `id`'s card (Regenerate, or an adjustment, `adjust`) reads what text mode
   /// reads now: when the person moved or resized the selection or picked other paragraphs since
-  /// the run read its text, the run takes the paragraphs the selection holds now
-  /// (``CaptureTextRun/rescope(_:scope:)``) and the runner sends them with the selection as it
-  /// shows now; otherwise, or when the selection holds no text, the version reads what the run
-  /// read.
+  /// the run read its text, the run takes what the selection holds now
+  /// (``CaptureTextRun/rescope(_:scope:bounds:)``) and the runner sends it with the selection as
+  /// it shows now; otherwise the version reads what the run read.
   func retry(
     _ action: CaptureTextActionEvent.Action, runId id: String,
     adjust: CaptureTextActionEvent.Adjust? = nil
@@ -93,8 +94,13 @@ extension AnnotationEditor: CaptureTextConsumer {
     guard let runner = slot.setup?.textRuns else { return }
     let mode = text.mode
     let reading = mode.runReading.map { mode.layout[$0] }
+    let scope =
+      mode.isOn && !reading.isEmpty
+      ? mode.scope : CaptureTextScope(kind: .screenshot, count: mode.reading.count)
     var rescoped = false
-    text.runs.update(id) { rescoped = $0.rescope(reading, scope: mode.scope) != nil }
+    text.runs.update(id) {
+      rescoped = $0.rescope(reading, scope: scope, bounds: selection) != nil
+    }
     guard rescoped, let run = text.runs[id] else {
       return runner.act(action, runId: id, adjust: adjust)
     }
@@ -160,10 +166,10 @@ extension AnnotationEditor: CaptureTextConsumer {
     // which reads them.
     let landed = store.land(id, of: text.runs, context: markContext) { text.runs = $0 }
     guard landed, let run = text.runs[id] else { return }
-    // The paragraphs a result just covered flash once.
+    // The paragraphs or marks a result just covered flash once.
     flashText(
       run.applied.keys.filter { !before.contains($0) }.sorted().compactMap { item in
-        run[paragraph: run.items[item].paragraph]?.box
+        paragraphBox(of: item, in: id)
       })
   }
 

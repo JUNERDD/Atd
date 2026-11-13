@@ -11,7 +11,7 @@
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeCaptureCalls } from './capture-calls.ts';
-import { NativeCaptureTextCalls } from './capture-text-calls.ts';
+import { CaptureResultSchema, NativeCaptureTextCalls } from './capture-text-calls.ts';
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
@@ -26,6 +26,7 @@ import { NativeUpdateCalls } from './update-calls.ts';
 import { NativeWindowCalls } from './window-calls.ts';
 import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
+export { CaptureResultSchema };
 export {
   MAX_SAVE_PNG_BASE64_LENGTH,
   NativeFileRefSchema,

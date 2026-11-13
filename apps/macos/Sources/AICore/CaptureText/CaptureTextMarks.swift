@@ -83,8 +83,12 @@ public enum CaptureTextMarks {
     var produced: [(item: Int, ids: [UUID])] = []
     for index in indices {
       let item = run.items[index]
-      guard let paragraph = run[paragraph: item.paragraph] else { continue }
-      var marks = annotations(for: item, on: paragraph, in: next, context: context)
+      var marks: [Annotation] =
+        if let id = item.paragraph, let paragraph = run[paragraph: id] {
+          annotations(for: item, on: paragraph, in: next, context: context)
+        } else {
+          visualAnnotations(for: item, context: context)
+        }
       if let ids = run.redrawn[index], ids.count == marks.count {
         marks = zip(ids, marks).map { Annotation(id: $0, shape: $1.shape, style: $1.style) }
       }
@@ -112,6 +116,11 @@ public enum CaptureTextMarks {
     case .highlight:
       let whole = isReplaced(paragraph, in: document)
       return highlights(whole ? nil : item.phrase, in: paragraph, style: context.highlightStyle)
+    case .mosaic:
+      let whole = isReplaced(paragraph, in: document)
+      return mosaics(whole ? nil : item.phrase, in: paragraph, style: context.stepStyle)
+    case .box, .ellipse, .arrow, .spotlight:
+      return visualAnnotations(for: item, context: context)
     }
   }
 

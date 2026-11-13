@@ -6,6 +6,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import type { RunStatus, TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
+import { captureAnswerExtension } from './commands/capture-tool.js';
 import { compactionSettings } from './compaction/policy.js';
 import { restrictedComputerRunOf } from './computer/tool-set.js';
 import { pruneToolOutputs } from './compaction/prune.js';
@@ -149,6 +150,11 @@ export async function createLiveState(
     ].join(' '),
     extensionFactories: [
       serviceTools(host),
+      captureAnswerExtension(() => ({
+        ledger: ctx.ledger,
+        taskId,
+        runId: deps.currentRunId(),
+      })),
       binding.mcp.factory,
       mcpServersSection(binding.mcp.bindings),
       // Registered inactive; the allowlist declares it for deferred service tools or MCP servers.

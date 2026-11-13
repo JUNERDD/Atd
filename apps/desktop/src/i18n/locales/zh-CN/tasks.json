@@ -103,7 +103,8 @@
       "automationEnable": "开启自动化",
       "automationDisable": "关闭自动化",
       "automationRun": "运行自动化",
-      "updateView": "更新视图"
+      "updateView": "更新视图",
+      "markScreenshot": "标注截图"
     },
     "target": {
       "user": "用户",

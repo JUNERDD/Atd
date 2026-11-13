@@ -137,7 +137,7 @@ final class CaptureTextRunner {
   }
 
   /// A retry on `run`'s card (`regenerate`, or `adjust` with what the card staged) after `run`
-  /// took what the person's selection holds now (``CaptureTextRun/rescope(_:scope:)``): `files`
+  /// took what the person's selection holds now (``CaptureTextRun/rescope(_:scope:bounds:)``): `files`
   /// writes the screenshot as it shows now and its context, which are imported as a run's are,
   /// then the page gets the retry with them and the run's paragraphs (`captureText.action`'s
   /// `reading`), which this version and every one after it read. Where the files cannot be

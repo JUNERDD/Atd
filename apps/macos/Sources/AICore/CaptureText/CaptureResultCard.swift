@@ -17,6 +17,8 @@ public struct CaptureResultCard: Equatable, Sendable {
     case replaced(Int)
     case steps(first: Int, last: Int)
     case highlights(Int)
+    case marked(Int)
+    case redacted(Int)
     case unchanged
     case copied
     case nothing
@@ -61,7 +63,7 @@ public struct CaptureResultCard: Equatable, Sendable {
     public let text: String
   }
 
-  /// One item of an answer about paragraphs.
+  /// One item of an answer about paragraphs or visual coordinates.
   public struct Entry: Equatable, Sendable, Identifiable {
     public enum Marker: Equatable, Sendable {
       /// The number its badge shows on the image.
@@ -72,12 +74,22 @@ public struct CaptureResultCard: Equatable, Sendable {
       case pending
       /// A highlighter mark's note.
       case highlight
+      /// A rectangle mark's note.
+      case box
+      /// An ellipse mark's note.
+      case ellipse
+      /// An arrow mark's note.
+      case arrow
+      /// A spotlight mark's note.
+      case spotlight
+      /// A mosaic redaction's note.
+      case mosaic
     }
 
     /// The item's index in the run (``CaptureTextRun/items``).
     public let id: Int
-    /// The paragraph it is about, by its id in the run.
-    public let paragraph: String
+    /// The paragraph it is about, by its id in the run; nil for visual coordinate marks.
+    public let paragraph: String?
     public let marker: Marker
     public let text: String
   }
@@ -163,7 +175,7 @@ public struct CaptureResultCard: Equatable, Sendable {
       case .card: Self.card(run, canInsert: canInsert)
       case _ where run.awaitsReview: Self.review(run, document: document)
       case .replace: Self.replace(run, document: document)
-      case .steps, .marks: Self.marks(run, document: document)
+      case .steps, .marks: Self.marks(run, document: document, canInsert: canInsert)
       }
     notes = Self.versionNote(run).map { [$0] } ?? content.notes
     body = content.body
@@ -257,9 +269,8 @@ public struct CaptureResultCard: Equatable, Sendable {
   static func replacements(of run: CaptureTextRun) -> [Replacement] {
     run.items.indices.compactMap { index in
       let item = run.items[index]
-      guard item.tool == .replace, let paragraph = run[paragraph: item.paragraph] else {
-        return nil
-      }
+      guard item.tool == .replace, let id = item.paragraph, let paragraph = run[paragraph: id]
+      else { return nil }
       return Replacement(id: index, original: paragraph.text, text: item.text)
     }
   }

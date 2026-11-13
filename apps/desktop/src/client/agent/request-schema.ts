@@ -93,8 +93,8 @@ export const AgentRequestSchema = Type.Union([
     /**
      * A command run (`CommandRunRequest.screenshotText`) or a task run on screenshot text
      * (`SubmitTaskRequest.screenshotText` with `output`): a free-form Ask on screenshot text sets
-     * `turn: 'run'` and sends recognized `@@<id>` blocks in `input.selection`, while a follow-up
-     * makes a new version of an answer on the same format.
+     * `turn: 'run'` and sends recognized `[<id>]` / `[<id> @ x1,y1,x2,y2]` blocks in
+     * `input.selection`, while a follow-up makes a new version of an answer on the same format.
      */
     screenshotText: Type.Optional(SubmitScreenshotTextSchema),
     /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */

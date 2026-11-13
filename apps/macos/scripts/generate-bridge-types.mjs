@@ -73,6 +73,7 @@ function rendererSections(schema) {
     'CommandArguments',
     'CommandOutputAction',
     'CommandOutputOption',
+    'CaptureTextResult',
   ];
   const emitter = createEmitter({ defs, shared });
   return [

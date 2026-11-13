@@ -15,9 +15,8 @@ extension CaptureResultCard {
     case .replace:
       let rows = draft.items.indices.compactMap { index -> Replacement? in
         let item = draft.items[index]
-        guard item.tool == .replace, let paragraph = run[paragraph: item.paragraph] else {
-          return nil
-        }
+        guard item.tool == .replace, let id = item.paragraph, let paragraph = run[paragraph: id]
+        else { return nil }
         return Replacement(id: index, original: paragraph.text, text: item.text)
       }
       return rows.isEmpty ? .skeleton : .replacements(rows)
@@ -25,16 +24,16 @@ extension CaptureResultCard {
       let entries = draft.items.indices.compactMap { index -> Entry? in
         let item = draft.items[index]
         let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        switch item.tool {
-        case .step:
+        if item.tool == .step {
           return Entry(id: index, paragraph: item.paragraph, marker: .pending, text: text)
-        case .highlight where !text.isEmpty:
-          return Entry(id: index, paragraph: item.paragraph, marker: .highlight, text: text)
-        case .highlight, .replace:
-          return nil
         }
+        guard !text.isEmpty, let marker = notedMarker(for: item.tool) else { return nil }
+        return Entry(id: index, paragraph: item.paragraph, marker: marker, text: text)
       }
-      return entries.isEmpty && draft.lead.isEmpty ? .skeleton : .items(lead: draft.lead, entries)
+      if entries.isEmpty {
+        return draft.lead.isEmpty ? .skeleton : .answer(draft.lead)
+      }
+      return .items(lead: draft.lead, entries)
     }
   }
 }

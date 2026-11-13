@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   commandShortcut,
   instructionCapabilities,
+  landsOnScreenshot,
   parse,
   parseInstructionTokens,
   shortcutRunSettings,
@@ -194,9 +195,10 @@ export async function launchCommand(
   });
   // An unattended run (`trigger`) has no app to write into and never touches the clipboard, so its
   // answer only stays in its conversation and the model is told nothing about where it goes.
+  const effectiveOutput = request.output ?? command.output;
   const instructions = internal.trigger
     ? ''
-    : (outputInstruction(request.output ?? command.output, request.screenshotText) ?? '');
+    : (outputInstruction(effectiveOutput, request.screenshotText) ?? '');
   if (
     request.frame &&
     runInputSize({ ...snapshot, input: submit.input, instructions }) > CONTEXT_BUDGET
@@ -219,11 +221,18 @@ export async function launchCommand(
       (request.taskId === undefined ||
         (joined !== undefined && joined.runs.every((item) => item.snapshot.lite === true))),
   });
+  const captureOutput =
+    !internal.trigger &&
+    request.screenshotText !== undefined &&
+    landsOnScreenshot(effectiveOutput.action)
+      ? effectiveOutput.action
+      : undefined;
   return deps.manager.submit(submit, {
     ...internal,
     title: internal.title ?? command.name,
     ...(instructions ? { instructions } : {}),
     ...(lite ? { lite } : {}),
+    ...(captureOutput ? { captureOutput } : {}),
   });
 }
 

@@ -43,7 +43,7 @@ export function isLiteRun(facts: LiteRunFacts): boolean {
     facts.tools.length === 0 &&
     facts.tokens.length === 0 &&
     (screenshotText || input.files.length === 0) &&
-    input.source !== 'screenshot' &&
+    (screenshotText || input.source !== 'screenshot') &&
     !input.folders?.length
   );
 }

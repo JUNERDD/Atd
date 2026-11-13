@@ -1,5 +1,6 @@
 import type { AgentEvent, TaskDetail } from '../../client/agent/bridge';
 import { isActive, type RunStatus } from '../../client/agent/task-schema';
+import type { Block } from '../../client/agent/transcript-schema';
 import { RunAnswer, runStatus } from './run-answer';
 import { lastAnswerText } from './transcript/final-answer';
 import { agentApi } from './use-agent';
@@ -38,18 +39,22 @@ export function runWaits(event: AgentEvent, taskId: string, runId: string): bool
  * for the complete snapshot; if it fails, partial text remains available without claiming a
  * completed answer. Returns the unsubscribe; the follow also stops by itself at the end.
  */
-export function followAnswer(detail: TaskDetail, handlers: AnswerHandlers): () => void {
+export function followAnswer(
+  detail: TaskDetail,
+  handlers: AnswerHandlers,
+  readAnswer: (blocks: readonly Block[], runId: string) => string = lastAnswerText,
+): () => void {
   const run = detail.task.runs.at(-1);
   if (!run || !isActive(run.status)) {
     handlers.end(
       run?.status ?? 'failed',
-      run ? lastAnswerText(detail.blocks, run.id) : '',
+      run ? readAnswer(detail.blocks, run.id) : '',
       run?.error ?? '',
     );
     return () => undefined;
   }
   const runId = run.id;
-  const answer = new RunAnswer(detail, runId);
+  const answer = new RunAnswer(detail, runId, readAnswer);
   let ended = false;
   const unsubscribe = agentApi().onChange((event) => {
     if (ended) return;

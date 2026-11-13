@@ -30,10 +30,14 @@ export class RunAnswer {
   constructor(
     detail: TaskDetail,
     readonly runId: string,
+    private readonly readAnswer: (
+      blocks: readonly Block[],
+      runId: string,
+    ) => string = lastAnswerText,
     readonly taskId = detail.task.id,
   ) {
     this.transcript = { revision: detail.revision, blocks: detail.blocks };
-    this.text = lastAnswerText(detail.blocks, runId);
+    this.text = this.readAnswer(detail.blocks, runId);
   }
 
   get valid(): boolean {
@@ -51,7 +55,7 @@ export class RunAnswer {
       this.transcript = base && applyTranscriptPatch(base, event.patch);
       if (this.transcript) {
         this.recovering = false;
-        this.text = lastAnswerText(this.transcript.blocks, this.runId);
+        this.text = this.readAnswer(this.transcript.blocks, this.runId);
       }
     }
     const run = eventRun(event, this.taskId, this.runId);

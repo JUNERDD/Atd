@@ -167,7 +167,7 @@ async function submitVersion<R extends ReviewedRun>(
       run,
       started.id,
       started.status,
-      lastAnswerText(detail.blocks, started.id),
+      host.readAnswer?.(run, detail, started.id) ?? lastAnswerText(detail.blocks, started.id),
     );
 }
 

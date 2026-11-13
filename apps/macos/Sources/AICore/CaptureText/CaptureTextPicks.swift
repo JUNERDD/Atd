@@ -1,11 +1,12 @@
 import CoreGraphics
 import Foundation
 
-/// What a text command reads, as its scope chip says it: the picked paragraphs, or every
-/// paragraph no mosaic touches while none is picked. The count is what the run reads.
+/// What a text command reads, as its scope chip says it: the picked paragraphs, every paragraph
+/// no mosaic touches while none is picked, or the screenshot itself outside text mode. The count
+/// is what the run reads.
 public struct CaptureTextScope: Equatable, Sendable {
   public enum Kind: Equatable, Sendable {
-    case picked, all
+    case picked, all, screenshot
   }
 
   public let kind: Kind

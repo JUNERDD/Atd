@@ -98,6 +98,8 @@ export interface ReviewHost<R extends ReviewedRun> {
     active: boolean,
     text: (text: string) => void,
   ) => void;
+  /** Reads the final answer when a started run is already over (`lastAnswerText` by default). */
+  readAnswer?: (run: R, detail: TaskDetail, runId: string) => string;
   /** The run of the version the card waits for started, which the host now follows as the card's. */
   follow: (run: R, detail: TaskDetail) => void;
 }

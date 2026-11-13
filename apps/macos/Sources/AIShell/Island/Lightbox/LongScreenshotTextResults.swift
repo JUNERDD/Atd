@@ -84,13 +84,14 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
       return again(run, arguments: arguments)
     }
     if let running = runs.running { runner.act(.stop, runId: running.id) }
+    let context = annotator.landingContext()
     let run = CaptureTextRun(
       commandId: command.id, command: command.name, scope: text.scope, paragraphs: paragraphs,
-      output: output)
+      output: output, bounds: context.bounds)
     runs.start(run)
     closeReplacedReviews()
     // The card's step numbers in the colour the badges land in.
-    model.stepColor = annotator.landingContext().stepStyle.color
+    model.stepColor = context.stepStyle.color
     model.show(CaptureResultCard(run: run, document: annotator.store.document))
     refreshCard()
     refreshMarks()
@@ -103,7 +104,7 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
 
   /// A retry on run `id`'s card (Regenerate, or an adjustment, `adjust`) reads what a run would
   /// read now: when the person changed the kept range or picked other paragraphs since the run
-  /// read its text, the run takes those (``CaptureTextRun/rescope(_:scope:)``) and the runner
+  /// read its text, the run takes those (``CaptureTextRun/rescope(_:scope:bounds:)``) and the runner
   /// sends them with the kept image as the preview shows it; otherwise, or when nothing is
   /// readable, the version reads what the run read.
   func retry(
@@ -113,7 +114,8 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
     guard let runner = services.runner() else { return }
     let (reading, scope) = (runReading, text.scope)
     var rescoped = false
-    runs.update(id) { rescoped = $0.rescope(reading, scope: scope) != nil }
+    let bounds = annotator.landingContext().bounds
+    runs.update(id) { rescoped = $0.rescope(reading, scope: scope, bounds: bounds) != nil }
     guard rescoped, let run = runs[id] else {
       return runner.act(action, runId: id, adjust: adjust)
     }
@@ -198,7 +200,7 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
         continue
       }
       for item in run.unapplied {
-        if let paragraph = run[paragraph: run.items[item].paragraph],
+        if let id = run.items[item].paragraph, let paragraph = run[paragraph: id],
           let index = text.layout.index(of: paragraph)
         {
           landed.insert(index)
@@ -247,8 +249,10 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
       }
     let inView = Set(
       listed.filter { item in
-        guard let index = paragraph(of: item, in: card.run) else { return false }
-        let box = text.layout[index].box
+        guard
+          let box = paragraph(of: item, in: card.run).map({ text.layout[$0].box })
+            ?? appliedBox(of: item, in: card.run)
+        else { return false }
         return box.maxY > rows.lowerBound && box.minY < rows.upperBound
       })
     if model.inView != inView { model.inView = inView }
@@ -264,7 +268,7 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
   /// the one shown stays, without a shimmer.
   func refreshMarks() {
     guard let running = runs.running, !running.remaking else { return text.setReading([]) }
-    let done = Set(running.items.map(\.paragraph))
+    let done = Set(running.items.compactMap(\.paragraph))
     text.setReading(
       Set(
         running.paragraphs.filter { !done.contains($0.id) }.compactMap {
@@ -283,7 +287,7 @@ final class LongScreenshotTextResults: CaptureTextConsumer {
   /// The layout index of item `item` of run `runId`, if it is about a paragraph the run read.
   func paragraph(of item: Int, in runId: String) -> Int? {
     guard let run = runs[runId], run.items.indices.contains(item),
-      let paragraph = run[paragraph: run.items[item].paragraph]
+      let id = run.items[item].paragraph, let paragraph = run[paragraph: id]
     else { return nil }
     return text.layout.index(of: paragraph)
   }

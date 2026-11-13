@@ -44,6 +44,13 @@ export const UPDATE_UI_TOOL = 'update_ui';
 export const LOAD_SKILL_TOOL = 'load_skill';
 
 /**
+ * Records structured replacements, steps, highlights, mosaics, or visual marks on an open
+ * screenshot. Parent-only and model-only; registered only when `RunSnapshot.captureOutput` lands
+ * on the screenshot.
+ */
+export const CAPTURE_ANSWER_TOOL = 'mark_screenshot';
+
+/**
  * The memory engine's read tools (docs/plans/2026-10-04-skill-shaped-memory.md): child runs get
  * these and nothing else, and learning pause never blocks them.
  */

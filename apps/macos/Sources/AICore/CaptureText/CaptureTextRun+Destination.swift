@@ -18,11 +18,10 @@ extension CaptureTextRun {
 
     /// Whether `tool` draws on the image here.
     public func draws(_ tool: Item.Tool) -> Bool {
-      switch self {
-      case .replace: tool == .replace
-      case .steps: tool == .step
-      case .marks: tool == .step || tool == .highlight
-      case .card: false
+      switch tool {
+      case .replace: self == .replace
+      case .step: self == .steps || self == .marks
+      case .highlight, .box, .ellipse, .arrow, .spotlight, .mosaic: self == .marks
       }
     }
   }

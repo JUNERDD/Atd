@@ -15,9 +15,13 @@ struct CaptureResultLabels: Equatable {
 
   private var text: ShellText { ShellStrings.shared.catalog }
 
-  /// The scope chip's words: `所选 · 2 段`, `全部文字 · 14 段`.
+  /// The scope chip's words: `所选 · 2 段`, `全部文字 · 14 段`, or `当前截图`.
   func scope(_ scope: CaptureTextScope) -> String {
-    text(scope.kind == .picked ? CaptureTextStringKey.scopePicked : .scopeAll, scope.count)
+    switch scope.kind {
+    case .picked: text(CaptureTextStringKey.scopePicked, scope.count)
+    case .all: text(CaptureTextStringKey.scopeAll, scope.count)
+    case .screenshot: text(CaptureTextStringKey.scopeScreenshot)
+    }
   }
 
   /// The note under the card's title: what it read (and how much of it, when one run could not
@@ -46,6 +50,8 @@ struct CaptureResultLabels: Equatable {
     case .steps(let first, let last):
       text(CaptureTextStringKey.noteSteps, first == last ? "\(first)" : "\(first)–\(last)")
     case .highlights(let count): text(CaptureTextStringKey.noteHighlights, count)
+    case .marked(let count): text(CaptureTextStringKey.noteMarked, count)
+    case .redacted(let count): text(CaptureTextStringKey.noteRedacted, count)
     case .unchanged: text(CaptureTextStringKey.noteUnchanged)
     case .copied: text(CaptureTextStringKey.noteCopied)
     case .nothing: text(CaptureTextStringKey.noteNothing)
@@ -73,6 +79,10 @@ struct CaptureResultLabels: Equatable {
     if summary.steps > 0 { parts.append(text(CaptureTextStringKey.dockSteps, summary.steps)) }
     if summary.highlights > 0 {
       parts.append(text(CaptureTextStringKey.dockHighlights, summary.highlights))
+    }
+    if summary.marks > 0 { parts.append(text(CaptureTextStringKey.dockMarks, summary.marks)) }
+    if summary.redactions > 0 {
+      parts.append(text(CaptureTextStringKey.dockRedactions, summary.redactions))
     }
     if summary.running == .reading { parts.append(text(CaptureTextStringKey.dockReading)) }
     return parts.joined(separator: " · ")

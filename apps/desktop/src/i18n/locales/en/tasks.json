@@ -103,7 +103,8 @@
       "automationEnable": "Turn on automation",
       "automationDisable": "Turn off automation",
       "automationRun": "Run automation",
-      "updateView": "Update view"
+      "updateView": "Update view",
+      "markScreenshot": "Mark up screenshot"
     },
     "target": {
       "user": "User",

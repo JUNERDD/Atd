@@ -87,6 +87,8 @@ public struct CaptureTextRuns: Equatable, Sendable {
         case .replace: summary.translations += 1
         case .step: summary.steps += kept.count
         case .highlight: summary.highlights += kept.count
+        case .box, .ellipse, .arrow, .spotlight: summary.marks += kept.count
+        case .mosaic: summary.redactions += kept.count
         }
       }
     }
@@ -116,9 +118,16 @@ public struct CaptureTextDockSummary: Equatable, Sendable {
   public var steps = 0
   /// Highlighter marks, one per line marked.
   public var highlights = 0
+  /// Visual shape marks (boxes, ellipses, arrows, spotlights).
+  public var marks = 0
+  /// Mosaic redactions.
+  public var redactions = 0
   public var running: Running?
 
   public init() {}
 
-  public var isEmpty: Bool { translations == 0 && steps == 0 && highlights == 0 && running == nil }
+  public var isEmpty: Bool {
+    translations == 0 && steps == 0 && highlights == 0 && marks == 0 && redactions == 0
+      && running == nil
+  }
 }

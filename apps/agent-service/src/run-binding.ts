@@ -1,5 +1,6 @@
 import {
   AUTOMATION_TOOL,
+  CAPTURE_ANSWER_TOOL,
   CODEMODE_TOOL,
   COMPUTER_TOOL,
   CONFIGURE_MCP_TOOL,
@@ -107,12 +108,14 @@ export async function prepareRunBinding(
   const memoryTools = run.snapshot.trigger
     ? MEMORY_READ_TOOLS
     : [...MEMORY_READ_TOOLS, ...MEMORY_WRITE_TOOLS];
+  const captureTools = run.snapshot.captureOutput !== undefined ? [CAPTURE_ANSWER_TOOL] : [];
   const tools = restricted
     ? restrictedComputerTools(run.snapshot, { loadable, computer })
     : [
         ...new Set([
           ...run.snapshot.tools,
           ...SERVICE_TOOLS,
+          ...captureTools,
           // Attended runs retain setup guidance; targets remain scoped per run (computer/extension.ts).
           ...(computer ? [COMPUTER_TOOL] : []),
           ...(run.snapshot.memory ? memoryTools : []),

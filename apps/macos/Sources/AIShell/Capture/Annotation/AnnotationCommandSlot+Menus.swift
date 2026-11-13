@@ -30,14 +30,26 @@ extension AnnotationCommandSlot {
     activeChevron = chevron
   }
 
-  /// Opens the "When done" menu from Ask Atd's split chevron on the Select Text row; picking an
-  /// action remembers it and opens `AnnotationAskBar` focused for typing.
-  func openAskOptions(from chevron: ToolbarOptionsChevron) {
+  /// The active destination for Ask Atd in the current mode: selection-modifying outputs apply
+  /// only while text mode has unmasked paragraphs, falling back to `.annotate` outside it while
+  /// keeping `askOutput` sticky if text mode opens later in the session.
+  var effectiveAskOutput: CommandOutputAction {
+    guard !(canModifySelection?() ?? (isTextMode?() ?? false)) else { return askOutput }
+    switch askOutput {
+    case .replaceSelection, .insertAfterSelection: return .annotate
+    case .panel, .card, .annotate, .insertAtCursor, .copy: return askOutput
+    }
+  }
+
+  /// Opens the "When done" menu from Ask Atd's split chevron on either command row; picking an
+  /// action remembers it for the session and opens `AnnotationAskBar` focused for typing.
+  func openAskOptions(from chevron: ToolbarOptionsChevron, text: Bool) {
     guard menus.opener !== chevron else { return closeMenus() }
     let strings = ShellStrings.shared
     let label = strings.text(.commandOptionsMenu, strings.text(.selectionToolbarAsk))
     open(
-      from: chevron, in: textRow, column: chevron.superview ?? chevron, label: label, text: true
+      from: chevron, in: text ? textRow : row, column: chevron.superview ?? chevron, label: label,
+      text: text
     ) { [weak self] in self?.askOutputItems(launchingAsk: true) ?? [] }
     guard menus.isOpen else { return }
     chevron.isActive = true
@@ -49,7 +61,8 @@ extension AnnotationCommandSlot {
     guard menus.opener !== button else { return closeMenus() }
     let strings = ShellStrings.shared
     open(
-      from: button, in: ask, column: button, label: strings.text(.commandOptionsOutput), text: true
+      from: button, in: ask, column: button, label: strings.text(.commandOptionsOutput),
+      text: isTextMode?() ?? false
     ) { [weak self] in self?.askOutputItems(launchingAsk: false) ?? [] }
     guard menus.isOpen else { return }
     ask?.setOutputMenuActive(true)
@@ -61,9 +74,11 @@ extension AnnotationCommandSlot {
 
   private func askOutputItems(launchingAsk: Bool) -> [ToolbarMenuItem] {
     let names = CommandOutputChoice.Names(ShellStrings.shared.catalog)
+    let canModify = canModifySelection?() ?? (isTextMode?() ?? false)
+    let current = effectiveAskOutput
     let options = CommandOutputChoice.appending(
-      CommandOutputOption(value: askOutput, saved: .card, selection: true), to: [], names: names,
-      cursor: setup?.cursor ?? true, screenshotText: true)
+      CommandOutputOption(value: current, saved: .annotate, selection: canModify), to: [],
+      names: names, cursor: setup?.cursor ?? true, screenshotText: canModify, canAnnotate: true)
     guard case .choice(let choice) = options.first else { return [] }
     return choice.options.compactMap { option in
       guard let action = CommandOutputAction(rawValue: option.value) else { return nil }
@@ -74,9 +89,9 @@ extension AnnotationCommandSlot {
           self.askOutput = action
           self.closeMenus()
           if launchingAsk {
-            self.openAsk(keepingOutput: true)
+            self.openAsk()
           } else {
-            self.ask?.configure(textMode: true, outputLabel: Self.askOutputLabel(action))
+            self.ask?.configure(outputLabel: Self.askOutputLabel(self.effectiveAskOutput))
             self.ask?.focus()
           }
         })

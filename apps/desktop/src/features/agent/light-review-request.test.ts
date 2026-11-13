@@ -133,12 +133,20 @@ it('prepares a free-form Ask capture-text launch and honors a picked output acti
   const defaultAsk = await prepareCaptureText(unusedCommands, baseRun);
   expect(defaultAsk.command.id).toBe(ASK_CAPTURE_COMMAND_ID);
   expect(defaultAsk.input.text).toBe('What does this mean?');
-  expect(defaultAsk.input.selection).toContain('@@p0');
-  expect(defaultAsk.output).toEqual({ action: 'card', review: false });
+  expect(defaultAsk.input.selection).toContain('[p0]');
+  expect(defaultAsk.output).toEqual({ action: 'annotate', review: false });
+
+  const withBounds = await prepareCaptureText(unusedCommands, {
+    ...baseRun,
+    paragraphs: [
+      { id: 'p0', text: 'First paragraph', bounds: { x1: 10, y1: 20, x2: 300, y2: 80 } },
+    ],
+  });
+  expect(withBounds.input.selection).toContain('[p0 @ 10,20,300,80]');
 
   const pickedOutput = await prepareCaptureText(unusedCommands, {
     ...baseRun,
-    arguments: { choices: {}, toggles: {}, output: 'replaceSelection' },
+    arguments: { choices: {}, toggles: {}, output: 'card' },
   });
-  expect(pickedOutput.output).toEqual({ action: 'replaceSelection', review: false });
+  expect(pickedOutput.output).toEqual({ action: 'card', review: false });
 });

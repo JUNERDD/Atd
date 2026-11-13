@@ -52,10 +52,11 @@ export interface CaptureTextBridge {
   onAction: (listener: (action: CaptureTextAction) => void) => () => void;
   progress: (progress: CaptureTextProgress) => Promise<void>;
   /**
-   * The run's command prepared on what the shell sent: its selection holds the paragraphs in the
-   * capture grammar's blocks (`formatCaptureSelection`), its files the screenshot and its context,
-   * its values the picked ones over the remembered ones, and its output where this run's answer
-   * goes. Rejects when the command is gone or turned off, or the text is over the capture limit.
+   * The run's command prepared on what the shell sent: its selection holds the paragraphs formatted
+   * with `[<id>]` / `[<id> @ x1,y1,x2,y2]` headers (`formatCaptureSelection`), its files the
+   * screenshot and its context, its values the picked ones over the remembered ones, and its
+   * output where this run's answer goes. Rejects when the command is gone or turned off, or the
+   * text is over the capture limit.
    */
   prepare: (run: CaptureTextRun) => Promise<PreparedCommand>;
 }

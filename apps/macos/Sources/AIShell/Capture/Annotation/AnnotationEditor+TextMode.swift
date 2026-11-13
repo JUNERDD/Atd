@@ -14,6 +14,10 @@ extension AnnotationEditor {
     slot.onRedact = { [weak self] in self?.redactSensitive() }
     slot.onRedactionFeedbackEnd = { [weak self] in self?.refresh() }
     slot.isTextMode = { [weak self] in self?.text.mode.isOn ?? false }
+    slot.canModifySelection = { [weak self] in
+      guard let mode = self?.text.mode else { return false }
+      return mode.isOn && !mode.available.isEmpty
+    }
     slot.onTextRun = { [weak self] in self?.runText($0) }
     slot.onTextAsk = { [weak self] question, output in self?.runTextAsk(question, output: output) }
     slot.onTextCopy = { [weak self] in self?.copySelectedText(fromKey: false) }
@@ -166,7 +170,7 @@ extension AnnotationEditor {
     if let running = text.runs.running, !running.remaking {
       // Paragraphs shimmer until a piece of the answer is about them (landed or previewed); while
       // another version is made the one shown stays, without a shimmer.
-      let answered = Set(running.items.map(\.paragraph))
+      let answered = Set(running.items.compactMap(\.paragraph))
       scene.reading = running.paragraphs.filter { !answered.contains($0.id) }.map(\.paragraph.box)
     }
     if text.card.presentation == .card, let item = text.card.hotItem,
@@ -182,12 +186,15 @@ extension AnnotationEditor {
     for canvas in canvases { canvas.textLayer.flash(boxes) }
   }
 
-  /// The box of the paragraph item `item` of run `runID` is about.
+  /// The box on the image that item `item` of run `runID` is about: its paragraph's box, or the
+  /// bounds of the annotations it put on the image when it marks coordinates directly.
   func paragraphBox(of item: Int, in runID: String?) -> CGRect? {
     guard let runID, let run = text.runs[runID], run.items.indices.contains(item) else {
       return nil
     }
-    return run[paragraph: run.items[item].paragraph]?.box
+    if let id = run.items[item].paragraph, let box = run[paragraph: id]?.box { return box }
+    let boxes = (run.applied[item] ?? []).compactMap { store.document[$0]?.bounds }
+    return boxes.isEmpty ? nil : boxes.reduce(CGRect.null) { $0.union($1) }
   }
 
   /// Says `text` to VoiceOver without showing anything more.

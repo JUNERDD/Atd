@@ -105,6 +105,7 @@ export const ServiceBlockSchema = Type.Union([
       name: Type.String({ maxLength: 128 }),
       args: Type.Record(Type.String(), Type.Unknown()),
       status: ServiceToolStatusSchema,
+      streaming: Type.Optional(Type.Boolean()),
       output: Type.String(),
       partial: Type.String(),
       permission: Type.Union([
