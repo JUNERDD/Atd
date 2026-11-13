@@ -198,7 +198,7 @@ function PanelModalDeckBody({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             className="panel-modal-close"
             aria-label={closeLabel}
             onClick={onClose}
