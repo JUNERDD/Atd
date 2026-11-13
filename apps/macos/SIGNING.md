@@ -106,6 +106,21 @@ This sends the signing archive, export password and notarization credentials to 
 repository's GitHub Actions secret store. It leaves `SPARKLE_ED_PRIVATE_KEY` and the legacy
 `RELEASE_SIGNING_*` secrets untouched. Running setup does not commit, push, publish or start CI.
 
+Query an existing CI submission through GitHub Actions rather than the Mac's Keychain:
+
+```sh
+gh workflow run release.yml --repo JUNERDD/Atd --ref <workflow-branch> \
+  -f mode=notarization-status -f notarization_submission_id=<submission-uuid>
+```
+
+Choose the branch containing this workflow mode (`main` after it merges, or the release branch
+during preparation). The read-only job uses the existing Apple Account secrets and Team ID,
+without importing the signing certificate or opening a local keychain. Its log and job summary
+report the submission's status, artifact name and creation time. It neither builds an app nor
+submits, retries or publishes an artifact, and runs independently of long release builds.
+Cloud releases and their status queries do not require the local signing keychain to be unlocked;
+local builds and distribution still use the Mac setup above.
+
 ## Existing users upgrading to 0.11
 
 The update archive remains authorized by the same EdDSA key shipped in 0.10.x. The signing

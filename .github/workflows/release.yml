@@ -45,9 +45,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: release publishes from main (prereleases also from release/*); artifacts and rehearsal never publish
+        description: release publishes from main (prereleases also from release/*); other modes never publish
         type: choice
-        options: [release, artifacts, rehearsal]
+        options: [release, artifacts, rehearsal, notarization-status]
         default: release
       marketing_version:
         description: artifacts/rehearsal only; shown version such as 0.9.0-rc.3 (default project.yml)
@@ -65,15 +65,20 @@ on:
         description: PR number for an explicit source, or an optional PR hint for automatic rehearsal discovery
         type: string
         required: false
+      notarization_submission_id:
+        description: notarization-status only; the submission UUID printed by the signing job
+        type: string
+        required: false
 
 permissions:
   contents: read
 
 # Only a release-mode run on main (including a push) joins the publishing group, so a run on
 # another branch can never displace a queued release; prerelease, artifact and rehearsal runs on
-# another branch queue per branch. The mirror serializes every channel's uploads itself.
+# another branch queue per branch. Read-only status queries run independently of those builds.
+# The mirror serializes every channel's uploads itself.
 concurrency:
-  group: release-${{ github.ref == 'refs/heads/main' && (inputs.mode || 'release') == 'release' && 'publish' || github.ref }}
+  group: release-${{ inputs.mode == 'notarization-status' && format('notarization-{0}', github.run_id) || github.ref == 'refs/heads/main' && (inputs.mode || 'release') == 'release' && 'publish' || github.ref }}
   cancel-in-progress: false
 
 # `shell: bash` adds pipefail, so a failing command inside a pipeline fails its step.
@@ -119,9 +124,28 @@ jobs:
           MODE: ${{ inputs.mode || 'release' }}
           INPUT_MARKETING_VERSION: ${{ inputs.marketing_version }}
           INPUT_BUILD_VERSION: ${{ inputs.build_version }}
+          NOTARIZATION_SUBMISSION_ID: ${{ inputs.notarization_submission_id }}
         run: |
           output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
           output tree "$(git rev-parse 'HEAD^{tree}')"
+          case $MODE in
+            release | artifacts | rehearsal | notarization-status) output mode "$MODE" ;;
+            *)
+              echo "::error::Unknown mode '$MODE'."
+              exit 1
+              ;;
+          esac
+          if [ "$MODE" = notarization-status ]; then
+            uuid='^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$'
+            if ! [[ "$NOTARIZATION_SUBMISSION_ID" =~ $uuid ]]; then
+              echo "::error::notarization-status requires a valid notarization_submission_id UUID."
+              exit 1
+            fi
+            output build false
+            output publish false
+            echo "Read-only Apple notarization query; no build or publication." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           version=$(node -p "require('./apps/macos/package.json').version")
           if ! [[ "$version" =~ $semver ]]; then
@@ -135,13 +159,6 @@ jobs:
             echo "::error::MARKETING_VERSION '$marketing' in apps/macos/project.yml differs from package.json version '$version'."
             exit 1
           fi
-          case $MODE in
-            release | artifacts | rehearsal) output mode "$MODE" ;;
-            *)
-              echo "::error::Unknown mode '$MODE'."
-              exit 1
-              ;;
-          esac
           if [ "$MODE" = release ]; then
             # A stable release publishes only reviewed code from main. A release branch may publish
             # a prerelease, which never becomes the latest release or enters the update feeds.
@@ -250,6 +267,38 @@ jobs:
               --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" --version "$VERSION" \
               --pr "$SOURCE_PR" --mode "$MODE"
           fi
+
+  notarization-status:
+    name: Inspect Apple notarization
+    needs: version
+    if: needs.version.outputs.mode == 'notarization-status'
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - name: Query the existing submission
+        env:
+          SUBMISSION_ID: ${{ inputs.notarization_submission_id }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          for name in NOTARY_APPLE_ID NOTARY_APP_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing $name."
+              exit 1
+            fi
+          done
+          xcrun notarytool info "$SUBMISSION_ID" \
+            --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" --output-format json \
+            | jq '{id, name, status, createdDate}' > "$RUNNER_TEMP/notarization-status.json"
+          cat "$RUNNER_TEMP/notarization-status.json"
+          {
+            echo '### Apple notarization status'
+            echo '```json'
+            cat "$RUNNER_TEMP/notarization-status.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   candidate:
     name: Build candidate
