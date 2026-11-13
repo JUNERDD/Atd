@@ -124,6 +124,31 @@ struct BridgeOutboxTests {
     #expect(outbox.next() == nil)
   }
 
+  @Test(
+    "Stale completion after reload does not wedge the new page, and transient failures keep flushing"
+  )
+  func staleAndTransientFailures() {
+    var outbox = Self.ready()
+    _ = outbox.post(.result(id: 1, value: .null), scope: .document)
+    let firstGen = outbox.generation
+    #expect(outbox.next() == .result(id: 1, value: .null))
+    outbox.pageDidUnload()
+    #expect(outbox.pageDidBecomeReady() == .none)
+    #expect(outbox.completed(delivered: false, generation: firstGen) == .none)
+    #expect(outbox.pageReady)
+    _ = outbox.post(.result(id: 2, value: .null), scope: .document)
+    #expect(outbox.next() == .result(id: 2, value: .null))
+    #expect(outbox.completed(delivered: false, generation: outbox.generation) == .none)
+    #expect(outbox.pageReady)
+    #expect(outbox.post(.result(id: 3, value: .null), scope: .document) == .flush)
+    #expect(outbox.next() == .result(id: 3, value: .null))
+    #expect(outbox.completed(delivered: true, generation: outbox.generation) == .none)
+    _ = outbox.post(frame: Self.frame("stale"), bytes: 10)
+    outbox.dropPendingFrames()
+    #expect(outbox.pendingFrameBytes == 0)
+    #expect(outbox.next() == nil)
+  }
+
   @Test("Encodes the contract's envelopes and frames")
   func encodes() throws {
     let message = SwiftMessage.event(

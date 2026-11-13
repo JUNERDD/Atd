@@ -232,42 +232,11 @@ extension View {
     if #available(macOS 26, *) {
       clipShape(shape).glassEffect(clear ? .clear : .regular, in: shape)
     } else {
-      clipShape(shape).background { SwiftUIGlassMaterial(dark: dark).clipShape(shape) }
+      clipShape(shape).background {
+        SwiftUIGlassMaterial(shape: shape, dark: dark).clipShape(shape)
+      }
     }
   }
-}
-
-/// SwiftUI glass's material on macOS 15: an `NSVisualEffectView` blurring the desktop behind the
-/// window, configured as ``NativeMaterialView`` records for SwiftUI glass and pinned to
-/// ``GlassSurface/appearance``, again whenever the app's scheme changes (this body reads it). It
-/// lies under the surface's fill and content and takes no clicks or VoiceOver focus, as the glass
-/// takes none.
-private struct SwiftUIGlassMaterial: View {
-  var dark: Bool?
-  var body: some View { SwiftUIGlassEffect(isDark: dark ?? GlassSurface.isDark) }
-}
-
-/// ``SwiftUIGlassMaterial``'s effect view, in the scheme it is given.
-private struct SwiftUIGlassEffect: NSViewRepresentable {
-  let isDark: Bool
-
-  func makeNSView(context: Context) -> NSVisualEffectView {
-    let effect = PassiveEffectView()
-    NativeMaterialView.configure(effect, for: .swiftUIGlass)
-    effect.setAccessibilityElement(false)
-    updateNSView(effect, context: context)
-    return effect
-  }
-
-  func updateNSView(_ effect: NSVisualEffectView, context: Context) {
-    effect.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
-  }
-}
-
-/// An effect view that never takes the pointer: clicks go to the content over it, or to the
-/// window, as they do through the glass.
-private final class PassiveEffectView: NSVisualEffectView {
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// The shell's glass surface under SwiftUI content: the main panel's base fill, opaque under

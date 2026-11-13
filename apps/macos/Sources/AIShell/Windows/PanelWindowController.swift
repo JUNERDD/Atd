@@ -159,10 +159,12 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     let source = NSWorkspace.shared.frontmostApplication?.processIdentifier
     let sourceWindow = NSApp.keyWindow
     handoffTask = Task { [weak self] in
-      let released = await ShortcutRelease.waitForHandoff(isValid: {
-        NSWorkspace.shared.frontmostApplication?.processIdentifier == source
-          && NSApp.keyWindow === sourceWindow
-      })
+      let released = await ShortcutRelease.waitForHandoff(
+        until: .now + .seconds(2),
+        isValid: {
+          NSWorkspace.shared.frontmostApplication?.processIdentifier == source
+            && NSApp.keyWindow === sourceWindow
+        })
       guard !Task.isCancelled, let self else { return }
       handoffTask = nil
       completion(released)

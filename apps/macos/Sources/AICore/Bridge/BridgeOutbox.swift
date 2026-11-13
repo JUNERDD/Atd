@@ -55,6 +55,8 @@ public struct BridgeOutbox: Sendable {
   private var inFlight: InFlight?
   private var flushPending = false
   public private(set) var pageReady = false
+  /// Incremented on each unload so stale async JS completions cannot disrupt a newer document.
+  public private(set) var generation: UInt64 = 0
 
   public init(frameBatchBytes: Int = Self.defaultFrameBatchBytes) {
     self.frameBatchBytes = max(1, frameBatchBytes)
@@ -97,9 +99,34 @@ public struct BridgeOutbox: Sendable {
     return schedule()
   }
 
-  /// The page went away. A call still in flight is settled by ``completed(delivered:)``.
+  /// Drops queued socket frames (e.g. after streams fall behind) while preserving messages.
+  public mutating func dropPendingFrames() {
+    entries.removeAll { entry in
+      if case .frame = entry { return true }
+      return false
+    }
+    pendingFrameBytes = 0
+  }
+
+  /// The page went away. Clears any in-flight call immediately so a dropped WebKit callback on a
+  /// closing or crashed view cannot wedge future documents, keeping `.app` messages and states.
   public mutating func pageDidUnload() {
+    generation &+= 1
     pageReady = false
+    flushPending = false
+    if let settled = inFlight {
+      inFlight = nil
+      switch settled {
+      case .state(let name):
+        dirtyStates.insert(name)
+      case .entries(let failed):
+        let surviving = failed.filter {
+          if case .message(_, .app) = $0 { return true }
+          return false
+        }
+        if !surviving.isEmpty { entries.insert(contentsOf: surviving, at: 0) }
+      }
+    }
     entries.removeAll { entry in
       if case .message(_, .app) = entry { return false }
       return true
@@ -139,18 +166,14 @@ public struct BridgeOutbox: Sendable {
     return .event(.socketFrames(SocketFramesEvent(frames: frames)))
   }
 
-  /// The call in flight ended. A failed call means the page is gone or broken: it gets
-  /// everything that survives again after its next `bridge.ready`, not a retry loop.
-  public mutating func completed(delivered: Bool) -> Action {
-    guard let settled = inFlight else { return .none }
+  /// The call in flight ended. Completions from an earlier document generation are ignored; a
+  /// transient failure on a live document drops that batch without taking down `pageReady`.
+  public mutating func completed(delivered _: Bool, generation callGeneration: UInt64? = nil)
+    -> Action
+  {
+    if let callGeneration, callGeneration != generation { return .none }
+    guard inFlight != nil else { return .none }
     inFlight = nil
-    if !delivered {
-      switch settled {
-      case .state(let name): dirtyStates.insert(name)
-      case .entries(let failed): entries.insert(contentsOf: failed, at: 0)
-      }
-      pageDidUnload()
-    }
     return schedule()
   }
 

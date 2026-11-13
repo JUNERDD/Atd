@@ -90,9 +90,11 @@ final class WebViewHost: NSObject {
   }
 
   /// Takes the current web view down: its stream connections and its bridge handler.
-  private func tearDown() {
-    bridge.shell?.cancelShortcutRecording(from: self)
-    onDocumentUnload?()
+  private func tearDown(notifyUnload: Bool = true) {
+    if notifyUnload {
+      bridge.shell?.cancelShortcutRecording(from: self)
+      onDocumentUnload?()
+    }
     pipe?.invalidate()
     pipe = nil
     webView.navigationDelegate = nil
@@ -145,6 +147,7 @@ final class WebViewHost: NSObject {
     // The page stopped taking frames; its stream client resumes once it runs again.
     Self.log.error(
       "The \(self.role.rawValue) page fell behind its streams; closing them.")
+    outbox.dropPendingFrames()
     pipe?.closeAll(code: WebSocketCloseCode.policyViolation, reason: "The page fell behind.")
   }
 
@@ -158,31 +161,37 @@ final class WebViewHost: NSObject {
   /// synchronously, and its completion lets the next one go.
   private func flush() {
     guard !isClosed, let message = outbox.next() else { return }
+    let callDocument = document
+    let outboxGeneration = outbox.generation
     let argument: Any
     do {
       argument = try JSONSerialization.jsonObject(
         with: JSONEncoder().encode(message), options: .fragmentsAllowed)
     } catch {
       Self.log.fault("A bridge message could not be encoded: \(error)")
-      return act(outbox.completed(delivered: true))
+      return act(outbox.completed(delivered: true, generation: outboxGeneration))
     }
     // A closing window releases its host immediately. Keep this view alive until WebKit has
     // settled the call, so releasing it cannot cancel that same call during process shutdown.
     let deliveringView = webView
+    let deliveringViewID = ObjectIdentifier(deliveringView)
     deliveringView.callAsyncJavaScript(
       NativeBridgeContract.deliverScript,
       arguments: [NativeBridgeContract.deliverArgument: argument], in: nil, in: .page
     ) { [weak self, deliveringView] result in
       defer { withExtendedLifetime(deliveringView) {} }
       MainActor.assumeIsolated {
-        guard let self, !self.isClosed else { return }
+        guard let self, !self.isClosed,
+          self.document == callDocument,
+          ObjectIdentifier(self.webView) == deliveringViewID
+        else { return }
         var delivered = true
         if case .failure(let error) = result {
           delivered = false
           self.bridge.shell?.cancelShortcutRecording(from: self)
           Self.log.error("The \(self.role.rawValue) page did not take a message: \(error)")
         }
-        self.act(self.outbox.completed(delivered: delivered))
+        self.act(self.outbox.completed(delivered: delivered, generation: outboxGeneration))
       }
     }
   }
@@ -239,6 +248,7 @@ final class WebViewHost: NSObject {
     bridge.shell?.cancelShortcutRecording(from: self)
     onDocumentUnload?()
     document += 1
+    webView.dragRegions = []
     pipe?.resetForNewDocument()
     outbox.pageDidUnload()
   }
@@ -255,11 +265,10 @@ final class WebViewHost: NSObject {
     }
     let old = webView
     let wasFirstResponder = old.window?.firstResponder === old
-    tearDown()
+    tearDown(notifyUnload: false)
     let handler = BridgeMessageHandler(bridge: bridge)
     let replacement = Self.makeWebView(role: role, services: services, handler: handler)
     handler.host = self
-    replacement.dragRegions = old.dragRegions
     webView = replacement
     install(replacement)
     if wasFirstResponder { replacement.window?.makeFirstResponder(replacement) }
