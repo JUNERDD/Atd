@@ -29,6 +29,8 @@ highlights:
       - **Insert after the selected text** — numbers the paragraphs on the image and lists the notes on a floating card beside the capture.
       - **Mark the selected text** — highlights key passages and numbers steps directly on the screenshot.
 
+      In **Select Text** mode you can also use **Ask Atd** for free-form questions with a **When done** destination picker — even on screenshots without recognized text. Alongside text highlights, Atd can progressively stream visual shapes (boxes, ellipses, arrows, spotlights, numbered steps, and mosaic redactions) directly onto the image, or reply as plain text on the card.
+
       From the result card you can compare or regenerate versions, restore or reapply changes on the image, and **Copy screenshot** without closing the capture; the **Results** toggle (`⌥⌘I`) on the command row shows or hides the card at any time. Text covered with the mosaic tool or **Cover Sensitive Info** cannot be picked and is excluded from the recognized text sent with a capture.
     image: /media/blog/0.11.0/screenshot-text-commands.en.webp
     alt: An open screenshot in Select Text mode with two report paragraphs selected and translated in place, the annotation and text command bars below, a floating Translate result card with version controls and Copy screenshot on the right, and a handwritten arrow pointing to the translated heading.
@@ -49,10 +51,18 @@ improvements:
   - text: '**Read aloud** starts faster by caching installed macOS speech voices.'
   - text: Filter **Memory** by user profile, preferences and facts, corrections and learnings, or tool preferences, with clearer empty and search-result states.
   - text: Provider connections now accept **plain HTTP endpoints**, including internal hostnames, with an inline warning for non-loopback connections.
+  - text: Added **Settings › General › Screenshot** options to copy confirmed screenshots to the clipboard automatically and choose whether confirming a long screenshot opens its result card or copies and closes, with a **Copied** capsule on the Dynamic Island.
+  - text: Added **Tips & Notices…** in the menu bar and an in-app prompt to re-grant **Accessibility** and **Screen Recording** if an Apple notarization certificate update invalidates earlier macOS permissions.
+  - text: '**Floating island, recording playback, and lightweight capture runs** now size and track hover more efficiently, isolate 60 fps video playback updates, and run eligible screenshot-text commands on faster lightweight sessions.'
+  - text: '**Long conversations, streaming, and search** stay smoother with bounded live tool output, background worker highlighting for large diffs and code blocks, lazy JSON trees, debounced draft persistence, and reduced background work while the panel is hidden.'
 fixes:
   - text: Fixed **focus handoffs and answer write-backs** triggered by shortcuts so they wait cleanly for shortcut keys to be released — including over remote input — and keep the answer on its card if focus changes before writing finishes.
   - text: Fixed the **selection toolbar** reading selections from background apps or triggering on empty Chromium selection markers and navigation tables in Apple Notes.
   - text: Fixed **unpinned task panels** losing window order while focused, staying above other apps after switching away, or covering system file dialogs.
   - text: Fixed switching **annotation tools** in a screenshot leaving the previous annotation selected when changing color or stroke width.
+  - text: Fixed **Ask Atd** and text commands started from screenshots or long screenshots not appearing under the **Captures** task history filter and search.
+  - text: Fixed the **selection toolbar** and text capture treating attachment placeholders (`U+FFFC`) or whitespace-only selections as text.
+  - text: Fixed **menu-triggered dialogs** colliding with closing menus or stalling while the panel is hidden, cleared stale task details on task switches, and prevented stale WebView completions or malformed stream frames from wedging reloaded pages.
+  - text: Fixed **macOS 15 glass surfaces** leaking blur outside rounded or island bounds and staying attached under Reduce Transparency.
 other:
   - text: Release installers and updates are now signed with **Apple Developer ID** and notarized by Apple; macOS may ask to reconfirm privacy permissions once when upgrading from an earlier version.
