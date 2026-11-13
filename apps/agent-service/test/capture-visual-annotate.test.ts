@@ -160,9 +160,9 @@ async function taskSnapshot(taskId: string) {
   return parse(TaskSnapshotSchema, ((await res.json()) as { snapshot: unknown }).snapshot);
 }
 const toolStatuses = async (taskId: string) =>
-  (await taskSnapshot(taskId)).blocks
-    .filter((b) => b.kind === 'tool' && b.name === CAPTURE_ANSWER_TOOL)
-    .map((b) => b.status);
+  (await taskSnapshot(taskId)).blocks.flatMap((b) =>
+    b.kind === 'tool' && b.name === CAPTURE_ANSWER_TOOL ? [b.status] : [],
+  );
 const rep = (paragraph: string, text: string) => ({ tool: 'replace', paragraph, text });
 
 test('schemas and requestedOptions validate 0-paragraph screenshot runs and reject text-replacement outputs', () => {
