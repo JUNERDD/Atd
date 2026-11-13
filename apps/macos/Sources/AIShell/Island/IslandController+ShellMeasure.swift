@@ -20,7 +20,7 @@ extension IslandController {
       let text = IslandAskAnswerText(
         answer: shown, labels: labels, seek: seeks ? { _ in } : nil)
       let height =
-        (text.isEmpty ? 0 : Self.height(of: text, width: max(inner, 1)))
+        text.measuredHeight(width: max(inner, 1))
         + IslandMetrics.recordingAnswerTextTop + IslandMetrics.recordingAnswerTextBottom
       asking.answerFloor = max(asking.answerFloor, min(height.rounded(.up), cap))
     }

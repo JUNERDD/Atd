@@ -20,11 +20,7 @@ struct IslandLongScreenshotReads: View {
     VStack(alignment: .leading, spacing: 2) {
       header
       ScrollView(.vertical) {
-        LazyVStack(spacing: IslandMetrics.recordingStepGap) {
-          ForEach(card.pages.indices, id: \.self) { index in
-            IslandLongScreenshotPageRow(card: card, labels: labels, index: index)
-          }
-        }
+        IslandLongScreenshotPageRows(card: card, labels: labels)
       }
       .modifier(FloatingScrollEdges(reduceMotion: reduceMotion))
       Divider()
@@ -102,15 +98,40 @@ struct IslandLongScreenshotReads: View {
   }
 }
 
-/// One page: "Page N" and its first recognized lines, cut with an ellipsis (the tooltip has
-/// them), on the wash while it or its part of the preview has the pointer.
-private struct IslandLongScreenshotPageRow: View {
+/// Page rows container: reads `card.hoveredPage` once and passes equatable per-row hover state.
+private struct IslandLongScreenshotPageRows: View {
   let card: IslandLongScreenshotCardModel
   let labels: IslandLongScreenshotLabels
-  let index: Int
 
   var body: some View {
-    let page = card.pages[index]
+    let hovered = card.hoveredPage
+    LazyVStack(spacing: IslandMetrics.recordingStepGap) {
+      ForEach(card.pages.indices, id: \.self) { index in
+        IslandLongScreenshotPageRow(
+          card: card, labels: labels, page: card.pages[index], index: index,
+          isHovered: hovered == index
+        )
+        .equatable()
+      }
+    }
+  }
+}
+
+/// One page: "Page N" and its first recognized lines, cut with an ellipsis (the tooltip has
+/// them), on the wash while it or its part of the preview has the pointer.
+private struct IslandLongScreenshotPageRow: View, Equatable {
+  let card: IslandLongScreenshotCardModel
+  let labels: IslandLongScreenshotLabels
+  let page: LongScreenshotCardPage
+  let index: Int
+  let isHovered: Bool
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.card === rhs.card && lhs.labels == rhs.labels && lhs.page == rhs.page
+      && lhs.index == rhs.index && lhs.isHovered == rhs.isHovered
+  }
+
+  var body: some View {
     let name = labels.page(index + 1)
     let text = page.lines.isEmpty ? labels.noText : page.lines.joined(separator: " ")
     HStack(spacing: 8) {
@@ -131,7 +152,7 @@ private struct IslandLongScreenshotPageRow: View {
     .frame(height: IslandMetrics.recordingStepHeight)
     .background {
       IslandWash(
-        level: card.hoveredPage == index ? 0.06 : 0,
+        level: isHovered ? 0.06 : 0,
         shape: RoundedRectangle(cornerRadius: IslandMetrics.rowRadius, style: .continuous))
     }
     .contentShape(Rectangle())

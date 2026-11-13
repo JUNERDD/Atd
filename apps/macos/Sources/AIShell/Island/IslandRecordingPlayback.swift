@@ -18,7 +18,9 @@ final class IslandRecordingPlayback {
   private var playGeneration = 0
 
   init(movie: URL) {
-    player = AVPlayer(url: movie)
+    let asset = AVURLAsset(
+      url: movie, options: [AVURLAssetPreferPreciseDurationAndTimingKey: false])
+    player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
     player.actionAtItemEnd = .pause
     let interval = CMTime(value: 1, timescale: 30)
     timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {

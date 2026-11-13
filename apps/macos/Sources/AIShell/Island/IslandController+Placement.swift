@@ -26,6 +26,13 @@ extension IslandController {
     return window
   }
 
+  /// Pre-creates the panel and runs an initial off-screen layout pass so the first command
+  /// appearance avoids cold `NSHostingView` and glass surface setup.
+  func warmUp() {
+    _ = window
+    window.contentView?.layoutSubtreeIfNeeded()
+  }
+
   func drag(_ drag: IslandDrag) {
     switch drag {
     case .began:
@@ -55,7 +62,7 @@ extension IslandController {
 
   func placeWindow(animate: Bool = false) {
     guard let anchor else { return }
-    window.setFrame(windowFrame(model.canvas, anchor: anchor), display: true, animate: animate)
+    window.setFrame(windowFrame(model.canvas, anchor: anchor), display: animate, animate: animate)
   }
 
   /// The window's frame for a canvas of `canvas` around `anchor`

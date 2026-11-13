@@ -130,8 +130,8 @@ final class CaptureResultCardModel {
     if card.run != self.card?.run { review = ReviewDraft() }
     self.card = card
     pagedBack = false
-    hotItem = nil
-    inView = []
+    if hotItem != nil { hotItem = nil }
+    if !inView.isEmpty { inView = [] }
     present(.card)
   }
 
@@ -183,8 +183,8 @@ final class CaptureResultCardModel {
     card = nil
     dock = CaptureTextDockSummary()
     review = ReviewDraft()
-    hotItem = nil
-    inView = []
+    if hotItem != nil { hotItem = nil }
+    if !inView.isEmpty { inView = [] }
     present(.hidden)
   }
 

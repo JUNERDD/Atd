@@ -42,11 +42,20 @@ private struct CaptureResultItems: View {
   let live: Bool
 
   var body: some View {
+    let hotItem = live ? model.hotItem : nil
+    let inView = live ? model.inView : []
+    let stepColor = model.stepColor
+    let itemGoneLabel = model.labels.itemGone
     VStack(alignment: .leading, spacing: 6) {
       if !lead.isEmpty { IslandAnswerText(text: lead) }
       VStack(alignment: .leading, spacing: 2) {
         ForEach(entries) { entry in
-          CaptureResultItem(model: model, entry: entry, live: live)
+          CaptureResultItem(
+            model: model, entry: entry, live: live, stepColor: stepColor,
+            itemGoneLabel: itemGoneLabel, isHot: hotItem == entry.id,
+            isInView: inView.contains(entry.id)
+          )
+          .equatable()
         }
       }
       .padding(.horizontal, 2)
@@ -67,22 +76,53 @@ private struct CaptureResultReplacements: View {
   let live: Bool
 
   var body: some View {
+    let hotItem = live && !measuring ? model.hotItem : nil
+    let inView = live && !measuring ? model.inView : []
     Group {
       if measuring {
         VStack(alignment: .leading, spacing: 2) {
-          ForEach(rows.prefix(CaptureResultMeasure.measuredRows)) { row($0) }
+          ForEach(rows.prefix(CaptureResultMeasure.measuredRows)) {
+            row($0, hotItem: hotItem, inView: inView)
+          }
         }
       } else {
         LazyVStack(alignment: .leading, spacing: 2) {
-          ForEach(rows) { row($0) }
+          ForEach(rows) { row($0, hotItem: hotItem, inView: inView) }
         }
       }
     }
     .padding(.horizontal, 2)
   }
 
-  private func row(_ row: CaptureResultCard.Replacement) -> some View {
-    CaptureResultRow(model: model, item: row.id, live: live, tooltip: row.original) {
+  private func row(_ row: CaptureResultCard.Replacement, hotItem: Int?, inView: Set<Int>)
+    -> some View
+  {
+    CaptureResultReplacementRow(
+      model: model, row: row, live: live, isHot: hotItem == row.id,
+      isInView: inView.contains(row.id)
+    )
+    .equatable()
+  }
+}
+
+/// One replacement row over its original, equatable so hover/viewport shifts rebuild only affected rows.
+private struct CaptureResultReplacementRow: View, Equatable {
+  let model: CaptureResultCardModel
+  let row: CaptureResultCard.Replacement
+  let live: Bool
+  let isHot: Bool
+  let isInView: Bool
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.model === rhs.model && lhs.row == rhs.row && lhs.live == rhs.live
+      && lhs.isHot == rhs.isHot && lhs.isInView == rhs.isInView
+  }
+
+  var body: some View {
+    CaptureResultRow(
+      model: model, item: row.id, live: live, isHot: isHot, isInView: isInView,
+      tooltip: row.original
+    ) {
       VStack(alignment: .leading, spacing: 2) {
         Text(verbatim: row.text)
           .font(IslandType.answer)
@@ -113,12 +153,14 @@ private struct CaptureResultRow<Label: View>: View {
   /// The item's index in the run (in the version being made, when not `live`).
   let item: Int
   let live: Bool
+  let isHot: Bool
+  let isInView: Bool
   var tooltip = ""
   @ViewBuilder let label: () -> Label
 
   var body: some View {
     if live {
-      let level = model.hotItem == item ? 0.09 : model.inView.contains(item) ? 0.05 : 0
+      let level = isHot ? 0.09 : isInView ? 0.05 : 0
       Button {
         model.pick(item)
       } label: {
@@ -165,15 +207,26 @@ private struct CaptureResultSkeleton: View {
 /// One item of an explanation (``CaptureResultRow``): its badge, numbered as its step marker on
 /// the image (a hollow one until the marker lands; the highlighter's glyph for a highlighter note),
 /// and its words. An item whose marker was deleted from the image dims, and says ⌘Z brings it back.
-private struct CaptureResultItem: View {
+private struct CaptureResultItem: View, Equatable {
   let model: CaptureResultCardModel
   let entry: CaptureResultCard.Entry
   let live: Bool
+  let stepColor: AnnotationColor
+  let itemGoneLabel: String
+  let isHot: Bool
+  let isInView: Bool
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.model === rhs.model && lhs.entry == rhs.entry && lhs.live == rhs.live
+      && lhs.stepColor == rhs.stepColor && lhs.itemGoneLabel == rhs.itemGoneLabel
+      && lhs.isHot == rhs.isHot && lhs.isInView == rhs.isInView
+  }
 
   var body: some View {
     let gone = entry.marker == .gone
     CaptureResultRow(
-      model: model, item: entry.id, live: live, tooltip: gone ? model.labels.itemGone : ""
+      model: model, item: entry.id, live: live, isHot: isHot, isInView: isInView,
+      tooltip: gone ? itemGoneLabel : ""
     ) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         badge
@@ -191,7 +244,7 @@ private struct CaptureResultItem: View {
   private static let side: CGFloat = 18
 
   @ViewBuilder private var badge: some View {
-    let color = Color(nsColor: model.stepColor.nsColor)
+    let color = Color(nsColor: stepColor.nsColor)
     Group {
       switch entry.marker {
       case .number(let number):
@@ -218,7 +271,7 @@ private struct CaptureResultItem: View {
   private var accessibilityText: String {
     switch entry.marker {
     case .number(let number): "\(number). \(entry.text)"
-    case .gone: model.labels.itemGone + " " + entry.text
+    case .gone: itemGoneLabel + " " + entry.text
     case .pending, .highlight: entry.text
     }
   }

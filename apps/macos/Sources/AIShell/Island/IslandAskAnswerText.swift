@@ -32,6 +32,14 @@ struct IslandAskAnswerText<Range: CardAskRange, Quick: IslandQuickAsk>: View {
     }
   }
 
+  /// Wrapped height at `width`, measured directly via TextKit without allocating a hosting view.
+  func measuredHeight(width: Double) -> Double {
+    guard !isEmpty else { return 0 }
+    return ResultTextMeasure.size(
+      of: content.rendered, width: max(width, 1), maxWidth: IslandMetrics.resultTextWidth
+    ).height
+  }
+
   private var content: ResultTextContent {
     let failed = answer.phase == .failed && answer.text.isEmpty
     return ResultTextContent(

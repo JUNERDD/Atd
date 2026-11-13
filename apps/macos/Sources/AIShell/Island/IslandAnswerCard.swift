@@ -45,6 +45,14 @@ struct IslandAnswerCard: View {
     .accessibilityLabel(Text(verbatim: model.labels.answer(command)))
   }
 
+  var chromeWidthProbe: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      top
+      footer.widthProbe
+    }
+    .padding(IslandMetrics.cardPadding)
+  }
+
   var widthProbe: some View {
     VStack(alignment: .leading, spacing: 0) {
       top
@@ -148,6 +156,24 @@ struct IslandAnswerNote: View {
   }
 }
 
+/// Cached chrome dimensions for ``IslandController/measureAnswer(command:answer:note:)`` so
+/// streaming chunks only re-measure the answer text via ``ResultTextMeasure``.
+struct AnswerMeasureCache {
+  struct Key: Equatable {
+    let command: String
+    let note: String?
+    let offer: AnswerWriteOffer?
+    let streaming: Bool
+    let labels: IslandLabels
+  }
+
+  var key: Key?
+  var chromeIdealWidth = 0.0
+  var measuredWidth = 0.0
+  var noteHeight = 0.0
+  var footerHeight = 0.0
+}
+
 extension IslandController {
   /// The answer card's rest size: as wide as its widest part (title, note, the answer's longest
   /// line, footer) within ``resultCardWidth(ideal:)``, and as tall as its note and its
@@ -160,25 +186,39 @@ extension IslandController {
       streaming: answer.streaming)
     let card = IslandAnswerCard(
       model: model, command: command, answer: sample, note: note, offer: model.answerOffer)
-    let ideal = resultCardWidth(
-      ideal: NSHostingView(rootView: card.widthProbe.fixedSize()).fittingSize.width)
+    let key = AnswerMeasureCache.Key(
+      command: command, note: note, offer: model.answerOffer, streaming: answer.streaming,
+      labels: model.labels)
+    if answerMeasures.key != key {
+      answerMeasures = AnswerMeasureCache(
+        key: key,
+        chromeIdealWidth: Self.fittingSize(of: card.chromeWidthProbe.fixedSize()).width)
+    }
+    let textIdealWidth =
+      IslandAnswerText.measuredIdealWidth(text: sample.text) + IslandMetrics.cardPadding * 2
+    let ideal = resultCardWidth(ideal: max(answerMeasures.chromeIdealWidth, textIdealWidth))
     let streamed = if case .answer(_, let shown, _) = content { shown.streaming } else { false }
     let width = streamed ? max(ideal, size?.width ?? 0) : ideal
     let inner = width - IslandMetrics.cardPadding * 2
-    let noteHeight = note.map { Self.height(of: IslandAnswerNote(text: $0), width: inner) } ?? 0
-    let answerHeight = Self.height(of: IslandAnswerText(text: sample.text), width: inner)
-    let footerHeight = Self.height(of: card.footer, width: inner)
+    if answerMeasures.measuredWidth != width {
+      answerMeasures.measuredWidth = width
+      answerMeasures.noteHeight =
+        note.map { Self.height(of: IslandAnswerNote(text: $0), width: inner) } ?? 0
+      answerMeasures.footerHeight = Self.height(of: card.footer, width: inner)
+    }
+    let answerHeight = IslandAnswerText.measuredHeight(text: sample.text, width: inner)
     return IslandMeasure(
       size: WindowSize(
         width: width,
         height: IslandMetrics.answerCardHeight(
-          note: noteHeight, answer: answerHeight, footer: footerHeight)))
+          note: answerMeasures.noteHeight, answer: answerHeight,
+          footer: answerMeasures.footerHeight)))
   }
 
   /// The height `view` takes laid out `width` points wide, wrapping as it needs.
   static func height(of view: some View, width: Double) -> Double {
     let framed = view.frame(width: width).fixedSize(horizontal: false, vertical: true)
-    return NSHostingView(rootView: framed).fittingSize.height
+    return fittingSize(of: framed).height
   }
 }
 

@@ -52,6 +52,7 @@ final class IslandRecordingCardModel {
   @ObservationIgnored private var framesTask: Task<Void, Never>?
   /// The frames asked for: how many, how tall and at what scale.
   @ObservationIgnored private var requestedFrames = (slots: 0, height: 0.0, scale: 0.0)
+  @ObservationIgnored var measuredNotes: (width: Double, height: Double)?
 
   /// The card for `state`'s recording, playhead at the start of what it keeps.
   init(_ state: RecordingCardState) {

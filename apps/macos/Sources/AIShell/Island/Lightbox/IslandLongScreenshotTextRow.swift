@@ -75,7 +75,7 @@ private struct IslandLongScreenshotScopeChip: View {
 }
 
 /// One command: its name runs it; the chevron beside it opens its options menu (no tooltip: it
-/// opens a popup). While its run reads or writes, a bar of the accent colour stands under it.
+/// opens a popup). While its run reads or writes, a running bar stands under its button.
 private struct IslandLongScreenshotCommandButton: View {
   let content: IslandLongScreenshotLightbox
   let command: SelectionToolbarSettings.Command
@@ -89,6 +89,16 @@ private struct IslandLongScreenshotCommandButton: View {
     HStack(spacing: 0) {
       IslandTextButton(title: command.name, tooltip: labels.runTooltip(command.name)) {
         content.run(command)
+      }
+      .overlay(alignment: .bottom) {
+        if running {
+          IslandRunBar()
+            .frame(height: 2)
+            .padding(.horizontal, 9)
+            .padding(.bottom, 3)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
       }
       .accessibilityValue(Text(verbatim: running ? labels.running : ""))
       if hasOptions {
@@ -104,15 +114,6 @@ private struct IslandLongScreenshotCommandButton: View {
         .modifier(FloatingHover { hovered = $0 })
         .accessibilityLabel(
           Text(verbatim: ShellStrings.shared.text(.commandOptionsMenu, command.name)))
-      }
-    }
-    .overlay(alignment: .bottom) {
-      if running {
-        Capsule()
-          .fill(Color.accentColor)
-          .frame(height: 2)
-          .padding(.horizontal, 10)
-          .accessibilityHidden(true)
       }
     }
   }

@@ -95,6 +95,10 @@ final class CommandProgressController: NSObject {
     wireAnswerCard()
     wireComposeCard()
     wireReviewCard()
+    DispatchQueue.main.async { [weak self] in
+      guard let self, !NSScreen.screens.isEmpty else { return }
+      self.island.warmUp()
+    }
   }
 
   /// Shows `params.state` for its target, replacing the island of another target; one of the
@@ -194,6 +198,9 @@ final class CommandProgressController: NSObject {
     state.show(target: target, phase: phase)
     timer += 1
     let draws = progressMayShow()
+    if draws, state.takesKeyboard, island.window.isVisible {
+      island.setKeyCapable(true, taking: !inPlace)
+    }
     if draws { island.show(content(phase), inPlace: inPlace) }
     sync(leavingCard: state.takesKeyboard || !returningFocus ? nil : leaving, taking: !inPlace)
     // The writes' keys wait while the answer streams in.

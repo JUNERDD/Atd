@@ -16,27 +16,36 @@ struct IslandView: View {
       } else { .zero }
     let frame = AnimatablePair(shape.glass, change)
     let content = ZStack(alignment: .topLeading) {
-      IslandLoadingGlow(model: model)
+      IslandLoadingGlowHost(model: model)
       ForEach(model.layers) { layer in
-        IslandLayerView(model: model, layer: layer)
+        IslandLayerView(
+          model: model, layer: layer, canvas: model.canvas, reduceMotion: model.reduceMotion
+        ).equatable()
       }
     }
     IslandSurface(
       frame: frame, canvas: model.canvas, animation: shape.animation,
       layoutMotion: model.layoutMotion, content: content
     )
-    .id(model.appearance)
+    .transaction(value: model.appearance) { $0.disablesAnimations = true }
   }
 }
 
 /// Places each business view at its measured size. Reflow placement follows the interpolated
 /// layout, so native hit regions move with the pixels; fixed content retains its measured rest.
-private struct IslandLayerView: View {
+private struct IslandLayerView: View, Equatable {
   let model: IslandModel
   let layer: IslandLayer
+  let canvas: WindowSize
+  let reduceMotion: Bool
   @Environment(\.[island: IslandPresentationKey<IslandShellGeometry>()])
   private var presentation
   @Environment(\.islandContentAnimation) private var animation
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.model === rhs.model && lhs.layer == rhs.layer && lhs.canvas == rhs.canvas
+      && lhs.reduceMotion == rhs.reduceMotion
+  }
 
   var body: some View {
     let origin = layer.shellCard?.layoutOrigin
@@ -49,17 +58,18 @@ private struct IslandLayerView: View {
       geometry.map { IslandMetrics.rest($0.size) }
       ?? (layer.reflows ? presentation.first.rect : layer.rest)
     let active = layer.presence.shown
-    let shift = IslandMetrics.canvasShift(model.canvas)
+    let shift = IslandMetrics.canvasShift(canvas)
     IslandLayerContent(model: model, layer: layer, geometry: geometry, rest: rest)
       // Presentation frames must not rebuild unchanged command text or recording controls.
       // Their own observable state still invalidates the views that read it.
       .equatable()
+      .geometryGroup()
       .environment(\.floatingHoverActive, active)
       .frame(width: rest.width, height: rest.height)
       .animation(animation) {
         $0.modifier(
           MiniPanelFollowEffect(
-            shape: presentation.first, rest: rest, scales: !model.reduceMotion && layer.scales
+            shape: presentation.first, rest: rest, scales: !reduceMotion && layer.scales
           ).ignoredByLayout())
       }
       .animation(nil) { $0.offset(x: rest.minX + shift.x, y: rest.minY + shift.y) }
@@ -87,11 +97,8 @@ private struct IslandLayerContent: View, Equatable {
     let active = layer.presence.shown
     if case .recording(let card)? = layer.shellCard, let geometry {
       IslandRecordingCard(model: model, card: card, active: active, geometry: geometry)
-        // Native scroll/player descendants resolve the card's layout at this boundary.
-        .geometryGroup()
     } else if case .longScreenshot(let card)? = layer.shellCard, let geometry {
       IslandLongScreenshotCard(model: model, card: card, active: active, geometry: geometry)
-        .geometryGroup()
     } else if case .choose(let command) = layer.content, let card = layer.card ?? model.card {
       IslandCard(
         model: model, command: command, card: card, active: active && layer.card == nil,

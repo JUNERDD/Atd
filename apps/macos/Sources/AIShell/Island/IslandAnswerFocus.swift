@@ -28,6 +28,7 @@ final class AnswerFocusWatch {
   private var activation: NSObjectProtocol?
   /// Bumped by every read and every stop, so a late read never lands.
   private var generation = 0
+  private var observeGeneration = 0
   private var poll: Task<Void, Never>?
 
   /// The app to follow while Atd is frontmost; nil follows none then.
@@ -104,6 +105,8 @@ final class AnswerFocusWatch {
   /// is polled instead.
   private func observe(_ pid: pid_t?) {
     guard pid != observedPID else { return }
+    observeGeneration += 1
+    let token = observeGeneration
     if let observer {
       CFRunLoopRemoveSource(
         CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
@@ -113,17 +116,38 @@ final class AnswerFocusWatch {
     poll = nil
     observedPID = pid
     guard let pid else { return }
+    let refconBits = UInt(bitPattern: Unmanaged.passUnretained(self).toOpaque())
+    AnswerFocusProbe.queue.async { [weak self] in
+      let created = Self.makeObserver(pid: pid, refconBits: refconBits)
+      nonisolated(unsafe) let result = created
+      DispatchQueue.main.async {
+        MainActor.assumeIsolated {
+          guard let self, self.running, self.observedPID == pid, self.observeGeneration == token
+          else { return }
+          guard let result else {
+            self.startPolling()
+            return
+          }
+          CFRunLoopAddSource(
+            CFRunLoopGetMain(), AXObserverGetRunLoopSource(result), .defaultMode)
+          self.observer = result
+        }
+      }
+    }
+  }
+
+  private nonisolated static func makeObserver(pid: pid_t, refconBits: UInt) -> AXObserver? {
+    guard let refcon = UnsafeMutableRawPointer(bitPattern: refconBits) else { return nil }
     var made: AXObserver?
     let element = AXUIElementCreateApplication(pid)
-    let refcon = Unmanaged.passUnretained(self).toOpaque()
+    AXUIElementSetMessagingTimeout(element, SelectionPresence.messagingTimeout)
     guard AXObserverCreate(pid, answerFocusChanged, &made) == .success, let made,
       AXObserverAddNotification(
         made, element, kAXFocusedUIElementChangedNotification as CFString, refcon) == .success
-    else { return startPolling() }
+    else { return nil }
     _ = AXObserverAddNotification(
       made, element, kAXSelectedTextChangedNotification as CFString, refcon)
-    CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(made), .defaultMode)
-    observer = made
+    return made
   }
 
   private func startPolling() {
@@ -158,7 +182,8 @@ nonisolated struct AnswerFocusProbe: Sendable {
 
   /// Where reads run: a serial queue of their own, so a blocking AX read never holds one of
   /// Swift concurrency's cooperative threads.
-  private static let queue = DispatchQueue(label: "com.junerdd.ai.answer-focus", qos: .utility)
+  fileprivate static let queue = DispatchQueue(
+    label: "com.junerdd.ai.answer-focus", qos: .utility)
 
   func read() async -> Bool? {
     await withCheckedContinuation { continuation in

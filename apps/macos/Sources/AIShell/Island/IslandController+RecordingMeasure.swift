@@ -18,12 +18,18 @@ extension IslandController {
     let answer = answerFloor(
       card.asking, labels: labels, cap: IslandMetrics.recordingAnswerCap, width: width,
       seeks: true)
-    let notes =
-      card.source.notes.isEmpty
-      ? 0
-      : min(
+    let notes: Double
+    if card.source.notes.isEmpty {
+      notes = 0
+    } else if let cached = card.measuredNotes, cached.width == inner {
+      notes = cached.height
+    } else {
+      let measured = min(
         Self.height(of: IslandRecordingNotes(notes: card.source.notes), width: inner).rounded(.up),
         IslandMetrics.recordingNotesCap)
+      card.measuredNotes = (inner, measured)
+      notes = measured
+    }
     let layout = IslandMetrics.recordingCardLayout(
       aspect: card.source.aspect, player: card.preferredPlayer, answer: answer, notes: notes,
       quickAsks: labels.quickHeight(width: inner), room: room)

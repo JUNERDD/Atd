@@ -24,6 +24,8 @@ struct FloatingScrollEdges<Edges: View>: ViewModifier {
   @ViewBuilder let edges: (AnswerOverflow) -> Edges
 
   @State private var overflow = AnswerOverflow()
+  @State private var maskMounted = false
+  @State private var maskDropTask: Task<Void, Never>?
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.colorSchemeContrast) private var contrast
 
@@ -31,7 +33,9 @@ struct FloatingScrollEdges<Edges: View>: ViewModifier {
     let plain = reduceTransparency || contrast == .increased
     let vertical = axis == .vertical
     let following = follows && vertical && !overflow.bottom
-    content
+    let needsMask = !plain && (overflow.top || overflow.bottom)
+    let scroll =
+      content
       .scrollIndicators(.never)
       .scrollBounceBehavior(.basedOnSize)
       .backport.scrollEdgeEffectHidden(true, for: vertical ? .vertical : .horizontal)
@@ -53,22 +57,48 @@ struct FloatingScrollEdges<Edges: View>: ViewModifier {
             container: geometry.containerSize.width, insetTop: geometry.contentInsets.leading,
             insetBottom: geometry.contentInsets.trailing)
       } action: { _, next in
+        guard next != overflow else { return }
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { overflow = next }
       }
-      .mask { FloatingScrollFade(axis: axis, overflow: plain ? AnswerOverflow() : overflow) }
-      .overlay(alignment: vertical ? .top : .leading) { separator(shown: plain && overflow.top) }
-      .overlay(alignment: vertical ? .bottom : .trailing) {
-        separator(shown: plain && overflow.bottom)
+    scroll.mask {
+      if maskMounted {
+        FloatingScrollFade(axis: axis, overflow: plain ? AnswerOverflow() : overflow).equatable()
+      } else {
+        Color.black
       }
-      .overlay { edges(overflow) }
+    }
+    .onChange(of: needsMask, initial: true) { _, needed in
+      maskDropTask?.cancel()
+      if needed {
+        maskMounted = true
+      } else if maskMounted {
+        let delay = plain || reduceMotion ? 0.0 : 0.12
+        if delay == 0 {
+          maskMounted = false
+        } else {
+          maskDropTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            maskMounted = false
+          }
+        }
+      }
+    }
+    .onDisappear { maskDropTask?.cancel() }
+    .overlay(alignment: vertical ? .top : .leading) {
+      if plain && overflow.top { separator() }
+    }
+    .overlay(alignment: vertical ? .bottom : .trailing) {
+      if plain && overflow.bottom { separator() }
+    }
+    .overlay { edges(overflow) }
   }
 
-  @ViewBuilder private func separator(shown: Bool) -> some View {
+  @ViewBuilder private func separator() -> some View {
     if axis == .vertical {
-      Divider().opacity(shown ? 1 : 0).allowsHitTesting(false).accessibilityHidden(true)
+      Divider().allowsHitTesting(false).accessibilityHidden(true)
     } else {
-      HStack(spacing: 0) { Divider() }
-        .opacity(shown ? 1 : 0).allowsHitTesting(false).accessibilityHidden(true)
+      HStack(spacing: 0) { Divider() }.allowsHitTesting(false).accessibilityHidden(true)
     }
   }
 }
@@ -82,7 +112,7 @@ extension FloatingScrollEdges where Edges == EmptyView {
 }
 
 /// A fixed mask fades only an edge that hides content; text stays sharp while it scrolls.
-private struct FloatingScrollFade: View {
+private struct FloatingScrollFade: View, Equatable {
   let axis: Axis
   let overflow: AnswerOverflow
 

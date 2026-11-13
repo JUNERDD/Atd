@@ -88,9 +88,18 @@ private struct IslandRecordingStepRows: View {
   let proxy: ScrollViewProxy
 
   var body: some View {
+    let state = card.state
+    let current = card.currentStep
+    let hovered = card.hoveredStep
     LazyVStack(spacing: IslandMetrics.recordingStepGap) {
       ForEach(card.source.steps.indices, id: \.self) { index in
-        IslandRecordingStepRow(card: card, labels: labels, index: index).id(index)
+        IslandRecordingStepRow(
+          card: card, labels: labels, index: index,
+          isKept: state.keeps(step: index), isCurrent: current == index,
+          isHovered: hovered == index
+        )
+        .equatable()
+        .id(index)
       }
     }
     .onChange(of: card.currentStep) { _, step in
@@ -128,16 +137,22 @@ private struct IslandRecordingNoNarration: View {
 
 /// One step: its time, its kind's glyph and its text, cut with an ellipsis (the tooltip has it
 /// whole).
-private struct IslandRecordingStepRow: View {
+private struct IslandRecordingStepRow: View, Equatable {
   let card: IslandRecordingCardModel
   let labels: IslandRecordingLabels
   let index: Int
+  let isKept: Bool
+  let isCurrent: Bool
+  let isHovered: Bool
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.card === rhs.card && lhs.labels == rhs.labels && lhs.index == rhs.index
+      && lhs.isKept == rhs.isKept && lhs.isCurrent == rhs.isCurrent
+      && lhs.isHovered == rhs.isHovered
+  }
 
   var body: some View {
     let step = card.source.steps[index]
-    let kept = card.state.keeps(step: index)
-    let now = card.currentStep == index
-    let hot = card.hoveredStep == index
     let time = RecordingClock.text(step.time)
     let text = step.kind == .narration ? "“" + step.text + "”" : step.text
     HStack(spacing: 8) {
@@ -145,15 +160,16 @@ private struct IslandRecordingStepRow: View {
         .font(IslandType.hint)
         .monospacedDigit()
         .foregroundStyle(
-          kept
-            ? (now ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary)) : AnyShapeStyle(.tertiary)
+          isKept
+            ? (isCurrent ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            : AnyShapeStyle(.tertiary)
         )
       IslandGlyph(name: Self.glyph(step.kind), side: 14)
-        .foregroundStyle(kept ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
+        .foregroundStyle(isKept ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
       Text(verbatim: text)
         .font(.system(size: 13))
         .foregroundStyle(
-          !kept
+          !isKept
             ? AnyShapeStyle(.tertiary)
             : step.kind == .narration ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary)
         )
@@ -165,16 +181,16 @@ private struct IslandRecordingStepRow: View {
     .frame(height: IslandMetrics.recordingStepHeight)
     .background {
       IslandWash(
-        level: now ? 0.1 : hot ? 0.06 : 0,
+        level: isCurrent ? 0.1 : isHovered ? 0.06 : 0,
         shape: RoundedRectangle(cornerRadius: IslandMetrics.rowRadius, style: .continuous))
     }
     .contentShape(Rectangle())
     .modifier(FloatingHover { card.hover(step: index, $0) })
     .onTapGesture { card.seek(step.time) }
-    .help(kept ? time + " " + text : labels.stepOutside)
+    .help(isKept ? time + " " + text : labels.stepOutside)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(verbatim: time + " " + text))
-    .accessibilityAddTraits(now ? [.isButton, .isSelected] : .isButton)
+    .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction { card.seek(step.time) }
   }
 

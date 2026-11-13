@@ -47,6 +47,7 @@ private struct CaptureResultFaceView: View {
     let shown = face.presence.shown
     let rest = face.rest
     content
+      .geometryGroup()
       .environment(\.floatingHoverActive, shown)
       .frame(width: rest.width, height: rest.height, alignment: .topLeading)
       .animation(animation) {
@@ -86,6 +87,7 @@ struct CaptureResultPanel: View {
   let model: CaptureResultCardModel
   let card: CaptureResultCard
   var height: CGFloat?
+  var includesBody = true
 
   private var labels: CaptureResultLabels { model.labels }
 
@@ -95,7 +97,7 @@ struct CaptureResultPanel: View {
       VStack(alignment: .leading, spacing: 0) {
         header
         CaptureResultNote(text: labels.note(card), busy: card.busy)
-        content
+        if includesBody { content }
         if let versions = card.versions {
           CaptureResultReviewControls(model: model, review: versions)
         }

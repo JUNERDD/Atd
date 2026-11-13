@@ -50,9 +50,8 @@ extension IslandController {
           width: IslandMetrics.minCardWidth,
           height: IslandMetrics.cardHeight(rows: 1, filter: false)))
     }
-    let ideal = NSHostingView(
-      rootView: IslandCard(model: model, command: command, card: card, active: false).fixedSize()
-    ).fittingSize
+    let ideal = Self.fittingSize(
+      of: IslandCard(model: model, command: command, card: card, active: false).fixedSize())
     return IslandMeasure(
       size: WindowSize(
         width: IslandMetrics.cardWidth(ideal: ideal.width),
@@ -92,11 +91,62 @@ extension IslandController {
     -> Double
   {
     let view = IslandCapsule(model: model, content: content, limits: limits).fixedSize()
-    return NSHostingView(rootView: view).fittingSize.width.rounded(.up)
+    return Self.fittingSize(of: view).width.rounded(.up)
+  }
+
+  /// Measures `view` using a persistent `NSHostingView` keyed by its concrete type, avoiding
+  /// per-measurement hosting view allocations.
+  static func fittingSize<Content: View>(of view: Content) -> CGSize {
+    IslandMeasureHost.fittingSize(of: view)
   }
 
   private func capsule(_ width: Double, _ limits: IslandMetrics.CapsuleLimits) -> IslandMeasure {
     IslandMeasure(
       size: WindowSize(width: width, height: IslandMetrics.capsuleHeight), limits: limits)
+  }
+}
+
+/// Wraps measured views with a fresh SwiftUI subtree identity per measurement so descendant
+/// `.animation(_:value:)` modifiers (such as ``IslandReveal``) never interpolate from a
+/// previous measurement's state while reusing the underlying `NSHostingView`.
+private struct MeasuredView<Content: View>: View {
+  let generation: Int
+  let content: Content
+
+  var body: some View {
+    content
+      .id(generation)
+      .transaction {
+        $0.animation = nil
+        $0.disablesAnimations = true
+      }
+  }
+}
+
+/// Persistent per-type `NSHostingView` cache for synchronous off-screen SwiftUI measurement.
+private enum IslandMeasureHost {
+  private static var hosts: [ObjectIdentifier: AnyObject] = [:]
+  private static var generation = 0
+
+  static func fittingSize<Content: View>(of view: Content) -> CGSize {
+    let key = ObjectIdentifier(Content.self)
+    generation &+= 1
+    var transaction = Transaction(animation: nil)
+    transaction.disablesAnimations = true
+    return withTransaction(transaction) {
+      let wrapped = MeasuredView(generation: generation, content: view)
+      let host: NSHostingView<MeasuredView<Content>>
+      if let existing = hosts[key] as? NSHostingView<MeasuredView<Content>> {
+        host = existing
+        host.rootView = wrapped
+      } else {
+        let created = NSHostingView(rootView: wrapped)
+        hosts[key] = created
+        host = created
+      }
+      host.invalidateIntrinsicContentSize()
+      host.layoutSubtreeIfNeeded()
+      return host.fittingSize
+    }
   }
 }

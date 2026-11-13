@@ -20,9 +20,10 @@ import SwiftUI
 /// HUDs' do (``ActiveGlassPanel``).
 final class IslandWindow: ActiveGlassPanel, FloatingHoverHost {
   var keyCapable = false
+  var hoverReady = false
   lazy var pointerHover = IslandPointerHover()
   var hoverRegions: FloatingHoverRegions { pointerHover.regions }
-  var hoverInteractive: Bool { acceptsPointerEvents }
+  var hoverInteractive: Bool { acceptsPointerEvents && hoverReady }
   /// Departing controls stop receiving pointer input. Leave `ignoresMouseEvents` unset:
   /// explicitly setting it to false makes even this canvas's transparent pixels take events.
   /// WindowServer must keep deriving the input region from the drawn glass, as for MiniPanel.

@@ -28,12 +28,14 @@ enum CaptureResultMeasure {
     case .card:
       guard let card = model.card else { return (.zero, 0) }
       let width = CaptureResultPlacement.cardWidth
-      let height = IslandController.height(
-        of: CaptureResultPanel(model: model, card: card, height: nil), width: width)
+      let chrome = IslandController.height(
+        of: CaptureResultPanel(model: model, card: card, height: nil, includesBody: false),
+        width: width)
+      let body = bodyHeight(of: model, card: card)
+      let height = chrome + body
       let limit = min(IslandMetrics.maxShape.height, model.heightLimit)
       let size = CGSize(width: width, height: min(height.rounded(.up), limit))
-      let body = bodyHeight(of: model, card: card)
-      let least = (height - body + min(body, minimumBody)).rounded(.up)
+      let least = (chrome + min(body, minimumBody)).rounded(.up)
       return (size, min(least, size.height))
     case .copied(let text):
       let size = capsule(IslandStatusCapsule(text: text, running: false))
@@ -46,16 +48,24 @@ enum CaptureResultMeasure {
   private static func bodyHeight(of model: CaptureResultCardModel, card: CaptureResultCard)
     -> CGFloat
   {
-    guard model.shownBody(card) != .none else { return 0 }
-    let body = CaptureResultBody(model: model, card: card, measuring: true)
-      .padding(.vertical, IslandMetrics.sectionGap)
     let width = CaptureResultPlacement.cardWidth - IslandMetrics.cardPadding * 2
-    return IslandController.height(of: body, width: width)
+    switch model.shownBody(card) {
+    case .none:
+      return 0
+    case .answer(let text):
+      return IslandAnswerText.measuredHeight(
+        text: String(text.prefix(measuredLength)), width: width)
+        + IslandMetrics.sectionGap * 2
+    case .skeleton, .items, .replacements:
+      let body = CaptureResultBody(model: model, card: card, measuring: true)
+        .padding(.vertical, IslandMetrics.sectionGap)
+      return IslandController.height(of: body, width: width)
+    }
   }
 
   /// A capsule as wide as `view` lays itself out, one capsule high.
   private static func capsule(_ view: some View) -> CGSize {
-    let width = NSHostingView(rootView: view.fixedSize()).fittingSize.width
+    let width = IslandController.fittingSize(of: view.fixedSize()).width
     return CGSize(width: width.rounded(.up), height: IslandMetrics.capsuleHeight)
   }
 }

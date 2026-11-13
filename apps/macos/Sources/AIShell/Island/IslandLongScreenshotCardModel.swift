@@ -26,6 +26,10 @@ final class IslandLongScreenshotCardModel {
   /// The thumbnail with the annotations drawn in, made off the main actor after each change
   /// (``drawAnnotations()``); it may lag the latest change until the next one lands.
   private(set) var annotatedThumbnail: CGImage?
+  /// Card-sized preview bitmap matching ``IslandMetrics/longScreenshotPreviewBox`` at backing
+  /// scale so the card preview never downsamples the larger lightbox overview bitmap on the fly.
+  private(set) var cardThumbnail: CGImage?
+  private(set) var annotatedCardThumbnail: CGImage?
   /// How many sensitive items Cover Sensitive Info just covered, which its button says in place
   /// of its label for ``CommandProgressState/doneDuration`` (decision D7); nil otherwise.
   private(set) var redacted: Int?
@@ -190,6 +194,13 @@ final class IslandLongScreenshotCardModel {
     state.annotations.isEmpty ? thumbnail : annotatedThumbnail ?? thumbnail
   }
 
+  /// The 1:1 card-preview bitmap, falling back to ``displayThumbnail`` until ready.
+  var cardDisplayThumbnail: CGImage? {
+    state.annotations.isEmpty
+      ? (cardThumbnail ?? thumbnail)
+      : (annotatedCardThumbnail ?? cardThumbnail ?? displayThumbnail)
+  }
+
   /// The widest the thumbnail is drawn, in points: the lightbox's overview rail (120 pt) at twice
   /// its width, wider than the card's preview box (``IslandMetrics/longScreenshotPreviewBox``).
   private static let thumbnailWidth = 240.0
@@ -205,13 +216,21 @@ final class IslandLongScreenshotCardModel {
       ?? IslandMetrics.longScreenshotPreviewBox.height
     let fitted = IslandMetrics.longScreenshotImage(
       source.shot.pointSize, in: WindowSize(width: Self.thumbnailWidth, height: tallest))
+    let cardFitted = IslandMetrics.longScreenshotImage(
+      source.shot.pointSize, in: IslandMetrics.longScreenshotPreviewBox)
     let scale = screens.map(\.backingScaleFactor).max() ?? 2
     let width = Int((fitted.width * scale).rounded())
     let height = Int((fitted.height * scale).rounded())
+    let cardWidth = Int((cardFitted.width * scale).rounded())
+    let cardHeight = Int((cardFitted.height * scale).rounded())
     thumbnailTask = Task { [weak self] in
-      let made = await IslandLongScreenshotThumbnail.make(image, width: width, height: height)
+      async let made = IslandLongScreenshotThumbnail.make(image, width: width, height: height)
+      async let madeCard = IslandLongScreenshotThumbnail.make(
+        image, width: cardWidth, height: cardHeight)
+      let (full, card) = await (made, madeCard)
       guard let self, !Task.isCancelled else { return }
-      thumbnail = made
+      thumbnail = full
+      cardThumbnail = card
       drawAnnotations()
     }
   }
@@ -229,15 +248,26 @@ final class IslandLongScreenshotCardModel {
     let annotations = state.annotations
     guard !annotations.isEmpty, let base = thumbnail else {
       annotatedThumbnail = nil
+      annotatedCardThumbnail = nil
       return
     }
+    let cardBase = cardThumbnail
     let shot = source.shot
     annotating = Task { [weak self] in
-      let made = await IslandLongScreenshotThumbnail.annotated(
+      async let fullTask = IslandLongScreenshotThumbnail.annotated(
         base, shot: shot, annotations: annotations)
+      async let cardTask: CGImage? =
+        if let cardBase {
+          await IslandLongScreenshotThumbnail.annotated(
+            cardBase, shot: shot, annotations: annotations)
+        } else {
+          nil
+        }
+      let (made, madeCard) = await (fullTask, cardTask)
       guard let self, !Task.isCancelled else { return }
       annotating = nil
       annotatedThumbnail = made
+      annotatedCardThumbnail = madeCard
       if annotationsChanged { drawAnnotations() }
     }
   }

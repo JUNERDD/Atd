@@ -43,8 +43,6 @@ final class IslandWorkingGlowView: NSView {
   private let hostingView: IslandGlowHostingView
   private var active: Bool
   private var motionEnabled: Bool
-  private var retreating = false
-  private var retreat: Task<Void, Never>?
   private var observers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
   init(active: Bool, motionEnabled: Bool, palette: IslandGlowPalette) {
@@ -106,14 +104,7 @@ final class IslandWorkingGlowView: NSView {
   func detach() {
     active = false
     removeObservers()
-    stopRetreat()
     field.pause()
-  }
-
-  private func stopRetreat() {
-    retreat?.cancel()
-    retreat = nil
-    retreating = false
   }
 
   private func observe(_ center: NotificationCenter, _ name: Notification.Name, _ object: Any?) {
@@ -131,29 +122,14 @@ final class IslandWorkingGlowView: NSView {
   private func syncField() {
     let workspace = NSWorkspace.shared
     let active = active && GlowEffects.shared.enabled
-    if active != field.active {
-      stopRetreat()
-      if !active {
-        // Keep the field moving throughout its fade, then stop hidden frame updates.
-        retreating = true
-        let duration =
-          workspace.accessibilityDisplayShouldReduceMotion
-          ? IslandGlowStyle.reducedMotionDuration : IslandGlowStyle.exitDuration
-        retreat = Task { [weak self] in
-          do { try await Task.sleep(for: .seconds(duration)) } catch { return }
-          guard !Task.isCancelled, let self else { return }
-          retreating = false
-          retreat = nil
-          syncField()
-        }
-      }
-    }
     let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     let contrast = workspace.accessibilityDisplayShouldIncreaseContrast ? 0.4 : 1.0
     let transparency = workspace.accessibilityDisplayShouldReduceTransparency ? 0.6 : 1.0
     let strength = (dark ? 0.34 : 0.15) * palette.emphasis(dark: dark) * contrast * transparency
+    // Stop the 30fps MeshGradient TimelineView immediately when active ends; SwiftUI's opacity
+    // animation fades out the already-rendered frame without further CPU/GPU mesh ticks.
     let running =
-      (active || retreating) && motionEnabled
+      active && motionEnabled
       && window?.occlusionState.contains(.visible) == true
       && !isHiddenOrHasHiddenAncestor && bounds.width > 0 && bounds.height > 0
       && !workspace.accessibilityDisplayShouldReduceMotion

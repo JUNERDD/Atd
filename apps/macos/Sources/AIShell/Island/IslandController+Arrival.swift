@@ -13,15 +13,53 @@ import SwiftUI
 /// once its content has arrived, and what is typed before then waits for it
 /// (``IslandWindow/awaitsField``).
 extension IslandController {
+  /// Runs `body` inside an animation-disabled SwiftUI transaction so off-screen resets or
+  /// canvas changes never trigger unintended transitions.
+  func withoutAnimation(_ body: () -> Void) {
+    var transaction = Transaction(animation: nil)
+    transaction.disablesAnimations = true
+    withTransaction(transaction, body)
+  }
+
+  /// Updates `layer` for an in-place content change and returns the resize motion if the shape
+  /// or a shell card's internal layout changed; otherwise nil.
+  func prepareInPlaceUpdate(
+    layer: inout IslandLayer, next: IslandContent, target: WindowSize, inPlace: Bool
+  ) -> MiniPanelShapeMotion? {
+    let previousShellLayout = layer.shellCard?.layout
+    let nextShellCard = model.shellCard(for: next)
+    layer.shellCard = nextShellCard
+    let shellLayoutChanged = previousShellLayout != nextShellCard?.layout
+    guard target != size || shellLayoutChanged else { return nil }
+    layer.rest = IslandMetrics.rest(target)
+    // An arrived review card lays out at its shape as drawn, on the direct edits' spring: its
+    // title stays on the top edge, its field and footer on the bottom, its answer takes the rest.
+    let reflows = next.kind == .review && model.arrived
+    let staysInPlace = inPlace || next.resizesInPlace || reflows
+    layer.scales = !staysInPlace
+    layer.reflows = reflows
+    if (reflows || shellLayoutChanged) && !model.reduceMotion {
+      model.layoutMotion = .interpolated
+    }
+    let resize = staysInPlace ? IslandChoreography.inPlace : IslandChoreography.resize
+    return MiniPanelShapeMotion(
+      thickness: resize.thickness.reduced(model.reduceMotion),
+      length: resize.length.reduced(model.reduceMotion))
+  }
+
   /// The shape morphs to `target`'s on `motion`, and what shows arrives once it rests.
-  func morph(to target: WindowSize, motion: MiniPanelShapeMotion, card: Bool) {
+  func morph(
+    to target: WindowSize, motion: MiniPanelShapeMotion, card: Bool, minSettling: Double = 0
+  ) {
     let from = model.shape
     model.shape = IslandShape(
       frame: IslandMetrics.rest(target), corner: IslandMetrics.corner(target, card: card),
       animation: motion.animation(thickness: .vertical))
     let change = MiniPanelShapeAxis.vertical.extent(of: (model.shape.glass - from.glass).components)
-    shapeMoves(
-      settling: MiniPanelAxisAnimation.restTime(motion, across: change.across, along: change.along))
+    let settling = max(
+      MiniPanelAxisAnimation.restTime(motion, across: change.across, along: change.along),
+      minSettling)
+    shapeMoves(settling: settling)
     size = target
     if let anchor {
       let inside = clamped(anchor, size: target)
@@ -34,15 +72,25 @@ extension IslandController {
 
   /// The shape moves and comes to rest `seconds` from now. A motion adds to those still running
   /// (``MiniPanelAxisAnimation``), so what shows arrives once the last of them has ended, a frame
-  /// later so that it is drawn at rest.
+  /// later so that it is drawn at rest. Once settled, interpolated layout motion resets to fixed
+  /// and excess canvas headroom is trimmed so idle cards pay no per-frame evaluation cost.
   func shapeMoves(settling seconds: Double) {
     let rests = CACurrentMediaTime() + seconds + MiniPanelMotion.frame
     guard rests > shapeRests else { return }
     shapeRests = rests
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(max(rests - CACurrentMediaTime(), 0)))
-      guard let self, shapeRests == rests else { return }
+      guard let self, shapeRests == rests, !exiting, window.isVisible else { return }
       model.arrived = true
+      window.hoverReady = true
+      window.pointerHover.refresh()
+      withoutAnimation {
+        if model.layoutMotion != .fixed { model.layoutMotion = .fixed }
+        if model.shape.animation != nil { model.shape.animation = nil }
+        if let size, model.layers.count <= 1, !isShellAnswerStreaming {
+          fitCanvas(to: size)
+        }
+      }
     }
   }
 

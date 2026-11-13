@@ -40,6 +40,7 @@ struct IslandReviewCard: View {
   var active = false
   var width: Double?
   var height: Double?
+  var includesAnswer = true
   @FocusState private var fieldFocused: Bool
 
   private var pending: Bool { review.pending != nil }
@@ -55,7 +56,7 @@ struct IslandReviewCard: View {
       IslandGrabber(model: model)
       VStack(alignment: .leading, spacing: 0) {
         top
-        answerView
+        if includesAnswer { answerView }
         field.padding(.top, IslandMetrics.sectionGap)
         if !review.chipRow.isEmpty {
           Self.paged(chipsShown) { chipRow }.padding(.top, IslandMetrics.reviewChipsTop)
@@ -77,6 +78,16 @@ struct IslandReviewCard: View {
     VStack(alignment: .leading, spacing: 0) {
       top
       IslandAnswerText(text: answer)
+      footer.widthProbe
+    }
+    .padding(IslandMetrics.cardPadding)
+  }
+
+  /// The chrome around the answer (top rows and footer) at ideal width, cached across streaming
+  /// chunks while TextKit measures the answer width directly.
+  var chromeWidthProbe: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      top
       footer.widthProbe
     }
     .padding(IslandMetrics.cardPadding)
@@ -295,6 +306,8 @@ struct IslandReviewCard: View {
     }
     .animation(.easeOut(duration: fadeIn), value: shown)
   }
+
+  var chipsShownKey: [String] { chipsShown }
 
   /// What the chips row shows of the version: values, summary and adjustments, not what the
   /// person staged on them.

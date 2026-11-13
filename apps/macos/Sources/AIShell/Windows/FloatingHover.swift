@@ -96,6 +96,13 @@ final class FloatingHoverRegionView: NSView {
     regions = nil
   }
 
+  /// Cheap pre-filter before calling ``screenBounds``: avoids `isHiddenOrHasHiddenAncestor`,
+  /// `visibleRect`, and `convertToScreen` when `windowPoint` is outside this view's bounds.
+  func mightContain(windowPoint: CGPoint, margin: CGFloat = 0) -> Bool {
+    let local = convert(windowPoint, from: nil)
+    return bounds.insetBy(dx: -(margin + 1), dy: -(margin + 1)).contains(local)
+  }
+
   var screenBounds: CGRect? {
     guard enabled, !isHiddenOrHasHiddenAncestor, let window, window.isVisible,
       (window as? any FloatingHoverHost)?.hoverInteractive == true
@@ -150,17 +157,42 @@ final class FloatingHoverRegions {
   }
 
   func isNear(_ point: CGPoint, margin: CGFloat = 24) -> Bool {
-    regions.contains {
-      $0.view?.screenBounds?.insetBy(dx: -margin, dy: -margin).contains(point) == true
+    var cachedWindow: NSWindow?
+    var cachedWindowPoint = CGPoint.zero
+    for region in regions {
+      guard let view = region.view, view.enabled, let window = view.window, window.isVisible,
+        (window as? any FloatingHoverHost)?.hoverInteractive == true
+      else { continue }
+      if !window.frame.insetBy(dx: -margin, dy: -margin).contains(point) { continue }
+      if cachedWindow !== window {
+        cachedWindow = window
+        cachedWindowPoint = window.convertPoint(fromScreen: point)
+      }
+      guard view.mightContain(windowPoint: cachedWindowPoint, margin: margin),
+        let bounds = view.screenBounds
+      else { continue }
+      if bounds.insetBy(dx: -margin, dy: -margin).contains(point) { return true }
     }
+    return false
   }
 
   @discardableResult func update(_ point: CGPoint, active: Bool = true) -> NSCursor? {
     var target: FloatingHoverRegionView?
     var smallest = CGFloat.infinity
+    var cachedWindow: NSWindow?
+    var cachedWindowPoint = CGPoint.zero
     if active {
       for region in regions.reversed() {
-        guard let view = region.view, let bounds = view.screenBounds, bounds.contains(point)
+        guard let view = region.view, view.enabled, let window = view.window, window.isVisible,
+          (window as? any FloatingHoverHost)?.hoverInteractive == true,
+          window.frame.contains(point)
+        else { continue }
+        if cachedWindow !== window {
+          cachedWindow = window
+          cachedWindowPoint = window.convertPoint(fromScreen: point)
+        }
+        guard view.mightContain(windowPoint: cachedWindowPoint),
+          let bounds = view.screenBounds, bounds.contains(point)
         else { continue }
         let area = bounds.width * bounds.height
         if area < smallest {

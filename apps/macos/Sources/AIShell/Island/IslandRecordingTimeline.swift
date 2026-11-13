@@ -29,21 +29,12 @@ struct IslandRecordingTimeline: View {
     // Round buttons stand centred on the strip.
     let buttonTop = (film - IslandMetrics.controlSide) / 2
     HStack(alignment: .top, spacing: IslandMetrics.recordingClockGap) {
-      IslandIconButton(
-        glyph: card.playing ? IslandIcons.pause : IslandIcons.play,
-        label: card.playing ? labels.pause : labels.play
-      ) { card.togglePlay() }
-      .padding(.top, buttonTop)
+      IslandRecordingPlayButton(card: card, labels: labels)
+        .padding(.top, buttonTop)
       IslandRecordingTrack(card: card, labels: labels, film: film, bubble: bubble)
         .frame(height: film + IslandMetrics.recordingMarksBand)
-      IslandStableText(
-        text: RecordingClock.text(card.playhead) + " / " + RecordingClock.text(source.duration),
-        reserve: [reserve + " / " + reserve]
-      )
-      .font(IslandType.hint)
-      .monospacedDigit()
-      .foregroundStyle(.secondary)
-      .frame(height: film)
+      IslandRecordingClock(card: card, reserve: reserve)
+        .frame(height: film)
       if let fullScreen {
         IslandIconButton(
           glyph: IslandIcons.fullScreen, label: labels.fullScreen,
@@ -55,6 +46,35 @@ struct IslandRecordingTimeline: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text(verbatim: labels.timeline))
+  }
+}
+
+/// Play/pause toggle isolated so `card.playing` changes do not rebuild the track or filmstrip.
+private struct IslandRecordingPlayButton: View {
+  let card: IslandRecordingCardModel
+  let labels: IslandRecordingLabels
+
+  var body: some View {
+    IslandIconButton(
+      glyph: card.playing ? IslandIcons.pause : IslandIcons.play,
+      label: card.playing ? labels.pause : labels.play
+    ) { card.togglePlay() }
+  }
+}
+
+/// Live playhead/duration readout isolated so 60fps playback updates only this leaf view.
+private struct IslandRecordingClock: View {
+  let card: IslandRecordingCardModel
+  let reserve: String
+
+  var body: some View {
+    IslandStableText(
+      text: RecordingClock.text(card.playhead) + " / " + RecordingClock.text(card.source.duration),
+      reserve: [reserve + " / " + reserve]
+    )
+    .font(IslandType.hint)
+    .monospacedDigit()
+    .foregroundStyle(.secondary)
   }
 }
 
@@ -86,24 +106,29 @@ struct IslandRecordingFilm: View {
 
 /// A step's dot under the strip: the accent at the playhead's step, dimmed outside the kept
 /// range, larger while it or its row has the pointer. Its hit area is larger than the dot.
-struct IslandRecordingMark: View {
+struct IslandRecordingMark: View, Equatable {
   let card: IslandRecordingCardModel
   let index: Int
+  let isKept: Bool
+  let isCurrent: Bool
+  let isHovered: Bool
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.card === rhs.card && lhs.index == rhs.index && lhs.isKept == rhs.isKept
+      && lhs.isCurrent == rhs.isCurrent && lhs.isHovered == rhs.isHovered
+  }
 
   var body: some View {
     let step = card.source.steps[index]
-    let kept = card.state.keeps(step: index)
-    let now = card.currentStep == index
-    let hot = card.hoveredStep == index
     Circle()
       .fill(
-        now
+        isCurrent
           ? AnyShapeStyle(Color.accentColor)
-          : kept ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary)
+          : isKept ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary)
       )
       .frame(width: 6, height: 6)
-      .scaleEffect(hot ? 1.5 : 1)
-      .animation(.easeOut(duration: 0.12), value: hot)
+      .scaleEffect(isHovered ? 1.5 : 1)
+      .animation(.easeOut(duration: 0.12), value: isHovered)
       .frame(width: 18, height: 18)
       .contentShape(Rectangle())
       .onTapGesture { card.seek(step.time) }

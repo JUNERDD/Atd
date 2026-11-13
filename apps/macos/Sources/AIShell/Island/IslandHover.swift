@@ -36,6 +36,12 @@ final class IslandPointerHover {
     update(NSEvent.mouseLocation)
   }
 
+  /// Re-evaluates pointer hover regions at the current cursor position once an entering or
+  /// morphing island finishes settling and becomes hover-interactive.
+  func refresh() {
+    update(NSEvent.mouseLocation)
+  }
+
   private func update(_ point: CGPoint) {
     if let window = dragWindow,
       !window.isVisible || !window.hoverInteractive || NSEvent.pressedMouseButtons & 1 == 0
