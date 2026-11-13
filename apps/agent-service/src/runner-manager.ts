@@ -75,6 +75,7 @@ export class RunnerManager {
       draining: () => this.draining,
       runner: (taskId) => this.runners.get(taskId),
       executing: (runId) => this.executions.has(runId),
+      onReleased: (taskId, runner) => this.evictRunner(taskId, runner),
     });
     this.searcher = new TaskSearch({
       ledger: deps.ctx.ledger,
@@ -330,6 +331,14 @@ export class RunnerManager {
       this.acceptance,
       this.deps.log,
     );
+  }
+
+  private evictRunner(taskId: string, runner: unknown): void {
+    const current = this.runners.get(taskId);
+    if (!current || current !== runner) return;
+    if (current.isLive() || current.isCompacting() || current.isReleasing()) return;
+    if (current.pending.held.state()?.followUp.length) return;
+    this.runners.delete(taskId);
   }
 }
 

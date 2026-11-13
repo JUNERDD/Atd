@@ -137,7 +137,9 @@ export class AgentStreamClient {
       onMessage: (text) => {
         if (!current()) return;
         void this.onMessage(text).catch((error: unknown) => {
-          this.handlers.onDisconnect?.(error instanceof Error ? error.message : 'Stream error.');
+          // Drop malformed individual frames rather than reporting a disconnect without closing,
+          // which would flap connection state and trigger full reload storms on the next frame.
+          console.warn('Ignored malformed stream frame:', error);
         });
       },
       onClose: (code, reason) => {
