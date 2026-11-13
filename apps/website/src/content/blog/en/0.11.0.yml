@@ -1,5 +1,5 @@
 version: '0.11.0'
-date: '2026-11-13'
+date: '2026-11-14'
 title: Capture more of your screen and act on it in place
 summary: Record your screen with detected steps and narration, stitch scrolling pages into long screenshots, run commands on text inside a screenshot, and read formatted Markdown on floating result cards.
 highlights:
@@ -16,7 +16,7 @@ highlights:
     alt: The Screen Recording result card over a dusk mountain ridge backdrop, with a video preview on the left, timestamped actions under Steps Atd Will Read on the right, a trimmed filmstrip timeline, and quick question chips, with a handwritten arrow pointing to the card.
   - title: Long screenshots for scrolling pages
     body: |-
-      Select a scrollable area on a display and click **Long screenshot** on the toolbar, or press `⌘↓`. Scroll through the page yourself or press `Space` for **Auto-scroll** while Atd stitches the selection live alongside a preview strip. Press `↩` to open the **Long Screenshot** card, where you can trim the top and bottom, inspect **What Atd Will Read** page by page, cover sensitive info, annotate in full-screen preview, ask about the capture, or copy or attach it.
+      Select a scrollable area on a display and click **Long screenshot** on the toolbar, or press `⌘↓`. Scroll through the page yourself or press `Space` for **Auto-scroll** while Atd stitches the selection live alongside a preview strip. Press `↩` to open the **Long Screenshot** card, where you can trim the top and bottom, inspect **What Atd Will Read** page by page, cover sensitive info, annotate in full-screen preview, ask about the capture, or save, copy, or attach it.
 
       Every screenshot now also includes a command row for **Ask Atd**, **Copy Text**, **Cover Sensitive Info**, and screenshot commands — including starter commands to explain, translate, or summarize a screenshot, or transcribe it as Markdown. Questions and commands started from screenshots or recordings live in their own **Captures** tab in task history, with **Show captures in All** available under View options.
     image: /media/blog/0.11.0/long-screenshots.en.webp
@@ -51,10 +51,10 @@ improvements:
   - text: '**Read aloud** starts faster by caching installed macOS speech voices.'
   - text: Filter **Memory** by user profile, preferences and facts, corrections and learnings, or tool preferences, with clearer empty and search-result states.
   - text: Provider connections now accept **plain HTTP endpoints**, including internal hostnames, with an inline warning for non-loopback connections.
-  - text: Added **Settings › General › Screenshot** options to copy confirmed screenshots to the clipboard automatically and choose whether confirming a long screenshot opens its result card or copies and closes, with a **Copied** capsule on the Dynamic Island.
+  - text: Added **Save location** settings (including **Ask each time**) and direct **Save** (`⌘S` on screenshots, result cards, and full-screen previews), plus **Settings › General › Screenshot** options to copy confirmed screenshots automatically or choose whether confirming a long screenshot opens its card, copies, or saves, with Dynamic Island feedback.
   - text: Added **Tips & Notices…** in the menu bar and an in-app prompt to re-grant **Accessibility** and **Screen Recording** if a Developer ID signing certificate update invalidates earlier macOS permissions.
   - text: '**Floating island, recording playback, and lightweight capture runs** now size and track hover more efficiently, isolate 60 fps video playback updates, and run eligible screenshot-text commands on faster lightweight sessions.'
-  - text: '**Long conversations, streaming, and search** stay smoother with bounded live tool output, background worker highlighting for large diffs and code blocks, lazy JSON trees, debounced draft persistence, and reduced background work while the panel is hidden.'
+  - text: '**Settings, long conversations, streaming, and search** open and stay smoother with native loading feedback and preloaded settings sections, bounded live tool output, background worker highlighting for large diffs and code blocks, lazy JSON trees, debounced draft persistence, and reduced background work while the panel is hidden.'
 fixes:
   - text: Fixed **focus handoffs and answer write-backs** triggered by shortcuts so they wait cleanly for shortcut keys to be released — including over remote input — and keep the answer on its card if focus changes before writing finishes.
   - text: Fixed the **selection toolbar** reading selections from background apps or triggering on empty Chromium selection markers and navigation tables in Apple Notes.
