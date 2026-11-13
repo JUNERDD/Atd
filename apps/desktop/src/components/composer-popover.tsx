@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Popover, PopoverAnchor, PopoverContent } from '@atd/ui/components/popover';
@@ -129,6 +129,32 @@ export function ComposerPopover({
   // opening is the primitive's fade and zoom at the final size.
   const [entered, setEntered] = useState(false);
   if (!open && entered) setEntered(false);
+  // Only poll position with `always` briefly when opening, switching views, or when the pill
+  // resizes, rather than running an idle per-frame loop while the popover sits open.
+  const [tracking, setTracking] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    let timer = 0;
+    const trackBriefly = () => {
+      setTracking(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setTracking(false), 300);
+    };
+    const frame = requestAnimationFrame(trackBriefly);
+    const node = anchor.current;
+    const observer = node ? new ResizeObserver(trackBriefly) : null;
+    if (node && observer) {
+      observer.observe(node);
+      const pill = node.querySelector('.composer-progress');
+      if (pill) observer.observe(pill);
+    }
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.clearTimeout(timer);
+      setTracking(false);
+    };
+  }, [open, shown]);
   const reduced = useReducedMotion();
   const [anchorFor] = useState(createViewAnchor);
   // A new reference per view makes Radix re-anchor when the view changes.
@@ -218,9 +244,9 @@ export function ComposerPopover({
         className="composer-popover"
         // Radix unmounts closed content at once when it has no exit animation to wait for.
         data-instant-close={hidden || undefined}
-        // The pill can reflow under an open view (a part appears or its count changes), which no
-        // resize of the popover or window reports.
-        updatePositionStrategy="always"
+        // The pill can reflow under an open view (a part appears or its count changes); track
+        // briefly during transitions and pill resizes instead of running an idle rAF loop.
+        updatePositionStrategy={open && tracking ? 'always' : 'optimized'}
         aria-label={rendered === null ? undefined : labels[rendered]}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}

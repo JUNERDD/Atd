@@ -21,6 +21,33 @@ const MAX_UNITS = 1 << 20;
 /** The states this window saved, newest last, which outlive storage that refused them. */
 const memory = new Map<string, unknown>();
 
+/**
+ * In-memory LRU index of `PREFIX` items in `localStorage` (oldest first), lazily hydrated once
+ * so `saveViewState` evicts in O(1) instead of scanning all `localStorage` keys on every save.
+ */
+type StoredEntry = { at: number; units: number };
+let storedIndex: Map<string, StoredEntry> | null = null;
+let storedUnits = 0;
+
+function ensureStoredIndex(): Map<string, StoredEntry> {
+  if (storedIndex !== null) return storedIndex;
+  const items: Array<{ name: string; at: number; units: number }> = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const name = localStorage.key(index);
+    if (!name?.startsWith(PREFIX)) continue;
+    const value = localStorage.getItem(name) ?? '';
+    items.push({ name, at: writtenAt(value), units: name.length + value.length });
+  }
+  items.sort((a, b) => a.at - b.at);
+  storedIndex = new Map();
+  storedUnits = 0;
+  for (const item of items) {
+    storedIndex.set(item.name, { at: item.at, units: item.units });
+    storedUnits += item.units;
+  }
+  return storedIndex;
+}
+
 /** An item's value: the time it was written (epoch ms), a colon, then the state's JSON. */
 function encode(state: unknown, at: number): string {
   return `${at}:${JSON.stringify(state ?? null)}`;
@@ -45,22 +72,12 @@ function decode(value: string): unknown {
 }
 
 /** Removes the views written least recently until the rest fit both caps. */
-function evict() {
-  const items: { name: string; at: number; units: number }[] = [];
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const name = localStorage.key(index);
-    if (!name?.startsWith(PREFIX)) continue;
-    const value = localStorage.getItem(name) ?? '';
-    items.push({ name, at: writtenAt(value), units: name.length + value.length });
-  }
-  items.sort((a, b) => a.at - b.at);
-  let count = items.length;
-  let units = items.reduce((sum, item) => sum + item.units, 0);
-  for (const item of items) {
-    if (count <= MAX_VIEWS && units <= MAX_UNITS) return;
-    localStorage.removeItem(item.name);
-    count -= 1;
-    units -= item.units;
+function evict(index: Map<string, StoredEntry>) {
+  for (const [name, entry] of index) {
+    if (index.size <= MAX_VIEWS && storedUnits <= MAX_UNITS) return;
+    localStorage.removeItem(name);
+    index.delete(name);
+    storedUnits -= entry.units;
   }
 }
 
@@ -68,11 +85,19 @@ function evict() {
 export function readViewState(key: string): unknown {
   if (memory.has(key)) return memory.get(key);
   try {
-    const value = localStorage.getItem(PREFIX + key);
+    const storageKey = PREFIX + key;
+    const value = localStorage.getItem(storageKey);
     if (value === null) return null;
     const state = decode(value);
     // What this format cannot read must never break the view that reads it.
-    if (state === undefined) localStorage.removeItem(PREFIX + key);
+    if (state === undefined) {
+      localStorage.removeItem(storageKey);
+      const removed = storedIndex?.get(storageKey);
+      if (removed) {
+        storedIndex?.delete(storageKey);
+        storedUnits -= removed.units;
+      }
+    }
     return state ?? null;
   } catch {
     return null;
@@ -86,9 +111,23 @@ export function saveViewState(key: string, state: unknown): void {
   const oldest = memory.size > MAX_VIEWS ? memory.keys().next().value : undefined;
   if (oldest !== undefined) memory.delete(oldest);
   try {
-    localStorage.setItem(PREFIX + key, encode(state, Date.now()));
-    evict();
+    const storageKey = PREFIX + key;
+    const at = Date.now();
+    const encoded = encode(state, at);
+    localStorage.setItem(storageKey, encoded);
+    const index = ensureStoredIndex();
+    const previous = index.get(storageKey);
+    if (previous) {
+      index.delete(storageKey);
+      storedUnits -= previous.units;
+    }
+    const units = storageKey.length + encoded.length;
+    index.set(storageKey, { at, units });
+    storedUnits += units;
+    evict(index);
   } catch {
-    // Storage is unavailable or full: this window keeps the state in memory.
+    // Reset cached index so another window's entries can be discovered on next write, keeping memory fallback.
+    storedIndex = null;
+    storedUnits = 0;
   }
 }

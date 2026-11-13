@@ -170,15 +170,39 @@ function timeOf(date: Date): number {
   return date.getTime() || 0;
 }
 
+const MAX_LOCALE_CACHE = 16;
+const collators = new Map<string, Intl.Collator>();
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+function collatorFor(language: string): Intl.Collator {
+  let collator = collators.get(language);
+  if (!collator) {
+    collator = new Intl.Collator(language, { numeric: true, sensitivity: 'base' });
+    if (collators.size >= MAX_LOCALE_CACHE) collators.clear();
+    collators.set(language, collator);
+  }
+  return collator;
+}
+
+function yesterdayLabel(language: string): string {
+  let format = relativeFormats.get(language);
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+    if (relativeFormats.size >= MAX_LOCALE_CACHE) relativeFormats.clear();
+    relativeFormats.set(language, format);
+  }
+  return format.format(-1, 'day');
+}
+
 /** `items` in the view's order. Rows that compare equal keep their incoming order. */
 export function sortHistory<T extends { task: AgentTask }>(
   items: readonly T[],
   sort: HistorySort,
   language: string,
 ): T[] {
-  const collator = new Intl.Collator(language, { numeric: true, sensitivity: 'base' });
+  const collator = sort === 'title' ? collatorFor(language) : null;
   return [...items].sort((a, b) =>
-    sort === 'title'
+    collator
       ? collator.compare(a.task.title, b.task.title)
       : timeOf(dateOfTask(b.task, sort)) - timeOf(dateOfTask(a.task, sort)),
   );
@@ -276,8 +300,7 @@ export function rowDate(date: Date, now: Date, language: string, dayHeading: boo
   if (days <= 0) return time;
   if (days === 1) {
     if (dayHeading) return time;
-    const yesterday = new Intl.RelativeTimeFormat(language, { numeric: 'auto' }).format(-1, 'day');
-    return `${yesterday} ${time}`;
+    return `${yesterdayLabel(language)} ${time}`;
   }
   if (days < 7) return date.toLocaleDateString(language, { weekday: 'long' });
   return date.toLocaleDateString(language, {

@@ -52,7 +52,7 @@ export function HitlFooterScope({ children }: { children: ReactNode }) {
 export function HitlActions({ error, children }: { error?: string; children: ReactNode }) {
   const scope = use(HitlFooterContext);
   const row = useRef<HTMLDivElement>(null);
-  const stacked = useStackedDecisions(row);
+  const stacked = useStackedDecisions(row, scope?.placed ?? true);
   const actions = (
     <div className="hitl-actions">
       <div ref={row} className="approval-actions" data-stacked={stacked || undefined}>
@@ -71,10 +71,10 @@ export function HitlActions({ error, children }: { error?: string; children: Rea
 /**
  * Whether the decisions stack: they sit side by side at their natural widths while all of them fit
  * the row, and otherwise take one full-width row each, so a wrap never leaves one alone on a row
- * of its own. The row is measured on every render, since its labels change with the request and
- * the language and its footer may have just been placed, and whenever it or a decision resizes.
+ * of its own. Observes size and child/label mutations and re-runs when the portal footer mounts,
+ * avoiding a synchronous measure and ResizeObserver teardown on unrelated parent renders.
  */
-function useStackedDecisions(row: RefObject<HTMLDivElement | null>) {
+function useStackedDecisions(row: RefObject<HTMLDivElement | null>, placed: boolean) {
   const [stacked, setStacked] = useState(false);
   useLayoutEffect(() => {
     const node = row.current;
@@ -88,12 +88,24 @@ function useStackedDecisions(row: RefObject<HTMLDivElement | null>) {
       // parts and the row never passes a row that wraps as one that fits.
       setStacked(needed > node.getBoundingClientRect().width - 0.5);
     };
+    const resizeObserver = new ResizeObserver(measure);
+    const observeChildren = () => {
+      resizeObserver.disconnect();
+      resizeObserver.observe(node);
+      for (const decision of node.children) resizeObserver.observe(decision);
+    };
+    const mutationObserver = new MutationObserver(() => {
+      observeChildren();
+      measure();
+    });
     measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    for (const decision of node.children) observer.observe(decision);
-    return () => observer.disconnect();
-  });
+    observeChildren();
+    mutationObserver.observe(node, { childList: true, subtree: true, characterData: true });
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, [row, placed]);
   return stacked;
 }
 

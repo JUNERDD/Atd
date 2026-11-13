@@ -43,6 +43,12 @@ export function overflowWatcher(report: (overflowing: boolean) => void): Extensi
   return ViewPlugin.define((view) => {
     let collapsedWidth: number | null = null;
     let wrappedWidth: number | null = null;
+    let reported: boolean | null = null;
+    const emit = (overflowing: boolean) => {
+      if (overflowing === reported) return;
+      reported = overflowing;
+      report(overflowing);
+    };
     const measure = {
       // One pending measure per view: a newer request replaces the scheduled one.
       key: {},
@@ -56,17 +62,22 @@ export function overflowWatcher(report: (overflowing: boolean) => void): Extensi
         }
         // Wrapped since mount, with no collapsed row measured: collapse, and let that measure decide.
         if (collapsedWidth === null) return false;
+        // Wait until `.composer-surface[data-expanded="true"]` has committed before latching the
+        // expanded width, so a pre-expansion measurement cannot poison `room` and oscillate.
+        const surface = current.dom.closest('[data-expanded]');
+        if (surface && surface.getAttribute('data-expanded') !== 'true') return true;
         const wrapped = (wrappedWidth ??= width);
         const room = collapsedWidth + (width - wrapped);
         return oneRowWidth(current) > room - COLLAPSE_MARGIN;
       },
-      write: report,
+      write: emit,
     };
     view.requestMeasure(measure);
     // A chip draws its label in its own React root after CodeMirror lays out the line, so its width
-    // arrives without a document or geometry change; the content's own size catches it.
+    // arrives without a document or geometry change; the content's and scroller's sizes catch it.
     const resized = new ResizeObserver(() => view.requestMeasure(measure));
     resized.observe(view.contentDOM);
+    resized.observe(view.scrollDOM);
     return {
       update(update) {
         if (update.docChanged || update.geometryChanged) update.view.requestMeasure(measure);

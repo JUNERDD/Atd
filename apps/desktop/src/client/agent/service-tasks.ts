@@ -17,7 +17,7 @@ import {
   type TaskTranscript,
 } from './service-map';
 import { applyTaskEvent } from './task-events';
-import { TaskLoads } from './task-replay';
+import { copyDetail, copyTaskState, TaskLoads, TaskSnapshotIndex } from './task-replay';
 import { TaskRecovery } from './task-recovery';
 import { applySummaries } from './task-summaries';
 
@@ -61,8 +61,10 @@ export class TaskClient<S> {
   /** The task each view shows. */
   private readonly holds = new Map<S, string>();
   /** Loads in flight, so a burst of events for one task loads it once. */
+  private readonly detailing = new Map<string, Promise<TaskDetail>>();
   private readonly reloading = new Map<string, Promise<void>>();
   private readonly summarizing = new Map<string, Promise<void>>();
+  private readonly snapshots = new TaskSnapshotIndex();
   /** Keeps loads in step with the stream events of their tasks. */
   readonly loads = new TaskLoads();
   readonly recovery = new TaskRecovery();
@@ -80,19 +82,15 @@ export class TaskClient<S> {
     });
   }
 
-  /**
-   * The cached tasks, newest first, as copies. Stream events update the entries in place, and the
-   * page's views read what this cache publishes without a process boundary cloning it, so handing
-   * out an entry would let a later event change a value a view already compared by identity.
-   */
+  /** Cached tasks, newest first, reusing immutable task copies until a task updates. */
   tasks() {
-    return [...this.entries.values()]
-      .map((entry) => structuredClone(entry.task))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return this.snapshots.list();
   }
 
   clear() {
     this.entries.clear();
+    this.snapshots.clear();
+    this.detailing.clear();
     this.loads.clear();
     this.recovery.clear();
     this.revisions.clear();
@@ -106,25 +104,31 @@ export class TaskClient<S> {
     return client;
   }
 
-  /**
-   * Loads and caches a task's snapshot. With `holder`, that view now shows the task: its
-   * transcript stays cached and follows the stream, and the task the view showed before keeps
-   * its summary only unless another view holds it.
-   */
+  /** Loads and caches a task's snapshot, coalescing concurrent loads per taskId. */
   async detail(taskId: string, holder?: S): Promise<TaskDetail> {
     if (holder !== undefined) {
       const previous = this.holds.get(holder);
       this.holds.set(holder, taskId);
       if (previous !== undefined && previous !== taskId) this.unload(previous);
     }
-    return this.loads.load(
-      taskId,
-      async () => (await this.http().snapshot(taskId)).snapshot,
-      (snapshot): LoadedTask => ({ ...mapSummary(snapshot), transcript: mapTranscript(snapshot) }),
-      (snapshot, state) => {
-        this.store(snapshot, { ...state, transcript: this.held(taskId) ? state.transcript : null });
-        return structuredClone(taskDetail(state, state.transcript));
-      },
+    const existing = this.detailing.get(taskId);
+    if (existing) return copyDetail(await existing);
+    return this.once(this.detailing, taskId, () =>
+      this.loads.load(
+        taskId,
+        async () => (await this.http().snapshot(taskId)).snapshot,
+        (snapshot): LoadedTask => ({
+          ...mapSummary(snapshot),
+          transcript: mapTranscript(snapshot),
+        }),
+        (snapshot, state) => {
+          this.store(snapshot, {
+            ...state,
+            transcript: this.held(taskId) ? state.transcript : null,
+          });
+          return copyDetail(taskDetail(state, state.transcript));
+        },
+      ),
     );
   }
 
@@ -144,7 +148,7 @@ export class TaskClient<S> {
     const entry = this.entries.get(taskId);
     // The view moved to another task meanwhile, which unloaded this one's transcript.
     if (!entry?.transcript) return this.detail(taskId);
-    return structuredClone(taskDetail(entry, entry.transcript));
+    return copyDetail(taskDetail(entry, entry.transcript));
   }
 
   /** A view went away (a closed or reloaded window); the task it showed may unload. */
@@ -154,11 +158,14 @@ export class TaskClient<S> {
     if (taskId !== undefined) this.unload(taskId);
   }
 
-  /** Forgets a deleted task: its entry, the holds on it and its subagent transcripts. */
+  /** Forgets a deleted task: its entry, revisions, snapshots, holds and subagent transcripts. */
   forget(taskId: string) {
     this.entries.delete(taskId);
+    this.snapshots.delete(taskId);
+    this.detailing.delete(taskId);
     this.loads.forget(taskId);
     this.recovery.forget(taskId);
+    for (const [id, rev] of this.revisions) if (rev.taskId === taskId) this.revisions.delete(id);
     for (const [holder, held] of this.holds) if (held === taskId) this.holds.delete(holder);
     this.children.forgetTask(taskId);
   }
@@ -183,26 +190,13 @@ export class TaskClient<S> {
     });
   }
 
-  /**
-   * Publishes a task change: its state to the views that load it, the task list to all. The state
-   * is a copy, like `detail()` and `tasks()`: a run's status changes on the cached run in place, so
-   * publishing the entry itself would hand a view the same `runs` it already holds, and a view
-   * memoized on that identity would keep the run's earlier status.
-   */
+  /** Publishes a task change using isolated shallow copies of mutated task fields. */
   publishTask(taskId: string) {
     const entry = this.entries.get(taskId);
-    if (entry?.transcript) {
-      const { task, requests, queue } = entry;
-      this.host.emit({
-        type: 'task',
-        state: structuredClone({
-          task,
-          artifacts: [],
-          requests,
-          queue,
-          context: entry.transcript.context,
-        }),
-      });
+    if (entry) {
+      const taskCopy = this.snapshots.update(entry.task);
+      if (entry.transcript)
+        this.host.emit({ type: 'task', state: copyTaskState(entry, entry.transcript, taskCopy) });
     }
     this.host.broadcast();
   }
@@ -258,6 +252,7 @@ export class TaskClient<S> {
    */
   private store(summary: TaskSummary, entry: CachedTask): CachedTask {
     this.entries.set(summary.task.id, entry);
+    this.snapshots.update(entry.task);
     for (const request of summary.requests)
       if (entry.requests.some((item) => item.id === request.id))
         this.revisions.set(request.id, {
@@ -301,10 +296,12 @@ export class TaskClient<S> {
     }
   }
 
-  private once(inFlight: Map<string, Promise<void>>, taskId: string, load: () => Promise<void>) {
+  private once<T>(inFlight: Map<string, Promise<T>>, taskId: string, load: () => Promise<T>) {
     let pending = inFlight.get(taskId);
     if (pending) return pending;
-    pending = load().finally(() => inFlight.delete(taskId));
+    pending = load().finally(() => {
+      if (inFlight.get(taskId) === pending) inFlight.delete(taskId);
+    });
     inFlight.set(taskId, pending);
     return pending;
   }

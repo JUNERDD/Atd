@@ -1,6 +1,10 @@
 import type { ServiceEvent } from '@atd/agent-contracts';
+import type { TaskDetail, TaskState } from './bridge';
+import type { TaskSummaryState, TaskTranscript } from './service-map';
 import type { CachedTask } from './service-tasks';
+import type { AgentTask } from './task-schema';
 import { applyEventState } from './task-events';
+import type { QueueState } from './transcript-schema';
 
 /** A position in the service's event stream: an answer's, or an event's own. */
 interface StreamPosition {
@@ -95,8 +99,9 @@ export class TaskLoads {
         this.stop(taskId, recording);
       }
       // Metadata writes (such as cancelling suggestions) carry no replayable task event. A read
-      // predating their refresh must be repeated, including the detail returned to its caller.
-      if (recording.invalidated) continue;
+      // predating their refresh is repeated up to `LOAD_ATTEMPTS`, keeping the last answer if still
+      // racing so repeated invalidations cannot spin indefinitely.
+      if (recording.invalidated && attempt < LOAD_ATTEMPTS) continue;
       const state = seed(loaded);
       const events = recording.events.filter((event) => follows(event, loaded));
       const lost = recording.dropped !== null && follows(recording.dropped, loaded);
@@ -154,5 +159,66 @@ export class TaskLoads {
     const recordings = this.recordings.get(taskId);
     recordings?.delete(recording);
     if (recordings?.size === 0) this.recordings.delete(taskId);
+  }
+}
+
+export function copyTask(task: AgentTask): AgentTask {
+  return { ...task, runs: task.runs.map((run) => ({ ...run })) };
+}
+
+export function copyQueue(queue: QueueState): QueueState {
+  return { steering: [...queue.steering], followUp: [...queue.followUp] };
+}
+
+export function copyDetail(detail: TaskDetail): TaskDetail {
+  return {
+    ...detail,
+    task: copyTask(detail.task),
+    requests: detail.requests.slice(),
+    queue: copyQueue(detail.queue),
+    ...(detail.capabilities ? { capabilities: detail.capabilities.slice() } : {}),
+    context: { ...detail.context },
+    blocks: detail.blocks.slice(),
+  };
+}
+
+export function copyTaskState(
+  entry: TaskSummaryState,
+  transcript: TaskTranscript,
+  task = copyTask(entry.task),
+): TaskState {
+  return {
+    task,
+    artifacts: [],
+    requests: entry.requests.slice(),
+    queue: copyQueue(entry.queue),
+    context: { ...transcript.context },
+  };
+}
+
+/** Caches immutable shallow copies of task summaries so `tasks()` skips cloning unchanged tasks. */
+export class TaskSnapshotIndex {
+  private readonly items = new Map<string, AgentTask>();
+  private sorted: AgentTask[] | null = null;
+
+  update(task: AgentTask): AgentTask {
+    const copy = copyTask(task);
+    this.items.set(task.id, copy);
+    this.sorted = null;
+    return copy;
+  }
+
+  delete(taskId: string) {
+    if (this.items.delete(taskId)) this.sorted = null;
+  }
+
+  clear() {
+    this.items.clear();
+    this.sorted = null;
+  }
+
+  list(): AgentTask[] {
+    this.sorted ??= [...this.items.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return [...this.sorted];
   }
 }
