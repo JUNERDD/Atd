@@ -226,7 +226,7 @@
   },
   "general": {
     "title": "通用",
-    "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
+    "description": "外观、窗口、通知、工具栏、截图与快捷键。点击快捷键后按下新的组合键，按 Esc 取消。"
   },
   "panelBackground": {
     "title": "面板背景",
@@ -488,11 +488,11 @@
       }
     },
     "groups": {
-      "global": "全局",
-      "inApp": "应用内",
+      "global": "全局快捷键",
+      "inApp": "应用内快捷键",
       "appearance": "外观",
       "conversation": "对话",
-      "window": "窗口"
+      "window": "窗口与启动"
     },
     "actions": {
       "togglePanel": {

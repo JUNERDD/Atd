@@ -80,26 +80,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
         } satisfies SettingsSearchEntry,
       ]
     : []),
-  ...(
-    [
-      'togglePanel',
-      'captureScreenshot',
-      'recordScreen',
-      'newConversation',
-      'openSettings',
-      'sendMessage',
-      'newLine',
-    ] as const
-  ).map((action): SettingsSearchEntry => ({
-    id: `shortcut-${action}`,
-    section: 'general',
-    anchor: `shortcut-${action}`,
-    label: `shortcuts.actions.${action}.label`,
-    description: `shortcuts.actions.${action}.description`,
-    keywords: 'search.keywords.shortcutAction',
-  })),
   ...appearanceSearchEntries,
-  ...conversationSearchEntries,
   {
     id: 'window-open-at-login',
     section: 'general',
@@ -151,6 +132,24 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   ...notificationSearchEntries,
   ...selectionToolbarSearchEntries,
   ...screenshotSearchEntries,
+  ...(
+    [
+      'togglePanel',
+      'captureScreenshot',
+      'recordScreen',
+      'newConversation',
+      'openSettings',
+      'sendMessage',
+      'newLine',
+    ] as const
+  ).map((action): SettingsSearchEntry => ({
+    id: `shortcut-${action}`,
+    section: 'general',
+    anchor: `shortcut-${action}`,
+    label: `shortcuts.actions.${action}.label`,
+    description: `shortcuts.actions.${action}.description`,
+    keywords: 'search.keywords.shortcutAction',
+  })),
   {
     id: 'shortcuts-restore-defaults',
     section: 'general',
@@ -158,6 +157,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'shortcuts.restoreDefaults',
     keywords: 'search.keywords.restoreDefaults',
   },
+  ...conversationSearchEntries,
   {
     id: 'providers-default-model',
     section: 'providers',

@@ -226,7 +226,7 @@
   },
   "general": {
     "title": "General",
-    "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+    "description": "Appearance, window, notifications, toolbar, screenshot, and shortcuts. Click a shortcut, then press the new keys; Escape cancels."
   },
   "panelBackground": {
     "title": "Panel background",
@@ -488,11 +488,11 @@
       }
     },
     "groups": {
-      "global": "Global",
-      "inApp": "In app",
+      "global": "Global shortcuts",
+      "inApp": "In-app shortcuts",
       "appearance": "Appearance",
       "conversation": "Conversation",
-      "window": "Window"
+      "window": "Window & startup"
     },
     "actions": {
       "togglePanel": {

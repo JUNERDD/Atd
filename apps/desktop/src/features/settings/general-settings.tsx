@@ -121,57 +121,7 @@ export function GeneralSettings({
             </Card>
           </section>
         )}
-        <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
-          <h3 id="settings-global-shortcuts" className="settings-section-title">
-            {t('shortcuts.groups.global')}
-          </h3>
-          <Card size="sm" className="settings-card">
-            <ItemGroup>
-              <ShortcutRow
-                action="togglePanel"
-                label={t('shortcuts.actions.togglePanel.label')}
-                description={t('shortcuts.actions.togglePanel.description')}
-                settings={settings}
-                error={panelFailed ? t('shortcuts.errors.register') : undefined}
-              />
-              <ShortcutRow
-                action="captureScreenshot"
-                label={t('shortcuts.actions.captureScreenshot.label')}
-                description={t('shortcuts.actions.captureScreenshot.description')}
-                settings={settings}
-                error={screenshotFailed ? t('shortcuts.errors.register') : undefined}
-              />
-              <ShortcutRow
-                action="recordScreen"
-                label={t('shortcuts.actions.recordScreen.label')}
-                description={t('shortcuts.actions.recordScreen.description')}
-                settings={settings}
-                error={recordUnbound || (recordFailed ? t('shortcuts.errors.register') : undefined)}
-              />
-            </ItemGroup>
-          </Card>
-          {/* Only global shortcuts can collide with another app's; an error says it itself. */}
-          {!panelFailed && !screenshotFailed && !recordFailed && <ShortcutConflictHint />}
-        </section>
-        <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
-          <h3 id="settings-in-app-shortcuts" className="settings-section-title">
-            {t('shortcuts.groups.inApp')}
-          </h3>
-          <Card size="sm" className="settings-card">
-            <ItemGroup>
-              {IN_APP_SHORTCUTS.map(({ action, labelKey, descriptionKey }) => (
-                <ShortcutRow
-                  key={action}
-                  action={action}
-                  label={t(labelKey)}
-                  description={t(descriptionKey)}
-                  settings={settings}
-                />
-              ))}
-            </ItemGroup>
-          </Card>
-        </section>
-        {/* Window preferences belong to the desktop app; a browser tab has none. */}
+        {/* Window and startup preferences belong to the desktop app; a browser tab has none. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-window-group">
             <h3 id="settings-window-group" className="settings-section-title">
@@ -247,32 +197,82 @@ export function GeneralSettings({
         {desktopApp && <SelectionToolbarSettings snapshot={snapshot} />}
         {/* Screenshot preferences push to the native macOS shell, so they require the desktop app. */}
         {desktopApp && <ScreenshotSettings snapshot={snapshot} />}
-        {/* Restores the global shortcut as well as the in-app ones, so it follows every group. */}
-        <div className="settings-shortcut-restore">
-          {settings.errors.restore && (
-            <p id="settings-shortcut-restore-error" className="settings-inline-error" role="alert">
-              <CircleAlert aria-hidden="true" />
-              <span>{settings.errors.restore}</span>
-            </p>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="aria-disabled:opacity-50"
-            data-settings-anchor="shortcuts-restore-defaults"
-            disabled={settings.unavailable}
-            // Stays focusable once everything is default again, so focus does not drop away.
-            aria-disabled={restoreUnavailable || undefined}
-            aria-busy={restoring || undefined}
-            aria-describedby={
-              settings.errors.restore ? 'settings-shortcut-restore-error' : undefined
-            }
-            onClick={settings.restoreDefaults}
-          >
-            {restoring ? t('shortcuts.restoring') : t('shortcuts.restoreDefaults')}
-          </Button>
-        </div>
+        <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
+          <h3 id="settings-global-shortcuts" className="settings-section-title">
+            {t('shortcuts.groups.global')}
+          </h3>
+          <Card size="sm" className="settings-card">
+            <ItemGroup>
+              <ShortcutRow
+                action="togglePanel"
+                label={t('shortcuts.actions.togglePanel.label')}
+                description={t('shortcuts.actions.togglePanel.description')}
+                settings={settings}
+                error={panelFailed ? t('shortcuts.errors.register') : undefined}
+              />
+              <ShortcutRow
+                action="captureScreenshot"
+                label={t('shortcuts.actions.captureScreenshot.label')}
+                description={t('shortcuts.actions.captureScreenshot.description')}
+                settings={settings}
+                error={screenshotFailed ? t('shortcuts.errors.register') : undefined}
+              />
+              <ShortcutRow
+                action="recordScreen"
+                label={t('shortcuts.actions.recordScreen.label')}
+                description={t('shortcuts.actions.recordScreen.description')}
+                settings={settings}
+                error={recordUnbound || (recordFailed ? t('shortcuts.errors.register') : undefined)}
+              />
+            </ItemGroup>
+          </Card>
+          {/* Only global shortcuts can collide with another app's; an error says it itself. */}
+          {!panelFailed && !screenshotFailed && !recordFailed && <ShortcutConflictHint />}
+        </section>
+        <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
+          <h3 id="settings-in-app-shortcuts" className="settings-section-title">
+            {t('shortcuts.groups.inApp')}
+          </h3>
+          <Card size="sm" className="settings-card">
+            <ItemGroup>
+              {IN_APP_SHORTCUTS.map(({ action, labelKey, descriptionKey }) => (
+                <ShortcutRow
+                  key={action}
+                  action={action}
+                  label={t(labelKey)}
+                  description={t(descriptionKey)}
+                  settings={settings}
+                />
+              ))}
+            </ItemGroup>
+          </Card>
+          {/* Restores both global and in-app shortcuts, so it sits directly below the shortcut groups. */}
+          <div className="settings-shortcut-restore">
+            {settings.errors.restore && (
+              <p id="settings-shortcut-restore-error" className="settings-inline-error" role="alert">
+                <CircleAlert aria-hidden="true" />
+                <span>{settings.errors.restore}</span>
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="aria-disabled:opacity-50"
+              data-settings-anchor="shortcuts-restore-defaults"
+              disabled={settings.unavailable}
+              // Stays focusable once everything is default again, so focus does not drop away.
+              aria-disabled={restoreUnavailable || undefined}
+              aria-busy={restoring || undefined}
+              aria-describedby={
+                settings.errors.restore ? 'settings-shortcut-restore-error' : undefined
+              }
+              onClick={settings.restoreDefaults}
+            >
+              {restoring ? t('shortcuts.restoring') : t('shortcuts.restoreDefaults')}
+            </Button>
+          </div>
+        </section>
       </div>
     </>
   );
