@@ -41,17 +41,34 @@ function patternOf(query: string): RegExp {
   return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
 }
 
+function ancestorDisplayShown(
+  element: Element,
+  root: HTMLElement,
+  cache: Map<Element, boolean>,
+): boolean {
+  const cached = cache.get(element);
+  if (cached !== undefined) return cached;
+  const shown = getComputedStyle(element).display !== 'none';
+  if (!shown) {
+    cache.set(element, false);
+    return false;
+  }
+  const parent = element !== root ? element.parentElement : null;
+  const result = parent ? ancestorDisplayShown(parent, root, cache) : true;
+  cache.set(element, result);
+  return result;
+}
+
 /** Whether the text in `element` shows as part of the conversation under `root`. */
-function readable(element: Element, root: HTMLElement): boolean {
+function readable(element: Element, root: HTMLElement, cache: Map<Element, boolean>): boolean {
   const skipped = element.closest(SKIPPED);
   // Anything above `root` (the conversation covered by a layer) is not the search's concern.
   if (skipped && root.contains(skipped)) return false;
-  // `display: none` or `visibility: hidden` from a stylesheet; content-visibility's skipped turns
-  // still count, since they show once scrolled to.
-  return (
-    typeof element.checkVisibility !== 'function' ||
-    element.checkVisibility({ visibilityProperty: true })
-  );
+  // Avoid `checkVisibility()`: reading computed style avoids forced layout on skipped
+  // `content-visibility` turns while still honoring `display: none` and `visibility: hidden`.
+  const visibility = getComputedStyle(element).visibility;
+  if (visibility === 'hidden' || visibility === 'collapse') return false;
+  return ancestorDisplayShown(element, root, cache);
 }
 
 /**
@@ -62,6 +79,7 @@ function readable(element: Element, root: HTMLElement): boolean {
 export function collectHits(root: HTMLElement, query: string): FindHit[] {
   const pattern = patternOf(query);
   const hits: FindHit[] = [];
+  const displayCache = new Map<Element, boolean>();
   let outer: Element | null = null;
   for (const host of root.querySelectorAll(HOSTS)) {
     if (outer?.contains(host)) continue;
@@ -74,7 +92,7 @@ export function collectHits(root: HTMLElement, query: string): FindHit[] {
       // Visibility is read only for a node that matches: most text nodes do not.
       let shown: boolean | null = null;
       for (const match of (node.nodeValue ?? '').matchAll(pattern)) {
-        shown ??= readable(parent, root);
+        shown ??= readable(parent, root, displayCache);
         if (!shown) break;
         const range = document.createRange();
         range.setStart(node, match.index);

@@ -6,6 +6,42 @@ import { promptEntries, samePrompts, type PromptEntry } from './prompt-nav';
 /** A turn is being read while it reaches into the top third of the view. */
 const READING_BAND = '0px 0px -67% 0px';
 
+type CachedPrompt = { turnId: string; turnIndex: number; entry: PromptEntry };
+const entriesByRuns = new WeakMap<TaskRun[], Map<string, WeakMap<object, CachedPrompt>>>();
+
+function cachedPromptEntries(
+  turns: readonly AdaptedTurn[],
+  runs: TaskRun[],
+  fallback: string,
+): PromptEntry[] {
+  let byFallback = entriesByRuns.get(runs);
+  if (!byFallback) {
+    byFallback = new Map();
+    entriesByRuns.set(runs, byFallback);
+  }
+  let entries = byFallback.get(fallback);
+  if (!entries) {
+    entries = new WeakMap();
+    byFallback.set(fallback, entries);
+  }
+  const result: PromptEntry[] = [];
+  for (let turnIndex = 0; turnIndex < turns.length; turnIndex += 1) {
+    const turn = turns[turnIndex];
+    if (!turn?.user) continue;
+    const cached = entries.get(turn.user);
+    if (cached && cached.turnId === turn.id && cached.turnIndex === turnIndex) {
+      result.push(cached.entry);
+      continue;
+    }
+    const computed = promptEntries([turn], runs, fallback)[0];
+    if (!computed) continue;
+    const entry = { ...computed, turnIndex };
+    entries.set(turn.user, { turnId: turn.id, turnIndex, entry });
+    result.push(entry);
+  }
+  return result;
+}
+
 function turnElement(viewport: HTMLElement | null, turnId: string): HTMLElement | null {
   return viewport?.querySelector<HTMLElement>(`[data-turn-id="${CSS.escape(turnId)}"]`) ?? null;
 }
@@ -98,7 +134,10 @@ export function usePromptNav({
   pin: () => void;
   atBottom: boolean;
 }) {
-  const nextPrompts = useMemo(() => promptEntries(turns, runs, fallback), [turns, runs, fallback]);
+  const nextPrompts = useMemo(
+    () => cachedPromptEntries(turns, runs, fallback),
+    [turns, runs, fallback],
+  );
   const [prompts, setPrompts] = useState(nextPrompts);
   if (prompts !== nextPrompts && !samePrompts(prompts, nextPrompts)) setPrompts(nextPrompts);
   const reading = useReadingTurn(viewportRef, prompts, firstVisible);

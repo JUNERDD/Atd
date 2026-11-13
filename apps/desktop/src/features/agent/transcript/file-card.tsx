@@ -1,5 +1,5 @@
 import { getFiletypeFromFileName, type FileDiffMetadata } from '@pierre/diffs';
-import { FileDiff } from '@pierre/diffs/react';
+import { FileDiff, useWorkerPool } from '@pierre/diffs/react';
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@atd/ui/lib/utils';
 import { useColorScheme } from '../../../theme/color-scheme';
@@ -69,6 +69,8 @@ export function SourceView({
  * Hunks are divided by a plain separator, without the renderer's untranslated "unmodified lines"
  * caption.
  */
+const LARGE_DIFF_LINES = 200;
+
 export function DiffView({
   fileDiff,
   indicators = true,
@@ -77,10 +79,14 @@ export function DiffView({
   indicators?: boolean;
 }) {
   // The same scheme `CodeFile` reads; pierre keeps both themes' colors in one highlight, so a
-  // switch only repaints.
+  // switch only repaints. Large diffs re-key once onto the worker pool if mounted during boot.
   const themeType = useColorScheme();
+  const poolReady = Boolean(useWorkerPool());
+  const totalLines =
+    fileDiff.unifiedLineCount || fileDiff.additionLines.length + fileDiff.deletionLines.length;
   return (
     <FileDiff
+      key={totalLines > LARGE_DIFF_LINES ? (poolReady ? 'pool' : 'main') : undefined}
       className={cn('code-block-file', FLUSH_CODE_CLASS)}
       fileDiff={fileDiff}
       options={{

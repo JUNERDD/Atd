@@ -102,15 +102,19 @@ function readSelection(root: HTMLElement, releaseX: number | null): MessageSelec
   // Inside the conversation: selecting the whole page (Select All) is not a quote of its answers.
   if (!container || !root.contains(container)) return null;
   const parts = messageParts(range, root);
+  if (parts.length === 0) return null;
   const text = parts
     .map((part) => formulaText(part.range).trim())
     .filter(Boolean)
     .join('\n\n');
   // A code block's text lives in its shadow root and a diagram is an SVG, outside the string.
-  const blocks = Array.from(root.querySelectorAll(ATOMIC_BLOCKS));
-  const touchesCode = parts.some(({ range: part }) =>
-    blocks.some((block) => part.intersectsNode(block)),
-  );
+  let touchesCode = false;
+  if (!text) {
+    const blocks = Array.from(root.querySelectorAll(ATOMIC_BLOCKS));
+    touchesCode = parts.some(({ range: part }) =>
+      blocks.some((block) => part.intersectsNode(block)),
+    );
+  }
   if (!text && !touchesCode) return null;
   const caret = document.createRange();
   caret.setStart(selection.focusNode, selection.focusOffset);
@@ -161,6 +165,13 @@ function sameRange(a: Range, b: Range) {
   );
 }
 
+function hasSelectionInRoot(root: HTMLElement): boolean {
+  const selection = document.getSelection();
+  if (!selection?.focusNode || selection.isCollapsed || selection.rangeCount === 0) return false;
+  const container = elementOf(selection.getRangeAt(0).commonAncestorContainer);
+  return container !== null && root.contains(container);
+}
+
 /**
  * The selection that takes in settled assistant messages under `root`, or null. A pointer drag shows
  * it once the pointer lifts, where it lifted, so the toolbar does not chase the drag; keyboard
@@ -172,24 +183,41 @@ export function useMessageSelection(root: HTMLElement | null) {
   useEffect(() => {
     if (!root) return;
     let pressed = false;
+    let frame = 0;
     const update = (releaseX: number | null = null) => {
       const next = readSelection(root, releaseX);
       setSelection((current) =>
         current && next && sameRange(current.range, next.range) ? current : next,
       );
     };
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!pressed) update();
+      });
+    };
     const onSelectionChange = () => {
-      if (!pressed) update();
-      else if (!readSelection(root, null)) setSelection(null);
+      if (pressed) {
+        if (!hasSelectionInRoot(root)) setSelection((current) => (current ? null : current));
+        return;
+      }
+      scheduleUpdate();
     };
     const fromToolbar = (event: Event) =>
       event.target instanceof Element && event.target.closest(TOOLBAR) !== null;
     const onPointerDown = (event: PointerEvent) => {
-      if (!fromToolbar(event)) pressed = true;
+      if (!fromToolbar(event)) {
+        pressed = true;
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
     };
     const onPointerUp = (event: PointerEvent) => {
       if (!pressed) return;
       pressed = false;
+      cancelAnimationFrame(frame);
+      frame = 0;
       update(event.type === 'pointerup' ? event.clientX : null);
     };
     document.addEventListener('selectionchange', onSelectionChange);
@@ -197,6 +225,7 @@ export function useMessageSelection(root: HTMLElement | null) {
     document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('pointercancel', onPointerUp, true);
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener('selectionchange', onSelectionChange);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('pointerup', onPointerUp, true);

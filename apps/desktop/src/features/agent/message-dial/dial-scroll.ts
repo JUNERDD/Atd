@@ -9,8 +9,27 @@ export function turnElement(viewport: HTMLElement, turnId: string): HTMLElement 
   return viewport.querySelector<HTMLElement>(`[data-turn-id="${CSS.escape(turnId)}"]`);
 }
 
+function mountedTurnMap(viewport: HTMLElement): Map<string, HTMLElement> {
+  const map = new Map<string, HTMLElement>();
+  for (const element of viewport.querySelectorAll<HTMLElement>('[data-turn-id]')) {
+    if (element.dataset.turnId) map.set(element.dataset.turnId, element);
+  }
+  return map;
+}
+
 function nearBottom(viewport: HTMLElement): boolean {
   return viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= NEAR_BOTTOM_PX;
+}
+
+function fastRevealTop(
+  element: Element,
+  viewportTop: number,
+  scrollTop: number,
+  bottom: number,
+  margin: number,
+): number {
+  const top = element.getBoundingClientRect().top - viewportTop + scrollTop;
+  return Math.min(Math.max(top - margin, 0), bottom);
 }
 
 /**
@@ -30,10 +49,16 @@ export function scrollFor(
   if (!entry) return viewport.scrollTop;
   const from = turnElement(viewport, entry.turnId);
   if (!from) return { mount: entry.turnId };
-  const start = revealTop(viewport, from);
   const next = prompts[index + 1];
   const to = next && at > index ? turnElement(viewport, next.turnId) : null;
-  return to ? start + (revealTop(viewport, to) - start) * (at - index) : start;
+  if (!to) return revealTop(viewport, from);
+  const viewportTop = viewport.getBoundingClientRect().top;
+  const scrollTop = viewport.scrollTop;
+  const bottom = viewport.scrollHeight - viewport.clientHeight;
+  const margin = Number.parseFloat(getComputedStyle(from).scrollMarginTop) || 0;
+  const start = fastRevealTop(from, viewportTop, scrollTop, bottom, margin);
+  const end = fastRevealTop(to, viewportTop, scrollTop, bottom, margin);
+  return start + (end - start) * (at - index);
 }
 
 /**
@@ -44,15 +69,28 @@ export function scrollFor(
 export function positionFor(viewport: HTMLElement, prompts: readonly PromptEntry[]): number {
   const last = prompts.length - 1;
   if (last <= 0 || nearBottom(viewport)) return Math.max(last, 0);
+  const turns = mountedTurnMap(viewport);
   const mounted: { index: number; element: HTMLElement }[] = [];
   prompts.forEach((entry, index) => {
-    const element = turnElement(viewport, entry.turnId);
+    const element = turns.get(entry.turnId);
     if (element) mounted.push({ index, element });
   });
-  const y = viewport.scrollTop + 1;
+  const first = mounted[0];
+  if (!first) return last;
+  const scrollTop = viewport.scrollTop;
+  const viewportTop = viewport.getBoundingClientRect().top;
+  const bottom = viewport.scrollHeight - viewport.clientHeight;
+  const margin = Number.parseFloat(getComputedStyle(first.element).scrollMarginTop) || 0;
+  const tops = new Map<number, number>();
+  const y = scrollTop + 1;
   const top = (at: number) => {
+    const cached = tops.get(at);
+    if (cached !== undefined) return cached;
     const item = mounted[at];
-    return item ? revealTop(viewport, item.element) : Infinity;
+    if (!item) return Infinity;
+    const value = fastRevealTop(item.element, viewportTop, scrollTop, bottom, margin);
+    tops.set(at, value);
+    return value;
   };
   // The last mounted message whose offset the view has reached.
   let low = 0;
@@ -74,7 +112,8 @@ export function positionFor(viewport: HTMLElement, prompts: readonly PromptEntry
 
 /** Each message's rendered turn height, or undefined for a turn the window has not mounted. */
 export function turnHeights(viewport: HTMLElement, prompts: readonly PromptEntry[]) {
-  return prompts.map((entry) => turnElement(viewport, entry.turnId)?.offsetHeight);
+  const turns = mountedTurnMap(viewport);
+  return prompts.map((entry) => turns.get(entry.turnId)?.offsetHeight);
 }
 
 /**

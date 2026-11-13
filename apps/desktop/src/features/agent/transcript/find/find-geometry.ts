@@ -21,10 +21,47 @@ export interface Band {
 }
 
 /** Where `range` starts within the viewport's scrolled content. */
-export function contentOffset(viewport: HTMLElement, range: Range): number {
-  return (
-    range.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop
-  );
+export function contentOffset(
+  viewport: HTMLElement,
+  range: Range,
+  viewportTop = viewport.getBoundingClientRect().top,
+  scrollTop = viewport.scrollTop,
+): number {
+  return range.getBoundingClientRect().top - viewportTop + scrollTop;
+}
+
+/**
+ * Measures the scrolled vertical offset for sampled hits without forcing layout inside off-screen
+ * `content-visibility: auto` turns: hits inside off-screen turns use the turn's outer box.
+ */
+export function measureRulerOffsets(
+  viewport: HTMLElement,
+  hits: readonly FindHit[],
+  indices: readonly number[],
+): number[] {
+  const viewportRect = viewport.getBoundingClientRect();
+  const viewportTop = viewportRect.top;
+  const viewportBottom = viewportRect.bottom;
+  const scrollTop = viewport.scrollTop;
+  const turnRects = new Map<Element, DOMRect>();
+  return indices.map((index) => {
+    const hit = hits[index];
+    if (!hit) return 0;
+    const start = hit.range.startContainer;
+    const element = start instanceof Element ? start : start.parentElement;
+    const turn = element?.closest('.transcript-turn, [data-turn-id]');
+    if (turn) {
+      let turnRect = turnRects.get(turn);
+      if (!turnRect) {
+        turnRect = turn.getBoundingClientRect();
+        turnRects.set(turn, turnRect);
+      }
+      if (turnRect.bottom < viewportTop || turnRect.top > viewportBottom) {
+        return turnRect.top + turnRect.height * 0.5 - viewportTop + scrollTop;
+      }
+    }
+    return contentOffset(viewport, hit.range, viewportTop, scrollTop);
+  });
 }
 
 /**
@@ -49,13 +86,15 @@ export function readableBand(viewport: HTMLElement, bar: HTMLElement | null): Ba
  */
 export function firstInView(viewport: HTMLElement, hits: readonly FindHit[], band: Band): number {
   if (hits.length === 0) return -1;
-  const line = viewport.scrollTop + band.top;
+  const scrollTop = viewport.scrollTop;
+  const viewportTop = viewport.getBoundingClientRect().top;
+  const line = scrollTop + band.top;
   let low = 0;
   let high = hits.length;
   while (low < high) {
     const middle = (low + high) >> 1;
     const hit = hits[middle];
-    if (hit && contentOffset(viewport, hit.range) >= line) high = middle;
+    if (hit && contentOffset(viewport, hit.range, viewportTop, scrollTop) >= line) high = middle;
     else low = middle + 1;
   }
   return Math.min(low, hits.length - 1);

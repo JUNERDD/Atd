@@ -1,17 +1,28 @@
-.scroll-jump-icon {
-  /* Optical centering of the downward arrow inside the small circular glass control. */
-  translate: -1px -1px;
-}
-
 /* The shared glass button owns material and clipping. Its state layer is at -1, so the light
    stays below hover and focus feedback as well as the arrow; it adds no glass or outset effect. */
 .scroll-jump-glow {
+  --scroll-jump-glow-a: oklch(0.84 0.14 176 / 0.24);
+  --scroll-jump-glow-b: oklch(0.74 0.14 230 / 0.2);
   position: absolute;
   inset: 0;
   z-index: -2;
   border-radius: inherit;
   pointer-events: none;
-  animation: scroll-jump-glow-in 0.4s ease-in-out;
+  background:
+    radial-gradient(90% 85% at 28% 82%, var(--scroll-jump-glow-a), transparent 72%),
+    radial-gradient(95% 90% at 74% 22%, var(--scroll-jump-glow-b), transparent 75%);
+  animation:
+    scroll-jump-glow-in 0.4s ease-in-out,
+    scroll-jump-glow-pulse 2.8s ease-in-out infinite alternate;
+}
+
+.dark .scroll-jump-glow {
+  --scroll-jump-glow-a: oklch(0.68 0.12 186 / 0.36);
+  --scroll-jump-glow-b: oklch(0.62 0.12 232 / 0.32);
+}
+
+:root[data-window-visible='false'] .scroll-jump-glow {
+  animation-play-state: paused;
 }
 
 @keyframes scroll-jump-glow-in {
@@ -20,8 +31,19 @@
   }
 }
 
+@keyframes scroll-jump-glow-pulse {
+  from {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scroll-jump-glow {
-    animation-duration: 0.2s;
+    animation: scroll-jump-glow-in 0.2s ease-in-out;
   }
 }

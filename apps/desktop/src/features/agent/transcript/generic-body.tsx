@@ -29,7 +29,7 @@ export function GenericBody({ block }: { block: BlockOf<'tool'> }) {
   const text = block.status === 'running' ? block.partial : block.output;
   const proxy = mcpProxy(block.name);
   const tool = proxy?.tool ?? block.name;
-  const input = Object.keys(block.args).length > 0 ? JSON.stringify(block.args, null, 2) : '';
+  const hasInput = Object.keys(block.args).length > 0;
   return (
     <ToolCard.Root>
       <ToolCard.Header
@@ -42,11 +42,11 @@ export function GenericBody({ block }: { block: BlockOf<'tool'> }) {
         meta={proxy?.server}
         copyText={text}
       />
-      {(input || text) && (
+      {(hasInput || text) && (
         <ToolCard.Body size="lg" className="generic-sections">
-          {input && (
+          {hasInput && (
             <Section label={t('toolList.input')}>
-              <JsonTree text={input} bare />
+              <JsonTree value={block.args} bare />
             </Section>
           )}
           {text && (

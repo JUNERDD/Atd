@@ -34,12 +34,31 @@ function formulaTex(formula: Element): string {
  * the message's own text holds it.
  */
 export function formulaText(range: Range): string {
+  const ancestor = elementOf(range.commonAncestorContainer);
+  const formulaSelector = `${DISPLAY}, ${INLINE}`;
+  if (!ancestor) return range.toString();
+  const insideFormula = ancestor.closest(formulaSelector) !== null;
+  if (!insideFormula) {
+    const candidates = ancestor.querySelectorAll(formulaSelector);
+    let touchesFormula = false;
+    for (const candidate of candidates) {
+      if (range.intersectsNode(candidate)) {
+        touchesFormula = true;
+        break;
+      }
+    }
+    if (!touchesFormula) return range.toString();
+  }
   const fragment = range.cloneContents();
-  if (!fragment.querySelector(`${DISPLAY}, ${INLINE}`)) return range.toString();
+  if (!fragment.querySelector(formulaSelector)) return range.toString();
   // Displays first: replacing one takes its inner `.katex` with it.
   for (const formula of fragment.querySelectorAll(DISPLAY))
     formula.replaceWith(`$$${formulaTex(formula)}$$`);
   for (const formula of fragment.querySelectorAll(INLINE))
     formula.replaceWith(`$${formulaTex(formula)}$`);
   return fragment.textContent;
+}
+
+function elementOf(node: Node): Element | null {
+  return node instanceof Element ? node : node.parentElement;
 }

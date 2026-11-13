@@ -6,7 +6,7 @@ import {
   type WorkerPoolOptions,
 } from '@pierre/diffs/react';
 import type { WorkerPoolManager } from '@pierre/diffs/worker';
-import { useCallback, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { CODE_THEMES } from './code-theme';
 
 /**
@@ -67,6 +67,10 @@ function isReady(pool: WorkerPoolManager | undefined): boolean {
  */
 function ReadyPool({ children }: { children: ReactNode }) {
   const pool = useWorkerPool();
+  // Pre-warm worker pool immediately on mount so bodies/diffs don't fall back to main-thread highlighting.
+  useEffect(() => {
+    if (pool && !pool.isInitialized() && pool.isWorkingPool()) awaitStart(pool);
+  }, [pool]);
   const subscribe = useCallback(
     (onChange: () => void) => {
       if (!pool) return () => {};

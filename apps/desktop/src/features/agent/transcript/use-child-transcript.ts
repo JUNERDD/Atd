@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import type { AgentBridge, ChildTranscriptDetail } from '../../../client/agent/bridge';
 import { applyTranscriptPatch } from '../../../client/agent/transcript-schema';
@@ -6,22 +7,23 @@ import { queryClient } from '../../../lib/query-client';
 
 /**
  * How long a child's transcript stays cached, and subscribed, after nothing shows or prefetches
- * it: the step from the subagent list to the drill-in view and a later return both find it.
+ * it: brief enough to shed unviewed task transcripts while still covering drill-in transitions.
  */
-const LINGER_MS = 5 * 60_000;
+const LINGER_MS = 30_000;
 
 const SCOPE = 'childTranscript';
 const queryKey = (taskId: string, childKey: string) => [SCOPE, taskId, childKey] as const;
 
 /**
  * Main-process holds per cached child. Every `childTranscript` call subscribes and adds one hold,
- * even a call that fails, and main handles calls in send order; all of a child's holds are
- * released together when Query drops its cache entry.
+ * even a call that fails, and main handles calls in send order; refetches on an already-held child
+ * release their extra hold once settled, and Query removal releases the remaining hold.
  */
 const holds = new Map<string, number>();
 const holdKey = (taskId: string, childKey: string) => `${taskId}\n${childKey}`;
 
 let wired = false;
+let activeTaskId: string | null = null;
 
 /**
  * Connects the cache to the bridge once: releases a child's holds when its entry is removed, and
@@ -66,6 +68,8 @@ function wire(bridge: AgentBridge) {
   import.meta.hot?.dispose(() => {
     stopRemovals();
     stopPatches();
+    wired = false;
+    activeTaskId = null;
   });
 }
 
@@ -74,11 +78,22 @@ function childTranscriptQuery(taskId: string, childKey: string) {
   if (bridge) wire(bridge);
   return {
     queryKey: queryKey(taskId, childKey),
-    queryFn: () => {
+    queryFn: async () => {
       if (!bridge) throw new Error('The agent bridge is unavailable.');
       const key = holdKey(taskId, childKey);
+      const hadHold = (holds.get(key) ?? 0) > 0;
       holds.set(key, (holds.get(key) ?? 0) + 1);
-      return bridge.childTranscript(taskId, childKey);
+      try {
+        return await bridge.childTranscript(taskId, childKey);
+      } finally {
+        if (hadHold) {
+          const current = holds.get(key) ?? 0;
+          if (current > 1) {
+            holds.set(key, current - 1);
+            void bridge.releaseChildTranscript(taskId, childKey).catch(() => {});
+          }
+        }
+      }
     },
     enabled: Boolean(bridge),
     // Patches keep a cached transcript current while it is held, so it never needs a refetch.
@@ -103,9 +118,22 @@ export function useChildTranscript(
 
 /**
  * Prefetches the transcripts of the children a list shows while it is mounted, so opening one
- * finds it loaded. The list does not re-render as their patches arrive.
+ * finds it loaded, and evicts unobserved child caches from the previous task on switch.
  */
 export function usePrefetchChildTranscripts(taskId: string | null, childKeys: readonly string[]) {
+  useEffect(() => {
+    if (!taskId) return;
+    const previous = activeTaskId;
+    activeTaskId = taskId;
+    if (previous && previous !== taskId) {
+      queryClient.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === SCOPE &&
+          query.queryKey[1] === previous &&
+          query.getObserversCount() === 0,
+      });
+    }
+  }, [taskId]);
   useQueries(
     {
       queries: taskId

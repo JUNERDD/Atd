@@ -8,14 +8,18 @@ import {
 import { cn } from '@atd/ui/lib/utils';
 import { agentApi } from '../../../use-agent';
 import { showErrorToast } from '../../../../../components/toast-store';
+import { MAX_JSON_CHILDREN_PER_NODE } from '../_constants/limits';
 import type { JsonNodeType, JsonRenderNode } from '../_types/node';
 import { previewFor } from '../_helpers/format-preview';
 
 interface NodeProps {
+  path: string;
   nodeKey: string | number | null;
   value: unknown;
   depth: number;
-  defaultExpandedDepth: number;
+  initialExpandedPaths: ReadonlySet<string>;
+  childPath: (parentPath: string, key: string | number) => string;
+  formatShowMore: (next: number, remaining: number) => string;
   renderNode?: ((node: JsonRenderNode) => ReactNode) | undefined;
 }
 
@@ -33,8 +37,18 @@ function formatKey(nodeKey: string | number): string {
   return typeof nodeKey === 'string' ? JSON.stringify(nodeKey) : String(nodeKey);
 }
 
-export function Node({ nodeKey, value, depth, defaultExpandedDepth, renderNode }: NodeProps) {
-  const [expanded, setExpanded] = useState(() => depth < defaultExpandedDepth);
+export function Node({
+  path,
+  nodeKey,
+  value,
+  depth,
+  initialExpandedPaths,
+  childPath,
+  formatShowMore,
+  renderNode,
+}: NodeProps) {
+  const [expanded, setExpanded] = useState(() => initialExpandedPaths.has(path));
+  const [visibleCount, setVisibleCount] = useState(MAX_JSON_CHILDREN_PER_NODE);
 
   const type = nodeTypeOf(value);
   const toggle = () => setExpanded((previous) => !previous);
@@ -70,9 +84,14 @@ export function Node({ nodeKey, value, depth, defaultExpandedDepth, renderNode }
     );
   }
 
-  const entries: Array<readonly [string | number, unknown]> = Array.isArray(value)
-    ? value.map((item: unknown, index: number) => [index, item] as const)
-    : Object.entries(value as Record<string, unknown>);
+  // Only materialize child entries while expanded so collapsed subtrees do zero eager mapping.
+  const entries: Array<readonly [string | number, unknown]> = expanded
+    ? Array.isArray(value)
+      ? value.map((item: unknown, index: number) => [index, item] as const)
+      : Object.entries(value as Record<string, unknown>)
+    : [];
+  const visibleEntries = entries.length > visibleCount ? entries.slice(0, visibleCount) : entries;
+  const remaining = entries.length - visibleEntries.length;
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} className="min-w-0">
@@ -101,16 +120,28 @@ export function Node({ nodeKey, value, depth, defaultExpandedDepth, renderNode }
             mounted only while open or finishing their close animation. */}
         <div>
           <div className="pl-4">
-            {entries.map(([key, item]) => (
+            {visibleEntries.map(([key, item]) => (
               <Node
                 key={key}
+                path={childPath(path, key)}
                 nodeKey={key}
                 value={item}
                 depth={depth + 1}
-                defaultExpandedDepth={defaultExpandedDepth}
+                initialExpandedPaths={initialExpandedPaths}
+                childPath={childPath}
+                formatShowMore={formatShowMore}
                 renderNode={renderNode}
               />
             ))}
+            {remaining > 0 ? (
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => n + MAX_JSON_CHILDREN_PER_NODE)}
+                className="py-px text-xs text-muted-foreground hover:text-foreground"
+              >
+                {formatShowMore(Math.min(remaining, MAX_JSON_CHILDREN_PER_NODE), remaining)}
+              </button>
+            ) : null}
           </div>
         </div>
       </CollapsibleContent>

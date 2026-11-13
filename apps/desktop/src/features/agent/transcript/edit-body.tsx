@@ -93,7 +93,7 @@ export function EditBody({
     if (!patch) return null;
     return parsePatch(patch, settled ? codeCacheKey('edit', path, diff) : undefined);
   }, [path, diff, settled]);
-  const { added, removed } = diffStats(diff);
+  const { added, removed } = useMemo(() => diffStats(diff), [diff]);
   const notes = [
     truncated && t('activity.truncatedNote'),
     block.status === 'interrupted' && t('activity.interruptedNote'),

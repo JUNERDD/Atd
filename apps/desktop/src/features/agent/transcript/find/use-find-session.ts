@@ -17,6 +17,8 @@ export interface FindMatches {
 type SearchMode = 'fresh' | 'keep';
 
 const NONE: FindMatches = { hits: [], current: -1 };
+/** Coalesces streaming DOM mutations while keeping typed queries on the next frame. */
+const KEEP_DEBOUNCE_MS = 180;
 
 /** The previous current match's place among `hits`, by its text position, else by its index. */
 function keptIndex(before: FindMatches, hits: readonly FindHit[]): number {
@@ -65,6 +67,7 @@ export function useFindSession({
   const stopHold = useRef<() => void>(() => {});
   const stopReveal = useRef<() => void>(() => {});
   const frame = useRef(0);
+  const keepTimer = useRef(0);
   const pending = useRef<SearchMode | null>(null);
 
   const show = useCallback(
@@ -84,7 +87,10 @@ export function useFindSession({
   const search = useCallback(
     (mode: SearchMode) => {
       const viewport = viewportRef.current;
-      if (!root || !viewport) return;
+      if (!root || !viewport) {
+        if (latest.current.matches.hits.length > 0) show(NONE, false);
+        return;
+      }
       const { query: needle, matches: before } = latest.current;
       const hits = needle ? collectHits(root, needle) : [];
       const kept = mode === 'keep' ? keptIndex(before, hits) : -1;
@@ -95,17 +101,31 @@ export function useFindSession({
     [root, viewportRef, barRef, show],
   );
 
-  /** Searches on the next frame; a fresh search asked meanwhile wins over keeping the match. */
+  /** Searches on the next frame for `fresh`, or debounced for `keep` mutations. */
   const schedule = useCallback(
     (mode: SearchMode) => {
       if (pending.current !== 'fresh') pending.current = mode;
-      if (frame.current) return;
-      frame.current = requestAnimationFrame(() => {
-        frame.current = 0;
-        const next = pending.current;
-        pending.current = null;
-        if (next) search(next);
-      });
+      const enqueueFrame = () => {
+        if (frame.current) return;
+        frame.current = requestAnimationFrame(() => {
+          frame.current = 0;
+          const next = pending.current;
+          pending.current = null;
+          if (next) search(next);
+        });
+      };
+      if (mode === 'fresh') {
+        clearTimeout(keepTimer.current);
+        keepTimer.current = 0;
+        enqueueFrame();
+        return;
+      }
+      if (pending.current === 'fresh' || frame.current) return;
+      clearTimeout(keepTimer.current);
+      keepTimer.current = window.setTimeout(() => {
+        keepTimer.current = 0;
+        enqueueFrame();
+      }, KEEP_DEBOUNCE_MS);
     },
     [search],
   );
@@ -146,6 +166,8 @@ export function useFindSession({
     () => () => {
       cancelAnimationFrame(frame.current);
       frame.current = 0;
+      clearTimeout(keepTimer.current);
+      keepTimer.current = 0;
       pending.current = null;
       stopReveal.current();
       stopHold.current();
