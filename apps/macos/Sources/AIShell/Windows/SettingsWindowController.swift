@@ -1,5 +1,7 @@
 import AICore
 import AppKit
+import QuartzCore
+import WebKit
 
 /// The single settings window: glass background, a transparent 52pt unified title bar with the
 /// standard traffic lights, and its own renderer web view (loaded at `#settings`). Closing
@@ -10,6 +12,9 @@ import AppKit
 final class SettingsWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   private(set) var host: WebViewHost?
+  private var loadingView: SettingsLoadingView?
+  private var revealing = false
+  private var revealTask: Task<Void, Never>?
   private let makeHost: (_ fragment: String) -> WebViewHost
   /// Runs after the window is created or released, before an opened window activates the app.
   /// On close, supplies the departing window while AppKit may still consider it key.
@@ -22,6 +27,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       self, selector: #selector(screensChanged),
       name: NSApplication.didChangeScreenParametersNotification, object: nil)
   }
+
+  isolated deinit { revealTask?.cancel() }
 
   var isKey: Bool { window?.isKeyWindow == true }
   var isOpen: Bool { window != nil }
@@ -48,15 +55,74 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     window.hasShadow = true
     window.isReleasedWhenClosed = false
     window.collectionBehavior = [.fullScreenNone]
-    window.contentView = GlassBackground.make(content: host.container)
+    let stage = NSView()
+    stage.wantsLayer = true
+    host.container.wantsLayer = true
+    host.container.alphaValue = 0
+    host.container.frame = stage.bounds
+    host.container.autoresizingMask = [.width, .height]
+    let loading = SettingsLoadingView(frame: stage.bounds)
+    loading.autoresizingMask = [.width, .height]
+    stage.addSubview(host.container)
+    stage.addSubview(loading)
+    window.contentView = GlassBackground.make(content: stage)
     window.delegate = self
     applyMinimumSize(workArea, to: window)
     self.window = window
     self.host = host
+    self.loadingView = loading
+    self.revealing = false
+    host.onDragRegionsReady = { [weak self] in self?.scheduleReveal() }
+    revealTask?.cancel()
+    revealTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(5))
+      guard !Task.isCancelled else { return }
+      self?.revealPage()
+    }
     onOpenChange?(nil)
-    NSApp.activate()
     host.load()
+    NSApp.activate()
     window.makeKeyAndOrderFront(nil)
+  }
+
+  private func scheduleReveal() {
+    guard loadingView != nil, !revealing, let webView = host?.webView else { return }
+    revealing = true
+    host?.onDragRegionsReady = nil
+    webView.callAsyncJavaScript(
+      "await new Promise((resolve) => requestAnimationFrame(() => resolve()))",
+      in: nil, in: .page
+    ) { [weak self, weak webView] _ in
+      MainActor.assumeIsolated {
+        guard let self, let webView else { return }
+        if self.host?.webView === webView {
+          self.revealPage()
+        } else {
+          self.revealing = false
+          self.host?.onDragRegionsReady = { [weak self] in self?.scheduleReveal() }
+        }
+      }
+    }
+  }
+
+  private func revealPage() {
+    guard let loadingView else { return }
+    self.loadingView = nil
+    revealing = false
+    revealTask?.cancel()
+    revealTask = nil
+    host?.onDragRegionsReady = nil
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    host?.container.alphaValue = 1
+    loadingView.stop()
+    loadingView.removeFromSuperview()
+    CATransaction.commit()
+    if let window, window.isKeyWindow, let webView = host?.webView,
+      window.firstResponder === window || window.firstResponder == nil
+    {
+      window.makeFirstResponder(webView)
+    }
   }
 
   /// Makes an open window key again unless it is hidden or miniaturized; false when there is
@@ -86,6 +152,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   func close() { window?.close() }
 
   func windowWillClose(_ notification: Notification) {
+    revealTask?.cancel()
+    revealTask = nil
+    revealing = false
+    loadingView?.stop()
+    loadingView = nil
+    host?.onDragRegionsReady = nil
     let closingWindow = window
     host?.close()
     host = nil

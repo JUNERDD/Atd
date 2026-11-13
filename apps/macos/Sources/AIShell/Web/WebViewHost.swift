@@ -18,6 +18,7 @@ final class WebViewHost: NSObject {
   /// Counts committed documents, so a call's answer never reaches a later page.
   private(set) var document = 0
   var onDocumentUnload: (() -> Void)?
+  var onDragRegionsReady: (() -> Void)?
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -82,6 +83,7 @@ final class WebViewHost: NSObject {
     isClosed = true
     document += 1
     outbox = BridgeOutbox()
+    onDragRegionsReady = nil
     reduceTransparency?.stop()
     reduceTransparency = nil
     systemAppearance?.stop()
@@ -138,6 +140,7 @@ final class WebViewHost: NSObject {
     webView.dragRegions = rects.filter { $0.width > 0 && $0.height > 0 }.map {
       CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
     }
+    if !webView.dragRegions.isEmpty { onDragRegionsReady?() }
   }
 
   private func post(frame: SocketFrame) {

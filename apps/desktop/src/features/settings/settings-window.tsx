@@ -1,5 +1,6 @@
 import {
   Activity,
+  Suspense,
   useLayoutEffect,
   useRef,
   useState,
@@ -11,23 +12,25 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { AppSettings } from '../apps/app-settings';
-import { AutomationSettings } from '../automations/automation-settings';
-import { CommandSettings } from '../commands/command-settings';
-import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import { usePanelSurfaces } from '../../theme/panel-background/apply';
 import '../agent/agent.css';
-import { AboutSettings } from './about-settings';
-import { AgentSettings } from './agent-settings';
-import { LanguageSelector } from './language-selector';
-import { PermissionSettings } from './permission-settings';
-import { ShellAllowlistSettings } from './shell-allowlist-settings';
-import { ComputerSettings } from '../computer/computer-settings';
-import { ProviderSettingsForm } from './provider-settings';
 import { GeneralSettings } from './general-settings';
-import { ServiceSettings } from '../service/service-settings';
+import { LanguageSelector } from './language-selector';
+import {
+  AboutSettings,
+  AgentSettings,
+  AppSettings,
+  AutomationSettings,
+  CommandSettings,
+  ComputerSettings,
+  MemorySettings,
+  PermissionsSettings,
+  preloadSettingsSection,
+  ProviderSettingsForm,
+  ServiceSettings,
+} from './settings-section-loaders';
 import { useSettingsSnapshot } from './use-settings';
 import {
   SettingsAutomationLinkContext,
@@ -53,8 +56,10 @@ import {
 } from './settings-unsaved-changes';
 import { SettingsUnsavedChangesDialog } from './settings-unsaved-changes-dialog';
 import { useSettingsKeys } from './use-settings-keys';
-import { useSettingsSection } from './use-settings-section';
+import { initialSettingsSection, useSettingsSection } from './use-settings-section';
 import './settings.css';
+
+preloadSettingsSection(initialSettingsSection());
 
 function subscribeLayout(listener: () => void) {
   const query = window.matchMedia('(min-width: 760px)');
@@ -88,6 +93,7 @@ export function SettingsWindow() {
     showAutomation,
     showExtension,
   } = useSettingsSection(recording, unsaved.guard.confirmLeave);
+  preloadSettingsSection(section);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
   // Crossing 760px unmounts the sheet and clears its open state before a later return to narrow.
@@ -140,7 +146,9 @@ export function SettingsWindow() {
         <SettingsSectionActiveContext value={shown}>
           {/* `hidden` lets the layout rules find the shown page (settings.css). */}
           <div className="settings-page" hidden={!shown}>
-            {content}
+            <Suspense fallback={<SettingsPagePlaceholder label={t('window.loading')} />}>
+              {content}
+            </Suspense>
           </div>
         </SettingsSectionActiveContext>
       </Activity>
@@ -236,13 +244,7 @@ export function SettingsWindow() {
                             <SettingsPagePlaceholder label={t('window.loading')} />
                           ) : (
                             <>
-                              {page(
-                                'permissions',
-                                <>
-                                  <PermissionSettings snapshot={snapshot} />
-                                  <ShellAllowlistSettings snapshot={snapshot} />
-                                </>,
-                              )}
+                              {page('permissions', <PermissionsSettings snapshot={snapshot} />)}
                               {page('computer', <ComputerSettings snapshot={snapshot} />)}
                               {page('extensions', <ServiceSettings activeItem={extensionTarget} />)}
                               {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}

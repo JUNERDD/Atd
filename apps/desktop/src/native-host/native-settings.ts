@@ -80,6 +80,7 @@ export function nativeSettings(
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
   onLoadError: (listener: () => void) => () => void;
+  prime: () => Promise<void>;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -148,15 +149,31 @@ export function nativeSettings(
   );
   providers.attach(connection);
 
+  let settingsLoad: Promise<void> | null = null;
+  const fetchSettings = () => {
+    if (!settingsLoad) {
+      settingsLoad = getSettings(connection.options())
+        .then((next) => {
+          shared = next;
+          publish();
+        })
+        .finally(() => {
+          settingsLoad = null;
+        });
+    }
+    return settingsLoad;
+  };
   const reload = async () => {
     try {
-      shared = await getSettings(connection.options());
-      publish();
+      await fetchSettings();
     } catch (error) {
       for (const listener of loadErrorListeners) listener();
       throw error;
     }
   };
+  // Eager non-panel HTTP prime: silent on pre-stream failure so cold-boot unavailability still
+  // waits for the authoritative stream-connected `reload()`.
+  const prime = () => fetchSettings().catch(() => undefined);
   const write = async (request: PatchSettingsRequest) => {
     shared = await patchSettings(connection.options(), request);
     return publish();
@@ -312,6 +329,7 @@ export function nativeSettings(
       shell = { ...shell, ...patch };
       return publish();
     },
+    prime,
     ready,
   };
 }

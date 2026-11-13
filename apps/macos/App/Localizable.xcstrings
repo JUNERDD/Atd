@@ -15341,6 +15341,24 @@
         }
       }
     },
+    "window.settings.loading" : {
+      "comment" : "Status shown in the settings window while its page loads",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading settings…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在加载设置…"
+          }
+        }
+      }
+    },
     "window.settings.title" : {
       "comment" : "Settings window title",
       "extractionState" : "manual",

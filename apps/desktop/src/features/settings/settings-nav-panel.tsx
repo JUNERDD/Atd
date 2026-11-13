@@ -16,6 +16,7 @@ import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
 import { revealSettingsAnchor } from './reveal-settings-anchor';
 import type { SettingsSearchPage } from './settings-navigation';
 import { SettingsSearchField } from './settings-search-field';
+import { preloadSettingsSection } from './settings-section-loaders';
 import {
   isSettingsFooterSection,
   settingsSections,
@@ -65,6 +66,7 @@ export function SettingsNavPanel({
   const rows = () => [...(list.current?.querySelectorAll('button') ?? [])];
 
   function open(result: SettingsSearchResult) {
+    if (result.section) preloadSettingsSection(result.section);
     // A control outside every section (the language selector) stays on the current page; the
     // navigation still runs so the drawer closes.
     onNavigate(result.section ?? current, () => {
@@ -159,6 +161,12 @@ export function SettingsNavPanel({
                     data-best-match={index === 0 ? '' : undefined}
                     tabIndex={index === 0 ? 0 : -1}
                     disabled={disabled}
+                    onPointerEnter={() => {
+                      if (result.section) preloadSettingsSection(result.section);
+                    }}
+                    onFocus={() => {
+                      if (result.section) preloadSettingsSection(result.section);
+                    }}
                     onClick={() => open(result)}
                     onKeyDown={onRowKeyDown}
                   >
@@ -181,6 +189,8 @@ export function SettingsNavPanel({
                   data-footer={isSettingsFooterSection(id) || undefined}
                   tabIndex={current === id ? 0 : -1}
                   disabled={disabled}
+                  onPointerEnter={() => preloadSettingsSection(id)}
+                  onFocus={() => preloadSettingsSection(id)}
                   onClick={() => onNavigate(id)}
                   onKeyDown={onRowKeyDown}
                 >

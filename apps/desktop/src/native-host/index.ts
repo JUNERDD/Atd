@@ -2,12 +2,6 @@ import { downloadResource } from '@atd/agent-client';
 import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import {
-  AutomationSessionTargetSchema,
-  parseExtensionSession,
-  type AutomationSessionTarget,
-  type ExtensionSession,
-} from '../client/agent/session-handoff';
-import {
   createAgentBridge,
   type AgentChannel,
   type AgentChannelValues,
@@ -16,7 +10,6 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
-import { parse } from '../client/agent/validation';
 import type { NativeBridge } from '../native-bridge/client';
 import { preferencePusher } from './preference-push';
 import { nativeAddons } from './native-addons';
@@ -36,6 +29,7 @@ import { nativeNotifications } from './native-notifications';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePanelModals } from './native-panel-modals';
 import { nativePlatform } from './native-platform';
+import { listenNativeSessionHandoffs } from './native-session-handoffs';
 import { nativeSettings } from './native-settings';
 import { nativeShortcutRecording } from './native-shortcut-recording';
 import { nativeShellPreferences } from './native-shell-preferences';
@@ -198,38 +192,9 @@ export async function installNativeHost(
 
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
   connection.onConnected(() => void commands.refreshFromService().catch(() => undefined));
-  messages.listen((message) => {
-    if (message.type === 'launchCommand') {
-      void requests.handle(message.request, 'page').catch((error: unknown) => {
-        console.error('The command launched from settings could not open:', error);
-      });
-    } else if (message.type === 'commandSession') {
-      const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
-      emit('session', { commandId: message.commandId, name });
-      void native.call('window.show', {});
-    } else if (message.type === 'automationSession') {
-      // Like an extension session below, a message the panel cannot seed is dropped.
-      let automation: AutomationSessionTarget;
-      try {
-        automation = parse(AutomationSessionTargetSchema, message.automation);
-      } catch {
-        return;
-      }
-      emit('automationSession', automation);
-      void native.call('window.show', {});
-    } else if (message.type === 'extensionSession') {
-      // A window running an older build can post this too: drop a message the panel cannot seed
-      // instead of throwing from the channel listener.
-      let session: ExtensionSession;
-      try {
-        session = parseExtensionSession(message.kind, message.target);
-      } catch {
-        return;
-      }
-      emit('extensionSession', session);
-      void native.call('window.show', {});
-    }
-  });
+  if (surface === 'panel') {
+    listenNativeSessionHandoffs({ messages, native, commands, requests, emit });
+  }
 
   const serviceListeners = new Set<(event: ServiceEvent) => void>();
   const serviceEmit = (event: ServiceEvent) => {
@@ -242,6 +207,14 @@ export async function installNativeHost(
 
   attachNativeSurfaceDom(native, surface);
   connection.connect();
+  const settingsPrimed = surface !== 'panel' ? settings.prime() : Promise.resolve();
+  if (surface !== 'panel') {
+    void settings.providers
+      .sync()
+      .then(() => settings.providers.syncCatalogs())
+      .catch(() => undefined);
+    void commands.refreshFromService().catch(() => undefined);
+  }
   // The service may still be starting: its data follows the stream, and the shell's preferences
   // follow `app.state`, both through settings change events.
   void settings.ready.catch((error: unknown) => {
@@ -338,4 +311,12 @@ export async function installNativeHost(
       : {}),
   };
   window.desktop = bridge;
+  if (surface === 'settings') {
+    // Allow fast local settings/shell hydration to settle before the first render while capping
+    // cold-start delay if the service is still coming up.
+    await Promise.race([
+      Promise.allSettled([settingsPrimed, settings.ready]),
+      new Promise<void>((resolve) => setTimeout(resolve, 80)),
+    ]);
+  }
 }
