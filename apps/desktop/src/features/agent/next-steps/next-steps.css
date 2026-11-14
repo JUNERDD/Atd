@@ -77,7 +77,7 @@
   align-self: flex-start;
   place-items: center;
   border-radius: 10px;
-  background: var(--muted);
+  background: var(--ata-surface-raised-wash);
   color: var(--muted-foreground);
 }
 /*

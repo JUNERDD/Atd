@@ -9,7 +9,17 @@
       "noKey": "No API key · {{baseUrl}}",
       "ambient": "Cloud credentials",
       "apiKeyVerified": "API key saved · Verified",
-      "apiKeyUnverified": "API key saved · Not yet verified"
+      "apiKeyUnverified": "API key saved · Not yet verified",
+      "credentialUnreadable": "Credential unreadable · Re-enter key",
+      "credentialMissing": "Credential missing · Re-enter key",
+      "oauthUnreadable": "Sign-in unreadable · Sign in again",
+      "oauthMissing": "Sign-in missing · Sign in again"
+    },
+    "credentialIssue": {
+      "apiKeyUnreadable": "The saved API key cannot be read from the OS keychain (common after an app update or signature change). Open this connection to re-enter it.",
+      "apiKeyMissing": "The saved API key is missing from the OS keychain. Open this connection to re-enter it.",
+      "oauthUnreadable": "This account’s credentials cannot be read from the OS keychain (common after an app update or signature change). Open this connection to sign in again.",
+      "oauthMissing": "This account’s credentials are missing from the OS keychain. Open this connection to sign in again."
     },
     "defaultModelLabel": "Default model for {{name}}",
     "currentDefault": "Current default",
@@ -81,9 +91,18 @@
     "keepKey": "Keep saved key",
     "removeKey": "Remove key",
     "keepKeyPlaceholder": "Leave unchanged to keep the saved key",
+    "reenterUnreadableKeyPlaceholder": "Saved key unreadable — enter API key",
+    "reenterMissingKeyPlaceholder": "Saved key missing — enter API key",
     "apiKeyPlaceholder": "Enter an API key",
     "keyRemovedNote": "The saved key will be removed when you save.",
+    "credentialIssueKeyNote": "Saving a new key restores access while keeping your endpoint and model configuration.",
     "encryptedNote": "Credentials are encrypted on this device.",
+    "credentialIssue": {
+      "apiKeyUnreadable": "The previously saved API key cannot be read from the OS keychain (commonly after an app update or re-signing). Enter your API key again and save; your other settings stay unchanged.",
+      "apiKeyMissing": "The previously saved API key is missing from the OS keychain. Enter your API key again and save; your other settings stay unchanged.",
+      "oauthUnreadable": "This account’s credentials cannot be read from the OS keychain (commonly after an app update or re-signing). Sign in again below; your model and preference settings stay unchanged.",
+      "oauthMissing": "This account’s credentials are missing from the OS keychain. Sign in again below; your model and preference settings stay unchanged."
+    },
     "resourceEndpoint": "Resource endpoint",
     "baseUrl": "Base URL",
     "insecureHttpWarning": "This endpoint uses plain HTTP. API keys and conversation data are not encrypted in transit. Continue only if you trust the server and network.",

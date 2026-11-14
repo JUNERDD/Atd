@@ -397,7 +397,7 @@ body {
   padding: 14px 16px;
   overflow-wrap: anywhere;
   border-radius: var(--radius-2xl);
-  background: var(--muted);
+  background: var(--ata-surface-raised-wash);
   font-size: 14px;
   line-height: 22px;
   white-space: pre-wrap;

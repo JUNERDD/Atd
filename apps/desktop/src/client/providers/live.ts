@@ -11,13 +11,17 @@ import {
 import type {
   ProviderCredential,
   ProviderCredentialChange,
+  ProviderCredentialIssue,
   ServiceConnection,
 } from '@atd/agent-contracts';
 import { validateConfig } from './configuration';
 import type { Connection, ConnectionDraft, ProviderCatalogEntry } from './schema';
 
 /** Maps a secret-free service connection into the desktop settings row. */
-export function toDesktopConnection(connection: ServiceConnection): Connection {
+export function toDesktopConnection(
+  connection: ServiceConnection,
+  credentialIssue?: ProviderCredentialIssue,
+): Connection {
   return {
     connectionId: connection.connectionId,
     provider: connection.provider,
@@ -34,6 +38,7 @@ export function toDesktopConnection(connection: ServiceConnection): Connection {
     revision: connection.revision,
     connected: connection.connected,
     ...(connection.authNotice ? { authNotice: connection.authNotice } : {}),
+    ...(credentialIssue ? { credentialIssue } : {}),
     ...(connection.accountLabel ? { accountLabel: connection.accountLabel } : {}),
     ...(connection.chatgptConsent ? { chatgptConsent: connection.chatgptConsent } : {}),
     ...(connection.chatgptPlanEnabled === undefined
@@ -78,7 +83,9 @@ export async function fetchLiveProviders(options: AgentClientOptions): Promise<{
   const listed = await listProviders(options);
   return {
     defaultConnectionId: listed.defaultConnectionId,
-    connections: listed.connections.map(toDesktopConnection),
+    connections: listed.connections.map((connection) =>
+      toDesktopConnection(connection, listed.credentialIssues?.[connection.connectionId]),
+    ),
   };
 }
 

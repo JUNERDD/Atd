@@ -107,14 +107,24 @@ export function ProviderConnectionFields({
             autoCapitalize="off"
             spellCheck={false}
             placeholder={
-              saved?.hasCredential ? t('form.keepKeyPlaceholder') : t('form.apiKeyPlaceholder')
+              saved?.credentialIssue
+                ? t(
+                    saved.credentialIssue === 'unreadable'
+                      ? 'form.reenterUnreadableKeyPlaceholder'
+                      : 'form.reenterMissingKeyPlaceholder',
+                  )
+                : saved?.hasCredential
+                  ? t('form.keepKeyPlaceholder')
+                  : t('form.apiKeyPlaceholder')
             }
             onChange={(event) => change({ apiKey: event.target.value })}
           />
           <p className="settings-field-note">
             {draft.apiKey === '' && saved?.hasCredential
               ? t('form.keyRemovedNote')
-              : t('form.encryptedNote')}
+              : saved?.credentialIssue && !draft.apiKey
+                ? t('form.credentialIssueKeyNote')
+                : t('form.encryptedNote')}
           </p>
         </div>
       )}

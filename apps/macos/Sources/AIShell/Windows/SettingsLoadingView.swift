@@ -108,8 +108,8 @@ final class SettingsLoadingView: NSView {
       GlassSurface.fill(reduceTransparency: ReduceTransparencyObserver.isReduced).cgColor
     iconBadge.layer?.backgroundColor =
       dark
-      ? CGColor(srgbRed: 0.1494, green: 0.1494, blue: 0.1494, alpha: 1)
-      : CGColor(srgbRed: 0.9606, green: 0.9606, blue: 0.9606, alpha: 1)
+      ? CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.08)
+      : CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.05)
     let foreground =
       dark
       ? NSColor(srgbRed: 0.9803, green: 0.9803, blue: 0.9803, alpha: 1)

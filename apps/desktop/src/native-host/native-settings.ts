@@ -72,6 +72,7 @@ export function nativeSettings(
   connection: NativeConnection,
   messages: WindowMessages,
   native: NativeBridge,
+  surface: 'panel' | 'settings' | 'onboarding' | 'view' = 'panel',
 ): {
   bridge: SettingsBridge;
   providers: ProviderService;
@@ -110,6 +111,7 @@ export function nativeSettings(
       connections: live?.connections ?? [],
       defaultConnectionId: live?.defaultConnectionId ?? null,
       providersLoaded: live !== null,
+      providerStatusesChecked: providers.statusesChecked(),
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
       glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
@@ -184,10 +186,15 @@ export function nativeSettings(
   });
   // The first stream, and every one after a drop: load what the frames would have announced.
   connection.onConnected(() => {
+    providers.resetStatusesChecked();
     void reload().catch(() => undefined);
     void providers
       .sync()
-      .then(() => providers.syncCatalogs())
+      .then(async () => {
+        if (surface !== 'panel') return;
+        await providers.checkStatuses();
+        providers.syncCatalogs();
+      })
       .catch(() => undefined);
   });
   const ready = native.call('app.state', {}).then((state) => {
@@ -236,6 +243,7 @@ export function nativeSettings(
       remove: (id, revision) => providers.remove(id, revision),
       refresh: (id) => providers.refresh(id),
       refreshCatalogs: async () => providers.refreshShownCatalogs(),
+      checkStatuses: () => providers.checkStatuses(),
       verify: (reference) => providers.verify(reference),
       login: (id, request) => providers.login.start(id, request),
       answer: (id, promptId, value) => providers.login.answer(id, promptId, value),

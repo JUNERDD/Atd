@@ -13,7 +13,7 @@ import {
   type ServiceConnection,
 } from '@atd/agent-contracts';
 import { ConnectionStore, serviceConfigurationId } from '../credentials/connections.js';
-import { KeyringBackend } from '../credentials/keyring.js';
+import { KeyringBackend, type KeyringStatus } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError } from '../errors.js';
 import { getServiceCatalog } from './catalog.js';
@@ -32,6 +32,13 @@ import { assertProviderAuth, assertUploadedCredential } from './auth-policy.js';
 import { cleanupRetiredCredentials } from './retire-credentials.js';
 import { discardCreatedConnection } from './credential-transactions.js';
 import { invalidateOffRoute } from '../invalidate.js';
+import {
+  clearCredentialIssue,
+  currentCredentialIssues,
+  expectsStoredCredential,
+  onCredentialIssuesChanged,
+  recordCredentialIssue,
+} from './credential-issues.js';
 
 export interface ProviderRouteContext {
   serviceId: string;
@@ -52,7 +59,13 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
   const stopWatching = ConnectionStore.onChanged(ctx.dataDir, () =>
     invalidateOffRoute(app, { type: 'invalidate', scope: 'providers' }),
   );
-  app.addHook('onClose', async () => stopWatching());
+  const stopIssueWatching = onCredentialIssuesChanged(ctx.dataDir, () =>
+    invalidateOffRoute(app, { type: 'invalidate', scope: 'providers' }),
+  );
+  app.addHook('onClose', async () => {
+    stopWatching();
+    stopIssueWatching();
+  });
   const stores = async (): Promise<ProviderStores> => {
     const opened = {
       dataDir: ctx.dataDir,
@@ -66,9 +79,11 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
 
   app.get('/v1/providers', RENDERER_ROUTE, async () => {
     const { connections } = await stores();
+    const credentialIssues = currentCredentialIssues(ctx.dataDir, connections.data.connections);
     return {
       defaultConnectionId: connections.data.defaultConnectionId,
       connections: await Promise.all(connections.data.connections.map(presentConnection)),
+      ...(credentialIssues ? { credentialIssues } : {}),
     };
   });
 
@@ -184,10 +199,24 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         connections,
         parse(Identifier, request.params.connectionId),
       );
-      const [probe, check] = await Promise.all([
-        keyring.status(),
-        modelCheck(connections, keyring, connection.connectionId),
-      ]);
+      const check = await modelCheck(connections, keyring, connection.connectionId);
+      const probe: KeyringStatus = check.readable
+        ? {
+            available: true,
+            backend:
+              process.platform === 'darwin'
+                ? 'keychain'
+                : process.platform === 'win32'
+                  ? 'credential-manager'
+                  : 'secret-service',
+            detail: 'Credential read succeeded.',
+          }
+        : await keyring.status();
+      if (check.issue && expectsStoredCredential(connection)) {
+        recordCredentialIssue(ctx.dataDir, connection.connectionId, check.issue);
+      } else if (check.readable || !expectsStoredCredential(connection)) {
+        clearCredentialIssue(ctx.dataDir, connection.connectionId);
+      }
       return {
         connection: await presentConnection(connection),
         keyring: {
@@ -195,6 +224,10 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
           backend: probe.backend,
           detail: probe.detail.slice(0, 2000),
         },
+        readable: check.readable,
+        ...(check.issue && expectsStoredCredential(connection)
+          ? { credentialIssue: check.issue }
+          : {}),
         modelCheck: check.modelCheck,
         detail: check.detail.slice(0, 2000),
       };
@@ -217,6 +250,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       } catch (error) {
         throw mapUploadError(error);
       }
+      if (outcome.readable) clearCredentialIssue(ctx.dataDir, pathId);
       return {
         connection: await presentStored(connections, pathId),
         readable: outcome.readable,
@@ -243,6 +277,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         live.provider,
         live.configurationId,
       ).disconnect(live.provider, { expectedRevision: body.expectedRevision });
+      clearCredentialIssue(ctx.dataDir, pathId);
       return { connection: await presentStored(connections, pathId) };
     },
   );
@@ -274,6 +309,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         live.provider,
         live.configurationId,
       ).remove(live.provider, expectedRevision);
+      clearCredentialIssue(ctx.dataDir, pathId);
       await rm(path.join(ctx.dataDir, 'providers', pathId), { recursive: true, force: true });
       return {
         removed: true as const,

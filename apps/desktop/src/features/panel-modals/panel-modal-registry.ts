@@ -3,11 +3,16 @@ import { NotarizationReauthModal } from './notarization-reauth-modal';
 import {
   afterOnboarding,
   allRules,
+  anyRule,
+  notDismissedInRevision,
   oncePerRevision,
   onPanelViews,
   onlyMacOSDesktop,
   whenAllMacPermissionsGranted,
+  whenMacPermissionsLoaded,
   whenMissingMacPermissions,
+  whenMissingModelCredentials,
+  whenModelCredentialsHealthy,
   type PanelModalDefinition,
 } from './panel-modal-rules';
 
@@ -26,11 +31,24 @@ export const PANEL_MODAL_DEFINITIONS: readonly PanelModalDefinition[] = [
     rule: allRules(
       onlyMacOSDesktop(),
       afterOnboarding(),
-      oncePerRevision(),
       onPanelViews(['new', 'task', 'history', 'apps']),
-      whenMissingMacPermissions(['accessibility', 'screenRecording']),
+      whenMacPermissionsLoaded(['accessibility', 'screenRecording']),
+      anyRule(
+        allRules(
+          oncePerRevision(),
+          whenMissingMacPermissions(['accessibility', 'screenRecording']),
+        ),
+        allRules(notDismissedInRevision(), whenMissingModelCredentials()),
+      ),
     ),
-    resolved: whenAllMacPermissionsGranted(['accessibility', 'screenRecording']),
+    unresolved: anyRule(
+      whenMissingMacPermissions(['accessibility', 'screenRecording']),
+      whenMissingModelCredentials(),
+    ),
+    resolved: allRules(
+      whenAllMacPermissionsGranted(['accessibility', 'screenRecording']),
+      whenModelCredentialsHealthy(),
+    ),
     render: ({ snapshot, onDismiss, onComplete }) =>
       createElement(NotarizationReauthModal, { snapshot, onDismiss, onComplete }),
   },

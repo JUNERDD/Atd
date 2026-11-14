@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
@@ -95,6 +96,22 @@ export function ProviderForm({
               <Button size="xs" variant="outline" onClick={() => load(draftFrom(saved))}>
                 {t('form.reload')}
               </Button>
+            </output>
+          )}
+          {saved?.credentialIssue && (
+            <output className="provider-transport-warning">
+              <CircleAlert aria-hidden="true" />
+              <span>
+                {t(
+                  accountLogin
+                    ? saved.credentialIssue === 'unreadable'
+                      ? 'form.credentialIssue.oauthUnreadable'
+                      : 'form.credentialIssue.oauthMissing'
+                    : saved.credentialIssue === 'unreadable'
+                      ? 'form.credentialIssue.apiKeyUnreadable'
+                      : 'form.credentialIssue.apiKeyMissing',
+                )}
+              </span>
             </output>
           )}
           {saved?.authNotice && <output className="settings-field-note">{saved.authNotice}</output>}

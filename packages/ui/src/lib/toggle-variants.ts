@@ -9,9 +9,10 @@ export const toggleVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-transparent hover:bg-muted aria-pressed:bg-muted data-[state=on]:bg-muted',
+        default:
+          'bg-transparent hover:bg-(--ata-surface-ghost-hover) aria-pressed:bg-(--ata-material-selected) data-[state=on]:bg-(--ata-material-selected)',
         outline:
-          'border border-input bg-transparent hover:bg-muted aria-pressed:bg-muted data-[state=on]:bg-muted',
+          'border border-input bg-transparent hover:bg-(--ata-surface-ghost-hover) aria-pressed:bg-(--ata-material-selected) data-[state=on]:bg-(--ata-material-selected)',
       },
       size: {
         default:

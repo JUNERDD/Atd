@@ -31,11 +31,11 @@
 /* Hover is for a pointer that can rest; a press highlights at once on any input. */
 @media (hover: hover) and (pointer: fine) {
   .artifact-card:hover:not(:disabled) {
-    background: var(--muted);
+    background: color-mix(in oklab, var(--ata-surface-detail), var(--foreground) 5%);
   }
 }
 .artifact-card:active:not(:disabled) {
-  background: color-mix(in oklab, var(--muted) 100%, var(--foreground) 6%);
+  background: color-mix(in oklab, var(--ata-surface-detail), var(--foreground) 9%);
   transition-duration: 0ms;
 }
 /* The ring token's 3px focus ring, drawn like an Item's: the border takes the ring color. */

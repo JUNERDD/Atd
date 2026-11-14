@@ -147,6 +147,8 @@ export interface SettingsSnapshot {
    * until they arrive `connections` is empty, which must not be taken for having none.
    */
   providersLoaded: boolean;
+  /** Whether keyring readability was probed for loaded connections in this epoch. */
+  providerStatusesChecked: boolean;
   language: AppLanguage;
   /** The pinned color scheme; null follows the system. Unlike `language`, never resolved here. */
   appearance: AppAppearance | null;

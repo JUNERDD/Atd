@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleAlert, Plug, Plus, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +53,14 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const { t: tp } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   const connected = useServiceStatus().status?.state === 'connected';
+  const hasUnreadableIssue = (snapshot?.connections ?? []).some(
+    (connection) => connection.credentialIssue === 'unreadable',
+  );
+  useEffect(() => {
+    if (connected && bridge && !hasUnreadableIssue) {
+      void bridge.checkStatuses().catch(() => undefined);
+    }
+  }, [bridge, connected, hasUnreadableIssue]);
   // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
   const catalogQuery = useQuery(
     {

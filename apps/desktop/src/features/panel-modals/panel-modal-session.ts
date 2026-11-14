@@ -49,6 +49,22 @@ export function removeSessionEntry(
   return remaining.length > 0 ? { ...session, entries: remaining } : null;
 }
 
+export function evaluateModalUnresolved(
+  definition: PanelModalDefinition,
+  snapshot: SettingsSnapshot | null,
+  view: PanelView,
+  states: Record<string, PanelModalState>,
+  env: PanelModalEnvironment,
+): boolean {
+  if (!snapshot) return false;
+  if (definition.unresolved) {
+    return definition.unresolved(buildPanelModalContext(definition, snapshot, view, states, env));
+  }
+  return (
+    Boolean(definition.resolved) && !evaluateModalResolved(definition, snapshot, view, states, env)
+  );
+}
+
 export function promoteUnresolvedEntries(
   entries: ActiveModalEntry[],
   byId: ReadonlyMap<string, PanelModalDefinition>,
@@ -63,11 +79,7 @@ export function promoteUnresolvedEntries(
   const next: ActiveModalEntry[] = [];
   for (const entry of entries) {
     const def = byId.get(entry.id);
-    if (
-      !entry.sawUnresolved &&
-      def?.resolved &&
-      !evaluateModalResolved(def, snapshot, view, states, env)
-    ) {
+    if (!entry.sawUnresolved && def && evaluateModalUnresolved(def, snapshot, view, states, env)) {
       changed = true;
       next.push({ ...entry, sawUnresolved: true });
     } else {

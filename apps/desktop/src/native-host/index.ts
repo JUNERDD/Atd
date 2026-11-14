@@ -111,7 +111,7 @@ export async function installNativeHost(
       channels[channel].delete(listener);
     };
   };
-  const settings = nativeSettings(connection, messages, native);
+  const settings = nativeSettings(connection, messages, native, surface);
   const onboarding = surface === 'panel' ? nativeOnboardingTrigger(native, messages) : undefined;
   settings.onLoadError(() => onboarding?.onUnavailable());
   // Replayed when the page becomes ready, so subscribed before the first await too.
@@ -210,10 +210,7 @@ export async function installNativeHost(
   connection.connect();
   const settingsPrimed = surface !== 'panel' ? settings.prime() : Promise.resolve();
   if (surface !== 'panel') {
-    void settings.providers
-      .sync()
-      .then(() => settings.providers.syncCatalogs())
-      .catch(() => undefined);
+    void settings.providers.sync().catch(() => undefined);
     void commands.refreshFromService().catch(() => undefined);
   }
   // The service may still be starting: its data follows the stream, and the shell's preferences

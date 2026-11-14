@@ -19,6 +19,7 @@ import { MemoryOverview } from './memory-overview';
 import { MemoryPage } from './memory-page';
 import { useMemoryWrites } from './memory-writes';
 import { reloadMemory, useMemorySnapshot } from './use-memory-snapshot';
+import './memory.css';
 
 /**
  * A page of the Memory section: the overview, one unit's page (`nonce` marks each deep link, so

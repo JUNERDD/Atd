@@ -27,6 +27,7 @@
 
 /* The bar: the shared glass capsule; its material, fill and edge come from `surface-glass`. */
 .conversation-find {
+  --ata-glass-fill-inactive: color-mix(in srgb, var(--ata-glass-fill-opaque) 92%, transparent);
   position: absolute;
   z-index: 2;
   top: 6px;

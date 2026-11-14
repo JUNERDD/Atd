@@ -10,11 +10,24 @@ import { ServiceModelDefinitionSchema } from './models.js';
  * only through the connect body into the OS keyring, never back out.
  */
 
-/** Secret-free connection list with the current default. */
+/**
+ * Runtime-detected issue with a connection's stored OS credential: `unreadable`
+ * means keyring access failed (such as macOS keychain ACL mismatch after an
+ * app signature change), `missing` means metadata expects a secret but none was
+ * returned. Never persisted inside `connections.json`.
+ */
+export const ProviderCredentialIssueSchema = Type.Union([
+  Type.Literal('unreadable'),
+  Type.Literal('missing'),
+]);
+export type ProviderCredentialIssue = Static<typeof ProviderCredentialIssueSchema>;
+
+/** Secret-free connection list with the current default and any detected credential issues. */
 export const ProvidersListResponseSchema = Type.Object(
   {
     defaultConnectionId: Type.Union([Identifier, Type.Null()]),
     connections: Type.Array(ServiceConnectionSchema),
+    credentialIssues: Type.Optional(Type.Record(Identifier, ProviderCredentialIssueSchema)),
   },
   { additionalProperties: false },
 );
@@ -46,6 +59,8 @@ export const ProviderStatusResponseSchema = Type.Object(
       },
       { additionalProperties: false },
     ),
+    readable: Type.Optional(Type.Boolean()),
+    credentialIssue: Type.Optional(ProviderCredentialIssueSchema),
     modelCheck: Type.Union([
       Type.Literal('unchecked'),
       Type.Literal('passed'),

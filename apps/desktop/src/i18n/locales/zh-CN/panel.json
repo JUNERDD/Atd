@@ -405,7 +405,8 @@
     },
     "notarizationReauth": {
       "title": "签名证书已更新，需重新授权",
-      "description": "Atd 最近更换了开发者签名证书，macOS 会将旧授权视为失效。请在系统设置中重新勾选缺失的权限，以继续使用划词和截图功能。",
+      "description": "Atd 已切换至新的 Apple 公证签名，系统权限与本地模型凭据需重新确认。可按右侧引导恢复权限，或点击第三项直达模型设置窗口。",
+      "resolvedDescription": "所有系统权限与模型连接凭据均已重新确认，可以继续正常使用。",
       "later": "稍后再说",
       "done": "完成",
       "authorize": "打开系统设置",
@@ -423,6 +424,16 @@
         "title": "屏幕录制",
         "description": "在你主动发起时截取屏幕上下文",
         "grantedDescription": "屏幕录制权限已更新为最新证书"
+      },
+      "credentials": {
+        "title": "模型密钥与登录",
+        "description": "点击跳转模型页设置窗口重新确认",
+        "issueDescription": "检测到 {{count}} 个模型连接凭据无法读取，点击跳转模型设置页",
+        "restoredDescription": "已重新确认保存",
+        "restoredBadge": "已恢复",
+        "openAction": "去设置",
+        "openPrimary": "前往模型设置",
+        "error": "无法打开模型设置窗口，请手动在设置 › 模型中查看。"
       }
     }
   }

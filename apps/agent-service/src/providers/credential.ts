@@ -16,9 +16,12 @@ import { assertCredential, assertUploadedCredential } from './auth-policy.js';
 import { connectionAuthContext } from './auth-context.js';
 import { isLocalProvider } from './catalog.js';
 
+const inflightChecks = new Map<string, Promise<CredentialCheck>>();
+
 /** Local verdict on a stored credential; `detail` never carries secret values. */
 export interface CredentialCheck {
   readable: boolean;
+  issue?: 'unreadable' | 'missing';
   modelCheck: ProviderConnectResponse['modelCheck'];
   detail: string;
 }
@@ -48,10 +51,11 @@ export async function storeConnectionCredential(
     stored.connectionId,
     stored.provider,
     stored.configurationId,
-  ).modify(stored.provider, async () => credential, options);
+  ).modify(stored.provider, async () => credential, { ...options, replace: true });
   const raw = await keyring.get(keyringAccount(request.connectionId));
   if (!raw) throw new Error('The uploaded credential could not be read back.');
   parse(ProviderCredentialSchema, JSON.parse(raw));
+  inflightChecks.delete(request.connectionId);
   return modelCheck(connections, keyring, request.connectionId);
 }
 
@@ -60,7 +64,21 @@ export async function storeConnectionCredential(
  * store without network access. Saved options and ambient opt-in follow the
  * request runtime; OAuth is checked locally without refreshing its token.
  */
-export async function modelCheck(
+export function modelCheck(
+  connections: ConnectionStore,
+  keyring: KeyringBackend,
+  connectionId: string,
+): Promise<CredentialCheck> {
+  const existing = inflightChecks.get(connectionId);
+  if (existing) return existing;
+  const pending = runModelCheck(connections, keyring, connectionId).finally(() => {
+    if (inflightChecks.get(connectionId) === pending) inflightChecks.delete(connectionId);
+  });
+  inflightChecks.set(connectionId, pending);
+  return pending;
+}
+
+async function runModelCheck(
   connections: ConnectionStore,
   keyring: KeyringBackend,
   connectionId: string,
@@ -79,7 +97,12 @@ export async function modelCheck(
     );
     const credential = await credentials.read(connection.provider);
     if (!credential)
-      return { readable: false, modelCheck: 'failed', detail: 'Reconnect this provider.' };
+      return {
+        readable: false,
+        issue: 'missing',
+        modelCheck: 'failed',
+        detail: 'Reconnect this provider.',
+      };
     readable = true;
     let ok = credential.type === 'oauth' || connection.authType === 'none';
     if (!ok && credential.type === 'api_key') {
@@ -112,8 +135,11 @@ export async function modelCheck(
   } catch {
     return {
       readable,
+      ...(!readable ? { issue: 'unreadable' as const } : {}),
       modelCheck: 'failed',
-      detail: 'The stored credential could not be used. Reconnect this provider.',
+      detail: readable
+        ? 'The stored credential could not be used. Reconnect this provider.'
+        : 'The stored credential in the OS keychain could not be read. Reconnect this provider.',
     };
   }
 }
