@@ -89,6 +89,7 @@ export class Dispatcher {
     });
     this.consolidations = new ConsolidationRuns({
       consolidate: deps.consolidateMemory,
+      dataDir: deps.paths.root,
       log: deps.log,
       now: deps.now,
       settle: (automationId, recordId, result, depth, answer) =>

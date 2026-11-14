@@ -32,6 +32,7 @@ const APP_SHORTCUT_NAMES: Record<keyof ShortcutBindingsWire, string> = {
   togglePanel: 'Toggle panel',
   captureScreenshot: 'Capture screenshot',
   recordScreen: 'Record screen',
+  cycleModelAlias: 'Switch model alias',
   newConversation: 'New conversation',
   openSettings: 'Open settings',
   sendMessage: 'Send message',

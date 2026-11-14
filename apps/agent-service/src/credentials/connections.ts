@@ -55,7 +55,13 @@ export function serviceConfigurationId(config: ConnectionConfigInput): string {
 }
 
 function emptyFile(): ServiceConnectionsFile {
-  return { version: 1, defaultConnectionId: null, connections: [] };
+  return {
+    version: 1,
+    defaultConnectionId: null,
+    connections: [],
+    defaultAliasId: null,
+    aliases: [],
+  };
 }
 
 /**
@@ -75,6 +81,8 @@ async function readConnections(
   if ((await stat(file)).size > CONNECTIONS_FILE_LIMIT)
     throw new Error('Provider connections file is too large.');
   const data = parse(ServiceConnectionsFileSchema, JSON.parse(await readFile(file, 'utf8')));
+  data.aliases ??= [];
+  data.defaultAliasId ??= null;
   for (const connection of data.connections) {
     connection.provider = RENAMED_PROVIDERS.get(connection.provider) ?? connection.provider;
     if (retireLegacyLogin(connection)) {

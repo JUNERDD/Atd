@@ -99,6 +99,8 @@ export const RunSnapshotSchema = Type.Object(
     model: ResolvedModelSchema,
     /** Frozen at acceptance; runs saved before thinking levels existed ran with reasoning off. */
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
+    /** Frozen per-run context window when selected or overridden. */
+    contextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
     tools: Type.Array(ToolIdSchema),
     memory: Type.Boolean(),
     /** The run's prompt came from a saved command, including a replacement of that prompt. */

@@ -46,6 +46,7 @@ export const ShortcutBindingsSchema = Type.Object(
     togglePanel: AcceleratorSchema,
     captureScreenshot: AcceleratorSchema,
     recordScreen: AddedAcceleratorSchema,
+    cycleModelAlias: AddedAcceleratorSchema,
     newConversation: AcceleratorSchema,
     openSettings: AcceleratorSchema,
     sendMessage: AcceleratorSchema,

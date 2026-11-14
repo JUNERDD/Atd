@@ -12,6 +12,7 @@ import {
   type ComputerRunRequest,
   type ModelSelection,
   type PreviewTaskResponse,
+  type RunContextChoice,
   type RunReference,
   type ServiceCommandFull,
   type ServiceToolId,
@@ -27,7 +28,7 @@ import type { RunnerManager } from '../runner-manager.js';
 import { ensureSkillProfile, skillProfilePaths } from '../skills/profile.js';
 import { stageTaskSkills } from '../skills/staging.js';
 import type { ServicePaths } from '../storage.js';
-import { resolvePreview } from '../tasks/preview.js';
+import { resolvePreviewDetailed } from '../tasks/preview.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
 import { commandFingerprint } from './fingerprint.js';
@@ -87,6 +88,7 @@ export interface LaunchCommandRequest {
    */
   policy?: {
     model?: ModelSelection;
+    contextChoice?: RunContextChoice;
     thinkingLevel?: ThinkingLevel;
     tools?: ServiceToolId[];
     memory?: boolean;
@@ -162,7 +164,8 @@ export async function launchCommand(
   if (expected !== undefined && commandFingerprint(saved) !== expected)
     throw new CommandFingerprintMismatch();
   const command = launchedAs(saved, request.shortcutId);
-  const { snapshot } = await preview(deps, command, request);
+  const { response: previewed, contextChoice } = await preview(deps, command, request);
+  const { snapshot } = previewed;
   const rendered = snapshot.instructions || request.input.text;
   if (!rendered.trim() && !request.input.files.length)
     throw new CommandLaunchError('invalidInput', 'Enter a message or attach a file.');
@@ -181,11 +184,12 @@ export async function launchCommand(
       chips: commandChips(text, span, tokens, deps.ledger),
       folders: request.input.folders ?? [],
     },
-    // The preview applied the command's fixed model, which the submit cannot see on its own.
+    // The preview applied the command's fixed or alias model, which the submit cannot see alone.
     model: request.policy?.model ?? {
       connectionId: snapshot.model.connectionId,
       modelId: snapshot.model.modelId,
     },
+    ...(contextChoice ? { contextChoice } : {}),
     ...(thinkingLevel ? { thinkingLevel } : {}),
     tools: snapshot.tools,
     memory: snapshot.memory,
@@ -274,10 +278,10 @@ async function preview(
   deps: LaunchCommandDeps,
   command: ServiceCommandFull,
   request: LaunchCommandRequest,
-): Promise<PreviewTaskResponse> {
+): Promise<{ response: PreviewTaskResponse; contextChoice?: RunContextChoice }> {
   const { policy } = request;
   try {
-    return await resolvePreview(
+    return await resolvePreviewDetailed(
       { dataDir: deps.paths.root, ledger: deps.ledger },
       { command, input: request.input, ...(policy ? { policy } : {}) },
       { anyFiles: request.screenshotText !== undefined },

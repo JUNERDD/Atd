@@ -1,7 +1,6 @@
 import {
   getProviderContexts,
   getProviderLevels,
-  providerStatus,
   refreshProvider,
   setDefaultProvider,
   setProviderContext,
@@ -9,8 +8,23 @@ import {
   verifyProvider,
   type AgentClientOptions,
 } from '@atd/agent-client';
+import type { ModelAlias, ModelAliasDraft } from '@atd/agent-contracts';
+import {
+  createLiveAlias,
+  removeLiveAlias,
+  seedLiveAliases,
+  setDefaultLiveAlias,
+  updateLiveAlias,
+} from './aliases';
 import { CatalogSync } from './catalog-sync';
-import { disconnectLive, fetchCatalog, fetchLiveProviders, removeLive, saveLive } from './live';
+import {
+  disconnectLive,
+  fetchCatalog,
+  fetchLiveProviders,
+  removeLive,
+  saveLive,
+  type LiveProvidersSnapshot,
+} from './live';
 import { ProviderLoginClient } from './login-client';
 import type {
   Connection,
@@ -23,6 +37,7 @@ import type {
   ModelThinkingLevel,
   ProviderCatalogEntry,
 } from './schema';
+import { probeCredentialStatuses } from './status-probe';
 
 /** The connection the provider client reads its service options from, once it exists. */
 export interface ProviderConnection {
@@ -36,7 +51,7 @@ export interface ProviderConnection {
  */
 export class ProviderService {
   private connection: ProviderConnection | null = null;
-  private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
+  private live: LiveProvidersSnapshot | null = null;
   private readonly probedIds = new Set<string>();
   private hasProbedOnce = false;
   private checkingStatuses: Promise<void> | null = null;
@@ -99,7 +114,7 @@ export class ProviderService {
     this.connection = connection;
   }
 
-  overlay(): { defaultConnectionId: string | null; connections: Connection[] } | null {
+  overlay(): LiveProvidersSnapshot | null {
     return this.live;
   }
 
@@ -198,6 +213,26 @@ export class ProviderService {
     );
   }
 
+  async createAlias(draft: ModelAliasDraft): Promise<ModelAlias> {
+    return this.write((options) => createLiveAlias(options, draft));
+  }
+
+  async updateAlias(aliasId: string, draft: ModelAliasDraft): Promise<ModelAlias> {
+    return this.write((options) => updateLiveAlias(options, aliasId, draft));
+  }
+
+  async removeAlias(aliasId: string): Promise<void> {
+    await this.write((options) => removeLiveAlias(options, aliasId));
+  }
+
+  async setDefaultAlias(defaultAliasId: string | null): Promise<void> {
+    await this.write((options) => setDefaultLiveAlias(options, defaultAliasId));
+  }
+
+  async seedAliases(aliases: ModelAliasDraft[]): Promise<ModelAlias[]> {
+    return this.write((options) => seedLiveAliases(options, aliases));
+  }
+
   async disconnect(id: string, revision: number): Promise<void> {
     await this.write((options) => disconnectLive(options, id, revision));
   }
@@ -228,45 +263,18 @@ export class ProviderService {
       if (!options) return;
       if (!this.live) await this.sync();
       if (!this.live || this.statusesChecked()) return;
-      const eligible = this.live.connections.filter((item) => this.isCredentialEligible(item));
-      if (!eligible.length) {
-        this.hasProbedOnce = true;
-        this.changed();
-        return;
-      }
-      if (eligible.some((item) => item.credentialIssue === 'unreadable')) {
-        this.hasProbedOnce = true;
-        return;
-      }
-      const defaultId = this.live.defaultConnectionId;
-      const pending = eligible
-        .filter((item) => !this.probedIds.has(item.connectionId))
-        .sort(
-          (a, b) => Number(b.connectionId === defaultId) - Number(a.connectionId === defaultId),
-        );
-      if (!pending.length) {
-        this.hasProbedOnce = true;
-        this.changed();
-        return;
-      }
-      let issueChanged = false;
-      let networkFailed = false;
-      for (const item of pending) {
-        const status = await providerStatus(options, item.connectionId).catch(() => null);
-        if (status === null) {
-          networkFailed = true;
-          break;
-        }
-        this.hasProbedOnce = true;
-        this.probedIds.add(item.connectionId);
-        if (status.credentialIssue !== item.credentialIssue) issueChanged = true;
-        if (status.credentialIssue === 'unreadable') break;
-      }
-      if (issueChanged || networkFailed) {
-        await this.sync();
-      } else {
-        this.changed();
-      }
+      await probeCredentialStatuses({
+        options,
+        defaultConnectionId: this.live.defaultConnectionId,
+        connections: this.live.connections,
+        isEligible: (item) => this.isCredentialEligible(item),
+        probedIds: this.probedIds,
+        markProbedOnce: () => {
+          this.hasProbedOnce = true;
+        },
+        changed: () => this.changed(),
+        sync: () => this.sync(),
+      });
     })().finally(() => {
       if (this.checkingStatuses === run) this.checkingStatuses = null;
     });

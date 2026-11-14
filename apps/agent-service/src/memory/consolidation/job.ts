@@ -48,7 +48,7 @@ export async function consolidate(
     if (fingerprint === (await lastFingerprint(deps.agentDir))) return { outcome: 'nothingNew' };
 
     const view = consolidationView(units);
-    const opened = await deps.openModel(request.model);
+    const opened = await deps.openModel(request.model, request.contextChoice);
     if ('unavailable' in opened)
       return { outcome: 'failed', reason: 'modelUnavailable', detail: opened.unavailable };
     signal.throwIfAborted();

@@ -18,6 +18,7 @@ import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError } from '../errors.js';
 import { getServiceCatalog } from './catalog.js';
 import { modelCheck, storeConnectionCredential, type CredentialCheck } from './credential.js';
+import { registerAliasRoutes } from './alias-routes.js';
 import { registerConnectionRoutes } from './connection-routes.js';
 import {
   assertProviderModels,
@@ -83,6 +84,8 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
     return {
       defaultConnectionId: connections.data.defaultConnectionId,
       connections: await Promise.all(connections.data.connections.map(presentConnection)),
+      defaultAliasId: connections.data.defaultAliasId ?? null,
+      aliases: connections.data.aliases ?? [],
       ...(credentialIssues ? { credentialIssues } : {}),
     };
   });
@@ -175,6 +178,8 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       throw mapUploadError(error);
     }
   });
+
+  registerAliasRoutes(app, stores);
 
   app.get<{ Params: { connectionId: string } }>(
     '/v1/providers/:connectionId',

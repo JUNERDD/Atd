@@ -59,6 +59,7 @@ export const AutomationPolicySchema = Type.Object(
      * a command's fixed model, else the default connection's default model at fire time.
      */
     model: Type.Optional(ModelSelectionSchema),
+    aliasId: Type.Optional(Identifier),
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     /** Whether runs search memory. Automation runs never teach memory. */
     memory: Type.Boolean(),

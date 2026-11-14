@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import { ScreenshotTextFollowUpSchema } from './capture-answer.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
+import { RunContextChoiceSchema } from './model-aliases.js';
 import {
   CapabilityResultSchema,
   PermissionAnswerSchema,
@@ -34,6 +35,7 @@ export const SubmitTaskRequestSchema = Type.Object(
      * default model (`runModelSelection`).
      */
     model: Type.Optional(ModelSelectionSchema),
+    contextChoice: Type.Optional(RunContextChoiceSchema),
     /** Absent uses the connection's saved level, else the model's default or `off`. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     /**

@@ -42,6 +42,7 @@ export function mapRunPolicy(policy: RunPolicy): ServiceRunPolicy {
     memory: policy.memory,
     confirmExpansion: policy.confirmExpansion,
     ...(policy.model ? { model: policy.model } : {}),
+    ...(policy.contextChoice ? { contextChoice: policy.contextChoice } : {}),
     ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
     ...(policy.skills ? { skills: policy.skills } : {}),
     ...(policy.roleId ? { roleId: policy.roleId } : {}),
@@ -87,6 +88,7 @@ export async function previewRun(
         baseUrl: snapshot.model.baseUrl,
       },
       ...(snapshot.thinkingLevel ? { thinkingLevel: snapshot.thinkingLevel } : {}),
+      ...(snapshot.contextWindow ? { contextWindow: snapshot.contextWindow } : {}),
       tools: snapshot.tools.filter(
         (tool): tool is 'read' | 'write' | 'edit' | 'bash' | 'command' => tool !== 'ask_user',
       ),

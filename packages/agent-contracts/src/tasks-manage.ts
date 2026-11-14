@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier, SessionEntryId } from './identifiers.js';
+import { RunContextChoiceSchema } from './model-aliases.js';
 import { PermissionTierSchema } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { QueueStateSchema } from './snapshot.js';
@@ -87,6 +88,7 @@ export const ServiceRunPolicySchema = Type.Object(
     memory: Type.Optional(Type.Boolean()),
     confirmExpansion: Type.Optional(Type.Boolean()),
     model: Type.Optional(ModelSelectionSchema),
+    contextChoice: Type.Optional(RunContextChoiceSchema),
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     skills: Type.Optional(Type.Array(CommandSkillRefSchema, { maxItems: 32 })),
     roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),

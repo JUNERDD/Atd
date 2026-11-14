@@ -19,6 +19,7 @@ import { LedgerNotFound, type Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
 import { lookups, type Lookups } from './checks.js';
+import { resolveAutomationPolicy } from './model-policy.js';
 import { fingerprintOf } from './computer-approval.js';
 import type { AutomationComputer } from './computer-deps.js';
 import {
@@ -127,7 +128,7 @@ export class TrialRuns {
     return { trialId: trial.trialId, taskId: accepted.taskId, runId: accepted.runId };
   }
 
-  private submit(
+  private async submit(
     automation: Automation,
     trial: ComputerRunTrial,
     fingerprint: string | undefined,
@@ -144,9 +145,12 @@ export class TrialRuns {
     const operationId = `trial_${trial.trialId}`;
     const now = new Date(this.deps.now()).toISOString();
     const folders = runFolderIds(automation);
+    const resolved = await resolveAutomationPolicy(launch.dataDir, policy);
+    if (resolved.missingAlias) throw new TypeError('The chosen model alias no longer exists.');
     const picks = {
-      ...(policy.model ? { model: policy.model } : {}),
-      ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
+      ...(resolved.model ? { model: resolved.model } : {}),
+      ...(resolved.thinkingLevel ? { thinkingLevel: resolved.thinkingLevel } : {}),
+      ...(resolved.contextChoice ? { contextChoice: resolved.contextChoice } : {}),
       memory: policy.memory,
     };
     if (action.kind === 'prompt') {

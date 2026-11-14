@@ -13,6 +13,7 @@ import {
   PreviewAutomationTriggerResponseSchema,
   type AutomationTrigger,
 } from '@atd/agent-contracts';
+import { ConnectionStore } from '../dist/credentials/connections.js';
 import { draft } from './automation-kit.ts';
 import { startTestService } from './service-harness.ts';
 import { openStream } from './stream-client.ts';
@@ -261,4 +262,76 @@ test('a folder can be watched; the pause, the notices and the activity report ar
   const report = await send('/v1/system-activity', 'POST', { idleSeconds: 42 });
   assert.equal(report.status, 204);
   await refused('/v1/system-activity', 'POST', { idleSeconds: -1 }, 400);
+});
+
+test('automation alias policy validates mutual exclusion and live alias availability', async () => {
+  const base = draft({ trigger: daily });
+  const both = await refused(
+    '/v1/automations',
+    'POST',
+    {
+      ...base,
+      policy: {
+        ...base.policy,
+        model: { connectionId: 'c1', modelId: 'gpt-4.1' },
+        aliasId: 'alias-1',
+      },
+    },
+    400,
+  );
+  assert.match(both.message, /both a model and a model alias/i);
+
+  const missingAlias = await refused(
+    '/v1/automations',
+    'POST',
+    {
+      ...base,
+      policy: {
+        permissionTier: 'auto',
+        memory: true,
+        folderIds: [],
+        maxDurationMinutes: 15,
+        missedRuns: 'skip',
+        aliasId: 'missing-alias',
+      },
+    },
+    400,
+  );
+  assert.match(missingAlias.message, /\(modelUnavailable\)/);
+
+  const store = await ConnectionStore.load(harness.config.paths.root);
+  await store.change((data) => {
+    data.connections.push({
+      connectionId: 'conn-alias',
+      provider: 'openai',
+      name: 'OpenAI',
+      baseUrl: '',
+      authType: 'api_key',
+      defaultModel: 'gpt-4.1',
+      revision: 1,
+      connected: true,
+      hasCredential: true,
+      configurationId: 'cfg-1',
+      verifiedModel: 'gpt-4.1',
+      migratedAt: null,
+    });
+    data.aliases = [
+      { id: 'alias-fast', name: 'Fast', connectionId: 'conn-alias', modelId: 'gpt-4.1' },
+    ];
+  });
+  const saved = await send('/v1/automations', 'POST', {
+    ...base,
+    policy: {
+      permissionTier: 'auto',
+      memory: true,
+      folderIds: [],
+      maxDurationMinutes: 15,
+      missedRuns: 'skip',
+      aliasId: 'alias-fast',
+    },
+  });
+  assert.equal(saved.status, 201, JSON.stringify(saved.json));
+  const created = parse(AutomationItemSchema, saved.json);
+  assert.equal(created.automation.policy.aliasId, 'alias-fast');
+  await send(`/v1/automations/${created.automation.id}`, 'DELETE');
 });

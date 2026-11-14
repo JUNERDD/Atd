@@ -71,6 +71,7 @@ export async function submitTask<S>(
       folders: request.input.folders ?? [],
     },
     ...(policy?.model ? { model: policy.model } : {}),
+    ...(policy?.contextChoice ? { contextChoice: policy.contextChoice } : {}),
     ...(policy?.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
     ...(policy ? { tools: snapshotToolsFor(policy.tools), memory: policy.memory } : {}),
     ...(policy?.computer ? { computer: policy.computer } : {}),
@@ -125,6 +126,7 @@ async function runSavedCommand<S>(
             tools: snapshotToolsFor(policy.tools),
             memory: policy.memory,
             ...(policy.model ? { model: policy.model } : {}),
+            ...(policy.contextChoice ? { contextChoice: policy.contextChoice } : {}),
             ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
           },
         }

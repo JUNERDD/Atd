@@ -93,6 +93,13 @@ export const ModelPolicySchema = Type.Union([
     },
     { additionalProperties: false },
   ),
+  Type.Object(
+    {
+      mode: Type.Literal('alias'),
+      aliasId: Identifier,
+    },
+    { additionalProperties: false },
+  ),
 ]);
 /**
  * A saved command. Skills, subagents, MCP servers and conversations are tokens in `instructions`

@@ -1,17 +1,6 @@
 import { getSettings, patchSettings } from '@atd/agent-client';
 import {
-  DEFAULT_COMMAND_TYPING,
-  DEFAULT_COMMAND_TYPING_ANIMATION,
-  DEFAULT_GLOW_EFFECTS,
-  DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
-  DEFAULT_NEXT_STEP_CLICK,
-  DEFAULT_NEXT_STEPS,
-  DEFAULT_PANEL_BACKGROUND,
-  DEFAULT_RESULT_MARKDOWN,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
   DEFAULT_SHORTCUTS,
-  DEFAULT_SUMMARY_TITLES,
-  DEFAULT_VIEW_INITIATIVE,
   parseShortcutBindings,
   type PatchSettingsRequest,
   type SettingsResponse,
@@ -20,17 +9,14 @@ import {
   AutomationSessionTargetSchema,
   parseExtensionSession,
 } from '../client/agent/session-handoff';
-import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
 import { parse } from '../client/agent/validation';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
-  DEFAULT_SELECTION_TOOLBAR,
   isAppAppearance,
   isAppLanguage,
   isLongScreenshotConfirmAction,
   isViewInitiative,
-  resolveLanguage,
   type SettingsBridge,
   type SettingsSnapshot,
 } from '../client/settings-contract';
@@ -39,29 +25,18 @@ import {
   parseShellAllowlistEntry,
   withShellAllowlistEntry,
 } from '../client/settings-shell';
-import type { CallResult, NativeBridge } from '../native-bridge/client';
+import type { NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
+import {
+  buildProviderBridge,
+  buildSettingsSnapshot,
+  initialShellState,
+  type ShellState,
+} from './native-settings-helpers';
 import { settingsItemOf, storeSettingsItem, takeSettingsItem } from './settings-item-link';
 import type { WindowMessages } from './window-messages';
 
-/**
- * The preferences the shell owns (the panel's placement null until `app.state` answers), whether
- * it holds the panel, screenshot and record-screen shortcuts (null until the panel's first registration answer
- * reaches this window), whether macOS trusts the app for Accessibility and lets it capture the
- * screen (each null until the shell's `accessibility.trust` or `screenRecording.trust` arrives),
- * and whether the mini panel shows and how it opens (null until the shell's first
- * `miniPanel.state`).
- */
-export type ShellState = Omit<CallResult<'app.state'>, 'panelPlacement'> & {
-  panelPlacement: CallResult<'app.state'>['panelPlacement'] | null;
-  shortcutAvailable: boolean | null;
-  screenshotShortcutAvailable: boolean | null;
-  recordShortcutAvailable: boolean | null;
-  accessibilityTrusted: boolean | null;
-  screenRecordingTrusted: boolean | null;
-  miniPanelShown: boolean | null;
-  miniPanelOpenOn: CallResult<'miniPanel.setOpenOn'>['openOn'] | null;
-};
+export type { ShellState };
 
 /**
  * The settings bridge for the WebView host. Language, default tier, shell allowlist and shortcuts
@@ -85,57 +60,13 @@ export function nativeSettings(
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
-  let shell: ShellState = {
-    pinned: false,
-    showInDock: false,
-    openAtLogin: null,
-    // Assumed until the shell answers, so no placement warning flashes at startup.
-    widgetsAvailable: true,
-    panelPlacement: null,
-    shortcutAvailable: null,
-    screenshotShortcutAvailable: null,
-    recordShortcutAvailable: null,
-    accessibilityTrusted: null,
-    screenRecordingTrusted: null,
-    miniPanelShown: null,
-    miniPanelOpenOn: null,
-  };
+  let shell: ShellState = initialShellState();
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loadErrorListeners = new Set<() => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();
 
-  const snapshot = (): SettingsSnapshot => {
-    const live = providers.overlay();
-    const settings = shared?.settings;
-    return {
-      connections: live?.connections ?? [],
-      defaultConnectionId: live?.defaultConnectionId ?? null,
-      providersLoaded: live !== null,
-      providerStatusesChecked: providers.statusesChecked(),
-      language: settings?.language ?? resolveLanguage(navigator.language),
-      appearance: settings?.appearance ?? null,
-      glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
-      resultMarkdown: settings?.resultMarkdown ?? DEFAULT_RESULT_MARKDOWN,
-      panelBackground: structuredClone(settings?.panelBackground ?? DEFAULT_PANEL_BACKGROUND),
-      computerVisionModel: settings?.computerVisionModel ?? null,
-      shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
-      ...shell,
-      permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
-      shellAllowlist: [...(settings?.shellAllowlist ?? [])],
-      selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
-      screenshotCopyOnConfirm:
-        settings?.screenshotCopyOnConfirm ?? DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
-      longScreenshotConfirmAction:
-        settings?.longScreenshotConfirmAction ?? DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
-      commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,
-      commandTypingAnimation: settings?.commandTypingAnimation ?? DEFAULT_COMMAND_TYPING_ANIMATION,
-      viewInitiative: settings?.viewInitiative ?? DEFAULT_VIEW_INITIATIVE,
-      summaryTitles: settings?.summaryTitles ?? DEFAULT_SUMMARY_TITLES,
-      nextSteps: settings?.nextSteps ?? DEFAULT_NEXT_STEPS,
-      nextStepClick: settings?.nextStepClick ?? DEFAULT_NEXT_STEP_CLICK,
-      onboardingCompleted: settings?.onboardingCompleted ?? false,
-    };
-  };
+  const snapshot = (): SettingsSnapshot =>
+    buildSettingsSnapshot(providers.overlay(), providers.statusesChecked(), shared, shell);
   const publish = () => {
     const next = snapshot();
     for (const listener of listeners) listener(next);
@@ -230,30 +161,7 @@ export function nativeSettings(
       messages.post({ type: 'extensionSession', ...parseExtensionSession(kind, target ?? null) }),
     close: async () => void (await native.call('settings.close', {})),
     get: async () => snapshot(),
-    providers: {
-      catalog: () => providers.catalog(),
-      save: (draft) => providers.save(draft),
-      setDefault: (id, revision) => providers.setDefault(id, revision),
-      setModel: (reference, revision, level) => providers.setModel(reference, revision, level),
-      levels: (reference) => providers.levels(reference),
-      contexts: (reference) => providers.contexts(reference),
-      setContext: (reference, choice, revision) =>
-        providers.setContext(reference, choice, revision),
-      disconnect: (id, revision) => providers.disconnect(id, revision),
-      remove: (id, revision) => providers.remove(id, revision),
-      refresh: (id) => providers.refresh(id),
-      refreshCatalogs: async () => providers.refreshShownCatalogs(),
-      checkStatuses: () => providers.checkStatuses(),
-      verify: (reference) => providers.verify(reference),
-      login: (id, request) => providers.login.start(id, request),
-      answer: (id, promptId, value) => providers.login.answer(id, promptId, value),
-      cancel: (id) => providers.login.cancel(id),
-      openLink: (id) => providers.login.openLink(id),
-      onLogin: (listener) => {
-        loginListeners.add(listener);
-        return () => loginListeners.delete(listener);
-      },
-    },
+    providers: buildProviderBridge(providers, loginListeners),
     setLanguage: async (language) => {
       if (!isAppLanguage(language)) throw new TypeError('Unsupported language.');
       return write({ language });

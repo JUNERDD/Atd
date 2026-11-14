@@ -92,4 +92,9 @@ export type ContextTier = Static<typeof ContextTierSchema>;
  * A context window the user sets for one model, overriding its catalog window and tiers. The floor
  * leaves room for the compaction reserve; the ceiling is far above any served window.
  */
-export const CustomContextWindowSchema = Type.Integer({ minimum: 1024, maximum: 100_000_000 });
+export const MIN_CONTEXT_WINDOW = 1024;
+export const MAX_CONTEXT_WINDOW = 100_000_000;
+export const CustomContextWindowSchema = Type.Integer({
+  minimum: MIN_CONTEXT_WINDOW,
+  maximum: MAX_CONTEXT_WINDOW,
+});

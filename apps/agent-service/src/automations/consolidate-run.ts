@@ -1,6 +1,7 @@
 import { errorMessage, type Automation } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import type { ConsolidateMemory, ConsolidationResult } from '../memory/consolidation/index.js';
+import { resolveAutomationPolicy, type ResolvedAutomationPolicy } from './model-policy.js';
 import { clip } from './prompt.js';
 import type { Settlement } from './records.js';
 
@@ -44,6 +45,7 @@ interface LiveConsolidation {
 
 export interface ConsolidationDeps {
   consolidate: ConsolidateMemory;
+  dataDir?: string;
   log: Logger;
   now: () => number;
   /** Settles the record and fires the automations chained to its result (dispatcher.ts). */
@@ -136,17 +138,34 @@ export class ConsolidationRuns {
     const { signal } = run.controller;
     let result: Settlement;
     try {
-      const done = await Promise.race([
-        this.deps.consolidate({
-          ...(policy.model ? { model: policy.model } : {}),
-          ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
-          signal,
-          automationId: run.automationId,
-          automationRunId: run.recordId,
-        }),
-        abortion(signal),
-      ]);
-      result = settlementOf(done);
+      const resolved: ResolvedAutomationPolicy | undefined = policy.aliasId
+        ? this.deps.dataDir
+          ? await resolveAutomationPolicy(this.deps.dataDir, policy)
+          : { missingAlias: true }
+        : undefined;
+      if (resolved?.missingAlias) {
+        result = settlementOf({
+          outcome: 'failed',
+          reason: 'modelUnavailable',
+          detail: 'The chosen model alias no longer exists.',
+        });
+      } else {
+        const model = resolved?.model ?? policy.model;
+        const thinkingLevel = resolved?.thinkingLevel ?? policy.thinkingLevel;
+        const contextChoice = resolved?.contextChoice;
+        const done = await Promise.race([
+          this.deps.consolidate({
+            ...(model ? { model } : {}),
+            ...(thinkingLevel ? { thinkingLevel } : {}),
+            ...(contextChoice ? { contextChoice } : {}),
+            signal,
+            automationId: run.automationId,
+            automationRunId: run.recordId,
+          }),
+          abortion(signal),
+        ]);
+        result = settlementOf(done);
+      }
     } catch (error) {
       result =
         signal.reason instanceof ConsolidationStopped ? stopped(signal.reason.by) : failed(error);

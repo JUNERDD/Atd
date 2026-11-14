@@ -3,6 +3,7 @@ import {
   ComputerRunRequestSchema,
   MAX_RUN_REFERENCES,
   MAX_RUN_SKILLS,
+  RunContextChoiceSchema,
   RunReferenceSchema,
 } from '@atd/agent-contracts';
 import { ToolIdSchema } from './command-schema';
@@ -14,6 +15,8 @@ export const RunPolicySchema = Type.Object(
     memory: Type.Boolean(),
     confirmExpansion: Type.Boolean(),
     model: Type.Optional(ModelReferenceSchema),
+    /** Per-run context window override (e.g. inherited from a picked model alias). */
+    contextChoice: Type.Optional(RunContextChoiceSchema),
     /** Thinking level for this run; omitted runs use the connection's saved level. */
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     /** T6 additive: skill refs saved on the task, frozen at accept via staging. */
