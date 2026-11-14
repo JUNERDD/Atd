@@ -236,6 +236,7 @@ export function nativeSettings(
       remove: (id, revision) => providers.remove(id, revision),
       refresh: (id) => providers.refresh(id),
       refreshCatalogs: async () => providers.refreshShownCatalogs(),
+      checkStatuses: () => providers.checkStatuses(),
       verify: (reference) => providers.verify(reference),
       login: (id, request) => providers.login.start(id, request),
       answer: (id, promptId, value) => providers.login.answer(id, promptId, value),

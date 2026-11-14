@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import {
   ChatGPTConsentSchema,
   ChatGPTConsentRequestSchema,
+  type ProviderCredentialIssue,
   type ProviderLoginRequest,
   type ProviderLoginDiagnostic,
   type ProviderContextsResponse,
@@ -156,7 +157,10 @@ export const StoredConnectionSchema = Type.Object(
   { additionalProperties: false },
 );
 export type StoredConnection = Static<typeof StoredConnectionSchema>;
-export type Connection = Omit<StoredConnection, 'encryptedCredential'> & { hasCredential: boolean };
+export type Connection = Omit<StoredConnection, 'encryptedCredential'> & {
+  hasCredential: boolean;
+  credentialIssue?: ProviderCredentialIssue;
+};
 
 /** Model metadata is frozen separately from the connection's mutable default preference. */
 export const ModelReferenceSchema = Type.Object(
@@ -258,6 +262,8 @@ export interface ProviderBridge {
    * silent.
    */
   refreshCatalogs: () => Promise<void>;
+  /** Probes stored credentials in the OS keyring for connected connections, no network. */
+  checkStatuses: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
   login: (connectionId: string, request?: ProviderLoginRequest) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;

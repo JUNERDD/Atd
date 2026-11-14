@@ -19,6 +19,7 @@ import { isLocalProvider } from './catalog.js';
 /** Local verdict on a stored credential; `detail` never carries secret values. */
 export interface CredentialCheck {
   readable: boolean;
+  issue?: 'unreadable' | 'missing';
   modelCheck: ProviderConnectResponse['modelCheck'];
   detail: string;
 }
@@ -79,7 +80,12 @@ export async function modelCheck(
     );
     const credential = await credentials.read(connection.provider);
     if (!credential)
-      return { readable: false, modelCheck: 'failed', detail: 'Reconnect this provider.' };
+      return {
+        readable: false,
+        issue: 'missing',
+        modelCheck: 'failed',
+        detail: 'Reconnect this provider.',
+      };
     readable = true;
     let ok = credential.type === 'oauth' || connection.authType === 'none';
     if (!ok && credential.type === 'api_key') {
@@ -112,8 +118,11 @@ export async function modelCheck(
   } catch {
     return {
       readable,
+      ...(!readable ? { issue: 'unreadable' as const } : {}),
       modelCheck: 'failed',
-      detail: 'The stored credential could not be used. Reconnect this provider.',
+      detail: readable
+        ? 'The stored credential could not be used. Reconnect this provider.'
+        : 'The stored credential in the OS keychain could not be read. Reconnect this provider.',
     };
   }
 }

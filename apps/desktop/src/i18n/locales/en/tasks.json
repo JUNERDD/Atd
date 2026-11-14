@@ -208,6 +208,12 @@
     "message": "The model provider refused this request as too large, most likely because of the images in this conversation. Older images are now left out of what the model sees. Send your message again; if it still fails, compact the context or start a new task.",
     "details": "Error details"
   },
+  "credentialAuth": {
+    "unreadable": "The saved credentials for this provider could not be read from the OS keychain (common after an app update or signature change). Re-enter your API key or sign in again in Settings → Providers; your model configuration is still intact.",
+    "missing": "No usable credentials were found for this provider. Re-enter your API key or sign in again in Settings → Providers; your model configuration is still intact.",
+    "openSettings": "Open provider settings",
+    "details": "Error details"
+  },
   "files": {
     "open": "Open",
     "openLabel": "Open file",

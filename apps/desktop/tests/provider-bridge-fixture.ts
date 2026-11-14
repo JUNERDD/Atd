@@ -28,6 +28,7 @@ export function providerBridgeFixture(saved: () => Connection) {
     remove: vi.fn(async () => undefined),
     refresh: vi.fn(async () => {}),
     refreshCatalogs: vi.fn(async () => {}),
+    checkStatuses: vi.fn(async () => {}),
     verify: vi.fn(async () => {}),
     login: vi.fn(async () => Promise.reject(new Error('Not used'))),
     answer: vi.fn(async () => {}),

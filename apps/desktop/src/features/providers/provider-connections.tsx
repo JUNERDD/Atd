@@ -1,4 +1,4 @@
-import { Check, Ellipsis, RefreshCw, Settings2, Trash2, Unplug } from 'lucide-react';
+import { Check, CircleAlert, Ellipsis, RefreshCw, Settings2, Trash2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@atd/ui/components/badge';
 import { providerPresentation } from './provider-services';
@@ -68,27 +68,38 @@ export function ProviderConnections({
         const verified = Boolean(
           connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
         );
+        const credentialIssue = connection.credentialIssue;
         const description = !connection.connected
           ? t('connections.status.disconnected')
-          : connection.provider === 'openai' &&
-              connection.authType === 'oauth' &&
-              connection.chatgptUsagePaused
-            ? t('chatgpt.paused')
+          : credentialIssue
+            ? t(
+                connection.authType === 'oauth'
+                  ? credentialIssue === 'unreadable'
+                    ? 'connections.status.oauthUnreadable'
+                    : 'connections.status.oauthMissing'
+                  : credentialIssue === 'unreadable'
+                    ? 'connections.status.credentialUnreadable'
+                    : 'connections.status.credentialMissing',
+              )
             : connection.provider === 'openai' &&
                 connection.authType === 'oauth' &&
-                !connection.chatgptPlanEnabled
-              ? t('chatgpt.planDisabled')
-              : connection.authType === 'oauth'
-                ? t('connections.status.oauth')
-                : connection.authType === 'none'
-                  ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
-                  : connection.authType === 'ambient'
-                    ? t('connections.status.ambient')
-                    : t(
-                        verified
-                          ? 'connections.status.apiKeyVerified'
-                          : 'connections.status.apiKeyUnverified',
-                      );
+                connection.chatgptUsagePaused
+              ? t('chatgpt.paused')
+              : connection.provider === 'openai' &&
+                  connection.authType === 'oauth' &&
+                  !connection.chatgptPlanEnabled
+                ? t('chatgpt.planDisabled')
+                : connection.authType === 'oauth'
+                  ? t('connections.status.oauth')
+                  : connection.authType === 'none'
+                    ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
+                    : connection.authType === 'ambient'
+                      ? t('connections.status.ambient')
+                      : t(
+                          verified
+                            ? 'connections.status.apiKeyVerified'
+                            : 'connections.status.apiKeyUnverified',
+                        );
         // More's items, which a right-click on the row opens too while More is enabled.
         const menu = (
           <>
@@ -201,6 +212,22 @@ export function ProviderConnections({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </ItemActions>
+                {credentialIssue && (
+                  <output className="provider-row-notice provider-row-notice-warning">
+                    <CircleAlert aria-hidden="true" />
+                    <span>
+                      {t(
+                        connection.authType === 'oauth'
+                          ? credentialIssue === 'unreadable'
+                            ? 'connections.credentialIssue.oauthUnreadable'
+                            : 'connections.credentialIssue.oauthMissing'
+                          : credentialIssue === 'unreadable'
+                            ? 'connections.credentialIssue.apiKeyUnreadable'
+                            : 'connections.credentialIssue.apiKeyMissing',
+                      )}
+                    </span>
+                  </output>
+                )}
                 {connection.catalogError && (
                   <output className="provider-row-notice">{connection.catalogError}</output>
                 )}
