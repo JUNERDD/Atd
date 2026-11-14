@@ -1,7 +1,6 @@
 import {
   createModelAlias,
   removeModelAlias,
-  seedModelAliases,
   setDefaultModelAlias,
   updateModelAlias,
   type AgentClientOptions,
@@ -36,12 +35,4 @@ export async function setDefaultLiveAlias(
   defaultAliasId: string | null,
 ): Promise<void> {
   await setDefaultModelAlias(options, defaultAliasId);
-}
-
-/** Seeds initial cold-start aliases atomically without modifying `defaultAliasId`. */
-export async function seedLiveAliases(
-  options: AgentClientOptions,
-  aliases: ModelAliasDraft[],
-): Promise<ModelAlias[]> {
-  return (await seedModelAliases(options, aliases)).aliases;
 }

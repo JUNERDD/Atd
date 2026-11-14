@@ -40,9 +40,6 @@ export function providerBridgeFixture(saved: () => Connection) {
     })),
     removeAlias: vi.fn(async () => {}),
     setDefaultAlias: vi.fn(async () => {}),
-    seedAliases: vi.fn(async (drafts: ModelAliasDraft[]): Promise<ModelAlias[]> =>
-      drafts.map((draft, index) => ({ id: `alias-${index + 1}`, ...draft })),
-    ),
     disconnect: vi.fn(async () => {}),
     remove: vi.fn(async () => undefined),
     refresh: vi.fn(async () => {}),

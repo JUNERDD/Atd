@@ -11,7 +11,6 @@ import {
   ModelAliasDefaultResponseSchema,
   ModelAliasMutationResponseSchema,
   ModelAliasRemoveResponseSchema,
-  ModelAliasesSeedResponseSchema,
   parse,
   ProvidersListResponseSchema,
   type CommandCreate,
@@ -268,18 +267,6 @@ test('model alias routes and command alias preview/fallback inheritance work end
     }),
   );
   assert.equal(updated.alias.thinkingLevel, 'high');
-
-  const seeded = parse(
-    ModelAliasesSeedResponseSchema,
-    await req('/v1/providers/aliases/seed', 'POST', {
-      aliases: [
-        { ...base, name: 'faster' },
-        { ...base, name: 'Deep', thinkingLevel: 'medium' },
-      ],
-    }),
-  );
-  assert.equal(seeded.aliases.length, 2);
-  assert.equal(seeded.defaultAliasId, null);
 
   const defaulted = parse(
     ModelAliasDefaultResponseSchema,

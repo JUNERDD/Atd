@@ -9,13 +9,7 @@ import {
   type AgentClientOptions,
 } from '@atd/agent-client';
 import type { ModelAlias, ModelAliasDraft } from '@atd/agent-contracts';
-import {
-  createLiveAlias,
-  removeLiveAlias,
-  seedLiveAliases,
-  setDefaultLiveAlias,
-  updateLiveAlias,
-} from './aliases';
+import { createLiveAlias, removeLiveAlias, setDefaultLiveAlias, updateLiveAlias } from './aliases';
 import { CatalogSync } from './catalog-sync';
 import {
   disconnectLive,
@@ -227,10 +221,6 @@ export class ProviderService {
 
   async setDefaultAlias(defaultAliasId: string | null): Promise<void> {
     await this.write((options) => setDefaultLiveAlias(options, defaultAliasId));
-  }
-
-  async seedAliases(aliases: ModelAliasDraft[]): Promise<ModelAlias[]> {
-    return this.write((options) => seedLiveAliases(options, aliases));
   }
 
   async disconnect(id: string, revision: number): Promise<void> {

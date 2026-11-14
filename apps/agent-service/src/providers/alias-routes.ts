@@ -5,7 +5,6 @@ import {
   MAX_MODEL_ALIASES,
   ModelAliasCreateRequestSchema,
   ModelAliasDefaultRequestSchema,
-  ModelAliasesSeedRequestSchema,
   ModelAliasUpdateRequestSchema,
   parse,
   type ModelAlias,
@@ -24,7 +23,6 @@ function normalizeAliasDraft(
   raw: ModelAliasDraft,
   data: ServiceConnectionsFile,
   ignoreAliasId?: string,
-  checkDuplicate = true,
 ): ModelAliasDraft {
   const name = raw.name.trim();
   if (!name) throw new TypeError('Model alias name cannot be empty.');
@@ -33,13 +31,11 @@ function normalizeAliasDraft(
   if (!data.connections.some((item) => item.connectionId === raw.connectionId)) {
     throw new TypeError('The selected provider connection does not exist.');
   }
-  if (checkDuplicate) {
-    const key = name.toLowerCase();
-    const conflict = (data.aliases ?? []).some(
-      (item) => item.id !== ignoreAliasId && item.name.trim().toLowerCase() === key,
-    );
-    if (conflict) throw new ConflictError('A model alias with that name already exists.');
-  }
+  const key = name.toLowerCase();
+  const conflict = (data.aliases ?? []).some(
+    (item) => item.id !== ignoreAliasId && item.name.trim().toLowerCase() === key,
+  );
+  if (conflict) throw new ConflictError('A model alias with that name already exists.');
   return {
     name,
     connectionId: raw.connectionId,
@@ -50,7 +46,7 @@ function normalizeAliasDraft(
 }
 
 /**
- * CRUD, seeding, and default-alias routes under `/v1/providers/aliases`.
+ * CRUD and default-alias routes under `/v1/providers/aliases`.
  * Must be registered before `/v1/providers/:connectionId` so static segments resolve unambiguously.
  */
 export function registerAliasRoutes(
@@ -70,30 +66,6 @@ export function registerAliasRoutes(
       aliases.push(alias);
       return {
         alias,
-        aliases: [...aliases],
-        defaultAliasId: data.defaultAliasId ?? null,
-      };
-    });
-  });
-
-  app.post('/v1/providers/aliases/seed', RENDERER_ROUTE, async (request) => {
-    const body = parse(ModelAliasesSeedRequestSchema, request.body);
-    const { connections } = await stores();
-    return connections.change((data) => {
-      const aliases = (data.aliases ??= []);
-      // Validate every entry upfront so seeding remains atomic even when some names are skipped.
-      const normalized = body.aliases.map((item) =>
-        normalizeAliasDraft(item, data, undefined, false),
-      );
-      const seen = new Set(aliases.map((item) => item.name.trim().toLowerCase()));
-      for (const draft of normalized) {
-        if (aliases.length >= MAX_MODEL_ALIASES) break;
-        const key = draft.name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        aliases.push({ id: randomUUID(), ...draft });
-      }
-      return {
         aliases: [...aliases],
         defaultAliasId: data.defaultAliasId ?? null,
       };
