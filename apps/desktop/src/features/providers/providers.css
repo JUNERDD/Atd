@@ -420,44 +420,21 @@ button.model-config-row-nav:disabled:hover {
 .provider-advanced-trigger[data-state='open'] svg {
   transform: rotate(180deg);
 }
-.model-aliases-section {
-  margin-top: 24px;
-}
-.model-alias-starter-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.model-alias-starter-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-}
-.model-alias-starter-info {
+.providers-overview-tab {
   display: flex;
   min-width: 0;
-  flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: 16px;
+  padding-top: 8px;
 }
-.model-alias-starter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.providers-overview-tab[hidden] {
+  display: none;
 }
 .model-alias-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: auto;
-}
-.model-alias-dialog-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 .model-alias-dialog-toggle {
   display: flex;
