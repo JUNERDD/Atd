@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import { ChatGPTUsageError } from '../../providers/chatgpt-plan';
-import { chatgptUsageError, isRequestTooLarge } from '@atd/agent-contracts';
+import { chatgptUsageError, credentialAuthError, isRequestTooLarge } from '@atd/agent-contracts';
+import { CredentialAuthError } from './credential-auth-error';
 import { RequestTooLargeError } from './request-too-large';
 
 const NOTES = {
@@ -39,6 +40,8 @@ export function StatusBar({ run }: { run: TaskRun | undefined }) {
         <AlertDescription className="wrap-anywhere">
           {chatgptUsageError(run.error) ? (
             <ChatGPTUsageError error={run.error} />
+          ) : credentialAuthError(run.error) ? (
+            <CredentialAuthError error={run.error} />
           ) : isRequestTooLarge(run.error) ? (
             <RequestTooLargeError error={run.error} />
           ) : (

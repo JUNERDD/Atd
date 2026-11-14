@@ -405,7 +405,7 @@
     },
     "notarizationReauth": {
       "title": "Re-authorize permissions after certificate update",
-      "description": "Atd recently updated its Developer ID signing certificate, so macOS treats earlier permission grants as invalid. Re-grant the missing items in System Settings to keep using text selection and screenshots.",
+      "description": "Atd switched to a new Apple notarization certificate, so permissions and local model credentials need re-confirmation. Open System Settings or jump to Model Settings below.",
       "later": "Later",
       "done": "Done",
       "authorize": "Open System Settings",
@@ -423,6 +423,17 @@
         "title": "Screen Recording",
         "description": "Capture screen context when you ask",
         "grantedDescription": "Screen Recording access is up to date"
+      },
+      "credentials": {
+        "title": "Model credentials",
+        "description": "Jump to Model Settings window",
+        "issueDescription_one": "{{count}} model connection could not be read; open Model Settings",
+        "issueDescription_other": "{{count}} model connections could not be read; open Model Settings",
+        "restoredDescription": "Re-confirmed and saved",
+        "restoredBadge": "Restored",
+        "openAction": "Settings",
+        "openPrimary": "Open Model Settings",
+        "error": "Couldn't open Model Settings. Please open Settings › Providers manually."
       }
     }
   }

@@ -9,7 +9,17 @@
       "noKey": "无 API 密钥 · {{baseUrl}}",
       "ambient": "云服务凭据",
       "apiKeyVerified": "API 密钥已保存 · 已校验",
-      "apiKeyUnverified": "API 密钥已保存 · 尚未校验"
+      "apiKeyUnverified": "API 密钥已保存 · 尚未校验",
+      "credentialUnreadable": "密钥无法读取 · 需重新输入",
+      "credentialMissing": "未找到密钥 · 需重新输入",
+      "oauthUnreadable": "登录凭据无法读取 · 需重新登录",
+      "oauthMissing": "未找到登录凭据 · 需重新登录"
+    },
+    "credentialIssue": {
+      "apiKeyUnreadable": "无法从系统钥匙串读取已保存的 API 密钥（常见于应用更新或签名变更后），请点此行重新填写密钥。",
+      "apiKeyMissing": "系统钥匙串中找不到此连接保存的 API 密钥，请点此行重新填写密钥。",
+      "oauthUnreadable": "无法从系统钥匙串读取此账号的授权凭据（常见于应用更新或签名变更后），请点此行重新登录。",
+      "oauthMissing": "系统钥匙串中找不到此账号的授权凭据，请点此行重新登录。"
     },
     "defaultModelLabel": "{{name}} 的默认模型",
     "currentDefault": "当前默认",
@@ -81,9 +91,18 @@
     "keepKey": "保留已保存的密钥",
     "removeKey": "移除密钥",
     "keepKeyPlaceholder": "保持不变即保留已保存的密钥",
+    "reenterUnreadableKeyPlaceholder": "原密钥无法读取，请输入 API 密钥",
+    "reenterMissingKeyPlaceholder": "未找到原密钥，请输入 API 密钥",
     "apiKeyPlaceholder": "输入 API 密钥",
     "keyRemovedNote": "保存后将移除已保存的密钥。",
+    "credentialIssueKeyNote": "重新保存密钥后即可恢复使用，原有接口地址与模型配置将保留。",
     "encryptedNote": "凭据已在本设备加密。",
+    "credentialIssue": {
+      "apiKeyUnreadable": "当前无法从系统钥匙串读取此前保存的 API 密钥（常见于应用更新或重新签名后）。请重新输入密钥并保存，其余配置将保留。",
+      "apiKeyMissing": "系统钥匙串中已找不到此前保存的 API 密钥。请重新输入密钥并保存，其余配置将保留。",
+      "oauthUnreadable": "当前无法从系统钥匙串读取此账号的授权凭据（常见于应用更新或重新签名后）。请点击下方重新登录，模型与偏好配置将保留。",
+      "oauthMissing": "系统钥匙串中已找不到此账号的授权凭据。请点击下方重新登录，模型与偏好配置将保留。"
+    },
     "resourceEndpoint": "资源端点",
     "baseUrl": "基础 URL",
     "insecureHttpWarning": "此端点使用未加密的 HTTP。API 密钥和对话数据在传输中不会加密，请仅在信任该服务器和网络时使用。",

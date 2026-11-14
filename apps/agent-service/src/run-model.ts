@@ -4,6 +4,12 @@ import type { Api, Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceModelDefinition, TaskRun } from '@atd/agent-contracts';
 import { AuthRequired, TempCredentialStore } from './credentials.js';
+import { KeyringUnavailable } from './credentials/keyring.js';
+import {
+  clearCredentialIssue,
+  expectsStoredCredential,
+  recordCredentialIssue,
+} from './providers/credential-issues.js';
 import { ConnectionStore } from './credentials/connections.js';
 import { KeyringBackend } from './credentials/keyring.js';
 import { presentConnection } from './providers/connection-view.js';
@@ -82,6 +88,27 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
       `${connection.name} is disconnected. Reconnect it in Settings → Providers, then send again.`,
     );
   const credentials = connectionCredentials(stores, connection);
+  if (expectsStoredCredential(connection)) {
+    try {
+      const secret = await credentials.read(connection.provider);
+      if (!secret) {
+        recordCredentialIssue(stores.dataDir, connection.connectionId, 'missing');
+        throw new AuthRequired(
+          `${connection.name} has no usable credentials. Reconnect it in Settings → Providers, then send again. [credential_missing]`,
+        );
+      }
+      clearCredentialIssue(stores.dataDir, connection.connectionId);
+    } catch (error) {
+      if (error instanceof AuthRequired) throw error;
+      if (error instanceof KeyringUnavailable) {
+        recordCredentialIssue(stores.dataDir, connection.connectionId, 'unreadable');
+        throw new AuthRequired(
+          `${connection.name} credentials in the OS keychain could not be read (${error.message}). Reconnect it in Settings → Providers, then send again. [credential_unreadable]`,
+        );
+      }
+      throw error;
+    }
+  }
   const { catalog = [] } = await presentConnection(connection);
   const override = contextOverrideFor(catalog, run);
   const models = await connectionRuntime(stores, connection, credentials, override);
@@ -90,10 +117,17 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
     throw new Error(
       `${selected.modelId} is unavailable on ${connection.name}. Refresh its models or choose another.`,
     );
-  if (!(await models.checkAuth(connection.provider)))
+  if (!(await models.checkAuth(connection.provider))) {
+    if (expectsStoredCredential(connection)) {
+      recordCredentialIssue(stores.dataDir, connection.connectionId, 'missing');
+      throw new AuthRequired(
+        `${connection.name} has no usable credentials. Reconnect it in Settings → Providers, then send again. [credential_missing]`,
+      );
+    }
     throw new AuthRequired(
       `${connection.name} has no usable credentials. Reconnect it in Settings → Providers, then send again.`,
     );
+  }
   const { connectionId, configurationId } = connection;
   return {
     models,

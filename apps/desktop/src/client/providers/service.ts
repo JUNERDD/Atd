@@ -1,6 +1,7 @@
 import {
   getProviderContexts,
   getProviderLevels,
+  providerStatus,
   refreshProvider,
   setDefaultProvider,
   setProviderContext,
@@ -36,6 +37,7 @@ export interface ProviderConnection {
 export class ProviderService {
   private connection: ProviderConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
+  private checkingStatuses: Promise<void> | null = null;
   readonly login: ProviderLoginClient;
   private readonly catalogSync = new CatalogSync(
     () => this.live?.connections ?? [],
@@ -159,6 +161,38 @@ export class ProviderService {
   /** A model list opened in either window; see `ProviderBridge.refreshCatalogs`. */
   refreshShownCatalogs(): void {
     this.catalogSync.shown();
+  }
+
+  /** Probes keyring readability for connected credentialed rows without hitting provider networks. */
+  async checkStatuses(): Promise<void> {
+    if (this.checkingStatuses) return this.checkingStatuses;
+    const run = (async () => {
+      const options = this.connection?.options();
+      if (!options) return;
+      if (!this.live) await this.sync();
+      const eligible = (this.live?.connections ?? []).filter(
+        (item) =>
+          item.connected &&
+          item.hasCredential &&
+          item.authType !== 'none' &&
+          item.authType !== 'ambient',
+      );
+      if (!eligible.length) return;
+      const results = await Promise.all(
+        eligible.map(async (item) => {
+          const status = await providerStatus(options, item.connectionId).catch(() => null);
+          return { item, status };
+        }),
+      );
+      const changed = results.some(
+        ({ item, status }) => status !== null && status.credentialIssue !== item.credentialIssue,
+      );
+      if (changed) await this.sync();
+    })().finally(() => {
+      if (this.checkingStatuses === run) this.checkingStatuses = null;
+    });
+    this.checkingStatuses = run;
+    return run;
   }
 
   /** `network: false` only reloads the saved catalog; a refresh failure is kept on the row. */

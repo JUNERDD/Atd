@@ -109,6 +109,9 @@
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
 }
+.provider-row-notice-warning {
+  color: var(--ata-status-warning);
+}
 /* The catalog's load error with its Retry, under the overview heading. */
 .provider-catalog-error {
   display: flex;
@@ -154,15 +157,19 @@
   line-height: 16px;
   overflow-wrap: anywhere;
 }
+.provider-row-notice-warning,
 .provider-transport-warning {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin-top: 8px;
   color: var(--ata-status-warning);
   font-size: 12px;
   line-height: 16px;
 }
+.provider-transport-warning {
+  margin-top: 8px;
+}
+.provider-row-notice-warning svg,
 .provider-transport-warning svg {
   flex: 0 0 auto;
   width: 14px;

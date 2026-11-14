@@ -31,6 +31,7 @@ import { connectionModelTiers, contextChoices, contextsResponse } from './contex
 import type { ProviderLogins } from './login.js';
 import { connectionModel, refreshCatalog, verifyModel, type ProviderStores } from './runtime.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import { clearCredentialIssue } from './credential-issues.js';
 import { assertProviderAuth, assertUploadedCredential } from './auth-policy.js';
 import {
   isChatGPT,
@@ -98,6 +99,9 @@ export function registerConnectionRoutes(
         },
       );
     });
+    if (body.credential.action !== 'keep') {
+      clearCredentialIssue(opened.dataDir, live.connectionId);
+    }
     if (body.resumeChatGPTUsage) resumeChatGPTUsage(live.connectionId);
     return { connection: await presentStored(connections, live.connectionId) };
   });
@@ -219,6 +223,7 @@ export function registerConnectionRoutes(
     const body = parse(ProviderVerifyRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
     await withInferencePurpose(false, () => verifyModel(opened, live, body.modelId));
+    clearCredentialIssue(opened.dataDir, live.connectionId);
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 

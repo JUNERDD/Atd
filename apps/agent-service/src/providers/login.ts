@@ -11,6 +11,7 @@ import { LedgerNotFound } from '../ledger.js';
 import { connectionRuntime, type ProviderStores } from './runtime.js';
 import { hasLoginErrorCode, loginFailureDiagnostic, loginFailureMessage } from './login-errors.js';
 import { isChatGPT, requireChatGPTNotice } from './chatgpt-usage.js';
+import { clearCredentialIssue } from './credential-issues.js';
 import type { OAuthCallback } from './oauth-callback.js';
 
 interface Login {
@@ -125,6 +126,7 @@ export class ProviderLogins {
       })
       .then(async () => {
         await stores.connections.reload();
+        clearCredentialIssue(stores.dataDir, connection.connectionId);
         const live = stores.connections.connection(connection.connectionId);
         const plan = isChatGPT(live) ? Boolean(live.chatgptPlanEnabled) : undefined;
         login.state = {
