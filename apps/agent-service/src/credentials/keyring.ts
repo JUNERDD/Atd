@@ -24,6 +24,20 @@
  * pi-mcp-adapter's OAuth credentials reads that product's own keychain service, and nothing here
  * writes to or deletes from it.
  */
+import { randomUUID } from 'node:crypto';
+import {
+  dedupeInflight,
+  getCachedSecret,
+  hasCachedSecret,
+  inflightGets,
+  invalidateSecretCache,
+  isTestMode,
+  resetKeyringCache,
+  runCachedStatus,
+  secretCache,
+  withKeyringGate,
+} from './keyring-cache.js';
+
 export interface KeyringStatus {
   available: boolean;
   backend: 'keychain' | 'credential-manager' | 'secret-service' | 'unavailable';
@@ -101,6 +115,7 @@ async function loadKeyring(): Promise<KeyringModule | null> {
 /** For tests and runtime probes that must not touch the real OS keyring. */
 export function __setKeyringModuleForTests(module: KeyringModule | null | undefined): void {
   cachedModule = module;
+  resetKeyringCache(module !== undefined);
 }
 
 function entryOptions(): { linux?: { store?: 'secret-service' | 'keyutils' } } | undefined {
@@ -114,6 +129,13 @@ export class KeyringUnavailable extends Error {
     super(detail);
     this.name = 'KeyringUnavailable';
   }
+}
+
+function asKeyringUnavailable(action: string, error: unknown): KeyringUnavailable {
+  if (error instanceof KeyringUnavailable) return error;
+  return new KeyringUnavailable(
+    `The credential could not be ${action}: ${error instanceof Error ? error.message : 'unknown'}`,
+  );
 }
 
 /** Persistent keyring partitioned by service identity. */
@@ -139,79 +161,115 @@ export class KeyringBackend {
 
   /** Probe with a throwaway entry; never reports keyutils as persistent. */
   async status(signal?: AbortSignal): Promise<KeyringStatus> {
-    const module = await loadKeyring();
-    if (!module) return { available: false, backend: 'unavailable', detail: 'Module missing.' };
-    try {
-      const probe = new module.AsyncEntry(this.service, 'probe:availability', entryOptions());
-      await probe.setPassword(`probe-${Date.now()}`, signal ?? null);
-      await probe.getPassword(signal ?? null);
-      await probe.deleteCredential(signal ?? null);
-      return {
-        available: true,
-        backend:
-          process.platform === 'darwin'
-            ? 'keychain'
-            : process.platform === 'win32'
-              ? 'credential-manager'
-              : 'secret-service',
-        detail: 'Probe write/read/delete succeeded.',
-      };
-    } catch (error) {
-      return {
-        available: false,
-        backend: 'unavailable',
-        detail: error instanceof Error ? error.message : 'Probe failed.',
-      };
-    }
+    return runCachedStatus(this.service, signal, () =>
+      withKeyringGate<KeyringStatus>(async () => {
+        const module = await loadKeyring();
+        if (!module) return { available: false, backend: 'unavailable', detail: 'Module missing.' };
+        try {
+          const entry = new module.AsyncEntry(this.service, 'probe:availability', entryOptions());
+          await entry.setPassword(`probe-${Date.now()}`, signal ?? null);
+          await entry.getPassword(signal ?? null);
+          await entry.deleteCredential(signal ?? null);
+          return {
+            available: true,
+            backend:
+              process.platform === 'darwin'
+                ? 'keychain'
+                : process.platform === 'win32'
+                  ? 'credential-manager'
+                  : 'secret-service',
+            detail: 'Probe write/read/delete succeeded.',
+          };
+        } catch (error) {
+          return {
+            available: false,
+            backend: 'unavailable',
+            detail: error instanceof Error ? error.message : 'Probe failed.',
+          };
+        }
+      }),
+    );
   }
 
   async set(account: string, secret: string, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
+    const key = `${this.service}\0${account}`;
+    invalidateSecretCache(key);
     try {
-      await (await this.entry(account)).setPassword(secret, signal ?? null);
+      await withKeyringGate(async () => {
+        signal?.throwIfAborted();
+        try {
+          await (await this.entry(account)).setPassword(secret, signal ?? null);
+        } catch (error) {
+          if (signal?.aborted || process.platform !== 'darwin' || isTestMode()) throw error;
+          // Prove the keychain is unlocked and accepts `secret` before deleting a legacy ACL item.
+          const probe = await this.entry(`probe:replace:${randomUUID()}`);
+          await probe.setPassword(secret, signal ?? null);
+          await probe.deleteCredential(null).catch(() => false);
+          await (await this.entry(account)).deleteCredential(signal ?? null);
+          await (await this.entry(account)).setPassword(secret, signal ?? null);
+        }
+        if (!isTestMode()) secretCache.set(key, secret);
+      });
     } catch (error) {
-      if (error instanceof KeyringUnavailable) throw error;
-      throw new KeyringUnavailable(
-        `The credential could not be stored: ${error instanceof Error ? error.message : 'unknown'}`,
-      );
+      secretCache.delete(key);
+      throw asKeyringUnavailable('stored', error);
     }
   }
 
   async get(account: string, signal?: AbortSignal): Promise<string | undefined> {
     signal?.throwIfAborted();
-    try {
-      return (await (await this.entry(account)).getPassword(signal ?? null)) ?? undefined;
-    } catch (error) {
-      if (error instanceof KeyringUnavailable) throw error;
-      throw new KeyringUnavailable(
-        `The credential could not be read: ${error instanceof Error ? error.message : 'unknown'}`,
-      );
-    }
+    const key = `${this.service}\0${account}`;
+    if (!isTestMode() && hasCachedSecret(key)) return getCachedSecret(key);
+    const read = async (): Promise<string | undefined> => {
+      try {
+        return await withKeyringGate(async () => {
+          signal?.throwIfAborted();
+          if (!isTestMode() && hasCachedSecret(key)) return getCachedSecret(key);
+          const value =
+            (await (await this.entry(account)).getPassword(signal ?? null)) ?? undefined;
+          if (typeof value === 'string' && !isTestMode()) secretCache.set(key, value);
+          else if (value === undefined) secretCache.delete(key);
+          return value;
+        });
+      } catch (error) {
+        secretCache.delete(key);
+        throw asKeyringUnavailable('read', error);
+      }
+    };
+    return signal ? read() : dedupeInflight(inflightGets, key, read);
   }
 
   async delete(account: string, signal?: AbortSignal): Promise<boolean> {
     signal?.throwIfAborted();
+    const key = `${this.service}\0${account}`;
+    invalidateSecretCache(key);
     try {
-      return await (await this.entry(account)).deleteCredential(signal ?? null);
+      return await withKeyringGate(async () => {
+        signal?.throwIfAborted();
+        return await (await this.entry(account)).deleteCredential(signal ?? null);
+      });
     } catch (error) {
-      if (error instanceof KeyringUnavailable) throw error;
-      throw new KeyringUnavailable(
-        `The credential could not be deleted: ${error instanceof Error ? error.message : 'unknown'}`,
-      );
+      throw asKeyringUnavailable('deleted', error);
+    } finally {
+      secretCache.delete(key);
     }
   }
 
   /** Lists accounts in this service namespace; secret values are never returned. */
   async listAccounts(signal?: AbortSignal): Promise<string[]> {
     signal?.throwIfAborted();
-    const module = await loadKeyring();
-    if (!module?.findCredentialsAsync) return [];
-    try {
-      const found = await module.findCredentialsAsync(this.service, null, signal ?? null);
-      return found.map((item) => item.account);
-    } catch {
-      return [];
-    }
+    return withKeyringGate(async () => {
+      signal?.throwIfAborted();
+      const module = await loadKeyring();
+      if (!module?.findCredentialsAsync) return [];
+      try {
+        const found = await module.findCredentialsAsync(this.service, null, signal ?? null);
+        return found.map((item) => item.account);
+      } catch {
+        return [];
+      }
+    });
   }
 }
 
@@ -228,14 +286,15 @@ export async function readKeyringItem(
   signal?: AbortSignal,
 ): Promise<string | undefined> {
   signal?.throwIfAborted();
-  const module = await loadKeyring();
-  if (!module) throw new KeyringUnavailable('The OS keyring module is not installed.');
-  try {
-    const entry = new module.AsyncEntry(service, account, entryOptions());
-    return (await entry.getPassword(signal ?? null)) ?? undefined;
-  } catch (error) {
-    throw new KeyringUnavailable(
-      `The credential could not be read: ${error instanceof Error ? error.message : 'unknown'}`,
-    );
-  }
+  return withKeyringGate(async () => {
+    signal?.throwIfAborted();
+    const module = await loadKeyring();
+    if (!module) throw new KeyringUnavailable('The OS keyring module is not installed.');
+    try {
+      const entry = new module.AsyncEntry(service, account, entryOptions());
+      return (await entry.getPassword(signal ?? null)) ?? undefined;
+    } catch (error) {
+      throw asKeyringUnavailable('read', error);
+    }
+  });
 }
