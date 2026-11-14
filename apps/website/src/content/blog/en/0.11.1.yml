@@ -11,13 +11,9 @@ highlights:
       - **Keep your setup intact** — re-enter your API key or sign in again in place without losing configured base URLs, custom models, or default model choices.
     image: /media/blog/0.11.1/credential-recovery.en.webp
     alt: The Light-mode Atd panel over a dusk mountain ridge backdrop, displaying the Re-authorize After Certificate Update dialog with Accessibility, Screen Recording, and a third Model credentials row with a Settings button, with a handwritten white arrow pointing to the Model credentials row.
-  - title: Softer, translucent surfaces in Light mode
-    body: |-
-      Settings windows, glass controls, cards, and conversation detail blocks in Light mode now draw with calibrated panel-aware translucent washes and subtle hairlines instead of opaque gray slabs or stark white fills.
-
-      Unchecked switch tracks, sliders, progress bars, outline buttons, modal close buttons, and input borders in Light mode also gain balanced contrast so controls remain clear over any wallpaper or panel background tint.
-    image: /media/blog/0.11.1/light-mode-surfaces.en.webp
-    alt: A Light-mode Settings General window floating cleanly over the dusk mountain ridge backdrop, showing frosted translucent cards under Appearance and Window & startup, the Light theme selector, and higher-contrast unchecked switch tracks, with a handwritten arrow pointing to the Appearance card.
+improvements:
+  - text: '**Light-mode glass controls, settings cards, and conversation detail blocks** now draw with calibrated panel-aware translucent washes and subtle hairlines instead of opaque gray slabs or stark white fills.'
+  - text: '**Light-mode switches, sliders, progress bars, outline buttons, modal close buttons, and input borders** now use balanced contrast so controls remain clear over any wallpaper or panel background tint.'
 fixes:
   - text: Fixed stacked or repeated macOS Keychain permission dialogs by serializing credential lookups sequentially, caching verified provider states, stopping automatic probes once a credential needs recovery, and cleanly replacing legacy Keychain access entries when saving a new key.
   - text: Fixed opaque fills and mismatched borders on light-mode transcript code and artifact blocks, detail tables, modal close buttons, outline buttons, and the native settings loading view.

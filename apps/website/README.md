@@ -178,9 +178,8 @@ side over Nathan Anderson's _Red sunset on a mountain_ backdrop
 CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as WebP at quality 85.
 
 The 0.11.1 images are in `project/4211:519456`, in the
-`W · Website · Blog · 0.11.1 images (2026-11-14)` section (`4211:519457`, `4211:519719`,
-`4211:519727`, `4211:520750`). The two scenes cover model credential recovery after certificate
-updates and translucent Light-mode surfaces in Settings, with Chinese and English editions side by
+`W · Website · Blog · 0.11.1 images (2026-11-14)` section (`4211:519457`, `4211:519719`). The scene
+covers model credential recovery after certificate updates, with Chinese and English editions side by
 side over the same dusk mountain ridge backdrop and handwritten notes, exported at 1440 × 900 (1x) as
 WebP at quality 85.
 
