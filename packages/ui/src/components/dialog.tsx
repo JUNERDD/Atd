@@ -40,12 +40,18 @@ function DialogOverlay({
   );
 }
 
+/**
+ * The dialog surface. `material` defaults to `backdrop` so the glass sits on a childless layer
+ * behind the content (`glass-host`) instead of hosting interactive controls, scrollbars, and
+ * changing footer labels inside WebKit's `WKMaterialHostingSupport` view (`surface` remains
+ * available for static childless surfaces).
+ */
 function DialogContent({
   className,
   children,
   showCloseButton = true,
   overlayClassName,
-  material = 'surface',
+  material = 'backdrop',
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {

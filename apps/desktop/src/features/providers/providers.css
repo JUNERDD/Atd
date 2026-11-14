@@ -73,11 +73,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 20px;
 }
 .provider-name-track [data-slot='item-title'] {
   display: block;
-  min-width: 80px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

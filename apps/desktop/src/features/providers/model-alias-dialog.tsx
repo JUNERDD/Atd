@@ -155,18 +155,13 @@ function AliasDialogBody(
       savedOk = true;
     } catch (reason) {
       setSubmitError(messageOf(reason));
-    } finally {
-      onSubmittingChange(false);
     }
     if (savedOk) onClose();
+    else onSubmittingChange(false);
   }
 
   return (
-    <DialogContent
-      className="panel-dialog"
-      onInteractOutside={(event) => submitting && event.preventDefault()}
-      onEscapeKeyDown={(event) => submitting && event.preventDefault()}
-    >
+    <>
       <DialogHeader>
         <DialogTitle>
           {t(alias ? 'aliases.dialog.editTitle' : 'aliases.dialog.createTitle')}
@@ -299,7 +294,7 @@ function AliasDialogBody(
             : t(alias ? 'aliases.dialog.save' : 'aliases.dialog.create')}
         </Button>
       </DialogFooter>
-    </DialogContent>
+    </>
   );
 }
 
@@ -309,6 +304,15 @@ export function ModelAliasDialog(
 ) {
   const { open, onOpenChange, ...bodyProps } = props;
   const [submitting, setSubmitting] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  const [session, setSession] = useState(0);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setSubmitting(false);
+      setSession((n) => n + 1);
+    }
+  }
   const close = () => onOpenChange(false);
   return (
     <Dialog
@@ -317,15 +321,20 @@ export function ModelAliasDialog(
         if (!submitting) onOpenChange(next);
       }}
     >
-      {open && (
+      <DialogContent
+        material="backdrop"
+        className="panel-dialog"
+        onInteractOutside={(event) => submitting && event.preventDefault()}
+        onEscapeKeyDown={(event) => submitting && event.preventDefault()}
+      >
         <AliasDialogBody
-          key={props.alias?.id ?? 'new'}
+          key={`${session}:${props.alias?.id ?? 'new'}`}
           {...bodyProps}
           submitting={submitting}
           onSubmittingChange={setSubmitting}
           onClose={close}
         />
-      )}
+      </DialogContent>
     </Dialog>
   );
 }

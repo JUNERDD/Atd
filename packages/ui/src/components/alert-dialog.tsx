@@ -43,11 +43,14 @@ function AlertDialogOverlay({
  */
 function AlertDialogContent({
   className,
+  children,
   size = 'default',
+  material = 'backdrop',
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: 'default' | 'sm';
+  material?: 'surface' | 'backdrop';
 }) {
   return (
     <AlertDialogPortal>
@@ -56,12 +59,22 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          'group/alert-dialog-content fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-hidden rounded-[min(var(--radius-4xl),24px)] surface-glass p-6 text-popover-foreground duration-100 outline-none data-[size=default]:max-w-md data-[size=sm]:max-w-xs data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'group/alert-dialog-content fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-hidden rounded-[min(var(--radius-4xl),24px)] p-6 text-popover-foreground duration-100 outline-none data-[size=default]:max-w-md data-[size=sm]:max-w-xs data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          material === 'surface' ? 'surface-glass' : 'glass-host',
           className,
         )}
         {...props}
         onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
-      />
+      >
+        {material === 'backdrop' && (
+          <span
+            aria-hidden
+            data-slot="alert-dialog-backdrop"
+            className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] surface-glass"
+          />
+        )}
+        {children}
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
