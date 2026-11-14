@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { open } from 'node:fs/promises';
-import { waitForHttpRetry } from '../../scripts/http-retry.mjs';
+import { retryableTransportFailure, waitForHttpRetry } from '../../scripts/http-retry.mjs';
 
 export const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 export const LATEST_CACHE = 'public, max-age=60, must-revalidate';
@@ -25,8 +25,9 @@ export function freshUrl(baseUrl, key, nonce) {
 }
 
 /**
- * One public read, retried on timeouts and HTTP 502/503/504 under the shared HTTP retry policy.
- * `verify` receives every other response and its result is returned; its assertions fail at once.
+ * One public read, retried on timeouts, dropped connections, and HTTP 502/503/504 under the shared
+ * HTTP retry policy. `verify` receives every other response and its result is returned; its
+ * assertions fail at once.
  */
 export async function verifyRequest(url, { method = 'GET', range, timeout = 30000 }, verify) {
   const label = `${url.pathname.slice(1)}: ${method}${range ? ` ${range}` : ''}`;
@@ -47,20 +48,8 @@ export async function verifyRequest(url, { method = 'GET', range, timeout = 3000
       failure = new Error(`HTTP ${response.status}`);
       retryAfter = response.headers.get('retry-after');
     } catch (error) {
-      const code = error.cause?.code ?? error.code;
-      const timedOut =
-        (signal.aborted && ['TimeoutError', 'AbortError'].includes(error.name)) ||
-        [
-          'ETIMEDOUT',
-          'UND_ERR_CONNECT_TIMEOUT',
-          'UND_ERR_HEADERS_TIMEOUT',
-          'UND_ERR_BODY_TIMEOUT',
-        ].includes(code);
-      if (!timedOut) throw new Error(`${label}: verification failed`, { cause: error });
-      failure = new Error(
-        signal.aborted ? `Timed out after ${timeout} ms` : `Transport timeout (${code})`,
-        { cause: error },
-      );
+      failure = retryableTransportFailure(error, signal, timeout);
+      if (!failure) throw new Error(`${label}: verification failed`, { cause: error });
     } finally {
       // Discard unread error responses without replacing the original failure with a cleanup error.
       await response?.body?.cancel().catch(() => {});

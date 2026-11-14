@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { installBridge } from '../../../tests/app-test-bridge';
 import {
   automationItem,
@@ -12,7 +12,10 @@ import {
   withTasks,
 } from '../../../tests/automation-fixtures';
 import type { AgentTask } from '../../client/agent/task-schema';
+import { loadSettingsSection } from '../settings/settings-section-loaders';
 import { SettingsWindow } from '../settings/settings-window';
+
+beforeAll(() => loadSettingsSection('automations'));
 
 /** The list row of the automation named `name`. */
 async function row(name: string) {

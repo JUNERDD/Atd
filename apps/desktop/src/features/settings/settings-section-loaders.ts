@@ -70,7 +70,12 @@ const sectionPreloaders: Partial<Record<SettingsSectionId, () => Promise<unknown
   about: about.preload,
 };
 
+/** Loads a non-general settings section chunk if it has not been requested yet. */
+export async function loadSettingsSection(id: SettingsSectionId): Promise<void> {
+  await sectionPreloaders[id]?.();
+}
+
 /** Begins loading a non-general settings section chunk if it has not been requested yet. */
 export function preloadSettingsSection(id: SettingsSectionId): void {
-  void sectionPreloaders[id]?.();
+  void loadSettingsSection(id);
 }

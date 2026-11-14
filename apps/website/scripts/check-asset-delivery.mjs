@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadEnv } from 'vite';
-import { waitForHttpRetry } from '../../../scripts/http-retry.mjs';
+import { retryableTransportFailure, waitForHttpRetry } from '../../../scripts/http-retry.mjs';
 import { normalizeAssetBase } from '../media-assets.ts';
 
 const { values } = parseArgs({
@@ -45,17 +45,8 @@ async function requestAsset(key, method, range) {
       retryAfter = response.headers.get('retry-after');
       await response.body?.cancel();
     } catch (error) {
-      const code = error.cause?.code ?? error.code;
-      const timedOut =
-        signal.aborted ||
-        [
-          'ETIMEDOUT',
-          'UND_ERR_CONNECT_TIMEOUT',
-          'UND_ERR_HEADERS_TIMEOUT',
-          'UND_ERR_BODY_TIMEOUT',
-        ].includes(code);
-      if (!timedOut) throw new Error(`${label}: request failed`, { cause: error });
-      failure = error;
+      failure = retryableTransportFailure(error, signal, 20000);
+      if (!failure) throw new Error(`${label}: request failed`, { cause: error });
     }
     await waitForHttpRetry({ label, attempt, attempts, failure, retryAfter });
   }

@@ -7,6 +7,7 @@ import { emptyInput } from './client/agent/task-schema';
 import { App } from './App';
 import { installBridge } from '../tests/app-test-bridge';
 import { fixtureCommands } from '../tests/command-fixtures';
+import { loadSettingsSection } from './features/settings/settings-section-loaders';
 import { SettingsWindow } from './features/settings/settings-window';
 import { chipTable, chipTokens, editorDraft } from './features/composer-editor/chip-state';
 
@@ -143,6 +144,7 @@ describe('task panel', () => {
   });
 
   it('deep-links the settings window to one command editor', async () => {
+    await loadSettingsSection('commands');
     installBridge();
     const previousHash = window.location.hash;
     window.location.hash = '#settings?commandId=translate';
