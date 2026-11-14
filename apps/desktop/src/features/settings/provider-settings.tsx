@@ -26,6 +26,7 @@ import {
 } from '../providers/connection-confirm-dialog';
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
+import { ModelAliasesSection } from '../providers/model-aliases-section';
 import { ProviderServiceForm } from '../providers/provider-service-form';
 import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
@@ -286,6 +287,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           </EmptyContent>
         </Empty>
       )}
+      {!connectionsLoading && !search.query.trim() && <ModelAliasesSection snapshot={snapshot} />}
       <ConnectionConfirmDialog
         confirm={confirming}
         isDefault={confirming?.connection.connectionId === snapshot?.defaultConnectionId}

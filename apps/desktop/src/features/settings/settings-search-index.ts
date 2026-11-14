@@ -4,6 +4,7 @@ import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
+import { providerSearchEntries } from './provider-search-entries';
 import { recordingSearchEntries } from './recording-search-entries';
 import { screenshotSearchEntries } from './screenshot-search-entries';
 import { selectionToolbarSearchEntries } from './selection-toolbar-search-entries';
@@ -139,6 +140,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
       'togglePanel',
       'captureScreenshot',
       'recordScreen',
+      'cycleModelAlias',
       'newConversation',
       'openSettings',
       'sendMessage',
@@ -160,25 +162,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.restoreDefaults',
   },
   ...conversationSearchEntries,
-  {
-    id: 'providers-default-model',
-    section: 'providers',
-    label: 'providers.overview.defaultModel',
-    description: 'providers.overview.description',
-    keywords: 'search.keywords.defaultModel',
-  },
-  {
-    id: 'providers-connected',
-    section: 'providers',
-    label: 'providers.overview.connectedProviders',
-    keywords: 'search.keywords.connectedProviders',
-  },
-  {
-    id: 'providers-add',
-    section: 'providers',
-    label: 'providers.overview.addProvider',
-    keywords: 'search.keywords.addProvider',
-  },
+  ...providerSearchEntries,
   {
     id: 'permission-manual',
     section: 'permissions',

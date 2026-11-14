@@ -1,35 +1,67 @@
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
   commandThinkingLevel,
   type AutomationDraft,
   type AutomationMissedRuns,
   type AutomationPolicy,
+  type ModelAlias,
 } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
 import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@atd/ui/components/select';
 import type { CommandDefinition } from '../../client/agent/command-schema';
+import type { Connection } from '../../client/providers/schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { ModelConfigPopover } from '../providers/model-config-popover';
 import { SettingsGroup } from '../settings/settings-group';
+import { withFixedModelPolicy, withModelAliasPolicy, withoutModelPolicy } from './automation-draft';
 import { minutesWords } from './automation-words';
 
 const MISSED_RUNS: readonly AutomationMissedRuns[] = ['runOnce', 'skip'];
 /** Stop-after choices in minutes; a value saved outside them (the agent's tool) stays listed. */
 const DURATIONS = [5, 10, 15, 30, 60, 120, 240];
 
-/** The policy without a model of its own: runs take the command's or the app's default. */
-function withoutModel(policy: AutomationPolicy): AutomationPolicy {
-  const next = { ...policy };
-  delete next.model;
-  delete next.thinkingLevel;
-  return next;
+function commandModelLabel(
+  command: CommandDefinition | undefined,
+  aliases: readonly ModelAlias[],
+  t: TFunction<'automations'>,
+): string {
+  if (!command) return t('policy.useDefault');
+  switch (command.model.mode) {
+    case 'fixed':
+      return t('policy.useCommandModel');
+    case 'alias': {
+      const { aliasId } = command.model;
+      const alias = aliases.find((item) => item.id === aliasId);
+      return alias
+        ? t('policy.useCommandAlias', { alias: alias.name })
+        : t('policy.useCommandModel');
+    }
+    case 'inherit':
+      return t('policy.useDefault');
+  }
+}
+
+function aliasOptionLabel(
+  alias: ModelAlias,
+  connections: readonly Connection[],
+  tProviders: TFunction<'providers'>,
+): string {
+  const connection = connections.find((item) => item.connectionId === alias.connectionId);
+  const modelName =
+    connection?.catalog.find((item) => item.id === alias.modelId)?.name ?? alias.modelId;
+  const parts = [alias.name, modelName];
+  if (alias.thinkingLevel) parts.push(tProviders(`thinkingLevels.levels.${alias.thinkingLevel}`));
+  return parts.join(' · ');
 }
 
 /**
@@ -55,6 +87,14 @@ export function PolicyFields({
   const command =
     action.kind === 'command' ? commands.find(({ id }) => id === action.commandId) : undefined;
   const connections = settings?.connections ?? [];
+  const aliases = settings?.aliases ?? [];
+  const missingAlias =
+    Boolean(policy.aliasId) && !aliases.some((alias) => alias.id === policy.aliasId);
+  const selectValue = policy.aliasId
+    ? `alias:${policy.aliasId}`
+    : policy.model
+      ? 'fixed'
+      : 'default';
   const usable = connections.filter(
     (connection) => connection.connected && connection.catalog.length,
   );
@@ -82,31 +122,43 @@ export function PolicyFields({
             <Label htmlFor="automation-model">{t('policy.model')}</Label>
             <div className="flex flex-col gap-2">
               <Select
-                value={policy.model ? 'fixed' : 'default'}
+                value={selectValue}
                 onValueChange={(value) => {
-                  if (value === 'default') set(withoutModel(policy));
+                  if (value === 'default') set(withoutModelPolicy(policy));
+                  else if (value.startsWith('alias:'))
+                    set(withModelAliasPolicy(policy, value.slice('alias:'.length)));
                   else if (fallback)
-                    set({
-                      ...policy,
-                      model: {
+                    set(
+                      withFixedModelPolicy(policy, {
                         connectionId: fallback.connectionId,
                         modelId: fallback.defaultModel || (fallback.catalog[0]?.id ?? ''),
-                      },
-                    });
+                      }),
+                    );
                 }}
               >
                 <SelectTrigger id="automation-model" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">
-                    {command?.model.mode === 'fixed'
-                      ? t('policy.useCommandModel')
-                      : t('policy.useDefault')}
-                  </SelectItem>
+                  <SelectItem value="default">{commandModelLabel(command, aliases, t)}</SelectItem>
                   <SelectItem value="fixed" disabled={!fallback}>
                     {t('policy.useFixed')}
                   </SelectItem>
+                  {(aliases.length > 0 || missingAlias) && (
+                    <SelectGroup>
+                      <SelectLabel>{t('policy.aliasGroup')}</SelectLabel>
+                      {aliases.map((alias) => (
+                        <SelectItem key={alias.id} value={`alias:${alias.id}`}>
+                          {aliasOptionLabel(alias, connections, tProviders)}
+                        </SelectItem>
+                      ))}
+                      {missingAlias && (
+                        <SelectItem value={`alias:${policy.aliasId}`}>
+                          {t('policy.unavailableAlias')}
+                        </SelectItem>
+                      )}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
               {policy.model && (
@@ -114,7 +166,7 @@ export function PolicyFields({
                   connections={connections}
                   model={policy.model}
                   thinkingLevel={effort}
-                  onModelChange={(model) => set({ ...policy, model })}
+                  onModelChange={(model) => set(withFixedModelPolicy(policy, model))}
                   onThinkingLevelChange={(thinkingLevel) => set({ ...policy, thinkingLevel })}
                 />
               )}
