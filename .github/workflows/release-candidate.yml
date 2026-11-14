@@ -12,9 +12,9 @@ on:
         type: string
         required: true
       notarize:
-        description: Notarize and staple the signed app and disk image with Apple Notary Service.
+        description: Temporarily false while Apple notarization processing remains pending; set true once Apple Notary Service completes immediately.
         type: boolean
-        default: true
+        default: false
     outputs:
       artifact-id:
         value: ${{ jobs.collect.outputs.artifact-id }}
@@ -24,9 +24,9 @@ on:
       DEVELOPER_ID_P12_PASSWORD:
         required: true
       NOTARY_APPLE_ID:
-        required: true
+        required: false
       NOTARY_APP_PASSWORD:
-        required: true
+        required: false
       SPARKLE_ED_PRIVATE_KEY:
         required: true
 

@@ -1,7 +1,7 @@
 version: '0.11.1'
 date: '2026-11-14'
 title: Guided model credential recovery and softer light-mode surfaces
-summary: Recover saved model keys and logins after a certificate update without re-entering endpoints or defaults, enjoy softer translucent light-mode cards and controls, and open notarized builds cleanly on macOS.
+summary: Recover saved model keys and logins after a certificate update without re-entering endpoints or defaults, with softer translucent surfaces and clearer control contrast in Light mode.
 highlights:
   - title: Recover model credentials after certificate updates
     body: |-
@@ -18,5 +18,3 @@ fixes:
   - text: Fixed stacked or repeated macOS Keychain permission dialogs by serializing credential lookups sequentially, caching verified provider states, stopping automatic probes once a credential needs recovery, and cleanly replacing legacy Keychain access entries when saving a new key.
   - text: Fixed opaque fills and mismatched borders on light-mode transcript code and artifact blocks, detail tables, modal close buttons, outline buttons, and the native settings loading view.
   - text: Fixed **Settings › Memory** missing filter and editor styles when opened before visiting **Commands**.
-other:
-  - text: Release installers and Sparkle updates are now both signed with **Apple Developer ID** and **notarized by Apple**, so new downloads open directly without a Gatekeeper warning.

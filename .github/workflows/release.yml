@@ -428,7 +428,7 @@ jobs:
       - name: Create the draft
         id: draft
         run: |
-          notes="Atd-$VERSION-arm64.dmg is the Apple silicon (arm64) build and Atd-$VERSION-x64.dmg the Intel (x64) build; both run on macOS 15 or later. The app and disk image are Developer ID signed and notarized by Apple. Existing installs update through the same Sparkle signing key; macOS may request privacy permissions once after the signing identity migration. Installed copies update themselves: on Apple silicon from 0.4.0 or later, on Intel from 0.9.0 or later."
+          notes="Atd-$VERSION-arm64.dmg is the Apple silicon (arm64) build and Atd-$VERSION-x64.dmg the Intel (x64) build; both run on macOS 15 or later. The app and disk image are Developer ID signed (Apple notarization is pending for a follow-up update, so first-time downloads may need Open Anyway in System Settings › Privacy & Security). Existing installs update through the same Sparkle signing key; macOS may request privacy permissions once after the signing identity migration. Installed copies update themselves: on Apple silicon from 0.4.0 or later, on Intel from 0.9.0 or later."
           if [[ "$VERSION" == *-* ]]; then
             notes="$notes This is a prerelease: installed stable copies are not offered it, and it updates itself to the next stable release, not to later prereleases."
           fi
