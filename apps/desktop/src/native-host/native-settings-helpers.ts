@@ -116,7 +116,6 @@ export function buildProviderBridge(
     updateAlias: (aliasId, draft) => providers.updateAlias(aliasId, draft),
     removeAlias: (aliasId) => providers.removeAlias(aliasId),
     setDefaultAlias: (defaultAliasId) => providers.setDefaultAlias(defaultAliasId),
-    seedAliases: (aliases) => providers.seedAliases(aliases),
     disconnect: (id, revision) => providers.disconnect(id, revision),
     remove: (id, revision) => providers.remove(id, revision),
     refresh: (id) => providers.refresh(id),

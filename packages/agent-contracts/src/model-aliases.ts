@@ -9,7 +9,6 @@ import {
 
 export const MAX_MODEL_ALIASES = 32;
 export const MAX_MODEL_ALIAS_NAME_LENGTH = 48;
-export const MAX_SEED_MODEL_ALIASES = 8;
 
 const ModelId = Type.String({ minLength: 1, maxLength: 256 });
 
@@ -92,20 +91,3 @@ export const ModelAliasDefaultResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ModelAliasDefaultResponse = Static<typeof ModelAliasDefaultResponseSchema>;
-
-export const ModelAliasesSeedRequestSchema = Type.Object(
-  {
-    aliases: Type.Array(ModelAliasDraftSchema, { minItems: 1, maxItems: MAX_SEED_MODEL_ALIASES }),
-  },
-  { additionalProperties: false },
-);
-export type ModelAliasesSeedRequest = Static<typeof ModelAliasesSeedRequestSchema>;
-
-export const ModelAliasesSeedResponseSchema = Type.Object(
-  {
-    aliases: Type.Array(ModelAliasSchema),
-    defaultAliasId: Type.Union([Identifier, Type.Null()]),
-  },
-  { additionalProperties: false },
-);
-export type ModelAliasesSeedResponse = Static<typeof ModelAliasesSeedResponseSchema>;

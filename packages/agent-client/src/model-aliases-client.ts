@@ -4,16 +4,12 @@ import {
   ModelAliasDefaultResponseSchema,
   ModelAliasMutationResponseSchema,
   ModelAliasRemoveResponseSchema,
-  ModelAliasesSeedRequestSchema,
-  ModelAliasesSeedResponseSchema,
   ModelAliasUpdateRequestSchema,
   parse,
   type ModelAliasCreateRequest,
   type ModelAliasDefaultResponse,
-  type ModelAliasDraft,
   type ModelAliasMutationResponse,
   type ModelAliasRemoveResponse,
-  type ModelAliasesSeedResponse,
   type ModelAliasUpdateRequest,
 } from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
@@ -80,22 +76,6 @@ export function setDefaultModelAlias(
     'PUT',
     parse(ModelAliasDefaultRequestSchema, { defaultAliasId }),
     (json) => parse(ModelAliasDefaultResponseSchema, json),
-    fetchImpl,
-  );
-}
-
-/** Seeds starter model aliases up to the alias cap without changing `defaultAliasId`. */
-export function seedModelAliases(
-  options: AgentClientOptions,
-  aliases: readonly ModelAliasDraft[],
-  fetchImpl?: typeof fetch,
-): Promise<ModelAliasesSeedResponse> {
-  return manageRequest(
-    options,
-    '/v1/providers/aliases/seed',
-    'POST',
-    parse(ModelAliasesSeedRequestSchema, { aliases: [...aliases] }),
-    (json) => parse(ModelAliasesSeedResponseSchema, json),
     fetchImpl,
   );
 }

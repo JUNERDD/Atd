@@ -262,8 +262,6 @@ export interface ProviderBridge {
   removeAlias: (aliasId: string) => Promise<void>;
   /** Sets or clears the default fallback model alias id. */
   setDefaultAlias: (defaultAliasId: string | null) => Promise<void>;
-  /** Seeds initial cold-start model aliases without replacing existing ones or defaultAliasId. */
-  seedAliases: (aliases: ModelAliasDraft[]) => Promise<ModelAlias[]>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   /**
    * Removes a connection with its credential and model files; revision-guarded. Removing the
