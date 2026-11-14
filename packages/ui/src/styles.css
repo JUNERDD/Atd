@@ -67,6 +67,9 @@
     color-mix(in srgb, var(--ata-glass-fill-opaque), white 50%) 16%,
     transparent
   );
+  /* Unchecked switch, slider, and progress tracks: crisp track contrast in light mode over any
+     card or glass surface. */
+  --ata-switch-unchecked: rgb(0 0 0 / 16%);
   /* The hover wash of ghost controls and rows on the window surface, where the opaque `--muted`
      fill would all but match the light panel. */
   --ata-surface-ghost-hover: rgb(0 0 0 / 5%);
@@ -114,7 +117,7 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0 0 0 / 10%);
-  --input: oklch(0.922 0 0);
+  --input: oklch(0 0 0 / 9%);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -155,6 +158,7 @@
   --ata-surface-card: color-mix(in oklab, var(--input) 40%, transparent);
   /* Figma surface/detail (dark): `55%` of `--muted`. */
   --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
+  --ata-switch-unchecked: color-mix(in oklab, var(--input) 90%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: var(--ata-panel-text-secondary-dark, #b4b4b4);
   --ata-surface-raised-wash: var(--ata-panel-raised-dark, rgb(255 255 255 / 8%));
