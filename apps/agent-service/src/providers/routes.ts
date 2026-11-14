@@ -13,7 +13,7 @@ import {
   type ServiceConnection,
 } from '@atd/agent-contracts';
 import { ConnectionStore, serviceConfigurationId } from '../credentials/connections.js';
-import { KeyringBackend } from '../credentials/keyring.js';
+import { KeyringBackend, type KeyringStatus } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError } from '../errors.js';
 import { getServiceCatalog } from './catalog.js';
@@ -199,10 +199,19 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         connections,
         parse(Identifier, request.params.connectionId),
       );
-      const [probe, check] = await Promise.all([
-        keyring.status(),
-        modelCheck(connections, keyring, connection.connectionId),
-      ]);
+      const check = await modelCheck(connections, keyring, connection.connectionId);
+      const probe: KeyringStatus = check.readable
+        ? {
+            available: true,
+            backend:
+              process.platform === 'darwin'
+                ? 'keychain'
+                : process.platform === 'win32'
+                  ? 'credential-manager'
+                  : 'secret-service',
+            detail: 'Credential read succeeded.',
+          }
+        : await keyring.status();
       if (check.issue && expectsStoredCredential(connection)) {
         recordCredentialIssue(ctx.dataDir, connection.connectionId, check.issue);
       } else if (check.readable || !expectsStoredCredential(connection)) {

@@ -8,7 +8,7 @@ import type {
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
-import { connectionRuntime, type ProviderStores } from './runtime.js';
+import { connectionCredentials, connectionRuntime, type ProviderStores } from './runtime.js';
 import { hasLoginErrorCode, loginFailureDiagnostic, loginFailureMessage } from './login-errors.js';
 import { isChatGPT, requireChatGPTNotice } from './chatgpt-usage.js';
 import { clearCredentialIssue } from './credential-issues.js';
@@ -53,12 +53,18 @@ export class ProviderLogins {
     let callback: OAuthCallback | undefined;
     try {
       await Promise.all([...this.sessions.values()].map((login) => login.done));
-      models = await connectionRuntime(stores, connection, undefined, undefined, {
-        ...options,
-        onCallback: (value) => {
-          callback = value;
+      models = await connectionRuntime(
+        stores,
+        connection,
+        connectionCredentials(stores, connection, { skipInitialRead: true }),
+        undefined,
+        {
+          ...options,
+          onCallback: (value) => {
+            callback = value;
+          },
         },
-      });
+      );
     } finally {
       this.starting = false;
     }

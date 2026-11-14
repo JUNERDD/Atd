@@ -28,6 +28,7 @@ interface DisconnectOptions extends AuthOperationOptions {
 export interface CredentialWriteOptions extends AuthOperationOptions {
   expectedRevision?: number;
   onCommitted?: (revision: number) => void;
+  replace?: boolean;
 }
 
 /** Login, refresh, edit and deletion all share the same connection lock. */
@@ -51,13 +52,18 @@ export async function withCredentialLock<T>(
 
 /** Secrets persist in the OS keyring; writes check fresh connection metadata under the lock. */
 export class ServiceCredentialStore implements CredentialStore {
+  private skipRead: boolean;
+
   constructor(
     private readonly keyring: KeyringBackend,
     private readonly connections: ConnectionStore,
     private readonly connectionId: string,
     private readonly providerId: string,
     private readonly configurationId: string,
-  ) {}
+    options?: { skipInitialRead?: boolean },
+  ) {
+    this.skipRead = options?.skipInitialRead ?? false;
+  }
 
   private get account(): string {
     return keyringAccount(this.connectionId);
@@ -80,7 +86,7 @@ export class ServiceCredentialStore implements CredentialStore {
       await this.connections.reload();
       this.assertConnection();
       const connection = this.connections.connection(this.connectionId);
-      if (!connection.connected || !connection.hasCredential) return undefined;
+      if (!connection.connected || !connection.hasCredential || this.skipRead) return undefined;
       // Keep endpoint validation and secret selection together: an edit cannot substitute its
       // new key after an older runtime has checked the old endpoint configuration.
       const credential = ServiceCredentialStore.decode(
@@ -112,9 +118,18 @@ export class ServiceCredentialStore implements CredentialStore {
         connection.revision !== options.expectedRevision
       )
         throw new ConflictError('This connection changed. Reload before connecting.');
-      const stored = connection.hasCredential
-        ? ServiceCredentialStore.decode(await this.keyring.get(this.account, options?.signal))
-        : undefined;
+      let stored: Credential | undefined;
+      let readError: KeyringUnavailable | undefined;
+      if (connection.hasCredential && !options?.replace && !this.skipRead) {
+        try {
+          stored = ServiceCredentialStore.decode(
+            await this.keyring.get(this.account, options?.signal),
+          );
+        } catch (error) {
+          if (!(error instanceof KeyringUnavailable)) throw error;
+          readError = error;
+        }
+      }
       let next: Credential | undefined;
       try {
         next = await fn(stored);
@@ -128,6 +143,7 @@ export class ServiceCredentialStore implements CredentialStore {
           await this.invalidateChatGPTCredential();
         throw error;
       }
+      if (!next && readError) throw readError;
       options?.signal?.throwIfAborted();
       if (next) {
         const revision = await this.connections.change(
@@ -166,6 +182,7 @@ export class ServiceCredentialStore implements CredentialStore {
             await this.keyring.set(this.account, JSON.stringify(next));
           },
         );
+        this.skipRead = false;
         options?.onCommitted?.(revision);
       }
       return next ?? stored;
@@ -262,9 +279,14 @@ export class ServiceCredentialStore implements CredentialStore {
           commit = async () => {
             options?.signal?.throwIfAborted();
             if (revoke) {
-              const stored = ServiceCredentialStore.decode(await this.keyring.get(this.account));
-              if (stored && !(await revokeChatGPT(stored))) notice = REVOCATION_NOTICE;
-              else delete item.authNotice;
+              try {
+                const stored = ServiceCredentialStore.decode(await this.keyring.get(this.account));
+                if (stored && !(await revokeChatGPT(stored))) notice = REVOCATION_NOTICE;
+                else delete item.authNotice;
+              } catch (error) {
+                if (!(error instanceof KeyringUnavailable)) throw error;
+                notice = REVOCATION_NOTICE;
+              }
             }
             if (hasSecret) await this.keyring.delete(this.account);
           };

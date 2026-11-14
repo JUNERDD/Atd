@@ -1,12 +1,18 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { InMemoryCredentialStore, type CredentialStore } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
 import { ConnectionStorageLimitError, type ConnectionStore } from '../credentials/connections.js';
-import type { KeyringBackend } from '../credentials/keyring.js';
+import { KeyringUnavailable, type KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError, UpstreamError } from '../errors.js';
+import {
+  clearCredentialIssue,
+  expectsStoredCredential,
+  recordCredentialIssue,
+} from './credential-issues.js';
 import {
   directoryModels,
   nativeDirectoryModels,
@@ -38,6 +44,7 @@ export interface ProviderStores {
 export function connectionCredentials(
   stores: ProviderStores,
   connection: ServiceConnection,
+  options?: { skipInitialRead?: boolean },
 ): ServiceCredentialStore {
   return new ServiceCredentialStore(
     stores.keyring,
@@ -45,6 +52,7 @@ export function connectionCredentials(
     connection.connectionId,
     connection.provider,
     connection.configurationId,
+    options,
   );
 }
 
@@ -57,7 +65,7 @@ export function connectionCredentials(
 export async function connectionRuntime(
   stores: ProviderStores,
   connection: ServiceConnection,
-  credentials: ServiceCredentialStore = connectionCredentials(stores, connection),
+  credentials: CredentialStore = connectionCredentials(stores, connection),
   contextOverride?: ContextOverride,
   loginOptions?: ChatGPTLoginOptions,
 ): Promise<ModelRuntime> {
@@ -192,7 +200,10 @@ export async function connectionModel(
   connection: ServiceConnection,
   modelId: string,
 ) {
-  return (await connectionRuntime(stores, connection)).getModel(connection.provider, modelId);
+  return (await connectionRuntime(stores, connection, new InMemoryCredentialStore())).getModel(
+    connection.provider,
+    modelId,
+  );
 }
 
 async function loadCatalog(
@@ -256,8 +267,12 @@ export async function refreshCatalog(
   if (background && offline()) return;
   try {
     const catalog = await loadCatalog(stores, connection, background);
+    if (expectsStoredCredential(connection))
+      clearCredentialIssue(stores.dataDir, connection.connectionId);
     await recordCatalog(stores, connection, { catalog, catalogError: '' });
   } catch (error) {
+    if (error instanceof KeyringUnavailable && expectsStoredCredential(connection))
+      recordCredentialIssue(stores.dataDir, connection.connectionId, 'unreadable');
     const reason =
       error instanceof ConflictError || error instanceof ConnectionStorageLimitError
         ? error.message

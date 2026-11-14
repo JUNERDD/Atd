@@ -16,6 +16,8 @@ import { assertCredential, assertUploadedCredential } from './auth-policy.js';
 import { connectionAuthContext } from './auth-context.js';
 import { isLocalProvider } from './catalog.js';
 
+const inflightChecks = new Map<string, Promise<CredentialCheck>>();
+
 /** Local verdict on a stored credential; `detail` never carries secret values. */
 export interface CredentialCheck {
   readable: boolean;
@@ -49,10 +51,11 @@ export async function storeConnectionCredential(
     stored.connectionId,
     stored.provider,
     stored.configurationId,
-  ).modify(stored.provider, async () => credential, options);
+  ).modify(stored.provider, async () => credential, { ...options, replace: true });
   const raw = await keyring.get(keyringAccount(request.connectionId));
   if (!raw) throw new Error('The uploaded credential could not be read back.');
   parse(ProviderCredentialSchema, JSON.parse(raw));
+  inflightChecks.delete(request.connectionId);
   return modelCheck(connections, keyring, request.connectionId);
 }
 
@@ -61,7 +64,21 @@ export async function storeConnectionCredential(
  * store without network access. Saved options and ambient opt-in follow the
  * request runtime; OAuth is checked locally without refreshing its token.
  */
-export async function modelCheck(
+export function modelCheck(
+  connections: ConnectionStore,
+  keyring: KeyringBackend,
+  connectionId: string,
+): Promise<CredentialCheck> {
+  const existing = inflightChecks.get(connectionId);
+  if (existing) return existing;
+  const pending = runModelCheck(connections, keyring, connectionId).finally(() => {
+    if (inflightChecks.get(connectionId) === pending) inflightChecks.delete(connectionId);
+  });
+  inflightChecks.set(connectionId, pending);
+  return pending;
+}
+
+async function runModelCheck(
   connections: ConnectionStore,
   keyring: KeyringBackend,
   connectionId: string,
