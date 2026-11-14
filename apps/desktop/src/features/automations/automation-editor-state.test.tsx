@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { AutomationItem, FolderRef } from '@atd/agent-contracts';
 import { installBridge } from '../../../tests/app-test-bridge';
 import {
@@ -12,7 +12,10 @@ import {
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { AutomationConflictError } from '../../client/automations-contract';
 import type { ImportFailure } from '../../client/contract';
+import { loadSettingsSection } from '../settings/settings-section-loaders';
 import { SettingsWindow } from '../settings/settings-window';
+
+beforeAll(() => Promise.all([loadSettingsSection('automations'), loadSettingsSection('commands')]));
 
 function renderSettings(
   automations: ReturnType<typeof fakeAutomations>,

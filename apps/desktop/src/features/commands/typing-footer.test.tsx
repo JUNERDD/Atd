@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installBridge } from '../../../tests/app-test-bridge';
+import { loadSettingsSection } from '../settings/settings-section-loaders';
 import { SettingsWindow } from '../settings/settings-window';
 
 // The test setup's `matchMedia` matches every query, Reduce Motion included; each case picks it.
@@ -10,6 +11,8 @@ vi.mock('motion/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion/react')>()),
   useReducedMotion: () => motion.reduced,
 }));
+
+beforeAll(() => loadSettingsSection('commands'));
 
 beforeEach(() => {
   motion.reduced = false;

@@ -120,7 +120,7 @@ Uploads and server-side copies use the AWS CLI's
 [standard retry mode](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-retries.html)
 with up to three total attempts per request. Public reads (the DMG, feed, and manifest checks,
 and the check for an already uploaded versioned DMG) also try each request up to three times on
-request/body timeouts or HTTP 502, 503, and 504. They share the
+request/body timeouts, dropped connections, or HTTP 502, 503, and 504. They share the
 [HTTP retry timing policy](../../scripts/http-retry.mjs) with the website asset checks: random
 backoff of 0–1 seconds before the second attempt and 0–2 seconds before the third. A valid
 `Retry-After` (integer seconds or an HTTP date) sets a minimum wait, with jitter added within a

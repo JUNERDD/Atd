@@ -544,7 +544,9 @@ jobs:
   mirror:
     name: Mirror the published stable downloads
     needs: [version, release]
-    if: needs.version.outputs.publish == 'true' && needs.release.result == 'success' && !contains(needs.version.outputs.marketing_version, '-')
+    if: >-
+      always() && !cancelled() && needs.version.outputs.publish == 'true' &&
+      needs.release.result == 'success' && !contains(needs.version.outputs.marketing_version, '-')
     uses: ./.github/workflows/mirror-release.yml
     with:
       tag: v${{ needs.version.outputs.marketing_version }}
@@ -561,7 +563,8 @@ jobs:
     name: Mirror the preview downloads
     needs: [version, release, mirror]
     if: >-
-      always() && needs.version.outputs.publish == 'true' && needs.release.result == 'success' &&
+      always() && !cancelled() && needs.version.outputs.publish == 'true' &&
+      needs.release.result == 'success' &&
       (needs.mirror.result == 'success' || needs.mirror.result == 'skipped')
     uses: ./.github/workflows/mirror-release.yml
     with:

@@ -1,6 +1,44 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 const MAX_RETRY_WAIT_MS = 30000;
+const TIMEOUT_CODES = new Set([
+  'ETIMEDOUT',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+]);
+const CONNECTION_RESET_CODES = new Set(['ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET']);
+
+function findErrorCode(error) {
+  const seen = new Set();
+  for (
+    let current = error;
+    current && typeof current === 'object' && !seen.has(current);
+    current = current.cause
+  ) {
+    seen.add(current);
+    if (typeof current.code === 'string') return current.code;
+  }
+  return undefined;
+}
+
+/**
+ * Classifies transient fetch failures (abort/transport timeouts and dropped sockets) for
+ * idempotent GET/HEAD verification reads. Returns null for permanent or assertion errors.
+ */
+export function retryableTransportFailure(error, signal, timeout) {
+  if (signal.aborted && ['TimeoutError', 'AbortError'].includes(error?.name)) {
+    return new Error(`Timed out after ${timeout} ms`, { cause: error });
+  }
+  const code = findErrorCode(error);
+  if (TIMEOUT_CODES.has(code)) {
+    return new Error(`Transport timeout (${code})`, { cause: error });
+  }
+  if (CONNECTION_RESET_CODES.has(code)) {
+    return new Error(`Connection reset (${code})`, { cause: error });
+  }
+  return null;
+}
 
 /**
  * Wait after a retryable HTTP failure, once its response body has been released.
