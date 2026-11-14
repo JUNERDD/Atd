@@ -406,6 +406,7 @@
     "notarizationReauth": {
       "title": "Re-authorize permissions after certificate update",
       "description": "Atd switched to a new Apple notarization certificate, so permissions and local model credentials need re-confirmation. Open System Settings or jump to Model Settings below.",
+      "resolvedDescription": "All system permissions and local model credentials are confirmed and ready to use.",
       "later": "Later",
       "done": "Done",
       "authorize": "Open System Settings",

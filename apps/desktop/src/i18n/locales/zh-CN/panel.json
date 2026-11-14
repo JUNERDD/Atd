@@ -406,6 +406,7 @@
     "notarizationReauth": {
       "title": "签名证书已更新，需重新授权",
       "description": "Atd 已切换至新的 Apple 公证签名，系统权限与本地模型凭据需重新确认。可按右侧引导恢复权限，或点击第三项直达模型设置窗口。",
+      "resolvedDescription": "所有系统权限与模型连接凭据均已重新确认，可以继续正常使用。",
       "later": "稍后再说",
       "done": "完成",
       "authorize": "打开系统设置",

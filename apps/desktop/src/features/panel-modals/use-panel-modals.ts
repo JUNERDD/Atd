@@ -21,6 +21,7 @@ import {
   type PanelModalState,
 } from './panel-modal-rules';
 import {
+  evaluateModalUnresolved,
   pickInitialReopenIndex,
   promoteUnresolvedEntries,
   removeSessionEntry,
@@ -134,7 +135,7 @@ export function usePanelModals(
         key: lastSessionKey + 1,
         entries: reopenableTarget.map((def) => ({
           id: def.id,
-          sawUnresolved: !evaluateModalResolved(def, snapshot, view, states, env),
+          sawUnresolved: evaluateModalUnresolved(def, snapshot, view, states, env),
         })),
         manual: true,
         initialIndex,
@@ -147,7 +148,7 @@ export function usePanelModals(
       key: lastSessionKey + 1,
       entries: autoCandidates.map((def) => ({
         id: def.id,
-        sawUnresolved: !evaluateModalResolved(def, snapshot, view, states, env),
+        sawUnresolved: evaluateModalUnresolved(def, snapshot, view, states, env),
       })),
       manual: false,
       initialIndex: 0,

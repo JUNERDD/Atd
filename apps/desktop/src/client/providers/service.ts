@@ -37,6 +37,7 @@ export interface ProviderConnection {
 export class ProviderService {
   private connection: ProviderConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
+  private statusesProbed = false;
   private checkingStatuses: Promise<void> | null = null;
   readonly login: ProviderLoginClient;
   private readonly catalogSync = new CatalogSync(
@@ -72,10 +73,21 @@ export class ProviderService {
     return this.live;
   }
 
+  statusesChecked(): boolean {
+    return this.statusesProbed;
+  }
+
+  resetStatusesChecked(): void {
+    if (!this.statusesProbed) return;
+    this.statusesProbed = false;
+    this.changed();
+  }
+
   async sync(): Promise<void> {
     const options = this.connection?.options();
     if (!options) {
       this.live = null;
+      this.statusesProbed = false;
       this.changed();
       return;
     }
@@ -166,18 +178,23 @@ export class ProviderService {
   /** Probes keyring readability for connected credentialed rows without hitting provider networks. */
   async checkStatuses(): Promise<void> {
     if (this.checkingStatuses) return this.checkingStatuses;
+    const isEligible = (item: Connection) =>
+      item.connected &&
+      item.hasCredential &&
+      item.authType !== 'none' &&
+      item.authType !== 'ambient';
     const run = (async () => {
       const options = this.connection?.options();
       if (!options) return;
       if (!this.live) await this.sync();
-      const eligible = (this.live?.connections ?? []).filter(
-        (item) =>
-          item.connected &&
-          item.hasCredential &&
-          item.authType !== 'none' &&
-          item.authType !== 'ambient',
-      );
-      if (!eligible.length) return;
+      const eligible = (this.live?.connections ?? []).filter(isEligible);
+      if (!eligible.length) {
+        if (!this.statusesProbed) {
+          this.statusesProbed = true;
+          this.changed();
+        }
+        return;
+      }
       const results = await Promise.all(
         eligible.map(async (item) => {
           const status = await providerStatus(options, item.connectionId).catch(() => null);
@@ -187,7 +204,27 @@ export class ProviderService {
       const changed = results.some(
         ({ item, status }) => status !== null && status.credentialIssue !== item.credentialIssue,
       );
-      if (changed) await this.sync();
+      const failedIds = new Set(
+        results.filter(({ status }) => status === null).map(({ item }) => item.connectionId),
+      );
+      if (failedIds.size === 0) {
+        const wasProbed = this.statusesProbed;
+        this.statusesProbed = true;
+        if (changed) {
+          await this.sync();
+        } else if (!wasProbed) {
+          this.changed();
+        }
+        return;
+      }
+      await this.sync();
+      const hasRemainingFailure = (this.live?.connections ?? []).some(
+        (item) => isEligible(item) && failedIds.has(item.connectionId),
+      );
+      if (this.live && !hasRemainingFailure && !this.statusesProbed) {
+        this.statusesProbed = true;
+        this.changed();
+      }
     })().finally(() => {
       if (this.checkingStatuses === run) this.checkingStatuses = null;
     });

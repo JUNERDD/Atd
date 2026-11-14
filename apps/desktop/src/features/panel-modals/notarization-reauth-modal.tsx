@@ -131,13 +131,10 @@ export function NotarizationReauthModal({
   const credentialIssueCount = snapshot.connections.filter(
     (connection) => connection.credentialIssue != null,
   ).length;
-  const [hadCredentialIssue, setHadCredentialIssue] = useState(credentialIssueCount > 0);
   const hasCredentialIssues = credentialIssueCount > 0;
-  if (hasCredentialIssues && !hadCredentialIssue) {
-    setHadCredentialIssue(true);
-  }
-  const credentialsRestored = !hasCredentialIssues && hadCredentialIssue;
-  const allResolved = permissionsGranted && !hasCredentialIssues;
+  const credentialsResolved =
+    snapshot.providersLoaded && snapshot.providerStatusesChecked && !hasCredentialIssues;
+  const allResolved = permissionsGranted && credentialsResolved;
 
   useEffect(() => {
     if (!serviceConnected) return;
@@ -173,7 +170,7 @@ export function NotarizationReauthModal({
   }
 
   const primaryLabel =
-    permissionsGranted && hasCredentialIssues
+    permissionsGranted && !credentialsResolved
       ? t('modals.notarizationReauth.credentials.openPrimary')
       : !needsAccessibility && needsScreenRecording
         ? t('modals.notarizationReauth.authorizeScreenRecording')
@@ -188,7 +185,7 @@ export function NotarizationReauthModal({
         await requestAccessibility();
       } else if (needsScreenRecording) {
         await requestScreenRecording();
-      } else if (hasCredentialIssues) {
+      } else if (!credentialsResolved) {
         await openCredentialsSettings();
       }
     } catch {
@@ -205,7 +202,11 @@ export function NotarizationReauthModal({
   return (
     <PanelModalSlide
       title={t('modals.notarizationReauth.title')}
-      description={t('modals.notarizationReauth.description')}
+      description={
+        allResolved
+          ? t('modals.notarizationReauth.resolvedDescription')
+          : t('modals.notarizationReauth.description')
+      }
       media={<NotarizationArt />}
       footer={
         allResolved ? (
@@ -253,7 +254,7 @@ export function NotarizationReauthModal({
             />
           )}
           <ReauthRowItem
-            resolved={credentialsRestored}
+            resolved={credentialsResolved}
             pendingIcon={<KeyRound aria-hidden="true" />}
             resolvedIcon={<KeyRound aria-hidden="true" />}
             title={t('modals.notarizationReauth.credentials.title')}
@@ -270,7 +271,7 @@ export function NotarizationReauthModal({
         <p role="alert" className="panel-modal-perm-error">
           <CircleAlert aria-hidden="true" />
           <span>
-            {permissionsGranted && hasCredentialIssues
+            {permissionsGranted && !credentialsResolved
               ? t('modals.notarizationReauth.credentials.error')
               : t('modals.notarizationReauth.error')}
           </span>

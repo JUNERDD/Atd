@@ -84,6 +84,8 @@ export interface PanelModalDefinition {
   /** Whether the generic macOS menu item includes this modal when reopened (defaults to true). */
   reopenable?: boolean | PanelModalRule;
   rule: PanelModalRule;
+  /** True while actionable issues remain when startup probes separate unknown from healthy. */
+  unresolved?: PanelModalRule;
   /** When true while open after unresolved state, the host completes and closes or advances it. */
   resolved?: PanelModalRule;
   render: (props: PanelModalRenderProps) => ReactNode;
@@ -104,6 +106,10 @@ export function notRule(rule: PanelModalRule): PanelModalRule {
 export function oncePerRevision(): PanelModalRule {
   return ({ state, revision }) =>
     state.completedRevision !== revision && state.dismissedRevision !== revision;
+}
+
+export function notDismissedInRevision(): PanelModalRule {
+  return ({ state, revision }) => state.dismissedRevision !== revision;
 }
 
 export function untilCompleted(): PanelModalRule {
@@ -161,6 +167,23 @@ export function whenMissingMacPermissions(kinds: readonly MacPermissionKind[]): 
 export function whenAllMacPermissionsGranted(kinds: readonly MacPermissionKind[]): PanelModalRule {
   return ({ snapshot }) =>
     kinds.length > 0 && kinds.every((kind) => getMacPermissionState(snapshot, kind) === true);
+}
+
+export function whenMacPermissionsLoaded(kinds: readonly MacPermissionKind[]): PanelModalRule {
+  return ({ snapshot }) => kinds.every((kind) => getMacPermissionState(snapshot, kind) !== null);
+}
+
+export function whenMissingModelCredentials(): PanelModalRule {
+  return ({ snapshot }) =>
+    snapshot.providersLoaded &&
+    snapshot.connections.some((connection) => connection.credentialIssue != null);
+}
+
+export function whenModelCredentialsHealthy(): PanelModalRule {
+  return ({ snapshot }) =>
+    snapshot.providersLoaded &&
+    snapshot.providerStatusesChecked &&
+    snapshot.connections.every((connection) => connection.credentialIssue == null);
 }
 
 export function buildPanelModalContext(

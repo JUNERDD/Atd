@@ -55,6 +55,7 @@ export function installBridge(extras?: {
     ],
     defaultConnectionId: 'test',
     providersLoaded: true,
+    providerStatusesChecked: true,
     language: 'en',
     appearance: null,
     glowEffects: true,

@@ -6,6 +6,14 @@ import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { ServiceBridge } from '../../client/service/ipc';
 import { installBridge } from '../../../tests/app-test-bridge';
 import { NotarizationReauthModal } from './notarization-reauth-modal';
+import { PANEL_MODAL_DEFINITIONS } from './panel-modal-registry';
+import {
+  EMPTY_PANEL_MODAL_STATE,
+  evaluateModalResolved,
+  type PanelModalEnvironment,
+  type PanelModalState,
+} from './panel-modal-rules';
+import { evaluateModalUnresolved } from './panel-modal-session';
 
 type ProviderConnection = SettingsSnapshot['connections'][number];
 
@@ -62,7 +70,7 @@ async function snapshotFixture(
 describe('NotarizationReauthModal', () => {
   it('renders the third Model credentials row and opens Settings › Providers when clicked', async () => {
     installBridge();
-    const snapshot = await snapshotFixture();
+    const snapshot = await snapshotFixture({ providerStatusesChecked: false });
 
     renderModal({
       snapshot,
@@ -124,10 +132,41 @@ describe('NotarizationReauthModal', () => {
 
     expect(screen.getByText('Restored')).toBeInTheDocument();
     expect(screen.getByText('Re-confirmed and saved')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'All system permissions and local model credentials are confirmed and ready to use.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Restored immediately on reopen when credentials were probed healthy', async () => {
+    installBridge();
+    const snapshot = await snapshotFixture({
+      accessibilityTrusted: true,
+      screenRecordingTrusted: true,
+      providerStatusesChecked: true,
+      connections: [connectionFixture()],
+    });
+
+    renderModal({
+      snapshot,
+      onDismiss: vi.fn(),
+      onComplete: vi.fn(),
+    });
+
+    expect(screen.getByText('Restored')).toBeInTheDocument();
+    expect(screen.getByText('Re-confirmed and saved')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'All system permissions and local model credentials are confirmed and ready to use.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
   });
 
   it('offers Open Model Settings primary action when permissions are granted but credentials need attention', async () => {
@@ -159,7 +198,7 @@ describe('NotarizationReauthModal', () => {
   it('shows the row error alert when opening Model Settings fails', async () => {
     installBridge();
     vi.mocked(window.desktop!.settings.openSection).mockRejectedValueOnce(new Error('ipc failed'));
-    const snapshot = await snapshotFixture();
+    const snapshot = await snapshotFixture({ providerStatusesChecked: false });
 
     renderModal({
       snapshot,
@@ -205,5 +244,91 @@ describe('NotarizationReauthModal', () => {
     await waitFor(() => {
       expect(window.desktop?.settings.providers.checkStatuses).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('gates auto-prompting and resolution on both Mac permissions and credential probes', async () => {
+    installBridge();
+    const reauthDef = PANEL_MODAL_DEFINITIONS.find((def) => def.id === 'notarization-reauth')!;
+    const env: PanelModalEnvironment = {
+      platform: 'darwin',
+      hasDesktopBridge: true,
+      windowVisible: true,
+      now: 1_000_000,
+    };
+    const completedState: PanelModalState = {
+      ...EMPTY_PANEL_MODAL_STATE,
+      completedRevision: reauthDef.revision,
+    };
+
+    const probingSnap = await snapshotFixture({
+      accessibilityTrusted: true,
+      screenRecordingTrusted: true,
+      providerStatusesChecked: false,
+      connections: [connectionFixture()],
+    });
+    expect(evaluateModalResolved(reauthDef, probingSnap, 'new', {}, env)).toBe(false);
+    expect(evaluateModalUnresolved(reauthDef, probingSnap, 'new', {}, env)).toBe(false);
+
+    const credIssueSnap = await snapshotFixture({
+      accessibilityTrusted: true,
+      screenRecordingTrusted: true,
+      providerStatusesChecked: true,
+      connections: [connectionFixture({ credentialIssue: 'unreadable' })],
+    });
+    expect(
+      reauthDef.rule({
+        snapshot: credIssueSnap,
+        view: 'new',
+        state: completedState,
+        revision: reauthDef.revision,
+        env,
+      }),
+    ).toBe(true);
+    expect(
+      reauthDef.rule({
+        snapshot: credIssueSnap,
+        view: 'new',
+        state: { ...completedState, dismissedRevision: reauthDef.revision },
+        revision: reauthDef.revision,
+        env,
+      }),
+    ).toBe(false);
+    expect(
+      evaluateModalUnresolved(
+        reauthDef,
+        credIssueSnap,
+        'new',
+        { [reauthDef.id]: completedState },
+        env,
+      ),
+    ).toBe(true);
+    expect(
+      evaluateModalResolved(
+        reauthDef,
+        credIssueSnap,
+        'new',
+        { [reauthDef.id]: completedState },
+        env,
+      ),
+    ).toBe(false);
+
+    const healthySnap = await snapshotFixture({
+      accessibilityTrusted: true,
+      screenRecordingTrusted: true,
+      providerStatusesChecked: true,
+      connections: [connectionFixture()],
+    });
+    expect(
+      evaluateModalResolved(reauthDef, healthySnap, 'new', { [reauthDef.id]: completedState }, env),
+    ).toBe(true);
+    expect(
+      evaluateModalUnresolved(
+        reauthDef,
+        healthySnap,
+        'new',
+        { [reauthDef.id]: completedState },
+        env,
+      ),
+    ).toBe(false);
   });
 });

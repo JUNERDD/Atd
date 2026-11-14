@@ -110,6 +110,7 @@ export function nativeSettings(
       connections: live?.connections ?? [],
       defaultConnectionId: live?.defaultConnectionId ?? null,
       providersLoaded: live !== null,
+      providerStatusesChecked: providers.statusesChecked(),
       language: settings?.language ?? resolveLanguage(navigator.language),
       appearance: settings?.appearance ?? null,
       glowEffects: settings?.glowEffects ?? DEFAULT_GLOW_EFFECTS,
@@ -184,10 +185,14 @@ export function nativeSettings(
   });
   // The first stream, and every one after a drop: load what the frames would have announced.
   connection.onConnected(() => {
+    providers.resetStatusesChecked();
     void reload().catch(() => undefined);
     void providers
       .sync()
-      .then(() => providers.syncCatalogs())
+      .then(() => {
+        providers.syncCatalogs();
+        return providers.checkStatuses();
+      })
       .catch(() => undefined);
   });
   const ready = native.call('app.state', {}).then((state) => {
