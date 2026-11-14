@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MAX_MODEL_ALIAS_NAME_LENGTH } from '@atd/agent-contracts';
@@ -13,6 +13,7 @@ import {
 } from '@atd/ui/components/dialog';
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Select,
   SelectContent,
@@ -23,20 +24,24 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import { Switch } from '@atd/ui/components/switch';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import type {
   Connection,
   ModelAlias,
   ModelAliasDraft,
-  ModelReference,
   ModelThinkingLevel,
-  RunContextChoice,
 } from '../../client/providers/schema';
 import { messageOf } from '../../lib/errors';
-import { formatContextWindow } from './context-window';
-import { useModelContexts, type ModelContextState } from './use-model-contexts';
+import {
+  FALLBACK_LEVELS,
+  buildContextOptions,
+  decodeContext,
+  decodeRef,
+  encodeContext,
+  encodeRef,
+} from './model-alias-options';
+import { useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
-
-type ProvidersT = ReturnType<typeof useTranslation<'providers'>>['t'];
 
 interface AliasDialogProps {
   alias: ModelAlias | null;
@@ -44,61 +49,6 @@ interface AliasDialogProps {
   defaultAliasId: string | null;
   connections: readonly Connection[];
   defaultConnectionId: string | null;
-}
-
-const FALLBACK_LEVELS: readonly ModelThinkingLevel[] = ['off', 'minimal', 'low', 'medium', 'high'];
-const encodeRef = (connectionId: string, modelId: string) => `${connectionId}\n${modelId}`;
-
-function decodeRef(value: string): ModelReference | null {
-  const i = value.indexOf('\n');
-  return i > 0 && i < value.length - 1
-    ? { connectionId: value.slice(0, i), modelId: value.slice(i + 1) }
-    : null;
-}
-
-function decodeContext(value: string): RunContextChoice | undefined {
-  if (value === 'tier:standard') return { tier: 'standard' };
-  if (value === 'tier:long') return { tier: 'long' };
-  const tokens = value.startsWith('window:') ? Number(value.slice(7)) : NaN;
-  return Number.isInteger(tokens) && tokens > 0 ? { contextWindow: tokens } : undefined;
-}
-
-function buildContextOptions(contexts: ModelContextState, contextKey: string, t: ProvidersT) {
-  const items = [{ value: 'default', label: t('aliases.dialog.connectionDefault') }];
-  const tiers = contexts.options.length === 2 ? contexts.options : [];
-  const used = new Set(tiers.map((option) => option.contextWindow));
-  for (const { tier, contextWindow } of tiers) {
-    const key =
-      tier === 'long' ? 'aliases.tuple.extendedContextSize' : 'aliases.tuple.standardContextSize';
-    items.push({
-      value: `tier:${tier}`,
-      label: t(key, { size: formatContextWindow(contextWindow) }),
-    });
-  }
-  for (const tokens of contexts.choices) {
-    if (!used.has(tokens)) {
-      items.push({ value: `window:${tokens}`, label: formatContextWindow(tokens) });
-    }
-  }
-  if (contextKey !== 'default' && !items.some((item) => item.value === contextKey)) {
-    const kept = decodeContext(contextKey);
-    const label = !kept
-      ? contextKey
-      : 'tier' in kept
-        ? t(
-            kept.tier === 'long'
-              ? 'aliases.tuple.extendedContext'
-              : 'aliases.tuple.standardContext',
-          )
-        : t('aliases.dialog.customContextSize', { size: formatContextWindow(kept.contextWindow) });
-    items.push({ value: contextKey, label });
-  }
-  return items;
-}
-
-function encodeContext(choice?: RunContextChoice): string {
-  if (!choice) return 'default';
-  return 'tier' in choice ? `tier:${choice.tier}` : `window:${choice.contextWindow}`;
 }
 
 function InlineError({ id, message }: { id?: string; message: string }) {
@@ -111,8 +61,23 @@ function InlineError({ id, message }: { id?: string; message: string }) {
   );
 }
 
-function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
-  const { alias, aliases, defaultAliasId, connections, defaultConnectionId, onClose } = props;
+function AliasDialogBody(
+  props: AliasDialogProps & {
+    submitting: boolean;
+    onSubmittingChange: (submitting: boolean) => void;
+    onClose: () => void;
+  },
+) {
+  const {
+    alias,
+    aliases,
+    defaultAliasId,
+    connections,
+    defaultConnectionId,
+    submitting,
+    onSubmittingChange,
+    onClose,
+  } = props;
   const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   const usable = connections.filter((c) => c.connected && c.catalog.length > 0);
@@ -128,7 +93,6 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
   const [makeDefault, setMakeDefault] = useState(Boolean(alias && defaultAliasId === alias.id));
   const [nameError, setNameError] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const reference = decodeRef(modelValue);
   const selectedConnection = connections.find((c) => c.connectionId === reference?.connectionId);
@@ -155,8 +119,7 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
     ...levelValues.map((level) => ({ value: level, label: t(`thinkingLevels.levels.${level}`) })),
   ];
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     if (submitting || !bridge) return;
     const trimmed = name.trim();
     const lower = trimmed.toLowerCase();
@@ -180,7 +143,8 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
     };
     setNameError('');
     setSubmitError('');
-    setSubmitting(true);
+    onSubmittingChange(true);
+    let savedOk = false;
     try {
       const saved = alias
         ? await bridge.updateAlias(alias.id, draft)
@@ -188,27 +152,31 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
       const wasDefault = Boolean(alias && defaultAliasId === saved.id);
       if (makeDefault && defaultAliasId !== saved.id) await bridge.setDefaultAlias(saved.id);
       else if (!makeDefault && wasDefault) await bridge.setDefaultAlias(null);
-      onClose();
+      savedOk = true;
     } catch (reason) {
       setSubmitError(messageOf(reason));
     } finally {
-      setSubmitting(false);
+      onSubmittingChange(false);
     }
+    if (savedOk) onClose();
   }
 
   return (
     <DialogContent
+      className="panel-dialog"
       onInteractOutside={(event) => submitting && event.preventDefault()}
       onEscapeKeyDown={(event) => submitting && event.preventDefault()}
     >
-      <form className="flex flex-col gap-6" onSubmit={(event) => void handleSubmit(event)}>
-        <DialogHeader>
-          <DialogTitle>
-            {t(alias ? 'aliases.dialog.editTitle' : 'aliases.dialog.createTitle')}
-          </DialogTitle>
-          <DialogDescription>{t('aliases.dialog.description')}</DialogDescription>
-        </DialogHeader>
-        <div className="model-alias-dialog-fields">
+      <DialogHeader>
+        <DialogTitle>
+          {t(alias ? 'aliases.dialog.editTitle' : 'aliases.dialog.createTitle')}
+        </DialogTitle>
+        <DialogDescription className="whitespace-normal">
+          {t('aliases.dialog.description')}
+        </DialogDescription>
+      </DialogHeader>
+      <ScrollArea className="panel-dialog-scroll" gutter="stable" scrollShadow>
+        <div className="panel-dialog-body overflow-x-clip">
           <div className="settings-field">
             <Label htmlFor="model-alias-name">{t('aliases.dialog.name')}</Label>
             <Input
@@ -222,6 +190,9 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
               onChange={(event) => {
                 setName(event.target.value);
                 if (nameError) setNameError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !isComposingKey(event)) void save();
               }}
             />
             <InlineError id="model-alias-name-error" message={nameError} />
@@ -312,21 +283,22 @@ function AliasDialogBody(props: AliasDialogProps & { onClose: () => void }) {
           </div>
           <InlineError message={submitError} />
         </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" disabled={submitting} onClick={onClose}>
-            {t('aliases.dialog.cancel')}
-          </Button>
-          <Button
-            type="submit"
-            disabled={!bridge || submitting || !reference}
-            aria-busy={submitting || undefined}
-          >
-            {submitting
-              ? t('aliases.dialog.saving')
-              : t(alias ? 'aliases.dialog.save' : 'aliases.dialog.create')}
-          </Button>
-        </DialogFooter>
-      </form>
+      </ScrollArea>
+      <DialogFooter>
+        <Button type="button" variant="outline" disabled={submitting} onClick={onClose}>
+          {t('aliases.dialog.cancel')}
+        </Button>
+        <Button
+          type="button"
+          disabled={!bridge || submitting || !reference}
+          aria-busy={submitting || undefined}
+          onClick={() => void save()}
+        >
+          {submitting
+            ? t('aliases.dialog.saving')
+            : t(alias ? 'aliases.dialog.save' : 'aliases.dialog.create')}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   );
 }
@@ -336,10 +308,24 @@ export function ModelAliasDialog(
   props: AliasDialogProps & { open: boolean; onOpenChange: (open: boolean) => void },
 ) {
   const { open, onOpenChange, ...bodyProps } = props;
+  const [submitting, setSubmitting] = useState(false);
   const close = () => onOpenChange(false);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {open && <AliasDialogBody key={props.alias?.id ?? 'new'} {...bodyProps} onClose={close} />}
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!submitting) onOpenChange(next);
+      }}
+    >
+      {open && (
+        <AliasDialogBody
+          key={props.alias?.id ?? 'new'}
+          {...bodyProps}
+          submitting={submitting}
+          onSubmittingChange={setSubmitting}
+          onClose={close}
+        />
+      )}
     </Dialog>
   );
 }

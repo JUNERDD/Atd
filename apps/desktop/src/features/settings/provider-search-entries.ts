@@ -12,6 +12,7 @@ export const providerSearchEntries: readonly SettingsSearchEntry[] = [
   {
     id: 'providers-model-aliases',
     section: 'providers',
+    page: 'modelAliases',
     anchor: 'settings-providers-aliases',
     label: 'providers.overview.modelAliases',
     description: 'providers.overview.modelAliasesDescription',

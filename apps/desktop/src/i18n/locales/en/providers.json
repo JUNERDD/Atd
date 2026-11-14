@@ -362,6 +362,7 @@
     "title": "Model aliases",
     "description": "Model aliases bundle connection, model, context window, and reasoning effort — one change updates every bound command and automation.",
     "add": "Add alias",
+    "loading": "Loading model aliases…",
     "limitReached": "You can save up to {{max}} model aliases.",
     "unavailableBadge": "Unavailable",
     "unavailableConnection": "Removed connection",
@@ -383,13 +384,15 @@
       "modelEffortDefault": "Default effort",
       "effortValue": "{{level}} effort"
     },
-    "starters": {
-      "title": "Start with ready-made aliases",
-      "description": "Create presets from your connected providers, or define your own from scratch.",
-      "dismiss": "Dismiss starter aliases",
-      "create": "Create starter aliases",
-      "creating": "Creating…",
-      "createCustom": "Create custom alias…"
+    "empty": {
+      "noMatchesTitle": "No aliases match “{{query}}”",
+      "noMatchesDescription": "Try an alias, model, or provider name.",
+      "clearSearch": "Clear search",
+      "firstTitle": "Create your first model alias",
+      "firstDescription": "Save a connection, model, context window, and reasoning effort under one name for quick switching, commands, and automations.",
+      "noProvidersTitle": "Connect a provider first",
+      "noProvidersDescription": "Add and connect a provider with available models before creating model aliases.",
+      "addProvider": "Add provider"
     },
     "dialog": {
       "createTitle": "New model alias",
@@ -409,7 +412,7 @@
       "thinkingLevel": "Reasoning effort",
       "modelDefaultLevel": "Model default ({{level}})",
       "makeDefault": "Default model alias",
-      "makeDefaultDescription": "Use this preset when switching aliases or starting new sessions.",
+      "makeDefaultDescription": "Use this alias when switching aliases or starting new sessions.",
       "cancel": "Cancel",
       "create": "Create alias",
       "save": "Save changes",

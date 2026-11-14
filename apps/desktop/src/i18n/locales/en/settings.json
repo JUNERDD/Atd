@@ -75,7 +75,7 @@
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
       "defaultModel": "default provider model choose selected",
-      "modelAliases": "model alias aliases profile preset presets bundle connection effort context starter",
+      "modelAliases": "model alias aliases profile preset presets bundle connection effort context",
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
@@ -129,17 +129,24 @@
   "providers": {
     "overview": {
       "title": "Models",
-      "description": "Choose a default provider and set a default model for each connection.",
+      "description": "Connect model providers and save reusable model aliases.",
       "loading": "Loading providers…",
+      "tabsLabel": "Providers and model aliases",
+      "tabs": {
+        "providers": "Providers",
+        "aliases": "Model aliases"
+      },
       "searchLabel": "Search providers",
       "searchPlaceholder": "Search providers…",
+      "searchAliasesLabel": "Search model aliases",
+      "searchAliasesPlaceholder": "Search aliases…",
       "addProvider": "Add provider",
       "retry": "Try again",
       "catalogError": "The provider list could not be loaded.",
       "connectedProviders": "Connected providers",
       "defaultModel": "Default model",
       "modelAliases": "Model aliases",
-      "modelAliasesDescription": "Bundle a connection, model, context window, and effort level into named presets for commands, automations, and quick switching.",
+      "modelAliasesDescription": "Bundle a connection, model, context window, and effort level into named aliases for commands, automations, and quick switching.",
       "empty": {
         "noMatchesTitle": "No providers match “{{query}}”",
         "noMatchesDescription": "Try a connection or provider name.",
