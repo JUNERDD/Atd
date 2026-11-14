@@ -1,0 +1,37 @@
+.memory-settings {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+/* The list scrolls under the overview heading with no gap of its own, like the Models and
+   Commands lists. The page scroller gives back the list's padding, which keeps room for the rows'
+   focus rings, so the rows line up with the toolbar. */
+.memory-scroll {
+  --settings-scroll-ring: 4px;
+}
+/* Problems, suggestions, the memory cards and feedback; an empty state fills the rest. */
+.memory-list {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 4px 16px;
+}
+.memory-filters {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 0 4px 8px;
+}
+.memory-filters [data-slot='toggle-group'] {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.memory-filter-count {
+  margin-left: 6px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}

@@ -519,6 +519,78 @@
   > .editor-heading {
   order: 1;
 }
+.editor-heading {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.editor-heading h2 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.editor-fields > * {
+  flex-shrink: 0;
+}
+.field-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 16px;
+}
+.aligned-fields > .settings-field {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  row-gap: 8px;
+  align-content: start;
+}
+.aligned-fields > .settings-field > :first-child {
+  align-self: baseline;
+}
+.aligned-fields > .settings-field > :nth-child(2) {
+  align-self: start;
+}
+@container settings (max-width: 455px) {
+  .aligned-fields > .settings-field {
+    display: flex;
+    grid-row: auto;
+  }
+  .aligned-fields > .settings-field > :nth-child(2) {
+    align-self: stretch;
+  }
+}
+.run-settings {
+  display: grid;
+  gap: 16px;
+}
+.editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
+  /* The band reserves room above the controls for the overlay fade to finish. */
+  padding-top: 24px;
+}
+.editor-footer > div {
+  display: flex;
+  gap: 8px;
+}
+/* Only the trailing group is pushed to the end (onto a line of its own when the groups do not
+   fit); a leading group stays at the start edge. */
+.editor-footer > div:last-child {
+  margin-left: auto;
+}
 .settings-overview-toolbar {
   display: flex;
   flex-wrap: wrap;

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ToggleGroup, ToggleGroupItem } from '@atd/ui/components/toggle-group';
 import { MEMORY_GROUPS, MEMORY_GROUP_LABEL_KEYS, type MemoryGroup } from './memory-groups';
+import './memory.css';
 
 /** The Settings overview's memory groups, one selected at a time. */
 export function MemoryFilters({

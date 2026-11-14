@@ -18,6 +18,7 @@ import { MemoryLearningFooter } from './memory-learning-footer';
 import { MemoryList } from './memory-list';
 import { MemorySuggestions } from './memory-suggestions';
 import type { useMemoryWrites } from './memory-writes';
+import './memory.css';
 
 /** Unit files the service could not read; they stay out of runs until fixed or removed. */
 function MemoryProblems({ problems }: { problems: readonly MemoryProblem[] }) {
