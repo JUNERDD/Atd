@@ -1,0 +1,26 @@
+version: '0.11.1'
+date: '2026-11-14'
+title: Guided model credential recovery and softer light-mode surfaces
+summary: Recover saved model keys and logins after a certificate update without re-entering endpoints or defaults, enjoy softer translucent light-mode cards and controls, and open notarized builds cleanly on macOS.
+highlights:
+  - title: Recover model credentials after certificate updates
+    body: |-
+      When macOS Keychain blocks access to an existing API key or OAuth login — such as after upgrading across signing certificates — Atd detects the unreadable credentials and surfaces a **Model credentials** row right inside the re-authorization prompt, alongside **Accessibility** and **Screen Recording**.
+
+      - **Jump straight to Settings › Models** — click **Settings** on that row (or **Open Model Settings** once permissions are restored) to see affected connections flagged inline.
+      - **Keep your setup intact** — re-enter your API key or sign in again in place without losing configured base URLs, custom models, or default model choices.
+    image: /media/blog/0.11.1/credential-recovery.en.webp
+    alt: The Light-mode Atd panel over a dusk mountain ridge backdrop, displaying the Re-authorize After Certificate Update dialog with Accessibility, Screen Recording, and a third Model credentials row with a Settings button, with a handwritten white arrow pointing to the Model credentials row.
+  - title: Softer, translucent surfaces in Light mode
+    body: |-
+      Settings windows, glass controls, cards, and conversation detail blocks in Light mode now draw with calibrated panel-aware translucent washes and subtle hairlines instead of opaque gray slabs or stark white fills.
+
+      Unchecked switch tracks, sliders, progress bars, outline buttons, modal close buttons, and input borders in Light mode also gain balanced contrast so controls remain clear over any wallpaper or panel background tint.
+    image: /media/blog/0.11.1/light-mode-surfaces.en.webp
+    alt: A Light-mode Settings General window floating cleanly over the dusk mountain ridge backdrop, showing frosted translucent cards under Appearance and Window & startup, the Light theme selector, and higher-contrast unchecked switch tracks, with a handwritten arrow pointing to the Appearance card.
+fixes:
+  - text: Fixed stacked or repeated macOS Keychain permission dialogs by serializing credential lookups sequentially, caching verified provider states, stopping automatic probes once a credential needs recovery, and cleanly replacing legacy Keychain access entries when saving a new key.
+  - text: Fixed opaque fills and mismatched borders on light-mode transcript code and artifact blocks, detail tables, modal close buttons, outline buttons, and the native settings loading view.
+  - text: Fixed **Settings › Memory** missing filter and editor styles when opened before visiting **Commands**.
+other:
+  - text: Release installers and Sparkle updates are now both signed with **Apple Developer ID** and **notarized by Apple**, so new downloads open directly without a Gatekeeper warning.
