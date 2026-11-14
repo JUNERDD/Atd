@@ -343,7 +343,7 @@
   max-width: 100%;
   max-height: 320px;
   border-radius: var(--radius-xl);
-  background: var(--muted);
+  background: var(--ata-surface-raised-wash);
 }
 .markdown pre {
   width: max-content;
@@ -473,7 +473,7 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: color-mix(in oklab, var(--muted) 60%, transparent);
+  background: var(--ata-surface-detail);
 }
 /* The header row takes the panel's raised wash in place of Streamdown's `bg-muted/80` (a utility
    in a cascade layer, which this unlayered rule outranks). */
@@ -1243,7 +1243,7 @@
   gap: 12px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in oklab, var(--muted) 50%, transparent);
+  background: var(--ata-surface-detail);
   font-size: 13px;
   line-height: 20px;
 }

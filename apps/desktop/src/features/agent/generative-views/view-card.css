@@ -9,6 +9,7 @@
  */
 .view-card {
   --ata-glass-fill: var(--ata-surface-panel);
+  --ata-glass-fill-inactive: var(--ata-surface-panel);
   --ata-glass-shadow: inset 0 0 0 1px var(--ata-glass-edge);
   min-width: 0;
   padding: 1px;

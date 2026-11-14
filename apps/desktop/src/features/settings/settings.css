@@ -1335,7 +1335,7 @@
 .settings-shell-allowlist-detail {
   max-height: 40dvh;
   border-radius: var(--radius-xl);
-  background: var(--muted);
+  background: var(--ata-surface-raised-wash);
 }
 .settings-shell-allowlist-detail pre {
   margin: 0;

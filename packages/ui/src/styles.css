@@ -31,22 +31,42 @@
      `-apple-system-glass-material`; a quieter surface may take `-apple-system-glass-material-subdued`).
      An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one,
      the panel's own opaque fill, so glass keeps one fill per theme there too. */
-  --ata-glass-fill-inactive: rgb(252 252 252 / 96%);
   --ata-glass-fill-opaque: var(--ata-panel-fill-opaque-light, rgb(255 255 255));
+  --ata-glass-fill-inactive: color-mix(in srgb, var(--ata-glass-fill-opaque) 96%, transparent);
   /* Glass controls (`glass-control`, `glass-state`): the fallback fill and shadow of control-sized
-     glass. In light a control lifts as a white pill; in dark as the secondary fill. */
-  --ata-glass-control-fill: rgb(255 255 255 / 72%);
-  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%), 0 0 0 1px var(--ata-glass-edge);
+     glass. In light a control lifts gently over the tinted panel instead of turning stark white; in
+     dark it takes the secondary fill. */
+  --ata-glass-control-fill: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ata-glass-fill-opaque), white 50%) 30%,
+    transparent
+  );
+  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 8%), 0 0 0 1px var(--ata-glass-edge);
   /* The settings drawer's fallback fill, where its subdued system glass is off. */
-  --ata-material-settings-content: rgb(248 248 248 / 30%);
+  --ata-material-settings-content: color-mix(
+    in srgb,
+    var(--ata-glass-fill-opaque) 30%,
+    transparent
+  );
   /* The settings sidebar card: a faint tint over the window surface, with a quiet hairline. */
   --ata-surface-settings-sidebar: rgb(0 0 0 / 3%);
   --ata-border-settings-sidebar: rgb(0 0 0 / 6%);
   --ata-material-selected: rgb(0 0 0 / 8%);
   /* Figma card/surface: the fill of cards and alerts (`Card`, `Alert`), which stand on the
-     translucent panel. Light keeps the opaque card; dark takes a wash, where the opaque `--card`
-     read as a darker slab than the panel around it. */
-  --ata-surface-card: var(--card);
+     translucent panel as a lifted translucent layer in both themes (24% panel-tinted lift in
+     light, 6% white in dark) while `--card` stays opaque for floating toasts. */
+  --ata-surface-card: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ata-glass-fill-opaque), white 50%) 24%,
+    transparent
+  );
+  /* Figma surface/detail: the quietest surface for transcript detail cards, table wrappers, and
+     service banners (16% panel-tinted lift in light; 55% muted wash in dark). */
+  --ata-surface-detail: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ata-glass-fill-opaque), white 50%) 16%,
+    transparent
+  );
   /* The hover wash of ghost controls and rows on the window surface, where the opaque `--muted`
      fill would all but match the light panel. */
   --ata-surface-ghost-hover: rgb(0 0 0 / 5%);
@@ -93,7 +113,7 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --border: oklch(0 0 0 / 10%);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -108,23 +128,33 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-border: oklch(0 0 0 / 10%);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
   color-scheme: dark;
   --ata-surface-panel: var(--ata-panel-fill-dark, rgb(24 24 24 / 60%));
-  --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
   --ata-glass-fill-opaque: var(--ata-panel-fill-opaque-dark, rgb(24 24 24));
+  --ata-glass-fill-inactive: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ata-glass-fill-opaque), white 3%) 96%,
+    transparent
+  );
   --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
   --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
-  --ata-material-settings-content: rgb(24 24 24 / 10%);
+  --ata-material-settings-content: color-mix(
+    in srgb,
+    var(--ata-glass-fill-opaque) 10%,
+    transparent
+  );
   --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
   --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
   --ata-material-selected: rgb(255 255 255 / 12%);
   /* Figma card/surface (dark): `bg-input/40`, the input's 15% white at 40%. */
   --ata-surface-card: color-mix(in oklab, var(--input) 40%, transparent);
+  /* Figma surface/detail (dark): `55%` of `--muted`. */
+  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: var(--ata-panel-text-secondary-dark, #b4b4b4);
   --ata-surface-raised-wash: var(--ata-panel-raised-dark, rgb(255 255 255 / 8%));
@@ -199,10 +229,8 @@
      the foreground so small text stays readable on light and dark surfaces. */
   --ata-diff-added: color-mix(in oklab, var(--ata-status-progress) 65%, var(--foreground));
   --ata-diff-removed: var(--destructive);
-  /* The one surface every transcript detail reads on (tool cards, reasoning, compaction summaries,
-     approval and answer details): a faint wash of the muted fill under a hairline, so details sit
-     a step above the panel without a second, darker slab for code. */
-  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
+  /* The detail hairline shared by transcript detail surfaces (tool cards, reasoning, compaction
+     summaries, approval and answer details), paired with each theme's `--ata-surface-detail`. */
   --ata-border-detail: var(--border);
   /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its
      own colour), and the ring over a code block or diagram, whose own fill would hide a tint. */
@@ -396,6 +424,7 @@
  */
 @utility glass-control {
   --ata-glass-fill: var(--ata-glass-control-fill);
+  --ata-glass-fill-inactive: var(--ata-glass-control-fill);
   --ata-glass-shadow: var(--ata-glass-control-shadow);
   overflow: clip;
 }
