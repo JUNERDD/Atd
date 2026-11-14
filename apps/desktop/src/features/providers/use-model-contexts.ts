@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { RunContextChoice } from '@atd/agent-contracts';
 import type { TFunction } from 'i18next';
 import type {
   Connection,
@@ -186,6 +187,85 @@ export function contextRows(contexts: ModelContextState): ContextRow[] {
         ]
       : [];
   return [...base, ...offered, ...legacy];
+}
+
+export interface DraftContextRow extends ContextRow {
+  runChoice: RunContextChoice | undefined;
+  changed: boolean;
+}
+
+/** True when two optional run context choices express the same literal tier or token window. */
+export function sameRunContextChoice(
+  a: RunContextChoice | undefined,
+  b: RunContextChoice | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if ('tier' in a && 'tier' in b) return a.tier === b.tier;
+  if ('contextWindow' in a && 'contextWindow' in b) return a.contextWindow === b.contextWindow;
+  return false;
+}
+
+/** Projects a draft/alias `RunContextChoice` onto connection contexts without mutating them. */
+export function applyDraftContext(
+  contexts: ModelContextState,
+  draftChoice: RunContextChoice | undefined,
+): ModelContextState {
+  if (!draftChoice) return contexts;
+  if ('tier' in draftChoice) {
+    if (contexts.options.length !== 2) return contexts;
+    const matched = contexts.options.find((option) => option.tier === draftChoice.tier);
+    return {
+      ...contexts,
+      selected: draftChoice.tier,
+      custom: null,
+      window: matched?.contextWindow ?? contexts.window,
+    };
+  }
+  if (contexts.options.length !== 2 && draftChoice.contextWindow === contexts.catalogWindow) {
+    return { ...contexts, custom: null, window: contexts.catalogWindow };
+  }
+  return { ...contexts, custom: draftChoice.contextWindow, window: draftChoice.contextWindow };
+}
+
+/** Context rows for draft selection: emits `RunContextChoice | undefined` without connection writes. */
+export function contextDraftRows(
+  baseContexts: ModelContextState,
+  draftChoice: RunContextChoice | undefined,
+): DraftContextRow[] {
+  const effective = applyDraftContext(baseContexts, draftChoice);
+  return contextRows(effective).map((row) => {
+    if (row.checked || row.kind === 'custom') {
+      return { ...row, runChoice: undefined, changed: false };
+    }
+    let runChoice: RunContextChoice | undefined;
+    if (row.kind === 'standard' || row.kind === 'long') {
+      runChoice = { tier: row.kind };
+    } else if (row.kind === 'choice') {
+      runChoice = { contextWindow: row.window };
+    } else {
+      // Clearing back to model default only removes draftChoice when connection has no override.
+      runChoice = baseContexts.custom !== null ? { contextWindow: row.window } : undefined;
+    }
+    return { ...row, runChoice, changed: true };
+  });
+}
+
+/** True when a draft context choice resolves differently from an alias's saved context choice. */
+export function contextDiverges(
+  draftChoice: RunContextChoice | undefined,
+  aliasChoice: RunContextChoice | undefined,
+  baseContexts: ModelContextState,
+): boolean {
+  if (sameRunContextChoice(draftChoice, aliasChoice)) return false;
+  if (baseContexts.catalogWindow === null || baseContexts.loading) return true;
+  const draftState = applyDraftContext(baseContexts, draftChoice);
+  const aliasState = applyDraftContext(baseContexts, aliasChoice);
+  return (
+    draftState.window !== aliasState.window ||
+    draftState.selected !== aliasState.selected ||
+    draftState.custom !== aliasState.custom
+  );
 }
 
 /**

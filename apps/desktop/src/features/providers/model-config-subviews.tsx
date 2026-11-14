@@ -1,9 +1,13 @@
 import type { KeyboardEvent, ReactNode, Ref } from 'react';
+import type { RunContextChoice } from '@atd/agent-contracts';
 import { Check, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import type { ModelThinkingLevel } from '../../client/providers/schema';
+import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
+import { ContextOptions } from './model-context-view';
+import { ModelList } from './model-list';
+import { saveModelContext, type ModelContextState } from './use-model-contexts';
 
 /** The drill-in header every subview shares: a back button and the subview's title. */
 export function ConfigBackHeader({ title, onBack }: { title: string; onBack: () => void }) {
@@ -123,4 +127,114 @@ export function EffortOptions({
       ))}
     </ConfigOptionList>
   );
+}
+
+/** Drill-in subviews (`context`, `effort`, `model`) shared by `ModelConfigPopover`. */
+export function ModelConfigSubview({
+  view,
+  model,
+  connection,
+  connections,
+  baseContexts,
+  draftContextChoice,
+  onContextChoiceChange,
+  levels,
+  selectedEffort,
+  onThinkingLevelChange,
+  scoped,
+  scopeLabel,
+  optionListRef,
+  modelViewRef,
+  onBack,
+  onSelectModel,
+  onOpenProviders,
+  onClose,
+}: {
+  view: 'context' | 'effort' | 'model';
+  model: ModelReference | null;
+  connection: Connection | undefined;
+  connections: Connection[];
+  baseContexts: ModelContextState;
+  draftContextChoice?: RunContextChoice | undefined;
+  onContextChoiceChange?: ((choice: RunContextChoice | undefined) => void) | undefined;
+  levels: ModelThinkingLevel[];
+  selectedEffort?: ModelThinkingLevel | undefined;
+  onThinkingLevelChange?: ((level: ModelThinkingLevel) => void) | undefined;
+  scoped: boolean;
+  scopeLabel?: string | undefined;
+  optionListRef: Ref<HTMLDivElement>;
+  modelViewRef: Ref<HTMLDivElement>;
+  onBack: () => void;
+  onSelectModel: (reference: ModelReference) => void;
+  onOpenProviders?: (() => void) | undefined;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation('providers');
+  if (view === 'context' && model && connection) {
+    return (
+      <div className="model-config-subview">
+        <ConfigBackHeader title={t('modelConfig.context')} onBack={onBack} />
+        <ContextOptions
+          contexts={baseContexts}
+          draftChoice={onContextChoiceChange ? draftContextChoice : undefined}
+          listRef={optionListRef}
+          onSelectDraftChoice={
+            onContextChoiceChange
+              ? (choice, changed) => {
+                  onBack();
+                  if (changed) onContextChoiceChange(choice);
+                }
+              : undefined
+          }
+          onSelect={(choice) => {
+            onBack();
+            if (choice) void saveModelContext(model, choice, connection.revision);
+          }}
+        />
+      </div>
+    );
+  }
+  if (view === 'effort' && onThinkingLevelChange && selectedEffort) {
+    return (
+      <div className="model-config-subview">
+        <ConfigBackHeader title={t('thinkingLevels.label')} onBack={onBack} />
+        <EffortOptions
+          levels={levels}
+          selected={selectedEffort}
+          listRef={optionListRef}
+          onSelect={(level) => {
+            onThinkingLevelChange(level);
+            onBack();
+          }}
+        />
+      </div>
+    );
+  }
+  if (view === 'model') {
+    return (
+      <div ref={modelViewRef} className="model-config-subview">
+        <ConfigBackHeader title={t('modelConfig.model')} onBack={onBack} />
+        <ModelList
+          connections={connections}
+          value={model}
+          scoped={scoped}
+          searchLabel={
+            scoped ? t('models.searchScopedLabel', { label: scopeLabel }) : t('models.searchLabel')
+          }
+          onSelect={(reference) => {
+            onSelectModel(reference);
+            onClose();
+          }}
+          onOpenProviders={
+            onOpenProviders &&
+            (() => {
+              onClose();
+              onOpenProviders();
+            })
+          }
+        />
+      </div>
+    );
+  }
+  return null;
 }

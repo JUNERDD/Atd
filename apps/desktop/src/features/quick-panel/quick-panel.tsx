@@ -5,6 +5,7 @@ import type { AgentTask } from '../../client/agent/task-schema';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
 import { useAgentCommands } from '../agent/use-agent';
+import type { PanelAliasState } from '../agent/use-panel-aliases';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';
 import { QuickPanelSurface } from './quick-panel-surface';
@@ -31,6 +32,7 @@ export interface QuickPanelProps {
   onPolicyChange: (policy: RunPolicy) => void;
   connections: Connection[];
   model: ModelReference | null;
+  aliasState?: PanelAliasState | undefined;
   /** Files the draft's file chips send, against the 10-file limit. */
   attachmentCount: number;
   /** Why the open task cannot be compacted now (`/compact`); null when it can. */
@@ -65,6 +67,7 @@ export function QuickPanel({
   onPolicyChange,
   connections,
   model,
+  aliasState,
   attachmentCount,
   compact,
   taskId,
@@ -98,6 +101,7 @@ export function QuickPanel({
     onPolicyChange,
     connections,
     model,
+    aliasState,
     skills: lists.skills,
     compact,
   });

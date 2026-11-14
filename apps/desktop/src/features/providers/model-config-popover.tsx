@@ -5,13 +5,16 @@ import { Button } from '@atd/ui/components/button';
 import { cn } from '@atd/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
+import {
+  resolvePopoverTriggerLabels,
+  type ModelAliasPopoverProps,
+} from '../agent/use-panel-aliases';
 import { formatContextWindow } from './context-window';
-import { ConfigBackHeader, EffortOptions } from './model-config-subviews';
-import { ContextOptions } from './model-context-view';
-import { ModelList } from './model-list';
+import { ModelConfigAliases } from './model-config-aliases';
+import { ModelConfigSubview } from './model-config-subviews';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
-import { saveModelContext, useModelContexts } from './use-model-contexts';
+import { applyDraftContext, useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
 
@@ -30,15 +33,16 @@ type EffortControl =
     }
   | { hideEffort: true; thinkingLevel?: undefined; onThinkingLevelChange?: undefined };
 
-type ModelConfigPopoverProps = EffortControl & {
-  connections: Connection[];
-  model: ModelReference | null;
-  onModelChange: (value: ModelReference) => void;
-  onOpenProviders?: () => void;
-  scopeLabel?: string;
-  compact?: boolean;
-  disabled?: boolean;
-};
+type ModelConfigPopoverProps = EffortControl &
+  ModelAliasPopoverProps & {
+    connections: Connection[];
+    model: ModelReference | null;
+    onModelChange: (value: ModelReference) => void;
+    onOpenProviders?: () => void;
+    scopeLabel?: string;
+    compact?: boolean;
+    disabled?: boolean;
+  };
 
 /**
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context,
@@ -66,9 +70,16 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     scopeLabel,
     compact = false,
     disabled = false,
+    aliases,
+    activeAliasId,
+    aliasModified = false,
+    onSelectAlias,
+    draftContextChoice,
+    onContextChoiceChange,
   } = props;
   const effort = props.hideEffort ? null : props;
   const { t } = useTranslation('providers');
+  const { t: tPanel } = useTranslation('panel');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<ModelConfigView>('root');
   /** Whether the view changed since the popover opened; only opening plays the entry animation. */
@@ -95,7 +106,14 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     (!connection?.connected || !connection.catalog.some((item) => item.id === model.modelId)),
   );
   const displayName = unavailable ? t('models.unavailable', { name }) : name;
-  const contexts = useModelContexts(model, connection);
+  const scoped = scopeLabel !== undefined;
+  const activeAlias =
+    !scoped && activeAliasId ? (aliases?.find((item) => item.id === activeAliasId) ?? null) : null;
+  const isAliasModified = Boolean(activeAlias && aliasModified);
+  const baseContexts = useModelContexts(model, connection);
+  const contexts = onContextChoiceChange
+    ? applyDraftContext(baseContexts, draftContextChoice)
+    : baseContexts;
   const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
   const contextChoice = Boolean(model && connection) && contexts.catalogWindow !== null;
   const { levels, defaultLevel, loading } = useThinkingLevels(effort ? model : null, connection);
@@ -111,12 +129,22 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
       : t(`thinkingLevels.levels.${selected}`)
     : null;
   const effortDisabled = !model || loading || levels.length < 2;
-  const scoped = scopeLabel !== undefined;
   const summary = { model: displayName, contextSize: contextText, effort: effortText ?? '' };
   const details = model
     ? [displayName, contextText, ...(effortText ? [effortText] : [])].join(' · ')
     : displayName;
   const title = connection && model && !scoped ? `${connection.name} · ${details}` : details;
+  const triggerLabels = resolvePopoverTriggerLabels({
+    activeAlias,
+    aliasModified: isAliasModified,
+    title,
+    details,
+    scopeLabel,
+    summary,
+    hasEffort: Boolean(effortText),
+    tProviders: t,
+    tPanel,
+  });
 
   /** What a view focuses as its content mounts; null leaves focus on the content itself. */
   function focusTarget(): HTMLElement | null {
@@ -155,21 +183,22 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           size={compact ? 'xs' : 'default'}
           className={compact ? 'composer-model' : 'provider-model-trigger'}
           disabled={disabled}
-          aria-label={
-            scoped
-              ? t('modelConfig.scopedTriggerLabel', { label: scopeLabel, ...summary })
-              : effortText
-                ? t('modelConfig.triggerLabel', summary)
-                : t('modelConfig.modelOnlyTriggerLabel', summary)
-          }
-          title={title}
+          aria-label={triggerLabels.ariaLabel}
+          title={triggerLabels.title}
         >
           {connection && !scoped && (
             <ProviderBrand
               provider={providerPresentation(connection)?.service.brand ?? connection.provider}
             />
           )}
-          <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
+          <span className="flex min-w-0 flex-1 items-center gap-0.5 text-left">
+            <span className="min-w-0 truncate">{activeAlias ? activeAlias.name : displayName}</span>
+            {isAliasModified && (
+              <span className="composer-model-modified shrink-0" aria-hidden="true">
+                *
+              </span>
+            )}
+          </span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
           {model && effortText && (
             <span className="model-config-effort shrink-0">{effortText}</span>
@@ -205,6 +234,19 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
       >
         {view === 'root' && (
           <div className="model-config-root">
+            {!scoped && aliases && aliases.length > 0 && onSelectAlias && (
+              <ModelConfigAliases
+                aliases={aliases}
+                connections={connections}
+                activeAlias={activeAlias}
+                aliasModified={isAliasModified}
+                cycleShortcut={props.cycleShortcut}
+                onSelectAlias={onSelectAlias}
+                onRestoreAlias={props.onRestoreAlias}
+                onSaveAsAlias={props.onSaveAsAlias}
+                onClosePopover={() => setOpen(false)}
+              />
+            )}
             <ChatGPTPlan connection={connection} variant="menu" />
             {contextChoice ? (
               <button
@@ -255,58 +297,27 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
             </button>
           </div>
         )}
-        {view === 'context' && model && connection && (
-          <div className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.context')} onBack={() => show('root')} />
-            <ContextOptions
-              contexts={contexts}
-              listRef={optionListRef}
-              onSelect={(choice) => {
-                show('root');
-                if (choice) void saveModelContext(model, choice, connection.revision);
-              }}
-            />
-          </div>
-        )}
-        {view === 'effort' && effort && selected && (
-          <div className="model-config-subview">
-            <ConfigBackHeader title={t('thinkingLevels.label')} onBack={() => show('root')} />
-            <EffortOptions
-              levels={levels}
-              selected={selected}
-              listRef={optionListRef}
-              onSelect={(level) => {
-                effort.onThinkingLevelChange(level);
-                show('root');
-              }}
-            />
-          </div>
-        )}
-        {view === 'model' && (
-          <div ref={modelViewRef} className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.model')} onBack={() => show('root')} />
-            <ModelList
-              connections={connections}
-              value={model}
-              scoped={scoped}
-              searchLabel={
-                scoped
-                  ? t('models.searchScopedLabel', { label: scopeLabel })
-                  : t('models.searchLabel')
-              }
-              onSelect={(reference) => {
-                onModelChange(reference);
-                setOpen(false);
-              }}
-              onOpenProviders={
-                onOpenProviders &&
-                (() => {
-                  setOpen(false);
-                  onOpenProviders();
-                })
-              }
-            />
-          </div>
+        {view !== 'root' && (
+          <ModelConfigSubview
+            view={view}
+            model={model}
+            connection={connection}
+            connections={connections}
+            baseContexts={baseContexts}
+            draftContextChoice={draftContextChoice}
+            onContextChoiceChange={onContextChoiceChange}
+            levels={levels}
+            selectedEffort={selected}
+            onThinkingLevelChange={effort?.onThinkingLevelChange}
+            scoped={scoped}
+            scopeLabel={scopeLabel}
+            optionListRef={optionListRef}
+            modelViewRef={modelViewRef}
+            onBack={() => show('root')}
+            onSelectModel={onModelChange}
+            onOpenProviders={onOpenProviders}
+            onClose={() => setOpen(false)}
+          />
         )}
       </PopoverContent>
     </Popover>

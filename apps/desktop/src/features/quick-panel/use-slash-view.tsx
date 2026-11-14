@@ -12,6 +12,8 @@ import { useCatalogRefresh } from '../providers/use-catalog-refresh';
 import { useModelContexts } from '../providers/use-model-contexts';
 import { useThinkingLevels } from '../providers/use-thinking-levels';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
+import { withPolicyContext } from '../agent/panel-run';
+import type { PanelAliasState } from '../agent/use-panel-aliases';
 import type { ExtensionSkillRow } from '../service/extension-rows';
 import {
   QUICK_COMMANDS,
@@ -21,7 +23,7 @@ import {
   type QuickCommandContext,
 } from './quick-commands';
 import { orderGroups, type QuickGroup, type QuickOption, type QuickView } from './quick-options';
-import { compactDrill, contextDrill } from './slash-drills';
+import { compactDrill, contextDrill, modelAliasGroup } from './slash-drills';
 import type { TriggerState } from './trigger';
 import type { ServiceListView } from './use-service-lists';
 
@@ -77,9 +79,9 @@ export function skillsView(
 /**
  * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model`,
  * `/effort` and `/context` drill lists and the `/compact <focus>` row; an inline `/` lists skills
- * only, since commands act on the whole draft. Model and effort changes stay on this draft's
- * policy and never touch the app defaults; a context window is the connection's remembered choice
- * for the model. Every drill pick clears the trigger text.
+ * only, since commands act on the whole draft. Model, context, and effort changes stay on this
+ * draft's policy and never touch saved connection or alias defaults. Every drill pick clears the
+ * trigger text.
  */
 export function useSlashView({
   trigger,
@@ -91,6 +93,7 @@ export function useSlashView({
   onPolicyChange,
   connections,
   model,
+  aliasState,
   skills,
   compact,
 }: {
@@ -103,6 +106,7 @@ export function useSlashView({
   onPolicyChange: (policy: RunPolicy) => void;
   connections: Connection[];
   model: ModelReference | null;
+  aliasState?: PanelAliasState | undefined;
   skills: ServiceListView<ExtensionSkillRow>;
   /** Why the open task cannot be compacted now; null when it can. */
   compact: CompactBlock | null;
@@ -128,13 +132,16 @@ export function useSlashView({
       shown,
       connection: shownConnection,
       contexts,
+      draftChoice: policy.contextChoice,
+      onSelectContextChoice: (contextChoice) =>
+        onPolicyChange(withPolicyContext(policy, contextChoice)),
       editor,
       t,
       tp,
     });
 
   if (drill?.command === 'model') {
-    const groups = connections.map((connection): QuickGroup => {
+    const connectionGroups = connections.map((connection): QuickGroup => {
       const ranked = rankModels(sortModels(connection.catalog), drill.query, connection.name);
       return {
         id: `model:${connection.connectionId}`,
@@ -161,7 +168,23 @@ export function useSlashView({
         })),
       };
     });
-    const anyModel = connections.some((connection) => connection.catalog.length > 0);
+    const aliasGroup = aliasState
+      ? modelAliasGroup({
+          aliases: aliasState.aliases,
+          connections,
+          query: drill.query,
+          activeAlias: aliasState.activeAlias,
+          aliasModified: aliasState.aliasModified,
+          onSelectAlias: aliasState.onSelectAlias,
+          editor,
+          t,
+          tp,
+        })
+      : null;
+    const groups = aliasGroup ? [aliasGroup, ...connectionGroups] : connectionGroups;
+    const anyModel =
+      Boolean(aliasState?.aliases.length) ||
+      connections.some((connection) => connection.catalog.length > 0);
     return {
       query: drill.query,
       groups: orderGroups(groups, drill.query),

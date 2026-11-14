@@ -31,6 +31,7 @@ import { ComposerPopover } from './composer-popover';
 import { useComposerAttach } from './use-composer-attach';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
+import type { PanelAliasState } from '../features/agent/use-panel-aliases';
 import { VisionNotice } from '../features/agent/vision-notice';
 import { compactBlock } from '../features/agent/compaction/compact-availability';
 import { useCompactTask } from '../features/agent/compaction/use-compact-task';
@@ -51,6 +52,7 @@ export interface ComposerProps {
   shortcuts?: ShortcutBindings;
   connections: Connection[];
   model: ModelReference | null;
+  aliasState?: PanelAliasState | undefined;
   onOpenSettings: () => void;
   taskId?: string | null;
   task?: AgentTask | null;
@@ -116,6 +118,7 @@ export function Composer({
   shortcuts = DEFAULT_SHORTCUTS,
   connections,
   model,
+  aliasState,
   onOpenSettings,
   policy,
   onPolicyChange,
@@ -291,6 +294,7 @@ export function Composer({
             onPolicyChange={onPolicyChange}
             connections={connections}
             model={model}
+            aliasState={aliasState}
             attachmentCount={files.length}
             taskId={taskId}
             tasks={tasks}
@@ -330,6 +334,7 @@ export function Composer({
         <ComposerConfiguration
           connections={connections}
           model={model}
+          aliasState={aliasState}
           onOpenSettings={onOpenSettings}
           policy={policy}
           onPolicyChange={onPolicyChange}

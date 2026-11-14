@@ -24,6 +24,8 @@ import { trackCommandRun } from './command-results';
 import { useRunChoices } from './use-run-choices';
 import { useOutgoingMessage } from './outgoing-messages';
 import { sendOptimistic, sendSettling, withChips, type PanelSubmit } from './panel-submit';
+import { panelViewTitle } from './panel-run';
+import { usePanelAliases } from './use-panel-aliases';
 import { usePanelHotkeys } from './use-panel-hotkeys';
 import { useSideChat } from './side-chat/use-side-chat';
 import { showErrorToast } from '../../components/toast-store';
@@ -122,6 +124,10 @@ export function useTaskPanel() {
   const shortcuts = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
   const nextRun = useRunChoices(snapshot, policyKey, inputStep, boundRun);
   const { policy, model } = nextRun;
+  const composerHidden =
+    child.childKey !== null || sideStep !== null || side.child.childKey !== null;
+  const panelActive = !composerHidden && view !== 'history' && view !== 'apps';
+  const aliases = usePanelAliases(snapshot, nextRun, policyKey, panelActive);
   useRememberComposers(drafts, nextRun.choices);
   const seeded = useSeededSessions((seed) => {
     newTask();
@@ -253,6 +259,7 @@ export function useTaskPanel() {
   usePanelHotkeys(shortcuts, {
     openSettings: () => void openSettings(),
     newConversation: newTask,
+    cycleModelAlias: aliases.cycleAlias,
     // One level per press: the side chat's subagent view, the side chat, the conversation's
     // subagent view, a new chat, then the panel hides.
     escape: () => {
@@ -290,16 +297,7 @@ export function useTaskPanel() {
       showErrorToast(error);
     }
   }
-  const title =
-    view === 'history'
-      ? t('titles.tasks')
-      : view === 'apps'
-        ? t('titles.apps')
-        : view === 'input'
-          ? (prepared?.command.name ?? t('titles.commandInput'))
-          : view === 'task'
-            ? (current.detail?.task.title ?? t('titles.task'))
-            : t('titles.newTask');
+  const title = panelViewTitle(view, prepared, current.detail, t);
   return {
     agent,
     snapshot,
@@ -340,8 +338,9 @@ export function useTaskPanel() {
       queue: bound?.queue ?? EMPTY_QUEUE,
       onStop:
         boundTaskId && servedRun ? () => agentApi().stop(boundTaskId, servedRun.id) : undefined,
+      aliasState: aliases.aliasState,
       // Under a subagent's view, and while a side chat's command has not started, nothing to serve.
-      hidden: child.childKey !== null || sideStep !== null || side.child.childKey !== null,
+      hidden: composerHidden,
     },
     /** The conversation's pending requests, for its subagent views. */
     requests: current.detail?.requests ?? NO_REQUESTS,

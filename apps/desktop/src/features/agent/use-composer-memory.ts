@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { Identifier, RunContextChoiceSchema, type ModelAlias } from '@atd/agent-contracts';
 import {
   ModelReferenceSchema,
   ModelThinkingLevelSchema,
@@ -11,10 +12,12 @@ import { readPersistedRecord, usePersistRecord } from '../../lib/persisted-recor
 const DRAFT_PREFIX = 'composer.draft.';
 const CHOICE_PREFIX = 'composer.choice.';
 
-/** The model and effort a composer picked; the rest of a run's policy is not remembered. */
+/** The alias, model, context, and effort a composer picked; the rest of a run's policy is not remembered. */
 const ModelChoiceSchema = Type.Object(
   {
+    aliasId: Type.Optional(Identifier),
     model: Type.Optional(ModelReferenceSchema),
+    contextChoice: Type.Optional(RunContextChoiceSchema),
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
   },
   { additionalProperties: false },
@@ -22,7 +25,10 @@ const ModelChoiceSchema = Type.Object(
 export type ModelChoice = Static<typeof ModelChoiceSchema>;
 
 const DRAFTS = { isEmpty: isEmptyDraft, restore: normalizeDraft };
-const CHOICES = { isEmpty: (choice: ModelChoice) => !choice.model && !choice.thinkingLevel };
+const CHOICES = {
+  isEmpty: (choice: ModelChoice) =>
+    !choice.aliasId && !choice.model && !choice.contextChoice && !choice.thinkingLevel,
+};
 
 /**
  * What each conversation remembers of its composer, by key: `new` for the new conversation, else
@@ -48,17 +54,26 @@ export function useRememberComposers(drafts: ComposerDrafts, choices: ModelChoic
 
 /**
  * The remembered choice, unless its model has gone since: the connection was removed or the model
- * left its catalog. A choice that is unusable shows and runs as the default, while the stored
- * value stays until another pick replaces it. `connections` is undefined until they load.
+ * left its catalog. When `aliases` is loaded and the remembered alias was removed, its id is
+ * dropped while the remaining model/context/effort choice stays. A choice that is unusable shows
+ * and runs as the default, while the stored value stays until another pick replaces it.
  */
 export function usableChoice(
   choice: ModelChoice | undefined,
   connections: readonly Connection[] | undefined,
+  aliases?: readonly ModelAlias[],
 ): ModelChoice | undefined {
-  const model = choice?.model;
-  if (!choice || !model) return choice;
-  const connection = connections?.find((item) => item.connectionId === model.connectionId);
-  return connection?.catalog.some((item) => item.id === model.modelId) ? choice : undefined;
+  if (!choice) return choice;
+  const model = choice.model;
+  if (model) {
+    const connection = connections?.find((item) => item.connectionId === model.connectionId);
+    if (!connection?.catalog.some((item) => item.id === model.modelId)) return undefined;
+  }
+  if (choice.aliasId && aliases && !aliases.some((item) => item.id === choice.aliasId)) {
+    const { aliasId: _, ...rest } = choice;
+    return CHOICES.isEmpty(rest) ? undefined : rest;
+  }
+  return choice;
 }
 
 /** Moves a draft typed while a launched command's task id was still provisional onto `to`. */
