@@ -12,9 +12,9 @@ const CATALOG_SHOWN_MAX_AGE_MS = 60 * 1000;
 
 /**
  * Keeps saved provider catalogs current without user action: on a schedule, and whenever a model
- * list opens. A pass refreshes each connected connection whose last successful refresh is older
- * than the pass allows; failed ones stay ungated and retry on the next pass. Refreshes are
- * background refreshes, so failures stay silent.
+ * list opens. A pass refreshes each connected, sync-eligible connection whose last successful
+ * refresh is older than the pass allows; ineligible or failed ones wait for the next eligible
+ * pass. Refreshes are background refreshes, so failures stay silent.
  */
 export class CatalogSync {
   private timer: ReturnType<typeof setInterval> | undefined;
@@ -24,6 +24,8 @@ export class CatalogSync {
   constructor(
     private readonly connections: () => readonly Connection[],
     private readonly refresh: (connectionId: string) => Promise<boolean>,
+    private readonly canSync: (connection: Connection) => boolean = (connection) =>
+      connection.credentialIssue == null,
   ) {}
 
   /** Runs a scheduled pass now and starts the schedule; later calls only run a pass. */
@@ -64,6 +66,7 @@ export class CatalogSync {
           !connection.chatgptPlanEnabled
         )
           continue;
+        if (!this.canSync(connection)) continue;
         if (now - (this.syncedAt.get(connection.connectionId) ?? 0) < maxAge) continue;
         await this.sync(connection.connectionId);
       }

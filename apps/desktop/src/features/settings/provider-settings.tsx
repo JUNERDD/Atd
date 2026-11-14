@@ -53,11 +53,14 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const { t: tp } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   const connected = useServiceStatus().status?.state === 'connected';
-  // Probe OS keyring readability when the Providers section opens so stale credentials surface
-  // right away instead of still appearing verified until the next message fails.
+  const hasUnreadableIssue = (snapshot?.connections ?? []).some(
+    (connection) => connection.credentialIssue === 'unreadable',
+  );
   useEffect(() => {
-    if (connected && bridge) void bridge.checkStatuses().catch(() => undefined);
-  }, [bridge, connected]);
+    if (connected && bridge && !hasUnreadableIssue) {
+      void bridge.checkStatuses().catch(() => undefined);
+    }
+  }, [bridge, connected, hasUnreadableIssue]);
   // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
   const catalogQuery = useQuery(
     {

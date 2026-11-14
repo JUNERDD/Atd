@@ -72,6 +72,7 @@ export function nativeSettings(
   connection: NativeConnection,
   messages: WindowMessages,
   native: NativeBridge,
+  surface: 'panel' | 'settings' | 'onboarding' | 'view' = 'panel',
 ): {
   bridge: SettingsBridge;
   providers: ProviderService;
@@ -189,9 +190,10 @@ export function nativeSettings(
     void reload().catch(() => undefined);
     void providers
       .sync()
-      .then(() => {
+      .then(async () => {
+        if (surface !== 'panel') return;
+        await providers.checkStatuses();
         providers.syncCatalogs();
-        return providers.checkStatuses();
       })
       .catch(() => undefined);
   });

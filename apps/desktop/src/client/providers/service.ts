@@ -37,7 +37,8 @@ export interface ProviderConnection {
 export class ProviderService {
   private connection: ProviderConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
-  private statusesProbed = false;
+  private readonly probedIds = new Set<string>();
+  private hasProbedOnce = false;
   private checkingStatuses: Promise<void> | null = null;
   readonly login: ProviderLoginClient;
   private readonly catalogSync = new CatalogSync(
@@ -47,6 +48,9 @@ export class ProviderService {
         () => true,
         () => false,
       ),
+    (item) =>
+      item.credentialIssue == null &&
+      (!this.isCredentialEligible(item) || this.probedIds.has(item.connectionId)),
   );
 
   /** `openExternal` shows a sign-in link: the system browser in the desktop, a new tab on the web. */
@@ -58,11 +62,37 @@ export class ProviderService {
     this.login = new ProviderLoginClient(
       () => this.connection?.options() ?? null,
       publishLogin,
-      // Signed-in providers can expose models that need the new credential; the refresh reloads
-      // the connections either way.
-      (connectionId) => void this.catalogSync.sync(connectionId),
+      // Signed-in providers can expose models that need the new credential; mark the signed-in row
+      // probed and refresh its catalog so both UI state and available models catch up.
+      (connectionId) => {
+        void this.sync()
+          .catch(() => undefined)
+          .then(() => {
+            this.markProbed(connectionId);
+            return this.catalogSync.sync(connectionId);
+          })
+          .then(() => this.markProbed(connectionId))
+          .catch(() => undefined);
+      },
       openExternal,
     );
+  }
+
+  private isCredentialEligible(item: Connection): boolean {
+    return (
+      item.connected &&
+      item.hasCredential &&
+      item.authType !== 'none' &&
+      item.authType !== 'ambient'
+    );
+  }
+
+  private markProbed(connectionId: string): void {
+    const item = this.live?.connections.find((entry) => entry.connectionId === connectionId);
+    if (!item || !this.isCredentialEligible(item) || item.credentialIssue != null) return;
+    if (this.probedIds.has(connectionId)) return;
+    this.probedIds.add(connectionId);
+    this.changed();
   }
 
   attach(connection: ProviderConnection) {
@@ -74,24 +104,37 @@ export class ProviderService {
   }
 
   statusesChecked(): boolean {
-    return this.statusesProbed;
+    if (!this.live || !this.hasProbedOnce) return false;
+    return this.live.connections
+      .filter((item) => this.isCredentialEligible(item))
+      .every((item) => this.probedIds.has(item.connectionId));
   }
 
   resetStatusesChecked(): void {
-    if (!this.statusesProbed) return;
-    this.statusesProbed = false;
-    this.changed();
+    const wasChecked = this.statusesChecked();
+    this.probedIds.clear();
+    this.hasProbedOnce = false;
+    if (wasChecked) this.changed();
   }
 
   async sync(): Promise<void> {
     const options = this.connection?.options();
     if (!options) {
       this.live = null;
-      this.statusesProbed = false;
+      this.probedIds.clear();
+      this.hasProbedOnce = false;
       this.changed();
       return;
     }
     this.live = await fetchLiveProviders(options);
+    const eligibleIds = new Set(
+      this.live.connections
+        .filter((item) => this.isCredentialEligible(item))
+        .map((item) => item.connectionId),
+    );
+    for (const id of this.probedIds) {
+      if (!eligibleIds.has(id)) this.probedIds.delete(id);
+    }
     this.changed();
   }
 
@@ -125,6 +168,7 @@ export class ProviderService {
 
   async save(value: ConnectionDraft): Promise<Connection> {
     const saved = await this.write((options) => saveLive(options, value));
+    this.markProbed(saved.connectionId);
     // Model discovery continues in the background so saving stays responsive.
     void this.catalogSync.sync(saved.connectionId);
     return saved;
@@ -175,54 +219,52 @@ export class ProviderService {
     this.catalogSync.shown();
   }
 
-  /** Probes keyring readability for connected credentialed rows without hitting provider networks. */
+  /** Probes keyring readability sequentially across unprobed credentialed rows, stopping on unreadable or network errors. */
   async checkStatuses(): Promise<void> {
+    if (this.statusesChecked()) return;
     if (this.checkingStatuses) return this.checkingStatuses;
-    const isEligible = (item: Connection) =>
-      item.connected &&
-      item.hasCredential &&
-      item.authType !== 'none' &&
-      item.authType !== 'ambient';
     const run = (async () => {
       const options = this.connection?.options();
       if (!options) return;
       if (!this.live) await this.sync();
-      const eligible = (this.live?.connections ?? []).filter(isEligible);
+      if (!this.live || this.statusesChecked()) return;
+      const eligible = this.live.connections.filter((item) => this.isCredentialEligible(item));
       if (!eligible.length) {
-        if (!this.statusesProbed) {
-          this.statusesProbed = true;
-          this.changed();
-        }
+        this.hasProbedOnce = true;
+        this.changed();
         return;
       }
-      const results = await Promise.all(
-        eligible.map(async (item) => {
-          const status = await providerStatus(options, item.connectionId).catch(() => null);
-          return { item, status };
-        }),
-      );
-      const changed = results.some(
-        ({ item, status }) => status !== null && status.credentialIssue !== item.credentialIssue,
-      );
-      const failedIds = new Set(
-        results.filter(({ status }) => status === null).map(({ item }) => item.connectionId),
-      );
-      if (failedIds.size === 0) {
-        const wasProbed = this.statusesProbed;
-        this.statusesProbed = true;
-        if (changed) {
-          await this.sync();
-        } else if (!wasProbed) {
-          this.changed();
-        }
+      if (eligible.some((item) => item.credentialIssue === 'unreadable')) {
+        this.hasProbedOnce = true;
         return;
       }
-      await this.sync();
-      const hasRemainingFailure = (this.live?.connections ?? []).some(
-        (item) => isEligible(item) && failedIds.has(item.connectionId),
-      );
-      if (this.live && !hasRemainingFailure && !this.statusesProbed) {
-        this.statusesProbed = true;
+      const defaultId = this.live.defaultConnectionId;
+      const pending = eligible
+        .filter((item) => !this.probedIds.has(item.connectionId))
+        .sort(
+          (a, b) => Number(b.connectionId === defaultId) - Number(a.connectionId === defaultId),
+        );
+      if (!pending.length) {
+        this.hasProbedOnce = true;
+        this.changed();
+        return;
+      }
+      let issueChanged = false;
+      let networkFailed = false;
+      for (const item of pending) {
+        const status = await providerStatus(options, item.connectionId).catch(() => null);
+        if (status === null) {
+          networkFailed = true;
+          break;
+        }
+        this.hasProbedOnce = true;
+        this.probedIds.add(item.connectionId);
+        if (status.credentialIssue !== item.credentialIssue) issueChanged = true;
+        if (status.credentialIssue === 'unreadable') break;
+      }
+      if (issueChanged || networkFailed) {
+        await this.sync();
+      } else {
         this.changed();
       }
     })().finally(() => {
@@ -242,6 +284,7 @@ export class ProviderService {
     await this.write((options) =>
       verifyProvider(options, reference.connectionId, reference.modelId),
     );
+    this.markProbed(reference.connectionId);
   }
 
   /**

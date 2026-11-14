@@ -132,24 +132,19 @@ export function NotarizationReauthModal({
     (connection) => connection.credentialIssue != null,
   ).length;
   const hasCredentialIssues = credentialIssueCount > 0;
+  const hasUnreadableIssue = snapshot.connections.some(
+    (connection) => connection.credentialIssue === 'unreadable',
+  );
   const credentialsResolved =
     snapshot.providersLoaded && snapshot.providerStatusesChecked && !hasCredentialIssues;
   const allResolved = permissionsGranted && credentialsResolved;
 
   useEffect(() => {
-    if (!serviceConnected) return;
-    const probe = () => {
-      if (document.visibilityState === 'hidden') return;
-      void window.desktop?.settings.providers.checkStatuses().catch(() => {});
-    };
-    probe();
-    window.addEventListener('focus', probe);
-    document.addEventListener('visibilitychange', probe);
-    return () => {
-      window.removeEventListener('focus', probe);
-      document.removeEventListener('visibilitychange', probe);
-    };
-  }, [serviceConnected]);
+    if (!serviceConnected || hasUnreadableIssue || document.visibilityState === 'hidden') {
+      return;
+    }
+    void window.desktop?.settings.providers.checkStatuses().catch(() => {});
+  }, [hasUnreadableIssue, serviceConnected]);
 
   async function requestAccessibility() {
     const settings = window.desktop?.settings;
