@@ -36,6 +36,11 @@ const SEARCH_PAGES = {
 
 const IN_APP_SHORTCUTS = [
   {
+    action: 'cycleModelAlias',
+    labelKey: 'shortcuts.actions.cycleModelAlias.label',
+    descriptionKey: 'shortcuts.actions.cycleModelAlias.description',
+  },
+  {
     action: 'newConversation',
     labelKey: 'shortcuts.actions.newConversation.label',
     descriptionKey: 'shortcuts.actions.newConversation.description',
@@ -244,6 +249,11 @@ export function GeneralSettings({
                   label={t(labelKey)}
                   description={t(descriptionKey)}
                   settings={settings}
+                  error={
+                    action === 'cycleModelAlias'
+                      ? settings.unboundText('cycleModelAlias') || undefined
+                      : undefined
+                  }
                 />
               ))}
             </ItemGroup>

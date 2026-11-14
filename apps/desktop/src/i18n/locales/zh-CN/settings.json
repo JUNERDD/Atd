@@ -75,6 +75,7 @@
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
+      "modelAliases": "模型 别名 预设 组合 连接 推理强度 上下文 模板 快捷切换 model alias preset",
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
@@ -137,6 +138,8 @@
       "catalogError": "无法加载提供商列表。",
       "connectedProviders": "已连接的提供商",
       "defaultModel": "默认模型",
+      "modelAliases": "模型别名",
+      "modelAliasesDescription": "将连接、模型、上下文窗口和推理强度打包为可复用的预设，供命令、自动化和快速切换使用。",
       "empty": {
         "noMatchesTitle": "没有与“{{query}}”匹配的提供商",
         "noMatchesDescription": "试试其他连接或提供商名称。",
@@ -527,6 +530,10 @@
       "recordScreen": {
         "label": "录屏",
         "description": "录制屏幕上的区域、窗口或整个屏幕。"
+      },
+      "cycleModelAlias": {
+        "label": "切换模型别名",
+        "description": "在输入框中循环切换已保存的模型别名。"
       },
       "newConversation": {
         "label": "新建对话",

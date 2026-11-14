@@ -208,7 +208,7 @@ export function ShortcutOverrideFields({
           id="shortcut-model"
           value={shortcut.model}
           settings={settings}
-          follow={follow(modelText(command.model, t))}
+          follow={follow(modelText(command.model, t, settings?.aliases))}
           onChange={(model) => override('model', model)}
         />
         <ThinkingLevelField

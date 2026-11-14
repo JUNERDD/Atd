@@ -51,7 +51,10 @@ function shortcutError(
   if (shortcut === toolbarTap) return t('shortcuts.errors.selectionToolbarDoubleTap');
   if (doubleTapModifier(shortcut)) return '';
   if (
-    (isGlobalAction(action) || action === 'newConversation' || action === 'openSettings') &&
+    (isGlobalAction(action) ||
+      action === 'cycleModelAlias' ||
+      action === 'newConversation' ||
+      action === 'openSettings') &&
     !shortcut
       .split('+')
       .some((key) => ['CommandOrControl', 'Control', 'Alt', 'Super'].includes(key))
