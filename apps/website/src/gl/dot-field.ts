@@ -54,7 +54,7 @@ export function createDotField(
   options: DotFieldOptions = {},
 ): DotField | null {
   const gl = canvas.getContext('webgl2', {
-    alpha: false,
+    alpha: true,
     antialias: false,
     depth: false,
     stencil: false,
@@ -80,9 +80,9 @@ function runField(
   const pitchRange = options.pitch ?? [10, 14];
   const fontFamily = options.fontFamily ?? DEFAULT_FONT;
   const fontWeight = options.fontWeight ?? 900;
-  const ink = options.ink ?? BLACK;
-  const dot = options.dot ?? WHITE;
-  const fieldLevel = options.fieldLevel ?? 0.13;
+  let ink = options.ink ?? BLACK;
+  let dot = options.dot ?? WHITE;
+  let fieldLevel = options.fieldLevel ?? 0.13;
   let words: readonly string[] = options.words?.length ? options.words : ['Atd'];
   const cycle = createWordCycle(words.length, (from, to) =>
     typingSeconds(words[from] ?? '', words[to] ?? ''),
@@ -244,6 +244,8 @@ function runField(
     gl.uniform2f(u.u_levels, fieldLevel, 1);
     gl.uniform3f(u.u_ink, ink[0], ink[1], ink[2]);
     gl.uniform3f(u.u_dot, dot[0], dot[1], dot[2]);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     setLive(true);
 
@@ -300,6 +302,12 @@ function runField(
       words = list;
       cycle.reset(list.length);
       artDirty = true;
+      schedule();
+    },
+    setPalette(palette) {
+      ink = palette.ink ?? BLACK;
+      dot = palette.dot ?? WHITE;
+      fieldLevel = palette.fieldLevel ?? 0.13;
       schedule();
     },
     setArtBox(box) {

@@ -385,7 +385,7 @@
   border-radius: var(--r-display);
   box-shadow:
     0 0 0 1px var(--line-1),
-    0 32px 64px -32px rgb(0 0 0 / 0.9);
+    var(--shadow-shot);
 }
 
 /* The fixes: a card of lines between hairlines, each hanging from an unlit LED; a fix that shows

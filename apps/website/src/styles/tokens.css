@@ -1,38 +1,72 @@
-/* Site tokens. The page is one instrument, fixed dark and strictly monochrome. The hero is its main
-   LED display; below it, every section is a plate of the faceplate, perforated with a 24 px dot
-   grid, and each demo sits in a smaller LED display set into the plate. Two materials, then: the
-   faceplate (`--plate`) and the display glass (`--ink-0`, as black as the hero). These rules are
-   unlayered and override the Apple kit's tokens where the site differs. */
-:root {
+/* Site tokens. The page is one monochrome instrument that adapts to light and dark polarity.
+   The hero is its main flip-dot display; below it, every section is a plate of the faceplate,
+   perforated with a 24 px dot grid, and each demo sits in a smaller display set into the plate.
+   Two materials, then: the faceplate (`--plate`) and the display substrate (`--ink-0`, matching
+   the hero). These rules are unlayered and override the Apple kit's tokens where the site
+   differs. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
   color-scheme: dark;
+}
 
-  /* Ink: the display glass is pure black, like the hero; the faceplate is a shade lighter so the
-     displays read as set into it. */
-  --ink-0: #000;
-  --plate: #0b0b0c;
-  --ink-2: #131315;
-  --ink-3: #1d1d20;
-  --line-1: rgb(255 255 255 / 0.09);
-  --line-2: rgb(255 255 255 / 0.14);
+:root {
+  color-scheme: light dark;
 
-  /* Text on the plate. --fg-3 still passes 4.5:1 on --plate, so it can carry small legends. */
-  --fg-1: #f5f5f7;
-  --fg-2: #a1a1a6;
-  --fg-3: #86868b;
+  /* Ink: the display glass matches the hero; the faceplate is a step apart so the displays read
+     as set into it. */
+  --ink-0: light-dark(#ffffff, #000000);
+  --plate: light-dark(#ffffff, #000000);
+  --ink-2: light-dark(#ffffff, #131315);
+  --ink-3: light-dark(#e8e8ed, #1d1d20);
+  --line-1: light-dark(rgb(0 0 0 / 0.09), rgb(255 255 255 / 0.09));
+  --line-2: light-dark(rgb(0 0 0 / 0.16), rgb(255 255 255 / 0.14));
 
-  /* Dots: lit, and unlit. The plate's perforations and a display's unlit LEDs use the same unlit
-     dot; the displays pack theirs tighter (--led). */
-  --dot-1: #fff;
-  --dot-0: rgb(255 255 255 / 0.1);
-  --dot-mid: rgb(255 255 255 / 0.42);
+  /* Text on the plate. --fg-3 passes WCAG AA on --plate and --ink-3 even for small legends. */
+  --fg-1: light-dark(#111113, #f5f5f7);
+  --fg-2: light-dark(#48484e, #a1a1a6);
+  --fg-3: light-dark(#5e5e64, #86868b);
 
-  /* Monochrome accent for the kit: a white key with black text, white links and focus rings. */
-  --accent: #f5f5f7;
-  --accent-fill: #f5f5f7;
-  --accent-on: #000;
-  --accent-text: #f5f5f7;
-  --focus-ring: #f5f5f7;
-  --link: #f5f5f7;
+  /* Dots: lit, near, and unlit. Light mode pairs pure black dots with a dark halftone floor in
+     `.dot-text` so dot-matrix display headings retain solid contrast against `--plate`. */
+  --dot-1: light-dark(#000000, #ffffff);
+  --dot-0: light-dark(rgb(0 0 0 / 0.1), rgb(255 255 255 / 0.1));
+  --dot-mid: light-dark(rgb(0 0 0 / 0.5), rgb(255 255 255 / 0.42));
+  --dot-near: light-dark(rgb(0 0 0 / 0.26), rgb(255 255 255 / 0.22));
+  --dot-0-display: light-dark(rgb(0 0 0 / 0.075), rgb(255 255 255 / 0.08));
+  --dot-0-soft: light-dark(rgb(0 0 0 / 0.065), rgb(255 255 255 / 0.07));
+  --dot-text-gap: light-dark(rgb(0 0 0 / 0.56), transparent);
+  --display-dot: light-dark(rgb(0 0 0 / 0.055), rgb(255 255 255 / 0.07));
+  --display-edge: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.05));
+  --led-glow: light-dark(none, 0 0 8px rgb(255 255 255 / 0.5));
+  --led-nav-glow: light-dark(none, 0 0 6px rgb(255 255 255 / 0.6));
+  --led-soft-glow: light-dark(none, 0 0 10px rgb(255 255 255 / 0.4));
+  --ascii-foreground-mix: 23%;
+  --ascii-glow-near: 15%;
+  --ascii-glow-far: 8%;
+  --ascii-vignette-radial-mid: 28%;
+  --ascii-vignette-linear-top: 14%;
+  --ascii-vignette-linear-end: 86%;
+  --shadow-menu: light-dark(0 12px 32px -8px rgb(0 0 0 / 0.14), 0 12px 32px -12px rgb(0 0 0 / 0.8));
+  --shadow-screen: light-dark(0 28px 64px -24px rgb(0 0 0 / 0.18), 0 40px 80px -32px #000000);
+  --shadow-shot: light-dark(
+    0 20px 44px -20px rgb(0 0 0 / 0.22),
+    0 32px 64px -32px rgb(0 0 0 / 0.9)
+  );
+  --shadow-key: light-dark(rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.6));
+  --switch-track: light-dark(#e8e8ed, #000000);
+  --switch-thumb: light-dark(#ffffff, #1d1d20);
+  --switch-shadow: light-dark(0 1px 2px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.6));
+
+  /* Monochrome accent for the kit: a high-contrast filled key with inverse label. */
+  --accent: light-dark(#1d1d1f, #f5f5f7);
+  --accent-fill: light-dark(#1d1d1f, #f5f5f7);
+  --accent-on: light-dark(#ffffff, #000000);
+  --accent-text: light-dark(#1d1d1f, #f5f5f7);
+  --focus-ring: light-dark(#1d1d1f, #f5f5f7);
+  --link: light-dark(#1d1d1f, #f5f5f7);
   --label: var(--fg-1);
   --secondary-label: var(--fg-2);
   --system-background: var(--plate);
@@ -86,16 +120,14 @@
   --gutter: 16px;
   --maxw: 1200px;
   --section-pad: round(clamp(96px, 12vw, 168px), 24px);
-  --nav-h: 52px;
-  --nav-top: 12px;
+  --nav-padding: calc(max(var(--margin-page), var(--gutter)) * 0.75);
+  --nav-h: calc(var(--hit) + 2 * var(--nav-padding));
+  --nav-top: 0px;
 
-  /* The halo of brighter dots the pointer carries over the plates (motion/grid-halo.ts). */
-  --halo-size: 360px;
-  --halo-dot: rgb(255 255 255 / 0.42);
-
-  /* Shape: a display window's bezel, and the small parts set into the plate. */
+  /* Shape: a display window's bezel, the small parts set into the plate, and full-round pills. */
   --r-display: 16px;
   --r-part: 10px;
+  --r-pill: 999px;
 }
 
 @media (width >= 700px) {
@@ -119,8 +151,8 @@
     --fill-quaternary: light-dark(rgb(120 120 120 / 0.16), rgb(122 122 122 / 0.26));
     --secondary-system-background: light-dark(#ebebeb, #242424);
     --tertiary-system-background: light-dark(#fff, #363636);
-    --line-1: rgb(255 255 255 / 0.2);
-    --line-2: rgb(255 255 255 / 0.32);
+    --line-1: light-dark(rgb(0 0 0 / 0.24), rgb(255 255 255 / 0.2));
+    --line-2: light-dark(rgb(0 0 0 / 0.36), rgb(255 255 255 / 0.32));
   }
 }
 

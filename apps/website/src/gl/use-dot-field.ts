@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { createDotField } from './dot-field';
-import type { Box, DotField, DotFieldOptions } from './types';
+import type { Box, DotField, DotFieldOptions, DotFieldPalette } from './types';
 
 export interface DotFieldRefs {
   /** The canvas to draw on, absolutely filling `root`. */
@@ -96,7 +96,7 @@ export function useDotField(refs: DotFieldRefs, options: UseDotFieldOptions): vo
     };
   }, [canvas, root]);
 
-  const { words, reducedMotion } = options;
+  const { words, reducedMotion, ink, dot, fieldLevel } = options;
   const wordKey = words.join('\n');
   useEffect(() => {
     fieldRef.current?.setWords(wordKey.split('\n'));
@@ -104,4 +104,11 @@ export function useDotField(refs: DotFieldRefs, options: UseDotFieldOptions): vo
   useEffect(() => {
     fieldRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
+  useEffect(() => {
+    const palette: DotFieldPalette = {};
+    if (ink !== undefined) palette.ink = ink;
+    if (dot !== undefined) palette.dot = dot;
+    if (fieldLevel !== undefined) palette.fieldLevel = fieldLevel;
+    fieldRef.current?.setPalette(palette);
+  }, [ink, dot, fieldLevel]);
 }

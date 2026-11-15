@@ -9,7 +9,16 @@ export interface Box {
   height: number;
 }
 
-export interface DotFieldOptions {
+export interface DotFieldPalette {
+  /** Background color. Default black. */
+  ink?: Rgb;
+  /** Dot color at full brightness. Default white. */
+  dot?: Rgb;
+  /** Brightness of unlit field dots, 0..1. Default 0.13 (0 hides background field dots). */
+  fieldLevel?: number;
+}
+
+export interface DotFieldOptions extends DotFieldPalette {
   /**
    * Words drawn as lit dots, shown in turn: the first powers on, then in full motion the board
    * erases each word and types the next behind a block cursor, and loops. `|` marks where a word
@@ -25,12 +34,6 @@ export interface DotFieldOptions {
   fontFamily?: string;
   /** Font weight used to rasterize the art. Default 900. */
   fontWeight?: number;
-  /** Background color. Default black. */
-  ink?: Rgb;
-  /** Dot color at full brightness. Default white. */
-  dot?: Rgb;
-  /** Brightness of unlit field dots, 0..1. Default 0.13. */
-  fieldLevel?: number;
   /** Element that receives pointer input for the lens and ripples. Default: the canvas. */
   pointerTarget?: HTMLElement;
   /** Start in reduced-motion mode. Default false. */
@@ -50,6 +53,8 @@ export interface DotFieldOptions {
 export interface DotField {
   /** Replaces the words; they are re-rasterized on the next frame and the cycle starts over. */
   setWords(words: readonly string[]): void;
+  /** Updates background/dot palette and optional field dot brightness without recreating GL context. */
+  setPalette(palette: DotFieldPalette): void;
   /** Box the art fills (contain-fit, centered); null restores the default placement. */
   setArtBox(box: Box | null): void;
   /**

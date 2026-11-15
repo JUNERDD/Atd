@@ -70,15 +70,9 @@ body {
   scroll-margin-top: calc(var(--nav-h) + var(--nav-top) + 16px);
 }
 
-/* A plate of the faceplate: the 24 px perforations, registered to the plate. Columns are centered
-   on the viewport with the center line between two dots, rows start half a pitch below the plate's
-   top edge, so the plate's top seam and the container's edges all run between dots. The plate's
-   fill is the body's, so the pointer's halo (under the plates) lights through the perforations. */
+/* A plate of the faceplate: the grid-aligned section surface beneath the nav and content. */
 .plate {
   position: relative;
-  background-image: radial-gradient(circle, var(--dot-0) 1px, transparent 1.5px);
-  background-size: var(--grid) var(--grid);
-  background-position: calc(50% + var(--grid) / 2) calc(var(--grid) / 2);
 }
 
 /* The content column: a whole number of double cells wide, so both edges sit between dots. */
@@ -94,12 +88,12 @@ body {
   min-inline-size: 0;
   border-radius: var(--r-display);
   background-color: var(--ink-0);
-  background-image: radial-gradient(circle, rgb(255 255 255 / 0.07) 0.9px, transparent 1.4px);
+  background-image: radial-gradient(circle, var(--display-dot) 0.9px, transparent 1.4px);
   background-size: var(--led) var(--led);
   background-position: calc(var(--led) / 2) calc(var(--led) / 2);
   box-shadow:
     inset 0 0 0 1px var(--line-1),
-    0 1px 0 rgb(255 255 255 / 0.05);
+    0 1px 0 var(--display-edge);
 }
 
 /* A legend printed on the plate: small, sentence case, quiet. */
@@ -128,7 +122,7 @@ body {
   block-size: 6px;
   border-radius: 50%;
   background-color: var(--dot-1);
-  box-shadow: 0 0 8px rgb(255 255 255 / 0.5);
+  box-shadow: var(--led-glow);
 }
 
 /* Lettering lit in dots, like the hero's word: the glyphs are filled with a dot screen, so any
@@ -136,7 +130,7 @@ body {
    screen never gets finer than 3 px, below which browsers drop the dots and the text would vanish. */
 .dot-text {
   --dot-pitch: max(3px, 0.07em);
-  background-image: radial-gradient(circle, var(--dot-1) 0 44%, transparent 50%);
+  background-image: radial-gradient(circle, var(--dot-1) 0 46%, var(--dot-text-gap) 54%);
   background-size: var(--dot-pitch) var(--dot-pitch);
   -webkit-background-clip: text;
   background-clip: text;
