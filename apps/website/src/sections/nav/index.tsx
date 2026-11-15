@@ -6,16 +6,13 @@ import { useActiveSection } from '../../lib/use-active-section';
 import { useGitHubStars } from '../../lib/use-github-stars';
 import { navCopy } from './copy';
 import { GitHubMark } from './github-mark';
-import { LanguageMenu } from './language-menu';
 import './nav.css';
 
 /**
- * The page's control strip: a glass bar as wide as the content column, floating over the page. It
- * carries the name, the section links (a status light marks the one being read) and the blog's,
- * lit on the blog and its posts, the language switch and the download key, which leads to the
- * download plate, where the visitor picks their Mac's chip. On another page the section links and
- * the key lead back to the home page's sections. Under it, the kit's scroll edge softly blurs
- * content as it passes.
+ * The page's control strip: a full-width glass bar fixed at the top of the viewport. It carries
+ * the name, the section links and the blog's (lit on the blog and its posts), the GitHub Star
+ * key, and the download key, which leads to the download plate where the visitor picks their Mac's
+ * chip. On another page the section links and the key lead back to the home page's sections.
  */
 export function SiteNav({
   page,
@@ -39,9 +36,9 @@ export function SiteNav({
       <a className="skip-link" href="#main">
         {t.skip}
       </a>
-      <div className="scroll-edge-top nav__edge" aria-hidden="true" />
       <header className="nav" data-reveal="drop" data-reveal-delay="420">
-        <nav className="nav__bar glass" aria-label={t.label}>
+        <div className="nav__backdrop glass" aria-hidden="true" />
+        <nav className="nav__bar" aria-label={t.label}>
           <a className="nav__brand" href={langPath[lang]} aria-label={t.home}>
             <span className="nav__mark" aria-hidden="true" />
             <span className="nav__word" aria-hidden="true">
@@ -73,7 +70,6 @@ export function SiteNav({
             </li>
           </ul>
           <div className="nav__end">
-            <LanguageMenu page={page} />
             <a
               className="btn-bordered nav__github"
               href={site.repoUrl}

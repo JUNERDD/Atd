@@ -42,8 +42,6 @@ export function CaseClipView({ clip, alt, posterAlt, play, preload, onError }: C
   }, [play]);
 
   const load = play || preload;
-  // Both load in CORS mode so the stage's glow can read their pixels (glow.tsx); the hosted media
-  // answers with CORS headers (scripts/check-asset-delivery.mjs).
   return (
     <div className="cases__clip" data-rolling={rolling ? '' : undefined}>
       <img
@@ -51,7 +49,6 @@ export function CaseClipView({ clip, alt, posterAlt, play, preload, onError }: C
         src={clip.poster}
         width={1280}
         height={720}
-        crossOrigin="anonymous"
         alt={posterAlt ?? ''}
         loading="lazy"
         decoding="async"
@@ -62,7 +59,6 @@ export function CaseClipView({ clip, alt, posterAlt, play, preload, onError }: C
         ref={video}
         className="cases__video"
         src={load ? clip.video : undefined}
-        crossOrigin="anonymous"
         aria-label={posterAlt ? undefined : alt}
         aria-hidden={posterAlt ? true : undefined}
         muted

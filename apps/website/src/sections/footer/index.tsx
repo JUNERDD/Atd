@@ -9,18 +9,17 @@ import {
   type Page,
 } from '../../i18n/routes';
 import { footerCopy } from './copy';
+import { ThemeSwitch } from './theme-switch';
 import './footer.css';
 
 /**
- * The last plate: the name in dot figures, the project links and the languages on one row, and the
- * small print under them. The language links keep the visitor on the same page. As it arrives the
- * name decodes and the rest fades up.
+ * The last plate: the name in dot figures paired with language links on the top row, and the
+ * small print plus theme switcher below. As it arrives the name decodes and the rest fades up.
  */
 export function SiteFooter({ page }: { page: Page }) {
   const t = useCopy(footerCopy);
   const lang = useLang();
   const year = 2026;
-  const links = [t.repo, { href: pagePath(lang, 'blog'), label: t.blog }, t.issues];
 
   return (
     <footer className="footer plate">
@@ -29,17 +28,6 @@ export function SiteFooter({ page }: { page: Page }) {
         <p className="footer__word readout" aria-hidden="true" data-reveal="decode">
           {site.name}
         </p>
-        <nav className="footer__nav" aria-label={t.linksLabel} data-reveal="fade">
-          <ul className="footer__links">
-            {links.map((link) => (
-              <li key={link.href}>
-                <a className="footer__link" href={link.href}>
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
         <nav className="footer__nav" aria-label={t.languages} data-reveal="fade">
           <ul className="footer__links">
             {LANGS.map((code) => (
@@ -58,9 +46,12 @@ export function SiteFooter({ page }: { page: Page }) {
             ))}
           </ul>
         </nav>
-        <p className="footer__note legend" data-reveal="fade">
-          © {year} {site.author}. {t.note}
-        </p>
+        <div className="footer__bottom" data-reveal="fade">
+          <p className="footer__note legend">
+            © {year} {site.author}. {t.note}
+          </p>
+          <ThemeSwitch labels={t.theme} />
+        </div>
       </div>
     </footer>
   );

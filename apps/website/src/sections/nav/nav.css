@@ -1,45 +1,75 @@
-/* The scroll edge spans the viewport under the bar; it is the kit's masked blur, matched to the
-   plates beneath. */
-.nav__edge {
-  --scroll-edge-bg: var(--plate);
-}
-
 .nav {
   position: fixed;
   z-index: 50;
-  inset-block-start: max(var(--nav-top), env(safe-area-inset-top));
+  inset-block-start: 0;
   inset-inline: 0;
-  display: flex;
-  justify-content: center;
   pointer-events: none;
 }
 
-/* A strip of smoked glass, the content column's width: the kit's one glass material (`.glass`:
-   blur, rim, sheen and its fallbacks), tinted black rather than gray so it stays the faceplate's
-   ink, with the page frosted through it. The tokens are set here because the site is dark whatever
-   the visitor's appearance, and the kit's dark numbers follow the system's. Its rim stays a
-   hairline no brighter than the plate's lines, catching light only at the corners, so the frost
-   reads rather than the border. Inner parts keep concentric corners: the 44 px key sits 4 px
-   inside the 52 px strip. */
-.nav__bar {
-  /* The kit's secondary ink stays readable when bright page content passes behind the bar. */
-  --fg-2: var(--secondary-label);
+/* Full-width smoked glass backdrop that holds uniform frosted legibility behind the inline bar
+   and dissolves across a tall viewport-scaled feather zone below the controls using a C2 quintic
+   smootherstep mask with perceptual gamma compensation: alpha(t) = (1 - (6t^5 - 15t^4 + 10t^3))^1.15. */
+.nav__backdrop {
   --glass-fill-color: var(--ink-0);
   --glass-solid: var(--ink-0);
   --glass-density: 72%;
-  --glass-saturate: 160%;
-  --glass-blur: 24px;
-  --glass-specular: var(--line-2);
-  --glass-specular2: var(--line-1);
+  --glass-saturate: 150%;
+  --glass-blur: 20px;
+  --glass-radius: 0px;
+  --glass-edge: transparent;
+  --elev-glass: none;
+  --glass-inner-glow: transparent;
+  --glass-specular: transparent;
+  --glass-specular2: transparent;
   --glass-rim: transparent;
+  --glass-sheen: transparent;
+  --_h: calc(var(--safe-top) + var(--nav-h) + clamp(116px, 20svh, 176px));
+  --_y0: calc(var(--safe-top) + 28px);
+  --_span: calc(var(--_h) - var(--_y0));
+  --_mask: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 var(--_y0),
+    rgb(0 0 0 / 0.996) calc(var(--_y0) + var(--_span) * 0.071),
+    rgb(0 0 0 / 0.973) calc(var(--_y0) + var(--_span) * 0.143),
+    rgb(0 0 0 / 0.921) calc(var(--_y0) + var(--_span) * 0.214),
+    rgb(0 0 0 / 0.835) calc(var(--_y0) + var(--_span) * 0.286),
+    rgb(0 0 0 / 0.722) calc(var(--_y0) + var(--_span) * 0.357),
+    rgb(0 0 0 / 0.59) calc(var(--_y0) + var(--_span) * 0.429),
+    rgb(0 0 0 / 0.451) calc(var(--_y0) + var(--_span) * 0.5),
+    rgb(0 0 0 / 0.317) calc(var(--_y0) + var(--_span) * 0.571),
+    rgb(0 0 0 / 0.2) calc(var(--_y0) + var(--_span) * 0.643),
+    rgb(0 0 0 / 0.108) calc(var(--_y0) + var(--_span) * 0.714),
+    rgb(0 0 0 / 0.047) calc(var(--_y0) + var(--_span) * 0.786),
+    rgb(0 0 0 / 0.013) calc(var(--_y0) + var(--_span) * 0.857),
+    rgb(0 0 0 / 0.001) calc(var(--_y0) + var(--_span) * 0.929),
+    transparent 100%
+  );
+  position: absolute;
+  z-index: 0;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: var(--_h);
+  border-radius: 0;
+  pointer-events: none;
+  -webkit-mask-image: var(--_mask);
+  mask-image: var(--_mask);
+}
+
+.nav__bar {
+  /* Keep secondary labels crisp when scrolled content passes behind the blurred bar. */
+  --fg-2: light-dark(rgb(60 60 67 / 0.88), rgb(235 235 245 / 0.88));
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
-  inline-size: round(down, min(100% - 2 * var(--gutter), var(--maxw)), calc(2 * var(--grid)));
-  block-size: var(--nav-h);
-  padding: 4px;
-  padding-inline-start: 14px;
-  border-radius: calc(var(--r-part) + 4px);
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: calc(var(--safe-top) + var(--nav-h));
+  padding-block: calc(var(--safe-top) + var(--nav-padding)) var(--nav-padding);
+  padding-inline: calc(var(--nav-padding) + var(--safe-left))
+    calc(var(--nav-padding) + var(--safe-right));
   pointer-events: auto;
 }
 
@@ -72,39 +102,21 @@
 .nav__links {
   display: none;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
-/* A link's status light is off until its section is the one being read. */
 .nav__link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-block-size: 44px;
-  padding-inline: 10px;
+  min-block-size: var(--hit);
+  padding-inline: var(--space-3);
   font-size: var(--fs-small);
   color: var(--fg-2);
   transition: color var(--dur-fast) linear;
 }
 
-.nav__link::before {
-  content: '';
-  inline-size: 5px;
-  block-size: 5px;
-  border-radius: 50%;
-  background-color: var(--dot-0);
-  transition:
-    background-color var(--dur-fast) linear,
-    box-shadow var(--dur-fast) linear;
-}
-
 .nav__link[aria-current] {
   color: var(--fg-1);
-}
-
-.nav__link[aria-current]::before {
-  background-color: var(--dot-1);
-  box-shadow: 0 0 6px rgb(255 255 255 / 0.6);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -121,9 +133,21 @@
   }
 }
 
+@media (prefers-contrast: more) {
+  .nav__backdrop {
+    block-size: calc(var(--safe-top) + var(--nav-h));
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
 @media (forced-colors: active) {
-  .nav__link[aria-current]::before {
-    background-color: CanvasText;
+  .nav__backdrop {
+    block-size: calc(var(--safe-top) + var(--nav-h));
+    border: 0;
+    border-block-end: 1px solid CanvasText;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .nav__github {
@@ -142,7 +166,7 @@
 .nav__end {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   margin-inline-start: auto;
 }
 
@@ -192,15 +216,14 @@
 }
 
 .nav__cta {
-  padding-inline: 18px;
+  padding-inline: var(--space-5);
   font-size: var(--fs-small);
   font-weight: 600;
 }
 
 @media (width < 416px) {
   .nav__bar {
-    padding-inline-start: 10px;
-    gap: 4px;
+    gap: var(--space-2);
   }
 
   .nav__brand {
@@ -209,7 +232,13 @@
   }
 
   .nav__cta {
-    padding-inline: 12px;
+    padding-inline: var(--space-4);
+  }
+}
+
+@media (width >= 375px) {
+  .nav__end {
+    gap: var(--space-3);
   }
 }
 
@@ -236,19 +265,17 @@
   }
 }
 
-/* Equal 1fr outer tracks hold the navigation links centered on the bar even as the right CTA cluster
-   widens on desktop; moving the 10 px left inset inside .nav__brand keeps both outer grid columns
-   symmetric against the 4 px bar padding. */
+/* Equal 1fr outer tracks hold the navigation links centered across the full-width bar even as the
+   right CTA cluster widens on desktop. */
 @media (width >= 840px) {
   .nav__bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    padding-inline-start: 4px;
   }
 
   .nav__brand {
     justify-self: start;
-    padding-inline-start: 10px;
+    padding-inline-start: 0;
   }
 
   .nav__links {

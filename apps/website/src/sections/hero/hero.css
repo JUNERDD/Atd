@@ -1,34 +1,73 @@
-/* The hero is a black LED panel. The canvas draws the dot field with the wordmark lit across its
-   middle, centered on the panel. Without WebGL, a CSS dot screen and the Doto wordmark stand in for
-   the field. */
+/* The hero layers the animated WebGL2 dot-matrix wordmark over connector-project's 3D ASCII
+   sculpture, vignette, and exact color palette across light and dark polarity. */
 .hero {
   --hero-clear: calc(var(--nav-top) + var(--nav-h) + 24px);
+  --hero-bg: light-dark(#ffffff, #000000);
+  --hero-fg: light-dark(oklch(0.2103 0.0059 285.89), oklch(0.9911 0 0));
+  --hero-fg-muted: light-dark(oklch(72% 0.008 286), oklch(46% 0.008 286));
   position: relative;
   isolation: isolate;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   min-block-size: max(560px, 100svh);
   overflow: clip;
-  color: var(--fg-1);
-  background-color: var(--ink-0);
+  color: var(--hero-fg);
+  background-color: var(--hero-bg);
 }
 
-/* The fallback dot screen, under the canvas. When the field takes over from it (a slow load showed
-   it first), it fades out over the field's wake, so the dots hand over rather than blink out. */
-.hero::before {
-  content: '';
+.hero__ascii {
   position: absolute;
   z-index: 0;
   inset: 0;
-  background-image: radial-gradient(circle, var(--dot-0) 1.25px, transparent 1.75px);
-  background-position: center;
-  background-size: 12px 12px;
-  transition: opacity 0.9s var(--curve-out);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero__ascii[data-ascii-ready='true'] {
+  opacity: 1;
+}
+
+.hero__ascii-effect {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  cursor: default;
+  background-color: transparent;
+  color: color-mix(in oklch, var(--hero-fg) var(--ascii-foreground-mix), transparent);
+  filter: drop-shadow(
+      0 0 8px color-mix(in oklch, var(--hero-fg) var(--ascii-glow-near), transparent)
+    )
+    drop-shadow(0 0 22px color-mix(in oklch, var(--hero-fg) var(--ascii-glow-far), transparent));
+}
+
+.hero__vignette {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 120% 90% at 50% 40%,
+      transparent 0%,
+      color-mix(in oklch, var(--hero-bg) var(--ascii-vignette-radial-mid), transparent) 55%,
+      var(--hero-bg) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--hero-bg) var(--ascii-vignette-linear-top), transparent) 0%,
+      color-mix(in oklch, var(--hero-bg) var(--ascii-vignette-linear-end), transparent) 100%
+    );
 }
 
 .hero__canvas {
   position: absolute;
-  z-index: 0;
+  z-index: 2;
   inset: 0;
   inline-size: 100%;
   block-size: 100%;
@@ -40,13 +79,9 @@
   opacity: 1;
 }
 
-.hero[data-gl='live']::before {
-  opacity: 0;
-}
-
 .hero__stage {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   justify-items: center;
@@ -64,7 +99,7 @@
   font-weight: 500;
   line-height: 1.45;
   letter-spacing: 0.01em;
-  color: var(--fg-2);
+  color: var(--hero-fg-muted);
   text-align: center;
   text-wrap: balance;
 }
@@ -76,8 +111,16 @@
   inline-size: 11px;
   block-size: 11px;
   background:
-    linear-gradient(var(--line-2), var(--line-2)) center / 1px 100% no-repeat,
-    linear-gradient(var(--line-2), var(--line-2)) center / 100% 1px no-repeat;
+    linear-gradient(
+        color-mix(in oklch, var(--hero-fg) 22%, transparent),
+        color-mix(in oklch, var(--hero-fg) 22%, transparent)
+      )
+      center / 1px 100% no-repeat,
+    linear-gradient(
+        color-mix(in oklch, var(--hero-fg) 22%, transparent),
+        color-mix(in oklch, var(--hero-fg) 22%, transparent)
+      )
+      center / 100% 1px no-repeat;
 }
 
 .hero__reg[data-corner='start'] {
@@ -116,7 +159,7 @@
   font-weight: 500;
   line-height: 0.8;
   letter-spacing: -0.02em;
-  color: var(--dot-1);
+  color: var(--hero-fg);
   transition: opacity var(--dur-base) var(--curve-standard);
 }
 
@@ -124,11 +167,10 @@
   opacity: 0;
 }
 
-/* With motion, the fallback waits for the field: the field normally takes over within moments, and
-   the lettering would only flash before the field's own power-on. If the field never starts, the
-   fallback fades in; without WebGL (`data-gl="off"`) it shows at once. */
+/* With motion, the fallback waits for the field: the WebGL wordmark normally takes over within
+   moments, and the static lettering would otherwise flash before power-on. If the field never starts,
+   the fallback fades in; without WebGL (`data-gl="off"`) it shows at once. */
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-motion] .hero:not([data-gl])::before,
   :root[data-motion] .hero:not([data-gl]) .hero__mark-word {
     animation: hero-fallback 0.6s var(--curve-out) 1.8s backwards;
   }
@@ -137,5 +179,11 @@
 @keyframes hero-fallback {
   from {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__ascii {
+    transition: none;
   }
 }

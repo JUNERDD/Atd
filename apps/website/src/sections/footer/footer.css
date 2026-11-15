@@ -1,4 +1,4 @@
-/* The last plate: the name, then the links and languages, on a row once there is room. */
+/* The last plate: the name and languages on the top row once there is room. */
 .footer {
   padding-block: 72px max(48px, env(safe-area-inset-bottom));
   font-size: var(--fs-small);
@@ -49,19 +49,23 @@
   }
 }
 
-.footer__note {
+.footer__bottom {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
 }
 
-/* On one row, the outer columns share the width, so the project links sit on the page's center
-   line whatever the name and the languages measure; the name and both lists share a baseline. */
+/* On one row, the name anchors left while languages align right on the same baseline. */
 @media (width >= 840px) {
   .footer__inner {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
   }
 
-  .footer__nav:last-of-type {
+  .footer__nav {
     justify-self: end;
   }
 }

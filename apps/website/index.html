@@ -1,10 +1,26 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <script>
+      (() => {
+        try {
+          const t = localStorage.getItem('atd-theme');
+          if (t !== 'light' && t !== 'dark') return;
+          document.documentElement.dataset.theme = t;
+          const cs = document.querySelector('meta[name="color-scheme"]');
+          if (cs) cs.setAttribute('content', t);
+          const color = t === 'light' ? '#ffffff' : '#000000';
+          document
+            .querySelectorAll('meta[name="theme-color"]')
+            .forEach((m) => m.setAttribute('content', color));
+        } catch {}
+      })();
+    </script>
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!--app-head-->

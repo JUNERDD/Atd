@@ -4,7 +4,6 @@ import { useCopy, useLang } from '../../i18n/lang';
 import { useReducedMotion } from '../../lib/use-reduced-motion';
 import { CaseClipView } from './clip';
 import { casesCopy } from './copy';
-import { CaseGlow } from './glow';
 import { CaseSteps } from './steps';
 import { useCaseTimeline } from './use-case-timeline';
 import './cases.css';
@@ -18,9 +17,9 @@ const pad = (count: number) => String(count).padStart(2, '0');
  * Every case as a timeline: the steps scroll in a column beside a stage that holds still, and the
  * step nearest the stage's middle is current, so its clip plays on the stage
  * (use-case-timeline.ts). The clips are cut from the product films, so the stage is shot like
- * them: a frameless 16:9 screen that casts its clip's light onto the plate around it, a slate
- * above naming the current group and surface and counting the cases, and the case's caption below
- * it like a subtitle under a picture. Where there is no room beside the steps, the stage is left
+ * them: a frameless 16:9 screen, a slate above naming the current group and surface and counting
+ * the cases, and the case's caption below it like a subtitle under a picture. Where there is no
+ * room beside the steps, the stage is left
  * out and each step shows its own clip under its own title and line. The prerendered page, and
  * reduced motion, show each clip's poster; clips beyond the scroll's reach stay unrendered.
  */
@@ -76,7 +75,6 @@ export function CasesShowcase() {
       />
       <div className="cases__aside">
         <div className="cases__hold">
-          <CaseGlow screen={display} active={active} />
           <p className="cases__slate" aria-hidden="true">
             <span className="cases__where">
               <span className="legend">{groupName(current.group)}</span>

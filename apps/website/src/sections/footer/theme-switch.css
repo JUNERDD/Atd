@@ -1,0 +1,109 @@
+/* Recessed 3-mode monochrome appearance switcher: follows OS, light, or dark. Each radio label
+   claims a full 44px tap box while the visual capsule stays quiet and proportional to the legend. */
+.theme-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+}
+
+.theme-switch::before {
+  content: '';
+  position: absolute;
+  inset-block: 4px;
+  inset-inline: 0;
+  border-radius: var(--r-pill);
+  background-color: var(--switch-track);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  pointer-events: none;
+}
+
+.theme-switch__btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: var(--r-pill);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.theme-switch__btn::before {
+  content: '';
+  position: absolute;
+  inset-block: 7px;
+  inset-inline: 2px;
+  border-radius: var(--r-pill);
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px transparent;
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+  pointer-events: none;
+}
+
+.theme-switch__input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.theme-switch__icon {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.theme-switch__btn:has(.theme-switch__input:checked) {
+  color: var(--fg-1);
+}
+
+.theme-switch__btn:has(.theme-switch__input:checked)::before {
+  background-color: var(--switch-thumb);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    var(--switch-shadow);
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .theme-switch__btn:hover {
+    color: var(--fg-1);
+  }
+}
+
+.theme-switch__btn:has(.theme-switch__input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__btn,
+  .theme-switch__btn::before {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .theme-switch::before {
+    border: 1px solid ButtonBorder;
+    box-shadow: none;
+  }
+
+  .theme-switch__btn:has(.theme-switch__input:checked) {
+    color: HighlightText;
+  }
+
+  .theme-switch__btn:has(.theme-switch__input:checked)::before {
+    background-color: Highlight;
+    box-shadow: none;
+  }
+}
