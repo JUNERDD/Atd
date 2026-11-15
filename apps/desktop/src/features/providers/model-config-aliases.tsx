@@ -7,6 +7,7 @@ import { Input } from '@atd/ui/components/input';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Separator } from '@atd/ui/components/separator';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import type { Connection } from '../../client/providers/schema';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { formatAliasTupleSummary, isAliasAvailable } from '../agent/use-panel-aliases';
@@ -52,6 +53,7 @@ export function ModelConfigAliases({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const saveTriggerRef = useRef<HTMLButtonElement>(null);
   const platform = window.desktop?.platform ?? 'web';
   const keys = cycleShortcut ? shortcutKeys(cycleShortcut, platform) : [];
 
@@ -62,10 +64,11 @@ export function ModelConfigAliases({
     requestAnimationFrame(() => nameInputRef.current?.focus());
   }
 
-  function closeSaveForm() {
+  function closeSaveForm(restoreFocus = false) {
     setSaveOpen(false);
     setDraftName('');
     setError(null);
+    if (restoreFocus) requestAnimationFrame(() => saveTriggerRef.current?.focus());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -82,11 +85,11 @@ export function ModelConfigAliases({
     setSubmitting(false);
   }
 
-  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Escape') return;
+  function handleInputKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (isComposingKey(event) || event.key !== 'Escape') return;
     event.preventDefault();
     event.stopPropagation();
-    closeSaveForm();
+    closeSaveForm(true);
   }
 
   return (
@@ -104,8 +107,8 @@ export function ModelConfigAliases({
             </KbdGroup>
           )}
         </div>
-        <ScrollArea className="max-h-48">
-          <div className="flex flex-col gap-0.5">
+        <ScrollArea className="-mx-1 max-h-48">
+          <div className="flex flex-col gap-0.5 px-1 py-px">
             {aliases.map((alias) => {
               const connection = connections.find(
                 (item) => item.connectionId === alias.connectionId,
@@ -118,6 +121,7 @@ export function ModelConfigAliases({
                 <button
                   key={alias.id}
                   type="button"
+                  data-root-item
                   disabled={!available}
                   aria-pressed={selected}
                   data-checked={selected}
@@ -159,6 +163,7 @@ export function ModelConfigAliases({
           <div className="mt-1 flex flex-col gap-1.5 border-t border-border/60 px-2 pt-2 pb-1">
             {saveOpen ? (
               <form
+                data-alias-save-form
                 className="flex flex-col gap-1.5"
                 onSubmit={(event) => void handleSubmit(event)}
               >
@@ -179,11 +184,17 @@ export function ModelConfigAliases({
                     variant="ghost"
                     size="xs"
                     disabled={submitting}
-                    onClick={closeSaveForm}
+                    onClick={() => closeSaveForm(true)}
+                    onKeyDown={handleInputKeyDown}
                   >
                     {t('aliases.cancel')}
                   </Button>
-                  <Button type="submit" size="xs" disabled={submitting || !draftName.trim()}>
+                  <Button
+                    type="submit"
+                    size="xs"
+                    disabled={submitting || !draftName.trim()}
+                    onKeyDown={handleInputKeyDown}
+                  >
                     {t('aliases.save')}
                   </Button>
                 </div>
@@ -197,6 +208,7 @@ export function ModelConfigAliases({
                   {onRestoreAlias && (
                     <Button
                       type="button"
+                      data-root-item
                       variant="outline"
                       size="xs"
                       className="h-7 flex-1 justify-start truncate"
@@ -210,7 +222,9 @@ export function ModelConfigAliases({
                   )}
                   {onSaveAsAlias && (
                     <Button
+                      ref={saveTriggerRef}
                       type="button"
+                      data-root-item
                       variant="secondary"
                       size="xs"
                       className="h-7 shrink-0"

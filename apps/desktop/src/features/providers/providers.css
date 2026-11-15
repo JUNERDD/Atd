@@ -214,6 +214,7 @@ button.model-config-row-nav:hover {
   background: var(--muted);
 }
 button.model-config-row-nav:focus-visible {
+  background: var(--muted);
   outline: 1px solid var(--ring);
 }
 button.model-config-row-nav:disabled {
@@ -289,6 +290,7 @@ button.model-config-row-nav:disabled:hover {
   background: var(--muted);
 }
 .model-config-effort-option:focus-visible {
+  background: var(--muted);
   outline: 1px solid var(--ring);
 }
 .model-config-option-text {

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import { cn } from '@atd/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
@@ -11,6 +12,13 @@ import {
 } from '../agent/use-panel-aliases';
 import { formatContextWindow } from './context-window';
 import { ModelConfigAliases } from './model-config-aliases';
+import {
+  type DrillSubview,
+  focusRootEdge,
+  handleRootKeyDown,
+  handleSubviewKeyDown,
+  type RootFocusEdge,
+} from './model-config-keys';
 import { ModelConfigSubview } from './model-config-subviews';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
@@ -19,6 +27,16 @@ import { useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
 
 type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
+
+function renderRowContent(label: string, value: string | null, nav = true, truncate = false) {
+  return (
+    <>
+      <span className="model-config-row-label">{label}</span>
+      <span className={cn('model-config-row-value', truncate && 'truncate')}>{value}</span>
+      {nav && <ChevronRight className="size-4 shrink-0" />}
+    </>
+  );
+}
 
 /**
  * The effort the popover edits, or `hideEffort` where the level is set elsewhere (a command's own
@@ -62,21 +80,9 @@ type ModelConfigPopoverProps = EffortControl &
  * from the trigger and the root view.
  */
 export function ModelConfigPopover(props: ModelConfigPopoverProps) {
-  const {
-    connections,
-    model,
-    onModelChange,
-    onOpenProviders,
-    scopeLabel,
-    compact = false,
-    disabled = false,
-    aliases,
-    activeAliasId,
-    aliasModified = false,
-    onSelectAlias,
-    draftContextChoice,
-    onContextChoiceChange,
-  } = props;
+  const { connections, model, scopeLabel, activeAliasId } = props;
+  const compact = props.compact ?? false;
+  const disabled = props.disabled ?? false;
   const effort = props.hideEffort ? null : props;
   const { t } = useTranslation('providers');
   const { t: tPanel } = useTranslation('panel');
@@ -87,15 +93,17 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
   const contextRowRef = useRef<HTMLButtonElement>(null);
   const effortRowRef = useRef<HTMLButtonElement>(null);
   const modelRowRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const optionListRef = useRef<HTMLDivElement>(null);
   const modelViewRef = useRef<HTMLDivElement>(null);
   /** The subview the root was entered from, whose row takes focus again; none on opening. */
-  const returnFrom = useRef<ModelConfigView | null>(null);
+  const returnFrom = useRef<DrillSubview | null>(null);
+  const initialRootFocus = useRef<RootFocusEdge | null>(null);
 
-  function show(next: ModelConfigView) {
-    returnFrom.current = next === 'root' ? view : null;
+  function show(next: ModelConfigView, isSwitch = true) {
+    returnFrom.current = isSwitch && next === 'root' && view !== 'root' ? view : null;
     setView(next);
-    setSwitched(true);
+    setSwitched(isSwitch);
   }
 
   const connection = connections.find((item) => item.connectionId === model?.connectionId);
@@ -108,11 +116,13 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
   const displayName = unavailable ? t('models.unavailable', { name }) : name;
   const scoped = scopeLabel !== undefined;
   const activeAlias =
-    !scoped && activeAliasId ? (aliases?.find((item) => item.id === activeAliasId) ?? null) : null;
-  const isAliasModified = Boolean(activeAlias && aliasModified);
+    !scoped && activeAliasId
+      ? (props.aliases?.find((item) => item.id === activeAliasId) ?? null)
+      : null;
+  const isAliasModified = Boolean(activeAlias && props.aliasModified);
   const baseContexts = useModelContexts(model, connection);
-  const contexts = onContextChoiceChange
-    ? applyDraftContext(baseContexts, draftContextChoice)
+  const contexts = props.onContextChoiceChange
+    ? applyDraftContext(baseContexts, props.draftContextChoice)
     : baseContexts;
   const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
   const contextChoice = Boolean(model && connection) && contexts.catalogWindow !== null;
@@ -149,16 +159,17 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
   /** What a view focuses as its content mounts; null leaves focus on the content itself. */
   function focusTarget(): HTMLElement | null {
     if (view === 'root') {
-      if (returnFrom.current === 'context') return contextRowRef.current;
-      if (returnFrom.current === 'effort') return effortRowRef.current;
-      if (returnFrom.current === 'model') return modelRowRef.current;
-      return null;
+      const rows = { context: contextRowRef, effort: effortRowRef, model: modelRowRef };
+      if (returnFrom.current) return rows[returnFrom.current].current;
+      const edge = initialRootFocus.current;
+      initialRootFocus.current = null;
+      return edge ? focusRootEdge(rootRef.current, edge) : null;
     }
     if (view === 'model') return modelViewRef.current?.querySelector('input') ?? null;
     const list = optionListRef.current;
     return (
       list?.querySelector<HTMLElement>('[data-checked="true"]') ??
-      list?.querySelector<HTMLElement>('button') ??
+      list?.querySelector('button') ??
       null
     );
   }
@@ -170,11 +181,7 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         setOpen(next);
         // Reset on open, not on close: Radix keeps content mounted during the
         // exit animation, so resetting on close flashes the root over the subview.
-        if (next) {
-          returnFrom.current = null;
-          setView('root');
-          setSwitched(false);
-        }
+        if (next) show('root', false);
       }}
     >
       <PopoverTrigger asChild>
@@ -185,6 +192,17 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           disabled={disabled}
           aria-label={triggerLabels.ariaLabel}
           title={triggerLabels.title}
+          onClick={(event) => {
+            if (!open && event.detail === 0) initialRootFocus.current = 'first';
+          }}
+          onKeyDown={(event) => {
+            if (open || disabled || isComposingKey(event)) return;
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            event.preventDefault();
+            initialRootFocus.current = event.key === 'ArrowUp' ? 'last' : 'first';
+            show('root', false);
+            setOpen(true);
+          }}
         >
           {connection && !scoped && (
             <ProviderBrand
@@ -217,10 +235,8 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         )}
         align="end"
         collisionPadding={8}
-        // Each view mounts its own content, so this runs on opening and on every view change.
-        // Radix would focus the first row (usually Reasoning effort); opening leaves focus on the
-        // content instead, where Escape and Tab still work, while a view change focuses the row
-        // the root returns to or the subview's own control.
+        // Each view mounts its own content: pointer open leaves focus on the content while keyboard
+        // open focuses the first/last root item, and transitions focus the target row or control.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           const content = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
@@ -231,17 +247,25 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         onCloseAutoFocus={(event) => {
           if (open) event.preventDefault();
         }}
+        onEscapeKeyDown={(event) => {
+          const el = event.target instanceof Element ? event.target : null;
+          if (view === 'root' && el?.closest('[data-alias-save-form]')) event.preventDefault();
+        }}
+        onKeyDown={(event) => {
+          if (view === 'root') handleRootKeyDown(event, rootRef.current, show);
+          else handleSubviewKeyDown(event, () => show('root'), optionListRef.current);
+        }}
       >
         {view === 'root' && (
-          <div className="model-config-root">
-            {!scoped && aliases && aliases.length > 0 && onSelectAlias && (
+          <div ref={rootRef} className="model-config-root">
+            {!scoped && props.aliases && props.aliases.length > 0 && props.onSelectAlias && (
               <ModelConfigAliases
-                aliases={aliases}
+                aliases={props.aliases}
                 connections={connections}
                 activeAlias={activeAlias}
                 aliasModified={isAliasModified}
                 cycleShortcut={props.cycleShortcut}
-                onSelectAlias={onSelectAlias}
+                onSelectAlias={props.onSelectAlias}
                 onRestoreAlias={props.onRestoreAlias}
                 onSaveAsAlias={props.onSaveAsAlias}
                 onClosePopover={() => setOpen(false)}
@@ -252,23 +276,24 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
               <button
                 ref={contextRowRef}
                 type="button"
+                data-root-item
+                data-drill="context"
                 className="model-config-row model-config-row-nav"
                 onClick={() => show('context')}
               >
-                <span className="model-config-row-label">{t('modelConfig.context')}</span>
-                <span className="model-config-row-value">{contextText}</span>
-                <ChevronRight className="size-4 shrink-0" />
+                {renderRowContent(t('modelConfig.context'), contextText)}
               </button>
             ) : (
               <div className="model-config-row">
-                <span className="model-config-row-label">{t('modelConfig.context')}</span>
-                <span className="model-config-row-value">{contextText}</span>
+                {renderRowContent(t('modelConfig.context'), contextText, false)}
               </div>
             )}
             {effort && (
               <button
                 ref={effortRowRef}
                 type="button"
+                data-root-item
+                data-drill="effort"
                 className="model-config-row model-config-row-nav"
                 disabled={effortDisabled}
                 title={
@@ -280,20 +305,18 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
                 }
                 onClick={() => show('effort')}
               >
-                <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
-                <span className="model-config-row-value">{effortText}</span>
-                <ChevronRight className="size-4 shrink-0" />
+                {renderRowContent(t('thinkingLevels.label'), effortText)}
               </button>
             )}
             <button
               ref={modelRowRef}
               type="button"
+              data-root-item
+              data-drill="model"
               className="model-config-row model-config-row-nav"
               onClick={() => show('model')}
             >
-              <span className="model-config-row-label">{t('modelConfig.model')}</span>
-              <span className="model-config-row-value truncate">{displayName}</span>
-              <ChevronRight className="size-4 shrink-0" />
+              {renderRowContent(t('modelConfig.model'), displayName, true, true)}
             </button>
           </div>
         )}
@@ -304,8 +327,8 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
             connection={connection}
             connections={connections}
             baseContexts={baseContexts}
-            draftContextChoice={draftContextChoice}
-            onContextChoiceChange={onContextChoiceChange}
+            draftContextChoice={props.draftContextChoice}
+            onContextChoiceChange={props.onContextChoiceChange}
             levels={levels}
             selectedEffort={selected}
             onThinkingLevelChange={effort?.onThinkingLevelChange}
@@ -314,8 +337,8 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
             optionListRef={optionListRef}
             modelViewRef={modelViewRef}
             onBack={() => show('root')}
-            onSelectModel={onModelChange}
-            onOpenProviders={onOpenProviders}
+            onSelectModel={props.onModelChange}
+            onOpenProviders={props.onOpenProviders}
             onClose={() => setOpen(false)}
           />
         )}
