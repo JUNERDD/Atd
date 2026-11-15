@@ -51,7 +51,7 @@
 }
 
 .led-board__dot:not([data-lit])[data-near] {
-  background-color: rgb(255 255 255 / 0.22);
+  background-color: var(--dot-near);
 }
 
 /* Power-on: once the board is revealed, its lit dots flash up from the unlit level column by column,

@@ -169,11 +169,12 @@ void main() {
     ripple += rp.w * life * life * exp(-off * off / (width * width));
   }
 
+  float hasField = step(0.001, u_levels.x);
   float lens = u_lens.w * lensIn;
-  float level = mix(field + wakeGlow, u_levels.y * (1.0 + flash), lit);
-  level += (lens * 0.5 + ripple * 0.85) * (1.0 - 0.5 * lit) * wake;
+  float level = mix((field + wakeGlow) * hasField, u_levels.y * (1.0 + flash), lit);
+  level += (lens * 0.5 + ripple * 0.85) * mix(lit, 1.0 - 0.5 * lit, hasField) * wake;
   float radius = pitch * (mix(FIELD_RADIUS * (0.55 + 0.45 * wake), ART_RADIUS, lit) +
-    0.05 * lens + 0.08 * min(ripple, 1.0));
+    (0.05 * lens + 0.08 * min(ripple, 1.0)) * max(lit, hasField));
 
   // Defocus: dots soften, swell and dim (keeping their energy), then settle into a smooth haze
   // built from the mipmapped art.
@@ -193,6 +194,7 @@ void main() {
   vec2 c = p / size * 2.0 - 1.0;
   v *= 1.0 - 0.2 * smoothstep(0.6, 1.6, dot(c, c));
   v += (unit2(pcg2d(uvec2(gl_FragCoord.xy))).x - 0.5) / 255.0 * step(0.004, v);
-  outColor = vec4(mix(u_ink, u_dot, clamp(v, 0.0, 1.0)), 1.0);
+  float a = clamp(v, 0.0, 1.0);
+  outColor = hasField > 0.5 ? vec4(mix(u_ink, u_dot, a), 1.0) : vec4(u_dot, a);
 }
 `;

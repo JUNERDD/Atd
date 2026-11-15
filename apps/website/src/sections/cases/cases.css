@@ -242,32 +242,6 @@
   margin-inline: auto;
 }
 
-/* The screen's light on the plate: four lights behind the screen, each the color of its quarter
-   of the current clip (glow.tsx), blurred wide and fallen a little below it, as a lit screen tints
-   the room around it. They are clear until the clip is read, and each eases to its next color, so
-   a new case relights the plate rather than swapping a picture into it. */
-.cases__glow {
-  position: absolute;
-  inset-block-start: var(--slate-h);
-  inset-inline-start: 0;
-  display: grid;
-  grid-template: 1fr 1fr / 1fr 1fr;
-  inline-size: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: calc(var(--r-display) + 4px);
-  opacity: 0.3;
-  filter: blur(48px) saturate(1.5);
-  translate: 0 6%;
-  scale: 0.94;
-  pointer-events: none;
-}
-
-.cases__glow > span {
-  background-color: transparent;
-  transition: background-color 450ms linear;
-}
-
 /* The slate: the current group and surface, and the case's number. */
 .cases__slate {
   display: flex;
@@ -316,7 +290,7 @@
 
 .cases__screen {
   border-radius: calc(var(--r-display) + 4px);
-  box-shadow: 0 40px 80px -32px var(--ink-0);
+  box-shadow: var(--shadow-screen);
 }
 
 /* The glass edge, drawn over the clips so a light frame keeps its corners. */
@@ -493,10 +467,6 @@
 
 /* In forced colors the rail keeps its lit and unlit stretches, and the current step is marked. */
 @media (forced-colors: active) {
-  .cases__glow {
-    display: none;
-  }
-
   .cases__rail::before {
     --rail-dot: GrayText;
   }

@@ -54,9 +54,9 @@
   border-radius: var(--r-part);
   background: linear-gradient(var(--ink-3), var(--ink-2));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 1px 0 var(--display-edge),
     inset 0 0 0 1px var(--line-1),
-    0 2px 0 rgb(0 0 0 / 0.6);
+    0 2px 0 var(--shadow-key);
   font-size: var(--fs-small);
   font-weight: 600;
   color: var(--fg-2);
@@ -84,14 +84,14 @@
   translate: 0 1px;
   background: var(--ink-2);
   box-shadow:
-    inset 0 1px 3px rgb(0 0 0 / 0.6),
+    inset 0 1px 3px var(--shadow-key),
     inset 0 0 0 1px var(--line-2);
   color: var(--fg-1);
 }
 
 .auto__radio:checked + .auto__key-face .auto__lamp {
   background-color: var(--dot-1);
-  box-shadow: 0 0 8px rgb(255 255 255 / 0.6);
+  box-shadow: var(--led-nav-glow);
 }
 
 .auto__radio:focus-visible + .auto__key-face {

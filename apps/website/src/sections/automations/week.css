@@ -115,7 +115,7 @@
 }
 
 .auto__cell[data-on]::before {
-  box-shadow: 0 0 10px rgb(255 255 255 / 0.4);
+  box-shadow: var(--led-soft-glow);
 }
 
 .auto__cell[data-on]::after {
@@ -177,8 +177,8 @@
   background-image: linear-gradient(
     to right,
     transparent calc(100% - 72px),
-    rgb(255 255 255 / 0.07) calc(100% - 1px),
-    rgb(255 255 255 / 0.6) calc(100% - 1px)
+    var(--dot-0-soft) calc(100% - 1px),
+    var(--dot-mid) calc(100% - 1px)
   );
   translate: -100% 0;
 }

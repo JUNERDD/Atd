@@ -5,10 +5,11 @@ WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`
 `/blog` and `/zh/blog`, one page per post, edited with a Git-based CMS ([Blog](#blog)). Support
 download pages live at `/debug` and `/zh/debug`.
 
-The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
-its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it come the
-interfaces, the features and the download, then the footer. Each is a plate of the faceplate, perforated with
-a 24 px dot grid registered to the plate, joined to the next by a seam with registration crosses. Each plate
+The look is strictly monochrome, retro-modern and spare, following the system's light or dark appearance
+with a persistent override in the footer. The page is one instrument: the hero pairs its main LED display
+with a rotating 3D ASCII sculpture and spells out the name, Atd: anything, anytime, anywhere, to do.
+Below it come the interfaces, the features and the download, then the footer. Each section is a plain plate
+of the faceplate, sized on a 24 px grid and joined to the next by a seam with registration crosses. Each plate
 carries one message: a centered heading lit in dots like the hero's word, a short lede, and one demo.
 
 ## Commands
@@ -54,7 +55,7 @@ src/
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
   lib/                 In-view, active-section, reduced-motion and hydration hooks, press feedback
-  motion/              The reveal controller, text effects (decode, type) and the grid halo
+  motion/              The reveal controller and text effects (decode, type)
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
   pages/<name>/        Other routes: blog, diagnostic downloads (`/debug`), and 404 fallback

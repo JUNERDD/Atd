@@ -88,6 +88,6 @@ export function render(
   return {
     html: renderToString(<App lang={lang} page={page} initialStars={initialStars} />),
     head: `${renderHead(lang, siteUrl, page, headOptions)}\n    <meta name="${STAR_META_NAME}" content="${initialStars}" />`,
-    htmlAttrs: `lang="${htmlLang[lang]}" data-lang="${lang}" data-theme="dark"${pageAttr}`,
+    htmlAttrs: `lang="${htmlLang[lang]}" data-lang="${lang}"${pageAttr}`,
   };
 }

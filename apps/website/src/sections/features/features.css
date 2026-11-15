@@ -5,7 +5,7 @@
    plate beneath their channels. */
 .feat {
   /* A channel is mostly unlit dots; dimmed a step, they stay a texture behind the pictogram. */
-  --dot-0: rgb(255 255 255 / 0.08);
+  --dot-0: var(--dot-0-display);
   --led-lead: 300ms;
   --led-step: 24ms;
   display: grid;
@@ -98,7 +98,7 @@
       inset 0 1px var(--line-1),
       inset 0 -1px var(--line-1),
       inset var(--bezel-end),
-      0 1px rgb(255 255 255 / 0.05);
+      0 1px var(--display-edge);
   }
 
   .feat__channel .led-board {

@@ -15,7 +15,7 @@ type Entry = typeof ServerEntry;
 
 const dist = new URL('../dist/', import.meta.url);
 const serverDir = new URL('../dist-ssr/', import.meta.url);
-const HTML_OPEN = '<html lang="en" data-theme="dark">';
+const HTML_OPEN = '<html lang="en">';
 const HEAD_MARK = '<!--app-head-->';
 const APP_MARK = '<!--app-html-->';
 

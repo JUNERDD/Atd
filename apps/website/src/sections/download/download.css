@@ -1,7 +1,7 @@
 /* The board's display. The board (ui/led-board.css) draws its own unlit dots, so the display's stay
    off; at this size the page's unlit dot would crowd the letters, so the board's is dimmed. */
 .download__art {
-  --dot-0: rgb(255 255 255 / 0.07);
+  --dot-0: var(--dot-0-soft);
   padding: clamp(12px, 3vw, 32px);
   background-image: none;
 }
