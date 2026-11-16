@@ -1,10 +1,11 @@
 import { Type, type Static } from 'typebox';
-import type {
-  CaptureAnswer,
-  CaptureAnswerAction,
-  CaptureAnswerItem,
-  CaptureBounds,
-  CaptureParagraph,
+import {
+  resolveCaptureParagraphId,
+  type CaptureAnswer,
+  type CaptureAnswerAction,
+  type CaptureAnswerItem,
+  type CaptureBounds,
+  type CaptureParagraph,
 } from './capture-answer.js';
 
 /** Paragraphs one run on screenshot text reads at most: a long screenshot's whole text fits. */
@@ -25,7 +26,12 @@ export type CaptureMarkTool = Static<typeof CaptureMarkToolSchema>;
 export const MarkScreenshotItemSchema = Type.Object(
   {
     tool: CaptureMarkToolSchema,
-    paragraph: Type.Optional(Type.String()),
+    paragraph: Type.Optional(
+      Type.String({
+        description:
+          'Bare paragraph id from its `[<id>]` or `[<id> @ x1,y1,x2,y2]` header, e.g. "p1" (no brackets or @ bounds).',
+      }),
+    ),
     phrase: Type.Optional(Type.String()),
     point: Type.Optional(
       Type.Object({ x: Type.Number(), y: Type.Number() }, { additionalProperties: false }),
@@ -133,7 +139,8 @@ function normalizeItem(
       ? (rec.tool as CaptureMarkTool)
       : null;
   if (!tool) return fail('Invalid mark tool.');
-  const paragraph = typeof rec.paragraph === 'string' ? rec.paragraph.trim() : '';
+  const paragraph =
+    typeof rec.paragraph === 'string' ? resolveCaptureParagraphId(rec.paragraph, byId) : '';
   const text = typeof rec.text === 'string' ? rec.text.trim() : '';
   if (action !== 'annotate') {
     const expected = action === 'replaceSelection' ? 'replace' : 'step';
@@ -315,7 +322,13 @@ export function mergeCaptureAnswers(
         if (item.paragraph) byParagraph.set(item.paragraph, item);
       }
     }
-    return { lead: '', items: [...byParagraph.values()] };
+    const ordered = options.paragraphs.flatMap((p) => {
+      const item = byParagraph.get(p.id);
+      if (!item) return [];
+      byParagraph.delete(p.id);
+      return [item];
+    });
+    return { lead: '', items: [...ordered, ...byParagraph.values()] };
   }
   const seen = new Set<string>();
   const merged: CaptureAnswerItem[] = [];

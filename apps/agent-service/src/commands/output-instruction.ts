@@ -38,18 +38,20 @@ function verbatimInstruction(action: CommandOutputAction): string | null {
 export function outputInstruction(
   output: CommandOutput,
   screenshotText?: CommandScreenshotText,
+  repeat = false,
 ): string | null {
   const verbatim = verbatimInstruction(output.action);
   return screenshotText
-    ? screenshotTextInstruction(output.action, screenshotText, verbatim, 'run')
+    ? screenshotTextInstruction(output.action, screenshotText, verbatim, repeat ? 'repeat' : 'run')
     : verbatim;
 }
 
 /**
  * What a task run on a screenshot (`SubmitTaskRequest.screenshotText`) is told in hidden run
  * material:
- * - A fresh Ask or Regenerate (`isNewTask || screenshotText.turn === 'run'`) uses `'run'` with
- *   non-empty `selection` appended after the format rules.
+ * - A fresh Ask (`isNewTask`) uses `'run'`, and a Regenerate/repeat (`screenshotText.turn === 'run'`
+ *   on an existing task) uses `'repeat'`, both with non-empty `selection` appended after the
+ *   format rules.
  * - An adjustment follow-up on an existing task uses `'followUp'` when neither `selection` nor new
  *   screenshot `files` (`hasFiles`) arrived, or `'reread'` when the user changed text or crop.
  */
@@ -64,7 +66,9 @@ export function screenshotTaskInstruction(
   const withSelection = (base: string) =>
     selection.trim() === '' ? base : `${base}\n\n${selection}`;
   if (isNewTask || screenshotText.turn === 'run')
-    return withSelection(screenshotTextInstruction(output, screenshotText, verbatim, 'run'));
+    return withSelection(
+      screenshotTextInstruction(output, screenshotText, verbatim, isNewTask ? 'run' : 'repeat'),
+    );
   const reread = selection.trim() !== '' || hasFiles;
   if (!reread) return screenshotTextInstruction(output, screenshotText, verbatim, 'followUp');
   return withSelection(screenshotTextInstruction(output, screenshotText, verbatim, 'reread'));

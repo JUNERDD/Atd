@@ -200,9 +200,19 @@ export async function launchCommand(
   // An unattended run (`trigger`) has no app to write into and never touches the clipboard, so its
   // answer only stays in its conversation and the model is told nothing about where it goes.
   const effectiveOutput = request.output ?? command.output;
-  const instructions = internal.trigger
+  const baseInstructions = internal.trigger
     ? ''
-    : (outputInstruction(effectiveOutput, request.screenshotText) ?? '');
+    : (outputInstruction(effectiveOutput, request.screenshotText, request.taskId !== undefined) ??
+      '');
+  const selection = request.input.selection.trim();
+  const instructions =
+    baseInstructions &&
+    request.screenshotText &&
+    request.screenshotText.paragraphs > 0 &&
+    selection &&
+    !text.includes(selection)
+      ? `${baseInstructions}\n\n${request.input.selection}`
+      : baseInstructions;
   if (
     request.frame &&
     runInputSize({ ...snapshot, input: submit.input, instructions }) > CONTEXT_BUDGET
