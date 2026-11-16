@@ -11,7 +11,7 @@ export interface CaseStep {
   groupStart: boolean;
   title: string;
   description: string;
-  /** The step's clip, shown above its title where the steps stack without the stage beside them. */
+  /** The step's image, shown above its title where the steps stack without the stage beside them. */
   media: ReactNode;
 }
 
@@ -31,24 +31,28 @@ const number = (index: number) => String(index + 1).padStart(2, '0');
 
 /**
  * A step's line. Where it shows only while its step is current (cases.css sets
- * `--case-desc-types` there), it types in behind a caret each time the step becomes current once
- * the showcase is in view (motion/text-effects.ts), unless the visitor asked for reduced motion. The typed copy is drawn
- * over the whole line, which holds the paragraph's shape so typing never reflows the steps the
- * timeline measures, and which assistive technology reads once instead of every typed frame.
+ * `--case-desc-types` there), it types in without a caret each time the step becomes current once
+ * the showcase is in view, unless the visitor asked for reduced motion. The whole line holds the
+ * paragraph's shape and is read by assistive technology. Leaving freezes the typed copy while it
+ * fades out; returning replays the full source, even if the previous run ended on an empty frame.
  */
 function CaseDescription({ text, typing }: { text: string; typing: boolean }) {
   const typed = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const element = typed.current;
     if (!typing || !element) return;
+    const node = element.firstChild;
+    if (!(node instanceof Text)) return;
+    // Restore the source even in static layouts, so a later resize cannot expose a cancelled prefix.
+    node.data = text;
     if (getComputedStyle(element).getPropertyValue('--case-desc-types').trim() !== '1') return;
     const motion =
       document.documentElement.hasAttribute('data-motion') &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!motion) return;
-    const effects = createTextEffects();
+    const effects = createTextEffects({ caret: false });
     effects.play(element, 'type', TYPE_DELAY);
-    return () => effects.stop();
+    return () => effects.cancel();
   }, [text, typing]);
   return (
     <p className="cases__desc">

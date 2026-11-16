@@ -1,11 +1,53 @@
 # Interface scenes
 
-The “Interfaces” section (`#cases`) is a ten-case timeline of short clips. Its labels, captions,
-clip descriptions and the clips' paths live in [`src/content/cases.ts`](../../src/content/cases.ts).
+The “Interfaces” section (`#cases`) is a ten-case timeline of static images. Its labels, captions,
+image descriptions and paths live in [`src/content/cases.ts`](../../src/content/cases.ts).
 
-## Case clips
+## Current static images
 
-`clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the showcase's clips and posters, in `en`
+`showcase/<lang>/<id>.webp` contains transparent product foregrounds, in English (`en`) and Chinese (`zh`).
+They are 1440 × 900 exports of editable product compositions on the canonical Website page,
+section `project/4227:9667` (“W · Website · Static showcase · 2026-11-15”). Export PNG at 1×,
+then encode WebP at quality 88, retaining alpha. Export each foreground in isolation, without its
+surrounding `Preview` frame. Keep the complete 16:10 frame; the website does not crop it.
+
+`showcase/background.webp` is the shared stationary backdrop (`project/4238:13417`). It sits
+outside the animated slides, so switching cases fades only their product foregrounds. Each Figma
+preview and website review places that same backdrop beneath the foreground. Glass surfaces keep
+aligned, clipped backdrop instances beneath their material so isolated exports preserve the blur.
+Center the complete product composition inside a 1200 × 700 safe area on the 1440 × 900 canvas;
+include floating menus and toolbars in that composition, and leave room for their shadows.
+Mini Panel is the exception: place the visible glass rail 32 px from the right edge (16 px on a
+720 px stage), with task activity opening to the left. Preserve its vertical safe margins and realign the clipped glass backdrops
+to the stationary wallpaper whenever the composition moves.
+
+| Case                  | English source | Chinese source |
+| --------------------- | -------------- | -------------- |
+| Selection toolbar     | `4232:13537`   | `4232:13538`   |
+| Review and write-back | `4232:13539`   | `4232:13540`   |
+| Screenshot            | `4232:13541`   | `4232:13542`   |
+| Main panel            | `4232:13543`   | `4232:13544`   |
+| Conversation          | `4232:13545`   | `4232:13546`   |
+| Mini Panel            | `4232:13547`   | `4232:13548`   |
+| Computer use          | `4232:13549`   | `4232:13550`   |
+| Apps                  | `4232:13551`   | `4232:13552`   |
+| Automations           | `4232:13553`   | `4232:13554`   |
+| Settings              | `4232:13555`   | `4232:13556`   |
+
+The compositions reuse current connected product controls, enlarge the useful interface, remove
+unrelated desktop windows and retain editable text. The screenshot scene includes the screenshot
+command row with Ask Atd, Explain, Translate, Extract table, Copy text and Select Text. The review
+card shows the original and revised answer with copy, insert and replace actions. Example data is
+synthetic. These are designed illustrations, not recordings of a live service session.
+
+The shared dusk mountain backdrop is Nathan Anderson’s _Red sunset on a mountain_, reused from
+the release-blog artwork ([Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Red_sunset_on_a_mountain_(Unsplash).jpg>),
+CC0 1.0 Public Domain). Desktop and compact website reviews reference these compositions through
+connected instances. Update each illustration, both local exports and its alt text together.
+
+## Archived case clips
+
+`clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the former showcase’s clips and posters, in `en`
 and `zh`. They are a reviewed snapshot of renders from the films repository
 ([atd-films](https://github.com/JUNERDD/atd-films), source commit `ccd1f85` from
 [PR #7](https://github.com/JUNERDD/atd-films/pull/7)), made with the same Remotion stack and
