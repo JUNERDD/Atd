@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
 import { langPath, pagePath, postSlugOf, type Page } from '../../i18n/routes';
@@ -7,6 +8,8 @@ import { useGitHubStars } from '../../lib/use-github-stars';
 import { navCopy } from './copy';
 import { GitHubMark } from './github-mark';
 import './nav.css';
+
+const BACKDROP_SCROLL_RANGE_PX = 120;
 
 /**
  * The page's control strip: a full-width glass bar fixed at the top of the viewport. It carries
@@ -28,6 +31,20 @@ export function SiteNav({
   const stars = useGitHubStars(initialStars);
   const starCount = formatGitHubStars(stars);
   const githubLabel = t.github.ariaLabel(starCount);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const backdrop = backdropRef.current;
+    if (!backdrop || CSS.supports('animation-timeline', 'scroll()')) return;
+    const sync = () => {
+      const progress = Math.min(1, Math.max(0, window.scrollY / BACKDROP_SCROLL_RANGE_PX));
+      backdrop.style.setProperty('--nav-scroll', progress.toFixed(4));
+    };
+    sync();
+    window.addEventListener('scroll', sync, { passive: true });
+    return () => window.removeEventListener('scroll', sync);
+  }, []);
+
   // `#cases` on the home page; `/#cases` or `/zh#cases` from another page.
   const sectionHref = (hash: string) => (home ? hash : `${langPath[lang]}${hash}`);
 
@@ -37,7 +54,7 @@ export function SiteNav({
         {t.skip}
       </a>
       <header className="nav" data-reveal="drop" data-reveal-delay="420">
-        <div className="nav__backdrop glass" aria-hidden="true" />
+        <div ref={backdropRef} className="nav__backdrop glass" aria-hidden="true" />
         <nav className="nav__bar" aria-label={t.label}>
           <a className="nav__brand" href={langPath[lang]} aria-label={t.home}>
             <span className="nav__mark" aria-hidden="true" />

@@ -101,7 +101,6 @@ function runField(
   let reduced = options.reducedMotion ?? false;
   let bootStart = -1;
   let bootDone = reduced || options.boot === false;
-  let scroll = 0;
   // x, y, start time (s), amplitude per ripple; a start far in the past marks a free slot.
   const ripples = new Float32Array(MAX_RIPPLES * 4);
   for (let i = 0; i < MAX_RIPPLES; i++) ripples[i * 4 + 2] = -BOOT_SETTLED;
@@ -188,17 +187,15 @@ function runField(
       bootDone = true;
       cycle.arrive(time);
     }
-    // The board changes words only in full motion, once it has powered on and while it is in place.
-    cycle.tick(time, !reduced && bootDone && scroll < 0.05);
+    // The board changes words only in full motion, once it has powered on.
+    cycle.tick(time, !reduced && bootDone);
     const change = cycle.change(time);
     const typing =
       change >= 0 ? typingAt(change, words[cycle.current] ?? '', words[cycle.next] ?? '') : null;
     // The word on the board: the outgoing one until it is erased, then the incoming one.
     const showing = typing?.incoming ? cycle.next : cycle.current;
     const art = target.words[showing] ?? target.art;
-    const box = artBox ?? defaultArtBox(width, height);
-    const inkBox = inks[showing] ?? box;
-    const pivot = [box.x + box.width / 2, box.y + box.height / 2] as const;
+    const inkBox = inks[showing] ?? artBox ?? defaultArtBox(width, height);
     const wordCursors = cursors[showing] ?? [];
     const cursor = wordCursors[typing ? typing.shown : wordCursors.length - 1] ?? NO_BOX;
 
@@ -228,11 +225,9 @@ function runField(
     gl.uniform1f(u.u_time, time);
     gl.uniform1f(u.u_motion, reduced ? 0 : 1);
     gl.uniform1f(u.u_boot, boot);
-    gl.uniform1f(u.u_scroll, scroll);
     gl.uniform3f(u.u_grid, layout.originX, layout.originY, layout.pitch);
     gl.uniform2i(u.u_cells, layout.cols, layout.rows);
     gl.uniform4f(u.u_artBox, inkBox.x, inkBox.y, inkBox.width, inkBox.height);
-    gl.uniform2f(u.u_pivot, ...pivot);
     // Every character shows at rest; the count only ever reaches a few.
     gl.uniform1f(u.u_shown, typing ? typing.shown : 255);
     gl.uniform1f(u.u_typing, typing ? 1 : 0);
@@ -314,12 +309,6 @@ function runField(
       if (sameBox(box, artBox)) return;
       artBox = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
       artDirty = true;
-      schedule();
-    },
-    setScroll(progress) {
-      const next = Math.min(1, Math.max(0, progress));
-      if (next === scroll) return;
-      scroll = next;
       schedule();
     },
     setReducedMotion(next) {

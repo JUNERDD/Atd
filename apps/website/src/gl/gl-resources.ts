@@ -8,7 +8,6 @@ export interface Uniforms {
   u_time: WebGLUniformLocation | null;
   u_motion: WebGLUniformLocation | null;
   u_boot: WebGLUniformLocation | null;
-  u_scroll: WebGLUniformLocation | null;
   u_grid: WebGLUniformLocation | null;
   u_art: WebGLUniformLocation | null;
   u_shown: WebGLUniformLocation | null;
@@ -17,7 +16,6 @@ export interface Uniforms {
   u_cursor: WebGLUniformLocation | null;
   u_cells: WebGLUniformLocation | null;
   u_artBox: WebGLUniformLocation | null;
-  u_pivot: WebGLUniformLocation | null;
   u_lens: WebGLUniformLocation | null;
   u_zoom: WebGLUniformLocation | null;
   u_ripples: WebGLUniformLocation | null;
@@ -34,7 +32,6 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
     u_time: at('u_time'),
     u_motion: at('u_motion'),
     u_boot: at('u_boot'),
-    u_scroll: at('u_scroll'),
     u_grid: at('u_grid'),
     u_art: at('u_art'),
     u_shown: at('u_shown'),
@@ -43,7 +40,6 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
     u_cursor: at('u_cursor'),
     u_cells: at('u_cells'),
     u_artBox: at('u_artBox'),
-    u_pivot: at('u_pivot'),
     u_lens: at('u_lens'),
     u_zoom: at('u_zoom'),
     u_ripples: at('u_ripples'),

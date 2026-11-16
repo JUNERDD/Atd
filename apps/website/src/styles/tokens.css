@@ -43,9 +43,9 @@
   --led-glow: light-dark(none, 0 0 8px rgb(255 255 255 / 0.5));
   --led-nav-glow: light-dark(none, 0 0 6px rgb(255 255 255 / 0.6));
   --led-soft-glow: light-dark(none, 0 0 10px rgb(255 255 255 / 0.4));
-  --ascii-foreground-mix: 23%;
-  --ascii-glow-near: 15%;
-  --ascii-glow-far: 8%;
+  --ascii-foreground-mix: 34%;
+  --ascii-glow-near: 22%;
+  --ascii-glow-far: 12%;
   --ascii-vignette-radial-mid: 28%;
   --ascii-vignette-linear-top: 14%;
   --ascii-vignette-linear-end: 86%;
