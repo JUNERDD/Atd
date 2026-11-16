@@ -249,7 +249,8 @@ The source nodes, backdrop credit and export settings are
 in [`public/cases/README.md`](public/cases/README.md). The homepage loads images only; earlier film
 clips remain archived source material.
 
-On wide screens, a numbered index scrolls beside a sticky 16:10 image. The step nearest the
+On wide screens, the grid-aligned showcase container grows to 1680 px, with a numbered index
+beside a sticky 16:10 image that also stays within the viewport's available height. The step nearest the
 image's middle becomes current (`use-case-timeline.ts`); its title brightens, its description
 types in **without a caret**, and its foreground image and caption appear. An interrupted description
 keeps its typed prefix while fading out and restarts from the complete source when selected again.
@@ -260,7 +261,8 @@ line. Nearby images load lazily, and reduced motion keeps the same static artwor
 screens, each image sits above its own title and complete description. An image failure shows a
 localized message. Each step retains its URL hash, such as `#screenshot`.
 
-The desktop (`2564:159138`) and compact (`2564:159288`) Figma reviews use instances of the new
+The desktop (`2564:159138`, 1280 px), wide (`4252:13350`, 1920 px), and compact
+(`2564:159288`, 320 px) Figma reviews use instances of the new
 `Showcase / <case> / <language>` compositions from `project/4227:9667`. Their case steps remain
 connected to `Website / Case step`; the shared component documents the cursor-free reveal.
 Bilingual labels, titles, descriptions, captions and image alt text live in `src/content/cases.ts`;

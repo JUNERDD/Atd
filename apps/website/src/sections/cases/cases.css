@@ -1,3 +1,8 @@
+/* The image-led timeline gets a wider plate while staying on the shared 24 px grid. */
+#cases {
+  --maxw: 1680px;
+}
+
 /* The showcase is a timeline. Wide, the steps scroll in a column beside a stage that holds still at
    the viewport's middle (sticky); the step whose middle is nearest the stage's middle is current
    (use-case-timeline.ts), and only its line shows. An LED rail runs down the steps' edge, lit as
