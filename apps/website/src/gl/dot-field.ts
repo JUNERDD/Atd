@@ -58,7 +58,7 @@ export function createDotField(
     antialias: false,
     depth: false,
     stencil: false,
-    premultipliedAlpha: false,
+    premultipliedAlpha: true,
     preserveDrawingBuffer: false,
   });
   const rasterizer = createArtRasterizer();

@@ -118,7 +118,7 @@
   --grid: 24px;
   --led: 8px;
   --gutter: 16px;
-  --maxw: 1200px;
+  --maxw: 1680px;
   --section-pad: round(clamp(96px, 12vw, 168px), 24px);
   --nav-padding: calc(max(var(--margin-page), var(--gutter)) * 0.75);
   --nav-h: calc(var(--hit) + 2 * var(--nav-padding));

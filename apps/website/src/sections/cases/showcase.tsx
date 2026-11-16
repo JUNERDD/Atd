@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { caseClip, caseGroups, cases } from '../../content/cases';
+import { caseBackdrop, caseImage, caseGroups, cases } from '../../content/cases';
 import { useCopy, useLang } from '../../i18n/lang';
-import { useReducedMotion } from '../../lib/use-reduced-motion';
-import { CaseClipView } from './clip';
 import { casesCopy } from './copy';
 import { CaseSteps } from './steps';
 import { useCaseTimeline } from './use-case-timeline';
@@ -13,46 +11,44 @@ const caseIds = cases.map((item) => item.id);
 
 const pad = (count: number) => String(count).padStart(2, '0');
 
-/**
- * Every case as a timeline: the steps scroll in a column beside a stage that holds still, and the
- * step nearest the stage's middle is current, so its clip plays on the stage
- * (use-case-timeline.ts). The clips are cut from the product films, so the stage is shot like
- * them: a frameless 16:9 screen, a slate above naming the current group and surface and counting
- * the cases, and the case's caption below it like a subtitle under a picture. Where there is no
- * room beside the steps, the stage is left
- * out and each step shows its own clip under its own title and line. The prerendered page, and
- * reduced motion, show each clip's poster; clips beyond the scroll's reach stay unrendered.
- */
+function CaseBackdrop() {
+  return (
+    <img
+      className="cases__backdrop"
+      src={caseBackdrop}
+      width={1440}
+      height={900}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+    />
+  );
+}
+
+/** Static Figma compositions follow the reading line on a shared stage, or stack on narrow screens. */
 export function CasesShowcase() {
   const t = useCopy(casesCopy);
   const lang = useLang();
-  const still = useReducedMotion();
   const { root, frame, display, active, playing, reach, choose } = useCaseTimeline(caseIds);
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
   const groupName = (id: string) => caseGroups.find((group) => group.id === id)?.name[lang] ?? '';
   const current = cases[active] ?? cases[0];
 
-  const clip = (
-    item: (typeof cases)[number],
-    index: number,
-    preload: boolean,
-    exposePosterAlt: boolean,
-  ) =>
-    failed.has(item.id) ? (
-      <output className="cases__unavailable">
-        {t.clipUnavailable}{' '}
-        <a href={caseClip(item.id, lang).video} target="_blank" rel="noopener noreferrer">
-          {t.openClip}
-        </a>
-      </output>
+  const picture = (item: (typeof cases)[number]) =>
+    failed.has(`${lang}/${item.id}`) ? (
+      <output className="cases__unavailable">{t.imageUnavailable}</output>
     ) : (
-      <CaseClipView
-        clip={caseClip(item.id, lang)}
+      <img
+        className="cases__image"
+        src={caseImage(item.id, lang)}
+        width={1440}
+        height={900}
         alt={item.alt[lang]}
-        {...(exposePosterAlt ? { posterAlt: item.alt[lang] } : {})}
-        play={playing && !still && index === active}
-        preload={preload && !still}
-        onError={() => setFailed((previous) => new Set(previous).add(item.id))}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        onError={() => setFailed((previous) => new Set(previous).add(`${lang}/${item.id}`))}
       />
     );
 
@@ -70,7 +66,12 @@ export function CasesShowcase() {
           groupStart: cases[index - 1]?.group !== item.group,
           title: item.title[lang],
           description: item.description[lang],
-          media: <div className="cases__shot">{clip(item, index, false, false)}</div>,
+          media: (
+            <div className="cases__shot">
+              <CaseBackdrop />
+              {picture(item)}
+            </div>
+          ),
         }))}
       />
       <div className="cases__aside">
@@ -86,6 +87,7 @@ export function CasesShowcase() {
             </span>
           </p>
           <div ref={display} className="cases__screen" id="case-screen">
+            <CaseBackdrop />
             {cases.map((item, index) => (
               <figure
                 key={item.id}
@@ -95,7 +97,7 @@ export function CasesShowcase() {
                 aria-label={item.label[lang]}
                 aria-hidden={active !== index}
               >
-                {clip(item, index, playing && index >= active - 1 && index <= reach, true)}
+                {picture(item)}
               </figure>
             ))}
           </div>
