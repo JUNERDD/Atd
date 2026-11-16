@@ -9,7 +9,7 @@ import Foundation
 
 /// The six swatches of the annotation toolbar. The raw values are what style memory stores
 /// (``AnnotationStyleMemory``), so they must not change.
-public enum AnnotationColor: String, CaseIterable, Sendable {
+public enum AnnotationColor: String, CaseIterable, Codable, Sendable {
   case red, yellow, green, blue, black, white
 
   /// sRGB components in 0...1, matching the system accent palette.
@@ -34,8 +34,8 @@ public enum AnnotationColor: String, CaseIterable, Sendable {
 
 /// How big an annotation is drawn, from 0 (smallest) to 1 (largest), as the style bar's size
 /// slider (like PixPin's) and the scroll wheel set it; each tool reads the measure it draws with.
-/// Every measure grows linearly and is rounded to a quarter point; each range is chosen so the
-/// default 0.3 gives exactly the size the medium of the former three widths had. Always within
+/// Every measure grows linearly and is rounded to a thousandth of a point; each range is chosen so
+/// the default 0.3 gives exactly the size the medium of the former three widths had. Always within
 /// 0...1.
 public struct AnnotationStroke: Equatable, Sendable {
   public let value: Double
@@ -77,13 +77,13 @@ public struct AnnotationStroke: Equatable, Sendable {
   public func stepped(by steps: Double) -> Self { Self(value + steps / 20) }
 
   private func measure(_ smallest: CGFloat, _ largest: CGFloat) -> CGFloat {
-    ((smallest + (largest - smallest) * value) * 4).rounded() / 4
+    ((smallest + (largest - smallest) * CGFloat(value)) * 1000).rounded() / 1000
   }
 }
 
 /// How a mosaic hides the screenshot under it. The raw values are what style memory stores, so
 /// they must not change.
-public enum AnnotationRedaction: String, CaseIterable, Sendable {
+public enum AnnotationRedaction: String, CaseIterable, Codable, Sendable {
   /// Blocks of ``AnnotationStroke/mosaicBlock``, each the average colour of the pixels it covers,
   /// on a grid fixed to the display rather than to the region.
   case pixelate
@@ -124,21 +124,57 @@ public struct AnnotationStyle: Equatable, Sendable {
   /// is edited (rather than wrapping at the selection's edge) and resizes from eight grips, its
   /// lines wrapping again to the new width.
   public var fixedWidth: Bool
+  /// Optional custom sRGB color overriding the toolbar preset swatch.
+  public var customColor: AnnotationRGBA?
+  /// Closed-shape fill presentation (`outline`, `soft`, `solid`).
+  public var fillMode: AnnotationFillMode
+  /// Corner geometry for rectangles and spotlights (`sharp`, `rounded`).
+  public var cornerStyle: AnnotationCornerStyle
+  /// Head/shaft style for arrows (`tapered`, `classic`, `doubleHeaded`).
+  public var arrowStyle: AnnotationArrowStyle
+  /// Whether stroked shapes, lines, and arrows render with a dashed pattern.
+  public var isDashed: Bool
+  /// Text background plate mode (`none`, `solid`, `frosted`, `outlined`).
+  public var textPlate: AnnotationTextPlate
+  /// Mosaic redaction creation mode (`region` rectangle vs `brush` freehand stroke).
+  public var mosaicMode: AnnotationMosaicMode
+  /// Spotlight cutout aperture (`sharp` rectangle/rounded rect vs `ellipse`).
+  public var spotlightShape: AnnotationSpotlightShape
+  /// Text font family name; nil selects the system font.
+  public var fontFamily: String?
+  /// Explicit corner radius in points for rectangles and sharp spotlights; nil uses the adaptive default.
+  public var cornerRadius: CGFloat?
 
   public init(
     color: AnnotationColor = .red, stroke: AnnotationStroke = .default,
     textBackground: Bool = false, redaction: AnnotationRedaction = .pixelate,
     plate: AnnotationRGBA? = nil, ink: AnnotationRGBA? = nil, fontSize: CGFloat? = nil,
-    fixedWidth: Bool = false
+    fixedWidth: Bool = false, customColor: AnnotationRGBA? = nil,
+    fillMode: AnnotationFillMode = .outline, cornerStyle: AnnotationCornerStyle = .sharp,
+    arrowStyle: AnnotationArrowStyle = .tapered, isDashed: Bool = false,
+    textPlate: AnnotationTextPlate? = nil, mosaicMode: AnnotationMosaicMode = .region,
+    spotlightShape: AnnotationSpotlightShape = .sharp, fontFamily: String? = nil,
+    cornerRadius: CGFloat? = nil
   ) {
+    let resolvedPlate = textPlate ?? (textBackground || plate != nil ? .solid : .none)
     self.color = color
     self.stroke = stroke
-    self.textBackground = textBackground
+    self.textBackground = resolvedPlate != .none
     self.redaction = redaction
     self.plate = plate
     self.ink = ink
     self.fontSize = fontSize
     self.fixedWidth = fixedWidth
+    self.customColor = customColor
+    self.fillMode = fillMode
+    self.cornerStyle = cornerStyle
+    self.arrowStyle = arrowStyle
+    self.isDashed = isDashed
+    self.textPlate = resolvedPlate
+    self.mosaicMode = mosaicMode
+    self.spotlightShape = spotlightShape
+    self.fontFamily = fontFamily
+    self.cornerRadius = cornerRadius
   }
 
   /// This style with only what the style bar changed replaced, so picking a colour keeps an
@@ -147,15 +183,40 @@ public struct AnnotationStyle: Equatable, Sendable {
   /// its effect; the box stays a box.
   public func with(
     color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil,
-    redaction: AnnotationRedaction? = nil
+    redaction: AnnotationRedaction? = nil, customColor: AnnotationRGBA?? = nil,
+    fillMode: AnnotationFillMode? = nil, cornerStyle: AnnotationCornerStyle? = nil,
+    arrowStyle: AnnotationArrowStyle? = nil, isDashed: Bool? = nil,
+    textPlate: AnnotationTextPlate? = nil, mosaicMode: AnnotationMosaicMode? = nil,
+    spotlightShape: AnnotationSpotlightShape? = nil, fontFamily: String?? = nil,
+    cornerRadius: CGFloat?? = nil
   ) -> Self {
-    Self(
+    let nextPlate: AnnotationTextPlate =
+      if let textPlate { textPlate } else if let textBackground {
+        textBackground ? (self.textPlate == .none ? .solid : self.textPlate) : .none
+      } else { self.textPlate }
+    let nextCustomColor: AnnotationRGBA? =
+      if let customColor { customColor } else if color != nil { nil } else { self.customColor }
+    let nextCornerRadius: CGFloat? =
+      if let cornerRadius {
+        cornerRadius.map { $0.isFinite ? max(0, $0) : 0 }
+      } else {
+        self.cornerRadius
+      }
+    return Self(
       color: color ?? self.color, stroke: stroke ?? self.stroke,
-      textBackground: textBackground ?? self.textBackground,
+      textBackground: nextPlate != .none,
       redaction: redaction ?? self.redaction,
-      plate: color == nil && textBackground == nil ? plate : nil,
-      ink: color == nil ? ink : nil, fontSize: stroke == nil ? fontSize : nil,
-      fixedWidth: fixedWidth)
+      plate: color == nil && textBackground == nil && textPlate == nil && customColor == nil
+        ? plate : nil,
+      ink: color == nil && customColor == nil ? ink : nil,
+      fontSize: stroke == nil ? fontSize : nil,
+      fixedWidth: fixedWidth, customColor: nextCustomColor,
+      fillMode: fillMode ?? self.fillMode, cornerStyle: cornerStyle ?? self.cornerStyle,
+      arrowStyle: arrowStyle ?? self.arrowStyle, isDashed: isDashed ?? self.isDashed,
+      textPlate: nextPlate, mosaicMode: mosaicMode ?? self.mosaicMode,
+      spotlightShape: spotlightShape ?? self.spotlightShape,
+      fontFamily: fontFamily ?? self.fontFamily,
+      cornerRadius: nextCornerRadius)
   }
 
   /// Text: whether it sits on a plate, the swatch's or an exact one.
@@ -199,35 +260,12 @@ public struct AnnotationRGBA: Equatable, Hashable, Sendable {
   }
 }
 
-/// One change the style bar makes: only the parts it names.
-public struct AnnotationStyleChange: Equatable, Sendable {
-  public var color: AnnotationColor?
-  public var stroke: AnnotationStroke?
-  public var textBackground: Bool?
-  public var redaction: AnnotationRedaction?
-
-  public init(
-    color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil,
-    redaction: AnnotationRedaction? = nil
-  ) {
-    self.color = color
-    self.stroke = stroke
-    self.textBackground = textBackground
-    self.redaction = redaction
-  }
-
-  public func applied(to style: AnnotationStyle) -> AnnotationStyle {
-    style.with(
-      color: color, stroke: stroke, textBackground: textBackground, redaction: redaction)
-  }
-}
-
 /// What an annotation draws, with its geometry.
 public enum AnnotationShape: Equatable, Sendable {
   case rectangle(CGRect)
   case ellipse(CGRect)
-  case arrow(from: CGPoint, to: CGPoint)
-  case line(from: CGPoint, to: CGPoint)
+  case arrow(from: CGPoint, to: CGPoint, bend: CGPoint? = nil)
+  case line(from: CGPoint, to: CGPoint, bend: CGPoint? = nil)
   /// Raw pointer samples; the renderer smooths them (``AnnotationPath``).
   case pen([CGPoint])
   case highlighter([CGPoint])
@@ -236,6 +274,8 @@ public enum AnnotationShape: Equatable, Sendable {
   case text(String, frame: CGRect)
   /// Pixelates or blurs the screenshot under the rect, as its style's ``AnnotationRedaction``.
   case mosaic(CGRect)
+  /// Freehand mosaic/blur brush stroke mask.
+  case mosaicBrush([CGPoint])
   /// A numbered badge, optionally with a tail from its edge to `tip` that ends in a small
   /// arrowhead (``AnnotationPath/stepTailStart(center:tip:diameter:)``). The number is not
   /// stored: it is the badge's position among the document's step badges, so deleting one
@@ -256,36 +296,5 @@ public struct Annotation: Equatable, Identifiable, Sendable {
     self.id = id
     self.shape = shape
     self.style = style
-  }
-}
-
-/// The annotation tools (D9, E11), in toolbar order.
-public enum AnnotationTool: CaseIterable, Sendable {
-  case select, rectangle, ellipse, arrow, line, pen, highlighter, text, mosaic, spotlight, step
-
-  /// The single-letter shortcut that picks the tool.
-  public var key: Character {
-    switch self {
-    case .select: "v"
-    case .rectangle: "r"
-    case .ellipse: "o"
-    case .arrow: "a"
-    case .line: "l"
-    case .pen: "p"
-    case .highlighter: "h"
-    case .text: "t"
-    case .mosaic: "m"
-    case .spotlight: "s"
-    case .step: "n"
-    }
-  }
-
-  /// The tool whose shortcut is `characters` (the key's characters ignoring modifiers), in
-  /// either case; nil for any other key.
-  public init?(key characters: String) {
-    guard characters.count == 1, let typed = characters.lowercased().first,
-      let tool = Self.allCases.first(where: { $0.key == typed })
-    else { return nil }
-    self = tool
   }
 }

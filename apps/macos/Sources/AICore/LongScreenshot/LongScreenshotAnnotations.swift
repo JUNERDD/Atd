@@ -14,7 +14,16 @@ extension LongScreenshotKept {
   /// text, picked or copied (decision D6), so what the image hides is not sent beside it in words.
   public var redactedAreas: [CGRect] {
     annotations.annotations.compactMap { annotation in
-      guard case .mosaic(let rect) = annotation.shape else { return nil }
+      let rawRect: CGRect? =
+        switch annotation.shape {
+        case .mosaic(let rect): rect
+        case .mosaicBrush(let points) where !points.isEmpty:
+          AnnotationMath.rect(enclosing: points).insetBy(
+            dx: -annotation.style.stroke.highlighterWidth / 2,
+            dy: -annotation.style.stroke.highlighterWidth / 2)
+        default: nil
+        }
+      guard let rect = rawRect else { return nil }
       let area = rect.standardized
       return area.width > 0 && area.height > 0 ? area : nil
     }
@@ -27,11 +36,18 @@ extension LongScreenshotKept {
 
 extension AnnotationDocument {
   /// The document as integers, exactly: two documents that draw the same image have the same
-  /// key, and any difference in a shape, its geometry, its text, its style or the order makes
-  /// another one. Ids are left out, so an annotation drawn again just as it was draws the same
-  /// key. Each annotation is written as its shape's tag and fields, a list after its count, then
-  /// its style, so the concatenation reads back one way only.
-  var askKey: [Int] { annotations.flatMap(\.askKey) }
+  /// key, and any difference in a shape, its geometry, its text, its style, spotlight dim,
+  /// step numbering, or order makes another one. Ids are left out, so an annotation drawn again
+  /// just as it was draws the same key. Each annotation is written as its shape's tag and fields,
+  /// a list after its count, then its style, so the concatenation reads back one way only.
+  var askKey: [Int] {
+    let header = [
+      Annotation.bits(Double(spotlightDim)),
+      AnnotationStepFormat.allCases.firstIndex(of: stepFormat) ?? 0,
+      stepStartIndex,
+    ]
+    return header + annotations.flatMap(\.askKey)
+  }
 }
 
 extension Annotation {
@@ -40,25 +56,40 @@ extension Annotation {
       switch self.shape {
       case .rectangle(let rect): [0] + rect.askKey
       case .ellipse(let rect): [1] + rect.askKey
-      case .arrow(let from, let to): [2] + from.askKey + to.askKey
-      case .line(let from, let to): [3] + from.askKey + to.askKey
+      case .arrow(let from, let to, let bend):
+        [2] + from.askKey + to.askKey + (bend.map { [1] + $0.askKey } ?? [0])
+      case .line(let from, let to, let bend):
+        [3] + from.askKey + to.askKey + (bend.map { [1] + $0.askKey } ?? [0])
       case .pen(let points): [4, points.count] + points.flatMap(\.askKey)
       case .highlighter(let points): [5, points.count] + points.flatMap(\.askKey)
-      case .text(let string, let frame):
-        [6, string.unicodeScalars.count] + string.unicodeScalars.map { Int($0.value) }
-          + frame.askKey
+      case .text(let string, let frame): [6] + Self.askKey(string) + frame.askKey
       case .mosaic(let rect): [7] + rect.askKey
       case .step(let center, let tip): [8] + center.askKey + (tip.map { [1] + $0.askKey } ?? [0])
       case .spotlight(let rect): [9] + rect.askKey
+      case .mosaicBrush(let points): [10, points.count] + points.flatMap(\.askKey)
       }
     let base: [Int] = [
       AnnotationColor.allCases.firstIndex(of: style.color) ?? 0, Self.bits(style.stroke.value),
       style.textBackground ? 1 : 0,
       AnnotationRedaction.allCases.firstIndex(of: style.redaction) ?? 0,
+      AnnotationFillMode.allCases.firstIndex(of: style.fillMode) ?? 0,
+      AnnotationCornerStyle.allCases.firstIndex(of: style.cornerStyle) ?? 0,
+      AnnotationArrowStyle.allCases.firstIndex(of: style.arrowStyle) ?? 0,
+      style.isDashed ? 1 : 0,
+      AnnotationTextPlate.allCases.firstIndex(of: style.textPlate) ?? 0,
+      AnnotationMosaicMode.allCases.firstIndex(of: style.mosaicMode) ?? 0,
+      AnnotationSpotlightShape.allCases.firstIndex(of: style.spotlightShape) ?? 0,
     ]
     let size: [Int] = style.fontSize.map { [1, Self.bits(Double($0))] } ?? [0]
-    let text: [Int] = Self.askKey(style.plate) + Self.askKey(style.ink) + size
+    let font: [Int] = style.fontFamily.map { [1] + Self.askKey($0) } ?? [0]
+    let text: [Int] =
+      Self.askKey(style.customColor) + Self.askKey(style.plate) + Self.askKey(style.ink)
+      + size + font
     return shape + base + text + [style.fixedWidth ? 1 : 0]
+  }
+
+  private static func askKey(_ string: String) -> [Int] {
+    [string.unicodeScalars.count] + string.unicodeScalars.map { Int($0.value) }
   }
 
   /// An exact colour as its four components' bits after a tag, or the tag alone without one.

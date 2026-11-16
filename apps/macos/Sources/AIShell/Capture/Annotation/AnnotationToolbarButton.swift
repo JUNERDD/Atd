@@ -21,22 +21,16 @@ final class AnnotationToolbarButton: NSButton {
   /// an on/off control that shows "on" like `fill`; `wash` one of a choice whose selected one
   /// keeps the pressed wash (the capture bar's mode pair, which leaves the accent to the toolbar);
   /// `washToggle` an on/off control with that neutral wash (the command rows' result toggle).
-  enum Selection {
-    case fill, ring, toggle, wash, washToggle
-  }
+  enum Selection { case fill, ring, toggle, wash, washToggle }
 
   /// Capture-only faces; other toolbar consumers keep the standard appearance. Feedback is
   /// independent of `isEnabled`, so a successful, disabled action stays legible without repeating.
   /// `primary` is a capsule's primary action (the ask bar's Send, the toolbar's confirm) in the
   /// command cards' colours (the island's send buttons): filled with the label colour, its glyph
   /// in the opposite one.
-  enum Presentation {
-    case standard, captureMode, primary, success, muted
-  }
+  enum Presentation { case standard, captureMode, primary, success, muted }
 
-  var presentation: Presentation = .standard {
-    didSet { needsDisplay = true }
-  }
+  var presentation: Presentation = .standard { didSet { needsDisplay = true } }
 
   static let side: CGFloat = 28
 
@@ -50,6 +44,7 @@ final class AnnotationToolbarButton: NSButton {
   private var label: (text: String, image: NSImage?)?
   private var widthConstraint: NSLayoutConstraint?
   private var trackingArea: NSTrackingArea?
+  var captureTooltipStorage: (text: String, edge: CaptureTooltipEdge?)?
 
   /// Whether the button follows the pointer itself, through a tracking area and cursor rects.
   /// The selection toolbar turns it off: its app stays inactive, where tracking events arrive
@@ -78,6 +73,7 @@ final class AnnotationToolbarButton: NSButton {
     didSet {
       guard isHovered != oldValue else { return }
       needsDisplay = true
+      tooltipHoverChanged()
     }
   }
 
@@ -116,18 +112,16 @@ final class AnnotationToolbarButton: NSButton {
   }
 
   private func configure(width: CGFloat, height: CGFloat, action: Selector) {
-    isBordered = false
-    imagePosition = .imageOnly
-    imageScaling = .scaleNone
-    title = ""
+    (isBordered, super.toolTip, imagePosition, imageScaling, title) = (
+      false, nil, .imageOnly, .scaleNone, ""
+    )
     focusRingType = .exterior
+    refusesFirstResponder = true
     self.action = action
     translatesAutoresizingMaskIntoConstraints = false
     let widthConstraint = widthAnchor.constraint(equalToConstant: width)
     self.widthConstraint = widthConstraint
-    NSLayoutConstraint.activate([
-      widthConstraint, heightAnchor.constraint(equalToConstant: height),
-    ])
+    NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: height)])
   }
 
   /// A labelled button's new text and glyph, as wide as they are
@@ -150,8 +144,17 @@ final class AnnotationToolbarButton: NSButton {
     didSet {
       needsDisplay = true
       window?.invalidateCursorRects(for: self)
+      if !isEnabled, oldValue { tooltipDismiss() }
     }
   }
+
+  override var toolTip: String? {
+    get { captureTooltipStorage?.text }
+    set { applyCaptureTooltip(newValue) }
+  }
+
+  // Ignore SF Symbols' cap/baseline insets so Auto Layout keeps an exact circular frame.
+  override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsets() }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
@@ -160,7 +163,12 @@ final class AnnotationToolbarButton: NSButton {
   /// A button that can be moved tracks its own press instead of AppKit's click loop, which would
   /// keep the drag to itself.
   override func mouseDown(with event: NSEvent) {
-    guard onDrag != nil, isEnabled else { return super.mouseDown(with: event) }
+    tooltipDismiss()
+    guard onDrag != nil, isEnabled else {
+      super.mouseDown(with: event)
+      syncPointerHover()
+      return
+    }
     press = (NSEvent.mouseLocation, false)
     isHighlighted = true
   }
@@ -190,6 +198,7 @@ final class AnnotationToolbarButton: NSButton {
     } else {
       sendAction(action, to: target)
     }
+    syncPointerHover()
   }
 
   // MARK: Drawing
@@ -206,7 +215,8 @@ final class AnnotationToolbarButton: NSButton {
       NSGraphicsContext.restoreGraphicsState()
     } else if selection == .wash || selection == .washToggle, isSelected, isEnabled {
       let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-      let opacity: CGFloat = presentation == .captureMode ? (dark ? 0.14 : 0.08) : 0.16
+      let base: CGFloat = presentation == .captureMode ? (dark ? 0.14 : 0.08) : 0.15
+      let opacity = isHighlighted ? base + 0.08 : isHovered ? base + 0.04 : base
       NSColor.labelColor.withAlphaComponent(opacity).setFill()
       circle.fill()
     } else if selection == .fill || selection == .toggle, isSelected {
@@ -274,9 +284,7 @@ final class AnnotationToolbarButton: NSButton {
     return isHovered ? 0.09 : nil
   }
 
-  override var isHighlighted: Bool {
-    didSet { needsDisplay = true }
-  }
+  override var isHighlighted: Bool { didSet { needsDisplay = true } }
 
   private func updateTint() {
     guard selection == .fill || selection == .toggle else { return }
@@ -295,30 +303,32 @@ final class AnnotationToolbarButton: NSButton {
       rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
     addTrackingArea(area)
     trackingArea = area
+    syncPointerHover()
   }
 
-  override func mouseEntered(with event: NSEvent) {
-    guard followsPointer else { return }
-    isHovered = true
+  override func viewDidUnhide() {
+    super.viewDidUnhide()
+    syncPointerHover()
   }
 
-  override func mouseExited(with event: NSEvent) {
-    guard followsPointer else { return }
-    isHovered = false
+  override func viewDidHide() {
+    super.viewDidHide()
+    if followsPointer { isHovered = false }
   }
+
+  override func mouseEntered(with event: NSEvent) { if followsPointer { isHovered = true } }
+
+  override func mouseExited(with event: NSEvent) { if followsPointer { isHovered = false } }
 
   override func resetCursorRects() {
-    guard followsPointer else { return }
-    addCursorRect(bounds, cursor: PointerRole(button: self).cursor)
+    if followsPointer { addCursorRect(bounds, cursor: PointerRole(button: self).cursor) }
   }
 
   // MARK: Focus and accessibility
 
   override var focusRingMaskBounds: NSRect { bounds }
 
-  override func drawFocusRingMask() {
-    capsule.fill()
-  }
+  override func drawFocusRingMask() { capsule.fill() }
 
   override func accessibilityRole() -> NSAccessibility.Role? {
     switch selection {

@@ -26,8 +26,10 @@ nonisolated final class AnnotationMosaic {
   private var backdrop: ObjectIdentifier?
   /// By block edge in pixels.
   private var grids: [Int: BlockGrid] = [:]
+  private var gridOrder: [Int] = []
   /// The display blurred, by radius in pixels; Core Image renders only the parts asked for.
   private var blurs: [Int: CIImage] = [:]
+  private var blurOrder: [Int] = []
   private var blurCache: [BlurKey: CGImage] = [:]
 
   /// The image to draw for a mosaic over `rect` (view points) in `style`, and the point rect it
@@ -48,10 +50,20 @@ nonisolated final class AnnotationMosaic {
     switch style.redaction {
     case .pixelate:
       let block = max(1, Int((style.stroke.mosaicBlock * scale).rounded()))
-      let grid = grids[block] ?? BlockGrid(block: block, width: image.width, height: image.height)
-      // The slider passes through many sizes; only the ones in use are worth keeping.
-      if grids[block] == nil, grids.count >= 8 { grids.removeAll() }
-      grids[block] = grid
+      let grid: BlockGrid
+      if let existing = grids[block] {
+        Self.touch(&gridOrder, key: block)
+        grid = existing
+      } else {
+        // The slider passes through many sizes; evict only the oldest entry to preserve neighbors.
+        if grids.count >= 8, !gridOrder.isEmpty {
+          grids.removeValue(forKey: gridOrder.removeFirst())
+        }
+        let created = BlockGrid(block: block, width: image.width, height: image.height)
+        grids[block] = created
+        gridOrder.append(block)
+        grid = created
+      }
       let first = (
         column: max(0, Int(floor(pixels.minX / CGFloat(block)))),
         row: max(0, Int(floor(pixels.minY / CGFloat(block))))
@@ -92,7 +104,9 @@ nonisolated final class AnnotationMosaic {
     guard backdrop != identity else { return }
     backdrop = identity
     grids.removeAll()
+    gridOrder.removeAll()
     blurs.removeAll()
+    blurOrder.removeAll()
     blurCache.removeAll()
   }
 
@@ -106,6 +120,7 @@ nonisolated final class AnnotationMosaic {
   ) -> CGImage? {
     let blurred: CIImage
     if let cached = blurs[radius] {
+      Self.touch(&blurOrder, key: radius)
       blurred = cached
     } else {
       let input = CIImage(cgImage: image)
@@ -114,12 +129,21 @@ nonisolated final class AnnotationMosaic {
       filter.radius = Float(radius)
       guard let output = filter.outputImage else { return nil }
       blurred = opaque ? output : output.unpremultiplyingAlpha().settingAlphaOne(in: input.extent)
-      if blurs.count >= 8 { blurs.removeAll() }
+      if blurs.count >= 8, !blurOrder.isEmpty {
+        blurs.removeValue(forKey: blurOrder.removeFirst())
+      }
       blurs[radius] = blurred
+      blurOrder.append(radius)
     }
     let flipped = CGRect(
       x: area.minX, y: CGFloat(image.height) - area.maxY, width: area.width, height: area.height)
     return context.createCGImage(blurred, from: flipped, format: .RGBA8, colorSpace: space)
+  }
+
+  private static func touch(_ order: inout [Int], key: Int) {
+    guard order.last != key else { return }
+    if let index = order.firstIndex(of: key) { order.remove(at: index) }
+    order.append(key)
   }
 
   private static func points(_ pixels: CGRect, scale: CGFloat) -> CGRect {

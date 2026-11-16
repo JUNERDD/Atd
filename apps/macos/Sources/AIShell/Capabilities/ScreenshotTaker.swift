@@ -28,6 +28,7 @@ final class ScreenshotTaker {
     case notPermitted
     case confirmed(Confirmed)
     case saved(CaptureConfirmation, destination: URL?)
+    case pinned(CaptureConfirmation)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     /// A long screenshot for the clipboard: nothing to attach either.
@@ -41,6 +42,7 @@ final class ScreenshotTaker {
   /// What takes over once a session's claim and overlays are gone.
   private enum Handoff {
     case save(CaptureConfirmation, destination: URL?)
+    case pinned(CaptureConfirmation)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     case copyLongScreenshot(LongScreenshotImage)
@@ -65,6 +67,8 @@ final class ScreenshotTaker {
   let arbiter: DeviceArbiter
   /// The running session; a quit or a display change ends it through ``cancel()``.
   var session: CaptureSession?
+  /// Floating desktop pins retained independently of any ephemeral capture session.
+  var pinnedWindows: [CapturePinnedWindow] = []
   /// One capture or edit at a time: a second call is refused rather than queued, because each
   /// call starts an interactive session the user would otherwise face twice.
   private(set) var isCapturing = false {
@@ -168,6 +172,8 @@ final class ScreenshotTaker {
     switch handoff {
     case .save(let capture, let destination):
       save(capture.image, scale: capture.pixelScale, long: false, destination: destination)
+    case .pinned(let capture):
+      presentPinnedWindow(capture)
     case .record(let recording): recorder?.begin(recording)
     case .longScreenshot(let shot): longScreenshots?.show(shot)
     case .copyLongScreenshot(let shot): copy(shot)
@@ -188,7 +194,11 @@ final class ScreenshotTaker {
   /// a download that fails rejects the call without a session.
   func edit(resourceId: String) async throws(BridgeError) -> ScreenshotEditResult {
     let screen = try claim()
-    defer { release(screen) }
+    var pinnedCapture: CaptureConfirmation?
+    defer {
+      release(screen)
+      if let pinnedCapture { presentPinnedWindow(pinnedCapture) }
+    }
     guard CGPreflightScreenCaptureAccess() else {
       guard await ShortcutRelease.waitForHandoff() else {
         throw BridgeError("The screenshot was cancelled.")
@@ -198,6 +208,9 @@ final class ScreenshotTaker {
     }
     let base = try await library.base(for: resourceId)
     switch try await runSession(reopening: base, request: .image, writeTargets: nil) {
+    case .pinned(let capture):
+      pinnedCapture = capture
+      return .notOk(.init(reason: .cancelled))
     case .cancelled, .saved, .record, .longScreenshot, .copiedLongScreenshot, .savedLongScreenshot,
       .textResult:
       return .notOk(.init(reason: .cancelled))
@@ -226,6 +239,8 @@ final class ScreenshotTaker {
       return (.notPermitted, nil)
     case .saved(let capture, let destination):
       return (.cancelled, .save(capture, destination: destination))
+    case .pinned(let capture):
+      return (.cancelled, .pinned(capture))
     case .record(let recording):
       return (.recording, .record(recording))
     case .longScreenshot(let shot):

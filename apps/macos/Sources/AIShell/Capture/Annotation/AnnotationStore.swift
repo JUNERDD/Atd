@@ -17,10 +17,21 @@ final class AnnotationStore {
     didSet { onChange?() }
   }
 
-  /// The annotation showing grips, if any.
-  var selectedID: UUID? {
-    didSet { if oldValue != selectedID { onChange?() } }
+  /// All selected annotation IDs (multi-select).
+  var selectedIDs: Set<UUID> = [] {
+    didSet { if oldValue != selectedIDs { onChange?() } }
   }
+
+  /// Primary selected annotation showing grips, synchronized with `selectedIDs`.
+  var selectedID: UUID? {
+    get {
+      selectedIDs.count == 1 ? selectedIDs.first : selectedAnnotations.last?.id
+    }
+    set { selectedIDs = newValue.map { [$0] } ?? [] }
+  }
+
+  /// In-memory annotation clipboard for ⇧⌘C / ⌘V annotation copy-paste.
+  var copiedAnnotations: [Annotation] = []
 
   /// The text annotation open in the text editor; the renderer skips it while the editor
   /// shows it.
@@ -49,6 +60,23 @@ final class AnnotationStore {
   var shown: AnnotationDocument { preview ?? document }
 
   var selected: Annotation? { selectedID.flatMap { shown[$0] } }
+
+  /// Currently selected annotations in document back-to-front z-order.
+  var selectedAnnotations: [Annotation] {
+    shown.annotations.filter { selectedIDs.contains($0.id) }
+  }
+
+  /// Selects every annotation currently in the document.
+  func selectAll() {
+    selectedIDs = Set(document.annotations.map(\.id))
+  }
+
+  /// Updates spotlight dim opacity as an undoable (or burst-coalesced) document edit.
+  func setSpotlightDim(_ dim: CGFloat, burst: UUID? = nil) {
+    var next = document
+    next.spotlightDim = min(max(dim, 0.25), 0.85)
+    commit(next, burst: burst)
+  }
 
   /// Makes `next` the document as one undo step; ends any preview. Unchanged documents add no
   /// step. Commits sharing a `burst` (one drag of the size slider, one run of scroll-wheel
@@ -112,6 +140,7 @@ final class AnnotationStore {
     preview = nil
     selectedID = nil
     editingID = nil
+    copiedAnnotations = []
     onChange?()
   }
 
@@ -131,6 +160,7 @@ final class AnnotationStore {
   }
 
   private func dropMissingSelection() {
-    if let id = selectedID, document[id] == nil { selectedID = nil }
+    let valid = selectedIDs.filter { document[$0] != nil }
+    if valid != selectedIDs { selectedIDs = valid }
   }
 }

@@ -179,6 +179,7 @@ final class AnnotationGlassBar: NSView {
   /// overlay under the bar, where it would start a new selection.
   override func mouseDown(with event: NSEvent) {
     guard let onDrag else { return }
+    CaptureTooltipPresenter.shared.dismiss()
     guard event.clickCount < 2 else {
       onDrag(.reset)
       return
@@ -205,6 +206,7 @@ final class AnnotationGlassBar: NSView {
   /// Hides or shows group `index`; each divider then shows only with a visible group on both
   /// sides of it.
   func setGroup(_ index: Int, hidden: Bool) {
+    guard groups[index].contains(where: { $0.isHidden != hidden }) else { return }
     for view in groups[index] { view.isHidden = hidden }
     refreshDividers()
   }
@@ -235,12 +237,16 @@ final class AnnotationGlassBar: NSView {
     }
   }
 
-  /// A hairline between groups, as tall as a glyph.
+  /// A 1 × 16 pt vertical hairline between groups. Sized taller than wide up front and pinned to
+  /// 1 pt so `NSBox` never starts as a 0-width horizontal separator before its first layout pass.
   private static func divider() -> NSView {
-    let line = NSBox()
+    let line = NSBox(frame: NSRect(x: 0, y: 0, width: 1, height: 16))
     line.boxType = .separator
     line.translatesAutoresizingMaskIntoConstraints = false
-    line.heightAnchor.constraint(equalToConstant: 16).isActive = true
+    NSLayoutConstraint.activate([
+      line.widthAnchor.constraint(equalToConstant: 1),
+      line.heightAnchor.constraint(equalToConstant: 16),
+    ])
     return line
   }
 }
@@ -280,4 +286,17 @@ final class AnnotationBarGrip: NSView {
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  override var toolTip: String? {
+    get { captureTooltip }
+    set {
+      super.toolTip = nil
+      setCaptureTooltip(newValue)
+    }
+  }
+
+  override func mouseDown(with event: NSEvent) {
+    CaptureTooltipPresenter.shared.dismiss(for: self)
+    super.mouseDown(with: event)
+  }
 }

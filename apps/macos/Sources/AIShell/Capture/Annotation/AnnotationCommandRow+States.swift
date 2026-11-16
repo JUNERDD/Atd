@@ -24,14 +24,18 @@ extension AnnotationCommandRow {
     fit()
   }
 
-  /// Select Text: enabled unless the selection was read and holds no text (`false`).
-  func setSelectText(hasText: Bool?) {
+  /// Select Text: disabled while the first reading is in flight or when no unmasked text exists;
+  /// enabled once pickable text is available.
+  func setSelectText(_ state: SelectText) {
     guard let selectText else { return }
-    let none = hasText == false
-    selectText.isEnabled = !none
+    selectText.isEnabled = state == .available
     let strings = ShellStrings.shared
-    selectText.toolTip = strings.text(
-      none ? CaptureTextModeStringKey.selectTextNone : .selectTextTooltip)
+    selectText.toolTip =
+      switch state {
+      case .scanning: strings.text(.captureRedactScanning)
+      case .available: strings.text(CaptureTextModeStringKey.selectTextTooltip)
+      case .unavailable: strings.text(CaptureTextModeStringKey.selectTextNone)
+      }
   }
 
   /// The auto-redact shortcut's state; its group shows only while it covers or confirms.
@@ -99,7 +103,15 @@ extension AnnotationCommandRow {
     }
     copy.setLabel(Self.copyLabels(kind).max { width($0) < width($1) } ?? "", image: copyImage)
     let redactImage = AnnotationIcons.glyph(AnnotationIcons.autoRedact, label: "")
-    redact?.setLabel(strings.text(.captureRedactDone, count: 88), image: redactImage)
+    let redactWidth = { (text: String) in
+      AnnotationToolbarButton.Label.width(text: text, hasImage: true)
+    }
+    let widestRedact =
+      [
+        strings.text(CaptureTextModeStringKey.redact),
+        strings.text(.captureRedactDone, count: 88),
+      ].max { redactWidth($0) < redactWidth($1) } ?? ""
+    redact?.setLabel(widestRedact, image: redactImage)
     scope?.setLabel(AnnotationScopeChip.widestLabel)
     let resultsHidden = results.isHidden
     let redactHidden = redact?.isHidden ?? false

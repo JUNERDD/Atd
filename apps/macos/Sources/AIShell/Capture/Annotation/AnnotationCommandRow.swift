@@ -42,6 +42,12 @@ final class AnnotationCommandRow: NSView {
     case done(Int)
   }
 
+  /// Select Text's readiness: scanning before the first reading settles, available while unmasked
+  /// text exists, or unavailable when none does.
+  enum SelectText: Equatable {
+    case scanning, available, unavailable
+  }
+
   var onAsk: (() -> Void)?
   var onAskOptions: ((ToolbarOptionsChevron) -> Void)?
   var onRun: ((Command) -> Void)?
@@ -92,7 +98,7 @@ final class AnnotationCommandRow: NSView {
     more = AnnotationToolbarButton(selection: nil, action: #selector(moreClicked))
     let moreName = strings.text(.captureCommandsMoreTooltip)
     more.image = AnnotationIcons.glyph(AnnotationIcons.more, label: moreName)
-    more.toolTip = moreName
+    more.toolTip = nil
     more.setAccessibilityLabel(moreName)
     more.setAccessibilityRole(.menuButton)
     copy = AnnotationToolbarButton(
@@ -110,7 +116,7 @@ final class AnnotationCommandRow: NSView {
     var controls: [NSControl] = [results, ask, more, copy]
     let askChevron = ToolbarOptionsChevron(action: #selector(askOptionsClicked))
     let askMenuLabel = strings.text(.commandOptionsMenu, strings.text(.selectionToolbarAsk))
-    askChevron.toolTip = askMenuLabel
+    askChevron.toolTip = nil
     askChevron.setAccessibilityLabel(askMenuLabel)
     let askSplit = NSStackView(views: [ask, askChevron])
     askSplit.spacing = 0
@@ -172,7 +178,10 @@ final class AnnotationCommandRow: NSView {
     addSubview(bar)
     runBar.isHidden = true
     addSubview(runBar)
-    if kind == .screenshot { setRedaction(.hidden) }
+    if kind == .screenshot {
+      setSelectText(.scanning)
+      setRedaction(.hidden)
+    }
     setResults(visible: false, isOpen: false)
     setAccessibilityElement(true)
     setAccessibilityRole(.toolbar)
@@ -229,7 +238,7 @@ final class AnnotationCommandRow: NSView {
     let chevron = ToolbarOptionsChevron(action: #selector(AnnotationCommandRow.optionsClicked))
     chevron.tag = index
     let label = strings.text(.commandOptionsMenu, command.name)
-    chevron.toolTip = label
+    chevron.toolTip = nil
     chevron.setAccessibilityLabel(label)
     let split = NSStackView(views: [button, chevron])
     split.spacing = 0

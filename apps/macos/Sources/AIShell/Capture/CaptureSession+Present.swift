@@ -142,4 +142,37 @@ extension CaptureSession {
     if !document.isEmpty { editor?.restore(document) }
     owner.refreshCursor()
   }
+
+  func applyCaptureCornerRadius(_ radius: CGFloat) {
+    guard radius.isFinite else { return }
+    let clamped =
+      radius < 0.25
+      ? 0
+      : min(max(0, (radius * 100).rounded() / 100), CaptureCornerRadiusMemory.maxRadius)
+    guard abs(clamped - captureCornerRadius) > 0.005 else { return }
+    storeCaptureCornerRadius(clamped)
+    if let openOverlay = overlays.first(where: \.hasOpenCornerPopover),
+      openOverlay.cornerControl.shouldCoalesceCornerRadiusSave
+    {
+      openOverlay.cornerControl.scheduleCornerRadiusSave { [weak self] in
+        guard let self else { return }
+        CaptureCornerRadiusMemory.save(self.captureCornerRadius, to: self.defaults)
+      }
+    } else {
+      for overlay in overlays { overlay.cornerControl.clearPendingCornerRadiusSave() }
+      CaptureCornerRadiusMemory.save(clamped, to: defaults)
+    }
+    for overlay in overlays {
+      overlay.selectionCornerRadius = clamped
+    }
+  }
+
+  func renderedCapture() -> CaptureExport.Rendered? {
+    guard case .selected(let rect) = phase,
+      !desktop.geometry.displays(overlapping: rect).isEmpty
+    else { return nil }
+    let radius = mode == .screenshot ? captureCornerRadius : 0
+    return CaptureExport.render(
+      selection: rect, desktop: desktop, editor: editor, cornerRadius: radius)
+  }
 }

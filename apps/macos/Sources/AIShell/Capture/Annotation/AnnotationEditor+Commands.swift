@@ -6,7 +6,11 @@ import AppKit
 /// auto-redact with the mosaic tool's badge. Both read ``recognizedText``, the session's reading
 /// of the selection; text under a mosaic never leaves through Copy text.
 extension AnnotationEditor {
-  func dismissMenus() -> Bool { slot.dismiss() }
+  func dismissMenus() -> Bool {
+    let closedPickers = styleCoordinator.dismissPickers()
+    let closedSlot = slot.dismiss()
+    return closedPickers || closedSlot
+  }
 
   /// Return while a tool is chosen, which the canvas takes then: an open menu closes first, as it
   /// does for Escape (``stepBack()``) and for Return without a tool (the session's `.confirm`), so
@@ -35,17 +39,18 @@ extension AnnotationEditor {
   /// command row; the badge and both auto-redact buttons follow what is still unmasked, and the
   /// text row's scope and running bar what text mode and the runs are doing.
   func refreshSlot() {
-    text.mode.mask(mosaics)
+    let currentMosaics = mosaics
+    text.mode.mask(currentMosaics)
     let target = slot.isAsking ? nil : styleTarget
     if let target {
-      styleBar.update(style: target.style, controls: target.controls)
+      styleCoordinator.syncStyleBar(target)
       styleBar.isHidden = false
     } else {
       styleBar.isHidden = true
     }
     let row: AnnotationCommandSlot.Shown = text.mode.isOn ? .text : .commands
     slot.show(target != nil ? nil : slot.isAsking ? .ask : row)
-    let unmasked = unmaskedSensitive
+    let unmasked = uncoveredSensitive(by: currentMosaics)
     toolbar.setSensitiveCount(unmasked.count)
     styleBar.setRedaction(
       recognizedText.map { text in
@@ -53,14 +58,26 @@ extension AnnotationEditor {
         return text.sensitive.isEmpty ? .none : .allCovered
       } ?? .reading)
     slot.setRedaction(count: unmasked.count)
-    slot.setSelectText(hasText: recognizedText.map { !$0.boxes.isEmpty })
+    let selectState: AnnotationCommandRow.SelectText
+    if recognizedText != nil {
+      let available = !text.mode.available.isEmpty
+      lastHasSelectText = available
+      selectState = available ? .available : .unavailable
+    } else if let lastHasSelectText {
+      selectState = lastHasSelectText ? .available : .unavailable
+    } else {
+      selectState = .scanning
+    }
+    slot.setSelectText(selectState)
     slot.setScope(scopeLabel)
     slot.setRunning(text.runs.running?.commandId)
     syncResultToggle()
   }
 
-  /// A tool was chosen or dropped: menus, the field and feedback go.
+  /// A tool was chosen or dropped: menus, pickers, eyedropper, the field and feedback go.
   func toolChanged() {
+    styleCoordinator.dismissPickers()
+    styleCoordinator.setEyedropper(false)
     slot.toolChanged()
     styleBar.endRedactionFeedback()
   }
@@ -69,13 +86,22 @@ extension AnnotationEditor {
   /// describe a screen that changed.
   func endFeedback() {
     slot.copyPending = false
+    slot.selectTextPending = false
     slot.endFeedback()
     styleBar.endRedactionFeedback()
   }
 
   func recognizedTextChanged() {
     text.mode.read(recognizedText)
+    text.mode.mask(mosaics)
     if slot.copyPending, recognizedText != nil { copyText() }
+    if slot.selectTextPending, recognizedText != nil {
+      slot.selectTextPending = false
+      if !text.mode.available.isEmpty {
+        enterTextMode()
+        return
+      }
+    }
     refresh()
   }
 
@@ -120,17 +146,30 @@ extension AnnotationEditor {
 
   // MARK: Auto-redact
 
-  /// The mosaics' rects (desktop points).
+  /// The mosaics' rects (desktop points), including freehand brush stroke bounding boxes.
   var mosaics: [CGRect] {
-    store.document.annotations.compactMap { annotation in
-      if case .mosaic(let rect) = annotation.shape { rect } else { nil }
-    }
+    store.document.annotations.compactMap(\.mosaicCoverRect)
   }
 
   /// The sensitive items no mosaic covers yet.
   private var unmaskedSensitive: [SensitiveText.Box] {
-    guard let text = recognizedText else { return [] }
-    return SensitiveText.uncovered(text.sensitive, by: mosaics)
+    uncoveredSensitive(by: mosaics)
+  }
+
+  private func uncoveredSensitive(by currentMosaics: [CGRect]) -> [SensitiveText.Box] {
+    guard let text = recognizedText else {
+      unmaskedSensitiveCache = nil
+      return []
+    }
+    if let cache = unmaskedSensitiveCache,
+      cache.revision == recognizedTextRevision,
+      cache.mosaics == currentMosaics
+    {
+      return cache.uncovered
+    }
+    let uncovered = SensitiveText.uncovered(text.sensitive, by: currentMosaics)
+    unmaskedSensitiveCache = (currentMosaics, recognizedTextRevision, uncovered)
+    return uncovered
   }
 
   /// Covers every unmasked sensitive item with a mosaic in the style auto-redact shows, a few
@@ -149,5 +188,21 @@ extension AnnotationEditor {
     styleBar.confirmRedaction(count: hits.count, tooltip: said)
     slot.confirmRedaction(count: hits.count, tooltip: said)
     Self.announce(said)
+  }
+}
+
+extension Annotation {
+  /// Effective canvas-space rect covered by a mosaic rectangle or brush stroke.
+  var mosaicCoverRect: CGRect? {
+    switch shape {
+    case .mosaic(let rect):
+      return rect
+    case .mosaicBrush(let points) where !points.isEmpty:
+      return AnnotationMath.rect(enclosing: points).insetBy(
+        dx: -style.stroke.highlighterWidth / 2,
+        dy: -style.stroke.highlighterWidth / 2)
+    default:
+      return nil
+    }
   }
 }

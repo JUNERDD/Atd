@@ -28,7 +28,13 @@ extension CaptureSession {
   /// ⌘↓ or the toolbar's button: the live phase over the selection, clamped to the display
   /// holding it, or a beep where the selection does not offer it.
   func startLongScreenshot() {
-    guard case .selected(let rect) = phase, longScreenshotAvailability(for: rect) == .available,
+    guard case .selected(let rect) = phase else { return NSSound.beep() }
+    let availability = longScreenshotAvailability(for: rect)
+    if availability == .checking, longScreenshot.lastSettled == .available {
+      longScreenshot.startWhenReady = true
+      return
+    }
+    guard availability == .available,
       let primary = desktop.geometry.primary(for: rect), let owner = primaryOverlay(for: rect)
     else { return NSSound.beep() }
     let part = rect.intersection(desktop.geometry.frame(of: primary))
@@ -99,7 +105,7 @@ extension CaptureSession {
     case .save: finishLongScreenshot(action: .save)
     case .toggleAutoScroll: toggleAutoScroll()
     case .walk, .nudge, .resize, .resizeLeading, .selectDisplay, .recall, .toggleWindowsOnly,
-      .mode, .requestAccessibility, .longScreenshot:
+      .mode, .requestAccessibility, .longScreenshot, .pin, .copyColor:
       break
     }
   }

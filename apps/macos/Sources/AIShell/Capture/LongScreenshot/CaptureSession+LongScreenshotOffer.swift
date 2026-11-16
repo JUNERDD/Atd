@@ -35,15 +35,27 @@ extension CaptureSession {
     }
   }
 
+  /// What the toolbar button shows for `rect`, holding the previous settled state across
+  /// `.checking` while a moved or resized selection is probed again so neither the button nor the
+  /// bottom bar flickers.
+  func displayedLongScreenshotAvailability(for rect: CGRect) -> LongScreenshotAvailability? {
+    let actual = longScreenshotAvailability(for: rect)
+    switch actual {
+    case .available, .notScrollable:
+      longScreenshot.lastSettled = actual
+      return actual
+    case .spansDisplays, nil:
+      longScreenshot.lastSettled = nil
+      return actual
+    case .checking:
+      return longScreenshot.lastSettled ?? .checking
+    }
+  }
+
   /// Whether the bottom bar names ⌘↓ for `rect`: while the selection is looked at again, as it
   /// did for the selection before, so the bar does not grow and shrink on every move or nudge.
   func namesLongScreenshot(for rect: CGRect) -> Bool {
-    switch longScreenshotAvailability(for: rect) {
-    case .available: longScreenshot.namedInBar = true
-    case .notScrollable, .spansDisplays, nil: longScreenshot.namedInBar = false
-    case .checking: break
-    }
-    return longScreenshot.namedInBar
+    displayedLongScreenshotAvailability(for: rect) == .available
   }
 
   /// Looks for the scroll area under `rect` once it stayed put for `delay`, unless it is known,
@@ -52,6 +64,7 @@ extension CaptureSession {
   func probeScrollArea(in rect: CGRect, after delay: Duration = .zero) {
     longScreenshot.probe?.cancel()
     longScreenshot.probe = nil
+    longScreenshot.startWhenReady = false
     defer { showLongScreenshotAvailability() }
     guard offersLongScreenshot, detection == .elements, longScreenshot.answer(for: rect) == nil,
       desktop.geometry.displays(overlapping: rect).count == 1
@@ -72,7 +85,16 @@ extension CaptureSession {
   /// The toolbar's button and the bottom bar for the selection as it is now.
   func showLongScreenshotAvailability() {
     guard case .selected(let rect) = phase else { return }
-    editor?.longScreenshot = longScreenshotAvailability(for: rect)
+    editor?.longScreenshot = displayedLongScreenshotAvailability(for: rect)
     refreshBars()
+    let clear = keepClear(for: rect)
+    if editor?.keepClear != clear {
+      editor?.keepClear = clear
+      editor?.selectionDidChange(rect, dragging: isAdjusting)
+    }
+    if longScreenshot.startWhenReady, longScreenshotAvailability(for: rect) != .checking {
+      longScreenshot.startWhenReady = false
+      startLongScreenshot()
+    }
   }
 }

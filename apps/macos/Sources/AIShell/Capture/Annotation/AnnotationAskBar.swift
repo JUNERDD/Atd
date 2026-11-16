@@ -137,7 +137,7 @@ final class AnnotationAskBar: NSView, NSTextFieldDelegate {
   func configure(outputLabel: String) {
     outputButton.setTitle(outputLabel)
     let whenDone = ShellStrings.shared.text(.commandOptionsOutput)
-    outputButton.toolTip = whenDone
+    outputButton.toolTip = nil
     outputButton.setAccessibilityLabel("\(whenDone), \(outputLabel)")
     if superview != nil { setFrameSize(fittingSize) }
   }

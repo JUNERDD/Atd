@@ -4,23 +4,40 @@ import AppKit
 /// Where the editor's views sit across displays: a canvas on every overlay, each taking its
 /// overlay's keyboard, and the bars on the display holding most of the selection.
 extension AnnotationEditor {
-  /// Either bar dragged: both move as one block, led by the toolbar; open menus close.
+  /// Either bar dragged: both move as one block, led by the toolbar; open menus and pickers close.
   func moveBars(_ drag: AnnotationGlassBar.Drag) {
+    styleCoordinator.dismissPickers()
     slot.closeMenus()
     switch drag {
-    case .began: dragOrigin = toolbar.frame.origin
+    case .began:
+      dragOrigin = toolbar.frame.origin
+      refocusCanvasForBarDrag()
     case .moved(let travel):
       movedOrigin = CGPoint(x: dragOrigin.x + travel.dx, y: dragOrigin.y + travel.dy)
-    case .reset: movedOrigin = nil
+    case .reset:
+      movedOrigin = nil
+      refocusCanvasForBarDrag()
     }
     placeToolbar()
+  }
+
+  private func refocusCanvasForBarDrag() {
+    guard !slot.isAsking else { return }
+    focusCanvas()
+    if !textEditor.isEditing, let window = barCanvas?.window,
+      (window as? CaptureOverlayPanel)?.allowsKey == true, !window.isKeyWindow
+    {
+      window.makeKey()
+    }
   }
 
   /// Each overlay's keyboard goes to its canvas, so whichever overlay is key, keys reach the
   /// editor first, as on a single display.
   func focusCanvas() {
     guard !textEditor.isEditing else { return }
-    for canvas in canvases { canvas.window?.makeFirstResponder(canvas) }
+    for canvas in canvases where canvas.window?.firstResponder !== canvas {
+      canvas.window?.makeFirstResponder(canvas)
+    }
   }
 
   /// The tool or the selected annotation changed: the canvas under the pointer updates its
@@ -31,12 +48,20 @@ extension AnnotationEditor {
   }
 
   func redraw() {
-    for canvas in canvases { canvas.needsDisplay = true }
+    let dirty = pendingDirtyRect
+    pendingDirtyRect = nil
+    for canvas in canvases {
+      if let dirty, !dirty.isNull, !dirty.isEmpty {
+        canvas.setNeedsDisplay(dirty)
+      } else {
+        canvas.needsDisplay = true
+      }
+    }
   }
 
   /// The canvas on the display holding most of the selection (the first on a tie), whose host
   /// carries the bars.
-  private var barCanvas: AnnotationCanvasView? {
+  var barCanvas: AnnotationCanvasView? {
     canvases.enumerated().max { (share(of: $0.1), -$0.0) < (share(of: $1.1), -$1.0) }?.element
   }
 
@@ -76,8 +101,74 @@ extension AnnotationEditor {
       anchor = placed.anchor
       frames = (placed.toolbar, placed.styleBar)
     }
-    toolbar.frame = frames.toolbar
-    styleBar.frame = CGRect(origin: frames.styleBar.origin, size: styleBar.fittingSize)
+    if toolbar.frame != frames.toolbar { toolbar.frame = frames.toolbar }
+    let targetStyleFrame = CGRect(origin: frames.styleBar.origin, size: styleBar.fittingSize)
+    if styleBar.frame != targetStyleFrame { styleBar.frame = targetStyleFrame }
     slot.place(at: frames.styleBar.origin)
+  }
+
+  func handleStylesChange(_ styles: AnnotationStyles) {
+    guard isBurstRestyling else {
+      pendingStylesSave = nil
+      AnnotationStyleMemory.save(styles, to: defaults)
+      return
+    }
+    pendingStylesSave = styles
+    guard !pendingStylesFlushScheduled else { return }
+    pendingStylesFlushScheduled = true
+    RunLoop.main.perform(inModes: [.default]) { [weak self] in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        self.pendingStylesFlushScheduled = false
+        self.flushPendingStyles()
+      }
+    }
+  }
+
+  func flushPendingStyles() {
+    guard let pending = pendingStylesSave else { return }
+    pendingStylesSave = nil
+    AnnotationStyleMemory.save(pending, to: defaults)
+  }
+
+  func withBurstRestyle(_ active: Bool, _ body: () -> Void) {
+    let previous = isBurstRestyling
+    isBurstRestyling = active
+    defer { isBurstRestyling = previous }
+    body()
+  }
+
+  func prepareLocalizedRestyle(selected: [Annotation]) {
+    guard !selected.isEmpty, canvases.allSatisfy({ $0.reviewPreview == nil }),
+      !selected.contains(where: { $0.isSpotlight })
+    else {
+      pendingRestylePreBounds = nil
+      return
+    }
+    pendingRestylePreBounds = selected.reduce(CGRect.null) { $0.union($1.bounds) }
+  }
+
+  func prepareRefreshDirtyRect() {
+    guard let pre = pendingRestylePreBounds else { return }
+    let selected = store.selectedAnnotations
+    guard !textEditor.isEditing, canvases.allSatisfy({ $0.reviewPreview == nil }),
+      !selected.isEmpty, !selected.contains(where: { $0.isSpotlight })
+    else {
+      pendingDirtyRect = nil
+      return
+    }
+    let post = selected.reduce(CGRect.null) { $0.union($1.bounds) }
+    pendingDirtyRect = pre.union(post).insetBy(dx: -24, dy: -24)
+  }
+
+  func clearLocalizedRestyle() {
+    pendingRestylePreBounds = nil
+    pendingDirtyRect = nil
+  }
+}
+
+extension Annotation {
+  var isSpotlight: Bool {
+    if case .spotlight = shape { true } else { false }
   }
 }

@@ -59,6 +59,8 @@ final class AnnotationCommandSlot {
   var askOutput: CommandOutputAction = .annotate
   /// Copy text was clicked while the text was still being read: it copies once it is.
   var copyPending = false
+  /// Select Text was clicked while the text was still being read: it enters once text arrives.
+  var selectTextPending = false
   let hover = SelectionToolbarHover()
   let menus: ToolbarOptionsCascade
   let options: ToolbarOptionsContent
@@ -212,12 +214,13 @@ final class AnnotationCommandSlot {
     setup = nil
     isAsking = false
     copyPending = false
+    selectTextPending = false
   }
 
   // MARK: The rows' states
 
-  /// Select Text: disabled once the selection was read and holds no text (`false`).
-  func setSelectText(hasText: Bool?) { row?.setSelectText(hasText: hasText) }
+  /// Select Text: disabled while scanning or without text, enabled once text is available.
+  func setSelectText(_ state: AnnotationCommandRow.SelectText) { row?.setSelectText(state) }
 
   /// The text row's scope chip.
   func setScope(_ label: String) { textRow?.setScope(label) }

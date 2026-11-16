@@ -17,15 +17,18 @@ extension LongScreenshotAnnotator {
     if textEditor.isEditing { return true }
     let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
     guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return false }
-    let selected = interaction.tool != nil && store.selectedID != nil
+    let selected = !store.selectedIDs.isEmpty
     switch Int(event.keyCode) {
     case kVK_Escape, kVK_Return, kVK_ANSI_KeypadEnter:
       return false
+    case kVK_Tab:
+      return !store.document.isEmpty
     case kVK_Delete, kVK_ForwardDelete, kVK_LeftArrow, kVK_RightArrow, kVK_DownArrow,
       kVK_UpArrow:
       return selected
     default:
       let characters = event.charactersIgnoringModifiers ?? ""
+      if characters.lowercased() == "i" { return true }
       if ["[", "-", "_", "]", "=", "+"].contains(characters) {
         return styleTarget?.controls.contains(.strokes) == true
       }
@@ -36,6 +39,8 @@ extension LongScreenshotAnnotator {
   /// Picks a tool, or drops it (nil): open text ends and a gesture in progress goes.
   func choose(_ tool: AnnotationTool?) {
     textEditor.end()
+    styleCoordinator.dismissPickers()
+    styleCoordinator.setEyedropper(false)
     styleBar.endRedactionFeedback()
     interaction.cancelGesture()
     interaction.tool = tool
@@ -49,13 +54,96 @@ extension LongScreenshotAnnotator {
   /// slider drag) are one undo step.
   func restyle(_ change: AnnotationStyleChange, burst: UUID? = nil) {
     if let editing = textEditor.style {
-      interaction.styles.shared = change.applied(to: interaction.styles.shared)
-      textEditor.setStyle(change.applied(to: editing))
+      let nextShared = change.applied(to: interaction.styles.shared)
+      let nextEditing = change.applied(to: editing)
+      guard nextShared != interaction.styles.shared || nextEditing != editing else { return }
+      withBurstRestyle(burst != nil) {
+        if nextShared != interaction.styles.shared { interaction.styles.shared = nextShared }
+        if nextEditing != editing { textEditor.setStyle(nextEditing) }
+      }
+      refresh()
+      return
+    }
+    let selected = store.selectedAnnotations
+    if selected.isEmpty {
+      let slot = interaction.tool?.styleSlot ?? .shared
+      guard change.applied(to: interaction.styles[slot]) != interaction.styles[slot] else { return }
     } else {
+      let slot = selected[0].shape.styleSlot
+      let slotChanged = change.applied(to: interaction.styles[slot]) != interaction.styles[slot]
+      let itemsChanged = selected.contains { change.applied(to: $0.style) != $0.style }
+      guard slotChanged || itemsChanged else { return }
+    }
+    let before = refreshRevision
+    withBurstRestyle(burst != nil) {
       interaction.apply(change, burst: burst)
       focusCanvas()
     }
-    refresh()
+    if refreshRevision == before { refresh() }
+  }
+
+  func setSpotlightDim(_ dim: CGFloat, burst: UUID?) {
+    withBurstRestyle(burst != nil) {
+      store.setSpotlightDim(dim, burst: burst)
+    }
+  }
+
+  func withBurstRestyle(_ active: Bool, _ body: () -> Void) {
+    let previous = isBurstRestyling
+    isBurstRestyling = active
+    defer { isBurstRestyling = previous }
+    body()
+  }
+
+  func handleStylesChange(_ styles: AnnotationStyles) {
+    guard isBurstRestyling else {
+      pendingStylesSave = nil
+      AnnotationStyleMemory.save(styles, to: defaults)
+      return
+    }
+    pendingStylesSave = styles
+    guard !pendingStylesFlushScheduled else { return }
+    pendingStylesFlushScheduled = true
+    RunLoop.main.perform(inModes: [.default]) { [weak self] in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        self.pendingStylesFlushScheduled = false
+        self.flushPendingStyles()
+      }
+    }
+  }
+
+  func flushPendingStyles() {
+    guard let pending = pendingStylesSave else { return }
+    pendingStylesSave = nil
+    AnnotationStyleMemory.save(pending, to: defaults)
+  }
+
+  func scheduleCardSync() {
+    pendingCardSync = true
+    guard !pendingCardFlushScheduled else { return }
+    pendingCardFlushScheduled = true
+    RunLoop.main.perform(inModes: [.default]) { [weak self] in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        self.pendingCardFlushScheduled = false
+        self.flushPendingCardSync()
+      }
+    }
+  }
+
+  func flushPendingCardSync() {
+    guard pendingCardSync else { return }
+    pendingCardSync = false
+    lastCardAnnotations = store.document
+    if store.document != card.state.annotations {
+      card.setAnnotations(store.document)
+    }
+  }
+
+  func flushPendingBurstWork() {
+    flushPendingStyles()
+    flushPendingCardSync()
   }
 
   /// `[` `-` and `]` `=`: one step smaller or larger, one undo step each, for whatever the style
@@ -79,16 +167,24 @@ extension LongScreenshotAnnotator {
 
   // MARK: Auto-redact
 
-  /// The mosaics' rects (image points).
+  /// The mosaics' rects (image points), including freehand brush stroke bounding boxes.
   private var mosaics: [CGRect] {
-    store.document.annotations.compactMap { annotation in
-      if case .mosaic(let rect) = annotation.shape { rect } else { nil }
-    }
+    store.document.annotations.compactMap(\.mosaicCoverRect)
   }
 
   /// The sensitive items in the kept range that no mosaic hides.
   var unmaskedSensitive: [SensitiveText.Box] {
-    SensitiveText.uncovered(card.state.keptSensitive, by: mosaics)
+    let currentMosaics = mosaics
+    let currentSensitive = card.state.keptSensitive
+    if let cache = unmaskedSensitiveCache,
+      cache.mosaics == currentMosaics,
+      cache.sensitive == currentSensitive
+    {
+      return cache.uncovered
+    }
+    let uncovered = SensitiveText.uncovered(currentSensitive, by: currentMosaics)
+    unmaskedSensitiveCache = (currentMosaics, currentSensitive, uncovered)
+    return uncovered
   }
 
   /// The mosaic tool's dot and the style bar's auto-redact, as the card's text and the kept range
