@@ -72,17 +72,21 @@ blog-content.ts        Validates the blog at build time and serves it as virtual
 ## Section layout
 
 Section headings and introductions share the page's center line, with no category label beside them.
+The shared content column grows to 1680 px on wide screens, on the 24 px grid; the interface
+showcase, feature display, download section and footer follow the same edges. The download wide
+review is `4259:15568`, and the footer wide review is `4259:16030`. Blog posts retain their
+1200 px reading layout within the wider site.
 The features plate is one LED display set into the plate, a channel per capability (models,
 computer use, extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
 capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
 (`src/ui/led-board.tsx`), which also draws the download board: the dots power on column by column
-as the plate arrives, and a fine pointer swells them like a loupe. Strips keep each channel near
-12rem wide, so the display stays compact. Wide (from 1100px), the six channels join into one strip
+as the plate arrives, and a fine pointer swells them like a loupe. Strips use equal-width channels.
+Wide (from 1100px), the six channels fill the content column in one strip
 with hairline seams and their names and lines are centered beneath them; regular (700–1099px),
 they form two strips of three; compact, each channel is a small square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
 Each capability's description has two short lines authored in `copy.ts`; preserve their newline
 so the descriptions align in both languages, while allowing enlarged text to reflow.
-The features review (`2564:159329` desktop, `2564:159355` compact) composes the shared section
+The features reviews (`2564:159329` desktop, `4259:13637` wide, `2564:159355` compact) compose the shared section
 heading with `Website / Feature channel` (Layout=Strip with Position Start, Middle, End;
 Layout=Compact), whose Pictogram property swaps among `Website / Feature pictogram` (one variant
 per capability).

@@ -155,6 +155,8 @@
   display: grid;
   justify-items: center;
   gap: round(clamp(56px, 7vw, 96px), 24px);
+  /* Keep the article's reading measure as the shared site container grows. */
+  max-inline-size: 1200px;
 }
 
 .post__bar,
