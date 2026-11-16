@@ -4,6 +4,7 @@ import {
   APP_LANGUAGES,
   DEFAULT_SHORTCUTS,
   LONG_SCREENSHOT_CONFIRM_ACTIONS,
+  SCREENSHOT_CONFIRM_ACTIONS,
   VIEW_INITIATIVES,
   type AppAppearance,
   type AppLanguage,
@@ -13,6 +14,7 @@ import {
   type PanelBackground,
   type PanelGlassVariant,
   type PanelTint,
+  type ScreenshotConfirmAction,
   type SelectionToolbarActivation,
   type SelectionToolbarIconMode,
   type SelectionToolbarKey,
@@ -61,6 +63,7 @@ export type {
   PanelBackground,
   PanelGlassVariant,
   PanelTint,
+  ScreenshotConfirmAction,
   SelectionToolbarActivation,
   SelectionToolbarIconMode,
   SelectionToolbarKey,
@@ -77,10 +80,12 @@ export {
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
   DEFAULT_RESULT_MARKDOWN,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+  DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+  DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   LONG_SCREENSHOT_CONFIRM_ACTIONS,
+  SCREENSHOT_CONFIRM_ACTIONS,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_ICON_MODES,
   SELECTION_TOOLBAR_KEYS,
@@ -131,6 +136,8 @@ export const isAppLanguage = (value: unknown): value is AppLanguage =>
   isOneOf(LANGUAGE_CODES, value);
 export const isViewInitiative = (value: unknown): value is ViewInitiative =>
   isOneOf(VIEW_INITIATIVES, value);
+export const isScreenshotConfirmAction = (value: unknown): value is ScreenshotConfirmAction =>
+  isOneOf(SCREENSHOT_CONFIRM_ACTIONS, value);
 export const isLongScreenshotConfirmAction = (
   value: unknown,
 ): value is LongScreenshotConfirmAction => isOneOf(LONG_SCREENSHOT_CONFIRM_ACTIONS, value);

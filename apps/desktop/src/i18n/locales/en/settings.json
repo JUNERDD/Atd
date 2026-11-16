@@ -99,7 +99,8 @@
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
       "screenshotSaveLocation": "save folder ask each time choose folder path local disk screenshot",
       "recordingSaveLocation": "screen recording video mp4 save folder ask each time choose folder path local disk",
-      "screenshotCopyOnConfirm": "screenshot copy clipboard confirm attach composer toolbar check",
+      "screenshotConfirmAction": "screenshot confirm action behavior open panel main attach composer input copy clipboard toolbar check return",
+      "screenshotConfirmInComposer": "screenshot confirm composer attach menu plus input panel",
       "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
@@ -400,10 +401,21 @@
       "description": "Choose each time or save screenshots and long screenshots directly to a folder",
       "saveFailed": "The screenshot save location could not be updated."
     },
-    "copyOnConfirm": {
-      "title": "Copy to clipboard when confirming",
-      "description": "When clicking ✓ on the screenshot toolbar to attach a screenshot to the composer, also copy it to the clipboard.",
-      "saveFailed": "The screenshot copy setting could not be saved."
+    "confirmAction": {
+      "title": "Screenshot confirmation",
+      "description": "Whether clicking ✓, pressing Return, or double-clicking opens the main panel and attaches to the composer, copies to the clipboard, or both",
+      "label": "Screenshot confirmation action",
+      "saveFailed": "The screenshot confirmation setting could not be saved.",
+      "modes": {
+        "attachAndCopy": "Attach to composer and copy",
+        "attach": "Attach to composer only",
+        "copy": "Copy to clipboard only"
+      }
+    },
+    "confirmInComposer": {
+      "title": "Apply to composer \"+ › Screenshot\"",
+      "description": "When on, confirming a screenshot started from \"+ › Screenshot\" in the main panel composer also follows the confirmation behavior above; when off, ✓ always attaches to the current composer.",
+      "saveFailed": "The composer screenshot confirmation setting could not be saved."
     },
     "longScreenshotConfirmAction": {
       "title": "Long screenshot confirmation",

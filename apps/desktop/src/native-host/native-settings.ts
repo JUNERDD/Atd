@@ -16,6 +16,7 @@ import {
   isAppAppearance,
   isAppLanguage,
   isLongScreenshotConfirmAction,
+  isScreenshotConfirmAction,
   isViewInitiative,
   type SettingsBridge,
   type SettingsSnapshot,
@@ -185,7 +186,14 @@ export function nativeSettings(
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
     saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
-    setScreenshotCopyOnConfirm: (screenshotCopyOnConfirm) => write({ screenshotCopyOnConfirm }),
+    setScreenshotConfirmAction: async (screenshotConfirmAction) => {
+      if (!isScreenshotConfirmAction(screenshotConfirmAction)) {
+        throw new TypeError('Unsupported screenshot confirm action.');
+      }
+      return write({ screenshotConfirmAction });
+    },
+    setScreenshotConfirmInComposer: (screenshotConfirmInComposer) =>
+      write({ screenshotConfirmInComposer }),
     setLongScreenshotConfirmAction: async (longScreenshotConfirmAction) => {
       if (!isLongScreenshotConfirmAction(longScreenshotConfirmAction)) {
         throw new TypeError('Unsupported long screenshot confirm action.');

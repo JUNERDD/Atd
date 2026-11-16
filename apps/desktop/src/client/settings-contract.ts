@@ -11,6 +11,7 @@ import type {
   NextStepClick,
   PanelBackground,
   PanelPlacement,
+  ScreenshotConfirmAction,
   SelectionToolbarSettings,
   SettingsItemLink,
   ShortcutBindings,
@@ -27,13 +28,15 @@ export {
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
   DEFAULT_RESULT_MARKDOWN,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+  DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+  DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
   DEFAULT_SELECTION_TOOLBAR,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   isAppAppearance,
   isAppLanguage,
   isLongScreenshotConfirmAction,
+  isScreenshotConfirmAction,
   isViewInitiative,
   LANGUAGE_CODES,
   LONG_SCREENSHOT_CONFIRM_ACTIONS,
@@ -45,6 +48,7 @@ export {
   PANEL_TINTS,
   PANEL_TONE_RANGE,
   resolveLanguage,
+  SCREENSHOT_CONFIRM_ACTIONS,
   SELECTION_TOOLBAR_ACTIVATIONS,
   SELECTION_TOOLBAR_ICON_MODES,
   SELECTION_TOOLBAR_KEYS,
@@ -61,6 +65,7 @@ export {
   type PanelGlassVariant,
   type PanelPlacement,
   type PanelTint,
+  type ScreenshotConfirmAction,
   type SelectionToolbarActivation,
   type SelectionToolbarIconMode,
   type SelectionToolbarKey,
@@ -148,8 +153,10 @@ export interface SettingsSnapshot {
   shellAllowlist: string[];
   /** The toolbar the shell shows over text selected in other apps, and the apps it skips. */
   selectionToolbar: SelectionToolbarSettings;
-  /** Copy screenshot to clipboard on toolbar ✓ confirm (`DEFAULT_SCREENSHOT_COPY_ON_CONFIRM`). */
-  screenshotCopyOnConfirm: boolean;
+  /** Toolbar ✓ confirm action for screenshots (`DEFAULT_SCREENSHOT_CONFIRM_ACTION`). */
+  screenshotConfirmAction: ScreenshotConfirmAction;
+  /** Whether `screenshotConfirmAction` applies to composer `+ › Screenshot` (`DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER`). */
+  screenshotConfirmInComposer: boolean;
   /** Done action in long screenshot (`DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION`). */
   longScreenshotConfirmAction: LongScreenshotConfirmAction;
   /**
@@ -242,7 +249,8 @@ export interface SettingsBridge {
   addShellAllowlistEntry: (entry: string) => Promise<SettingsSnapshot>;
   /** Replaces the selection toolbar settings as a whole. */
   saveSelectionToolbar: (value: SelectionToolbarSettings) => Promise<SettingsSnapshot>;
-  setScreenshotCopyOnConfirm: (enabled: boolean) => Promise<SettingsSnapshot>;
+  setScreenshotConfirmAction: (action: ScreenshotConfirmAction) => Promise<SettingsSnapshot>;
+  setScreenshotConfirmInComposer: (enabled: boolean) => Promise<SettingsSnapshot>;
   setLongScreenshotConfirmAction: (
     action: LongScreenshotConfirmAction,
   ) => Promise<SettingsSnapshot>;

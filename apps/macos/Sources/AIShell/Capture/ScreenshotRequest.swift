@@ -5,7 +5,7 @@ import Foundation
 /// image-only session for a general capture entry.
 enum ScreenshotRequest: Equatable {
   /// Composer, global capture shortcuts and mini panel: commands, questions and recording.
-  case capture(CaptureMode)
+  case capture(CaptureMode, fromComposer: Bool = false)
   /// An image for an existing command or attachment destination, or an image being edited.
   case image
 
@@ -13,9 +13,13 @@ enum ScreenshotRequest: Equatable {
     if case .capture = self { true } else { false }
   }
 
+  var fromComposer: Bool {
+    if case .capture(_, let fromComposer) = self { fromComposer } else { false }
+  }
+
   var mode: CaptureMode {
     switch self {
-    case .capture(let mode): mode
+    case .capture(let mode, _): mode
     case .image: .screenshot
     }
   }

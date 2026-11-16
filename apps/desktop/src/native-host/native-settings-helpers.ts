@@ -7,7 +7,8 @@ import {
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
   DEFAULT_RESULT_MARKDOWN,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+  DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+  DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
@@ -86,8 +87,9 @@ export function buildSettingsSnapshot(
     permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
     shellAllowlist: [...(settings?.shellAllowlist ?? [])],
     selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
-    screenshotCopyOnConfirm:
-      settings?.screenshotCopyOnConfirm ?? DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+    screenshotConfirmAction: settings?.screenshotConfirmAction ?? DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+    screenshotConfirmInComposer:
+      settings?.screenshotConfirmInComposer ?? DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
     longScreenshotConfirmAction:
       settings?.longScreenshotConfirmAction ?? DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
     commandTyping: settings?.commandTyping ?? DEFAULT_COMMAND_TYPING,

@@ -1133,6 +1133,9 @@
                           "const": "record"
                         }
                       ]
+                    },
+                    "fromComposer": {
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -4096,9 +4099,25 @@
             },
             "params": {
               "type": "object",
-              "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+              "required": ["confirmAction", "confirmInComposer", "longScreenshotConfirmAction"],
               "properties": {
-                "copyOnConfirm": {
+                "confirmAction": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "attachAndCopy"
+                    },
+                    {
+                      "type": "string",
+                      "const": "attach"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    }
+                  ]
+                },
+                "confirmInComposer": {
                   "type": "boolean"
                 },
                 "longScreenshotConfirmAction": {
@@ -8346,6 +8365,9 @@
                   "const": "record"
                 }
               ]
+            },
+            "fromComposer": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -11854,9 +11876,25 @@
     },
     "ScreenshotPreferencesSetPost": {
       "type": "object",
-      "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+      "required": ["confirmAction", "confirmInComposer", "longScreenshotConfirmAction"],
       "properties": {
-        "copyOnConfirm": {
+        "confirmAction": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "attachAndCopy"
+            },
+            {
+              "type": "string",
+              "const": "attach"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
+        "confirmInComposer": {
           "type": "boolean"
         },
         "longScreenshotConfirmAction": {

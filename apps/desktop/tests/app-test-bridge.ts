@@ -261,8 +261,11 @@ export function installBridge(extras?: {
         };
       },
       saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
-      setScreenshotCopyOnConfirm: vi.fn(async (screenshotCopyOnConfirm) =>
-        writeSettings({ screenshotCopyOnConfirm }),
+      setScreenshotConfirmAction: vi.fn(async (screenshotConfirmAction) =>
+        writeSettings({ screenshotConfirmAction }),
+      ),
+      setScreenshotConfirmInComposer: vi.fn(async (screenshotConfirmInComposer) =>
+        writeSettings({ screenshotConfirmInComposer }),
       ),
       setLongScreenshotConfirmAction: vi.fn(async (longScreenshotConfirmAction) =>
         writeSettings({ longScreenshotConfirmAction }),

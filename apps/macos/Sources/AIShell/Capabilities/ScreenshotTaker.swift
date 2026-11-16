@@ -118,8 +118,11 @@ final class ScreenshotTaker {
   var saveFolderURL: () -> URL? = { ScreenshotPreferences.shared.currentSaveFolderURL() }
   /// Prompts for a file URL when saving a live long screenshot with `saveFolderURL() == nil`.
   var chooseSaveFile: ((String, UTType) async -> URL?)?
-  /// Whether confirming a toolbar screenshot capture also writes it silently to the clipboard.
-  var copyOnConfirm: () -> Bool = { ScreenshotPreferences.shared.copyOnConfirm }
+  /// What confirming a toolbar screenshot capture (`✓` / Return / double-click) does for a
+  /// session started from the composer (`true`) or from a shortcut / mini panel (`false`).
+  var confirmAction: (_ fromComposer: Bool) -> ScreenshotPreferencesSetPost.ConfirmAction = {
+    ScreenshotPreferences.shared.effectiveConfirmAction(fromComposer: $0)
+  }
   /// What confirming a live long screenshot does.
   var longScreenshotConfirm: () -> CaptureSessionOptions.LongScreenshotConfirm = {
     ScreenshotPreferences.shared.longScreenshotConfirm
@@ -237,9 +240,18 @@ final class ScreenshotTaker {
       let capture = confirmed.capture
       regions.remember(
         capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
+      let action: ScreenshotPreferencesSetPost.ConfirmAction =
+        request.toolbar && confirmed.launch == nil
+        ? confirmAction(request.fromComposer) : .attach
+      if action == .copy {
+        if arbiter.writeClipboard(as: .screenshot, { CaptureExport.copy(capture, to: $0) }) {
+          showCopied?()
+        }
+        return (.cancelled, nil)
+      }
       let imported = try await library.importCapture(
         capture, capturedAt: confirmed.capturedAt, snapshot: confirmed.snapshot)
-      if request.toolbar, confirmed.launch == nil, copyOnConfirm() {
+      if action == .attachAndCopy {
         _ = arbiter.writeClipboard(as: .screenshot) { CaptureExport.copy(capture, to: $0) }
       }
       return (

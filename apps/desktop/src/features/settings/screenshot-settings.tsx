@@ -20,9 +20,12 @@ import {
 } from '@atd/ui/components/select';
 import {
   DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+  DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+  DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
   LONG_SCREENSHOT_CONFIRM_ACTIONS,
+  SCREENSHOT_CONFIRM_ACTIONS,
   isLongScreenshotConfirmAction,
+  isScreenshotConfirmAction,
   type SettingsSnapshot,
 } from '../../client/settings-contract';
 import { SaveLocationRow } from './save-location-row';
@@ -50,18 +53,89 @@ function useSaving(failedMessage: string) {
   return { pending, error, run };
 }
 
+/** Shared select row for screenshot confirmation preferences with wrapping actions and error state. */
+function ScreenshotSelectRow<Mode extends string>({
+  anchor,
+  title,
+  description,
+  label,
+  value,
+  modes,
+  modeLabel,
+  disabled,
+  pending,
+  error,
+  onValueChange,
+}: {
+  anchor: string;
+  title: string;
+  description: string;
+  label: string;
+  value: Mode;
+  modes: readonly Mode[];
+  modeLabel: (mode: Mode) => string;
+  disabled: boolean;
+  pending: boolean;
+  error?: string | undefined;
+  onValueChange: (next: string) => void;
+}) {
+  const descriptionId = useId();
+  return (
+    <Item asChild size="sm" className="settings-card-row">
+      <li data-settings-anchor={anchor}>
+        {/* Wide enough that the select wraps below a long description in a narrow column. */}
+        <ItemContent className="min-w-[min(200px,100%)]">
+          <ItemTitle className="whitespace-normal">{title}</ItemTitle>
+          <ItemDescription id={descriptionId} className="whitespace-normal">
+            {description}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions className="ml-auto max-w-full flex-wrap justify-end">
+          <Select value={value} disabled={disabled} onValueChange={onValueChange}>
+            <SelectTrigger
+              size="sm"
+              className="max-w-full"
+              aria-label={label}
+              aria-describedby={descriptionId}
+              aria-busy={pending || undefined}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {modes.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {modeLabel(mode)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ItemActions>
+        {error && (
+          <ItemFooter role="alert" className="settings-inline-error items-start justify-start">
+            <CircleAlert aria-hidden="true" />
+            <span>{error}</span>
+          </ItemFooter>
+        )}
+      </li>
+    </Item>
+  );
+}
+
 /**
- * General › Screenshot: the local save folder, whether confirming a screenshot copies it to the
- * clipboard too, and what clicking Done in long screenshot does.
+ * General › Screenshot: the local save folder, what confirming a screenshot does, whether that
+ * also applies when capturing from the composer's "+ › Screenshot", and what clicking Done in long
+ * screenshot does.
  */
 export function ScreenshotSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
-  const descriptionId = useId();
-  const saveCopy = window.desktop?.settings.setScreenshotCopyOnConfirm;
-  const saveConfirmAction = window.desktop?.settings.setLongScreenshotConfirmAction;
-  const copySaving = useSaving(t('screenshot.copyOnConfirm.saveFailed'));
-  const confirmSaving = useSaving(t('screenshot.longScreenshotConfirmAction.saveFailed'));
-  const confirmAction =
+  const saveConfirmAction = window.desktop?.settings.setScreenshotConfirmAction;
+  const saveConfirmInComposer = window.desktop?.settings.setScreenshotConfirmInComposer;
+  const saveLongConfirmAction = window.desktop?.settings.setLongScreenshotConfirmAction;
+  const confirmSaving = useSaving(t('screenshot.confirmAction.saveFailed'));
+  const composerSaving = useSaving(t('screenshot.confirmInComposer.saveFailed'));
+  const longConfirmSaving = useSaving(t('screenshot.longScreenshotConfirmAction.saveFailed'));
+  const confirmAction = snapshot?.screenshotConfirmAction ?? DEFAULT_SCREENSHOT_CONFIRM_ACTION;
+  const longConfirmAction =
     snapshot?.longScreenshotConfirmAction ?? DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION;
 
   return (
@@ -78,66 +152,55 @@ export function ScreenshotSettings({ snapshot }: { snapshot: SettingsSnapshot | 
             description={t('screenshot.saveLocation.description')}
             saveFailedMessage={t('screenshot.saveLocation.saveFailed')}
           />
-          <SettingsSwitchRow
-            id="settings-screenshot-copy-on-confirm"
-            anchor="settings-screenshot-copy-on-confirm"
-            title={t('screenshot.copyOnConfirm.title')}
-            description={t('screenshot.copyOnConfirm.description')}
-            checked={snapshot?.screenshotCopyOnConfirm ?? DEFAULT_SCREENSHOT_COPY_ON_CONFIRM}
-            disabled={!snapshot || !saveCopy}
-            pending={copySaving.pending}
-            note={copySaving.error}
-            onCheckedChange={(enabled) => saveCopy && void copySaving.run(() => saveCopy(enabled))}
+          <ScreenshotSelectRow
+            anchor="settings-screenshot-confirm-action"
+            title={t('screenshot.confirmAction.title')}
+            description={t('screenshot.confirmAction.description')}
+            label={t('screenshot.confirmAction.label')}
+            value={confirmAction}
+            modes={SCREENSHOT_CONFIRM_ACTIONS}
+            modeLabel={(mode) => t(`screenshot.confirmAction.modes.${mode}`)}
+            disabled={!snapshot || !saveConfirmAction}
+            pending={confirmSaving.pending}
+            error={confirmSaving.error}
+            onValueChange={(next) => {
+              if (saveConfirmAction && isScreenshotConfirmAction(next)) {
+                void confirmSaving.run(() => saveConfirmAction(next));
+              }
+            }}
           />
-          <Item asChild size="sm" className="settings-card-row">
-            <li data-settings-anchor="settings-long-screenshot-confirm-action">
-              {/* Wide enough that the select wraps below a long description in a narrow column. */}
-              <ItemContent className="min-w-[min(200px,100%)]">
-                <ItemTitle className="whitespace-normal">
-                  {t('screenshot.longScreenshotConfirmAction.title')}
-                </ItemTitle>
-                <ItemDescription id={descriptionId} className="whitespace-normal">
-                  {t('screenshot.longScreenshotConfirmAction.description')}
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions className="ml-auto flex-wrap justify-end">
-                <Select
-                  value={confirmAction}
-                  disabled={!snapshot || !saveConfirmAction}
-                  onValueChange={(next) => {
-                    if (saveConfirmAction && isLongScreenshotConfirmAction(next)) {
-                      void confirmSaving.run(() => saveConfirmAction(next));
-                    }
-                  }}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    aria-label={t('screenshot.longScreenshotConfirmAction.label')}
-                    aria-describedby={descriptionId}
-                    aria-busy={confirmSaving.pending || undefined}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LONG_SCREENSHOT_CONFIRM_ACTIONS.map((mode) => (
-                      <SelectItem key={mode} value={mode}>
-                        {t(`screenshot.longScreenshotConfirmAction.modes.${mode}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </ItemActions>
-              {confirmSaving.error && (
-                <ItemFooter
-                  role="alert"
-                  className="settings-inline-error items-start justify-start"
-                >
-                  <CircleAlert aria-hidden="true" />
-                  <span>{confirmSaving.error}</span>
-                </ItemFooter>
-              )}
-            </li>
-          </Item>
+          <SettingsSwitchRow
+            id="settings-screenshot-confirm-in-composer"
+            anchor="settings-screenshot-confirm-in-composer"
+            title={t('screenshot.confirmInComposer.title')}
+            description={t('screenshot.confirmInComposer.description')}
+            checked={
+              snapshot?.screenshotConfirmInComposer ?? DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER
+            }
+            disabled={!snapshot || !saveConfirmInComposer}
+            pending={composerSaving.pending}
+            note={composerSaving.error}
+            onCheckedChange={(enabled) =>
+              saveConfirmInComposer && void composerSaving.run(() => saveConfirmInComposer(enabled))
+            }
+          />
+          <ScreenshotSelectRow
+            anchor="settings-long-screenshot-confirm-action"
+            title={t('screenshot.longScreenshotConfirmAction.title')}
+            description={t('screenshot.longScreenshotConfirmAction.description')}
+            label={t('screenshot.longScreenshotConfirmAction.label')}
+            value={longConfirmAction}
+            modes={LONG_SCREENSHOT_CONFIRM_ACTIONS}
+            modeLabel={(mode) => t(`screenshot.longScreenshotConfirmAction.modes.${mode}`)}
+            disabled={!snapshot || !saveLongConfirmAction}
+            pending={longConfirmSaving.pending}
+            error={longConfirmSaving.error}
+            onValueChange={(next) => {
+              if (saveLongConfirmAction && isLongScreenshotConfirmAction(next)) {
+                void longConfirmSaving.run(() => saveLongConfirmAction(next));
+              }
+            }}
+          />
         </ItemGroup>
       </Card>
     </section>
