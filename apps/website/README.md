@@ -239,58 +239,34 @@ dev and preview servers at `/api/github`) revalidates the live count through the
 
 ## Interface showcase
 
-The interface showcase comes right after the hero; the nav calls it “Features”, and the features
-display after it “Control”. The showcase plays ten short clips as a timeline, in three groups: in
-place (the selection toolbar with a command's options, the compose card and the screenshot tool), panel
-and conversation (main panel, conversation and Mini Panel), and apps and connections (computer use,
-Apps, automations and settings). The clips are rendered by the films repository with the same
-Remotion stack and product kit as the tour films: nine are spans of the tour films and one, settings,
-is a short film of its own, each silent, at 1280 × 720, in English and in Chinese, so each language
-shows the product in its own words. Each clip shows its case's whole process, pointer, keys and
-answer included, then fades to black and loops. Their provenance and how to update them are in
-[`public/cases/README.md`](public/cases/README.md).
+The showcase presents ten static product illustrations in three groups: in place (selection,
+review and screenshot), panel and conversation (main panel, conversation and Mini Panel), and
+apps and connections (computer use, Apps, automations and settings). Each scene is designed with
+editable, connected product components in the canonical Figma Website page, then exported as a
+1440 × 900 transparent WebP in English and Chinese. Product compositions have safe margins over
+one shared backdrop; Mini Panel anchors to the right, while the other scenes stay centered.
+The source nodes, backdrop credit and export settings are
+in [`public/cases/README.md`](public/cases/README.md). The homepage loads images only; earlier film
+clips remain archived source material.
 
-Wide, the section's heading and lede are followed by two columns. The left column is a numbered
-index of the ten steps, one per clip, scrolling normally along an LED rail at the displays' 8 px
-pitch; each group opens with its name. On the right a stage holds still at the viewport's middle
-(`position: sticky`): a frameless 16:9 screen that casts the current clip's light onto the plate
-around it (four blurred lights, each its quarter's average color, read from the playing clip and
-easing to each new case's colors: `glow.tsx`), a slate above naming the current group and surface and counting the cases (`05 / 10`),
-and the case's caption below it like a subtitle under a picture, the lead-in dimmer than the part
-it leads to. The step whose middle is nearest the screen's middle is current
-(`use-case-timeline.ts`): its light on the rail turns on, its title brightens and its line rises
-in, while the other steps keep only their number and a quiet title. The rail is lit from the first
-step's light down to that reading line, 1:1 with the scroll. Nothing pins the page and nothing
-snaps: the text moves with the scroll, and the stage changes clip as each step reaches it.
-Narrower than 760 px, the stage and rail are left out and the steps stack, each with its own clip
-above its number, title and line, and every line shows.
+On wide screens, a numbered index scrolls beside a sticky 16:10 image. The step nearest the
+image's middle becomes current (`use-case-timeline.ts`); its title brightens, its description
+types in **without a caret**, and its foreground image and caption appear. An interrupted description
+keeps its typed prefix while fading out and restarts from the complete source when selected again.
+Captions fade out for 150ms before the latest caption fades in for 250ms; pending entrances are
+cancelled on another selection so sentences never overlap. The backdrop remains
+stationary outside the slide transitions. The LED rail follows the reading
+line. Nearby images load lazily, and reduced motion keeps the same static artwork. On narrow
+screens, each image sits above its own title and complete description. An image failure shows a
+localized message. Each step retains its URL hash, such as `#screenshot`.
 
-Clips play on their own clock, not the scroll's. Once the steps are a quarter of the way up the
-viewport, the current clip plays from its start each time it becomes current, looping, however fast
-the scroll moves on (`src/sections/cases/clip.tsx`); the others pause. A clip shows its poster, a
-still of its result, until its video is actually playing, so a slow network or a refused autoplay
-leaves the still in place. The prerendered page (no `data-timeline`) shows every step's line and the
-first clip's poster, and reduced motion shows each clip's poster without playing it. A clip's video
-loads only as it is about to play: on the stage the current one and up to two past it once the steps
-come into view, stacked only the current one; posters load lazily.
+The desktop (`2564:159138`) and compact (`2564:159288`) Figma reviews use instances of the new
+`Showcase / <case> / <language>` compositions from `project/4227:9667`. Their case steps remain
+connected to `Website / Case step`; the shared component documents the cursor-free reveal.
+Bilingual labels, titles, descriptions, captions and image alt text live in `src/content/cases.ts`;
+section-level copy lives in `src/sections/cases/copy.ts`.
 
-Each step's title is a button that brings its step to the screen's middle: a neighbouring step
-glides there, a farther one jumps so the clips in between don't flash by. Each step also has its
-own link, its case's id as the hash (`/#automations`, `/zh#settings`): a page opened on it lands
-with that step at the reading line, and choosing a step puts its link in the address bar without
-adding a history entry.
-The showcase review (`2564:159138` desktop, `2564:159288` compact) composes the shared section
-heading, `Website / Case step` instances (Layout=Wide with State Upcoming, Current or Passed; the
-Group start property shows an exposed `Website / Case group` legend; Number, Title and Description
-text properties) along the rail, and the display with a scene and `Website / Case readout` (Group,
-Current and Total text properties). The compact review stacks each scene above a
-`Website / Case step` (Layout=Stacked), with a `Website / Case group` above a group's first scene.
-These reviews still show the earlier Figma scenes in a bezel display, not the clips on the stage.
-
-Keep bilingual labels, titles, descriptions, captions, clip descriptions and group names in
-`src/content/cases.ts`, and the section's own copy in `src/sections/cases/copy.ts`.
-The former standalone Automations section and its navigation link are no longer mounted;
-automations appear as a scene in this showcase.
+The former standalone Automations section is no longer mounted; automations appear in this showcase.
 
 ## Archived Privacy section
 

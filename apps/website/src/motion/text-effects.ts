@@ -54,18 +54,21 @@ function decode(final: string): Pick<Job, 'duration' | 'render'> {
   };
 }
 
-/** Types the text in after a caret. */
-function type(final: string): Pick<Job, 'duration' | 'render'> {
+/** Types the text in, optionally followed by a caret. */
+function type(final: string, caret = true): Pick<Job, 'duration' | 'render'> {
   const chars = Array.from(final);
   return {
     duration: Math.min(1600, 160 + 26 * chars.length),
     render(progress) {
-      return chars.slice(0, Math.round(progress * chars.length)).join('') + CARET;
+      return chars.slice(0, Math.round(progress * chars.length)).join('') + (caret ? CARET : '');
     },
   };
 }
 
-const MAKERS: Record<TextEffect, (final: string) => Pick<Job, 'duration' | 'render'>> = {
+const MAKERS: Record<
+  TextEffect,
+  (final: string, caret: boolean) => Pick<Job, 'duration' | 'render'>
+> = {
   decode,
   type,
 };
@@ -73,6 +76,8 @@ const MAKERS: Record<TextEffect, (final: string) => Pick<Job, 'duration' | 'rend
 export interface TextEffects {
   /** Plays an effect on an element whose only child is one text node; anything else is skipped. */
   play(element: HTMLElement, effect: TextEffect, delayMs: number): void;
+  /** Cancels every effect, leaving its last rendered text in place. */
+  cancel(): void;
   /** Ends every effect at its final text. */
   stop(): void;
 }
@@ -82,7 +87,7 @@ export interface TextEffects {
  * node, never replaces it, so React keeps its node; if a render changes the text mid-effect, the
  * effect stops and the new text stands.
  */
-export function createTextEffects(): TextEffects {
+export function createTextEffects({ caret = true }: { caret?: boolean } = {}): TextEffects {
   const jobs = new Set<Job>();
   let frame = 0;
 
@@ -109,18 +114,25 @@ export function createTextEffects(): TextEffects {
   return {
     play(element, effect, delayMs) {
       const node = element.firstChild;
-      if (!(node instanceof Text) || node.nextSibling || !node.nodeValue) return;
+      if (!(node instanceof Text) || node.nextSibling) return;
+      const final = node.data;
+      if (!final) return;
       const now = performance.now();
       const job: Job = {
         node,
-        final: node.nodeValue,
+        final,
         start: now + delayMs,
-        written: node.nodeValue,
-        ...MAKERS[effect](node.nodeValue),
+        written: node.data,
+        ...MAKERS[effect](final, caret),
       };
       write(job, job.render(0, now));
       jobs.add(job);
       if (frame === 0) frame = requestAnimationFrame(tick);
+    },
+    cancel() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      jobs.clear();
     },
     stop() {
       cancelAnimationFrame(frame);

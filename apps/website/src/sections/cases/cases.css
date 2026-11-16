@@ -180,13 +180,10 @@
   color: var(--fg-2);
 }
 
-/* The whole line holds the paragraph's shape, and the copy over it is what shows: it types in
-   (steps.tsx) without reflowing the steps, its caret free to run past the line's end. */
-.cases__desc-line {
-  color: transparent;
-}
-
+/* The complete line also serves stacked and reduced-motion layouts; only animated desktop
+   descriptions show the typed copy, which can remain partially typed after cancellation. */
 .cases__desc-typed {
+  display: none;
   position: absolute;
   inset: 0;
 }
@@ -204,13 +201,26 @@
   }
 
   .cases__showcase[data-timeline] .cases__desc {
-    --case-desc-types: 1;
     opacity: 0;
     transition: opacity var(--dur-base) var(--curve-out);
   }
 
   .cases__showcase[data-timeline] .cases__step[data-current] .cases__desc {
     opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :root[data-motion] .cases__showcase[data-timeline] .cases__desc {
+      --case-desc-types: 1;
+    }
+
+    :root[data-motion] .cases__showcase[data-timeline] .cases__desc-line {
+      color: transparent;
+    }
+
+    :root[data-motion] .cases__showcase[data-timeline] .cases__desc-typed {
+      display: block;
+    }
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -230,13 +240,13 @@
    leaves it. */
 .cases__aside {
   --slate-h: 40px;
-  --screen-w: min(100cqi, (100svh - var(--stage-top) - var(--slate-h) - 88px) * 16 / 9);
+  --screen-w: min(100cqi, (100svh - var(--stage-top) - var(--slate-h) - 88px) * 16 / 10);
   container-type: inline-size;
 }
 
 .cases__hold {
   position: sticky;
-  inset-block-start: max(var(--stage-top), 50svh - var(--screen-w) * 9 / 32 - var(--slate-h));
+  inset-block-start: max(var(--stage-top), 50svh - var(--screen-w) * 5 / 16 - var(--slate-h));
   inline-size: var(--screen-w);
   max-inline-size: 100%;
   margin-inline: auto;
@@ -277,12 +287,11 @@
   color: var(--fg-3);
 }
 
-/* A 16:9 screen with no bezel, like the films' own frame: the clips stacked on it, cross-fading
-   through the black each clip starts and ends on. */
+/* The fixed backdrop and transparent foregrounds share one uncropped 16:10 frame. */
 .cases__screen,
 .cases__shot {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   isolation: isolate;
   background-color: var(--ink-0);
@@ -293,18 +302,7 @@
   box-shadow: var(--shadow-screen);
 }
 
-/* The glass edge, drawn over the clips so a light frame keeps its corners. */
-.cases__screen::after,
-.cases__shot::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  pointer-events: none;
-}
-
+/* Only the product foreground fades. The shared backdrop is a stationary sibling. */
 .cases__slide {
   position: absolute;
   inset: 0;
@@ -316,8 +314,7 @@
     visibility 0s linear var(--dur-sheet);
 }
 
-/* A case the scroll hasn't come close to yet (use-case-timeline.ts): not rendered, so its poster
-   and video wait. */
+/* Distant images wait until the timeline approaches their step. */
 .cases__slide[data-deferred] {
   display: none;
 }
@@ -328,36 +325,21 @@
   transition-delay: 0s;
 }
 
-/* ---------- Clips ---------- */
+/* ---------- Images ---------- */
 
-/* A clip fills its screen: the poster, and the video over it once it plays. */
-.cases__clip,
-.cases__poster,
-.cases__video {
+.cases__image,
+.cases__backdrop {
   position: absolute;
   inset: 0;
-}
-
-.cases__poster,
-.cases__video {
   display: block;
   inline-size: 100%;
   block-size: 100%;
-  object-fit: cover;
+  object-fit: contain;
   user-select: none;
 }
 
-.cases__video {
-  opacity: 0;
-  transition: opacity var(--dur-base) linear;
-}
-
-.cases__clip[data-rolling] .cases__video {
-  opacity: 1;
-}
-
-/* The caption: under the screen, as a subtitle under a picture, every case's in one cell so the
-   stage keeps its height as they change. The lead-in is a step dimmer than the part it leads to. */
+/* Captions share a cell to keep the stage's height. The outgoing line fades before the incoming
+   one starts; CSS cancels pending entrances when a newer case becomes active. */
 .cases__subtitles {
   display: grid;
   margin-block-start: 20px;
@@ -380,8 +362,8 @@
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity var(--dur-slow) var(--curve-standard),
-    visibility 0s linear var(--dur-slow);
+    opacity var(--dur-fast) var(--curve-standard),
+    visibility 0s linear var(--dur-fast);
 }
 
 .cases__caption em {
@@ -392,7 +374,9 @@
 .cases__caption[data-active] {
   opacity: 1;
   visibility: visible;
-  transition-delay: 0s;
+  transition:
+    opacity var(--dur-base) var(--curve-standard) var(--dur-fast),
+    visibility 0s;
 }
 
 .cases__unavailable {

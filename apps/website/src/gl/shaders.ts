@@ -195,6 +195,7 @@ void main() {
   v *= 1.0 - 0.2 * smoothstep(0.6, 1.6, dot(c, c));
   v += (unit2(pcg2d(uvec2(gl_FragCoord.xy))).x - 0.5) / 255.0 * step(0.004, v);
   float a = clamp(v, 0.0, 1.0);
-  outColor = hasField > 0.5 ? vec4(mix(u_ink, u_dot, a), 1.0) : vec4(u_dot, a);
+  // Match the context's premultiplied alpha so transparent dots composite cleanly in WebKit.
+  outColor = hasField > 0.5 ? vec4(mix(u_ink, u_dot, a), 1.0) : vec4(u_dot * a, a);
 }
 `;

@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const REDUCED = '(prefers-reduced-motion: reduce)';
 /**
- * How many clips past the current one are rendered on the stage once the steps are in view, so
- * their videos have loaded by the time the reading line reaches them.
+ * How many images ahead of the current case are rendered once the steps are in view.
  */
 const AHEAD = 2;
 
@@ -30,20 +29,15 @@ function middleOf(element: Element) {
  * is measured on resize; a scroll only reads the list's and the display's positions, at most once a
  * frame, and only while the showcase is on or near the screen.
  *
- * Clips play on their own clock (clip.tsx), not the scroll's: `playing` turns on once the steps
- * come into view, and from then the current clip plays from the start each time it becomes
- * current. Before that, and without the hook (the prerendered page, no script), the showcase has no
- * `data-timeline`: every step's line shows and the first clip's poster rests on the stage.
- *
- * Only the clips the visitor is close to are rendered on the stage (`reach`): the first one until
- * the steps come into view, then up to `AHEAD` clips past the current one, and a rendered clip
- * stays rendered. The showcase hides the rest with `display: none`, so their posters and videos
- * don't load with the page, though every clip stays in the prerendered markup.
+ * `playing` starts the current description's text reveal once the steps enter the viewport.
+ * Without the hook, every description shows and the first image rests on the stage.
+ * Only nearby images are rendered (`reach`), then stay rendered after the visitor passes them.
+ * Distant slides use `display: none` so lazy images wait without leaving the prerendered markup.
  *
  * Each step has its own link, its case's id as the URL's hash: a page opened on it, or a link
  * followed to it, brings that step to the reading line, and choosing a step does the same and puts
  * its link in the address bar without adding a history entry. A neighbouring step glides there; a
- * farther one jumps, so the clips in between don't flash by. `ids` should keep its identity across
+ * farther one jumps, so the images in between don't flash by. `ids` should keep its identity across
  * renders (a module constant): a new array sets the timeline up again.
  */
 export function useCaseTimeline(ids: readonly string[]) {
@@ -116,7 +110,7 @@ export function useCaseTimeline(ids: readonly string[]) {
       follow();
     };
     const measure = () => {
-      // Narrow, the stage's column is not rendered and each step shows its own clip.
+      // Narrow, the stage's column is not rendered and each step shows its own image.
       beside = screen.getClientRects().length > 0;
       const top = list.getBoundingClientRect().top;
       middles = steps.map((step) => middleOf(step) - top);
@@ -147,7 +141,7 @@ export function useCaseTimeline(ids: readonly string[]) {
       { rootMargin: '50% 0px' },
     );
     near.observe(showcase);
-    // The scenes start playing once the steps are a quarter of the way up the viewport.
+    // The text reveals start once the steps are a quarter of the way up the viewport.
     const wake = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;

@@ -10,12 +10,6 @@ export const caseGroups = [
 
 type CaseGroupId = (typeof caseGroups)[number]['id'];
 
-/** A case's clip in one language: the silent, looping video and the still shown in its place. */
-export interface CaseClip {
-  video: string;
-  poster: string;
-}
-
 interface Case {
   id: string;
   /** The case's group; the showcase lists cases in group order, so a group's cases stay together. */
@@ -23,21 +17,21 @@ interface Case {
   label: Localized<string>;
   title: Localized<string>;
   description: Localized<string>;
-  /** The caption under the clip: a lead-in and the part it leads to, which reads brighter. */
+  /** The caption under the image: a lead-in and the part it leads to, which reads brighter. */
   caption: Localized<readonly [lead: string, accent: string]>;
-  /** What the clip shows, for assistive technology. */
+  /** What the image shows, for assistive technology. */
   alt: Localized<string>;
 }
 
-/** Each case's clip, rendered by the films repository in both languages (public/cases/README.md). */
-export function caseClip(id: string, lang: Lang): CaseClip {
-  return {
-    video: mediaUrl(`/cases/clips/${lang}/${id}.mp4`),
-    poster: mediaUrl(`/cases/clips/${lang}/${id}.jpg`),
-  };
+/** One stationary backdrop shared by the transparent foreground compositions. */
+export const caseBackdrop = mediaUrl('/cases/showcase/background.webp');
+
+/** Transparent foregrounds exported from the canonical Figma Website page. */
+export function caseImage(id: string, lang: Lang): string {
+  return mediaUrl(`/cases/showcase/${lang}/${id}.webp`);
 }
 
-/** The cases, each a clip cut from the tour films (or the settings film) in the films repository. */
+/** Each case describes the visible state in its localized illustration. */
 export const cases = [
   {
     id: 'selection-toolbar',
@@ -49,30 +43,30 @@ export const cases = [
       zh: '工具栏就在选区旁，提问或运行命令，按钮旁还能随手改选项。',
     },
     caption: {
-      en: ['Options beside the button: ', 'switch to Japanese.'],
-      zh: ['按钮旁的选项，', '随手换成日语。'],
+      en: ['Choose where the answer goes: ', 'right back into your text.'],
+      zh: ['答案放在哪里，', '就在按钮旁选择。'],
     },
     alt: {
-      en: 'A reply is selected in Messages; Translate’s options set the target language to Japanese, and the reply is replaced in Japanese.',
-      zh: '在“信息”中选中一条回复，在“翻译”的选项里把目标语言换成日语，回复随即被替换成日语。',
+      en: 'Selected text with the floating toolbar and Fix grammar’s answer destinations, including replace, insert and copy.',
+      zh: '选中文字旁显示浮动工具栏，“润色文字”的输出选项包含替换、插入和复制。',
     },
   },
   {
     id: 'write-back',
     group: 'in-place',
-    label: { en: 'Compose card', zh: '输入卡片' },
-    title: { en: 'Nothing selected? Just type.', zh: '没选中文字，也能直接写。' },
+    label: { en: 'Review card', zh: '结果卡片' },
+    title: { en: 'Review it. Make it yours.', zh: '先看结果，再决定如何使用。' },
     description: {
-      en: 'Press a command’s shortcut with nothing selected, type in the card that opens, and the result is written at the caret.',
-      zh: '没选中文字时按下命令的快捷键，在弹出的卡片里输入，结果直接写到光标处。',
+      en: 'Review a command’s answer beside the original, adjust its wording, then copy, insert or replace.',
+      zh: '在原文旁查看命令结果，继续调整表达，再选择复制、插入或替换。',
     },
     caption: {
-      en: ['Nothing selected? ', 'Type, and it writes at the caret.'],
-      zh: ['没选中文字，', '输入后写到光标处。'],
+      en: ['Keep the original in sight, ', 'and put the answer where it belongs.'],
+      zh: ['原文就在眼前，', '满意后再用上结果。'],
     },
     alt: {
-      en: 'In a new Mail message with nothing selected, a Translate shortcut opens the compose card; a line typed in English is run, and its Spanish translation is written at the caret.',
-      zh: '在新邮件里不选中任何文字，按下“翻译”的快捷键打开输入卡片，输入一句中文后运行，英文译文直接写到光标处。',
+      en: 'A selected draft sits above its Fix grammar review card, with the original, revised answer, adjustment field, and copy, insert and replace actions.',
+      zh: '选中的草稿下方显示“润色文字”结果卡，包含原文、修改结果、调整输入框，以及复制、插入和替换操作。',
     },
   },
   {
@@ -89,8 +83,8 @@ export const cases = [
       zh: ['框出重点，', '说明更直观。'],
     },
     alt: {
-      en: 'A screenshot frames part of meeting notes, then adds an arrow, a note, two step numbers and a mosaic.',
-      zh: '截图框选会议纪要的一部分，再加上箭头、文字、两个序号和马赛克。',
+      en: 'A selected report area with arrows, three numbered steps, a text note and redacted account details, above the annotation toolbar and screenshot commands.',
+      zh: '截图框选报表，带有箭头、三个序号、文字说明和遮盖账户信息的马赛克，下方显示标注工具栏与截图命令。',
     },
   },
   {
@@ -103,30 +97,30 @@ export const cases = [
       zh: '用 ⌘⇧Space 唤起浮动面板，拖入文件、提及以前的对话，直接提问。',
     },
     caption: {
-      en: ['Call it up anytime, ', 'and bring any file along.'],
-      zh: ['随时唤起，', '什么文件都能带上。'],
+      en: ['A question or a command, ', 'one place to begin.'],
+      zh: ['提问或运行命令，', '都从这里开始。'],
     },
     alt: {
-      en: 'The main panel opens with ⌘⇧Space; three files are dropped in as context, an earlier conversation is mentioned with @, and a request is typed.',
-      zh: '按 ⌘⇧Space 打开主面板，拖入三个文件作为上下文，用 @ 提及以前的对话，再输入请求。',
+      en: 'The current floating task panel with quick commands, All commands, Create app, My apps and the composer.',
+      zh: '浮动任务面板展示快捷命令、全部命令、创建应用、我的应用，以及底部输入区。',
     },
   },
   {
     id: 'chat',
     group: 'panel',
     label: { en: 'Conversation', zh: '聊天页' },
-    title: { en: 'Watch the work, approve what matters.', zh: '过程看得见，关键操作先问你。' },
+    title: { en: 'Keep the thread. Keep going.', zh: '接着上一句，继续往下做。' },
     description: {
-      en: 'Follow the plan, todos and subagents as it works, and approve a risky step before it runs.',
-      zh: '边做边看计划、待办和子智能体，有风险的操作先请你批准。',
+      en: 'Read the answers and tool activity, add a follow-up, and keep working in the same conversation.',
+      zh: '查看回答和工具调用，随时继续追问，在同一个对话里把事情做完。',
     },
     caption: {
-      en: ['A clear plan, ', 'and it asks before key steps.'],
-      zh: ['计划清楚，', '关键操作先问你。'],
+      en: ['The answer stays in context, ', 'ready for your next question.'],
+      zh: ['上下文接得上，', '下一句继续问。'],
     },
     alt: {
-      en: 'A sent request starts a run: the turn header counts its tools and subagents, the todo list and subagents open, and a file write waits for Allow once.',
-      zh: '请求发出后开始运行：回合标题统计工具和子智能体，待办和子智能体依次展开，一次写入文件的操作等待“允许一次”。',
+      en: 'A weekly recap conversation shows two answers, a follow-up request, completed turn headers, tool activity and the composer.',
+      zh: '每周总结对话展示前后两次回答、追问、完成的回合标题、工具调用和底部输入区。',
     },
   },
   {
@@ -143,8 +137,8 @@ export const cases = [
       zh: ['交出去的任务，', '都在这里跟进。'],
     },
     alt: {
-      en: 'The lit Mini Panel at the screen’s edge opens; Active tasks lists a task that needs approval and one in progress, the request is allowed once, and both tasks end completed.',
-      zh: '点开屏幕边缘亮起的迷你面板，“活跃任务”列出一个待确认和一个进行中的任务，允许一次后两个任务都已完成。',
+      en: 'The Mini Panel’s active tasks popover shows one file-write approval request and two ongoing tasks beside the screen-edge rail.',
+      zh: '屏幕边缘的迷你面板展开活跃任务，展示一个等待批准的文件写入请求和两个进行中的任务。',
     },
   },
   {
@@ -161,8 +155,8 @@ export const cases = [
       zh: ['替你操作应用，', '做完还核实。'],
     },
     alt: {
-      en: 'Atd’s live pointer finds a note in a notes app, clicks it, types a summary into it, clicks Done and checks the text it wrote.',
-      zh: 'Atd 的实时指针在笔记应用里找到一条笔记，点开、输入摘要、点击完成，再核对写入的内容。',
+      en: 'Atd’s live pointer fills the amount and description of an expense form, with its orange Filling in status beside the active field.',
+      zh: 'Atd 的实时指针填写报销表的金额与描述，当前字段旁显示橙色“填写中”状态。',
     },
   },
   {
@@ -179,8 +173,8 @@ export const cases = [
       zh: ['把一个想法，', '变成自己的应用。'],
     },
     alt: {
-      en: 'Create app starts a task for a weekly brief helper; Atd writes and builds it, its card appears, and it is listed in My apps.',
-      zh: '用“创建应用”开始做一个周报助手，Atd 编写并构建，生成应用卡片，并出现在“我的应用”中。',
+      en: 'My apps lists personal tools beside an open Notes app with an input and three saved notes.',
+      zh: '“我的应用”列出个人工具，旁边打开的笔记应用包含输入框和三条已保存笔记。',
     },
   },
   {
@@ -189,16 +183,16 @@ export const cases = [
     label: { en: 'Automations', zh: '自动化' },
     title: { en: 'Work that starts on its own.', zh: '让工作自己开始。' },
     description: {
-      en: 'Turn a suggested next step into an automation, and it runs on its schedule while Atd is running.',
-      zh: '把建议的下一步变成自动化，Atd 运行时按计划自动开始。',
+      en: 'Run prompts and commands on a schedule or when files change, while Atd is running.',
+      zh: '在 Atd 运行时，让提示词和命令按计划，或在文件变化时自动执行。',
     },
     caption: {
-      en: ['The next step ', 'becomes an automation.'],
-      zh: ['下一步，', '交给自动化。'],
+      en: ['A schedule or a file change, ', 'and the work begins.'],
+      zh: ['到了时间、文件有变化，', '工作自动开始。'],
     },
     alt: {
-      en: 'Under a finished answer, a suggested next step opens Create automation for every Monday at 09:00, and a toast confirms it was created.',
-      zh: '回答下方的“下一步”建议打开“创建自动化”，设为每周一 09:00，提示自动化已创建。',
+      en: 'The automations list shows scheduled memory consolidation, a folder-triggered invoice filer, a weekday inbox brief and a paused release watcher.',
+      zh: '自动化列表展示定时整理记忆、文件夹触发的发票归档、工作日邮件摘要，以及已暂停的更新说明跟踪。',
     },
   },
   {
@@ -215,8 +209,8 @@ export const cases = [
       zh: ['先同意连接，', '再用订阅登录。'],
     },
     alt: {
-      en: 'In Settings, Connect OpenAI on the ChatGPT plan: the consent switch is turned on, Sign in to ChatGPT is clicked, and a dialog confirms the plan is in use.',
-      zh: '在设置中连接 OpenAI 的 ChatGPT 订阅：打开同意开关，点击登录 ChatGPT，对话框确认正在使用订阅。',
+      en: 'The OpenAI connection editor shows ChatGPT plan and API options, data and privacy consent, background-use control and the sign-in action.',
+      zh: 'OpenAI 连接设置展示 ChatGPT 订阅和 API 选项、数据与隐私同意开关、后台调用控制和登录操作。',
     },
   },
 ] as const satisfies readonly Case[];
