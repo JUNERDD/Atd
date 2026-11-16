@@ -166,8 +166,13 @@ async function buildContext(packageRoot, signal) {
     ['which', ['xcodegen']],
     ['xcodegen', ['--version']],
   ];
-  if (process.env.AI_CODE_SIGN_IDENTITY?.trim() && process.env.AI_CODE_SIGN_IDENTITY !== '-')
-    commands.push(['security', ['find-identity', '-p', 'codesigning']]);
+  if (process.env.AI_CODE_SIGN_IDENTITY?.trim() && process.env.AI_CODE_SIGN_IDENTITY !== '-') {
+    const keychain = process.env.AI_SIGNING_KEYCHAIN?.trim();
+    commands.push([
+      'security',
+      ['find-identity', '-p', 'codesigning', ...(keychain ? [keychain] : [])],
+    ]);
+  }
   const tools = await Promise.all(
     commands.map(async ([command, args]) => {
       const { stdout } = await run(command, args, { encoding: 'utf8', signal, timeout: 5000 });
@@ -183,6 +188,7 @@ async function buildContext(packageRoot, signal) {
       [
         'AI_CODE_SIGN_IDENTITY',
         'AI_DEVELOPMENT_TEAM',
+        'AI_SIGNING_KEYCHAIN',
         'DEVELOPER_DIR',
         'TOOLCHAINS',
         'SDKROOT',

@@ -67,6 +67,7 @@ export async function installDevCopy({
   installedApp,
   bundleId,
   expectedIdentity,
+  keychain,
   signal,
 }) {
   if (signal?.aborted) return { installed: false, problem: 'Development session stopped.' };
@@ -93,7 +94,7 @@ export async function installDevCopy({
   const problem =
     copy.error || copy.status !== 0
       ? `the build could not be copied to ${installedApp}`
-      : placeExtensions(installedApp, identity);
+      : placeExtensions(installedApp, identity, keychain);
   if (problem) {
     // An unsigned or half-moved copy must not be found and registered later.
     rmSync(installedApp, { recursive: true, force: true });
@@ -114,7 +115,7 @@ export async function installDevCopy({
  * build number, signs the extensions and then the app with `identity`, and checks the result.
  * Returns what failed, or null.
  */
-function placeExtensions(app, identity) {
+function placeExtensions(app, identity, keychain) {
   const staging = path.join(app, STAGING);
   const missing = EXTENSIONS.filter((name) => !existsSync(path.join(staging, name)));
   if (missing.length > 0) return `the build lacks ${missing.join(', ')} in ${STAGING}`;
@@ -138,6 +139,7 @@ function placeExtensions(app, identity) {
         '--force',
         '--sign',
         identity,
+        ...(identity !== '-' && keychain ? ['--keychain', keychain] : []),
         '--timestamp=none',
         '--preserve-metadata=identifier,entitlements,requirements,flags,runtime',
         bundle,

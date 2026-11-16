@@ -172,7 +172,7 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
-const releaseSigning = configureSigning(options.configuration);
+const releaseSigning = options.configuration === 'Release' ? configureSigning('Release') : null;
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
 if (options.configuration === 'Debug') {
