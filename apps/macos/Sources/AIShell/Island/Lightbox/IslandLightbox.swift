@@ -118,15 +118,21 @@ final class IslandLightbox {
   private func finish() {
     generation += 1
     let returnsKeyboard = window?.isKeyWindow == true
-    window?.orderOut(nil)
+    let handoffTarget =
+      (returnKey?.isVisible == true && returnKey?.canBecomeKey == true) ? returnKey : nil
+    if handoffTarget != nil {
+      window?.orderOut(nil)
+    } else {
+      window?.orderOutReturningKeyboard()
+    }
     host?.rootView = IslandLightboxRoot(model: model, content: AnyView(EmptyView()))
     content = nil
     if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
     screenObserver = nil
-    if returnsKeyboard, let returnKey {
-      keyboard.perform { [weak returnKey] in
-        guard let returnKey, returnKey.isVisible, returnKey.canBecomeKey else { return }
-        returnKey.makeKey()
+    if returnsKeyboard, let handoffTarget {
+      keyboard.perform { [weak handoffTarget] in
+        guard let handoffTarget, handoffTarget.isVisible, handoffTarget.canBecomeKey else { return }
+        handoffTarget.makeKey()
       }
     }
     returnKey = nil

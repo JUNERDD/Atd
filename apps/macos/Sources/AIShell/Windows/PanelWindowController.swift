@@ -28,8 +28,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   private static let heightKey = "panel.height"
 
   init(host: WebViewHost, pinned: Bool, defaults: UserDefaults = .standard) {
-    self.host = host
-    self.defaults = defaults
+    (self.host, self.defaults) = (host, defaults)
     placements = PanelPlacementStore(defaults: defaults)
     let display = Screens.displayUnderCursor()
     let placed = Self.summonFrame(on: display, size: Self.savedSize(defaults), placements)
@@ -333,7 +332,8 @@ final class ShellPanel: NSPanel {
   }
 
   override var canBecomeKey: Bool {
-    retainsKeyForHandoff || (alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized)
+    !PanelKeyboard.isReturningToFrontmostApp
+      && (retainsKeyForHandoff || (alphaValue > 0 && !ignoresMouseEvents && !isMiniaturized))
   }
   override var canBecomeMain: Bool { false }
 
