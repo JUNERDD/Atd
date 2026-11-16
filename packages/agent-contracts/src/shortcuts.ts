@@ -1,8 +1,5 @@
-import type {
-  SelectionToolbarKey,
-  SelectionToolbarSettings,
-  ShortcutBindingsWire,
-} from './workspace.js';
+import type { SelectionToolbarKey, SelectionToolbarSettings } from './selection-toolbar.js';
+import type { ShortcutBindingsWire } from './workspace.js';
 
 /**
  * Electron accelerator grammar and shortcut ownership rules, shared by the desktop (global
