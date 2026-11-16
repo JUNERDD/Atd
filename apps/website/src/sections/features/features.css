@@ -69,9 +69,9 @@
   overflow-wrap: anywhere;
 }
 
-/* Strips: the channels sit edge to edge, each showing its whole channel, with its name and line
-   centered beneath it, kept to about 12rem a channel so the display stays a compact instrument
-   rather than filling the column. Only a strip's outer corners are rounded. Each channel draws its bezel's
+/* Strips: equal-width channels sit edge to edge, each showing its whole channel, with its name and
+   line centered beneath it. The wide strip fills the shared content column. Only a strip's outer
+   corners are rounded. Each channel draws its bezel's
    top, bottom and start edge, so the start edge of every channel after the first is the hairline
    seam between two channels; the channel that ends a strip also draws the end edge. */
 @media (width >= 700px) {
@@ -145,7 +145,6 @@
 @media (width >= 1100px) {
   .feat {
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    max-inline-size: 72rem;
   }
 
   .feat__item:first-child .feat__channel {
