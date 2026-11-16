@@ -57,11 +57,6 @@ export interface DotField {
   setPalette(palette: DotFieldPalette): void;
   /** Box the art fills (contain-fit, centered); null restores the default placement. */
   setArtBox(box: Box | null): void;
-  /**
-   * Scroll-away progress of the host section: 0 in place, 1 scrolled out. The panel dives toward
-   * the viewer around the art while the art dissolves.
-   */
-  setScroll(progress: number): void;
   setReducedMotion(reduced: boolean): void;
   /**
    * Stops drawing, removes every listener and observer, and deletes the GL objects. The context is
