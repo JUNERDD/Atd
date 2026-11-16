@@ -12,11 +12,7 @@ struct TaskActivityLayer: View {
     let reduced = activity.reducedMotion
     let body = reduced ? mini.frame(.capsule) : mini.body.drawn(mini.bodyFactors)
     let side = TaskActivityMetrics.entrySide
-    let entryOrigin = CGPoint(
-      x: body.midX - side / 2,
-      y: (activity.below
-        ? body.maxY + TaskActivityMetrics.gap
-        : body.minY - TaskActivityMetrics.gap - side))
+    let bodyShape = MiniPanelGlassRect(body, corner: mini.body.corner, in: .zero)
     ZStack(alignment: .topLeading) {
       surface(
         presence: activity.entry, size: CGSize(width: side, height: side),
@@ -33,7 +29,7 @@ struct TaskActivityLayer: View {
         value: activity.entryPressed
       )
       .animation(reduced ? nil : mini.body.animation) {
-        $0.modifier(TaskActivityTranslation(origin: entryOrigin))
+        $0.modifier(TaskActivityTranslation(body: bodyShape, below: activity.below, side: side))
       }
       .offset(x: mini.glassFrame.minX, y: mini.glassFrame.minY)
       .allowsHitTesting(activity.entryInteractive && mini.phase == .expanded)
@@ -102,18 +98,26 @@ struct TaskActivityLayer: View {
   }
 }
 
-/// Using a pair keeps this on the body's length curve, matching its erased glass contour.
-/// Scaling the whole container would leave native glass and its content with different bounds.
+/// Derives the attachment from the body's animated geometry, so both axes follow its glass.
+/// The entry keeps its own size while its container moves with the body's edge.
 private struct TaskActivityTranslation: GeometryEffect {
-  var origin: CGPoint
+  var body: MiniPanelGlassRect
+  let below: Bool
+  let side: Double
 
-  var animatableData: AnimatablePair<Double, Double> {
-    get { AnimatablePair(origin.x, origin.y) }
-    set { origin = CGPoint(x: newValue.first, y: newValue.second) }
+  var animatableData: MiniPanelGlassRect {
+    get { body }
+    set { body = newValue }
   }
 
   func effectValue(size: CGSize) -> ProjectionTransform {
-    ProjectionTransform(CGAffineTransform(translationX: origin.x, y: origin.y))
+    let rect = body.rect
+    let y =
+      below
+      ? rect.maxY + TaskActivityMetrics.gap
+      : rect.minY - TaskActivityMetrics.gap - side
+    return ProjectionTransform(
+      CGAffineTransform(translationX: rect.midX - side / 2, y: y))
   }
 }
 

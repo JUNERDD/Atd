@@ -4,11 +4,10 @@ import SwiftUI
 
 /// A glass shape's frame and corner radius in the lane it is drawn in, animatable as one vector, so
 /// the shape's outline and the content that follows it (``MiniPanelFollowEffect``) are interpolated
-/// from the same values on every frame and can never drift apart. The body's thickness axis (x,
-/// width and the corner) and length axis (y, height) can still move on their own springs: the
-/// animation splits the vector (``MiniPanelAxisAnimation``) for the content; the glass, whose
-/// shape `glassEffect(in:)` erases, and the clip, which takes it erased alike
-/// (``View/clippedGlass(in:clear:)``), move as a whole on the length's.
+/// from the same values and axis springs. The body's thickness axis (x, width and the corner)
+/// and length axis (y, height) each retain their own spring (``MiniPanelAxisAnimation``).
+/// The surface interpolates this vector before passing a presentation outline to the material
+/// and clip, so type erasure inside `glassEffect(in:)` cannot change their animation curve.
 nonisolated struct MiniPanelGlassRect: VectorArithmetic {
   var x = 0.0
   var y = 0.0

@@ -206,26 +206,21 @@ extension View {
     // when the variant changes.
     let clear = PanelBackground.shared.clearGlass
     return modifier(GlassSurfaceFace(dark: dark))
-      .animation(animation) { $0.clippedGlass(in: outline, clear: clear, dark: dark) }
+      .animation(animation) {
+        $0.modifier(GlassSurfaceOutline(outline: outline, clear: clear, dark: dark))
+      }
   }
 
-  /// This content clipped to `outline` and on Liquid Glass of the same outline, regular or
-  /// `clear`, the two moving as one: `glassEffect(in:)` erases its shape, so a change to it
-  /// reaches the animation as opaque data that moves as a whole, and the clip takes the shape
-  /// erased the same way, so the clip, and the surface fill and content inside it, never part
-  /// from the glass's rim. A clip given the shape itself would move per axis instead, and a fill
-  /// inside it would slide off the glass. Set inside the piece's scoped animation; bare, it is
-  /// glass without the surface, so pieces take it through ``glassSurface(in:animation:)``.
+  /// Draws a presentation outline already interpolated by ``GlassSurfaceOutline``. Material
+  /// and content clipping consume the same snapshot, without animating it a second time.
   ///
   /// macOS 15 has no Liquid Glass. There the material is the desktop's blur under the window
-  /// (``SwiftUIGlassMaterial``), clipped by the same erased shape as the content, so it follows
-  /// the outline frame by frame as the glass does; neighbouring shapes never merge. SwiftUI's own
+  /// (``SwiftUIGlassMaterial``), framed and masked from that same snapshot. SwiftUI's own
   /// `Material` cannot stand in: it blurs only the window's content, and these windows are
-  /// transparent. Whether a behind-window material follows a clip that changes on every frame is
-  /// what the macOS 15 verification build checks (plan M2); should it not, the agreed fallback is
-  /// a fill of the surface tokens inside the window with no desktop blur, keeping the morph and
-  /// the interaction.
-  @ViewBuilder func clippedGlass(in outline: some Shape, clear: Bool, dark: Bool? = nil)
+  /// transparent.
+  @ViewBuilder fileprivate func clippedGlass(
+    in outline: some Shape, clear: Bool, dark: Bool? = nil
+  )
     -> some View
   {
     let shape = AnyShape(outline)
@@ -237,6 +232,35 @@ extension View {
       }
     }
   }
+}
+
+/// Interpolates before `glassEffect` erases the shape's vector. In particular, an axis spring
+/// must receive the same concrete geometry as the content's follow effect; animating an
+/// `AnyShape` instead sends the glass down the animation's scalar branch. The modifier updates
+/// only the surface effects, leaving the supplied content and its own presence animations intact.
+private struct GlassSurfaceOutline<Outline: Shape>: ViewModifier, Animatable {
+  var outline: Outline
+  let clear: Bool
+  let dark: Bool?
+
+  var animatableData: Outline.AnimatableData {
+    get { outline.animatableData }
+    set { outline.animatableData = newValue }
+  }
+
+  func body(content: Content) -> some View {
+    content
+      .clippedGlass(in: GlassSurfacePresentation(outline: outline), clear: clear, dark: dark)
+      .transaction { $0.animation = nil }
+  }
+}
+
+/// One rendered frame, not another animation target. Empty animatable data also prevents the
+/// native glass from independently interpolating the path after SwiftUI erases its type.
+private struct GlassSurfacePresentation<Outline: Shape>: Shape {
+  let outline: Outline
+
+  func path(in rect: CGRect) -> Path { outline.path(in: rect) }
 }
 
 /// The shell's glass surface under SwiftUI content: the main panel's base fill, opaque under
