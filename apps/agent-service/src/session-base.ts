@@ -16,6 +16,7 @@ import { bindLiveState, type LiveState } from './live-state.js';
 import type { SessionFactoryDeps } from './pi-session.js';
 import { REQUEST_POLICY } from './request-policy.js';
 import { openRunModel, type RunModel } from './run-model.js';
+import { normalizeExtension } from './providers/tool-schema.js';
 import { rewindManager } from './session-rewind.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
@@ -112,7 +113,7 @@ export async function buildRunSession(
       settingsManager: base.settings,
       systemPrompt: spec.systemPrompt,
       appendSystemPrompt: [],
-      extensionFactories: spec.extensionFactories,
+      extensionFactories: spec.extensionFactories.map(normalizeExtension),
     }),
   );
   await timePreparation('resource_loader', () => loader.reload());
