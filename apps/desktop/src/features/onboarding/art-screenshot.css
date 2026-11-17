@@ -1,9 +1,10 @@
 /*
  * The screenshot step's illustration (`art-screenshot.tsx`), after Figma `App / Onboarding hero`
- * (1816:98233), `Step=Screenshot`: a page card (the faint foreground tint inside a hairline the
- * selection art and the practice area use) with skeleton text lines, and the capture frame over
- * it. Sizes are multiples of `--u`, the art panel's unit (`art-illustration.css`). Only transform
- * animates, and only without Reduce Motion, whose still frame is the frame's resting style.
+ * (1816:98233), `Step=Screenshot`: a 170 x 100 page card (aligned with `lights/screenshot.ts`)
+ * with skeleton text lines, an accent capture frame highlighting one captured line and a numbered
+ * annotation badge (`1`), and a raised floating capture toolbar pill below it. Sizes are multiples
+ * of `--u`, the art panel's unit (`art-illustration.css`). Only transform animates, and only
+ * without Reduce Motion, whose still frame is every element's resting style.
  */
 .guide-capture {
   position: relative;
@@ -17,7 +18,7 @@
   flex-direction: column;
   box-sizing: border-box;
   justify-content: space-evenly;
-  padding: calc(var(--u) * 10) calc(var(--u) * 12);
+  padding: calc(var(--u) * 12) calc(var(--u) * 14) calc(var(--u) * 20);
   border: 1px solid var(--border);
   border-radius: calc(var(--u) * 9);
   background: color-mix(in oklab, var(--foreground) 6%, transparent);
@@ -42,13 +43,42 @@
 /* The picked area: an accent outline over a light wash, so the lines below it stay legible. */
 .guide-capture-frame {
   position: absolute;
-  top: 22%;
-  left: 24%;
-  width: 52%;
-  height: 52%;
+  top: calc(var(--u) * 14);
+  left: calc(var(--u) * 34);
+  width: calc(var(--u) * 102);
+  height: calc(var(--u) * 56);
   box-sizing: border-box;
   border: 1.5px solid var(--ata-syntax-variable);
-  background: color-mix(in oklab, var(--ata-syntax-variable) 16%, transparent);
+  background: color-mix(in oklab, var(--ata-syntax-variable) 14%, transparent);
+}
+/* In-screenshot text highlight and step annotation (`1`) over the second skeleton line. */
+.guide-capture-annotation {
+  position: absolute;
+  top: calc(var(--u) * 19);
+  left: calc(var(--u) * 4);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+}
+.guide-capture-highlight {
+  width: calc(var(--u) * 55);
+  height: calc(var(--u) * 10);
+  box-sizing: border-box;
+  border: 1px solid color-mix(in oklab, var(--ata-syntax-variable) 45%, transparent);
+  border-radius: calc(var(--u) * 3);
+  background: color-mix(in oklab, var(--ata-syntax-variable) 24%, transparent);
+}
+.guide-capture-step {
+  display: grid;
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ata-syntax-variable);
+  color: var(--primary-foreground);
+  font-size: calc(var(--u) * 6.5);
+  font-weight: 700;
+  line-height: 1;
 }
 .guide-capture-handle {
   --handle: calc(var(--u) * 6);
@@ -76,6 +106,46 @@
   right: calc(var(--handle) / -2 - 1px);
   bottom: calc(var(--handle) / -2 - 1px);
 }
+.guide-capture-frame .guide-done-badge {
+  top: auto;
+  right: calc(var(--u) * -7);
+  bottom: calc(var(--u) * -7);
+  left: auto;
+  width: calc(var(--u) * 20);
+}
+/* Raised floating capture toolbar pill below the frame, styled after `.guide-mini`. */
+.guide-capture-toolbar {
+  position: absolute;
+  top: calc(var(--u) * 85);
+  left: calc(var(--u) * 55);
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--secondary);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--foreground) 8%, transparent),
+    0 calc(var(--u) * 4) calc(var(--u) * 12) rgb(0 0 0 / 45%);
+}
+.guide-capture-tool {
+  display: grid;
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted-foreground);
+}
+.guide-capture-tool[data-active] {
+  background: var(--ata-syntax-variable);
+  color: var(--primary-foreground);
+}
+.guide-capture-tool > svg {
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .guide-capture-frame {
@@ -84,9 +154,9 @@
 }
 @keyframes guide-capture-breathe {
   from {
-    transform: scale(0.97);
+    transform: scale(0.98);
   }
   to {
-    transform: scale(1.03);
+    transform: scale(1.02);
   }
 }
