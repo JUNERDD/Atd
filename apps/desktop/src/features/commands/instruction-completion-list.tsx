@@ -1,10 +1,11 @@
 /* oxlint-disable jsx-a11y/prefer-tag-over-role -- CodeMirror retains textbox focus and owns the listbox keyboard model. */
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorView } from '@codemirror/view';
 import { acceptCompletion, type Completion, setSelectedCompletion } from '@codemirror/autocomplete';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { createPointerGate } from '@atd/ui/lib/pointer-gate';
 import { typedVariable, variableRanges } from './instruction-variable-match';
 
 export function CompletionList({
@@ -20,13 +21,20 @@ export function CompletionList({
 }) {
   const { t } = useTranslation('commands');
   const selectedOption = useRef<HTMLButtonElement>(null);
+  const [gate] = useState(() => createPointerGate(true));
+  const pointerPicked = useRef(false);
   // The list shows only while a `{{` reference is being typed; its name is the ranked query.
   const query = typedVariable(view.state, view.state.selection.main.head)?.query ?? '';
   useLayoutEffect(() => {
-    const scrollOptions = { block: 'nearest', inline: 'nearest', container: 'nearest' } as const;
-    selectedOption.current?.scrollIntoView(scrollOptions);
+    if (pointerPicked.current) {
+      pointerPicked.current = false;
+    } else {
+      gate.lock();
+      const scrollOptions = { block: 'nearest', inline: 'nearest', container: 'nearest' } as const;
+      selectedOption.current?.scrollIntoView(scrollOptions);
+    }
     view.requestMeasure();
-  }, [options, selected, view]);
+  }, [gate, options, selected, view]);
   return (
     <ScrollArea
       className="completion-scroll max-h-[inherit] flex-1 rounded-2xl surface-glass"
@@ -50,6 +58,11 @@ export function CompletionList({
             className="completion-option"
             title={`${option.label}${option.detail ? `\n${option.detail}` : ''}`}
             onMouseDown={(event) => event.preventDefault()}
+            onPointerMove={(event) => {
+              if (!gate.allowMove(event) || index === selected) return;
+              pointerPicked.current = true;
+              view.dispatch({ effects: setSelectedCompletion(index) });
+            }}
             onClick={() => {
               view.dispatch({ effects: setSelectedCompletion(index) });
               acceptCompletion(view);

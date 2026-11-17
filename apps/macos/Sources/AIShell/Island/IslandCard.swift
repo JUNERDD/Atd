@@ -162,7 +162,7 @@ private struct IslandCardRow: View {
       )
       .foregroundStyle(.primary)
       .modifier(
-        FloatingHover(enabled: active) { inside in
+        FloatingHover(enabled: active, moved: { _ in model.cardEvent(.hover(index)) }) { inside in
           if inside { model.cardEvent(.hover(index)) }
         }
       )

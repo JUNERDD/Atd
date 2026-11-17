@@ -1,8 +1,7 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
-import { isComposingKey } from '@atd/ui/lib/ime';
 import { cn } from '@atd/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
@@ -12,21 +11,13 @@ import {
 } from '../agent/use-panel-aliases';
 import { formatContextWindow } from './context-window';
 import { ModelConfigAliases } from './model-config-aliases';
-import {
-  type DrillSubview,
-  focusRootEdge,
-  handleRootKeyDown,
-  handleSubviewKeyDown,
-  type RootFocusEdge,
-} from './model-config-keys';
+import { useModelConfigNavState } from './model-config-keys';
 import { ModelConfigSubview } from './model-config-subviews';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
 import { applyDraftContext, useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
-
-type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
 
 function renderRowContent(label: string, value: string | null, nav = true, truncate = false) {
   return (
@@ -86,25 +77,19 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
   const effort = props.hideEffort ? null : props;
   const { t } = useTranslation('providers');
   const { t: tPanel } = useTranslation('panel');
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState<ModelConfigView>('root');
-  /** Whether the view changed since the popover opened; only opening plays the entry animation. */
-  const [switched, setSwitched] = useState(false);
   const contextRowRef = useRef<HTMLButtonElement>(null);
   const effortRowRef = useRef<HTMLButtonElement>(null);
   const modelRowRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const optionListRef = useRef<HTMLDivElement>(null);
   const modelViewRef = useRef<HTMLDivElement>(null);
-  /** The subview the root was entered from, whose row takes focus again; none on opening. */
-  const returnFrom = useRef<DrillSubview | null>(null);
-  const initialRootFocus = useRef<RootFocusEdge | null>(null);
-
-  function show(next: ModelConfigView, isSwitch = true) {
-    returnFrom.current = isSwitch && next === 'root' && view !== 'root' ? view : null;
-    setView(next);
-    setSwitched(isSwitch);
-  }
+  const nav = useModelConfigNavState(disabled);
+  const { open, setOpen, view, switched, show } = nav;
+  const dom = () => ({
+    root: rootRef.current,
+    optionList: optionListRef.current,
+    modelView: modelViewRef.current,
+  });
 
   const connection = connections.find((item) => item.connectionId === model?.connectionId);
   const definition = connection?.catalog.find((item) => item.id === model?.modelId);
@@ -156,34 +141,8 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     tPanel,
   });
 
-  /** What a view focuses as its content mounts; null leaves focus on the content itself. */
-  function focusTarget(): HTMLElement | null {
-    if (view === 'root') {
-      const rows = { context: contextRowRef, effort: effortRowRef, model: modelRowRef };
-      if (returnFrom.current) return rows[returnFrom.current].current;
-      const edge = initialRootFocus.current;
-      initialRootFocus.current = null;
-      return edge ? focusRootEdge(rootRef.current, edge) : null;
-    }
-    if (view === 'model') return modelViewRef.current?.querySelector('input') ?? null;
-    const list = optionListRef.current;
-    return (
-      list?.querySelector<HTMLElement>('[data-checked="true"]') ??
-      list?.querySelector('button') ??
-      null
-    );
-  }
-
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        // Reset on open, not on close: Radix keeps content mounted during the
-        // exit animation, so resetting on close flashes the root over the subview.
-        if (next) show('root', false);
-      }}
-    >
+    <Popover open={open} onOpenChange={nav.onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant={compact ? 'glass-ghost' : 'ghost'}
@@ -192,17 +151,8 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           disabled={disabled}
           aria-label={triggerLabels.ariaLabel}
           title={triggerLabels.title}
-          onClick={(event) => {
-            if (!open && event.detail === 0) initialRootFocus.current = 'first';
-          }}
-          onKeyDown={(event) => {
-            if (open || disabled || isComposingKey(event)) return;
-            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-            event.preventDefault();
-            initialRootFocus.current = event.key === 'ArrowUp' ? 'last' : 'first';
-            show('root', false);
-            setOpen(true);
-          }}
+          onClick={nav.onTriggerClick}
+          onKeyDown={(event) => nav.onTriggerKeyDown(event, dom())}
         >
           {connection && !scoped && (
             <ProviderBrand
@@ -237,11 +187,16 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         collisionPadding={8}
         // Each view mounts its own content: pointer open leaves focus on the content while keyboard
         // open focuses the first/last root item, and transitions focus the target row or control.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          const content = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-          (focusTarget() ?? content)?.focus();
-        }}
+        onOpenAutoFocus={(event) =>
+          nav.onOpenAutoFocus(event, {
+            ...dom(),
+            rootRows: {
+              context: contextRowRef.current,
+              effort: effortRowRef.current,
+              model: modelRowRef.current,
+            },
+          })
+        }
         // Unmounting a view's content would hand focus back to the trigger a tick later, after the
         // next view focused its row; only a real close returns it there.
         onCloseAutoFocus={(event) => {
@@ -251,10 +206,9 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
           const el = event.target instanceof Element ? event.target : null;
           if (view === 'root' && el?.closest('[data-alias-save-form]')) event.preventDefault();
         }}
-        onKeyDown={(event) => {
-          if (view === 'root') handleRootKeyDown(event, rootRef.current, show);
-          else handleSubviewKeyDown(event, () => show('root'), optionListRef.current);
-        }}
+        onPointerMove={nav.onPointerMove}
+        onPointerLeave={nav.onPointerLeave}
+        onKeyDown={(event) => nav.onContentKeyDown(event, dom())}
       >
         {view === 'root' && (
           <div ref={rootRef} className="model-config-root">

@@ -243,11 +243,28 @@ struct IslandLabels: Equatable {
 final class IslandModel {
   /// Bumped by every entrance: the view tree is built anew for it, so nothing drawn or still
   /// animating from an earlier island carries over.
-  var appearance = 0
+  var appearance = 0 {
+    didSet { cardKeyPointer = nil }
+  }
   var shape = IslandShape()
-  var layers: [IslandLayer] = []
+  var layers: [IslandLayer] = [] {
+    didSet {
+      if !hasActiveCardLayer { cardKeyPointer = nil }
+    }
+  }
   /// The options card the active `choose` content shows.
-  var card: OptionsCard?
+  var card: OptionsCard? {
+    didSet {
+      if !hasActiveCardLayer
+        || oldValue?.options.map(OptionIdentity.init) != card?.options.map(OptionIdentity.init)
+      {
+        cardKeyPointer = nil
+      }
+    }
+  }
+  /// Screen pointer location recorded on the last keyboard action in the options card so a
+  /// stationary cursor cannot reclaim selection when rows scroll or swap under it.
+  @ObservationIgnored var cardKeyPointer: CGPoint?
   /// What the answer card offers to write where the person's focus is now
   /// (``AnswerFocusWatch``); nil while that focus cannot take text.
   var answerOffer: AnswerWriteOffer?
@@ -289,4 +306,22 @@ final class IslandModel {
   @ObservationIgnored var reviewEvent: (IslandReviewEvent) -> Void = { _ in }
   @ObservationIgnored var drag: (IslandDrag) -> Void = { _ in }
   @ObservationIgnored var recordingEvent: (IslandRecordingEvent) -> Void = { _ in }
+
+  private var hasActiveCardLayer: Bool {
+    layers.contains { $0.content.kind == .choose && $0.card == nil }
+  }
+
+  private enum OptionIdentity: Equatable {
+    case choice(key: String, options: [CommandOption.Choice.Option])
+    case toggle(key: String)
+    case input(key: String)
+
+    init(_ option: CommandOption) {
+      switch option {
+      case .choice(let choice): self = .choice(key: choice.key, options: choice.options)
+      case .toggle(let toggle): self = .toggle(key: toggle.key)
+      case .input(let input): self = .input(key: input.key)
+      }
+    }
+  }
 }

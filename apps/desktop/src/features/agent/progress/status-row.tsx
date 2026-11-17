@@ -1,11 +1,24 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import { PopoverHeader, PopoverTitle } from '@atd/ui/components/popover';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { isComposingKey } from '@atd/ui/lib/ime';
+import { createPointerGate } from '@atd/ui/lib/pointer-gate';
 import { cn } from '@atd/ui/lib/utils';
 import { STATUS_GLYPHS, type StatusGlyph } from './status-glyphs';
+
+const ROW_SELECTOR = 'button.composer-status-row:not(:disabled)';
+
+function blurRowToPopover(root: HTMLElement) {
+  if (
+    document.activeElement instanceof HTMLElement &&
+    document.activeElement.matches('button.composer-status-row')
+  ) {
+    root.closest<HTMLElement>('[data-slot="popover-content"]')?.focus({ preventScroll: true });
+  }
+}
 
 /**
  * A list view of the composer popover whose rows each open something with a state: the Subagents
@@ -22,8 +35,55 @@ export function StatusList({
   /** `StatusRow`s. */
   children: ReactNode;
 }) {
+  const [gate] = useState(() => createPointerGate(true));
   return (
-    <div className="composer-status-list">
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegates arrow-key navigation across focusable child row buttons.
+    <div
+      className="composer-status-list"
+      onKeyDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          isComposingKey(event) ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.altKey ||
+          event.shiftKey
+        ) {
+          return;
+        }
+        const { key } = event;
+        if (key !== 'ArrowDown' && key !== 'ArrowUp' && key !== 'Home' && key !== 'End') return;
+        const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(ROW_SELECTOR)];
+        if (items.length === 0) return;
+        event.preventDefault();
+        gate.lock();
+        const i =
+          document.activeElement instanceof HTMLButtonElement
+            ? items.indexOf(document.activeElement)
+            : -1;
+        let target: HTMLButtonElement | undefined;
+        if (key === 'Home') target = items[0];
+        else if (key === 'End') target = items.at(-1);
+        else if (key === 'ArrowDown') target = i >= 0 ? items[(i + 1) % items.length] : items[0];
+        else target = i >= 0 ? items[(i - 1 + items.length) % items.length] : items.at(-1);
+        target?.focus({ preventScroll: true });
+        target?.scrollIntoView?.({ block: 'nearest' });
+      }}
+      onPointerMove={(event) => {
+        if (!gate.allowMove(event)) return;
+        const row = (
+          event.target instanceof Element ? event.target : null
+        )?.closest<HTMLButtonElement>(ROW_SELECTOR);
+        if (row) {
+          if (document.activeElement !== row) row.focus({ preventScroll: true });
+        } else {
+          blurRowToPopover(event.currentTarget);
+        }
+      }}
+      onPointerLeave={(event) => {
+        if (gate.allowLeave(event)) blurRowToPopover(event.currentTarget);
+      }}
+    >
       <PopoverHeader className="composer-status-list-header">
         <PopoverTitle className="text-xs text-muted-foreground">{title}</PopoverTitle>
       </PopoverHeader>
@@ -98,14 +158,10 @@ export function StatusRow({
         <li>{body}</li>
       </Item>
     );
-  // The focus ring draws inside the row: the scrolling list it sits flush in would clip it.
+  // Active rows share the hover/focus glass wash instead of drawing a separate focus ring.
   return (
     <li>
-      <Item
-        asChild
-        size="xs"
-        className="composer-status-row py-1 text-left focus-visible:ring-inset"
-      >
+      <Item asChild size="xs" className="composer-status-row py-1 text-left">
         <button
           type="button"
           aria-label={`${t(label)} · ${actionLabel}`}

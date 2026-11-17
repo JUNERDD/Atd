@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode, Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { RunContextChoice } from '@atd/agent-contracts';
 import { Check, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,6 @@ export function ConfigOption({
       data-checked={checked}
       className="model-config-effort-option"
       onClick={onSelect}
-      onKeyDown={moveFocus}
     >
       <span className="model-config-option-text">{children}</span>
       {value && <span className="model-config-option-value">{value}</span>}
@@ -60,34 +59,9 @@ export function ConfigOption({
   );
 }
 
-/** The keys that move focus within an option list, as an offset or an end. */
-const LIST_KEYS: Record<string, number | 'first' | 'last'> = {
-  ArrowDown: 1,
-  ArrowUp: -1,
-  Home: 'first',
-  End: 'last',
-};
-
-/** Moves focus from one option to another of its list; the arrow keys wrap around. */
-function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
-  const move = LIST_KEYS[event.key];
-  const list = event.currentTarget.parentElement;
-  if (move === undefined || !list) return;
-  event.preventDefault();
-  const options = [...list.querySelectorAll<HTMLElement>(':scope > button')];
-  const index = options.indexOf(event.currentTarget);
-  const next =
-    move === 'first'
-      ? 0
-      : move === 'last'
-        ? options.length - 1
-        : (index + move + options.length) % options.length;
-  options[next]?.focus();
-}
-
 /**
- * A subview's option list. It scrolls within the popover's bounded height; the arrow keys, Home
- * and End move focus across its options while Tab still leaves the list.
+ * A subview's option list. It scrolls within the popover's bounded height; arrow/Home/End and
+ * Tab navigation are handled on the enclosing `PopoverContent`.
  */
 export function ConfigOptionList({
   listRef,

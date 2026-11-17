@@ -210,19 +210,48 @@
 button.model-config-row-nav {
   cursor: pointer;
 }
-button.model-config-row-nav:hover {
+button.model-config-row-nav:not(:disabled):focus {
   background: var(--muted);
-}
-button.model-config-row-nav:focus-visible {
-  background: var(--muted);
-  outline: 1px solid var(--ring);
+  outline: none;
 }
 button.model-config-row-nav:disabled {
   cursor: default;
   opacity: 0.5;
 }
-button.model-config-row-nav:disabled:hover {
-  background: transparent;
+/* Root alias action Buttons (Restore / Save as new) share keyboard focus and pointer hover through
+   focus alone, with no focus-visible ring or separate raw :hover fill. */
+.model-config-root [data-root-item][data-slot='button']:is(:focus, :focus-visible) {
+  box-shadow: none;
+  outline: none;
+}
+.model-config-root [data-root-item][data-slot='button'][data-variant='outline']:hover:not(:focus) {
+  background-color: transparent;
+  color: inherit;
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='secondary']:hover:not(:focus) {
+  background-color: var(--ata-surface-raised-wash);
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='outline']:not(:disabled):focus {
+  background-color: var(--ata-surface-ghost-hover);
+  color: var(--foreground);
+  border-color: var(--border);
+  box-shadow: none;
+  outline: none;
+}
+.dark
+  .model-config-root
+  [data-root-item][data-slot='button'][data-variant='outline']:not(:disabled):focus {
+  background-color: color-mix(in oklab, var(--input) 30%, transparent);
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='secondary']:not(:disabled):focus {
+  background-color: var(--ata-material-selected);
+  color: var(--secondary-foreground);
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 .model-config-row-label {
   flex-shrink: 0;
@@ -286,12 +315,9 @@ button.model-config-row-nav:disabled:hover {
   font: inherit;
   cursor: pointer;
 }
-.model-config-effort-option:hover {
+.model-config-effort-option:not(:disabled):focus {
   background: var(--muted);
-}
-.model-config-effort-option:focus-visible {
-  background: var(--muted);
-  outline: 1px solid var(--ring);
+  outline: none;
 }
 .model-config-option-text {
   display: flex;

@@ -1,5 +1,5 @@
 import type { ModelAlias } from '@atd/agent-contracts';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { installBridge } from '../../../tests/app-test-bridge';
@@ -22,7 +22,6 @@ const CONNECTED: ServiceStatusView = {
   baseUrl: null,
   stream: { epoch: 1, seq: 0 },
 };
-
 const TIERED_CONTEXTS: ModelContexts = {
   options: [
     { tier: 'standard', contextWindow: 128000, pricedAbove: null },
@@ -35,7 +34,21 @@ const TIERED_CONTEXTS: ModelContexts = {
   custom: null,
 };
 
-function makeConnection(id: string, name: string, connected = true): Connection {
+function makeConnection(id: string, name: string, connected = true, modelCount = 1): Connection {
+  const catalog = Array.from({ length: modelCount }, (_, index) => {
+    const suffix = modelCount === 1 ? 'a' : String(index).padStart(3, '0');
+    return {
+      id: `model-${suffix}`,
+      name: modelCount === 1 ? 'Model A' : `Model ${suffix}`,
+      api: 'openai-completions',
+      baseUrl: 'https://api.openai.com/v1',
+      reasoning: true,
+      input: ['text'] as ('image' | 'text')[],
+      contextWindow: 128000,
+      maxTokens: 4096,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    };
+  });
   return {
     connectionId: id,
     revision: 1,
@@ -43,26 +56,14 @@ function makeConnection(id: string, name: string, connected = true): Connection 
     name,
     baseUrl: 'https://api.openai.com/v1',
     authType: 'api_key',
-    defaultModel: 'model-a',
+    defaultModel: catalog[0]!.id,
     connected,
     hasCredential: connected,
     options: {},
     customModels: [],
-    catalog: [
-      {
-        id: 'model-a',
-        name: 'Model A',
-        api: 'openai-completions',
-        baseUrl: 'https://api.openai.com/v1',
-        reasoning: true,
-        input: ['text'],
-        contextWindow: 128000,
-        maxTokens: 4096,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      },
-    ],
+    catalog,
     catalogError: '',
-    verifiedModel: connected ? 'model-a' : '',
+    verifiedModel: connected ? catalog[0]!.id : '',
   };
 }
 
@@ -83,6 +84,8 @@ async function renderPopover(options?: {
   activeAliasId?: string | null;
   aliasModified?: boolean;
   levels?: ModelLevels;
+  modelCount?: number;
+  modelId?: string;
 }) {
   installBridge();
   queryClient.setQueryData(bridgeKeys.serviceStatus, CONNECTED);
@@ -90,17 +93,19 @@ async function renderPopover(options?: {
   vi.mocked(providers.contexts).mockResolvedValue(TIERED_CONTEXTS);
   if (options?.levels) vi.mocked(providers.levels).mockResolvedValue(options.levels);
   const onSelectAlias = vi.fn();
+  const onModelChange = vi.fn();
+  const modelId = options?.modelId ?? (options?.modelCount ? 'model-000' : 'model-a');
 
   render(
     <ModelConfigPopover
       connections={[
-        makeConnection('conn-1', 'Primary'),
+        makeConnection('conn-1', 'Primary', true, options?.modelCount),
         makeConnection('conn-offline', 'Down', false),
       ]}
-      model={{ connectionId: 'conn-1', modelId: 'model-a' }}
+      model={{ connectionId: 'conn-1', modelId }}
       thinkingLevel={undefined}
       onThinkingLevelChange={vi.fn()}
-      onModelChange={vi.fn()}
+      onModelChange={onModelChange}
       aliases={options?.aliases}
       activeAliasId={options?.activeAliasId}
       aliasModified={options?.aliasModified}
@@ -110,15 +115,18 @@ async function renderPopover(options?: {
     />,
   );
 
-  const trigger = screen.getByRole('button', { name: /Model A.*128k/ });
+  const trigger = screen.getByRole('button', { name: /Model (A|\d+).*128k/ });
   await waitFor(() => expect(trigger).toHaveAccessibleName(/Off/));
   await waitFor(() => expect(providers.contexts).toHaveBeenCalled());
-  return { trigger, onSelectAlias };
+  return { trigger, onSelectAlias, onModelChange };
 }
 
 const scope = () => within(screen.getByRole('dialog'));
 const btn = (name: RegExp | string) => scope().getByRole('button', { name });
+const opt = (name: RegExp | string) => scope().getByRole('option', { name });
 const waitFocused = (name: RegExp | string) => waitFor(() => expect(btn(name)).toHaveFocus());
+const hover = (el: Element, clientX: number, clientY: number) =>
+  fireEvent.pointerMove(el, { pointerType: 'mouse', clientX, clientY });
 
 describe('ModelConfigPopover keyboard navigation', () => {
   it('cycles root items with wrap-around, skips disabled items, and selects aliases with Enter', async () => {
@@ -142,7 +150,6 @@ describe('ModelConfigPopover keyboard navigation', () => {
       btn(/^Effort/),
       btn(/^Model/),
     ];
-
     for (const item of expectedOrder) {
       await user.keyboard('{ArrowDown}');
       expect(item).toHaveFocus();
@@ -166,16 +173,14 @@ describe('ModelConfigPopover keyboard navigation', () => {
     const { trigger } = await renderPopover({ levels: { levels: ['off'], defaultLevel: 'off' } });
 
     await user.click(trigger);
-    const contextRow = btn(/^Context/);
-    const modelRow = btn(/^Model/);
     expect(btn(/^Effort/)).toBeDisabled();
 
     await user.keyboard('{ArrowDown}');
-    expect(contextRow).toHaveFocus();
+    expect(btn(/^Context/)).toHaveFocus();
     await user.keyboard('{ArrowDown}');
-    expect(modelRow).toHaveFocus();
+    expect(btn(/^Model/)).toHaveFocus();
     await user.keyboard('{ArrowUp}');
-    expect(contextRow).toHaveFocus();
+    expect(btn(/^Context/)).toHaveFocus();
   });
 
   it('opens on ArrowDown, ArrowUp, and Enter from the trigger and focuses the edge item', async () => {
@@ -204,18 +209,15 @@ describe('ModelConfigPopover keyboard navigation', () => {
     trigger.focus();
     await user.keyboard('{ArrowDown}');
     await waitFocused(/^Context/);
-
     await user.keyboard('{ArrowRight}');
-    const standardOption = await scope().findByRole('button', { name: /Standard/ });
-    await waitFor(() => expect(standardOption).toHaveFocus());
+    await waitFocused(/Standard/);
     await user.keyboard('{ArrowLeft}');
     await waitFocused(/^Context/);
 
     await user.keyboard('{ArrowDown}');
     expect(btn(/^Effort/)).toHaveFocus();
     await user.keyboard('{ArrowRight}');
-    const offOption = await scope().findByRole('button', { name: 'Off' });
-    await waitFor(() => expect(offOption).toHaveFocus());
+    await waitFocused('Off');
     await user.keyboard('{ArrowLeft}');
     await waitFocused(/^Effort/);
 
@@ -229,7 +231,6 @@ describe('ModelConfigPopover keyboard navigation', () => {
     await user.keyboard('{ArrowLeft}');
     expect(search).toHaveFocus();
     expect(search).toHaveValue('Model');
-
     await user.clear(search);
     await user.keyboard('{ArrowLeft}');
     await waitFocused(/^Model/);
@@ -256,5 +257,90 @@ describe('ModelConfigPopover keyboard navigation', () => {
     expect(btn(/^Context/)).toHaveFocus();
     await user.keyboard('{ArrowUp}');
     expect(btn('Save as new alias')).toHaveFocus();
+  });
+
+  it('unifies pointer hover with keyboard focus, gates stationary pointers, and omits data-kbd-nav', async () => {
+    const user = userEvent.setup();
+    const { trigger } = await renderPopover({
+      aliases: ALIASES,
+      activeAliasId: 'alias-daily',
+      aliasModified: true,
+    });
+
+    await user.click(trigger);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).not.toHaveAttribute('data-kbd-nav');
+
+    hover(btn(/^Deep/), 40, 40);
+    expect(btn(/^Deep/)).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(btn(/^Restore/)).toHaveFocus();
+    expect(dialog).not.toHaveAttribute('data-kbd-nav');
+
+    hover(btn(/^Deep/), 40, 40);
+    expect(btn(/^Restore/)).toHaveFocus();
+
+    hover(btn('Save as new alias'), 40, 90);
+    expect(btn('Save as new alias')).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(btn(/^Context/)).toHaveFocus();
+
+    hover(btn(/^Context/), 50, 120);
+    fireEvent.pointerLeave(dialog, { pointerType: 'mouse' });
+    expect(dialog).toHaveFocus();
+  });
+
+  it('wraps in Context, Effort, and >100-item Model subviews and selects the active model', async () => {
+    const user = userEvent.setup();
+    const { trigger, onModelChange } = await renderPopover({
+      levels: { levels: ['off', 'low', 'medium', 'high'], defaultLevel: 'off' },
+      modelCount: 105,
+      modelId: 'model-050',
+    });
+
+    trigger.focus();
+    await user.keyboard('{ArrowDown}');
+    await waitFocused(/^Context/);
+    await user.keyboard('{ArrowRight}');
+    await waitFocused(/Standard/);
+    await user.keyboard('{ArrowUp}');
+    expect(btn(/Long/)).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(btn(/Standard/)).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+
+    await user.keyboard('{ArrowDown}{ArrowRight}');
+    await waitFocused('Off');
+    await user.keyboard('{ArrowUp}');
+    expect(btn('High')).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(btn('Off')).toHaveFocus();
+    hover(btn('Medium'), 25, 80);
+    expect(btn('Medium')).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(btn('High')).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+
+    await user.keyboard('{ArrowDown}{ArrowRight}');
+    const search = await scope().findByRole('combobox');
+    await waitFor(() => expect(search).toHaveFocus());
+    expect(opt(/Model 050/)).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Home}');
+    expect(opt(/Model 000/)).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{ArrowUp}');
+    expect(await scope().findByRole('option', { name: /Model 104/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await user.keyboard('{ArrowDown}');
+    expect(opt(/Model 000/)).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Tab}');
+    expect(btn('Back')).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(search).toHaveFocus();
+    expect(opt(/Model 001/)).toHaveAttribute('aria-selected', 'true');
+    screen.getByRole('dialog').focus();
+    await user.keyboard('{Enter}');
+    expect(onModelChange).toHaveBeenCalledWith({ connectionId: 'conn-1', modelId: 'model-001' });
   });
 });

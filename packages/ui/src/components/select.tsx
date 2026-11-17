@@ -1,9 +1,27 @@
 import * as React from 'react';
 import { cn } from '@atd/ui/lib/utils';
-import { ignoreComposingEscape } from '@atd/ui/lib/ime';
+import { ignoreComposingEscape, isComposingKey } from '@atd/ui/lib/ime';
+import {
+  createPointerGate,
+  gateItemPointerProps,
+  type PointerGate,
+} from '@atd/ui/lib/pointer-gate';
 import { Select as SelectPrimitive } from 'radix-ui';
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from 'lucide-react';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@atd/ui/components/scroll-area';
+
+const SelectPointerGateContext = React.createContext<PointerGate | null>(null);
+
+const SELECT_NAV_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End']);
+
+function resolveSelectNavTarget(items: HTMLElement[], key: string): HTMLElement | undefined {
+  const index =
+    document.activeElement instanceof HTMLElement ? items.indexOf(document.activeElement) : -1;
+  if (key === 'Home') return items[0];
+  if (key === 'End') return items.at(-1);
+  if (key === 'ArrowDown') return index >= 0 ? items[(index + 1) % items.length] : items[0];
+  return index >= 0 ? items[(index - 1 + items.length) % items.length] : items.at(-1);
+}
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -57,8 +75,10 @@ function SelectContent({
   sideOffset = 4,
   collisionPadding = 8,
   onEscapeKeyDown,
+  onKeyDown,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const [pointerGate] = React.useState(() => createPointerGate(true));
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -73,16 +93,51 @@ function SelectContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         {...props}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (
+            event.defaultPrevented ||
+            isComposingKey(event) ||
+            event.ctrlKey ||
+            event.altKey ||
+            event.metaKey
+          ) {
+            return;
+          }
+          if (event.key.length === 1) {
+            pointerGate.lock();
+            return;
+          }
+          if (!SELECT_NAV_KEYS.has(event.key)) return;
+          event.preventDefault();
+          pointerGate.lock();
+          const items = [
+            ...event.currentTarget.querySelectorAll<HTMLElement>(
+              '[data-slot="select-item"]:not([data-disabled])',
+            ),
+          ];
+          if (items.length === 0) return;
+          const target = resolveSelectNavTarget(items, event.key);
+          const viewport = event.currentTarget.querySelector<HTMLElement>(
+            '[data-radix-select-viewport]',
+          );
+          target?.scrollIntoView?.({ block: 'nearest' });
+          if (target === items[0] && viewport) viewport.scrollTop = 0;
+          if (target === items.at(-1) && viewport) viewport.scrollTop = viewport.scrollHeight;
+          target?.focus({ preventScroll: true });
+        }}
         onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
-        <ScrollAreaRoot className="flex min-h-0 flex-1 flex-col">
-          <SelectPrimitive.Viewport asChild>
-            <SelectScrollViewport className="h-auto min-h-0 flex-1" gutter="none">
-              {children}
-            </SelectScrollViewport>
-          </SelectPrimitive.Viewport>
-          <ScrollBar />
-        </ScrollAreaRoot>
+        <SelectPointerGateContext.Provider value={pointerGate}>
+          <ScrollAreaRoot className="flex min-h-0 flex-1 flex-col">
+            <SelectPrimitive.Viewport asChild>
+              <SelectScrollViewport className="h-auto min-h-0 flex-1" gutter="none">
+                {children}
+              </SelectScrollViewport>
+            </SelectPrimitive.Viewport>
+            <ScrollBar />
+          </ScrollAreaRoot>
+        </SelectPointerGateContext.Provider>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
@@ -122,6 +177,7 @@ function SelectItem({
 }: React.ComponentProps<typeof SelectPrimitive.Item> & {
   variant?: 'default' | 'destructive';
 }) {
+  const gate = React.useContext(SelectPointerGateContext);
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -131,6 +187,7 @@ function SelectItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave, false)}
     >
       <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>

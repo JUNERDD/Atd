@@ -91,9 +91,17 @@ export function SettingsNavPanel({
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (isComposingKey(event)) return;
-    if (event.key === 'ArrowDown') {
+    const hasModifier = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
+    if (!hasModifier && event.key === 'ArrowDown') {
       event.preventDefault();
-      rows()[0]?.focus();
+      const first = rows()[0];
+      first?.focus();
+      first?.scrollIntoView?.({ block: 'nearest' });
+    } else if (!hasModifier && event.key === 'ArrowUp') {
+      event.preventDefault();
+      const last = rows().at(-1);
+      last?.focus();
+      last?.scrollIntoView?.({ block: 'nearest' });
     } else if (event.key === 'Enter' && searching && results[0]) {
       event.preventDefault();
       open(results[0]);
@@ -101,17 +109,26 @@ export function SettingsNavPanel({
   }
 
   function onRowKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (isComposingKey(event) || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+      return;
     const buttons = rows();
+    if (buttons.length === 0) return;
     const index = buttons.indexOf(event.currentTarget);
     const step = STEP[event.key];
     let target: HTMLElement | undefined;
-    if (step === -1 && index === 0) target = input.current ?? undefined;
-    else if (step) target = buttons[index + step];
-    else if (event.key === 'Home') target = buttons[0];
+    if (step) {
+      target =
+        index >= 0
+          ? buttons[(index + step + buttons.length) % buttons.length]
+          : step === 1
+            ? buttons[0]
+            : buttons.at(-1);
+    } else if (event.key === 'Home') target = buttons[0];
     else if (event.key === 'End') target = buttons.at(-1);
     else return;
     event.preventDefault();
     target?.focus();
+    target?.scrollIntoView?.({ block: 'nearest' });
   }
 
   return (
