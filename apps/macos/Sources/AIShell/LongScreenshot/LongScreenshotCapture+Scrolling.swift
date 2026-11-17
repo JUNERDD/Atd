@@ -31,6 +31,7 @@ extension LongScreenshotCapture {
     if progress.reachedLimit { return .atLimit }
     guard CGPreflightPostEventAccess() else { return .needsPermission }
     guard autoScroll == nil, !ended else { return .started }
+    acceptsUserMomentum = false
     autoScroll = Task { [weak self] in
       await self?.scrollToEnd()
       // A cancelled loop was already ended by whoever cancelled it, and a newer one may run.
@@ -49,20 +50,27 @@ extension LongScreenshotCapture {
     autoScrollEnded()
   }
 
-  /// The user scrolled over the selection by `deltaY` points, positive towards the page's
-  /// start (AppKit's `scrollingDeltaY`, natural scrolling already applied; lines converted to
-  /// points by the caller). Atd's own scrolling stops: the user took over.
-  func userScrolled(deltaY: CGFloat) {
-    guard deltaY != 0, !ended, let engine else { return }
-    stopAutoScroll()
-    engine.request(
-      deltaY > 0 ? .up : .down, points: abs(deltaY), auto: false, at: Self.now)
+  /// The user scrolled the live page by `deltaY` points, positive towards the page's start
+  /// (AppKit's `scrollingDeltaY`, natural scrolling already applied; lines converted to points by
+  /// the caller). Atd's own scrolling stops on intentional manual input: the user took over.
+  func directUserScrolled(_ event: NSEvent, deltaY: CGFloat) {
+    guard !ended else { return }
+    if event.momentumPhase != [] {
+      guard acceptsUserMomentum, autoScroll == nil else { return }
+    } else if event.phase == .began || deltaY != 0 {
+      stopAutoScroll()
+      acceptsUserMomentum = true
+    }
+    guard deltaY != 0, let engine else { return }
+    engine.request(deltaY > 0 ? .up : .down, points: abs(deltaY), auto: false, at: Self.now)
     checkEdges()
   }
 
   // MARK: Private
 
   private static var now: Double { ProcessInfo.processInfo.systemUptime }
+
+  private var resolvedScrollLocation: CGPoint { scrollLocation?() ?? bandCenter }
 
   /// The band in Quartz points: where scroll events go.
   private var bandCenter: CGPoint {
@@ -76,7 +84,6 @@ extension LongScreenshotCapture {
   /// waits (a step then would scroll away the start the selection framed), and the engine may
   /// not exist yet.
   private func scrollToEnd() async {
-    let location = bandCenter
     var pacer = LongScreenshotAutoScroll(at: Self.now)
     while !Task.isCancelled, !ended {
       engine?.tick(at: Self.now)
@@ -85,6 +92,7 @@ extension LongScreenshotCapture {
       case .wait:
         try? await Task.sleep(for: Self.pollInterval)
       case .scroll(let direction, let points):
+        let location = resolvedScrollLocation
         guard let engine, Self.post(direction, points: points, at: location) else { return }
         engine.request(direction, points: points, auto: true, at: Self.now)
       case .stop:

@@ -63,6 +63,9 @@ nonisolated struct WindowSnapshot: Sendable {
   /// The process of the window frontmost at `point` (Quartz), nil when none is there.
   func pid(at point: CGPoint) -> pid_t? { frontmost(at: point)?.window.pid }
 
+  /// Bounds of the window frontmost at `point` (Quartz), nil when none is there.
+  func windowFrame(at point: CGPoint) -> CGRect? { frontmost(at: point)?.window.quartzFrame }
+
   /// What a recording of `rect` (Quartz) shows: the frontmost window whose frame it is, to the
   /// point, when it is exactly one, and the app of that window, else of the window frontmost at
   /// its centre; each nil when unknown.

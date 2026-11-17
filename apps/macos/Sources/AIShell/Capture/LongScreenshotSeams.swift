@@ -19,8 +19,10 @@ protocol LongScreenshotChromeHosting: AnyObject {
 
   /// Adds the chrome to `host` (an overlay's annotation host, flipped desktop points) beside
   /// `selection`, keeping clear of the bottom bar and the size label as the annotation toolbar
-  /// does.
-  func show(in host: NSView, selection: CGRect, keepClear: AnnotationToolbarLayout.KeepClear)
+  /// does; when `backdrop` is given, the non-interactive preview strip sits there instead.
+  func show(
+    in host: NSView, backdrop: NSView?, selection: CGRect,
+    keepClear: AnnotationToolbarLayout.KeepClear)
   /// Shows the phase as it is now; `preview` is the stitched image scaled for the strip.
   func update(
     _ progress: LongScreenshotProgress, message: LongScreenshotMessage?, preview: CGImage?)

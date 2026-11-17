@@ -8594,13 +8594,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scroll inside the selection to keep capturing"
+            "value" : "Scroll to keep capturing"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在选区里滚动，继续截取"
+            "value" : "滚动以继续截取"
           }
         }
       }

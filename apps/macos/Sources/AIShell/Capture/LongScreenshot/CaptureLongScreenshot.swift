@@ -13,6 +13,7 @@ final class CaptureLongScreenshot {
     let selection: CGRect
     let capture: LongScreenshotCapture
     let chrome: any LongScreenshotChromeHosting
+    let backdrops: [LongScreenshotBackdrop]
     let passThrough = LongScreenshotPassThrough()
     /// The size, in points, the chrome's preview strip shows the stitched image at; set once the
     /// chrome is shown.
@@ -23,17 +24,27 @@ final class CaptureLongScreenshot {
     var finished = false
 
     init(
-      selection: CGRect, capture: LongScreenshotCapture, chrome: any LongScreenshotChromeHosting
+      selection: CGRect, capture: LongScreenshotCapture, chrome: any LongScreenshotChromeHosting,
+      backdrops: [LongScreenshotBackdrop]
     ) {
       self.selection = selection
       self.capture = capture
       self.chrome = chrome
+      self.backdrops = backdrops
     }
 
-    /// Removes the monitors and the chrome and stops the engine unless it finished.
+    func updateBackdrops(area: CGRect?, label: String?, primaryID: CGDirectDisplayID) {
+      for backdrop in backdrops {
+        backdrop.update(area: area, label: backdrop.displayID == primaryID ? label : nil)
+      }
+    }
+
+    /// Removes the monitors, the chrome, and the backdrop panels, and stops the engine unless it
+    /// finished.
     fileprivate func stop() {
       passThrough.stop()
       chrome.remove()
+      for backdrop in backdrops { backdrop.close() }
       capture.onChange = nil
       capture.onStop = nil
       if !finished { capture.cancel() }

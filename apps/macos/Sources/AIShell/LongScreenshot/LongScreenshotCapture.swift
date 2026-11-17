@@ -56,6 +56,11 @@ final class LongScreenshotCapture {
   private(set) var ended = false
   var autoScroll: Task<Void, Never>?
   var edgeCheck: Task<Void, Never>?
+  /// Unobstructed Quartz point inside the scrollable band; falls back to the band's geometric
+  /// centre when nil.
+  var scrollLocation: (() -> CGPoint?)?
+  /// True once a direct (non-momentum) user scroll occurred in the current manual window.
+  var acceptsUserMomentum = false
   private var previewCache: (key: PreviewKey, image: CGImage)?
   private let startedAt = Date()
 
@@ -193,6 +198,8 @@ final class LongScreenshotCapture {
     stopAutoScroll()
     edgeCheck?.cancel()
     edgeCheck = nil
+    scrollLocation = nil
+    acceptsUserMomentum = false
     drop()
   }
 
