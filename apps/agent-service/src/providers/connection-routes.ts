@@ -39,6 +39,7 @@ import {
   resumeChatGPTUsage,
   withInferencePurpose,
 } from './chatgpt-usage.js';
+import { providerUsage } from './usage.js';
 
 const STALE = 'This connection changed. Reload its saved settings and try again.';
 
@@ -166,6 +167,13 @@ export function registerConnectionRoutes(
       defaultLevel:
         model && definition ? modelDefaultThinkingLevel(live.provider, definition) : 'off',
     };
+  });
+
+  /** Provider-reported allowance windows and balance; providers without an API answer `unsupported`. */
+  app.get<Params>('/v1/providers/:connectionId/usage', RENDERER_ROUTE, async (request) => {
+    const { live, ...opened } = await load(request.params.connectionId);
+    if (!live.connected) throw new ConflictError(`Reconnect ${live.name} to view usage.`);
+    return providerUsage(opened, live);
   });
 
   app.get<Params>('/v1/providers/:connectionId/contexts', RENDERER_ROUTE, async (request) => {

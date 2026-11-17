@@ -54,28 +54,55 @@ const catalogProviderFixture: ProviderCatalogEntry = {
 };
 
 describe('provider credential issue UI', () => {
-  it('shows warning status and notice instead of verified state on unreadable keychain rows', () => {
+  it('shows warning status and notice instead of verified state on unreadable keychain rows', async () => {
     installBridge();
     const row = connectionFixture({ credentialIssue: 'unreadable' });
     render(
-      <ProviderConnections
-        rows={[{ connection: row }]}
-        defaultConnectionId={row.connectionId}
-        pending={false}
-        canManage
-        onManage={vi.fn()}
-        onConfirm={vi.fn()}
-        perform={vi.fn(async () => {})}
-      />,
+      <TooltipProvider>
+        <ProviderConnections
+          rows={[{ connection: row }]}
+          defaultConnectionId={row.connectionId}
+          pending={false}
+          canManage
+          onManage={vi.fn()}
+          onConfirm={vi.fn()}
+          perform={vi.fn(async () => {})}
+        />
+      </TooltipProvider>,
     );
 
-    expect(screen.queryByText('API key saved · Verified')).not.toBeInTheDocument();
-    expect(screen.getByText('Credential unreadable · Re-enter key')).toBeInTheDocument();
+    expect(screen.queryByText('Verified')).not.toBeInTheDocument();
+    expect(screen.getByText('Re-enter key')).toBeInTheDocument();
+    await userEvent.hover(screen.getByRole('button', { name: 'Manage OpenAI API' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Credential unreadable · Re-enter key',
+    );
     expect(
       screen.getByText(
         /saved API key cannot be read from the OS keychain \(common after an app update or signature change\)/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it('asks an OAuth credential issue to sign in again rather than re-enter a key', () => {
+    installBridge();
+    const row = connectionFixture({ authType: 'oauth', credentialIssue: 'unreadable' });
+    render(
+      <TooltipProvider>
+        <ProviderConnections
+          rows={[{ connection: row }]}
+          defaultConnectionId={row.connectionId}
+          pending={false}
+          canManage
+          onManage={vi.fn()}
+          onConfirm={vi.fn()}
+          perform={vi.fn(async () => {})}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText('Sign in again')).toBeInTheDocument();
+    expect(screen.queryByText('Re-enter key')).not.toBeInTheDocument();
   });
 
   it('replaces keep-saved-key hints with re-entry guidance inside ProviderForm', () => {

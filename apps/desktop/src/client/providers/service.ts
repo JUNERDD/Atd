@@ -1,6 +1,7 @@
 import {
   getProviderContexts,
   getProviderLevels,
+  getProviderUsage,
   providerStatus,
   refreshProvider,
   setDefaultProvider,
@@ -22,6 +23,7 @@ import type {
   ModelReference,
   ModelThinkingLevel,
   ProviderCatalogEntry,
+  ProviderUsage,
 } from './schema';
 
 /** The connection the provider client reads its service options from, once it exists. */
@@ -285,6 +287,11 @@ export class ProviderService {
       verifyProvider(options, reference.connectionId, reference.modelId),
     );
     this.markProbed(reference.connectionId);
+  }
+
+  /** Provider-reported allowance windows and balance; providers without an API answer as such. */
+  async usage(connectionId: string): Promise<ProviderUsage> {
+    return getProviderUsage(this.options(), connectionId);
   }
 
   /**

@@ -9,6 +9,7 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ProviderConnectionFields } from './provider-connection-fields';
+import { ProviderUsagePanel } from './provider-usage-panel';
 import { ProviderSignIn } from './provider-login';
 import { draftFrom } from './provider-draft';
 import { useProviderDraft } from './use-provider-draft';
@@ -123,6 +124,7 @@ export function ProviderForm({
             disabled={disabled}
             change={change}
           />
+          {saved && <ProviderUsagePanel connection={saved} dirty={dirty} />}
           {accountLogin && (
             <>
               {!chatgpt && !login.state && needsSignIn && (

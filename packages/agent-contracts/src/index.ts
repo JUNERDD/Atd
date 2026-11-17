@@ -31,6 +31,7 @@ export * from './chatgpt.js';
 export * from './credential-errors.js';
 export * from './request-errors.js';
 export * from './providers.js';
+export * from './provider-usage.js';
 export * from './provider-manage.js';
 export * from './commands.js';
 export * from './command-run.js';

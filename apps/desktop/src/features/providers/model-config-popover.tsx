@@ -14,6 +14,7 @@ import { providerPresentation } from './provider-services';
 import { saveModelContext, useModelContexts } from './use-model-contexts';
 import { useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
+import { ProviderUsageSummary } from './provider-usage';
 
 type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
 
@@ -206,6 +207,7 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         {view === 'root' && (
           <div className="model-config-root">
             <ChatGPTPlan connection={connection} variant="menu" />
+            {connection && <ProviderUsageSummary connection={connection} variant="menu" />}
             {contextChoice ? (
               <button
                 ref={contextRowRef}
