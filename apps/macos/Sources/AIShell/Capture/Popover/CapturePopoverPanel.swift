@@ -46,8 +46,7 @@ final class CapturePopoverPanel: ActiveGlassPanel {
     animationBehavior = .none
   }
 
-  override var canBecomeKey: Bool { allowsKey }
-  override var canBecomeMain: Bool { false }
+  override var acceptsKeyFocus: Bool { allowsKey }
 
   /// Prevents AppKit from pushing borderless capture popovers below the menu bar.
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {

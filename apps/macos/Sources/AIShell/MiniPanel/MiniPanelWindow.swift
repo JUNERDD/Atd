@@ -130,8 +130,7 @@ final class MiniPanelWindow: ActiveGlassPanel, FloatingHoverHost {
     didSet { if !keyCapable { returnKeyboard() } }
   }
 
-  override var canBecomeKey: Bool { keyCapable }
-  override var canBecomeMain: Bool { false }
+  override var acceptsKeyFocus: Bool { keyCapable }
 
   /// Where the owner puts it: a borderless window is otherwise kept below the menu bar, and the
   /// canvas reaches past the work area near the top of the display.

@@ -87,7 +87,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
   func setTitle(_ title: String) { window?.title = title }
 
-  func close() { window?.close() }
+  func close(steppingAside: Bool = true) {
+    (window as? ShellForegroundWindow)?.stepsAsideOnClose = steppingAside
+    window?.close()
+  }
 
   func windowWillClose(_ notification: Notification) {
     let closingWindow = window
@@ -192,9 +195,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 /// A borderless window refuses key and main status by default, which would leave the guide's
 /// keyboard (Esc, Return, Space, Tab) unreachable. AppKit also keeps windows out from under the
 /// menu bar; the stage opts out of that so it covers the display's full frame.
-private final class OnboardingStageWindow: NSWindow {
-  override var canBecomeKey: Bool { true }
-  override var canBecomeMain: Bool { true }
+private final class OnboardingStageWindow: ShellForegroundWindow {
+  override var allowsBorderlessKeyAndMain: Bool { true }
 
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
     frameRect

@@ -60,8 +60,7 @@ final class CapturePinnedWindow: ActiveGlassPanel {
     pinContentView.controlsBar.owner = self
   }
 
-  override var canBecomeKey: Bool { !hasClosed && !PanelKeyboard.isReturningToFrontmostApp }
-  override var canBecomeMain: Bool { false }
+  override var acceptsKeyFocus: Bool { !hasClosed }
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
     frameRect
   }
@@ -235,7 +234,6 @@ final class CapturePinnedWindow: ActiveGlassPanel {
     hasClosed = true
     shadowInvalidationPending = false
     pinContentView.teardown()
-    orderOutReturningKeyboard()
     close()
     onCloseAction(self)
   }

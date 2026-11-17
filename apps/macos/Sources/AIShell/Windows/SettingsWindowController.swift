@@ -43,7 +43,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       return
     }
     let workArea = Screens.workAreaUnderCursor()
-    let window = NSWindow(
+    let window = ShellForegroundWindow(
       contentRect: NSRect(SettingsGeometry.centeredFrame(in: workArea)),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered, defer: false)

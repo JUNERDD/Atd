@@ -33,8 +33,16 @@ final class CaptureOverlayPanel: NSPanel, FloatingHoverHost {
     setFrame(screen.frame, display: false)
   }
 
-  override var canBecomeKey: Bool { allowsKey }
+  override var canBecomeKey: Bool { allowsKey && !PanelKeyboard.isReturningToFrontmostApp }
   override var canBecomeMain: Bool { false }
+
+  override func close() {
+    allowsKey = false
+    PanelKeyboard.suppressResidentKey {
+      orderOut(nil)
+      super.close()
+    }
+  }
 
   @discardableResult
   override func makeFirstResponder(_ responder: NSResponder?) -> Bool {

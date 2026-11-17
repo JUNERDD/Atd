@@ -35,7 +35,7 @@ final class ViewWindowController: NSObject, NSWindowDelegate {
   ) {
     self.view = view
     self.host = host
-    window = NSWindow(
+    window = ShellForegroundWindow(
       contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered, defer: false)

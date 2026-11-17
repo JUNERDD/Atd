@@ -44,6 +44,24 @@ enum WindowStack {
     }
   }
 
+  /// Frontmost running regular app with a visible non-empty window on the active Space, falling
+  /// back to Finder when none is visible.
+  static func topmostOtherApplication() -> NSRunningApplication? {
+    let own = ProcessInfo.processInfo.processIdentifier
+    let levels = NSWindow.Level.normal.rawValue...NSWindow.Level.floating.rawValue
+    for entry in list(.optionOnScreenOnly, relativeTo: nil) {
+      guard entry.pid != own, levels.contains(entry.layer), entry.alpha > 0, !entry.frame.isEmpty,
+        let app = NSRunningApplication(processIdentifier: entry.pid),
+        !app.isTerminated, !app.isHidden, app.activationPolicy == .regular
+      else { continue }
+      return app
+    }
+    return NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").first
+    {
+      !$0.isTerminated
+    }
+  }
+
   private struct Entry {
     let id: CGWindowID
     let pid: pid_t

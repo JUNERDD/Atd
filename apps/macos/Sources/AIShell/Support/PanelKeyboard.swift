@@ -10,12 +10,45 @@ enum PanelKeyboard {
     return !NSApp.isActive
   }
 
-  fileprivate static func performOrderOut(returningToOtherApp: Bool, _ body: () -> Void) {
+  static func performOrderOut(
+    suppressingResidentKey: Bool, deactivating: Bool, _ body: () -> Void
+  ) {
     let previous = isReturningToFrontmostApp
-    isReturningToFrontmostApp = previous || returningToOtherApp
+    isReturningToFrontmostApp = previous || suppressingResidentKey
     defer { isReturningToFrontmostApp = previous }
     body()
-    if returningToOtherApp { NSApp.deactivate() }
+    if deactivating { stepAside() }
+  }
+
+  /// Returns keyboard focus to another app: releases local key grabs when another app already
+  /// owns the menu bar, or cooperatively yields activation to the topmost visible regular app when
+  /// Atd itself is foreground-active.
+  static func stepAside() {
+    if anotherAppOwnsMenuBar {
+      NSApp.deactivate()
+      return
+    }
+    guard NSApp.isActive else { return }
+    NSApp.deactivate()
+    if let target = WindowStack.topmostOtherApplication() {
+      _ = target.activate(from: .current, options: [])
+    }
+  }
+
+  /// Hands keyboard focus to an eligible uncovered window of Atd, or steps aside when none
+  /// exists.
+  static func handOff(excluding closingWindow: NSWindow?) {
+    if let successor = AppPresence.focusTarget(excluding: closingWindow) {
+      if !NSApp.isActive { NSApp.activate() }
+      successor.makeKeyAndOrderFront(nil)
+    } else {
+      stepAside()
+    }
+  }
+
+  /// Runs `body` while suppressing resident Atd key promotion without deactivating the app.
+  static func suppressResidentKey(_ body: () -> Void) {
+    performOrderOut(suppressingResidentKey: true, deactivating: false, body)
   }
 }
 
@@ -28,20 +61,36 @@ extension NSPanel {
   /// taking the keyboard.
   func returnKeyboard() {
     guard isKeyWindow, isVisible else { return }
-    PanelKeyboard.performOrderOut(returningToOtherApp: PanelKeyboard.anotherAppOwnsMenuBar) {
+    let returning = PanelKeyboard.anotherAppOwnsMenuBar
+    PanelKeyboard.performOrderOut(suppressingResidentKey: returning, deactivating: returning) {
       orderOut(nil)
       orderFrontRegardless()
     }
   }
 
-  /// Orders a non-activating panel out and, when it held the keyboard while another app owned
-  /// the menu bar, returns keyboard focus to that app without waking resident Atd panels.
+  /// Orders a non-activating panel out and, when another app owns the menu bar, suppresses
+  /// resident Atd key promotion if this panel or no Atd window holds key, deactivating Atd when
+  /// this panel held the keyboard.
   func orderOutReturningKeyboard() {
-    PanelKeyboard.performOrderOut(
-      returningToOtherApp: isKeyWindow && PanelKeyboard.anotherAppOwnsMenuBar
-    ) {
+    performReturningOrderOut { orderOut(nil) }
+  }
+
+  /// Orders out and closes a non-activating panel inside one guarded pass so AppKit's
+  /// close-time key promotion cannot wake resident Atd panels before keyboard focus returns.
+  func closeReturningKeyboard() {
+    performReturningOrderOut {
       orderOut(nil)
+      close()
     }
+  }
+
+  func performReturningOrderOut(_ body: () -> Void) {
+    let heldKey = isKeyWindow
+    let anotherOwns = PanelKeyboard.anotherAppOwnsMenuBar
+    PanelKeyboard.performOrderOut(
+      suppressingResidentKey: (heldKey || NSApp.keyWindow == nil) && anotherOwns,
+      deactivating: heldKey && anotherOwns,
+      body)
   }
 
   /// Takes the keyboard for a control the person clicked that needs it, as a click in a text

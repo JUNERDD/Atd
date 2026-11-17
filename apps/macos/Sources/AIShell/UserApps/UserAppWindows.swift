@@ -97,7 +97,7 @@ final class UserAppWindows {
       // bar, so it closes, remembering its frame, and the new one opens there. The app stays
       // open for the renderer throughout.
       window.onClose = nil
-      window.close()
+      window.close(steppingAside: false)
     }
     let host = UserAppHost(
       runtime: runtime, dataStore: dataStore, rules: rules, schemeHandler: schemeHandler,

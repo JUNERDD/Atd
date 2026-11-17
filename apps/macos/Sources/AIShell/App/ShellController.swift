@@ -295,7 +295,9 @@ public final class ShellController {
   /// A hidden panel must not keep the keyboard: the welcome guide or the settings window takes
   /// it back when open, otherwise the app steps aside for the app the user came from.
   private func passFocusOnFromPanel() {
-    if !onboarding.focusIfShown(), !settings.focusIfShown() { NSApp.deactivate() }
+    if !onboarding.focusIfShown(), !settings.focusIfShown() {
+      PanelKeyboard.handOff(excluding: panel.panel)
+    }
   }
 
   // MARK: Entry points for the bridge
