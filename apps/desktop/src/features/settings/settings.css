@@ -1278,7 +1278,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin-top: 32px;
 }
 .settings-shell-allowlist-heading {
@@ -1305,27 +1305,23 @@
   height: 16px;
   margin-top: 2px;
 }
-/* One card: the add field on top, then the entries (or a note while there are none). */
-.settings-shell-allowlist-card {
-  min-width: 0;
-  overflow: hidden;
-  background: var(--ata-surface-card);
-}
 .settings-shell-allowlist-form {
-  padding: 6px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
 }
-/* The add field's error, inside the card directly under it, its icon under the `$`. */
+/* The add field's error, directly under the field, its icon under the `$`. */
 .settings-shell-allowlist-error {
-  padding: 0 14px 8px;
+  padding: 0 12px;
 }
+/* Entries are rows of their own, like the permission options above, not a box inside a box. */
 .settings-shell-allowlist-list {
-  gap: 0;
-  padding: 4px 6px;
-  border-top: 1px solid var(--border);
+  gap: 8px;
 }
-/* Compact rows whose `$` lines up with the one in the add field above. */
+/* The `$` prompt sits closer to its command than a settings row's own gap would. */
 .settings-shell-allowlist-list > li {
-  padding: 2px 4px 2px 8px;
+  gap: 8px;
 }
 .settings-shell-allowlist-prompt {
   flex-shrink: 0;
@@ -1347,8 +1343,7 @@
 }
 .settings-shell-allowlist-empty {
   margin: 0;
-  padding: 8px 14px;
-  border-top: 1px solid var(--border);
+  padding: 0 14px;
   color: var(--muted-foreground);
   font-size: 13px;
   line-height: 20px;

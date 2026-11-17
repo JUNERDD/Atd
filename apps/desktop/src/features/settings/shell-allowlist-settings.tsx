@@ -41,9 +41,9 @@ function checkEntry(
 /**
  * The user's shell allowlist: commands starting with an entry run without a confirm (Manual) or
  * without review (Auto). Under Always allow the list decides nothing, since every command already
- * runs; the section stays, says so, and keeps its entries manageable for a switch back. One card
- * holds the add field and the entries, each one line after a `$` prompt; a click on a row opens it
- * in full. The list comes from the settings snapshot; every change saves the whole list through
+ * runs; the section stays, says so, and keeps its entries manageable for a switch back. The add
+ * field sits above the entries, each one line after a `$` prompt; a click on a row opens it in
+ * full. The list comes from the settings snapshot; every change saves the whole list through
  * main, which validates it again, persists it, and pushes it to the agent service. The renderer
  * checks entries first so each problem gets its own message; main only rejects generically.
  */
@@ -131,48 +131,47 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
           </p>
         )}
       </div>
-      <div
-        className="settings-shell-allowlist-card rounded-2xl border"
+      <form
+        className="settings-shell-allowlist-form"
+        aria-busy={pending || undefined}
         data-settings-anchor="shell-allowlist"
+        onSubmit={(event) => void add(event)}
       >
-        <form
-          className="settings-shell-allowlist-form"
-          aria-busy={pending || undefined}
-          onSubmit={(event) => void add(event)}
+        <InputGroup
+          className="has-[input:focus-visible]:border-ring"
+          data-disabled={unavailable || undefined}
         >
-          <InputGroup className="bg-transparent" data-disabled={unavailable || undefined}>
-            <InputGroupAddon>
-              <InputGroupText className="font-mono">$</InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput
-              id={inputId}
-              className="font-mono"
-              value={value}
-              placeholder={t('permissions.shellAllowlist.placeholder')}
-              aria-label={t('permissions.shellAllowlist.inputLabel')}
-              autoComplete="off"
-              spellCheck={false}
+          <InputGroupAddon className="pl-3">
+            <InputGroupText className="font-mono">$</InputGroupText>
+          </InputGroupAddon>
+          <InputGroupInput
+            id={inputId}
+            className="font-mono"
+            value={value}
+            placeholder={t('permissions.shellAllowlist.placeholder')}
+            aria-label={t('permissions.shellAllowlist.inputLabel')}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={unavailable}
+            aria-invalid={(error !== null && error !== 'save') || undefined}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setError(null);
+            }}
+          />
+          <InputGroupAddon align="inline-end" className="py-0">
+            <InputGroupButton
+              type="submit"
+              variant="secondary"
               disabled={unavailable}
-              aria-invalid={(error !== null && error !== 'save') || undefined}
-              aria-describedby={error ? errorId : undefined}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setError(null);
-              }}
-            />
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                type="submit"
-                variant="secondary"
-                disabled={unavailable}
-                aria-disabled={pending || undefined}
-              >
-                <Plus />
-                {t('permissions.shellAllowlist.add')}
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </form>
+              aria-disabled={pending || undefined}
+            >
+              <Plus />
+              {t('permissions.shellAllowlist.add')}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
         {error && (
           <p
             id={errorId}
@@ -183,46 +182,46 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
             <span>{t(`permissions.shellAllowlist.errors.${error}`)}</span>
           </p>
         )}
-        {entries.length === 0 ? (
-          <p className="settings-shell-allowlist-empty">{t('permissions.shellAllowlist.empty')}</p>
-        ) : (
-          <ItemGroup
-            className="settings-shell-allowlist-list"
-            aria-label={t('permissions.shellAllowlist.listLabel')}
-          >
-            {entries.map((entry) => (
-              <Item asChild key={entry} size="xs" className="open-row">
-                <li>
-                  <button
-                    type="button"
-                    className="open-row-button"
-                    aria-label={t('permissions.shellAllowlist.viewLabel', { entry })}
-                    onClick={() => setDetail({ entry, open: true })}
-                  />
-                  <span className="settings-shell-allowlist-prompt font-mono" aria-hidden="true">
-                    $
-                  </span>
-                  <ItemContent>
-                    <ItemTitle className="font-mono font-normal">{entry}</ItemTitle>
-                  </ItemContent>
-                  <ItemActions>
-                    <IconButton
-                      size="icon-xs"
-                      label={t('permissions.shellAllowlist.remove')}
-                      aria-label={t('permissions.shellAllowlist.removeLabel', { entry })}
-                      disabled={unavailable}
-                      aria-disabled={pending || undefined}
-                      onClick={() => void remove(entry)}
-                    >
-                      <Trash2 />
-                    </IconButton>
-                  </ItemActions>
-                </li>
-              </Item>
-            ))}
-          </ItemGroup>
-        )}
-      </div>
+      </form>
+      {entries.length === 0 ? (
+        <p className="settings-shell-allowlist-empty">{t('permissions.shellAllowlist.empty')}</p>
+      ) : (
+        <ItemGroup
+          className="settings-shell-allowlist-list"
+          aria-label={t('permissions.shellAllowlist.listLabel')}
+        >
+          {entries.map((entry) => (
+            <Item asChild key={entry} variant="outline" size="sm" className="open-row">
+              <li>
+                <button
+                  type="button"
+                  className="open-row-button"
+                  aria-label={t('permissions.shellAllowlist.viewLabel', { entry })}
+                  onClick={() => setDetail({ entry, open: true })}
+                />
+                <span className="settings-shell-allowlist-prompt font-mono" aria-hidden="true">
+                  $
+                </span>
+                <ItemContent>
+                  <ItemTitle className="font-mono font-normal">{entry}</ItemTitle>
+                </ItemContent>
+                <ItemActions>
+                  <IconButton
+                    size="icon-xs"
+                    label={t('permissions.shellAllowlist.remove')}
+                    aria-label={t('permissions.shellAllowlist.removeLabel', { entry })}
+                    disabled={unavailable}
+                    aria-disabled={pending || undefined}
+                    onClick={() => void remove(entry)}
+                  >
+                    <Trash2 />
+                  </IconButton>
+                </ItemActions>
+              </li>
+            </Item>
+          ))}
+        </ItemGroup>
+      )}
       {detail ? (
         <ShellAllowlistEntryDialog
           entry={detail.entry}
