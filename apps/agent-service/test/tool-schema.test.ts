@@ -58,6 +58,7 @@ test('extension registration normalizes the schema for Moonshot', () => {
     label: 'Computer',
     description: 'Test tool',
     parameters: Type.Object({ action: Type.Union([Type.Literal('a'), Type.Literal('b')]) }),
+    execute: async () => ({ content: [], details: undefined }),
   };
   let registered: ToolDefinition | undefined;
   const pi = {
