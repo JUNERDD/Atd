@@ -56,7 +56,7 @@ src/
   ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
   lib/                 In-view, active-section, reduced-motion and hydration hooks, press feedback
   motion/              The reveal controller and text effects (decode, type)
-  gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
+  gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
   pages/<name>/        Other routes: blog, diagnostic downloads (`/debug`), and 404 fallback
   content/             Site facts (links, version), the interface scenes and archived captures

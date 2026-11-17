@@ -8,11 +8,10 @@ void main() {
 
 /**
  * One pass draws the whole field. Positions are CSS px from the canvas's top-left corner, so the
- * art box, the lens and ripples use the same units as the DOM. Three spaces exist: `p` is the
- * screen; `d` is the panel as the scroll-away dive scales it about the art box's center; `q` is that
- * panel seen through the pointer loupe. Everything that belongs to the panel (dots, art, ripples,
- * the power-on wave) is evaluated per cell in `q`; optical effects (the lens glow, the tilt blur,
- * the vignette) stay in `p`.
+ * art box, the lens and ripples use the same units as the DOM. Two spaces exist: `p` is the
+ * screen; `q` is the panel seen through the pointer loupe. Everything that belongs to the panel
+ * (dots, art, ripples, the power-on wave) is evaluated per cell in `q`; optical effects (the lens
+ * glow, the tilt blur, the vignette) stay in `p`.
  */
 export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
@@ -24,7 +23,6 @@ uniform float u_scale;       // device px per CSS px (DPR x render scale)
 uniform float u_time;        // seconds
 uniform float u_motion;      // 1 = full motion, 0 = reduced motion
 uniform float u_boot;        // seconds since power-on; large once settled
-uniform float u_scroll;      // 0..1 scroll-away progress
 uniform vec3 u_grid;         // origin x, origin y, pitch (CSS px)
 uniform sampler2D u_art;     // the word on the board: coverage (r, mipmapped), character (g)
 uniform float u_shown;       // characters of it showing, from its first
@@ -33,7 +31,6 @@ uniform float u_settle;      // seconds since the shown word arrived; negative b
 uniform vec4 u_cursor;       // the shown word's block cursor: past its last line, cap high
 uniform ivec2 u_cells;       // art texture size in cells
 uniform vec4 u_artBox;       // where the shown word's ink sits: x, y, width, height
-uniform vec2 u_pivot;        // the art box's center: the scroll-away dive's pivot
 uniform vec4 u_lens;         // x, y, radius, strength
 uniform float u_zoom;        // loupe magnification at its center
 uniform vec4 u_ripples[4];   // x, y, start time, amplitude
@@ -84,20 +81,13 @@ void main() {
   vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y) / u_scale;
   vec2 artCenter = u_artBox.xy + 0.5 * u_artBox.zw;
 
-  // Scroll-away dive: the panel grows about the art box's center as the section leaves.
-  float away = u_scroll * u_motion;
-  float dive = 1.0 + 1.1 * away * away;
-  vec2 d = u_pivot + (p - u_pivot) / dive;
-
   // Loupe: shrink panel coordinates toward the pointer, which magnifies the grid there. The radial
   // map r * f(r) stays monotonic because f only grows with r, so the grid never folds.
-  vec2 lensAt = u_pivot + (u_lens.xy - u_pivot) / dive;
   float lensIn = 1.0 - smoothstep(0.0, u_lens.z, length(p - u_lens.xy));
-  vec2 q = lensAt + (d - lensAt) * mix(1.0, 1.0 / u_zoom, lensIn * u_lens.w * u_motion);
+  vec2 q = u_lens.xy + (p - u_lens.xy) * mix(1.0, 1.0 / u_zoom, lensIn * u_lens.w * u_motion);
 
-  // Mask blur: tilt-shift toward the top and bottom edges, deepening as the section leaves.
-  float tilt = smoothstep(0.7, 1.0, abs(p.y / size.y * 2.0 - 1.0)) * 0.8;
-  float blur = clamp(tilt + away * 0.75, 0.0, 1.0);
+  // Mask blur: tilt-shift toward the top and bottom edges.
+  float blur = smoothstep(0.7, 1.0, abs(p.y / size.y * 2.0 - 1.0)) * 0.8;
 
   // Panel cell under this fragment.
   float pitch = u_grid.z;
@@ -141,11 +131,7 @@ void main() {
   float resting = step(0.0, u_settle) * blinkOn;
   float cursor = inCursor.x * inCursor.y * mix(1.0, max(u_typing, resting), u_motion);
 
-  // Scroll-away: art dots dissolve in hashed order (a uniform fade under reduced motion).
-  float order = r2.y * 0.62;
-  float keepAvg = 1.0 - smoothstep(0.0, 0.72, u_scroll);
-  float keep = mix(keepAvg, 1.0 - smoothstep(order, order + 0.08, u_scroll), u_motion);
-  float lit = max(inArt * artOn, cursor) * keep;
+  float lit = max(inArt * artOn, cursor);
 
   // Field dots: hashed base level, a subtle twinkle and the slow scanline band.
   float yN = center.y / size.y;
@@ -153,8 +139,7 @@ void main() {
   float band = fract(u_time / 7.0) * 1.5 - 0.25;
   float scanOffset = (yN - band) * 8.0;
   float scan = u_motion * exp(-scanOffset * scanOffset);
-  float fieldDim = 1.0 - 0.6 * u_scroll;
-  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan) * fieldDim * wake;
+  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan) * wake;
 
   // Ripples: decelerating rings; under reduced motion a stationary glow that fades.
   float ripple = 0.0;
@@ -165,7 +150,7 @@ void main() {
     float life = 1.0 - rippleAge / RIPPLE_LIFE;
     float radius = u_motion * rippleAge * (640.0 - 240.0 * rippleAge);
     float width = mix(56.0, 20.0 + 30.0 * rippleAge, u_motion);
-    float off = length(center - (u_pivot + (rp.xy - u_pivot) / dive)) - radius;
+    float off = length(center - rp.xy) - radius;
     ripple += rp.w * life * life * exp(-off * off / (width * width));
   }
 
@@ -186,10 +171,10 @@ void main() {
   float energy = min(1.0, radius * radius / (rad * rad + 0.5 * soft * soft));
   float v = shape * level * energy;
 
-  float artAvg = smoothstep(0.15, 0.85, glow) * artOnAvg * keepAvg;
-  float haze = mix(u_levels.x * fieldDim * 0.113, u_levels.y * 0.363, artAvg);
+  float artAvg = smoothstep(0.15, 0.85, glow) * artOnAvg;
+  float haze = mix(u_levels.x * 0.113, u_levels.y * 0.363, artAvg);
   v = mix(v, haze * 1.35 * wake, smoothstep(0.45, 1.0, blur));
-  v += glow * artOnAvg * keepAvg * 0.045;
+  v += glow * artOnAvg * 0.045;
 
   vec2 c = p / size * 2.0 - 1.0;
   v *= 1.0 - 0.2 * smoothstep(0.6, 1.6, dot(c, c));
