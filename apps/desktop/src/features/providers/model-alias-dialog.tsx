@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { MAX_MODEL_ALIAS_NAME_LENGTH } from '@atd/agent-contracts';
+import {
+  clampSupportedThinkingLevel,
+  MAX_MODEL_ALIAS_NAME_LENGTH,
+  supportedModelThinkingLevels,
+  type RunContextChoice,
+} from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
 import {
   Dialog,
@@ -14,34 +19,17 @@ import {
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@atd/ui/components/select';
 import { Switch } from '@atd/ui/components/switch';
 import { isComposingKey } from '@atd/ui/lib/ime';
 import type {
   Connection,
   ModelAlias,
   ModelAliasDraft,
+  ModelReference,
   ModelThinkingLevel,
 } from '../../client/providers/schema';
 import { messageOf } from '../../lib/errors';
-import {
-  FALLBACK_LEVELS,
-  buildContextOptions,
-  decodeContext,
-  decodeRef,
-  encodeContext,
-  encodeRef,
-} from './model-alias-options';
-import { useModelContexts } from './use-model-contexts';
-import { useThinkingLevels } from './use-thinking-levels';
+import { ModelConfigPopover } from './model-config-popover';
 
 interface AliasDialogProps {
   alias: ModelAlias | null;
@@ -83,41 +71,25 @@ function AliasDialogBody(
   const usable = connections.filter((c) => c.connected && c.catalog.length > 0);
   const pick = usable.find((c) => c.connectionId === defaultConnectionId) ?? usable[0];
   const pickModel = pick?.defaultModel || pick?.catalog[0]?.id || '';
-  const fallbackRef = pick && pickModel ? encodeRef(pick.connectionId, pickModel) : '';
+  const fallbackRef: ModelReference | null =
+    pick && pickModel ? { connectionId: pick.connectionId, modelId: pickModel } : null;
   const [name, setName] = useState(alias?.name ?? '');
-  const [modelValue, setModelValue] = useState(
-    alias ? encodeRef(alias.connectionId, alias.modelId) : fallbackRef,
+  const [reference, setReference] = useState<ModelReference | null>(() =>
+    alias ? { connectionId: alias.connectionId, modelId: alias.modelId } : fallbackRef,
   );
-  const [contextKey, setContextKey] = useState(() => encodeContext(alias?.contextChoice));
-  const [thinkingKey, setThinkingKey] = useState<string>(alias?.thinkingLevel ?? 'default');
+  const [contextChoice, setContextChoice] = useState<RunContextChoice | undefined>(
+    () => alias?.contextChoice,
+  );
+  const [thinkingLevel, setThinkingLevel] = useState<ModelThinkingLevel | undefined>(
+    () => alias?.thinkingLevel,
+  );
   const [makeDefault, setMakeDefault] = useState(Boolean(alias && defaultAliasId === alias.id));
   const [nameError, setNameError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const reference = decodeRef(modelValue);
+  const modelConnections = useMemo(() => [...connections], [connections]);
   const selectedConnection = connections.find((c) => c.connectionId === reference?.connectionId);
   const selectedModel = selectedConnection?.catalog.find((m) => m.id === reference?.modelId);
-  const contexts = useModelContexts(reference, selectedConnection);
-  const levels = useThinkingLevels(reference, selectedConnection);
-
-  const currentInUsable = Boolean(selectedConnection?.connected && selectedModel);
-  const contextOptions = buildContextOptions(contexts, contextKey, t);
-  const fallbackLevels = selectedModel?.reasoning ? FALLBACK_LEVELS : [];
-  const baseLevels = levels.levels.length ? levels.levels : fallbackLevels;
-  const keptEffort = thinkingKey as ModelThinkingLevel;
-  const levelValues =
-    thinkingKey !== 'default' && !baseLevels.includes(keptEffort)
-      ? [...baseLevels, keptEffort]
-      : baseLevels;
-  const defaultLevelName = t(`thinkingLevels.levels.${levels.defaultLevel}`);
-  const defaultEffortLabel =
-    !levels.loading && levels.levels.length > 0
-      ? t('aliases.dialog.modelDefaultLevel', { level: defaultLevelName })
-      : t('modelConfig.modelDefault');
-  const effortOptions = [
-    { value: 'default', label: defaultEffortLabel },
-    ...levelValues.map((level) => ({ value: level, label: t(`thinkingLevels.levels.${level}`) })),
-  ];
 
   async function save() {
     if (submitting || !bridge) return;
@@ -132,14 +104,16 @@ function AliasDialogBody(
     }
     if (!reference) return setSubmitError(t('aliases.dialog.noModel'));
 
-    const contextChoice = decodeContext(contextKey);
-    const thinkingLevel = thinkingKey !== 'default' ? keptEffort : undefined;
+    const savedThinkingLevel =
+      thinkingLevel && selectedModel
+        ? clampSupportedThinkingLevel(supportedModelThinkingLevels(selectedModel), thinkingLevel)
+        : thinkingLevel;
     const draft: ModelAliasDraft = {
       name: trimmed,
       connectionId: reference.connectionId,
       modelId: reference.modelId,
       ...(contextChoice ? { contextChoice } : {}),
-      ...(thinkingLevel ? { thinkingLevel } : {}),
+      ...(savedThinkingLevel ? { thinkingLevel: savedThinkingLevel } : {}),
     };
     setNameError('');
     setSubmitError('');
@@ -166,7 +140,7 @@ function AliasDialogBody(
         <DialogTitle>
           {t(alias ? 'aliases.dialog.editTitle' : 'aliases.dialog.createTitle')}
         </DialogTitle>
-        <DialogDescription className="whitespace-normal">
+        <DialogDescription className="text-pretty whitespace-normal">
           {t('aliases.dialog.description')}
         </DialogDescription>
       </DialogHeader>
@@ -193,79 +167,74 @@ function AliasDialogBody(
             <InlineError id="model-alias-name-error" message={nameError} />
           </div>
           <div className="settings-field">
-            <Label htmlFor="model-alias-model">{t('aliases.dialog.model')}</Label>
-            <Select
-              value={modelValue}
-              disabled={submitting || (!usable.length && !modelValue)}
-              onValueChange={(next) => {
-                setModelValue(next);
-                setContextKey('default');
-                setThinkingKey('default');
+            <Label>{t('aliases.dialog.model')}</Label>
+            <ModelConfigPopover
+              connections={modelConnections}
+              model={reference}
+              disabled={submitting || (!usable.length && !reference)}
+              thinkingLevel={thinkingLevel ?? selectedConnection?.defaultThinkingLevel}
+              draftContextChoice={contextChoice}
+              hideDraftContextNote
+              onModelChange={(next) => {
+                setReference(next);
+                setContextChoice(undefined);
+                setThinkingLevel(undefined);
               }}
-            >
-              <SelectTrigger id="model-alias-model" className="w-full">
-                <SelectValue placeholder={t('aliases.dialog.noModel')} />
-              </SelectTrigger>
-              <SelectContent>
-                {reference && !currentInUsable && (
-                  <SelectItem value={modelValue}>
-                    {t('aliases.dialog.unavailableOption', {
-                      model: selectedModel?.name ?? reference.modelId,
-                      connection: selectedConnection?.name ?? t('aliases.unavailableConnection'),
-                    })}
-                  </SelectItem>
-                )}
-                {usable.map((connection) => (
-                  <SelectGroup key={connection.connectionId}>
-                    <SelectLabel>{connection.name}</SelectLabel>
-                    {connection.catalog.map((m) => (
-                      <SelectItem key={m.id} value={encodeRef(connection.connectionId, m.id)}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+              onContextChoiceChange={setContextChoice}
+              onThinkingLevelChange={setThinkingLevel}
+            />
+            {contextChoice && (
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  id="model-alias-context-note"
+                  className="text-xs text-pretty break-normal text-muted-foreground"
+                >
+                  {t('aliases.dialog.contextOwn')}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0"
+                  disabled={submitting}
+                  aria-describedby="model-alias-context-note"
+                  onClick={() => setContextChoice(undefined)}
+                >
+                  {t('aliases.dialog.resetInherited')}
+                </Button>
+              </div>
+            )}
+            {thinkingLevel && (
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  id="model-alias-effort-note"
+                  className="text-xs text-pretty break-normal text-muted-foreground"
+                >
+                  {t('aliases.dialog.effortOwn')}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0"
+                  disabled={submitting}
+                  aria-describedby="model-alias-effort-note"
+                  onClick={() => setThinkingLevel(undefined)}
+                >
+                  {t('aliases.dialog.resetInherited')}
+                </Button>
+              </div>
+            )}
+            {!contextChoice && !thinkingLevel && (
+              <p className="text-xs text-pretty break-normal text-muted-foreground">
+                {t('aliases.dialog.inheritDefaults')}
+              </p>
+            )}
           </div>
-          {[
-            [
-              'model-alias-context',
-              t('aliases.dialog.contextWindow'),
-              contextKey,
-              submitting || contextOptions.length <= 1,
-              setContextKey,
-              contextOptions,
-            ] as const,
-            [
-              'model-alias-effort',
-              t('aliases.dialog.thinkingLevel'),
-              thinkingKey,
-              submitting || levelValues.length === 0,
-              setThinkingKey,
-              effortOptions,
-            ] as const,
-          ].map(([id, label, value, disabled, onChange, options]) => (
-            <div key={id} className="settings-field">
-              <Label htmlFor={id}>{label}</Label>
-              <Select value={value} disabled={disabled} onValueChange={onChange}>
-                <SelectTrigger id={id} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ))}
           <div className="model-alias-dialog-toggle">
             <div className="model-alias-dialog-toggle-copy">
               <Label htmlFor="model-alias-default">{t('aliases.dialog.makeDefault')}</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-pretty break-normal text-muted-foreground">
                 {t('aliases.dialog.makeDefaultDescription')}
               </p>
             </div>

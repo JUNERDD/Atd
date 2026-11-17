@@ -1,7 +1,9 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
+  clampSupportedThinkingLevel,
   commandThinkingLevel,
+  supportedModelThinkingLevels,
   type AutomationDraft,
   type AutomationMissedRuns,
   type AutomationPolicy,
@@ -57,10 +59,15 @@ function aliasOptionLabel(
   tProviders: TFunction<'providers'>,
 ): string {
   const connection = connections.find((item) => item.connectionId === alias.connectionId);
-  const modelName =
-    connection?.catalog.find((item) => item.id === alias.modelId)?.name ?? alias.modelId;
+  const definition = connection?.catalog.find((item) => item.id === alias.modelId);
+  const modelName = definition?.name ?? alias.modelId;
   const parts = [alias.name, modelName];
-  if (alias.thinkingLevel) parts.push(tProviders(`thinkingLevels.levels.${alias.thinkingLevel}`));
+  if (alias.thinkingLevel) {
+    const level = definition
+      ? clampSupportedThinkingLevel(supportedModelThinkingLevels(definition), alias.thinkingLevel)
+      : alias.thinkingLevel;
+    parts.push(tProviders(`thinkingLevels.levels.${level}`));
+  }
   return parts.join(' · ');
 }
 

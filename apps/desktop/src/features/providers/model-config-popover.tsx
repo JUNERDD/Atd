@@ -1,4 +1,8 @@
 import { useRef } from 'react';
+import {
+  catalogModelDefaultThinkingLevel,
+  supportedModelThinkingLevels,
+} from '@atd/agent-contracts';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
@@ -16,7 +20,7 @@ import { ModelConfigSubview } from './model-config-subviews';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
 import { applyDraftContext, useModelContexts } from './use-model-contexts';
-import { useThinkingLevels } from './use-thinking-levels';
+import { resolveSelectedThinkingLevel, useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
 
 function renderRowContent(label: string, value: string | null, nav = true, truncate = false) {
@@ -57,7 +61,7 @@ type ModelConfigPopoverProps = EffortControl &
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context,
  * Effort and Model rows; subviews render in the same Popover with a back header. The model view
  * is a ModelList; effort options come from useThinkingLevels, disabled until the model offers a
- * choice and falling back to levels[0] when the given level is unsupported.
+ * choice and clamping to the nearest supported level when the given level is unsupported.
  *
  * Context is a drill-in row once the model's catalog window is known, for every provider: its
  * tiers or its catalog window, and the other windows the service offers for it. Unlike model and effort, the window is the
@@ -109,15 +113,26 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
   const contexts = props.onContextChoiceChange
     ? applyDraftContext(baseContexts, props.draftContextChoice)
     : baseContexts;
-  const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
+  const fallbackWindow =
+    (model ? connection?.contextWindows?.[model.modelId] : undefined) ??
+    definition?.contextWindow ??
+    null;
+  const contextText = formatContextWindow(contexts.window ?? fallbackWindow);
   const contextChoice = Boolean(model && connection) && contexts.catalogWindow !== null;
   const { levels, defaultLevel, loading } = useThinkingLevels(effort ? model : null, connection);
-  // No chosen level runs with the model's default, known once its levels load.
-  const thinkingLevel = effort
-    ? (effort.thinkingLevel ?? (loading ? undefined : defaultLevel))
-    : undefined;
-  const selected =
-    thinkingLevel && !levels.includes(thinkingLevel) ? (levels[0] ?? thinkingLevel) : thinkingLevel;
+  // While loading, clamp and default from the catalog definition so frame 1 matches resolved effort.
+  const effectiveLevels = levels.length
+    ? levels
+    : definition
+      ? supportedModelThinkingLevels(definition)
+      : [];
+  const fallbackDefault = loading
+    ? definition
+      ? catalogModelDefaultThinkingLevel(definition)
+      : undefined
+    : defaultLevel;
+  const thinkingLevel = effort ? (effort.thinkingLevel ?? fallbackDefault) : undefined;
+  const selected = resolveSelectedThinkingLevel(thinkingLevel, effectiveLevels);
   const effortText = selected
     ? definition?.reasoningControl === 'fixed'
       ? t('modelConfig.modelDefault')
@@ -282,6 +297,7 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
             connections={connections}
             baseContexts={baseContexts}
             draftContextChoice={props.draftContextChoice}
+            hideDraftContextNote={props.hideDraftContextNote}
             onContextChoiceChange={props.onContextChoiceChange}
             levels={levels}
             selectedEffort={selected}

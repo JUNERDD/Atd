@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import type { ModelAlias } from '@atd/agent-contracts';
+import {
+  catalogModelDefaultThinkingLevel,
+  resolveEffectiveThinkingLevel,
+  supportedModelThinkingLevels,
+  type ModelAlias,
+  type RunContextChoice,
+} from '@atd/agent-contracts';
 import type { PreparedCommand } from '../../client/agent/bridge';
 import { launchSettings } from '../../client/agent/command-prepare';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { TaskRun } from '../../client/agent/task-schema';
+import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { sameRunContextChoice } from '../providers/use-model-contexts';
 import { defaultRunPolicy, panelRunModel } from './panel-run';
@@ -16,6 +23,78 @@ export function choiceFromAlias(alias: ModelAlias): ModelChoice {
     model: { connectionId: alias.connectionId, modelId: alias.modelId },
     ...(alias.contextChoice ? { contextChoice: alias.contextChoice } : {}),
     ...(alias.thinkingLevel ? { thinkingLevel: alias.thinkingLevel } : {}),
+  };
+}
+
+function normalizeAliasContext(
+  contextChoice: RunContextChoice | undefined,
+  liveAlias: ModelAlias,
+  connection: Connection | undefined,
+  sameModel: boolean,
+): RunContextChoice | undefined {
+  if (sameRunContextChoice(contextChoice, liveAlias.contextChoice)) return liveAlias.contextChoice;
+  if (
+    sameModel &&
+    !liveAlias.contextChoice &&
+    contextChoice &&
+    (('contextWindow' in contextChoice &&
+      connection?.contextWindows?.[liveAlias.modelId] === contextChoice.contextWindow) ||
+      ('tier' in contextChoice &&
+        connection?.contextTiers?.[liveAlias.modelId] === contextChoice.tier))
+  ) {
+    return undefined;
+  }
+  return contextChoice;
+}
+
+function resolveAliasChangeChoice(
+  snapshot: SettingsSnapshot | null,
+  aliasId: string,
+  choiceModel: ModelReference | undefined,
+  liveAlias: ModelAlias,
+  model: RunPolicy['model'],
+  contextChoice: RunPolicy['contextChoice'],
+  thinkingLevel: RunPolicy['thinkingLevel'],
+): ModelChoice {
+  const effectiveModel = model ??
+    choiceModel ?? { connectionId: liveAlias.connectionId, modelId: liveAlias.modelId };
+  const sameModel =
+    effectiveModel.connectionId === liveAlias.connectionId &&
+    effectiveModel.modelId === liveAlias.modelId;
+  const conn = snapshot?.connections.find((c) => c.connectionId === liveAlias.connectionId);
+  const def = conn?.catalog.find((m) => m.id === liveAlias.modelId);
+  const levels = def ? supportedModelThinkingLevels(def) : [];
+  const modelDefEffort = def ? catalogModelDefaultThinkingLevel(def) : undefined;
+  const aliasEffort = resolveEffectiveThinkingLevel(
+    liveAlias.thinkingLevel,
+    conn?.defaultThinkingLevel,
+    levels,
+    modelDefEffort,
+  );
+  const nextEffort = resolveEffectiveThinkingLevel(
+    thinkingLevel,
+    conn?.defaultThinkingLevel,
+    levels,
+    modelDefEffort,
+  );
+  const normalizedEffort =
+    sameModel && aliasEffort !== undefined && nextEffort === aliasEffort
+      ? liveAlias.thinkingLevel
+      : thinkingLevel;
+  const normalizedContext = normalizeAliasContext(contextChoice, liveAlias, conn, sameModel);
+  if (
+    sameModel &&
+    sameRunContextChoice(normalizedContext, liveAlias.contextChoice) &&
+    normalizedEffort === liveAlias.thinkingLevel
+  ) {
+    return choiceFromAlias(liveAlias);
+  }
+  return {
+    aliasId,
+    modified: true,
+    model: effectiveModel,
+    ...(normalizedContext ? { contextChoice: normalizedContext } : {}),
+    ...(normalizedEffort ? { thinkingLevel: normalizedEffort } : {}),
   };
 }
 
@@ -61,7 +140,11 @@ export function useRunChoices(
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [choices, setChoices] = useState(readChoices);
   // The alias/model/context/effort belong to the conversation's memory; the policy stages the rest.
-  const explicitChoice = usableChoice(choices[key], snapshot?.connections, snapshot?.aliases);
+  const explicitChoice = usableChoice(
+    choices[key],
+    snapshot?.connections,
+    snapshot?.providersLoaded ? snapshot.aliases : undefined,
+  );
   const implicitAlias = resolveImplicitDefaultAlias(snapshot, explicitChoice, inputStep, last);
   const choice = explicitChoice ?? (implicitAlias ? choiceFromAlias(implicitAlias) : undefined);
   const policy: RunPolicy = {
@@ -88,19 +171,28 @@ export function useRunChoices(
         sameRunContextChoice(contextChoice, choice?.contextChoice) &&
         (thinkingLevel ?? undefined) === (choice?.thinkingLevel ?? undefined);
       if (!explicitChoice && sameDimensions) return;
+      const aliasId = choice?.aliasId;
+      const liveAlias = aliasId ? snapshot?.aliases.find((item) => item.id === aliasId) : undefined;
+      if (aliasId && liveAlias) {
+        const nextChoice = resolveAliasChangeChoice(
+          snapshot,
+          aliasId,
+          choice?.model,
+          liveAlias,
+          model,
+          contextChoice,
+          thinkingLevel,
+        );
+        setChoices((previous) => ({ ...previous, [key]: nextChoice }));
+        return;
+      }
       const nextChoice: ModelChoice = {
-        ...(choice?.aliasId ? { aliasId: choice.aliasId } : {}),
         ...(model ? { model } : {}),
         ...(contextChoice ? { contextChoice } : {}),
         ...(thinkingLevel ? { thinkingLevel } : {}),
       };
       setChoices((previous) => {
-        if (
-          !nextChoice.aliasId &&
-          !nextChoice.model &&
-          !nextChoice.contextChoice &&
-          !nextChoice.thinkingLevel
-        ) {
+        if (!nextChoice.model && !nextChoice.contextChoice && !nextChoice.thinkingLevel) {
           const updated = { ...previous };
           delete updated[key];
           return updated;

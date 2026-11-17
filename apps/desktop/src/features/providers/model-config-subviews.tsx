@@ -111,6 +111,7 @@ export function ModelConfigSubview({
   connections,
   baseContexts,
   draftContextChoice,
+  hideDraftContextNote,
   onContextChoiceChange,
   levels,
   selectedEffort,
@@ -130,6 +131,7 @@ export function ModelConfigSubview({
   connections: Connection[];
   baseContexts: ModelContextState;
   draftContextChoice?: RunContextChoice | undefined;
+  hideDraftContextNote?: boolean | undefined;
   onContextChoiceChange?: ((choice: RunContextChoice | undefined) => void) | undefined;
   levels: ModelThinkingLevel[];
   selectedEffort?: ModelThinkingLevel | undefined;
@@ -151,6 +153,7 @@ export function ModelConfigSubview({
         <ContextOptions
           contexts={baseContexts}
           draftChoice={onContextChoiceChange ? draftContextChoice : undefined}
+          hideDraftNote={hideDraftContextNote}
           listRef={optionListRef}
           onSelectDraftChoice={
             onContextChoiceChange
@@ -177,7 +180,7 @@ export function ModelConfigSubview({
           selected={selectedEffort}
           listRef={optionListRef}
           onSelect={(level) => {
-            onThinkingLevelChange(level);
+            if (level !== selectedEffort) onThinkingLevelChange(level);
             onBack();
           }}
         />
@@ -196,7 +199,12 @@ export function ModelConfigSubview({
             scoped ? t('models.searchScopedLabel', { label: scopeLabel }) : t('models.searchLabel')
           }
           onSelect={(reference) => {
-            onSelectModel(reference);
+            if (
+              reference.connectionId !== model?.connectionId ||
+              reference.modelId !== model?.modelId
+            ) {
+              onSelectModel(reference);
+            }
             onClose();
           }}
           onOpenProviders={

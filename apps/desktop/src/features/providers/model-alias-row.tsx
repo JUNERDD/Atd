@@ -20,32 +20,10 @@ import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../components/item-menu';
-import { formatContextWindow } from './context-window';
+import { formatAliasTupleSummary } from '../agent/use-panel-aliases';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
 import '../../components/open-row.css';
-
-function aliasDescription(
-  alias: ModelAlias,
-  connection: Connection | undefined,
-  modelName: string,
-  t: ReturnType<typeof useTranslation<'providers'>>['t'],
-): string {
-  const connectionName = connection?.name ?? t('aliases.unavailableConnection');
-  const contextText = !alias.contextChoice
-    ? t('aliases.tuple.connectionContextDefault')
-    : 'tier' in alias.contextChoice
-      ? alias.contextChoice.tier === 'long'
-        ? t('aliases.tuple.extendedContext')
-        : t('aliases.tuple.standardContext')
-      : t('aliases.tuple.windowContext', {
-          size: formatContextWindow(alias.contextChoice.contextWindow),
-        });
-  const effortText = alias.thinkingLevel
-    ? t('aliases.tuple.effortValue', { level: t(`thinkingLevels.levels.${alias.thinkingLevel}`) })
-    : t('aliases.tuple.modelEffortDefault');
-  return [connectionName, modelName, contextText, effortText].join(' · ');
-}
 
 interface ModelAliasRowProps {
   alias: ModelAlias;
@@ -74,7 +52,11 @@ export function ModelAliasRow({
   const { t } = useTranslation('providers');
   const presentation = connection ? providerPresentation(connection) : null;
   const available = Boolean(connection?.connected && catalogModel);
-  const tuple = aliasDescription(alias, connection, catalogModel?.name ?? alias.modelId, t);
+  const connectionName = connection?.name ?? t('aliases.unavailableConnection');
+  const tuple = [
+    connectionName,
+    formatAliasTupleSummary(alias, connection ? [connection] : [], t),
+  ].join(' · ');
 
   const menu = (
     <>

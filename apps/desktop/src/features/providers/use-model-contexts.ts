@@ -26,16 +26,44 @@ const NONE: ModelContexts = {
 /** One request per connection revision and model definition; concurrent consumers share it. */
 const pending = new Map<string, Promise<ModelContexts>>();
 
+type CachedContexts = { version: string; contexts: ModelContexts };
+
+/** Resolved contexts cached per provider bridge so remounting dialogs reuse settled answers. */
+const resolved = new WeakMap<object, Map<string, CachedContexts>>();
+
+function cacheFor(bridge: object | undefined): Map<string, CachedContexts> | undefined {
+  if (!bridge) return undefined;
+  let cache = resolved.get(bridge);
+  if (!cache) {
+    cache = new Map();
+    resolved.set(bridge, cache);
+  }
+  return cache;
+}
+
 /**
  * The model's context windows from the main process. Never rejects to the caller: a missing
  * bridge, an unknown model, or a failed request all resolve to no windows, which keeps the
  * Context row read-only.
  */
-function loadContexts(reference: ModelReference, key: string): Promise<ModelContexts> {
+function loadContexts(
+  reference: ModelReference,
+  model: string,
+  version: string,
+): Promise<ModelContexts> {
+  const key = `${model}:${version}`;
   const inflight = pending.get(key);
   if (inflight) return inflight;
   const bridge = window.desktop?.settings.providers;
-  const request = bridge ? bridge.contexts(reference).catch(() => NONE) : Promise.resolve(NONE);
+  const request = bridge
+    ? bridge
+        .contexts(reference)
+        .then((contexts) => {
+          cacheFor(bridge)?.set(model, { version, contexts });
+          return contexts;
+        })
+        .catch(() => NONE)
+    : Promise.resolve(NONE);
   pending.set(key, request);
   void request.finally(() => pending.delete(key));
   return request;
@@ -75,20 +103,20 @@ export function useModelContexts(
     connected && connectionId && modelId && revision ? `${connectionId}:${modelId}` : null;
   const version =
     model && modelId ? `${revision}:${modelDefinitionKey(connection, modelId)}` : null;
-  const [answers, setAnswers] = useState<
-    ReadonlyMap<string, { version: string; contexts: ModelContexts }>
-  >(() => new Map());
+  const cached = model ? cacheFor(window.desktop?.settings.providers)?.get(model) : undefined;
+  const [answers, setAnswers] = useState<ReadonlyMap<string, CachedContexts>>(() => new Map());
+  const answer = (model ? answers.get(model) : undefined) ?? cached;
+  const answerVersion = answer?.version;
   useEffect(() => {
-    if (!model || !version || !connectionId || !modelId) return;
+    if (!model || !version || !connectionId || !modelId || answerVersion === version) return;
     let active = true;
-    void loadContexts({ connectionId, modelId }, `${model}:${version}`).then((contexts) => {
+    void loadContexts({ connectionId, modelId }, model, version).then((contexts) => {
       if (active) setAnswers((current) => new Map(current).set(model, { version, contexts }));
     });
     return () => {
       active = false;
     };
-  }, [model, version, connectionId, modelId]);
-  const answer = model ? answers.get(model) : undefined;
+  }, [model, version, connectionId, modelId, answerVersion]);
   const contexts = answer?.contexts ?? NONE;
   const options = contexts.options.length === 2 ? contexts.options : [];
   const tier = options.find((option) => option.tier === contexts.selected);

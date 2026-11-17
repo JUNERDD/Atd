@@ -1,6 +1,6 @@
 import type { CommandThinkingLevel } from './command-run.js';
 import type { ModelAlias, RunContextChoice } from './model-aliases.js';
-import type { ThinkingLevel } from './models.js';
+import type { ServiceModelDefinition, ThinkingLevel } from './models.js';
 import type { ModelSelection } from './task.js';
 
 /** A command's model policy, as the service and the renderer both store it. */
@@ -95,4 +95,71 @@ export function commandThinkingLevel(
 ): ThinkingLevel | undefined {
   if (requested) return requested;
   return command === 'inherit' ? undefined : command;
+}
+
+/** Canonical thinking levels ordered from lowest to highest effort. */
+export const THINKING_LEVEL_ORDER: readonly ThinkingLevel[] = [
+  'off',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+/** Returns the ordered thinking levels supported by a catalog model definition. */
+export function supportedModelThinkingLevels(
+  definition: Pick<ServiceModelDefinition, 'reasoning' | 'thinkingLevelMap'>,
+): ThinkingLevel[] {
+  if (!definition.reasoning) return ['off'];
+  return THINKING_LEVEL_ORDER.filter((level) => {
+    const mapped = definition.thinkingLevelMap?.[level];
+    if (mapped === null) return false;
+    if (level === 'xhigh' || level === 'max') return mapped !== undefined;
+    return true;
+  });
+}
+
+/** Clamps a thinking level to the nearest level supported by the model, preferring higher effort. */
+export function clampSupportedThinkingLevel(
+  levels: readonly ThinkingLevel[],
+  level: ThinkingLevel,
+): ThinkingLevel {
+  if (levels.length === 0 || levels.includes(level)) return level;
+  const requestedIndex = THINKING_LEVEL_ORDER.indexOf(level);
+  if (requestedIndex === -1) return levels[0] ?? 'off';
+  for (let i = requestedIndex; i < THINKING_LEVEL_ORDER.length; i++) {
+    const candidate = THINKING_LEVEL_ORDER[i];
+    if (candidate !== undefined && levels.includes(candidate)) return candidate;
+  }
+  for (let i = requestedIndex - 1; i >= 0; i--) {
+    const candidate = THINKING_LEVEL_ORDER[i];
+    if (candidate !== undefined && levels.includes(candidate)) return candidate;
+  }
+  return levels[0] ?? 'off';
+}
+
+/** Resolves a catalog model's default thinking level clamped to what the model supports. */
+export function catalogModelDefaultThinkingLevel(
+  definition: Pick<
+    ServiceModelDefinition,
+    'reasoning' | 'thinkingLevelMap' | 'defaultThinkingLevel'
+  >,
+): ThinkingLevel {
+  return clampSupportedThinkingLevel(
+    supportedModelThinkingLevels(definition),
+    definition.defaultThinkingLevel ?? 'medium',
+  );
+}
+
+/** Resolves the effective thinking level across explicit, connection, and model defaults. */
+export function resolveEffectiveThinkingLevel(
+  explicitLevel: ThinkingLevel | undefined,
+  connectionDefault: ThinkingLevel | undefined,
+  levels: readonly ThinkingLevel[],
+  modelDefault?: ThinkingLevel,
+): ThinkingLevel | undefined {
+  const raw = explicitLevel ?? connectionDefault ?? modelDefault;
+  return raw ? clampSupportedThinkingLevel(levels, raw) : undefined;
 }

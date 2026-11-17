@@ -1,10 +1,29 @@
 import { useEffect, useState } from 'react';
-import type { Connection, ModelLevels, ModelReference } from '../../client/providers/schema';
+import { clampSupportedThinkingLevel } from '@atd/agent-contracts';
+import type {
+  Connection,
+  ModelLevels,
+  ModelReference,
+  ModelThinkingLevel,
+} from '../../client/providers/schema';
 import { useServiceStatus } from '../service/use-service';
 import { modelDefinitionKey } from './model-definition-key';
 
 /** One request per model definition; concurrent consumers of the same model share it. */
 const pending = new Map<string, Promise<ModelLevels>>();
+
+/** Resolved levels cached per provider bridge so remounting dialogs reuse settled answers. */
+const resolved = new WeakMap<object, Map<string, ModelLevels>>();
+
+function cacheFor(bridge: object | undefined): Map<string, ModelLevels> | undefined {
+  if (!bridge) return undefined;
+  let cache = resolved.get(bridge);
+  if (!cache) {
+    cache = new Map();
+    resolved.set(bridge, cache);
+  }
+  return cache;
+}
 
 /** What an unknown model, a missing bridge, or a failed request settles as. */
 const NO_LEVELS: ModelLevels = { levels: [], defaultLevel: 'off' };
@@ -19,7 +38,13 @@ function loadThinkingLevels(reference: ModelReference, key: string): Promise<Mod
   if (inflight) return inflight;
   const bridge = window.desktop?.settings.providers;
   const request = bridge
-    ? bridge.levels(reference).catch(() => NO_LEVELS)
+    ? bridge
+        .levels(reference)
+        .then((answer) => {
+          cacheFor(bridge)?.set(key, answer);
+          return answer;
+        })
+        .catch(() => NO_LEVELS)
     : Promise.resolve(NO_LEVELS);
   pending.set(key, request);
   void request.finally(() => pending.delete(key));
@@ -28,6 +53,14 @@ function loadThinkingLevels(reference: ModelReference, key: string): Promise<Mod
 
 export interface ThinkingLevels extends ModelLevels {
   loading: boolean;
+}
+
+/** Clamps a chosen or defaulted thinking level to the levels the model actually supports. */
+export function resolveSelectedThinkingLevel(
+  thinkingLevel: ModelThinkingLevel | undefined,
+  levels: readonly ModelThinkingLevel[],
+): ModelThinkingLevel | undefined {
+  return thinkingLevel ? clampSupportedThinkingLevel(levels, thinkingLevel) : undefined;
 }
 
 /**
@@ -48,9 +81,10 @@ export function useThinkingLevels(
   const definition = modelId ? modelDefinitionKey(connection, modelId) : null;
   const key =
     connected && connectionId && modelId ? `${connectionId}:${modelId}:${definition}` : null;
+  const cached = key ? cacheFor(window.desktop?.settings.providers)?.get(key) : undefined;
   const [answers, setAnswers] = useState<ReadonlyMap<string, ModelLevels>>(() => new Map());
   useEffect(() => {
-    if (!key || !connectionId || !modelId) return;
+    if (!key || !connectionId || !modelId || cached !== undefined) return;
     let active = true;
     void loadThinkingLevels({ connectionId, modelId }, key).then((answer) => {
       if (!active) return;
@@ -61,7 +95,7 @@ export function useThinkingLevels(
     return () => {
       active = false;
     };
-  }, [key, connectionId, modelId]);
-  const answer = key ? answers.get(key) : undefined;
+  }, [key, connectionId, modelId, cached]);
+  const answer = (key ? answers.get(key) : undefined) ?? cached;
   return { ...(answer ?? NO_LEVELS), loading: Boolean(key) && answer === undefined };
 }

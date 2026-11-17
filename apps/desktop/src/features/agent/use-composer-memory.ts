@@ -16,6 +16,7 @@ const CHOICE_PREFIX = 'composer.choice.';
 const ModelChoiceSchema = Type.Object(
   {
     aliasId: Type.Optional(Identifier),
+    modified: Type.Optional(Type.Literal(true)),
     model: Type.Optional(ModelReferenceSchema),
     contextChoice: Type.Optional(RunContextChoiceSchema),
     thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
@@ -52,11 +53,25 @@ export function useRememberComposers(drafts: ComposerDrafts, choices: ModelChoic
   usePersistRecord(CHOICE_PREFIX, choices, CHOICES);
 }
 
+function usableModel(
+  candidate: ModelChoice,
+  connections: readonly Connection[] | undefined,
+): ModelChoice | undefined {
+  if (CHOICES.isEmpty(candidate)) return undefined;
+  const model = candidate.model;
+  if (model) {
+    const connection = connections?.find((item) => item.connectionId === model.connectionId);
+    if (!connection?.catalog.some((item) => item.id === model.modelId)) return undefined;
+  }
+  return candidate;
+}
+
 /**
  * The remembered choice, unless its model has gone since: the connection was removed or the model
- * left its catalog. When `aliases` is loaded and the remembered alias was removed, its id is
- * dropped while the remaining model/context/effort choice stays. A choice that is unusable shows
- * and runs as the default, while the stored value stays until another pick replaces it.
+ * left its catalog. When `aliases` is loaded, an unmodified alias choice resolves to the live
+ * alias's current tuple, and a removed alias drops its id while keeping the remaining
+ * model/context/effort choice. A choice that is unusable shows and runs as the default, while the
+ * stored value stays until another pick replaces it.
  */
 export function usableChoice(
   choice: ModelChoice | undefined,
@@ -64,16 +79,23 @@ export function usableChoice(
   aliases?: readonly ModelAlias[],
 ): ModelChoice | undefined {
   if (!choice) return choice;
-  const model = choice.model;
-  if (model) {
-    const connection = connections?.find((item) => item.connectionId === model.connectionId);
-    if (!connection?.catalog.some((item) => item.id === model.modelId)) return undefined;
+  if (choice.aliasId && aliases) {
+    const live = aliases.find((item) => item.id === choice.aliasId);
+    if (!live) {
+      const { aliasId: _a, modified: _m, ...rest } = choice;
+      return usableModel(rest, connections);
+    }
+    if (!choice.modified) {
+      const liveChoice: ModelChoice = {
+        aliasId: live.id,
+        model: { connectionId: live.connectionId, modelId: live.modelId },
+        ...(live.contextChoice ? { contextChoice: live.contextChoice } : {}),
+        ...(live.thinkingLevel ? { thinkingLevel: live.thinkingLevel } : {}),
+      };
+      return usableModel(liveChoice, connections);
+    }
   }
-  if (choice.aliasId && aliases && !aliases.some((item) => item.id === choice.aliasId)) {
-    const { aliasId: _, ...rest } = choice;
-    return CHOICES.isEmpty(rest) ? undefined : rest;
-  }
-  return choice;
+  return usableModel(choice, connections);
 }
 
 /** Moves a draft typed while a launched command's task id was still provisional onto `to`. */

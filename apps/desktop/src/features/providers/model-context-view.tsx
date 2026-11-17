@@ -21,12 +21,14 @@ import {
 export function ContextOptions({
   contexts,
   draftChoice,
+  hideDraftNote,
   listRef,
   onSelect,
   onSelectDraftChoice,
 }: {
   contexts: ModelContextState;
   draftChoice?: RunContextChoice | undefined;
+  hideDraftNote?: boolean | undefined;
   listRef: Ref<HTMLDivElement>;
   /** A row was picked, with the write it makes; null when it changes nothing. */
   onSelect: (choice: ModelContextChoice | null) => void;
@@ -62,11 +64,13 @@ export function ContextOptions({
           </ConfigOption>
         ))}
       </ConfigOptionList>
-      <p className="model-config-note">
-        {onSelectDraftChoice
-          ? tPanel('modelConfig.contextAppliesDraft')
-          : t('modelConfig.contextApplies')}
-      </p>
+      {!(onSelectDraftChoice && hideDraftNote) && (
+        <p className="model-config-note">
+          {onSelectDraftChoice
+            ? tPanel('modelConfig.contextAppliesDraft')
+            : t('modelConfig.contextApplies')}
+        </p>
+      )}
     </>
   );
 }

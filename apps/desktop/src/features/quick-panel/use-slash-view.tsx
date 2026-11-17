@@ -10,7 +10,7 @@ import { sortModels } from '../providers/model-order';
 import { ProviderBrand } from '../providers/provider-brand';
 import { useCatalogRefresh } from '../providers/use-catalog-refresh';
 import { useModelContexts } from '../providers/use-model-contexts';
-import { useThinkingLevels } from '../providers/use-thinking-levels';
+import { resolveSelectedThinkingLevel, useThinkingLevels } from '../providers/use-thinking-levels';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
 import { withPolicyContext } from '../agent/panel-run';
 import type { PanelAliasState } from '../agent/use-panel-aliases';
@@ -161,8 +161,10 @@ export function useSlashView({
           disabled: !connection.connected,
           checked: shown?.connectionId === connection.connectionId && shown.modelId === entry.id,
           select: () => {
-            const next = { connectionId: connection.connectionId, modelId: entry.id };
-            onPolicyChange({ ...policy, model: next });
+            if (shown?.connectionId !== connection.connectionId || shown?.modelId !== entry.id) {
+              const next = { connectionId: connection.connectionId, modelId: entry.id };
+              onPolicyChange({ ...policy, model: next });
+            }
             editor.clearTrigger();
           },
         })),
@@ -198,9 +200,8 @@ export function useSlashView({
       policy.thinkingLevel ??
       shownConnection?.defaultThinkingLevel ??
       (effort.loading ? undefined : effort.defaultLevel);
-    // Same substitution as the model popover: an unsupported level shows the first offered one.
-    const selected =
-      current && !effort.levels.includes(current) ? (effort.levels[0] ?? current) : current;
+    // Same substitution as the model popover: an unsupported level clamps to the nearest offered one.
+    const selected = resolveSelectedThinkingLevel(current, effort.levels);
     // Why no level can be chosen replaces the list as the panel's empty line.
     const reason = !shown
       ? t('quickPanel.blocked.noModel')
@@ -222,7 +223,7 @@ export function useSlashView({
       title: tp(`thinkingLevels.levels.${level}`),
       checked: level === selected,
       select: () => {
-        onPolicyChange({ ...policy, thinkingLevel: level });
+        if (level !== selected) onPolicyChange({ ...policy, thinkingLevel: level });
         editor.clearTrigger();
       },
     }));
