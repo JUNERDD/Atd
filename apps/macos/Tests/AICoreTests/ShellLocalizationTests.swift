@@ -67,6 +67,7 @@ struct ShellLocalizationTests {
       + LongScreenshotTextStringKey.allCases.map(\.rawValue)
       + ScreenshotSaveStringKey.allCases.map(\.rawValue)
       + CaptureToolsStringKey.allCases.map(\.rawValue)
+      + DiagnosticsStringKey.allCases.map(\.rawValue)
     #expect(Set(catalog.strings.keys) == Set(keys))
     for (key, entry) in catalog.strings {
       for language in ShellLanguage.allCases {

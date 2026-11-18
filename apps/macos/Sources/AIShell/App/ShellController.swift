@@ -9,7 +9,7 @@ import AppKit
 /// ``ShellBridge`` calls for the pages.
 public final class ShellController {
   let services: ShellServices
-  private let defaults: UserDefaults
+  let defaults: UserDefaults
   let presence: AppPresence
   let panelHost: WebViewHost
   var shownComputerTaskId: String?
@@ -102,16 +102,8 @@ public final class ShellController {
     let panel = PanelWindowController(
       host: panelHost, pinned: defaults.bool(forKey: Self.pinnedKey))
     self.panel = panel
-    settings = SettingsWindowController { fragment in
-      let host = WebViewHost(
-        role: .settings, fragment: fragment, services: services, bridge: bridge)
-      host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
-      host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
-      bridge.shell?.replayPins(to: host)
-      bridge.shell?.replayComputer(to: host)
-      bridge.shell?.replayMiniPanel(to: host)
-      return host
-    }
+    settings = Self.makeSettingsWindow(
+      services: services, trust: trust, screenRecording: screenRecording, bridge: bridge)
     onboarding = OnboardingWindowController {
       let host = WebViewHost(
         role: .onboarding, fragment: "onboarding", services: services, bridge: bridge)
@@ -121,7 +113,7 @@ public final class ShellController {
       return host
     }
     viewWindows = Self.makeViewWindows(services: services, bridge: bridge)
-    let arbiter = DeviceArbiter()
+    let arbiter = DeviceArbiter(decisionRing: services.decisionRings.captureArbiter)
     deviceArbiter = arbiter
     let computerHost = ComputerHostSession(lock: ComputerHostLock(), arbiter: arbiter)
     self.computerHost = computerHost
@@ -221,6 +213,7 @@ public final class ShellController {
     launchPresentation = LaunchPresentation(revealPanel: revealPanel)
     registrar = HotKeyRegistrar(
       canWatchKeyboard: { [trust] in trust.isTrusted },
+      decisionRing: services.decisionRings.hotkeys,
       onPress: { [weak self] id in self?.pressShortcut(id) },
       onRelease: { [weak self] id in self?.shortcutHolds.released(id) })
     statusItem = StatusItemController(

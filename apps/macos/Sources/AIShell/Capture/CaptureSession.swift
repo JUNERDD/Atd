@@ -144,7 +144,8 @@ final class CaptureSession {
   var targetTask: Task<Void, Never>?
   private var outcome: Outcome?
   private var continuation: CheckedContinuation<Outcome, Never>?
-  private var observers: [any NSObjectProtocol] = []
+  var observers: [any NSObjectProtocol] = []
+  var cancelSource = CancelSource.user
 
   init(
     targeting: any ElementTargeting, offersTrustRequest: Bool, regions: CaptureRegionMemory,
@@ -161,25 +162,7 @@ final class CaptureSession {
     self.makeEditor = makeEditor
     mode = options.canRecord ? options.mode : .screenshot
     reader.onChange = { [weak self] text in self?.editor?.recognizedText = text }
-    // A frozen image no longer matches a rearranged display, and an app switch takes the
-    // keyboard away from the overlays: both end the session. A live long screenshot passes
-    // clicks through to the app under it, which then becomes active: that switch is its own.
-    let center = NotificationCenter.default
-    observers.append(
-      center.addObserver(
-        forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-      ) { [weak self] _ in MainActor.assumeIsolated { self?.cancel() } })
-    observers.append(
-      center.addObserver(
-        forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
-      ) { [weak self] _ in
-        Task { @MainActor [weak self] in
-          guard let self, !self.isFinished, !NSApp.isActive, self.hasKeyboard,
-            !self.passesInputThrough, !self.choosingSaveDestination
-          else { return }
-          self.cancel()
-        }
-      })
+    installLifecycleObservers()
   }
 
   var isFinished: Bool { outcome != nil }
@@ -301,6 +284,7 @@ final class CaptureSession {
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    recordSessionFinish(outcome)
     dismissOverlayPopovers()
     choosingSaveDestination = false
     savePanel?.cancel()
