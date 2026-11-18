@@ -57,6 +57,38 @@ export interface IndexQuery {
   limit: number;
 }
 
+/** Passive, zero-I/O diagnostic status of a `MemoryIndex` instance. */
+export interface MemoryIndexDiagnostics {
+  storageMode: 'disk' | 'memory_fallback';
+  fallbackInMemory: boolean;
+  ftsEnabled: boolean;
+  rebuiltAtStartup: boolean;
+  unitCount: number;
+  lastErrorCode: string | null;
+}
+
+interface ConnectOutcome {
+  db: DatabaseSync;
+  storageMode: 'disk' | 'memory_fallback';
+  rebuiltAtStartup: boolean;
+  unitCount: number;
+  lastErrorCode: string | null;
+}
+
+const openIndexes = new Map<string, MemoryIndex>();
+let latestOpenIndex: MemoryIndex | null = null;
+
+function registerOpenIndex(file: string, index: MemoryIndex): void {
+  openIndexes.set(file, index);
+  latestOpenIndex = index;
+}
+
+/** Fast O(1) readonly status lookup for Wave 2 Doctor without opening SQLite or running PRAGMA quick_check. */
+export function getMemoryIndexDiagnostics(file?: string): MemoryIndexDiagnostics | null {
+  const target = file ? openIndexes.get(file) : latestOpenIndex;
+  return target ? target.diagnosticsStatus() : null;
+}
+
 /** An index whose schema is not this build's: rebuilt without a warning. */
 class StaleIndex extends Error {}
 
@@ -91,13 +123,13 @@ function createSchema(db: DatabaseSync, fts: boolean): void {
 }
 
 /** Opens `file`, creating the schema in a new database; throws when it is unusable or stale. */
-function openChecked(file: string, fts: boolean): DatabaseSync {
+function openChecked(file: string, fts: boolean): { db: DatabaseSync; unitCount: number } {
   const db = new DatabaseSync(file);
   try {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all();
     if (!tables.length) {
       createSchema(db, fts);
-      return db;
+      return { db, unitCount: 0 };
     }
     const rows = tables.some((row) => row.name === 'meta')
       ? db.prepare('SELECT key, value FROM meta').all()
@@ -108,7 +140,9 @@ function openChecked(file: string, fts: boolean): DatabaseSync {
     const check = db.prepare('PRAGMA quick_check').get();
     if (check?.quick_check !== 'ok')
       throw new Error('The memory index failed its integrity check.');
-    return db;
+    const countRow = db.prepare('SELECT COUNT(*) AS cnt FROM units').get();
+    const unitCount = typeof countRow?.cnt === 'number' ? countRow.cnt : Number(countRow?.cnt ?? 0);
+    return { db, unitCount: Number.isFinite(unitCount) ? unitCount : 0 };
   } catch (error) {
     db.close();
     throw error;
@@ -122,28 +156,73 @@ export class MemoryIndex {
     /** Whether searches of three-character terms use FTS5; otherwise every search uses LIKE. */
     readonly fts: boolean,
     private readonly warn: (message: string) => void,
+    private storageMode: 'disk' | 'memory_fallback',
+    private rebuiltAtStartup: boolean,
+    private unitCount: number,
+    private lastErrorCode: string | null,
   ) {}
 
   /** Opens the index at `file`, rebuilding or falling back to memory as needed; never throws. */
   static open(file: string, warn: (message: string) => void): MemoryIndex {
     const fts = ftsAvailable();
     if (!fts) warn('This runtime has no SQLite FTS5; memory search matches plain substrings.');
-    return new MemoryIndex(MemoryIndex.connect(file, fts, warn), file, fts, warn);
+    const outcome = MemoryIndex.connect(file, fts, warn);
+    const index = new MemoryIndex(
+      outcome.db,
+      file,
+      fts,
+      warn,
+      outcome.storageMode,
+      outcome.rebuiltAtStartup,
+      outcome.unitCount,
+      outcome.lastErrorCode,
+    );
+    registerOpenIndex(file, index);
+    return index;
   }
 
-  private static connect(file: string, fts: boolean, warn: (message: string) => void) {
+  /** Returns cached in-memory status in O(1) without touching SQLite or running PRAGMA quick_check. */
+  diagnosticsStatus(): MemoryIndexDiagnostics {
+    return {
+      storageMode: this.storageMode,
+      fallbackInMemory: this.storageMode === 'memory_fallback',
+      ftsEnabled: this.fts,
+      rebuiltAtStartup: this.rebuiltAtStartup,
+      unitCount: this.unitCount,
+      lastErrorCode: this.lastErrorCode,
+    };
+  }
+
+  private static connect(
+    file: string,
+    fts: boolean,
+    warn: (message: string) => void,
+  ): ConnectOutcome {
+    let rebuiltAtStartup = false;
+    let lastErrorCode: string | null = null;
     try {
-      return openChecked(file, fts);
+      const { db, unitCount } = openChecked(file, fts);
+      return { db, storageMode: 'disk', rebuiltAtStartup, unitCount, lastErrorCode };
     } catch (error) {
+      rebuiltAtStartup = true;
+      lastErrorCode = error instanceof StaleIndex ? 'stale_schema' : 'corrupt_or_unreadable';
       if (!(error instanceof StaleIndex))
         warn(`The memory index was rebuilt from the memory files (${errorMessage(error)}).`);
     }
     try {
       removeDatabase(file);
-      return openChecked(file, fts);
+      const { db, unitCount } = openChecked(file, fts);
+      return { db, storageMode: 'disk', rebuiltAtStartup, unitCount, lastErrorCode };
     } catch (error) {
       warn(`The memory index is kept in memory only (${errorMessage(error)}).`);
-      return openChecked(':memory:', fts);
+      const { db, unitCount } = openChecked(':memory:', fts);
+      return {
+        db,
+        storageMode: 'memory_fallback',
+        rebuiltAtStartup,
+        unitCount,
+        lastErrorCode: 'sqlite_in_memory_fallback',
+      };
     }
   }
 
@@ -155,7 +234,13 @@ export class MemoryIndex {
     } catch (error) {
       this.warn(`The memory index could not be deleted (${errorMessage(error)}).`);
     }
-    this.db = MemoryIndex.connect(this.file, this.fts, this.warn);
+    const outcome = MemoryIndex.connect(this.file, this.fts, this.warn);
+    this.db = outcome.db;
+    this.storageMode = outcome.storageMode;
+    this.rebuiltAtStartup = outcome.rebuiltAtStartup;
+    this.unitCount = outcome.unitCount;
+    this.lastErrorCode = outcome.lastErrorCode;
+    registerOpenIndex(this.file, this);
   }
 
   /** Makes the index hold exactly `units`, rewriting only rows whose revision changed. */
@@ -184,6 +269,7 @@ export class MemoryIndex {
       const live = new Set(units.map((unit) => unit.id));
       for (const id of known.keys()) if (!live.has(id)) remove.run(id);
       this.db.exec('COMMIT');
+      this.unitCount = units.length;
     } catch (error) {
       if (this.db.isTransaction) this.db.exec('ROLLBACK');
       throw error;
@@ -239,6 +325,8 @@ export class MemoryIndex {
   }
 
   close(): void {
+    if (openIndexes.get(this.file) === this) openIndexes.delete(this.file);
+    if (latestOpenIndex === this) latestOpenIndex = null;
     if (this.db.isOpen) this.db.close();
   }
 }

@@ -14,6 +14,7 @@ import { createSystemProxy } from './network/system-proxy.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
 import { resolveAtdHome, resolveDataDir } from './storage.js';
 import { installedProfile } from './development/plan.js';
+import { scrubPersonalPaths } from './diagnostics/scrub-paths.js';
 
 const RENDERER_PORT = 5173;
 
@@ -80,7 +81,7 @@ function usage(): string {
   ].join('\n');
 }
 
-async function serve(flags: Flags): Promise<void> {
+async function serve(flags: Flags, onLockAcquired: () => void): Promise<void> {
   const initializeStarted = performance.now();
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
   const systemProxy = await createSystemProxy(log);
@@ -101,6 +102,7 @@ async function serve(flags: Flags): Promise<void> {
     host: flags.host,
     port: flags.port,
   });
+  onLockAcquired();
   // `atdHome()` reads this on every call, and the processes the service starts inherit it.
   process.env.AI_ATD_HOME = resolveAtdHome({
     envHome: process.env.AI_ATD_HOME,
@@ -213,6 +215,7 @@ async function main(): Promise<void> {
     process.exit(0);
   }
   const [command, ...rest] = argv;
+  let lockAcquired = false;
   try {
     assertSupportedNode();
     // `approve` takes two positionals before its flags: `approve mcp <serverId>`.
@@ -220,7 +223,9 @@ async function main(): Promise<void> {
     const flags = parseFlags(rest);
     switch (command) {
       case 'serve':
-        await serve(flags);
+        await serve(flags, () => {
+          lockAcquired = true;
+        });
         break;
       case 'status':
         await status(flags);
@@ -240,8 +245,8 @@ async function main(): Promise<void> {
         process.exit(command === undefined ? 0 : 1);
     }
   } catch (error) {
-    process.stderr.write(`${errorMessage(error)}\n`);
-    if (command === 'serve') {
+    process.stderr.write(`${scrubPersonalPaths(errorMessage(error))}\n`);
+    if (command === 'serve' && lockAcquired) {
       try {
         const dataDir = resolveDataDir({
           envDir: process.env.AI_AGENT_DATA_DIR,
