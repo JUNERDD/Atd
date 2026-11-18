@@ -19,6 +19,7 @@ import { nativeCapture } from './native-capture';
 import { nativeCaptureEvents } from './native-capture-events';
 import { nativeCommandOptions } from './native-command-options';
 import { nativeComputer } from './native-computer';
+import { installHostDiagnostics } from './diagnostics';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -238,6 +239,7 @@ export async function installNativeHost(
     apps,
     automations: nativeAutomations(connection, native, messages),
     computer,
+    diagnostics: installHostDiagnostics(native, connection),
     notifications: nativeNotifications(native, surface),
     saveLocation: nativeSaveLocation(native),
     views: nativeViews(native),
@@ -298,14 +300,7 @@ export async function installNativeHost(
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
     ...(captureEvents
-      ? {
-          capture: nativeCapture(
-            native,
-            commands,
-            (launch) => emit('launch', launch),
-            captureEvents,
-          ),
-        }
+      ? { capture: nativeCapture(native, commands, (l) => emit('launch', l), captureEvents) }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(onNewTask ? { onNewTask } : {}),

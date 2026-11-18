@@ -25,6 +25,7 @@ import {
   AutomationSettings,
   CommandSettings,
   ComputerSettings,
+  DiagnosticsSettings,
   MemorySettings,
   PermissionsSettings,
   preloadSettingsSection,
@@ -279,6 +280,7 @@ export function SettingsWindow() {
                                 </SettingsExtensionLinkContext>,
                               )}
                               {page('apps', <AppSettings />)}
+                              {page('diagnostics', <DiagnosticsSettings />)}
                               {page('about', <AboutSettings />)}
                               {page('agent', <AgentSettings snapshot={snapshot} />)}
                               {page(

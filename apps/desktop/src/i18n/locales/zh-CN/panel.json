@@ -267,7 +267,9 @@
       "disconnected": "服务未连接。{{detail}}",
       "connecting": "正在连接服务…",
       "reconnecting": "连接中断，正在重连…",
-      "openSettings": "打开服务设置"
+      "openSettings": "打开服务设置",
+      "openDiagnostics": "诊断",
+      "restartService": "重启服务"
     }
   },
   "capability": {

@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 import { showErrorToast } from '../components/toast-store';
+import { recordErrorBreadcrumb } from './errors';
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -27,12 +28,19 @@ interface QueryErrorMeta extends Record<string, unknown> {
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
-      if (query.meta?.errorToast !== false) showErrorToast(error);
+      const domain = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : null;
+      recordErrorBreadcrumb('query_error', error, domain);
+      if (query.meta?.errorToast !== false) showErrorToast(error, { recordBreadcrumb: false });
     },
   }),
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
-      if (mutation.meta?.errorToast !== false) showErrorToast(error);
+      const domain =
+        typeof mutation.options.mutationKey?.[0] === 'string'
+          ? mutation.options.mutationKey[0]
+          : null;
+      recordErrorBreadcrumb('mutation_error', error, domain);
+      if (mutation.meta?.errorToast !== false) showErrorToast(error, { recordBreadcrumb: false });
     },
   }),
   defaultOptions: {

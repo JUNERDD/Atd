@@ -42,6 +42,9 @@ const apps = lazyWithPreload(() =>
 const extensions = lazyWithPreload(() =>
   import('../service/service-settings').then((module) => module.ServiceSettings),
 );
+const diagnostics = lazyWithPreload(() =>
+  import('../diagnostics/diagnostics-settings').then((module) => module.DiagnosticsSettings),
+);
 const about = lazyWithPreload(() =>
   import('./about-settings').then((module) => module.AboutSettings),
 );
@@ -55,6 +58,7 @@ export const AutomationSettings = automations.Component;
 export const MemorySettings = memory.Component;
 export const AppSettings = apps.Component;
 export const ServiceSettings = extensions.Component;
+export const DiagnosticsSettings = diagnostics.Component;
 export const AboutSettings = about.Component;
 
 const sectionPreloaders: Partial<Record<SettingsSectionId, () => Promise<unknown>>> = {
@@ -67,6 +71,7 @@ const sectionPreloaders: Partial<Record<SettingsSectionId, () => Promise<unknown
   memory: memory.preload,
   apps: apps.preload,
   extensions: extensions.preload,
+  diagnostics: diagnostics.preload,
   about: about.preload,
 };
 

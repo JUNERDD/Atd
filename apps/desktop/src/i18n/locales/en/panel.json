@@ -267,7 +267,9 @@
       "disconnected": "Service disconnected. {{detail}}",
       "connecting": "Connecting to the service…",
       "reconnecting": "Connection lost. Reconnecting…",
-      "openSettings": "Open Service settings"
+      "openSettings": "Open Service settings",
+      "openDiagnostics": "Diagnose",
+      "restartService": "Restart service"
     }
   },
   "capability": {

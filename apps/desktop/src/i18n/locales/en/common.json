@@ -4,7 +4,8 @@
   "panelLoading": "Opening the task panel…",
   "toast": {
     "dismiss": "Dismiss",
-    "dismissLabel": "Dismiss notification"
+    "dismissLabel": "Dismiss notification",
+    "openDiagnostics": "Diagnose"
   },
   "shortcuts": {
     "conflictHint": "If a shortcut does nothing when you press it, another app may be using the same combination. Choose a different one.",

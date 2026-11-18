@@ -2,6 +2,7 @@ import type { ParseKeys } from 'i18next';
 import { Languages, type LucideIcon } from 'lucide-react';
 import { appearanceSearchEntries } from './appearance-search-entries';
 import { computerSearchEntries } from './computer-search-entries';
+import { diagnosticsSearchEntries } from '../diagnostics/diagnostics-search-entries';
 import { conversationSearchEntries } from './conversation-search-entries';
 import { notificationSearchEntries } from './notification-search-entries';
 import { providerSearchEntries } from './provider-search-entries';
@@ -12,7 +13,14 @@ import type { SettingsSearchPage } from './settings-navigation';
 import type { SettingsSectionId } from './settings-sections';
 
 /** The namespaces whose existing copy the index reuses; `settings` is the default one. */
-export const SEARCH_NAMESPACES = ['settings', 'commands', 'memory', 'apps', 'automations'] as const;
+export const SEARCH_NAMESPACES = [
+  'settings',
+  'commands',
+  'memory',
+  'apps',
+  'automations',
+  'diagnostics',
+] as const;
 export type SearchKey = ParseKeys<typeof SEARCH_NAMESPACES>;
 
 /**
@@ -47,6 +55,7 @@ export const SECTION_DESCRIPTIONS = {
   memory: 'memory:memory.description',
   apps: 'apps:settings.description',
   extensions: 'extensions.plugins.description',
+  diagnostics: 'diagnostics:overview.description',
   about: 'about.description',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
@@ -61,6 +70,7 @@ export const SECTION_KEYWORDS = {
   memory: 'search.keywords.sectionMemory',
   apps: 'search.keywords.sectionApps',
   extensions: 'search.keywords.sectionExtensions',
+  diagnostics: 'search.keywords.sectionDiagnostics',
   about: 'search.keywords.sectionAbout',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
@@ -285,6 +295,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'extensions.plugins.kinds.mcp',
     keywords: 'search.keywords.mcp',
   },
+  ...diagnosticsSearchEntries,
   {
     id: 'about-release-notes',
     section: 'about',

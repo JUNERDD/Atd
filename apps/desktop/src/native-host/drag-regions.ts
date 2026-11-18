@@ -13,6 +13,7 @@ const DRAG_AREAS = [
   '.settings-titlebar',
   '.view-window-header',
   '#root > .window-loading',
+  '.diagnostics-error-header',
 ].join(',');
 
 /**

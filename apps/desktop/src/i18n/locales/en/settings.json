@@ -21,6 +21,7 @@
     "apps": "Apps",
     "general": "General",
     "agent": "Agent",
+    "diagnostics": "Diagnostics",
     "about": "About"
   },
   "drawer": {
@@ -102,6 +103,7 @@
       "screenshotConfirmAction": "screenshot confirm action behavior open panel main attach composer input copy clipboard toolbar check return",
       "screenshotConfirmInComposer": "screenshot confirm composer attach menu plus input panel",
       "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
+      "sectionDiagnostics": "diagnostics doctor health check logs support bundle export troubleshoot proxy permission crash",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
       "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
@@ -1114,6 +1116,7 @@
     "updatesTitle": "Check for updates",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",
+    "openDiagnostics": "Diagnostics…",
     "links": {
       "title": "Links",
       "website": "Website",

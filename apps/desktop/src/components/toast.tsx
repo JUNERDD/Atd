@@ -1,6 +1,7 @@
 import { toast, Toaster, type Toast } from 'react-hot-toast';
 import { CircleAlert, Info, TriangleAlert, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@atd/ui/components/button';
 import { IconButton } from './icon-button';
 import './toast.css';
 
@@ -12,7 +13,17 @@ const toastIcons = {
   error: CircleAlert,
 } as const;
 
-export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; text: string }) {
+export function ToastCard({
+  item,
+  kind,
+  text,
+  diagnose = false,
+}: {
+  item: Toast;
+  kind: ToastKind;
+  text: string;
+  diagnose?: boolean;
+}) {
   const { t } = useTranslation('common');
   const ToastIcon = toastIcons[kind];
   return (
@@ -30,6 +41,19 @@ export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; 
         }
       />
       <span>{text}</span>
+      {diagnose && (
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          onClick={() => {
+            toast.dismiss(item.id);
+            void window.desktop?.settings?.openSection('diagnostics').catch(() => undefined);
+          }}
+        >
+          {t('toast.openDiagnostics')}
+        </Button>
+      )}
       <IconButton
         label={t('toast.dismiss')}
         aria-label={t('toast.dismissLabel')}

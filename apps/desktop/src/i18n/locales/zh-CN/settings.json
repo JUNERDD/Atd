@@ -21,6 +21,7 @@
     "apps": "应用",
     "general": "通用",
     "agent": "智能体",
+    "diagnostics": "诊断",
     "about": "关于"
   },
   "drawer": {
@@ -102,6 +103,7 @@
       "screenshotConfirmAction": "截图 截屏 确认 行为 操作 打开 主面板 添加 输入框 复制 剪贴板 工具栏 勾选 回车",
       "screenshotConfirmInComposer": "截图 截屏 确认 输入框 添加上下文 加号 菜单 主面板",
       "longScreenshotConfirmAction": "长截图 滚动截图 完成 确认 回车 结果卡片 复制 剪贴板",
+      "sectionDiagnostics": "诊断 自检 健康 检查 日志 支持包 导出 排障 代理 权限 崩溃 白屏",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
       "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
       "notificationsFinished": "通知 提醒 横幅 完成 结束 失败 出错 系统 离开 没在看 notification notify finished failed",
@@ -1112,6 +1114,7 @@
     "updatesTitle": "检查更新",
     "updatesNote": "更新会在后台下载，并在退出 Atd 时安装。",
     "updatesUnavailable": "开发版不会自动更新。请从官网安装正式版以获取更新。",
+    "openDiagnostics": "诊断与自检…",
     "links": {
       "title": "链接",
       "website": "官网",

@@ -7,6 +7,7 @@ import './window-scroll.css';
 import './styles.css';
 import i18n, { changeAppLanguage, defaultNS, initialLanguageReady } from './i18n';
 import { WindowLoading } from './components/window-loading';
+import { DiagnosticsErrorBoundary } from './features/diagnostics/error-boundary';
 import { installEditCommands } from './lib/edit-commands';
 import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
@@ -96,9 +97,11 @@ async function renderWindow(native: NativeBridge) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <ScrollShadowDefaultContext.Provider value={windowKind !== 'panel'}>
-        <React.Suspense fallback={fallback}>
-          <WindowRoot />
-        </React.Suspense>
+        <DiagnosticsErrorBoundary>
+          <React.Suspense fallback={fallback}>
+            <WindowRoot />
+          </React.Suspense>
+        </DiagnosticsErrorBoundary>
       </ScrollShadowDefaultContext.Provider>
     </React.StrictMode>,
   );

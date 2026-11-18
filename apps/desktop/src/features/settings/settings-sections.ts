@@ -9,6 +9,7 @@ import {
   Plug,
   Settings,
   Shield,
+  Stethoscope,
   Zap,
 } from 'lucide-react';
 import { appWindowMotion } from '@atd/ui/lib/icon-motions/app-window';
@@ -21,6 +22,7 @@ import { mousePointerClickMotion } from '@atd/ui/lib/icon-motions/mouse-pointer-
 import { plugMotion } from '@atd/ui/lib/icon-motions/plug';
 import { settingsMotion } from '@atd/ui/lib/icon-motions/settings';
 import { shieldMotion } from '@atd/ui/lib/icon-motions/shield';
+import { stethoscopeMotion } from '@atd/ui/lib/icon-motions/stethoscope';
 import { zapMotion } from '@atd/ui/lib/icon-motions/zap';
 
 /** The destinations the navigation lists from its top, in order. */
@@ -44,6 +46,7 @@ const listedSections = [
 
 /** The destinations pinned to the navigation's bottom edge, after the listed ones. */
 export const settingsFooterSections = [
+  { id: 'diagnostics', labelKey: 'nav.diagnostics', icon: Stethoscope, motion: stethoscopeMotion },
   { id: 'about', labelKey: 'nav.about', icon: Info, motion: infoMotion },
 ] as const;
 
