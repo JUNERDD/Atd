@@ -30,16 +30,29 @@ enum PerformEvents {
   }
 
   static func scroll(
-    _ ctx: PerformContext, point: DriverPoint, deltaX: Double, deltaY: Double
+    _ ctx: PerformContext, point: DriverPoint, deltaX: Double, deltaY: Double, pixels: Bool = false
   ) throws -> DriverReceipt {
     try PerformHandler.ensure(.scroll, ctx)
     try requireWindowEvents()
-    let resolved = try resolve(ctx)
-    try requireDeliverableToolkit(
-      ToolkitProbe.classify(pid: ctx.pid, window: resolved.window).toolkit)
+    let bounds: CGRect
+    if pixels {
+      // Continuous pixel scrolls run per tick (e.g. long-screenshot capture) and target custom
+      // surfaces as well, so read WindowList bounds directly without AX resolution/probe overhead.
+      guard let facts = WindowList.window(ctx.windowId), facts.ownerPID == ctx.pid else {
+        throw DriverFailure(code: .targetGone)
+      }
+      bounds = facts.bounds
+    } else {
+      let resolved = try resolve(ctx)
+      try requireDeliverableToolkit(
+        ToolkitProbe.classify(pid: ctx.pid, window: resolved.window).toolkit)
+      bounds = resolved.bounds
+    }
     let target = PointerTarget(
-      pid: ctx.pid, windowId: ctx.windowId, windowBounds: resolved.bounds, screenPoint: cg(point))
-    guard ScrollRecipes.scroll(factory: ctx.factory, target: target, deltaX: deltaX, deltaY: deltaY)
+      pid: ctx.pid, windowId: ctx.windowId, windowBounds: bounds, screenPoint: cg(point))
+    guard
+      ScrollRecipes.scroll(
+        factory: ctx.factory, target: target, deltaX: deltaX, deltaY: deltaY, pixels: pixels)
     else { throw DriverFailure(code: .noRoute, message: "could not build scroll event") }
     return DriverReceipt(route: .scroll, dispatched: true)
   }
