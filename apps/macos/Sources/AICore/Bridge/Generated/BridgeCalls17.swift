@@ -268,3 +268,6 @@ public struct PanelModalSetAvailableParams: Codable, Equatable, Sendable {
 
 /// Result of the `panelModal.setAvailable` call.
 public typealias PanelModalSetAvailableResult = NativeEmpty
+
+/// Params of the `diagnostics.shellReport` call.
+public typealias DiagnosticsShellReportParams = NativeEmpty

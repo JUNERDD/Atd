@@ -74,6 +74,10 @@ function rendererSections(schema) {
     'CommandOutputAction',
     'CommandOutputOption',
     'CaptureTextResult',
+    'ShellDoctorCheck',
+    'DecisionRingSummary',
+    'RendererBreadcrumbsPayload',
+    'BundlePreviewFile',
   ];
   const emitter = createEmitter({ defs, shared });
   return [

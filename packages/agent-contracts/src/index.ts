@@ -96,3 +96,5 @@ export * from './addons.js';
 export * from './wps-selection.js';
 
 export * from './computer-access.js';
+export * from './diagnostics.js';
+export * from './diagnostics-snapshot.js';
