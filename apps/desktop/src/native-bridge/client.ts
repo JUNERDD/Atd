@@ -102,6 +102,7 @@ export class NativeBridge {
     'captureText.run': new Set(),
     'captureText.action': new Set(),
     'panelModal.open': new Set(),
+    'diagnostics.liveProbe.event': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

@@ -22,6 +22,7 @@ import {
   ShortcutCommandIntentSchema,
 } from './command-options.ts';
 import { NativeComputerEvents } from './computer-calls.ts';
+import { NativeDiagnosticsEvents } from './diagnostics-calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { NativeNotificationPosts } from './notification-calls.ts';
 import { NativePanelModalEvents } from './panel-modal-calls.ts';
@@ -296,6 +297,7 @@ export const NativeEvents = {
   ...NativeRecordingEvents,
   ...NativeCaptureTextEvents,
   ...NativePanelModalEvents,
+  ...NativeDiagnosticsEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

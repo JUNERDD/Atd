@@ -43,6 +43,10 @@ function schemaDocument() {
     CommandOutputOption: json(commandOptions.CommandOutputOptionSchema),
     CaptureTextResult: json(calls.CaptureResultSchema),
     SocketFrame: json(contract.SocketFrameSchema),
+    ShellDoctorCheck: json(calls.ShellDoctorCheckSchema),
+    DecisionRingSummary: json(calls.DecisionRingSummarySchema),
+    RendererBreadcrumbsPayload: json(calls.RendererBreadcrumbsPayloadSchema),
+    BundlePreviewFile: json(calls.BundlePreviewFileSchema),
   };
   for (const [method, { params, result }] of Object.entries(calls.NativeCalls)) {
     definitions[`${pascal(method)}Params`] = json(params);
