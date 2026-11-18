@@ -5,11 +5,18 @@ import Foundation
 /// branch). Its stdout and stderr go straight to a log file, never a pipe, so it cannot block
 /// on a reader that went away.
 final class ServiceProcess {
+  struct ExitSummary: Sendable {
+    let status: Int32
+    let uncaughtSignal: Bool
+    let description: String
+    let failureDetail: String?
+  }
+
   let process: Process
   let log: URL
   private let logStart: UInt64
   /// Runs once when the process exits, whatever the reason.
-  var onExit: (@MainActor (_ description: String) -> Void)?
+  var onExit: (@MainActor (_ exit: ExitSummary) -> Void)?
 
   private init(process: Process, log: URL, logStart: UInt64) {
     self.process = process
@@ -48,15 +55,21 @@ final class ServiceProcess {
     process.standardError = handle
     let child = ServiceProcess(process: process, log: log, logStart: start)
     process.terminationHandler = { finished in
+      let uncaught = finished.terminationReason == .uncaughtSignal
+      let code = finished.terminationStatus
       let description =
-        finished.terminationReason == .uncaughtSignal
-        ? "was stopped by signal \(finished.terminationStatus)"
-        : "exited with code \(finished.terminationStatus)"
+        uncaught
+        ? "was stopped by signal \(code)"
+        : "exited with code \(code)"
       DispatchQueue.main.async {
         MainActor.assumeIsolated {
           let onExit = child.onExit
           child.onExit = nil
-          onExit?(description)
+          let detail = (uncaught || code != 0) ? child.startupFailureMessage() : nil
+          onExit?(
+            ExitSummary(
+              status: code, uncaughtSignal: uncaught, description: description,
+              failureDetail: detail))
         }
       }
     }
@@ -102,11 +115,12 @@ final class ServiceProcess {
     let lines = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
       .filter { !$0.isEmpty }
     if let error = lines.first(where: { $0.hasPrefix("SyntaxError:") || $0.hasPrefix("Error:") }) {
-      return String(error.prefix(500))
+      return DiagnosticsScrubber.scrubInlineSummary(String(error.prefix(500)), maxUTF8Bytes: 170)
     }
     let plain = lines.filter { !$0.hasPrefix("{") }
     let tail = (plain.isEmpty ? lines : plain).suffix(4).joined(separator: " ")
-    return String((tail.isEmpty ? "The agent service \(status)." : tail).prefix(500))
+    let fallback = String((tail.isEmpty ? "The agent service \(status)." : tail).prefix(500))
+    return DiagnosticsScrubber.scrubInlineSummary(fallback, maxUTF8Bytes: 170)
   }
 }
 
