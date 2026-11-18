@@ -4,6 +4,7 @@ import { registerAtdAgentRoutes } from './atd-agents/mount.js';
 import { registerAutomationRoutes } from './automations/routes.js';
 import { registerBuiltinRoutes } from './builtins/mount.js';
 import { registerComputerRoutes } from './computer/routes.js';
+import { registerDiagnosticsRoutes } from './diagnostics/routes.js';
 import { extractionLayout } from './file-loader/extraction-paths.js';
 import { scheduleExtractionSweeps } from './file-loader/extraction-store-sweep.js';
 import { registerFileRoutes } from './file-routes.js';
@@ -74,6 +75,7 @@ export function registerDomainRoutes(app: FastifyInstance, deps: ServerDeps): vo
   // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
   // share one load.
   registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
+  registerDiagnosticsRoutes(app, deps);
 }
 
 /**

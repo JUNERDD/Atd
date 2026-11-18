@@ -12,7 +12,12 @@ import {
   type FileSearchReply,
   type ResourceImportResponse,
 } from '@atd/agent-contracts';
-import { platformBackend } from './file-search/backend.js';
+import { platformBackend, type SearchBackend } from './file-search/backend.js';
+import {
+  getLastNativeIndexLoadErrors,
+  NativeIndexBackend,
+  type NativeIndexDiagnostics,
+} from './file-search/native-index.js';
 import { AttachRefused, FileSearchService, SearchResultGone } from './file-search/service.js';
 import type { Logger } from './logging.js';
 import type { ResourceStore } from './resources.js';
@@ -40,22 +45,60 @@ const shell: { exposure: RouteExposure } = { exposure: 'shell' };
  */
 const WARM_DELAY_MS = 2000;
 
+const indexReadersByDataDir = new Map<string, () => NativeIndexDiagnostics>();
+
+/** Passive readonly file-index diagnostics without starting or walking the home index. */
+export function getFileIndexDiagnostics(dataDir: string): NativeIndexDiagnostics {
+  if (process.platform !== 'darwin') {
+    return { state: 'unsupported', loadErrorCode: null, loadErrors: [] };
+  }
+  const reader = indexReadersByDataDir.get(dataDir);
+  if (reader) return reader();
+  const last = getLastNativeIndexLoadErrors();
+  return {
+    state: last.loadErrorCode ? 'unsupported' : 'cold',
+    loadErrorCode: last.loadErrorCode,
+    loadErrors: last.loadErrors,
+  };
+}
+
 /**
  * Files from the user's disk becoming resources. Search and attach-by-result-id serve the
  * renderer: it sees names, home-relative folders and opaque ids, never paths, and attach reads
  * only files a search issued. Import takes absolute paths, so only the shell may call it.
  */
 export function registerFileRoutes(app: FastifyInstance, deps: FileRouteDeps): void {
+  let activeBackend: SearchBackend | null = null;
   const search = new FileSearchService(
-    () => platformBackend(process.platform, path.join(deps.dataDir, 'file-index'), deps.log),
+    () => {
+      activeBackend = platformBackend(
+        process.platform,
+        path.join(deps.dataDir, 'file-index'),
+        deps.log,
+      );
+      return activeBackend;
+    },
     deps.resources,
     { home: homedir(), platform: process.platform, dataDir: deps.dataDir },
   );
+  const readDiagnostics = (): NativeIndexDiagnostics => {
+    if (activeBackend instanceof NativeIndexBackend) return activeBackend.diagnosticsStatus();
+    const last = getLastNativeIndexLoadErrors();
+    return {
+      state: last.loadErrorCode ? 'unsupported' : 'cold',
+      loadErrorCode: last.loadErrorCode,
+      loadErrors: last.loadErrors,
+    };
+  };
+  indexReadersByDataDir.set(deps.dataDir, readDiagnostics);
   let warm: NodeJS.Timeout | undefined;
   app.addHook('onListen', () => {
     warm = setTimeout(() => search.warm(), WARM_DELAY_MS).unref();
   });
   app.addHook('onClose', async () => {
+    if (indexReadersByDataDir.get(deps.dataDir) === readDiagnostics) {
+      indexReadersByDataDir.delete(deps.dataDir);
+    }
     clearTimeout(warm);
     await search.close();
   });
