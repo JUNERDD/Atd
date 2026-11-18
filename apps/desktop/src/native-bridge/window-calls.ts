@@ -16,6 +16,23 @@ const PinFamily = Type.Union([
   Type.Literal('systemMedium'),
   Type.Literal('systemLarge'),
 ]);
+
+/** A window drag region rectangle in CSS pixels from the web view's top-left. */
+export const DragRectSchema = Type.Object(
+  { x: Type.Number(), y: Type.Number(), width: Type.Number(), height: Type.Number() },
+  { additionalProperties: false },
+);
+
+/** A rectangle the welcome guide reports, in CSS pixels from the web view's top-left. */
+export const GuideRectSchema = Type.Object(
+  {
+    x: Type.Number({ minimum: 0 }),
+    y: Type.Number({ minimum: 0 }),
+    width: Type.Number({ minimum: 0 }),
+    height: Type.Number({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
 /** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
 const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
 /** What a desktop pin shows: one of the app's declared widgets in one of its declared families. */

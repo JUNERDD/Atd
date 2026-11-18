@@ -7,6 +7,7 @@ import AppKit
 final class PanelWindowController: NSObject, NSWindowDelegate {
   let panel: ShellPanel
   let host: WebViewHost
+  private let loadingStage: WindowLoadingStage
   private let defaults: UserDefaults
   private let placements: PanelPlacementStore
   /// Anchor the panel follows across display changes (`PanelGeometry.follow`).
@@ -38,6 +39,8 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
         .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView, .nonactivatingPanel,
       ],
       backing: .buffered, defer: false)
+    loadingStage = WindowLoadingStage(
+      host: host, window: panel, titleKey: .windowPanelLoading)
     super.init()
     anchor = placed.anchor
     // The page's 52px header sits on this bar, so the traffic lights center on its controls.
@@ -51,7 +54,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.isExcludedFromWindowsMenu = true
     // Auxiliary lets a summon enter another app's full-screen Space without full-screening itself.
     panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
-    panel.contentView = GlassBackground.make(content: host.container)
+    panel.contentView = GlassBackground.make(content: loadingStage.view)
     panel.delegate = self
     applyMinimumSize(display.workArea)
     setPinned(pinned)
@@ -65,7 +68,10 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
       name: NSApplication.didChangeScreenParametersNotification, object: nil)
   }
 
-  isolated deinit { handoffTask?.cancel() }
+  isolated deinit {
+    handoffTask?.cancel()
+    loadingStage.stop()
+  }
 
   var isVisible: Bool { panel.alphaValue > 0 && !panel.ignoresMouseEvents && !panel.isMiniaturized }
   var isKey: Bool {
@@ -120,6 +126,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
     panel.orderFrontRegardless()
+    loadingStage.setWindowVisible(true)
     holdsFront = true
     awaitsKey = true
     waitForHandoff { [weak self] released in
@@ -188,6 +195,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     userMoving = false
     panel.alphaValue = 0
     panel.ignoresMouseEvents = true
+    loadingStage.setWindowVisible(false)
     updateLevel()
   }
 
@@ -233,6 +241,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.alphaValue = 1
     panel.ignoresMouseEvents = false
     WindowStack.orderIn(panel, below: windows)
+    loadingStage.setWindowVisible(true)
     updateLevel()
     onVisibilityChange?(true)
   }

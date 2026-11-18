@@ -44,7 +44,7 @@ final class ShellBridge {
     case .typingSet(let post):
       shell?.summoner.writeTargets.animatesTyping = post.animation
       shell?.summoner.writeTargets.typesAnswers = post.typing
-    case .windowDragRegions(let post): host.setDragRegions(post.rects)
+    case .windowDragRegions(let post): host.setDragRegions(post)
     case .onboardingSurface(let post): shell?.onboarding.setSurface(post, from: host)
     case .onboardingSelection(let post): shell?.setPracticeSelection(post, from: host)
     case .socketOpen(let post): host.pipe?.open(post)

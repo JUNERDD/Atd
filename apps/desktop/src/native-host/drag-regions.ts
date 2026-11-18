@@ -72,15 +72,19 @@ function portalHoles(root: Element): Rect[] {
     .filter(area);
 }
 
-function dragRects(root: Element): Rect[] {
+function dragSnapshot(root: Element): { rects: Rect[]; chrome: boolean } {
   const portals = portalHoles(root);
-  return [...document.querySelectorAll(DRAG_AREAS)].flatMap((element) => {
+  let chrome = false;
+  const rects = [...document.querySelectorAll(DRAG_AREAS)].flatMap((element) => {
+    const initial = [bounds(element)].filter(area);
+    if (initial.length > 0) chrome = true;
     const holes = [...element.querySelectorAll(NO_DRAG)].map(bounds).filter(area);
-    let rects = [bounds(element)].filter(area);
+    let current = initial;
     for (const hole of [...holes, ...portals])
-      rects = rects.flatMap((rect) => subtract(rect, hole));
-    return rects;
+      current = current.flatMap((rect) => subtract(rect, hole));
+    return current;
   });
+  return { rects, chrome };
 }
 
 /**
@@ -112,24 +116,40 @@ function placingBoxes(areas: readonly Element[]): Set<Element> {
  */
 export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () => void {
   let frame = 0;
+  let hiddenProbe = false;
+  let disposed = false;
+  let reportedChrome = false;
   let sent = '';
-  let visible = true;
+  let visible = document.documentElement.dataset.windowVisible !== 'false';
+  let areas: Element[] = [];
 
   const update = () => {
     frame = 0;
-    const rects = dragRects(root);
-    const signature = JSON.stringify(rects);
+    hiddenProbe = false;
+    if (disposed) return;
+    const snapshot = dragSnapshot(root);
+    if (snapshot.chrome) reportedChrome = true;
+    const signature = JSON.stringify(snapshot);
     if (signature === sent) return;
     sent = signature;
-    bridge.post('window.dragRegions', { rects });
+    bridge.post('window.dragRegions', snapshot);
   };
   const schedule = () => {
-    if (!frame && visible) frame = requestAnimationFrame(update);
+    if (disposed) return;
+    if (visible) {
+      if (!frame) frame = requestAnimationFrame(update);
+      return;
+    }
+    // Hidden panels pause rAF in WebKit; probe once via microtask when chrome first mounts so the
+    // shell knows the background page is ready before summon.
+    if (!reportedChrome && !hiddenProbe && areas.length > 0) {
+      hiddenProbe = true;
+      queueMicrotask(update);
+    }
   };
   // Size changes of the placing boxes, including those without a DOM change, such as a hole whose
   // text changed; only a changed set of boxes re-observes.
   const resizeObserver = new ResizeObserver(schedule);
-  let areas: Element[] = [];
   let placing = new Set<Element>();
   const observeAreas = () => {
     areas = [...document.querySelectorAll(DRAG_AREAS)];
@@ -192,17 +212,26 @@ export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () 
     }
     schedule();
   });
-  const clear = () => bridge.post('window.dragRegions', { rects: [] });
+  const onDocumentVisibility = () => {
+    if (!document.hidden && visible) {
+      sent = '';
+      schedule();
+    }
+  };
+  const clear = () => bridge.post('window.dragRegions', { rects: [], chrome: false });
+  document.addEventListener('visibilitychange', onDocumentVisibility);
   window.addEventListener('resize', schedule);
   window.addEventListener('pagehide', clear);
   observeAreas();
   schedule();
 
   return () => {
+    disposed = true;
     cancelAnimationFrame(frame);
     resizeObserver.disconnect();
     mutationObserver.disconnect();
     stopVisibility();
+    document.removeEventListener('visibilitychange', onDocumentVisibility);
     window.removeEventListener('resize', schedule);
     window.removeEventListener('pagehide', clear);
     clear();

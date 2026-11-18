@@ -15305,6 +15305,24 @@
         }
       }
     },
+    "window.panel.loading" : {
+      "comment" : "Status shown in the task panel while its page loads",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening the task panel…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在打开任务面板…"
+          }
+        }
+      }
+    },
     "window.panel.title" : {
       "comment" : "Task panel window title",
       "extractionState" : "manual",

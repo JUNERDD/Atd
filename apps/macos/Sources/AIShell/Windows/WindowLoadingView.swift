@@ -2,10 +2,12 @@ import AICore
 import AppKit
 import QuartzCore
 
-/// Native placeholder shown inside the Settings window's glass container while the renderer boots
-/// and draws `#settings`, matching `WindowLoading` (`Empty` + `EmptyMedia` + `Spinner` +
-/// `EmptyTitle`) at t=0ms without a blank frame.
-final class SettingsLoadingView: NSView {
+/// Native placeholder shown inside a page window's glass container while the renderer boots and
+/// paints its first frame, matching `WindowLoading` (`Empty` + `EmptyMedia` + `Spinner` +
+/// `EmptyTitle`) on `--ata-surface-panel` at t=0ms without a blank frame.
+final class WindowLoadingView: NSView {
+  private let titleKey: ShellStringKey
+  private let contentContainer = NSView()
   private let iconBadge = NSView()
   private let spinnerLayer = CAShapeLayer()
   private let label = NSTextField(wrappingLabelWithString: "")
@@ -13,10 +15,18 @@ final class SettingsLoadingView: NSView {
   private var stringsObserver: NSObjectProtocol?
   private var renderedText: String?
   private var renderedDark: Bool?
+  private var isActive = false
+  private var observingBackground = false
 
-  override init(frame frameRect: NSRect) {
+  init(frame frameRect: NSRect, titleKey: ShellStringKey) {
+    self.titleKey = titleKey
     super.init(frame: frameRect)
     wantsLayer = true
+
+    contentContainer.wantsLayer = true
+    contentContainer.frame = bounds
+    contentContainer.autoresizingMask = [.width, .height]
+    contentContainer.layer?.opacity = 0
 
     iconBadge.wantsLayer = true
     iconBadge.setAccessibilityElement(false)
@@ -40,11 +50,13 @@ final class SettingsLoadingView: NSView {
     label.drawsBackground = false
     label.isBezeled = false
 
-    addSubview(iconBadge)
-    addSubview(label)
+    contentContainer.addSubview(iconBadge)
+    contentContainer.addSubview(label)
+    addSubview(contentContainer)
 
     refreshAppearance(forceLabel: true)
-    startSpinning()
+    observingBackground = true
+    observePanelBackground()
 
     reduceTransparency = ReduceTransparencyObserver { [weak self] _ in
       self?.refreshAppearance()
@@ -78,8 +90,44 @@ final class SettingsLoadingView: NSView {
     refreshAppearance()
   }
 
+  /// Starts or stops the loading indicator while keeping the base panel fill painted from t=0ms.
+  /// `delayContent` holds the badge and label back for 100ms when waking a background-loaded page
+  /// so a single-frame layer commit swaps straight to content without flashing a spinner.
+  func setActive(_ active: Bool, delayContent: Bool = false) {
+    refreshAppearance()
+    guard active != isActive else { return }
+    isActive = active
+    contentContainer.layer?.removeAnimation(forKey: "fade")
+    if !active {
+      spinnerLayer.removeAnimation(forKey: "spin")
+      CATransaction.begin()
+      CATransaction.setDisableActions(true)
+      contentContainer.layer?.opacity = 0
+      CATransaction.commit()
+      return
+    }
+    if spinnerLayer.animation(forKey: "spin") == nil { startSpinning() }
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    contentContainer.layer?.opacity = 1
+    CATransaction.commit()
+    if delayContent {
+      let fade = CABasicAnimation(keyPath: "opacity")
+      fade.fromValue = 0.0
+      fade.toValue = 1.0
+      fade.beginTime = CACurrentMediaTime() + 0.1
+      fade.duration = 0.15
+      fade.fillMode = .backwards
+      fade.timingFunction = CAMediaTimingFunction(name: .easeOut)
+      contentContainer.layer?.add(fade, forKey: "fade")
+    }
+  }
+
   func stop() {
+    isActive = false
+    observingBackground = false
     spinnerLayer.removeAnimation(forKey: "spin")
+    contentContainer.layer?.removeAnimation(forKey: "fade")
     reduceTransparency?.stop()
     reduceTransparency = nil
     if let stringsObserver { NotificationCenter.default.removeObserver(stringsObserver) }
@@ -102,6 +150,19 @@ final class SettingsLoadingView: NSView {
     needsLayout = true
   }
 
+  private func observePanelBackground() {
+    guard observingBackground else { return }
+    withObservationTracking {
+      _ = PanelBackground.shared.setting
+    } onChange: { [weak self] in
+      Task { @MainActor [weak self] in
+        guard let self, self.observingBackground else { return }
+        self.refreshAppearance()
+        self.observePanelBackground()
+      }
+    }
+  }
+
   private func refreshAppearance(forceLabel: Bool = false) {
     let dark = GlassSurface.isDark
     layer?.backgroundColor =
@@ -119,7 +180,7 @@ final class SettingsLoadingView: NSView {
       spinnerLayer.contentsScale = scale
     }
 
-    let text = ShellStrings.shared.text(.windowSettingsLoading)
+    let text = ShellStrings.shared.text(titleKey)
     guard forceLabel || renderedText != text || renderedDark != dark else { return }
     renderedText = text
     renderedDark = dark

@@ -3,6 +3,7 @@
 public enum ShellStringKey: String, CaseIterable, Sendable {
   case appName = "app.name"
   case windowPanelTitle = "window.panel.title"
+  case windowPanelLoading = "window.panel.loading"
   case windowSettingsTitle = "window.settings.title"
   case windowSettingsLoading = "window.settings.loading"
   case windowOnboardingTitle = "window.onboarding.title"

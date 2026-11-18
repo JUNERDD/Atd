@@ -17,8 +17,10 @@ final class WebViewHost: NSObject {
   private(set) var pipe: VirtualSocketPipe?
   /// Counts committed documents, so a call's answer never reaches a later page.
   private(set) var document = 0
+  private(set) var chromeReady = false
   var onDocumentUnload: (() -> Void)?
   var onDragRegionsReady: (() -> Void)?
+  var onDragRegionsReset: (() -> Void)?
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -82,8 +84,10 @@ final class WebViewHost: NSObject {
     // Stop delivery before teardown callbacks can enqueue more work for the departing page.
     isClosed = true
     document += 1
+    chromeReady = false
     outbox = BridgeOutbox()
     onDragRegionsReady = nil
+    onDragRegionsReset = nil
     reduceTransparency?.stop()
     reduceTransparency = nil
     systemAppearance?.stop()
@@ -136,11 +140,13 @@ final class WebViewHost: NSObject {
     act(outbox.pageDidBecomeReady())
   }
 
-  func setDragRegions(_ rects: [WindowDragRegionsPost.Rect]) {
-    webView.dragRegions = rects.filter { $0.width > 0 && $0.height > 0 }.map {
+  func setDragRegions(_ post: WindowDragRegionsPost) {
+    webView.dragRegions = post.rects.filter { $0.width > 0 && $0.height > 0 }.map {
       CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
     }
-    if !webView.dragRegions.isEmpty { onDragRegionsReady?() }
+    let ready = post.chrome ?? !webView.dragRegions.isEmpty
+    chromeReady = ready
+    if ready { onDragRegionsReady?() }
   }
 
   private func post(frame: SocketFrame) {
@@ -251,7 +257,9 @@ final class WebViewHost: NSObject {
     bridge.shell?.cancelShortcutRecording(from: self)
     onDocumentUnload?()
     document += 1
+    chromeReady = false
     webView.dragRegions = []
+    onDragRegionsReset?()
     pipe?.resetForNewDocument()
     outbox.pageDidUnload()
   }
