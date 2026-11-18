@@ -29,6 +29,9 @@ public struct LongScreenshotEdges: Sendable {
   /// The user's unanswered scrolling must add up to this many points; a stray tick is not a
   /// request to reach the end.
   static let userDistance: CGFloat = 32
+  /// Sub-threshold opposite ticks right after an active manual scroll are decelerator rebounds.
+  static let reboundIgnorePoints: CGFloat = 12
+  static let reboundIgnoreWindow = 0.25
   /// A settled bounce has shown no movement for this long.
   static let bounceSettle = 0.15
   /// Requests and movement older than this no longer explain what a frame shows.
@@ -41,7 +44,8 @@ public struct LongScreenshotEdges: Sendable {
   }
 
   private var pending: [LongScreenshotDirection: Pending] = [:]
-  private var lastRequest: (direction: LongScreenshotDirection, time: Double)?
+  private var lastRequest:
+    (direction: LongScreenshotDirection, auto: Bool, time: Double, burstPoints: CGFloat)?
   private var lastMovement: (direction: LongScreenshotDirection, time: Double)?
   /// The direction a reversal nobody asked for came back from, until the page settles.
   private var bounce: LongScreenshotDirection?
@@ -58,15 +62,31 @@ public struct LongScreenshotEdges: Sendable {
   }
 
   /// Someone asked the page to scroll `points` towards `direction`'s edge (down: its end).
+  /// Returns false when ignored as a sub-threshold decelerator rebound right after a flick.
+  @discardableResult
   public mutating func request(
     _ direction: LongScreenshotDirection, points: CGFloat, auto: Bool, at time: Double
-  ) {
+  ) -> Bool {
+    let delta = abs(points)
+    if !auto, delta < Self.reboundIgnorePoints,
+      let last = lastRequest, !last.auto, last.direction == direction.opposite,
+      last.burstPoints >= Self.userDistance, time - last.time < Self.reboundIgnoreWindow
+    {
+      return false
+    }
     pending[direction.opposite] = nil
     var entry = pending[direction] ?? Pending(since: time, points: 0, auto: auto)
-    entry.points += abs(points)
+    entry.points += delta
     entry.auto = entry.auto && auto
     pending[direction] = entry
-    lastRequest = (direction, time)
+    let burstPoints =
+      if let prev = lastRequest, prev.direction == direction, time - prev.time < Self.memory {
+        prev.burstPoints + delta
+      } else {
+        delta
+      }
+    lastRequest = (direction, auto, time, burstPoints)
+    return true
   }
 
   /// A frame showed the page `offset` rows further down (up when negative).
@@ -102,6 +122,16 @@ public struct LongScreenshotEdges: Sendable {
   public mutating func still(at time: Double) {
     unseen = false
     if stillSince == nil { stillSince = time }
+  }
+
+  /// Clears request, movement, and unseen state once a bottom clamp is confirmed.
+  mutating func clearAfterClamp() {
+    pending = [:]
+    lastRequest = nil
+    lastMovement = nil
+    bounce = nil
+    stillSince = nil
+    unseen = false
   }
 
   /// A frame matched nothing: the page may have moved, so no bounce stands, and the requests
@@ -144,6 +174,20 @@ public struct LongScreenshotEdges: Sendable {
   public func heading(at time: Double) -> LongScreenshotDirection {
     if let lastRequest, time - lastRequest.time < Self.memory { return lastRequest.direction }
     return lastMovement?.direction ?? .down
+  }
+
+  /// The latest scroll request while still fresh, with unanswered and burst points and request age.
+  public func recentRequest(
+    at time: Double
+  ) -> (
+    direction: LongScreenshotDirection, auto: Bool, pendingPoints: CGFloat, burstPoints: CGFloat,
+    age: Double
+  )? {
+    guard let lastRequest, time - lastRequest.time < Self.memory else { return nil }
+    return (
+      lastRequest.direction, lastRequest.auto, pending[lastRequest.direction]?.points ?? 0,
+      lastRequest.burstPoints, time - lastRequest.time
+    )
   }
 }
 

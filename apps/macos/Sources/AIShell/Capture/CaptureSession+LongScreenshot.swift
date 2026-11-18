@@ -301,13 +301,17 @@ extension CaptureSession {
     let quartz = geometry.quartzRect(part)
     let center = CGPoint(x: quartz.midX, y: quartz.midY)
     let area = longScreenshot.answer(for: rect)?.area
+    let band = area.map { $0.frame.intersection(quartz) }
+    let aimRect = band.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? quartz
+    let aim = CGPoint(x: aimRect.midX, y: aimRect.midY)
     let snapshot = longScreenshot.snapshot
+    let window = snapshot.window(at: aim) ?? snapshot.window(at: center)
     let described = snapshot.describe(at: center)
     return LongScreenshotCapture.Target(
       displayID: primary.id, displayFrame: primary.quartzFrame,
       selection: part.offsetBy(dx: -display.minX, dy: -display.minY),
       scrollArea: area.map { $0.frame.offsetBy(dx: -origin.x, dy: -origin.y) },
-      scrollValue: area?.verticalValue, pid: snapshot.pid(at: center), appName: described.app,
-      windowTitle: described.window)
+      scrollValue: area?.verticalValue, pid: window?.pid ?? snapshot.pid(at: center),
+      windowID: window?.windowID, appName: described.app, windowTitle: described.window)
   }
 }

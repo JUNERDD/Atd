@@ -9,9 +9,9 @@ import Foundation
 nonisolated final class LongScreenshotStream: NSObject, SCStreamOutput, SCStreamDelegate,
   Sendable
 {
-  /// Frames per second: enough for scrolling by hand to keep an overlap, few enough that every
-  /// frame is matched before the next.
-  static let framesPerSecond: Int32 = 12
+  /// Frames per second (60 fps): matches display refresh so preview viewport tracking stays locked
+  /// to manual trackpad and wheel scrolling while each frame finishes well within the interval.
+  static let framesPerSecond: Int32 = 60
 
   let queue = DispatchSerialQueue(label: "com.junerdd.ai.long-screenshot", qos: .userInitiated)
   let engine: LongScreenshotEngine

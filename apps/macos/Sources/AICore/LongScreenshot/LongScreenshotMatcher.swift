@@ -4,13 +4,14 @@ import Foundation
 /// which parts of the band stayed in place while it moved.
 ///
 /// The band's cells (``LongScreenshotSignature``) vote: each informative cell of the new frame
-/// whose hash occurs exactly once in the reference's segment votes for the offset between the
-/// two rows. The strongest offsets are then verified over the whole overlap of the moving part,
-/// uniform cells included: a cell either agrees at the offset, stayed in place (a static part),
-/// or is a mismatch, and the agreeing share must reach ``minimumScore``. Exactly one offset must
-/// verify; two that do mean repeating content, and nothing is stitched, as for no overlap at all
-/// ("never stitch a guess"). An offset of zero is not a movement: a frame that agrees in place is
-/// ``Outcome/still``, which is how the page's ends are seen.
+/// that changed in place and whose hash occurs uniquely in the reference's segment votes for the
+/// offset between the two rows. The strongest offsets are then verified over the whole overlap of
+/// the moving part (`LongScreenshotMatcher+Verification.swift`): a cell either agrees at the
+/// offset, stayed in place (a static part), or is a mismatch, and the agreeing share must reach
+/// ``minimumScore``. Exactly one offset must verify; two that do mean repeating content, and
+/// nothing is stitched, as for no overlap at all ("never stitch a guess"). An offset of zero is
+/// not a movement: a frame that agrees in place is ``Outcome/still``, which is how the page's ends
+/// are seen.
 ///
 /// Prior art checked (no Swift package offers this): ScrollSnap (MIT) registers five horizontal
 /// bands with Vision and lets them vote, at about 4 fps while the user scrolls — its band vote is
@@ -54,21 +55,23 @@ public enum LongScreenshotMatcher {
   public static let minimumOverlap = 24
   /// The share of the overlap's cells that must agree at the offset.
   public static let minimumScore = 0.85
+  /// Minimum agreeing share among non-invariant informative cells across kept moving segments.
+  public static let minimumInformativeScore = 0.72
   /// Rows with an informative agreeing cell an offset needs: at least this many, and at least
   /// ``minimumEvidenceShare`` of the overlap's informative rows.
-  public static let minimumEvidenceRows = 12
+  public static let minimumEvidenceRows = 8
   public static let minimumEvidenceShare = 0.2
   /// The share of informative cells that must agree in place for a frame to be still.
   public static let minimumStillShare = 0.9
   /// Offsets voted for this many times or fewer are not worth verifying.
-  static let minimumVotes = 6
+  static let minimumVotes = 4
   /// Offsets this close to a stronger one are the same peak.
   static let peakWidth = 2
   /// The strongest offsets verified.
-  static let candidates = 3
+  static let candidates = 4
 
   /// Compares `frame` with `reference`, both of the same band. `known` is what earlier pairs
-  /// showed of the static parts; its rows are left out of the moving part.
+  /// showed of the static parts; its rows and side columns are left out of the moving part.
   public static func match(
     _ frame: LongScreenshotSignature, to reference: LongScreenshotSignature, known: Static
   ) -> Outcome {
@@ -76,8 +79,12 @@ public enum LongScreenshotMatcher {
       frame.columns.count == reference.columns.count
     else { return .unmatched }
     let region = movingRegion(rows: frame.rows, known: known)
-    let verified = strongestOffsets(frame, reference, region: region).filter {
-      verifies(frame, reference, offset: $0, region: region)
+    let movingSegs = movingSegments(
+      segments: frame.segments, columns: frame.columns.count, known: known)
+    let verified = strongestOffsets(
+      frame, reference, region: region, movingSegs: movingSegs
+    ).filter {
+      verifies(frame, reference, offset: $0, region: region, movingSegs: movingSegs)
     }
     if verified.count == 1, let offset = verified.first {
       return .moved(
@@ -85,7 +92,7 @@ public enum LongScreenshotMatcher {
         statics: LongScreenshotStatics.detect(frame, reference, offset: offset, known: known))
     }
     guard verified.isEmpty else { return .unmatched }
-    return isStill(frame, reference) ? .still : .unmatched
+    return isStill(frame, reference, known: known) ? .still : .unmatched
   }
 
   /// The rows of a band of `rows` that can move: all but the known header and footer, which
@@ -97,113 +104,107 @@ public enum LongScreenshotMatcher {
     return top..<(rows - bottom)
   }
 
-  /// The most voted non-zero offsets, strongest first, at most ``candidates`` distinct peaks.
+  /// The segments outside known fixed left and right side columns; all segments if none remain.
+  static func movingSegments(segments: Int, columns: Int, known: Static) -> Range<Int> {
+    guard segments > 0, columns > 0 else { return 0..<max(0, segments) }
+    let leftLimit = max(0, known.left)
+    let rightStart = columns - max(0, known.right)
+    var lower = 0
+    while lower < segments,
+      leftLimit > 0,
+      LongScreenshotSignature.segmentColumns(lower, of: segments, columns: columns).upperBound
+        <= leftLimit
+    {
+      lower += 1
+    }
+    var upper = segments
+    while upper > lower,
+      known.right > 0,
+      LongScreenshotSignature.segmentColumns(upper - 1, of: segments, columns: columns).lowerBound
+        >= rightStart
+    {
+      upper -= 1
+    }
+    return lower < upper ? lower..<upper : 0..<segments
+  }
+
+  /// The most voted non-zero offsets across active moving segments, skipping cells unchanged in
+  /// place, strongest first, at most ``candidates`` distinct peaks.
   private static func strongestOffsets(
-    _ frame: LongScreenshotSignature, _ reference: LongScreenshotSignature, region: Range<Int>
+    _ frame: LongScreenshotSignature, _ reference: LongScreenshotSignature, region: Range<Int>,
+    movingSegs: Range<Int>
   ) -> [Int] {
-    let segments = frame.segments
-    // Each segment's row hashes that occur once in the reference; repeated ones (rules, table
-    // borders) would vote for every offset at once.
-    var unique: [UInt64: Int] = [:]
-    unique.reserveCapacity(region.count * segments)
-    for row in region {
-      for segment in 0..<segments where reference.isInformative(row, segment) {
-        let key = self.key(reference.cell(row, segment), segment)
-        unique[key] = unique[key] == nil ? row : -1
-      }
-    }
     let rows = frame.rows
-    var votes = [Int](repeating: 0, count: 2 * rows + 1)
-    for row in region {
-      for segment in 0..<segments where frame.isInformative(row, segment) {
-        guard let match = unique[key(frame.cell(row, segment), segment)], match >= 0 else {
-          continue
+    let segments = frame.segments
+    let reach = region.count - minimumOverlap
+    guard rows > 0, segments > 0, reach > 0, !movingSegs.isEmpty else { return [] }
+    let regLo = Int32(region.lowerBound)
+    let regHi = Int32(region.upperBound)
+    let segLo = movingSegs.lowerBound
+    let segHi = movingSegs.upperBound
+    let mask = reference.indexMask
+    var votes = [Int32](repeating: 0, count: 2 * rows + 1)
+    var hits: [(offset: Int, votes: Int32)] = []
+
+    frame.votesSample.withUnsafeBufferPointer { sBuf in
+      frame.cells.withUnsafeBufferPointer { fcBuf in
+        reference.cells.withUnsafeBufferPointer { rcBuf in
+          reference.indexKeys.withUnsafeBufferPointer { rkBuf in
+            reference.indexRows.withUnsafeBufferPointer { rrBuf in
+              votes.withUnsafeMutableBufferPointer { vBuf in
+                guard let sPtr = sBuf.baseAddress else { return }
+                let fCells = fcBuf.baseAddress!
+                let rCells = rcBuf.baseAddress!
+                let rKeys = rkBuf.baseAddress!
+                let rRows = rrBuf.baseAddress!
+                let vPtr = vBuf.baseAddress!
+                let count = sBuf.count
+                var i = 0
+                while i < count {
+                  let entry = sPtr[i]
+                  let seg = Int(entry.segment)
+                  let row = entry.row
+                  if seg >= segLo, seg < segHi, row >= regLo, row < regHi {
+                    let cellIdx = Int(row) &* segments &+ seg
+                    if fCells[cellIdx] != rCells[cellIdx] {
+                      let k = entry.key
+                      var slot = entry.hash & mask
+                      while true {
+                        let match = rRows[slot]
+                        if match == -1 { break }
+                        if rKeys[slot] == k {
+                          if match >= regLo, match < regHi {
+                            vPtr[Int(match &- row) &+ rows] &+= 1
+                          }
+                          break
+                        }
+                        slot = (slot &+ 1) & mask
+                      }
+                    }
+                  }
+                  i &+= 1
+                }
+                let minV = Int32(minimumVotes)
+                var off = -reach
+                while off <= reach {
+                  if off != 0 {
+                    let v = vPtr[off &+ rows]
+                    if v > minV { hits.append((off, v)) }
+                  }
+                  off &+= 1
+                }
+              }
+            }
+          }
         }
-        votes[match - row + rows] += 1
       }
     }
-    let reach = region.count - minimumOverlap
-    var order = votes.indices.filter { slot in
-      let offset = slot - rows
-      return offset != 0 && abs(offset) <= reach && votes[slot] > minimumVotes
-    }
-    order.sort { votes[$0] > votes[$1] }
+    guard !hits.isEmpty else { return [] }
+    hits.sort { $0.votes > $1.votes }
     var peaks: [Int] = []
-    for slot in order where peaks.count < candidates {
-      let offset = slot - rows
-      if peaks.allSatisfy({ abs($0 - offset) > peakWidth }) { peaks.append(offset) }
+    for hit in hits where peaks.count < candidates {
+      if peaks.allSatisfy({ abs($0 - hit.offset) > peakWidth }) { peaks.append(hit.offset) }
     }
     return peaks
-  }
-
-  /// Whether `offset` explains the moving part's overlap: enough agreeing cells overall, and
-  /// enough rows with informative evidence. The worst segments (``spareSegments``) are set aside
-  /// first: one straddling a fixed column's edge, or holding something that changes, agrees
-  /// neither way, while a wrong offset fails in every segment.
-  private static func verifies(
-    _ frame: LongScreenshotSignature, _ reference: LongScreenshotSignature, offset: Int,
-    region: Range<Int>
-  ) -> Bool {
-    let overlap = region.clamped(to: (region.lowerBound - offset)..<(region.upperBound - offset))
-    guard overlap.count >= minimumOverlap else { return false }
-    let segments = frame.segments
-    var agree = [Int](repeating: 0, count: segments)
-    var mismatch = [Int](repeating: 0, count: segments)
-    var evidenceRows = 0
-    var informativeRows = 0
-    for row in overlap {
-      var evidence = false
-      var informative = false
-      for segment in 0..<segments {
-        let cell = frame.cell(row, segment)
-        let rich = frame.isInformative(row, segment)
-        informative = informative || rich
-        if cell == reference.cell(row + offset, segment) {
-          agree[segment] += 1
-          evidence = evidence || (rich && cell != reference.cell(row, segment))
-        } else if cell != reference.cell(row, segment) {
-          mismatch[segment] += 1
-        }
-      }
-      if evidence { evidenceRows += 1 }
-      if informative { informativeRows += 1 }
-    }
-    let kept = (0..<segments).sorted { mismatch[$0] - agree[$0] < mismatch[$1] - agree[$1] }
-      .prefix(segments - spareSegments(segments))
-    let agreeing = kept.reduce(0) { $0 + agree[$1] }
-    let checked = agreeing + kept.reduce(0) { $0 + mismatch[$1] }
-    let needed = max(
-      minimumEvidenceRows, Int((Double(informativeRows) * minimumEvidenceShare).rounded(.up)))
-    return checked > 0 && Double(agreeing) / Double(checked) >= minimumScore
-      && evidenceRows >= needed
-  }
-
-  /// The segments verification may set aside: one in five, none when fewer than three.
-  static func spareSegments(_ segments: Int) -> Int {
-    segments < 3 ? 0 : max(1, segments / 5)
-  }
-
-  /// Whether `frame` shows the reference in place: most informative cells unchanged (a caret or
-  /// a spinner may change), or every cell unchanged when none is informative.
-  private static func isStill(
-    _ frame: LongScreenshotSignature, _ reference: LongScreenshotSignature
-  ) -> Bool {
-    var informative = 0
-    var same = 0
-    var changed = false
-    for index in frame.cells.indices {
-      let equal = frame.cells[index] == reference.cells[index]
-      changed = changed || !equal
-      guard frame.informative[index] || reference.informative[index] else { continue }
-      informative += 1
-      if equal { same += 1 }
-    }
-    guard informative > 0 else { return !changed }
-    return Double(same) / Double(informative) >= minimumStillShare
-  }
-
-  /// A cell's hash keyed by its segment, so a row only matches rows at the same columns.
-  private static func key(_ hash: UInt64, _ segment: Int) -> UInt64 {
-    hash &+ UInt64(segment) &* 0x9E37_79B9_7F4A_7C15
   }
 }
