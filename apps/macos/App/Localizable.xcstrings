@@ -16804,6 +16804,312 @@
           }
         }
       }
+    },
+    "diagnostics.export.cancelButton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "diagnostics.export.confirmMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversations, clipboard text, and credentials are never included. Personal file paths and URLs in logs are scrubbed automatically."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话记录、剪贴板内容与密钥绝不会包含在内；日志中的个人文件路径与链接会自动脱敏。"
+          }
+        }
+      }
+    },
+    "diagnostics.export.confirmTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Redacted Diagnostics?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出脱敏诊断包？"
+          }
+        }
+      }
+    },
+    "diagnostics.export.includeCrashes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include recent crash summaries (process and symbol offsets only)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "包含近期崩溃摘要（仅限进程名与符号偏移量）"
+          }
+        }
+      }
+    },
+    "diagnostics.export.panelBusy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the open file dialog first, then try exporting diagnostics again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先关闭当前已打开的文件对话框，然后再试一次。"
+          }
+        }
+      }
+    },
+    "diagnostics.export.saveButton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出…"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.action.exportDiagnostics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Diagnostics…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出诊断包…"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.action.reloadPage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload Page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新加载页面"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.action.restartService" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart Service"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重启服务"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.body.devHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Development build: make sure pnpm dev is running."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开发版本：请确认 pnpm dev 正在运行。"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.body.rendererStalled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can reload the page, restart the background service, or export a redacted diagnostic archive."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你可以重新加载页面、重启后台服务，或导出脱敏诊断包以供排查。"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.body.serviceFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The background service could not start: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后台服务未能启动：%@"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.feedback.exported" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics archive saved."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断包已保存。"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.title.crashed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Window Stopped Responding"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "窗口渲染进程异常终止"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.title.timeout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd Is Taking Longer Than Usual to Load"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 页面加载超时"
+          }
+        }
+      }
+    },
+    "error.exportDiagnostics.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The diagnostic archive could not be written."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法写入诊断压缩包。"
+          }
+        }
+      }
+    },
+    "error.exportDiagnostics.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could Not Export Diagnostics"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法导出诊断包"
+          }
+        }
+      }
+    },
+    "menu.exportDiagnostics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Diagnostics…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出诊断包…"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

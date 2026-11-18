@@ -16,6 +16,8 @@ extension ScreenshotTaker {
   func options(for request: ScreenshotRequest, reopening: ReopenBase?) -> CaptureSessionOptions {
     var options = CaptureSessionOptions()
     options.copyShortcut = copyShortcut()
+    options.decisionRing = arbiter.decisionRing
+    options.onLiveProbeCapture = onLiveProbeCapture
     let arbiter = arbiter
     options.copyText = { text in arbiter.writeClipboard(text, as: .screenshot) }
     options.reopening = reopening != nil

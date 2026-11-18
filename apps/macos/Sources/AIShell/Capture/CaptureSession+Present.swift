@@ -22,9 +22,18 @@ extension CaptureSession {
     arrange(quartzBounds: freezer.quartzBounds)
     let capturedAt = Date.now
     var preselection: (displayID: CGDirectDisplayID, rect: CGRect)?
+    let screenCount = NSScreen.screens.count
     for target in freezer.targets {
       guard !isFinished else { break }
-      guard var frozen = try await freezer.freeze(target) else { continue }
+      let freezeStartNs = MonotonicTimestampAnchor.nowUptimeNs()
+      let rawFrozen = try await freezer.freeze(target)
+      let freezeMs = UInt16(
+        clamping: (MonotonicTimestampAnchor.nowUptimeNs() &- freezeStartNs) / 1_000_000)
+      recordDisplayFreeze(
+        elapsedMs: freezeMs, sdrValid: rawFrozen != nil, targetCount: freezer.targets.count,
+        screenCount: screenCount,
+        imageSize: rawFrozen.map { ($0.image.width, $0.image.height) })
+      guard var frozen = rawFrozen else { continue }
       if let reopening, preselection == nil {
         guard let composed = await reopening.compose(over: frozen) else {
           throw BridgeError("The screenshot could not be opened for editing.")
@@ -59,7 +68,7 @@ extension CaptureSession {
         })
         guard !Task.isCancelled, let self, !self.isFinished else { return }
         guard released else {
-          self.cancel()
+          self.cancel(source: .shortcutHandoffAborted)
           return
         }
         self.activateKeyboard()

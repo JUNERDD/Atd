@@ -133,6 +133,8 @@ final class ScreenshotTaker {
   }
   /// More's last row was picked: the session ends and the settings open after it.
   var opensCommandSettings = false
+  /// Optional 10s live-probe observer (`nil` when idle = 0 overhead).
+  var onLiveProbeCapture: ((String) -> Void)?
 
   init(
     library: CaptureLibrary, panel: PanelWindowController, targeting: any ElementTargeting,

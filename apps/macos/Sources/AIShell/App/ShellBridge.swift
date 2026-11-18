@@ -84,8 +84,8 @@ final class ShellBridge {
         return try Self.encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
       case .computerPrimeCaptureConsent:
         return try Self.encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
-      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick,
-        .saveLocationPick:
+      case .filesPick, .filesPickFolder, .filesSave, .diagnosticsExportBundle, .artifact,
+        .shareText, .appsPick, .saveLocationPick:
         throw BridgeError("Finish the screenshot first.")
       default:
         break
@@ -256,32 +256,21 @@ final class ShellBridge {
     case .appsPick:
       return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
     case .computerListApplications:
-      return try Self.encode(await InstalledApplications.list())
+      return try await Self.handleComputer(.listApplications, from: host, shell: shell)
     case .computerApplicationIcon(let params):
-      return try Self.encode(
-        ComputerApplicationIconResult(
-          pngBase64: InstalledApplicationIcon.png(bundleId: params.bundleId)?.base64EncodedString())
-      )
+      return try await Self.handleComputer(.applicationIcon(params), from: host, shell: shell)
     case .userAppWidgetPreview(let params):
-      return try Self.encode(
-        UserAppWidgetPreviewResult(pngBase64: try shell.widgets.preview(params)))
+      return try await Self.handleUserApp(.widgetPreview(params), from: host, shell: shell)
     case .userAppOpen(let params):
-      try await shell.openUserApp(params.appId)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleUserApp(.open(params), from: host, shell: shell)
     case .userAppClose(let params):
-      shell.userApps.close(appId: params.appId)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleUserApp(.close(params), from: host, shell: shell)
     case .userAppClearData(let params):
-      // A deleted app's pin goes first, whatever becomes of its web storage.
-      if params.forget { shell.pins.forget(appId: params.appId) }
-      try await shell.userApps.clearData(appId: params.appId, forget: params.forget)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleUserApp(.clearData(params), from: host, shell: shell)
     case .userAppPin(let params):
-      try await shell.pinUserApp(params, from: host)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleUserApp(.pin(params), from: host, shell: shell)
     case .userAppUnpin(let params):
-      shell.pins.unpin(appId: params.appId)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleUserApp(.unpin(params), from: host, shell: shell)
     case .viewOpen(let params):
       try shell.openView(params)
       return try Self.encode(NativeEmpty())
@@ -292,34 +281,42 @@ final class ShellBridge {
     case .notificationsOpenSystemSettings:
       return try Self.openNotificationSettings(shell: shell)
     case .computerPreviewShow(let params):
-      return try Self.encode(shell.showComputerPreview(params, from: host, document: document))
+      return try await Self.handleComputer(
+        .previewShow(params, document: document), from: host, shell: shell)
     case .computerPrepareBrowser(let params):
-      return try Self.encode(await shell.prepareComputerBrowser(params))
+      return try await Self.handleComputer(.prepareBrowser(params), from: host, shell: shell)
     case .computerOpenProfile(let params):
-      try await shell.openComputerProfile(bindingId: params.bindingId)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleComputer(.openProfile(params), from: host, shell: shell)
     case .computerAuthorizeAutomation(let params):
-      return try Self.encode(await shell.authorizeComputerAutomation(params))
+      return try await Self.handleComputer(.authorizeAutomation(params), from: host, shell: shell)
     case .computerAcknowledgeUnsettled(let params):
-      shell.acknowledgeComputerUnsettled(params)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleComputer(.acknowledgeUnsettled(params), from: host, shell: shell)
     case .computerSetTyping(let params):
-      shell.computer.typing.set(params)
-      shell.computer.onStateChange?()
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleComputer(.setTyping(params), from: host, shell: shell)
     case .computerSetPointerVisible(let params):
-      shell.computer.setPointerVisible(params.visible)
-      return try Self.encode(NativeEmpty())
+      return try await Self.handleComputer(.setPointerVisible(params), from: host, shell: shell)
     case .computerPrepareApplication(let params):
-      return try Self.encode(await shell.prepareComputerApplication(params))
+      return try await Self.handleComputer(.prepareApplication(params), from: host, shell: shell)
     case .computerPrimeCaptureConsent:
-      return try Self.encode(await shell.primeComputerCaptureConsent())
+      return try await Self.handleComputer(.primeCaptureConsent, from: host, shell: shell)
     case .panelModalSetAvailable(let params):
       guard host === shell.panelHost else {
         throw BridgeError("Only the task panel can set panel modals.")
       }
       shell.setPanelModalsAvailable(params.available)
       return try Self.encode(NativeEmpty())
+    case .diagnosticsShellReport(let params):
+      return try await Self.handleDiagnostics(.shellReport(params), from: host, shell: shell)
+    case .diagnosticsLiveProbeStart(let params):
+      return try await Self.handleDiagnostics(.liveProbeStart(params), from: host, shell: shell)
+    case .diagnosticsLiveProbeStop(let params):
+      return try await Self.handleDiagnostics(.liveProbeStop(params), from: host, shell: shell)
+    case .diagnosticsPreviewBundle(let params):
+      return try await Self.handleDiagnostics(.previewBundle(params), from: host, shell: shell)
+    case .diagnosticsExportBundle(let params):
+      return try await Self.handleDiagnostics(.exportBundle(params), from: host, shell: shell)
+    case .diagnosticsRestartService(let params):
+      return try await Self.handleDiagnostics(.restartService(params), from: host, shell: shell)
     }
   }
 

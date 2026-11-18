@@ -32,6 +32,10 @@ struct CaptureSessionOptions {
   var longScreenshotConfirm = LongScreenshotConfirm.card
   /// Writes copied text (loupe colors, selection copy) to the pasteboard when set.
   var copyText: ((String) -> Bool)?
+  /// Coarse capture/arbiter decision ring (0 pixels retained).
+  var decisionRing: CaptureAndArbiterRing?
+  /// Live-probe callback invoked only while the 10s capture probe is armed (`nil` when idle).
+  var onLiveProbeCapture: ((String) -> Void)?
 }
 
 /// The session's two modes on one selection (architecture C1): ⌘1 / ⌘2 or the bottom bar's
