@@ -85,20 +85,19 @@ export function classifyProviderFailure(status?: number, error?: unknown, url?: 
   if (code && LOCAL_NET_CODES.has(code)) {
     const host = (() => {
       try {
-        return url ? new URL(url).hostname : '';
+        return url ? new URL(url).hostname.replace(/^\[|\]$/g, '').toLowerCase() : '';
       } catch {
         return '';
       }
     })();
     const isPrivateIp =
       isIP(host) !== 0 &&
-      /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
-    if (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      isPrivateIp ||
-      process.platform === 'darwin'
-    ) {
+      (/^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) ||
+        host === '::1' ||
+        host.startsWith('fc') ||
+        host.startsWith('fd') ||
+        host.startsWith('fe80:'));
+    if (host === 'localhost' || host.endsWith('.local') || isPrivateIp) {
       return {
         reason: 'local_network_permission_denied' as const,
         category: 'local_network_denied',

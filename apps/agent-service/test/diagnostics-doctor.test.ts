@@ -4,9 +4,11 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
-import { DoctorRunResponseSchema, parse } from '@atd/agent-contracts';
+import { DoctorRunResponseSchema, parse, type ServiceConnection } from '@atd/agent-contracts';
 import { resetAddonLockDiagnosticsForTests } from '../dist/addons/lock.js';
 import { prepareServe } from '../dist/config.js';
+import { defaultProviderEndpointProbe } from '../dist/diagnostics/doctor-probes.js';
+import { classifyProviderFailure } from '../dist/diagnostics/doctor-projections.js';
 import { resetProviderErrorCategoriesForTests } from '../dist/diagnostics/doctor-providers.js';
 import { runServiceDoctor } from '../dist/diagnostics/doctor-runner.js';
 import { createLogger } from '../dist/logging.js';
@@ -23,6 +25,25 @@ async function makeTempDir(prefix: string): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
+}
+
+function makeDoctorDeps(
+  config: Awaited<ReturnType<typeof prepareServe>>,
+  systemProxy: Awaited<ReturnType<typeof createSystemProxy>>,
+  log: ReturnType<typeof createLogger>,
+): Parameters<typeof runServiceDoctor>[0] {
+  return {
+    config,
+    systemProxy,
+    addons: { list: () => [] } as unknown as Parameters<typeof runServiceDoctor>[0]['addons'],
+    automations: {
+      store: {
+        problem: undefined,
+        data: { definitions: { automations: [] }, state: { automations: {}, notices: [] } },
+      },
+    } as unknown as Parameters<typeof runServiceDoctor>[0]['automations'],
+    log,
+  };
 }
 
 afterEach(async () => {
@@ -122,18 +143,7 @@ test('Doctor finishes <= 2200ms, skips Folder TCC paths, avoids PRAGMA quick_che
 
     const started = performance.now();
     const res = await runServiceDoctor(
-      {
-        config,
-        systemProxy,
-        addons: { list: () => [] } as unknown as Parameters<typeof runServiceDoctor>[0]['addons'],
-        automations: {
-          store: {
-            problem: undefined,
-            data: { definitions: { automations: [] }, state: { automations: {}, notices: [] } },
-          },
-        } as unknown as Parameters<typeof runServiceDoctor>[0]['automations'],
-        log,
-      },
+      makeDoctorDeps(config, systemProxy, log),
       { includeConnectivity: false },
       {
         homeDir: home,
@@ -171,53 +181,48 @@ test('Doctor detects clock skew, provider errors, and MCP required launcher fail
   const systemProxy = await createSystemProxy(log);
 
   await mkdir(path.join(dataDir, 'mcp'), { recursive: true });
+  await mkdir(path.join(dataDir, 'providers'), { recursive: true });
+  const srv = {
+    serverId: 'local-npx',
+    revision: 1,
+    connectionId: 'conn-1',
+    transport: 'stdio',
+    stdio: { command: 'npx', args: ['-y', 'demo'], env: {}, cwd: null },
+    http: null,
+    principal: 'user',
+    isolateByTask: false,
+    exposeResources: false,
+    exposure: 'auto',
+    approveTools: true,
+    includeTools: [],
+    excludeTools: [],
+    requestTimeoutMs: null,
+    disabled: false,
+  };
+  const conn = {
+    connectionId: 'prov-1',
+    provider: 'openai',
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    authType: 'api_key',
+    defaultModel: 'gpt-4o',
+    revision: 1,
+    connected: true,
+    hasCredential: true,
+    configurationId: 'cfg-1',
+    verifiedModel: 'gpt-4o',
+    migratedAt: null,
+  };
   await writeFile(
     path.join(dataDir, 'mcp', 'servers.json'),
-    JSON.stringify({
-      version: 1,
-      servers: [
-        {
-          serverId: 'local-npx',
-          revision: 1,
-          connectionId: 'conn-1',
-          transport: 'stdio',
-          stdio: { command: 'npx', args: ['-y', 'demo'], env: {}, cwd: null },
-          http: null,
-          principal: 'user',
-          isolateByTask: false,
-          exposeResources: false,
-          exposure: 'auto',
-          approveTools: true,
-          includeTools: [],
-          excludeTools: [],
-          requestTimeoutMs: null,
-          disabled: false,
-        },
-      ],
-    }),
+    JSON.stringify({ version: 1, servers: [srv] }),
   );
-  await mkdir(path.join(dataDir, 'providers'), { recursive: true });
   await writeFile(
     path.join(dataDir, 'providers', 'connections.json'),
     JSON.stringify({
       version: 1,
       defaultConnectionId: 'prov-1',
-      connections: [
-        {
-          connectionId: 'prov-1',
-          provider: 'openai',
-          name: 'OpenAI',
-          baseUrl: 'https://api.openai.com/v1',
-          authType: 'api_key',
-          defaultModel: 'gpt-4o',
-          revision: 1,
-          connected: true,
-          hasCredential: true,
-          configurationId: 'cfg-1',
-          verifiedModel: 'gpt-4o',
-          migratedAt: null,
-        },
-      ],
+      connections: [conn],
       defaultAliasId: null,
       aliases: [],
     }),
@@ -233,18 +238,7 @@ test('Doctor detects clock skew, provider errors, and MCP required launcher fail
   const mirrorUrl = `http://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}/`;
 
   try {
-    const deps = {
-      config,
-      systemProxy,
-      addons: { list: () => [] } as unknown as Parameters<typeof runServiceDoctor>[0]['addons'],
-      automations: {
-        store: {
-          problem: undefined,
-          data: { definitions: { automations: [] }, state: { automations: {}, notices: [] } },
-        },
-      } as unknown as Parameters<typeof runServiceDoctor>[0]['automations'],
-      log,
-    };
+    const deps = makeDoctorDeps(config, systemProxy, log);
     const resFail = await runServiceDoctor(
       deps,
       { includeConnectivity: true },
@@ -289,5 +283,65 @@ test('Doctor detects clock skew, provider errors, and MCP required launcher fail
     assert.equal(resWarn.checks.find((c) => c.id === 'conn.provider_endpoints')?.status, 'pass');
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('defaultProviderEndpointProbe and classifyProviderFailure distinguish auth 401 and public vs LAN reachability', async () => {
+  const server = createServer((_req, res) => {
+    res.writeHead(401);
+    res.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const addr = server.address();
+  const baseUrl = `http://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}/v1`;
+  try {
+    const baseConn = {
+      connectionId: 'c-1',
+      provider: 'openai',
+      name: 'Test',
+      baseUrl,
+      defaultModel: 'gpt-4o',
+      revision: 1,
+      connected: true,
+      hasCredential: true,
+      configurationId: 'cfg',
+      verifiedModel: '',
+      migratedAt: null,
+    } satisfies Omit<ServiceConnection, 'authType'>;
+
+    const authed = await defaultProviderEndpointProbe(
+      { ...baseConn, authType: 'api_key' },
+      AbortSignal.timeout(1000),
+    );
+    assert.deepEqual(authed, { ok: true, status: 401 });
+
+    const unauthed = await defaultProviderEndpointProbe(
+      { ...baseConn, authType: 'none' },
+      AbortSignal.timeout(1000),
+    );
+    assert.deepEqual(unauthed, { ok: false, status: 401 });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+
+  for (const [code, url, expected] of [
+    [
+      'ENETUNREACH',
+      'https://api.openai.com/v1',
+      { reason: 'provider_tls_or_proxy_failed', category: 'enetunreach' },
+    ],
+    [
+      'EHOSTUNREACH',
+      'http://192.168.1.50:11434/v1',
+      { reason: 'local_network_permission_denied', category: 'local_network_denied' },
+    ],
+    [
+      'EACCES',
+      'http://mac-studio.local:11434/v1',
+      { reason: 'local_network_permission_denied', category: 'local_network_denied' },
+    ],
+  ] as const) {
+    const res = classifyProviderFailure(undefined, Object.assign(new Error('net'), { code }), url);
+    assert.deepEqual(res, expected);
   }
 });

@@ -170,7 +170,12 @@ export async function defaultProviderEndpointProbe(conn: ServiceConnection, sign
   try {
     const res = await fetch(conn.baseUrl, { method: 'HEAD', redirect: 'manual', signal });
     await res.body?.cancel().catch(() => undefined);
-    return { ok: res.status < 500 && res.status !== 401 && res.status !== 403, status: res.status };
+    // Unauthenticated HEAD on auth-protected endpoints proves reachability when returning 401/403.
+    const ok =
+      conn.authType === 'none'
+        ? res.status < 500 && res.status !== 401 && res.status !== 403
+        : res.status < 500;
+    return { ok, status: res.status };
   } catch (error) {
     return { ok: false, error };
   }
