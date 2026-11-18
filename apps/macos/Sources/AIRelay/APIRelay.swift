@@ -31,9 +31,17 @@ final class APIRelay {
     async
   {
     guard responder.isLive else { return }
-    guard case .success(let endpoint) = await link.endpoint() else {
+    let endpoint: ServiceEndpoint
+    switch await link.endpoint() {
+    case .success(let resolved):
+      endpoint = resolved
+    case .failure(let reason):
+      let descriptor = ServiceUnavailableDescriptor.describe(
+        reason, lastFailure: link.lastFailureSummary)
       return responder.error(
-        status: RelayPolicy.unavailableStatus, "The agent service is not available.")
+        status: RelayPolicy.unavailableStatus,
+        code: descriptor.errorCode,
+        descriptor.summary)
     }
     guard let matcher = await manifests.matcher(for: endpoint) else {
       return responder.error(

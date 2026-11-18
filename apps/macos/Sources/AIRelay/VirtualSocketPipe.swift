@@ -66,11 +66,12 @@ public final class VirtualSocketPipe {
       switch resolved {
       case .failure(let reason):
         sockets[id] = nil
-        // Only an active start is temporary. A failed start must end the page's loading state.
+        let descriptor = ServiceUnavailableDescriptor.describe(
+          reason, lastFailure: link.lastFailureSummary)
         return deliverClose(
-          id, code: reason == .starting ? CloseCode.tryAgainLater : CloseCode.internalError,
-          reason: reason == .starting
-            ? "The agent service is starting." : "The agent service is not available.")
+          id,
+          code: descriptor.wsCloseCode,
+          reason: descriptor.wsCloseReason)
       case .success(let endpoint):
         let upstream = ServiceWebSocket(endpoint: endpoint, events: events(for: id, socket))
         socket.upstream = upstream

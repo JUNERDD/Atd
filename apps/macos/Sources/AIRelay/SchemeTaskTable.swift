@@ -85,8 +85,8 @@ final class SchemeResponder {
   }
 
   /// A complete answer made by the relay itself, in the service's error envelope.
-  func error(status: Int, _ message: String) {
-    let body = RelayErrorBody.json(status: status, message: message)
+  func error(status: Int, code: String? = nil, _ message: String) {
+    let body = RelayErrorBody.json(status: status, code: code, message: message)
     complete(
       status: status,
       headers: [
