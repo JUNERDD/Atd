@@ -192,7 +192,15 @@ export async function installNativeHost(
   });
 
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
-  connection.onConnected(() => void commands.refreshFromService().catch(() => undefined));
+  connection.onConnected(() => {
+    void commands
+      .refreshFromService()
+      .catch(() =>
+        connection.status().state === 'connected'
+          ? commands.refreshFromService(true).catch(() => undefined)
+          : undefined,
+      );
+  });
   if (surface === 'panel') {
     listenNativeSessionHandoffs({ messages, native, commands, requests, emit });
   }
@@ -208,11 +216,9 @@ export async function installNativeHost(
 
   attachNativeSurfaceDom(native, surface);
   connection.connect();
-  const settingsPrimed = surface !== 'panel' ? settings.prime() : Promise.resolve();
-  if (surface !== 'panel') {
-    void settings.providers.sync().catch(() => undefined);
-    void commands.refreshFromService().catch(() => undefined);
-  }
+  const settingsPrimed = settings.prime();
+  const providersPrimed = settings.providers.sync().catch(() => undefined);
+  const commandsPrimed = commands.refreshFromService().catch(() => undefined);
   // The service may still be starting: its data follows the stream, and the shell's preferences
   // follow `app.state`, both through settings change events.
   void settings.ready.catch((error: unknown) => {
@@ -310,11 +316,28 @@ export async function installNativeHost(
       : {}),
   };
   window.desktop = bridge;
-  if (surface === 'settings') {
-    // Allow fast local settings/shell hydration to settle before the first render while capping
-    // cold-start delay if the service is still coming up.
+  if (surface === 'panel' || surface === 'settings') {
+    const streamSettled =
+      surface === 'panel' && connection.status().state === 'connecting'
+        ? new Promise<void>((resolve) => {
+            const stop = connection.onStatus((status) => {
+              if (status.state !== 'connecting') {
+                stop();
+                resolve();
+              }
+            });
+          })
+        : Promise.resolve();
+    // Allow fast local settings/service/shell hydration to settle before the first render while
+    // capping cold-start delay if the service is still coming up.
     await Promise.race([
-      Promise.allSettled([settingsPrimed, settings.ready]),
+      Promise.allSettled([
+        settingsPrimed,
+        providersPrimed,
+        commandsPrimed,
+        settings.ready,
+        streamSettled,
+      ]),
       new Promise<void>((resolve) => setTimeout(resolve, 80)),
     ]);
   }

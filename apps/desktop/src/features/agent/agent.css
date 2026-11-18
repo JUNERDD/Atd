@@ -1241,16 +1241,6 @@
   flex: 1;
   min-height: 0;
 }
-/* A service that is already running settles within a moment, so the loading fades in late
-   instead of flashing before the panel content. */
-.service-starting-content {
-  animation: service-starting-in 200ms ease-out 250ms both;
-}
-@keyframes service-starting-in {
-  from {
-    opacity: 0;
-  }
-}
 .service-banner {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import { AppWindow, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { preloadPanelView } from '../agent/panel-view-loaders';
 
 /**
  * Create app and My apps on the new-task view, beside All commands: Create app seeds the new
@@ -20,7 +21,12 @@ export function AppEntries({
         <Sparkles data-icon="inline-start" />
         {t('panel.create')}
       </Button>
-      <Button variant="outline" onClick={onShowApps}>
+      <Button
+        variant="outline"
+        onPointerEnter={() => preloadPanelView('apps')}
+        onFocus={() => preloadPanelView('apps')}
+        onClick={onShowApps}
+      >
         <AppWindow data-icon="inline-start" />
         {t('panel.label')}
       </Button>

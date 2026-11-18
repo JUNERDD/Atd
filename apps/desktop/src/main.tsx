@@ -38,21 +38,15 @@ else await renderHostRequired();
 async function renderWindow(native: NativeBridge) {
   document.documentElement.dataset.window = windowKind;
   const windowRoot = loadWindowRoot();
-  // The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
-  // tree, so a transcript rarely has to show plain text first.
-  if (windowKind === 'panel') {
-    void import('./features/agent/transcript/markdown-loader').then(({ loadMarkdown }) =>
-      loadMarkdown(),
-    );
-  }
   await installNativeHost(native, windowKind);
   // Every window runs the application menu's Undo/Redo through this entry.
   const disposeEditCommands = installEditCommands();
   import.meta.hot?.dispose(disposeEditCommands);
   // A non-English first language loads its translations (started when i18n loaded) before any
-  // text renders; settings also primes its snapshot query and hydrated language in parallel.
+  // text renders; panel and settings also prime their initial query snapshots and hydrated
+  // language in parallel so the first frame paints with settled theme, language, and state.
   const settingsReady =
-    windowKind === 'settings'
+    windowKind === 'panel' || windowKind === 'settings'
       ? import('./features/settings/use-settings')
           .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
           .then(async (snapshot) => {
@@ -66,7 +60,21 @@ async function renderWindow(native: NativeBridge) {
           })
           .catch(() => undefined)
       : Promise.resolve();
-  const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady, settingsReady]);
+  const panelReady =
+    windowKind === 'panel'
+      ? Promise.all([
+          import('./features/service/use-service').then(({ readServiceStatus }) =>
+            readServiceStatus(),
+          ),
+          import('./features/agent/use-agent').then(({ readAgentSnapshot }) => readAgentSnapshot()),
+        ]).catch(() => undefined)
+      : Promise.resolve();
+  const [WindowRoot] = await Promise.all([
+    windowRoot,
+    initialLanguageReady,
+    settingsReady,
+    panelReady,
+  ]);
   // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
   // over the whole display, so it waits on nothing visible. The others name the window being
   // opened and paint their content surface, except a view's window, whose surface the shell draws
@@ -94,6 +102,14 @@ async function renderWindow(native: NativeBridge) {
       </ScrollShadowDefaultContext.Provider>
     </React.StrictMode>,
   );
+  if (windowKind === 'panel') {
+    const warmup = window.setTimeout(() => {
+      void import('./features/agent/panel-view-loaders').then(({ warmPanelDeferredChunks }) =>
+        warmPanelDeferredChunks(),
+      );
+    }, 120);
+    import.meta.hot?.dispose(() => window.clearTimeout(warmup));
+  }
 }
 
 // Each window loads only its own tree: the settings window never parses the panel, and vice versa.

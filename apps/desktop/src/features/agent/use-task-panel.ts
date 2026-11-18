@@ -24,6 +24,7 @@ import { trackCommandRun } from './command-results';
 import { useRunChoices } from './use-run-choices';
 import { useOutgoingMessage } from './outgoing-messages';
 import { sendOptimistic, sendSettling, withChips, type PanelSubmit } from './panel-submit';
+import { preloadPanelView } from './panel-view-loaders';
 import { panelViewTitle } from './panel-run';
 import { usePanelAliases } from './use-panel-aliases';
 import { usePanelHotkeys } from './use-panel-hotkeys';
@@ -290,6 +291,7 @@ export function useTaskPanel() {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
   }
   async function chooseCommand(id: string) {
+    preloadPanelView('input');
     try {
       setPrepared(await agentApi().prepare(id));
       setView('input');

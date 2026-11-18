@@ -9,6 +9,7 @@ import { useConversationControls } from './transcript/conversation-controls';
 import { HintButton } from './transcript/find/hint-button';
 import { FIND_ACCELERATOR } from './transcript/find/use-find-shortcut';
 import { UpdateButton } from './update-button';
+import { preloadPanelView } from './panel-view-loaders';
 import type { PanelView } from './use-task-panel';
 
 /**
@@ -73,6 +74,8 @@ export function PanelHeader({
           variant="glass-ghost"
           className="header-button"
           aria-pressed={view === 'history'}
+          onPointerEnter={() => preloadPanelView('history')}
+          onFocus={() => preloadPanelView('history')}
           onClick={() => onToggleView('history')}
         >
           <History />

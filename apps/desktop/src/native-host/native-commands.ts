@@ -55,6 +55,9 @@ export class NativeCommands implements CommandCatalog {
   private commands: CommandDefinition[] = [];
   /** Remembered values go to the service one write after another (`remember`). */
   private remembering = Promise.resolve();
+  private refreshSeq = 0;
+  private appliedSeq = 0;
+  private refreshing: { seq: number; promise: Promise<void> } | null = null;
 
   constructor(
     private readonly connection: NativeConnection,
@@ -188,6 +191,7 @@ export class NativeCommands implements CommandCatalog {
           : shortcut,
       );
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);
+    this.appliedSeq = ++this.refreshSeq;
     // A new command is the last of the user's, ahead of the plugins' as the service lists it.
     const own = this.commands.filter((item) => !item.pluginId);
     this.commands = this.commands.some((item) => item.id === saved.id)
@@ -201,6 +205,7 @@ export class NativeCommands implements CommandCatalog {
   async delete(id: string, revision: number) {
     this.find(id);
     await deleteRemote(this.connection.options(), id, revision);
+    this.appliedSeq = ++this.refreshSeq;
     this.commands = this.commands.filter((item) => item.id !== id);
     delete this.errors[id];
     this.changed();
@@ -209,9 +214,11 @@ export class NativeCommands implements CommandCatalog {
   /** A refused order (the list changed meanwhile) reloads the list before it rejects. */
   async reorder(ids: string[]) {
     try {
-      this.commands = await reorderRemote(this.connection.options(), ids);
+      const next = await reorderRemote(this.connection.options(), ids);
+      this.appliedSeq = ++this.refreshSeq;
+      this.commands = next;
     } catch (error) {
-      await this.refreshFromService().catch(() => undefined);
+      await this.refreshFromService(true).catch(() => undefined);
       throw error;
     }
     this.changed();
@@ -227,6 +234,7 @@ export class NativeCommands implements CommandCatalog {
     const write = this.remembering.then(async () => {
       const kept = sanitizeArguments(this.find(id), values);
       const saved = await rememberRemote(this.connection.options(), id, kept, shortcutId);
+      this.appliedSeq = ++this.refreshSeq;
       this.commands = this.commands.map((item) => (item.id === saved.id ? saved : item));
       this.changed();
     });
@@ -244,8 +252,21 @@ export class NativeCommands implements CommandCatalog {
     return this.remember(id, commandValues(command, argumentOverrides(command, picked)));
   }
 
-  async refreshFromService() {
-    this.commands = await fetchCommands(this.connection.options());
-    this.changed();
+  refreshFromService(fresh = false): Promise<void> {
+    if (!fresh && this.refreshing) return this.refreshing.promise;
+    const seq = ++this.refreshSeq;
+    const promise = fetchCommands(this.connection.options())
+      .then((next) => {
+        if (seq >= this.appliedSeq) {
+          this.appliedSeq = seq;
+          this.commands = next;
+          this.changed();
+        }
+      })
+      .finally(() => {
+        if (this.refreshing?.seq === seq) this.refreshing = null;
+      });
+    this.refreshing = { seq, promise };
+    return promise;
   }
 }

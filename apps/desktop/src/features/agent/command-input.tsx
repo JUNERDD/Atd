@@ -1,5 +1,5 @@
 import type { RunPolicy } from '../../client/agent/run-policy';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Brain, Paperclip, Shield, X } from 'lucide-react';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -58,6 +58,7 @@ export function CommandInput({
   pending: boolean;
 }) {
   const { t } = useTranslation('panel');
+  const rootRef = useRef<HTMLElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
@@ -66,6 +67,12 @@ export function CommandInput({
   // A screenshot command runs with an image only; the field below says so while Run is off.
   const needsScreenshot = missingScreenshot(input);
   const shot = screenshotOf(input);
+  useEffect(() => {
+    if (document.visibilityState === 'hidden') return;
+    const active = document.activeElement;
+    if (active && active !== document.body && !active.closest('.panel-header')) return;
+    rootRef.current?.querySelector<HTMLElement>('[data-panel-autofocus]')?.focus();
+  }, []);
   useEffect(() => {
     if (prepared.notice) showErrorToast(prepared.notice);
   }, [prepared.notice]);
@@ -99,7 +106,11 @@ export function CommandInput({
         gutter="none"
         scrollShadow
       >
-        <section className="panel-content-body command-preparation" aria-label={t('input.label')}>
+        <section
+          ref={rootRef}
+          className="panel-content-body command-preparation"
+          aria-label={t('input.label')}
+        >
           {/* The description says what the command will do, so it wraps instead of truncating;
               only an unusually long one is clamped, with the full text on hover. */}
           <p

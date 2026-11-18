@@ -1,15 +1,20 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import type { CommandLaunch, TaskDetail } from './client/agent/bridge';
 import { emptyInput } from './client/agent/task-schema';
 import { App } from './App';
 import { installBridge } from '../tests/app-test-bridge';
 import { fixtureCommands } from '../tests/command-fixtures';
+import { preloadAllPanelViews } from './features/agent/panel-view-loaders';
 import { loadSettingsSection } from './features/settings/settings-section-loaders';
 import { SettingsWindow } from './features/settings/settings-window';
 import { chipTable, chipTokens, editorDraft } from './features/composer-editor/chip-state';
+
+beforeAll(async () => {
+  await preloadAllPanelViews();
+});
 
 function composerView(textbox: HTMLElement) {
   const view = EditorView.findFromDOM(textbox);

@@ -43,6 +43,8 @@ export default defineConfig(({ command }) => ({
         './index.html',
         './src/main.tsx',
         './src/native-host/index.ts',
+        './src/App.tsx',
+        './src/components/composer.tsx',
         './src/features/settings/settings-window.tsx',
         './src/features/settings/general-settings.tsx',
       ],

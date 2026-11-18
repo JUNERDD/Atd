@@ -7,6 +7,7 @@ import type { CommandDefinition } from '../../client/agent/command-schema';
 import { keyedShortcuts } from '@atd/agent-contracts';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { CommandIcon } from '../commands/command-icon';
+import { preloadPanelView } from './panel-view-loaders';
 
 const COLLAPSED_COUNT = 3;
 
@@ -67,6 +68,8 @@ export function CommandLauncher({
                 key={command.id}
                 variant="ghost"
                 className="quick-command"
+                onPointerEnter={() => preloadPanelView('input')}
+                onFocus={() => preloadPanelView('input')}
                 onClick={() => onChoose(command.id)}
               >
                 <CommandIcon templateId={command.templateId} />

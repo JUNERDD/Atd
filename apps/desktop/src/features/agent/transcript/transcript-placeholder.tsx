@@ -1,5 +1,6 @@
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Skeleton } from '@atd/ui/components/skeleton';
+import { cn } from '@atd/ui/lib/utils';
 import {
   LoadingPlaceholder,
   TextPlaceholder,
@@ -94,9 +95,15 @@ export function TranscriptPlaceholder({
  * A conversation that has not loaded yet, in the frame `Transcript` uses (`.conversation`, its
  * scroll area and messages column), so its turns replace the placeholder's in place.
  */
-export function ConversationPlaceholder({ label }: { label: string }) {
+export function ConversationPlaceholder({
+  label,
+  className,
+}: {
+  label: string;
+  className?: string;
+}) {
   return (
-    <div className="conversation">
+    <div className={cn('conversation', className)}>
       <ScrollArea
         className="min-h-0 flex-1"
         viewportClassName="overlay-footer-fade"

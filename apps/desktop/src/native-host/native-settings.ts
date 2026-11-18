@@ -83,37 +83,49 @@ export function nativeSettings(
   );
   providers.attach(connection);
 
-  let settingsLoad: Promise<void> | null = null;
-  const fetchSettings = () => {
-    if (!settingsLoad) {
-      settingsLoad = getSettings(connection.options())
-        .then((next) => {
+  let settingsSeq = 0;
+  let appliedSeq = 0;
+  let settingsLoad: { seq: number; fromPrime: boolean; promise: Promise<void> } | null = null;
+  const fetchSettings = (fresh: boolean, fromPrime: boolean) => {
+    if (!fresh && settingsLoad) return settingsLoad.promise;
+    const seq = ++settingsSeq;
+    const promise = getSettings(connection.options())
+      .then((next) => {
+        if (seq >= appliedSeq) {
+          appliedSeq = seq;
           shared = next;
           publish();
-        })
-        .finally(() => {
-          settingsLoad = null;
-        });
-    }
-    return settingsLoad;
+        }
+      })
+      .finally(() => {
+        if (settingsLoad?.seq === seq) settingsLoad = null;
+      });
+    settingsLoad = { seq, fromPrime, promise };
+    return promise;
   };
-  const reload = async () => {
+  const reload = async (fresh = false): Promise<void> => {
+    const joinedPrime = !fresh && settingsLoad?.fromPrime === true;
     try {
-      await fetchSettings();
+      await fetchSettings(fresh, false);
     } catch (error) {
+      if (joinedPrime && connection.status().state === 'connected') {
+        return reload(true);
+      }
       for (const listener of loadErrorListeners) listener();
       throw error;
     }
   };
-  // Eager non-panel HTTP prime: silent on pre-stream failure so cold-boot unavailability still
-  // waits for the authoritative stream-connected `reload()`.
-  const prime = () => fetchSettings().catch(() => undefined);
+  // Eager HTTP prime: silent on pre-stream failure so cold-boot unavailability still waits for the
+  // authoritative stream-connected `reload()`.
+  const prime = () => fetchSettings(false, true).catch(() => undefined);
   const write = async (request: PatchSettingsRequest) => {
-    shared = await patchSettings(connection.options(), request);
+    const next = await patchSettings(connection.options(), request);
+    appliedSeq = ++settingsSeq;
+    shared = next;
     return publish();
   };
   connection.onInvalidate((frame) => {
-    if (frame.scope === 'settings') void reload().catch(() => undefined);
+    if (frame.scope === 'settings') void reload(true).catch(() => undefined);
     if (frame.scope === 'providers') void providers.sync().catch(() => undefined);
   });
   // The first stream, and every one after a drop: load what the frames would have announced.

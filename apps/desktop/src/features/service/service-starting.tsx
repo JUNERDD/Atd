@@ -10,7 +10,6 @@ export function ServiceStarting() {
   return (
     <div className="service-starting">
       <WindowLoading
-        className="service-starting-content"
         title={t('service.starting.title')}
         description={t('service.starting.description')}
       />
