@@ -121,6 +121,44 @@ function resolveLoginShellPath(): Promise<{ value: string; shell: string } | { p
   });
 }
 
+export type LoginShellFallbackReason =
+  | 'login_shell_timed_out_5s'
+  | 'login_shell_exited_without_path';
+
+export interface LoginShellPathDiagnostics {
+  invoked: boolean;
+  resolved: boolean;
+  durationMs: number | null;
+  fallbackReason: LoginShellFallbackReason | null;
+  entryCount: number;
+}
+
+const loginShellState: LoginShellPathDiagnostics = {
+  invoked: false,
+  resolved: false,
+  durationMs: null,
+  fallbackReason: null,
+  entryCount: 0,
+};
+
+/** Returns cached startup login-shell PATH resolution metrics without spawning a shell. */
+export function getLoginShellPathDiagnostics(): LoginShellPathDiagnostics {
+  const liveCount = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).length;
+  return {
+    ...loginShellState,
+    entryCount: loginShellState.invoked ? loginShellState.entryCount : liveCount,
+  };
+}
+
+/** Resets login-shell PATH diagnostics; intended for isolated unit tests. */
+export function resetLoginShellPathDiagnosticsForTests(): void {
+  loginShellState.invoked = false;
+  loginShellState.resolved = false;
+  loginShellState.durationMs = null;
+  loginShellState.fallbackReason = null;
+  loginShellState.entryCount = 0;
+}
+
 /**
  * Replaces `process.env.PATH` with the login shell's PATH, followed by the inherited entries it
  * lacks, so a launcher's own additions (the bundled Node's directory, Homebrew fallbacks) stay
@@ -133,7 +171,16 @@ export async function applyLoginShellPath(log: Logger): Promise<void> {
   const started = performance.now();
   const resolved = await resolveLoginShellPath();
   const elapsedMs = Math.round(performance.now() - started);
+  loginShellState.invoked = true;
+  loginShellState.durationMs = elapsedMs;
   if ('problem' in resolved) {
+    loginShellState.resolved = false;
+    loginShellState.fallbackReason = resolved.problem.includes('timed out after')
+      ? 'login_shell_timed_out_5s'
+      : 'login_shell_exited_without_path';
+    loginShellState.entryCount = (process.env.PATH ?? '')
+      .split(path.delimiter)
+      .filter(Boolean).length;
     log.warn('Login shell PATH could not be resolved; keeping the inherited PATH.', {
       problem: resolved.problem,
       elapsedMs,
@@ -144,6 +191,9 @@ export async function applyLoginShellPath(log: Logger): Promise<void> {
   const inherited = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
   const merged = [...entries, ...inherited.filter((entry) => !entries.includes(entry))];
   process.env.PATH = merged.join(path.delimiter);
+  loginShellState.resolved = true;
+  loginShellState.fallbackReason = null;
+  loginShellState.entryCount = merged.length;
   log.info('Using the login shell PATH.', {
     shell: resolved.shell,
     entries: merged.length,
