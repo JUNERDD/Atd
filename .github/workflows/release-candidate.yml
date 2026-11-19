@@ -48,9 +48,8 @@ jobs:
           - { arch: arm64, machine: arm64, runner: macos-26 }
           - { arch: x64, machine: x86_64, runner: macos-26-intel }
     runs-on: ${{ matrix.runner }}
-    # A build takes about 11 minutes on arm64 and 17 on Intel. The ceiling stops any step that
-    # hangs well before GitHub's 6-hour default, so the failed job can be rerun.
-    timeout-minutes: 120
+    # Allow time for the native build before distribution's two notary submissions.
+    timeout-minutes: 150
     env:
       VERSION: ${{ inputs.marketing_version }}
       BUILD_VERSION: ${{ inputs.build_version }}
@@ -154,7 +153,7 @@ jobs:
       # App ticket first; the final DMG is then signed, notarized and stapled before its
       # checksum and Sparkle signature are calculated. A failure prevents artifact promotion.
       - name: Sign, notarize and package the dmg
-        timeout-minutes: 70
+        timeout-minutes: 100
         run: |
           venv="$RUNNER_TEMP/dmgbuild"
           python3 -m venv "$venv"

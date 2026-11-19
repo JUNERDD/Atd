@@ -69,9 +69,10 @@ if (!values['app-only']) {
   const dmgDir = skipNotarize ? out : submissions;
   const dmg = path.join(dmgDir, `Atd-${version}-${arch === 'x86_64' ? 'x64' : arch}.dmg`);
   if (skipNotarize || !existsSync(`${dmg}.notary.json`)) {
-    // Keep packaging's timeout separate from Apple's longer notarization queue.
+    // Keep dmgbuild's phase timings visible even if the runner times out.
     const packaged = run(process.execPath, [path.join(root, 'dmg/package.mjs'), app, dmgDir], {
-      timeout: 10 * 60 * 1000,
+      stdio: ['ignore', 'pipe', 'inherit'],
+      timeout: 30 * 60 * 1000,
     });
     if (path.resolve(packaged.trim().split('\n').at(-1)) !== dmg)
       throw new Error('The packager returned an unexpected DMG path.');
