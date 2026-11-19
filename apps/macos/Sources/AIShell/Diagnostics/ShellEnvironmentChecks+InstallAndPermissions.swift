@@ -255,18 +255,32 @@ nonisolated extension ShellEnvironmentChecks {
   ) -> ShellDoctorCheck {
     let status: ShellDoctorCheck.Status
     let reason: String
+    let remediation: ShellDoctorCheck.Remediation?
     if uuremoteRunning && uuremoteTapFailed {
       status = .warn
       reason = "uuremote_tap_install_failed"
+      remediation = .init(
+        remediationCode: "grant_or_reset_accessibility",
+        action: .openSystemSettingsAccessibility,
+        settingsSection: nil, probeKind: nil, docsUrl: nil)
     } else if !permissions.postEventTrusted {
       status = .warn
       reason = "post_event_denied"
+      remediation = .init(
+        remediationCode: "grant_or_reset_accessibility",
+        action: .openSystemSettingsAccessibility,
+        settingsSection: nil, probeKind: nil, docsUrl: nil)
     } else if !permissions.listenEventTrusted {
       status = .warn
       reason = "listen_event_denied"
+      remediation = .init(
+        remediationCode: "grant_input_monitoring",
+        action: .openSystemSettingsInputMonitoring,
+        settingsSection: nil, probeKind: nil, docsUrl: nil)
     } else {
       status = .pass
       reason = "ok"
+      remediation = nil
     }
     return ShellDoctorCheck(
       id: "perm.input_and_post_event",
@@ -278,12 +292,7 @@ nonisolated extension ShellEnvironmentChecks {
         .init(key: "listenEventTrusted", value: String(permissions.listenEventTrusted)),
         .init(key: "postEventTrusted", value: String(permissions.postEventTrusted)),
       ],
-      remediation: status == .pass
-        ? nil
-        : .init(
-          remediationCode: "grant_input_monitoring",
-          action: .openSystemSettingsInputMonitoring,
-          settingsSection: nil, probeKind: nil, docsUrl: nil))
+      remediation: remediation)
   }
 
   static func makeSecureInputCheck(

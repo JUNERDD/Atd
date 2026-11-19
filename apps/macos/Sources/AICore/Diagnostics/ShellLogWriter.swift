@@ -164,40 +164,51 @@ public final class ShellLogWriter: Sendable {
   /// Synchronously flushes queued entries within `timeout` (used before bundle export or app exit).
   @discardableResult
   public func flush(timeout: DispatchTimeInterval = .milliseconds(500)) -> Bool {
-    let cancelled = lock.withLock { state -> FlushHandle? in
+    let (isClosed, cancelled) = lock.withLock { state -> (Bool, FlushHandle?) in
+      if state.isClosed { return (true, nil) }
       let handle = state.pendingFlush
       state.pendingFlush = nil
-      return handle
+      return (false, handle)
     }
+    guard !isClosed else { return true }
     cancelled?.item.cancel()
     let semaphore = DispatchSemaphore(value: 0)
     ioQueue.async { [weak self] in
-      self?.drainAndWriteOnQueue()
+      self?.drainAndWriteOnQueue(allowWhenClosed: false)
       semaphore.signal()
     }
     return semaphore.wait(timeout: .now() + timeout) == .success
   }
 
-  /// Closes the active descriptor after flushing queued entries.
+  /// Closes the active descriptor after draining remaining lines within `timeout` (`B30`).
   public func close(timeout: DispatchTimeInterval = .milliseconds(500)) {
-    _ = flush(timeout: timeout)
-    let cancelled = lock.withLock { state -> FlushHandle? in
+    let (alreadyClosed, cancelled) = lock.withLock { state -> (Bool, FlushHandle?) in
+      if state.isClosed { return (true, nil) }
       state.isClosed = true
       let handle = state.pendingFlush
       state.pendingFlush = nil
-      return handle
+      return (false, handle)
     }
     cancelled?.item.cancel()
-    ioQueue.sync { sink.closeDescriptor() }
+    guard !alreadyClosed else { return }
+
+    let semaphore = DispatchSemaphore(value: 0)
+    ioQueue.async { [self] in
+      self.drainAndWriteOnQueue(allowWhenClosed: true)
+      self.sink.closeDescriptor()
+      semaphore.signal()
+    }
+    _ = semaphore.wait(timeout: .now() + timeout)
   }
 
   var activeFileDescriptorForTesting: Int32 {
     sink.activeDescriptorForTesting
   }
 
-  private func drainAndWriteOnQueue() {
+  private func drainAndWriteOnQueue(allowWhenClosed: Bool = false) {
     var drained: [Slot] = []
     let dropped: UInt64 = lock.withLockUnchecked { state in
+      guard allowWhenClosed || !state.isClosed else { return 0 }
       state.pendingFlush = nil
       guard state.count > 0 || state.droppedCount > 0 else { return 0 }
       drained.reserveCapacity(state.count)

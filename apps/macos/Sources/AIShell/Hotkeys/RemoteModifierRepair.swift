@@ -112,17 +112,38 @@ final class RemoteModifierRepair {
     RunLoop.main.add(check, forMode: .common)
   }
 
+  func handleTapDisabled(_ type: CGEventType, reEnableTap: (() -> Bool)? = nil) {
+    sequence.reset()
+    identity = nil
+    let disabledTotal = tapDisabledCount &+ 1
+    let recovered: Bool
+    if type == .tapDisabledByTimeout {
+      if let reEnableTap {
+        recovered = reEnableTap()
+      } else if let tap {
+        CGEvent.tapEnable(tap: tap, enable: true)
+        recovered = CGEvent.tapIsEnabled(tap: tap)
+      } else {
+        recovered = false
+      }
+    } else {
+      recovered = false
+    }
+    tapDisabledCount = recovered ? 0 : disabledTotal
+    recordRing(
+      eventKind: 11,
+      outcome: 2,
+      mask: 0,
+      tapDisabledCount: disabledTotal,
+      subject: type == .tapDisabledByTimeout ? "tap_disabled_timeout" : "tap_disabled_user")
+  }
+
   private func receive(_ type: CGEventType, event: CGEvent) {
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-      sequence.reset()
-      identity = nil
-      tapDisabledCount = tapDisabledCount &+ 1
-      if type == .tapDisabledByTimeout, let tap { CGEvent.tapEnable(tap: tap, enable: true) }
-      recordRing(
-        eventKind: 11, outcome: 2, mask: 0,
-        subject: type == .tapDisabledByTimeout ? "tap_disabled_timeout" : "tap_disabled_user")
+      handleTapDisabled(type)
       return
     }
+    tapDisabledCount = 0
     guard !IsSecureEventInputEnabled() else {
       sequence.reset()
       if !wasSecureInput {
@@ -168,7 +189,13 @@ final class RemoteModifierRepair {
   }
 
   @inline(__always)
-  private func recordRing(eventKind: UInt8, outcome: UInt8, mask: UInt32, subject: StaticString) {
+  private func recordRing(
+    eventKind: UInt8,
+    outcome: UInt8,
+    mask: UInt32,
+    tapDisabledCount: UInt16 = 0,
+    subject: StaticString
+  ) {
     guard let decisionRing else { return }
     var entry = HotKeyDecisionEntry()
     entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
@@ -183,10 +210,11 @@ final class RemoteModifierRepair {
     decisionRing.append(entry)
   }
 
-  private func stop() {
+  func stop() {
     secureCheck?.invalidate()
     secureCheck = nil
     wasSecureInput = false
+    tapDisabledCount = 0
     if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
     if let tap { CFMachPortInvalidate(tap) }
     source = nil

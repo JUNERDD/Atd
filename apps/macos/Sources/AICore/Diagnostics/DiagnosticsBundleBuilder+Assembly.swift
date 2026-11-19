@@ -16,15 +16,16 @@ extension DiagnosticsBundleBuilder {
     let unavailableStatus: BundleFileStatus
   }
 
-  func validateNoExcludedSources(_ urls: [URL]) throws {
-    for url in urls where DiagnosticsPathPolicy.isHardExcludedSource(url) {
+  func validateNoExcludedSources(_ urls: [URL], dataDirectoryURL: URL? = nil) throws {
+    for url in urls
+    where DiagnosticsPathPolicy.isHardExcludedSource(url, dataDirectoryURL: dataDirectoryURL) {
       throw ScrubberAbortReason.scrubberException
     }
   }
 
   /// Explicit guard callable by exporters/tests to verify a source URL against hard-excludes.
-  public static func assertAllowedSource(_ url: URL) throws {
-    if DiagnosticsPathPolicy.isHardExcludedSource(url) {
+  public static func assertAllowedSource(_ url: URL, dataDirectoryURL: URL? = nil) throws {
+    if DiagnosticsPathPolicy.isHardExcludedSource(url, dataDirectoryURL: dataDirectoryURL) {
       throw ScrubberAbortReason.scrubberException
     }
   }
@@ -58,13 +59,16 @@ extension DiagnosticsBundleBuilder {
       reportsDirectory: inputs.crashReportsDirectoryURL,
       recentServiceExits: inputs.recentServiceExits,
       now: inputs.generatedAt,
-      anchors: inputs.anchors)
+      anchors: inputs.anchors,
+      dataDirectoryURL: inputs.dataDirectoryURL)
 
-    let shellTail = DiagnosticsLogTailReader.collectShellTail(shellLogURL: inputs.shellLogFileURL)
+    let shellTail = DiagnosticsLogTailReader.collectShellTail(
+      shellLogURL: inputs.shellLogFileURL, dataDirectoryURL: inputs.dataDirectoryURL)
     let serviceTail = DiagnosticsLogTailReader.collectServiceTail(
       logDir: inputs.serviceLogDirectoryURL,
       ringLines: inputs.serviceLogRingLines,
-      snapshotJSON: inputs.serviceSnapshotJSON)
+      snapshotJSON: inputs.serviceSnapshotJSON,
+      dataDirectoryURL: inputs.dataDirectoryURL)
     let driverTail = DiagnosticsLogTailReader.collectComputerDriverTail(
       dataDir: inputs.dataDirectoryURL)
     let browserTail = DiagnosticsLogTailReader.collectBrowserWorkersTail(

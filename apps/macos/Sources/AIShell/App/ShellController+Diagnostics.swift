@@ -8,9 +8,6 @@ import CoreGraphics
 ///
 /// Keeps ``ShellController`` (`<= 349` lines) free of diagnostic modal UI and snapshot plumbing.
 extension ShellController {
-  private static let storedRequirementKey = "privacyGrants.requirement"
-  private static let storedHeldGrantsKey = "privacyGrants.held"
-
   /// Evaluates the Swift Shell Doctor plane off `@MainActor` (`<= 1,500 ms` total wall budget).
   func shellDiagnosticsReport() async -> DiagnosticsShellReportResult {
     let snap = captureDiagnosticsMainActorSnapshot()
@@ -50,6 +47,7 @@ extension ShellController {
       serviceEndpoint: snap.runningServiceEndpoint,
       serviceUnavailable: recoveryCtx.unavailable,
       lastFailureSummary: recoveryCtx.lastFailureSummary,
+      temporaryDirectoryURL: services.diagnosticsTemporaryDirectoryURL,
       generatedAt: generatedAt)
   }
 
@@ -69,8 +67,7 @@ extension ShellController {
       return false
     }
 
-    let sourceHost = settings.host ?? panelHost
-    let breadcrumbs = await sourceHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+    let breadcrumbs = await collectDiagnosticsBreadcrumbs()
     let now = Date()
     let suggestedName = DiagnosticsBundleBuilder.suggestedArchiveName(at: now)
 
@@ -88,18 +85,45 @@ extension ShellController {
       rendererBreadcrumbs: breadcrumbs,
       generatedAt: now)
 
-    do {
-      let archive = try await DiagnosticsExporter.exportZip(
-        request: request, destinationZipURL: destinationURL)
-      services.shellLog.enqueue(
-        level: .info,
-        category: "diagnostics",
-        message: "bundle_exported:\(triggerSurface.rawValue) bytes=\(archive.archiveBytes)")
-      return true
-    } catch {
-      try? FileManager.default.removeItem(at: destinationURL)
-      throw error
+    let archive = try await DiagnosticsExporter.exportZip(
+      request: request, destinationZipURL: destinationURL)
+    services.shellLog.enqueue(
+      level: .info,
+      category: "diagnostics",
+      message: "bundle_exported:\(triggerSurface.rawValue) bytes=\(archive.archiveBytes)")
+    return true
+  }
+
+  /// Reads and chronologically merges renderer breadcrumbs across `panelHost` and `settings.host`
+  /// when distinct, enforcing `<= 128` entries and `<= 128 KiB` UTF-8 JSON.
+  func collectDiagnosticsBreadcrumbs(
+    callerHost: WebViewHost? = nil,
+    callerPayload: RendererBreadcrumbsPayload? = nil
+  ) async -> RendererBreadcrumbsPayload {
+    if let callerHost, let callerPayload {
+      if callerHost !== panelHost {
+        let panelCrumbs = await panelHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+        if let settingsHost = settings.host, settingsHost !== callerHost, settingsHost !== panelHost
+        {
+          let settingsCrumbs = await settingsHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+          return WebViewHost.mergeBreadcrumbs([panelCrumbs, settingsCrumbs, callerPayload])
+        }
+        return WebViewHost.mergeBreadcrumbs([panelCrumbs, callerPayload])
+      }
+      if let settingsHost = settings.host, settingsHost !== panelHost {
+        let settingsCrumbs = await settingsHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+        return WebViewHost.mergeBreadcrumbs([callerPayload, settingsCrumbs])
+      }
+      return WebViewHost.mergeBreadcrumbs([callerPayload])
     }
+
+    if let settingsHost = settings.host, settingsHost !== panelHost {
+      async let panelCrumbs = panelHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+      async let settingsCrumbs = settingsHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+      return await WebViewHost.mergeBreadcrumbs([panelCrumbs, settingsCrumbs])
+    }
+    let panelCrumbs = await panelHost.readDiagnosticsBreadcrumbs(timeout: .seconds(1))
+    return WebViewHost.mergeBreadcrumbs([panelCrumbs])
   }
 
   /// `diagnostics.restartService`: restarts the supervised service in Release builds and returns a
@@ -128,6 +152,9 @@ extension ShellController {
   }
 
   private func promptNativeDiagnosticsConfirmation() async -> Bool? {
+    if let override = services.nativeDiagnosticsConsentOverrideForTesting {
+      return await override()
+    }
     let strings = ShellStrings.shared
     let alert = NSAlert()
     alert.alertStyle = .informational
@@ -156,8 +183,10 @@ extension ShellController {
       Bundle.main.bundleIdentifier
       ?? (services.isDevelopment ? "com.junerdd.ai.dev" : "com.junerdd.ai")
 
-    let heldList = Set(defaults.stringArray(forKey: Self.storedHeldGrantsKey) ?? [])
-    let storedReq = defaults.string(forKey: Self.storedRequirementKey)
+    let grantHistory = StaleGrantRecovery.diagnosticsHistory(
+      defaults: defaults,
+      accessibilityTrusted: trust.isTrusted,
+      screenRecordingTrusted: screenRecording.isTrusted)
 
     let uuremoteRunning = !NSRunningApplication.runningApplications(
       withBundleIdentifier: "com.netease.uuremote"
@@ -196,10 +225,10 @@ extension ShellController {
       customFeedOverrideSet: defaults.string(forKey: "SUFeedURL") != nil,
       widgetsAvailable: widgets.isAvailable,
       accessibilityTrusted: trust.isTrusted,
-      accessibilityPreviouslyHeld: heldList.contains(PermissionPane.accessibility.rawValue),
+      accessibilityPreviouslyHeld: grantHistory.previouslyHeld.contains(.accessibility),
       screenRecordingTrusted: screenRecording.isTrusted,
-      screenRecordingPreviouslyHeld: heldList.contains(PermissionPane.screenRecording.rawValue),
-      storedRequirement: storedReq,
+      screenRecordingPreviouslyHeld: grantHistory.previouslyHeld.contains(.screenRecording),
+      storedRequirement: grantHistory.storedRequirement,
       uuremoteRunning: uuremoteRunning,
       uuremoteTapFailed: registrar?.uuremoteTapInstallFailed == true,
       selectionToolbar: toolbar.diagnosticsSnapshot,

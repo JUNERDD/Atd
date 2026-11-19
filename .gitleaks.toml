@@ -60,6 +60,22 @@ paths = ['''(^|/)apps/macos/scripts/signing/upgrade-compat\.mjs$''']
 regexTarget = "secret"
 regexes = ['''^ZkMCOa3sWdgMqszOe6hWN78I1eh77SzbSaghs2iy6lU=$''']
 
+[[allowlists]]
+description = "The same public EdDSA key, which the diagnostics scrubber must keep verbatim"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/macos/Tests/AICoreTests/DiagnosticsScrubberSecurityTests\.swift$''']
+regexTarget = "secret"
+regexes = ['''^ZkMCOa3sWdgMqszOe6hWN78I1eh77SzbSaghs2iy6lU=$''']
+
+[[allowlists]]
+description = "Synthetic diagnostics test users, some named after protected folders and data stores"
+targetRules = ["personal-home-path"]
+condition = "AND"
+paths = ['''(^|/)apps/macos/Tests/AICoreTests/Diagnostics[A-Za-z]+Tests\.swift$''']
+regexTarget = "secret"
+regexes = ['''^(alicecorp|atd|desktop|documents|downloads|extractions|memory|resources|tasks)$''']
+
 [[rules]]
 id = "private-figma-file"
 description = "Keep design file URLs in ignored local project context"

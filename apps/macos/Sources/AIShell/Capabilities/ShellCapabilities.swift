@@ -130,6 +130,7 @@ final class SystemPanels {
   }
   /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
   var onChange: ((_ open: Bool) -> Void)?
+  var emergencySaveURLOverrideForTesting: ((String) async throws -> URL?)?
   let lowerPanel: () -> Void
   let restorePanel: () -> Void
   let arbiter: DeviceArbiter

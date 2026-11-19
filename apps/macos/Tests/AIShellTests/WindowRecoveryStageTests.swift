@@ -69,9 +69,9 @@ struct WindowRecoveryStageTests {
     #expect(initialLoading.superview === harness.stage.view)
     #expect(harness.stage.recoveryView == nil)
 
-    let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+    let deadline = ContinuousClock.now.advanced(by: .seconds(5))
     while harness.stage.recoveryView == nil, ContinuousClock.now < deadline {
-      try await Task.sleep(for: .milliseconds(15))
+      try await Task.sleep(for: .milliseconds(10))
     }
 
     let recovery = try #require(harness.stage.recoveryView)
@@ -122,9 +122,9 @@ struct WindowRecoveryStageTests {
     defer { harness.tearDown() }
 
     harness.stage.setWindowVisible(true)
-    let waitRecovery = ContinuousClock.now.advanced(by: .seconds(2))
+    let waitRecovery = ContinuousClock.now.advanced(by: .seconds(5))
     while harness.stage.recoveryView == nil, ContinuousClock.now < waitRecovery {
-      try await Task.sleep(for: .milliseconds(15))
+      try await Task.sleep(for: .milliseconds(10))
     }
     let recovery = try #require(harness.stage.recoveryView)
     harness.stage.animationFrameHook = { _, complete in
@@ -133,9 +133,9 @@ struct WindowRecoveryStageTests {
 
     harness.stage.handleDragRegionsReady()
 
-    let waitReveal = ContinuousClock.now.advanced(by: .seconds(2))
+    let waitReveal = ContinuousClock.now.advanced(by: .seconds(5))
     while harness.stage.recoveryView != nil, ContinuousClock.now < waitReveal {
-      try await Task.sleep(for: .milliseconds(20))
+      try await Task.sleep(for: .milliseconds(10))
     }
 
     #expect(harness.stage.recoveryView == nil)

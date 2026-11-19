@@ -25,6 +25,7 @@ extension ShellBridge {
   static func handleDiagnostics(
     _ call: DiagnosticsCall,
     from host: WebViewHost,
+    document: Int,
     shell: ShellController
   ) async throws(BridgeError) -> JSONValue {
     switch call {
@@ -33,6 +34,9 @@ extension ShellBridge {
       return try encode(report)
 
     case .liveProbeStart(let params):
+      guard !host.isClosed, host.document == document else {
+        throw BridgeError("The diagnostics page has closed.")
+      }
       let started = shell.services.liveProbes.start(
         kind: params.kind, host: host, shell: shell)
       return try encode(started)
@@ -43,10 +47,12 @@ extension ShellBridge {
 
     case .previewBundle(let params):
       try validateBreadcrumbsSize(params.rendererBreadcrumbs)
+      let mergedBreadcrumbs = await shell.collectDiagnosticsBreadcrumbs(
+        callerHost: host, callerPayload: params.rendererBreadcrumbs)
       let request = shell.makeDiagnosticsExportRequest(
         triggerSurface: .settings,
         includeCrashSummaries: params.includeCrashSummaries,
-        rendererBreadcrumbs: params.rendererBreadcrumbs)
+        rendererBreadcrumbs: mergedBreadcrumbs)
       do {
         let preview = try await DiagnosticsExporter.preview(request: request)
         return try encode(preview)
@@ -72,10 +78,12 @@ extension ShellBridge {
         return try encode(DiagnosticsExportBundleResult.cancelled(.init()))
       }
 
+      let mergedBreadcrumbs = await shell.collectDiagnosticsBreadcrumbs(
+        callerHost: host, callerPayload: params.rendererBreadcrumbs)
       let request = shell.makeDiagnosticsExportRequest(
         triggerSurface: .settings,
         includeCrashSummaries: params.includeCrashSummaries,
-        rendererBreadcrumbs: params.rendererBreadcrumbs,
+        rendererBreadcrumbs: mergedBreadcrumbs,
         generatedAt: now)
       do {
         let archive = try await DiagnosticsExporter.exportZip(
@@ -91,7 +99,6 @@ extension ShellBridge {
               archiveBytes: max(1, archive.archiveBytes),
               omittedFileCount: max(0, archive.omittedFileCount))))
       } catch {
-        try? FileManager.default.removeItem(at: destinationURL)
         throw BridgeError(
           message(
             error, ShellStrings.shared.text(DiagnosticsStringKey.errorExportDiagnosticsMessage)))

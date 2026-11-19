@@ -1,15 +1,20 @@
 import Foundation
 
-/// Pass C URL, DSN, Figma link, and Cloudflare account sanitizer (`04` §3.2).
+/// Pass C URL, DSN, Figma link, and Cloudflare account sanitizer (`04` §3.2, `B3` & `B4`).
 ///
 /// Runs strictly BEFORE Pass A/B host/user/path replacements so angle brackets in `<host>` /
-/// `<user>` never prematurely split URL regex matching.
+/// `<user>` never split URL matching, while also consuming pre-scrubbed `<user>` / `<redacted...>`
+/// placeholders emitted upstream (e.g. Node `scrub-paths.ts`).
 nonisolated enum DiagnosticsScrubberURLSanitizer {
   private static let allowedPublicHosts: Set<String> = [
     "127.0.0.1", "localhost", "::1", "[::1]", "renderer", "view", "atd.best",
     "api.openai.com", "auth.openai.com", "chatgpt.com", "api.anthropic.com",
     "openrouter.ai", "generativelanguage.googleapis.com", "github.com", "api.github.com",
   ]
+
+  private static let accountIdLowerBytes = Array("account_id".utf8)
+  private static let accountIdMask = DiagnosticsScrubberFastScan.asciiLetterMask(
+    for: accountIdLowerBytes)
 
   private static let figmaFileRegex = try! NSRegularExpression(
     pattern:
@@ -22,47 +27,85 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
     pattern: #"(?i)(account_id(?:\\?["'])?\s*[:=]\s*(?:\\?["'])?)([a-f0-9]{32})"#
   )
   private static let genericUrlRegex = try! NSRegularExpression(
-    pattern: #"\b([a-zA-Z][a-zA-Z0-9+.-]{1,15})://([^\s"'`\\<>)\]}]+)"#
+    pattern:
+      #"\b([a-zA-Z][a-zA-Z0-9+.-]{1,15})://((?:[^\s"'`\\<>)\]}]|<(?:user|host|tmp|volume|uuid|redacted(?:[-:][A-Za-z0-9_-]+)?)>)+)"#
   )
   private static let homePathRegex = try! NSRegularExpression(
-    pattern: #"/(?:Users|home)/([A-Za-z0-9_.-]+)"#
+    pattern: #"/(?:Users|home)/(?:<user>|[A-Za-z0-9_.-]+)"#
+  )
+  private static let encodedPlaceholderRegex = try! NSRegularExpression(
+    pattern: #"%3C(user|host|tmp|volume|uuid|redacted(?:[-:][A-Za-z0-9_-]+)?)%3E"#,
+    options: [.caseInsensitive]
   )
 
-  static func apply(_ input: String, priorHits: Int) -> (String, Int) {
+  static func apply(
+    _ input: String,
+    features: DiagnosticsScrubberFastScan.UTF8Features,
+    priorHits: Int
+  ) -> (String, Int) {
     var text = input
     var hits = priorHits
 
-    let ns = text as NSString
-    let matches = genericUrlRegex.matches(in: text, range: NSRange(location: 0, length: ns.length))
-    if !matches.isEmpty {
-      let out = NSMutableString(string: text)
-      for match in matches.reversed() {
-        // Skip URLs already ending at an existing `<redacted-...>` placeholder for idempotency.
-        if match.range.upperBound < ns.length && ns.character(at: match.range.upperBound) == 0x3C {
-          continue
+    if features.hasColonSlashSlash {
+      let ns = text as NSString
+      let matches = genericUrlRegex.matches(
+        in: text, range: NSRange(location: 0, length: ns.length))
+      if !matches.isEmpty {
+        var out: NSMutableString?
+        for match in matches.reversed() {
+          // Only skip when the trailing `<` starts an already-emitted `<redacted...` placeholder
+          // (never skip XML/HTML tags like `</Location>`, `</a>`, or `<br>`).
+          if match.range.upperBound < ns.length && ns.character(at: match.range.upperBound) == 0x3C
+          {
+            let tailRange = NSRange(
+              location: match.range.upperBound, length: ns.length - match.range.upperBound)
+            if ns.range(of: "<redacted", options: [.anchored, .caseInsensitive], range: tailRange)
+              .location != NSNotFound
+            {
+              continue
+            }
+          }
+          var fullRange = match.range
+          var rawUrl = ns.substring(with: fullRange)
+          while let last = rawUrl.last, ".,;:".contains(last) {
+            rawUrl.removeLast()
+            fullRange.length -= 1
+          }
+          let scheme = ns.substring(with: match.range(at: 1))
+          let (sanitized, urlHit) = sanitizeSingleURL(rawUrl, scheme: scheme)
+          if urlHit > 0 && sanitized != rawUrl {
+            let mutable = out ?? NSMutableString(string: text)
+            mutable.replaceCharacters(in: fullRange, with: sanitized)
+            out = mutable
+            hits += urlHit
+          }
         }
-        var fullRange = match.range
-        var rawUrl = ns.substring(with: fullRange)
-        while let last = rawUrl.last, ".,;:".contains(last) {
-          rawUrl.removeLast()
-          fullRange.length -= 1
-        }
-        let scheme = ns.substring(with: match.range(at: 1))
-        let (sanitized, urlHit) = sanitizeSingleURL(rawUrl, scheme: scheme)
-        if urlHit > 0 && sanitized != rawUrl {
-          out.replaceCharacters(in: fullRange, with: sanitized)
-          hits += urlHit
-        }
+        if let out { text = out as String }
       }
-      text = out as String
     }
 
-    text = DiagnosticsScrubberRules.replace(
-      cfAccountKvRegex, in: text, with: "$1<redacted-account-id>", hits: &hits)
+    if features.hasEqualsOrColon && features.hasAllLetters(accountIdMask)
+      && DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(
+        text, lowerNeedle: accountIdLowerBytes)
+    {
+      text = DiagnosticsScrubberRules.replace(
+        cfAccountKvRegex, in: text, with: "$1<redacted-account-id>", hits: &hits)
+    }
     return (text, hits)
   }
 
   private static func sanitizeSingleURL(_ rawUrl: String, scheme: String) -> (String, Int) {
+    switch rawUrl {
+    case "https://figma.com/api/mcp/asset/<redacted-figma-asset>",
+      "https://figma.com/design/<redacted-figma-file>",
+      "https://dash.cloudflare.com/<redacted-account-id>",
+      "file:///Users/<user>/<redacted-file>",
+      "\(scheme)://<redacted-url>":
+      return (rawUrl, 0)
+    default:
+      break
+    }
+
     let urlRange = NSRange(rawUrl.startIndex..., in: rawUrl)
     if figmaAssetRegex.firstMatch(in: rawUrl, range: urlRange) != nil {
       return ("https://figma.com/api/mcp/asset/<redacted-figma-asset>", 1)
@@ -71,10 +114,19 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
       return ("https://figma.com/design/<redacted-figma-file>", 1)
     }
 
+    let hadAngleBrackets = rawUrl.utf8.contains(0x3C)
+    let parseableUrl =
+      hadAngleBrackets
+      ? rawUrl.replacingOccurrences(of: "<", with: "%3C").replacingOccurrences(of: ">", with: "%3E")
+      : rawUrl
+
     let lowerScheme = scheme.lowercased()
     if lowerScheme == "ai-app" || lowerScheme == "ai-view" || lowerScheme == "ai-userapp" {
-      guard var components = URLComponents(string: rawUrl) else {
+      guard var components = URLComponents(string: parseableUrl) else {
         return ("\(scheme)://<redacted-url>", 1)
+      }
+      if components.query == "<redacted>" && components.fragment == nil {
+        return (rawUrl, 0)
       }
       var changed = 0
       if components.query != nil {
@@ -86,10 +138,11 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
         changed += 1
       }
       guard changed > 0, let base = components.string else { return (rawUrl, 0) }
-      return (base + (rawUrl.contains("?") ? "?<redacted>" : ""), changed)
+      let restoredBase = hadAngleBrackets ? restorePlaceholders(base) : base
+      return (restoredBase + (rawUrl.contains("?") ? "?<redacted>" : ""), changed)
     }
 
-    guard let components = URLComponents(string: rawUrl) else {
+    guard let components = URLComponents(string: parseableUrl) else {
       return ("\(scheme)://<redacted-url>", 1)
     }
     if lowerScheme == "file" {
@@ -99,7 +152,8 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
       {
         let cleaned = homePathRegex.stringByReplacingMatches(
           in: path, range: NSRange(path.startIndex..., in: path), withTemplate: "/Users/<user>")
-        return ("file://\(cleaned)", cleaned == path && components.query == nil ? 0 : 1)
+        let candidate = "file://\(cleaned)"
+        return (candidate, candidate == rawUrl && components.query == nil ? 0 : 1)
       }
       return ("file:///Users/<user>/<redacted-file>", 1)
     }
@@ -129,7 +183,8 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
     if hostAllowed {
       let portSuffix = components.port.map { ":\($0)" } ?? ""
       renderedHost = "\(components.host ?? host)\(portSuffix)"
-      renderedPath = components.percentEncodedPath
+      let rawPctPath = components.percentEncodedPath
+      renderedPath = hadAngleBrackets ? restorePlaceholders(rawPctPath) : rawPctPath
     } else {
       renderedHost = "<redacted-host>"
       let parts = components.percentEncodedPath.split(separator: "/")
@@ -146,6 +201,13 @@ nonisolated enum DiagnosticsScrubberURLSanitizer {
     }
     let querySuffix = hasQuery ? "?<redacted>" : ""
     let fragSuffix = hasFragment ? "#<redacted>" : ""
-    return ("\(scheme)://\(authPrefix)\(renderedHost)\(renderedPath)\(querySuffix)\(fragSuffix)", 1)
+    let rendered =
+      "\(scheme)://\(authPrefix)\(renderedHost)\(renderedPath)\(querySuffix)\(fragSuffix)"
+    return (rendered, rendered == rawUrl ? 0 : 1)
+  }
+
+  private static func restorePlaceholders(_ text: String) -> String {
+    encodedPlaceholderRegex.stringByReplacingMatches(
+      in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "<$1>")
   }
 }

@@ -160,6 +160,104 @@ struct ShellEnvironmentChecksTests {
       since: now)
     #expect(pacOnly.status == ShellDoctorCheck.Status.warn)
     #expect(pacOnly.reasonCode == "pac_or_wpad_fallback_to_direct")
+
+    // B17: PostEvent & UU Remote `.defaultTap` checks route to Accessibility, while ListenEvent
+    // routes to Input Monitoring.
+    let tapFailed = ShellEnvironmentChecks.makeInputPostEventCheck(
+      permissions: .init(
+        accessibilityTrusted: true, duplicateAppBundlesCount: 1, screenRecordingTrusted: true,
+        listenEventTrusted: true, postEventTrusted: true, secureEventInputEnabled: false),
+      uuremoteRunning: true,
+      uuremoteTapFailed: true,
+      since: now)
+    #expect(tapFailed.status == .warn)
+    #expect(tapFailed.reasonCode == "uuremote_tap_install_failed")
+    #expect(tapFailed.remediation?.remediationCode == "grant_or_reset_accessibility")
+    #expect(tapFailed.remediation?.action == .openSystemSettingsAccessibility)
+
+    let postDenied = ShellEnvironmentChecks.makeInputPostEventCheck(
+      permissions: .init(
+        accessibilityTrusted: true, duplicateAppBundlesCount: 1, screenRecordingTrusted: true,
+        listenEventTrusted: true, postEventTrusted: false, secureEventInputEnabled: false),
+      uuremoteRunning: false,
+      uuremoteTapFailed: false,
+      since: now)
+    #expect(postDenied.status == .warn)
+    #expect(postDenied.reasonCode == "post_event_denied")
+    #expect(postDenied.remediation?.remediationCode == "grant_or_reset_accessibility")
+    #expect(postDenied.remediation?.action == .openSystemSettingsAccessibility)
+
+    let listenDenied = ShellEnvironmentChecks.makeInputPostEventCheck(
+      permissions: .init(
+        accessibilityTrusted: true, duplicateAppBundlesCount: 1, screenRecordingTrusted: true,
+        listenEventTrusted: false, postEventTrusted: true, secureEventInputEnabled: false),
+      uuremoteRunning: false,
+      uuremoteTapFailed: false,
+      since: now)
+    #expect(listenDenied.status == .warn)
+    #expect(listenDenied.reasonCode == "listen_event_denied")
+    #expect(listenDenied.remediation?.remediationCode == "grant_input_monitoring")
+    #expect(listenDenied.remediation?.action == .openSystemSettingsInputMonitoring)
+  }
+
+  @MainActor
+  @Test("StaleGrantRecovery preserves pre-overwrite launch grant history for Doctor checks (B18)")
+  func staleGrantRecoveryPreservesLaunchHistoryAcrossOverwrites() throws {
+    let suiteName = "com.junerdd.ai.tests.b18.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let priorRequirement = #"anchor apple generic and cdhash H"prior_build_cdhash""#
+    defaults.set(priorRequirement, forKey: "privacyGrants.requirement")
+    defaults.set(["accessibility", "screenRecording"], forKey: "privacyGrants.held")
+
+    // Capture initial launch history BEFORE StaleGrantRecovery overwrites UserDefaults.
+    StaleGrantRecovery.captureLaunchHistory(
+      defaults: defaults, accessibilityTrusted: false, screenRecordingTrusted: false)
+
+    // Simulate startup + didBecomeActive overwrites in UserDefaults.
+    defaults.set(
+      #"anchor apple generic and cdhash H"current_build_cdhash""#,
+      forKey: "privacyGrants.requirement")
+    defaults.set([String](), forKey: "privacyGrants.held")
+    StaleGrantRecovery.captureLaunchHistory(
+      defaults: defaults, accessibilityTrusted: false, screenRecordingTrusted: false)
+
+    let history = StaleGrantRecovery.diagnosticsHistory(
+      defaults: defaults, accessibilityTrusted: false, screenRecordingTrusted: false)
+    #expect(history.storedRequirement == priorRequirement)
+    #expect(history.previouslyHeld == [.accessibility, .screenRecording])
+
+    let now = ContinuousClock.now
+    let driftedSig = ShellEnvironmentChecks.makeSignatureCheck(
+      .init(
+        valid: true, isAdHoc: true, requirement: "current",
+        record: .init(designatedRequirementReadable: true, requirementMatchesStored: false)),
+      isDev: true,
+      since: now)
+    #expect(driftedSig.status == .warn)
+    #expect(driftedSig.reasonCode == "requirement_drifted")
+
+    let lostAx = ShellEnvironmentChecks.makeAccessibilityCheck(
+      permissions: .init(
+        accessibilityTrusted: false, duplicateAppBundlesCount: 1, screenRecordingTrusted: false,
+        listenEventTrusted: false, postEventTrusted: false, secureEventInputEnabled: false),
+      signature: .init(
+        valid: true, isAdHoc: false, requirement: priorRequirement,
+        record: .init(designatedRequirementReadable: true, requirementMatchesStored: true)),
+      previouslyHeld: history.previouslyHeld.contains(.accessibility),
+      since: now)
+    #expect(lostAx.status == .fail)
+    #expect(lostAx.reasonCode == "stale_or_duplicate_app_grant")
+
+    let pendingScreen = ShellEnvironmentChecks.makeScreenRecordingCheck(
+      permissions: .init(
+        accessibilityTrusted: false, duplicateAppBundlesCount: 1, screenRecordingTrusted: false,
+        listenEventTrusted: false, postEventTrusted: false, secureEventInputEnabled: false),
+      previouslyHeld: history.previouslyHeld.contains(.screenRecording),
+      since: now)
+    #expect(pendingScreen.status == .warn)
+    #expect(pendingScreen.reasonCode == "granted_pending_relaunch")
   }
 
   @Test("Diagnostics sources never branch on ProcessInfo.operatingSystemVersion (AGENTS.md:129)")

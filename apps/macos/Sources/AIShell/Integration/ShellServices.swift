@@ -32,6 +32,8 @@ public final class ShellServices {
   let supervisor: ServiceSupervisor?
   let logDirectory: URL?
   let liveProbes = LiveProbeCoordinator()
+  var diagnosticsTemporaryDirectoryURL = FileManager.default.temporaryDirectory
+  var nativeDiagnosticsConsentOverrideForTesting: (() async -> Bool?)?
   /// One handler serves every window's web view and every rebuild of them.
   private(set) lazy var schemeHandler = RendererSchemeHandler(renderer: renderer, link: link)
   /// Generative views' documents, for the same web views.

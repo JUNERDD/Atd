@@ -12,8 +12,21 @@ nonisolated enum DiagnosticsScrubberRules {
     "true", "false", "null", "info", "warn", "error", "host", "atd", "redacted",
   ]
 
+  private static let bearerBytes = Array("bearer".utf8)
+  private static let bearerMask = DiagnosticsScrubberFastScan.asciiLetterMask(for: bearerBytes)
+  private static let basicBytes = Array("basic".utf8)
+  private static let basicMask = DiagnosticsScrubberFastScan.asciiLetterMask(for: basicBytes)
+  private static let digestBytes = Array("digest".utf8)
+  private static let digestMask = DiagnosticsScrubberFastScan.asciiLetterMask(for: digestBytes)
+  private static let cookieBytes = Array("cookie".utf8)
+  private static let cookieMask = DiagnosticsScrubberFastScan.asciiLetterMask(for: cookieBytes)
+
+  /// Matches standalone & compound secret JSON/KV key names while excluding boolean `has*`/`is*`
+  /// flags, diagnostic count/issue/status/state metrics, Sparkle `SUPublicEDKey`, and LLM token
+  /// usage counters (`inputTokens`, `outputTokens`, `totalTokens`, `maxTokens`, `cacheReadTokens`,
+  /// `tokenCount`) (`B5`).
   static let secretJsonKeyRegex = compile(
-    #"(?i)^(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|secret|token|password|passwd|credential|encryptedCredential|authorization|cookie|set-cookie|x-api-key|proxy-authorization)$"#
+    #"(?i)^(?-i:(?!(?:has|HAS|is|IS)[_-]|(?:has|is)[A-Z]))(?!SUPublicEDKey$)(?!.*(?:count|issue|issues|status|state|limit|budget|enabled|supported|available)s?$)(?!(?:input|output|total|max|min|prompt|completion|cache[_-]?read|cache[_-]?write|reasoning|context)[_-]?tokens?$)(?!.*tokens$)(?:[A-Za-z0-9_-]*(?:(?:api[_-]?key|private[_-]?key|secret|password|passwd|credential|session[_-]?id|database[_-]?url|x[_-]?api[_-]?key|proxy[_-]?authorization|cookie|set[_-]?cookie)[A-Za-z0-9_-]*|token(?:[_-]?(?:value|val|str|string|id))?)|authorization)$"#
   )
 
   private static let homePathRegex = compile(#"/(?:Users|home)/([A-Za-z0-9_.-]+)"#)
@@ -35,8 +48,11 @@ nonisolated enum DiagnosticsScrubberRules {
   private static let jwtRegex = compile(
     #"(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])"#
   )
+  private static let cookieHeaderRegex = compile(
+    #"(?i)\b(set-cookie|cookie)([ \t]*:[ \t]*)(?!\\?["'])(?!<redacted)((?:[^\\\r\n"'\s]|\\[^rRnN"'\r\n])(?:[^\\\r\n"']|\\[^rRnN"'\r\n])*)"#
+  )
   private static let plainKvRegex = compile(
-    #"(?i)\b(?!SUPublicEDKey\b)([A-Za-z0-9_-]*(?:api[_-]?key|secret|token|password|passwd|credential|database_url|private_key|cookie|set-cookie|x-api-key|authorization|proxy-authorization)[A-Za-z0-9_-]*)(\\?["'])?(\s*[=:]\s*)(?!\s*(?:Bearer|Basic|Digest)\s+<redacted-token>|\\?["']?<redacted)(?:(\\?["'])([^"\\]{1,512})(\\?["'])|([^\s"'\\,;<)\]}]{4,512}))"#
+    #"(?i)(?<![A-Za-z0-9_-])(?!-*SUPublicEDKey(?![A-Za-z0-9_-]))([A-Za-z0-9_-]*(?:api[_-]?key|private[_-]?key|secret|token|password|passwd|credential|session[_-]?id|database[_-]?url|cookie|set[_-]?cookie|x[_-]?api[_-]?key|authorization|proxy[_-]?authorization)[A-Za-z0-9_-]*)(\\?["'])?([ \t]*[=:][ \t]*)(?![ \t]*(?:Bearer|Basic|Digest)\s+<redacted-token>|\\?["']?<redacted)(?:(\\")((?:[^"\\]|\\\\\\"|\\\\(?!\\")|\\[^"\\]){1,512})(\\")|(")((?:[^"\\]|\\[^\r\n]){1,512})(")|(\\')((?:[^'\\]|\\\\\\'|\\\\(?!\\')|\\[^'\\]){1,512})(\\')|(')((?:[^'\\]|\\[^\r\n]){1,512})(')|((?:[^\s"'\\,;<)\]}]|\\[^rRnN"' \t\r\n]){4,512}))"#
   )
   private static let emailRegex = compile(
     #"(?<![A-Za-z0-9._%+-/])([A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24})(?![A-Za-z0-9._%+-])"#
@@ -47,6 +63,33 @@ nonisolated enum DiagnosticsScrubberRules {
 
   private static func compile(_ pattern: String) -> NSRegularExpression {
     try! NSRegularExpression(pattern: pattern)
+  }
+
+  /// Fast-path secret JSON/KV key check avoiding regex evaluation on common structural keys.
+  static func isSecretKeyName(_ rawKey: String) -> Bool {
+    let utf8Count = rawKey.utf8.count
+    guard utf8Count >= 5 && utf8Count <= 128 else { return false }
+    switch rawKey {
+    case "level", "status", "phase", "outcome", "schemaVersion", "reasonCode", "durationMs",
+      "dropped", "droppedCount", "capacity", "entries", "lines", "metrics", "summary",
+      "errorCode", "errorCategory", "capturedAt", "generatedAt", "startedAt", "createdAt",
+      "hasCredential", "credentialIssue", "providerCredentialIssueCount",
+      "launchApprovalKeyState", "SUPublicEDKey":
+      return false
+    default:
+      break
+    }
+    let trimmed: String
+    if rawKey.utf8.first == 0x2D || rawKey.utf8.first == 0x5F || rawKey.utf8.last == 0x2D
+      || rawKey.utf8.last == 0x5F
+    {
+      trimmed = rawKey.trimmingCharacters(in: CharacterSet(charactersIn: "-_"))
+      guard trimmed.utf8.count >= 5 else { return false }
+    } else {
+      trimmed = rawKey
+    }
+    let range = NSRange(trimmed.startIndex..., in: trimmed)
+    return secretJsonKeyRegex.firstMatch(in: trimmed, options: [], range: range) != nil
   }
 
   /// Scalar-aligned UTF-8 line truncation (`<= 4,077 B` + `"…[truncated:4KiB]"` = `<= 4,096 B`).
@@ -74,11 +117,23 @@ nonisolated enum DiagnosticsScrubberRules {
     _ input: String, anchors: DiagnosticsScrubber.EnvironmentAnchors, enforce4KiBCap: Bool
   ) -> (text: String, hits: Int) {
     var text = enforce4KiBCap ? truncateLine4KiB(input) : input
+    guard !text.isEmpty else { return (text, 0) }
+    var features = DiagnosticsScrubberFastScan.scanUTF8(text)
     var hits = 0
-    (text, hits) = DiagnosticsScrubberURLSanitizer.apply(text, priorHits: hits)
-    (text, hits) = applyPassA(text, anchors: anchors, priorHits: hits)
-    (text, hits) = applyPassB(text, priorHits: hits)
-    (text, hits) = applyPassD(text, priorHits: hits)
+
+    let beforeC = hits
+    (text, hits) = DiagnosticsScrubberURLSanitizer.apply(text, features: features, priorHits: hits)
+    if hits != beforeC { features = DiagnosticsScrubberFastScan.scanUTF8(text) }
+
+    let beforeA = hits
+    (text, hits) = applyPassA(text, anchors: anchors, features: features, priorHits: hits)
+    if hits != beforeA { features = DiagnosticsScrubberFastScan.scanUTF8(text) }
+
+    let beforeB = hits
+    (text, hits) = applyPassB(text, features: features, priorHits: hits)
+    if hits != beforeB { features = DiagnosticsScrubberFastScan.scanUTF8(text) }
+
+    (text, hits) = applyPassD(text, features: features, priorHits: hits)
     if enforce4KiBCap && text.utf8.count > maxLineBytes {
       text = truncateLine4KiB(text)
     }
@@ -88,89 +143,160 @@ nonisolated enum DiagnosticsScrubberRules {
   static func replace(
     _ regex: NSRegularExpression, in text: String, with template: String, hits: inout Int
   ) -> String {
+    let fullRange = NSRange(text.startIndex..., in: text)
+    guard fullRange.length > 0,
+      regex.firstMatch(in: text, options: [], range: fullRange) != nil
+    else { return text }
     let mutable = NSMutableString(string: text)
     let count = regex.replaceMatches(
-      in: mutable, range: NSRange(location: 0, length: mutable.length), withTemplate: template)
+      in: mutable, options: [], range: NSRange(location: 0, length: mutable.length),
+      withTemplate: template)
     hits += count
     return count > 0 ? (mutable as String) : text
   }
 
   private static func applyPassA(
-    _ input: String, anchors: DiagnosticsScrubber.EnvironmentAnchors, priorHits: Int
+    _ input: String,
+    anchors: DiagnosticsScrubber.EnvironmentAnchors,
+    features: DiagnosticsScrubberFastScan.UTF8Features,
+    priorHits: Int
   ) -> (String, Int) {
     var text = input
     var hits = priorHits
-    for pair in anchors.pathReplacements {
-      let regex = compile(
-        NSRegularExpression.escapedPattern(for: pair.source) + #"(?=$|/|\\|\s|["'`,;:)\]}])"#)
-      text = replace(regex, in: text, with: pair.target, hits: &hits)
-    }
-    for pair in anchors.wordReplacements {
-      let regex = compile(
-        #"(?<![A-Za-z0-9<])"# + NSRegularExpression.escapedPattern(for: pair.source)
-          + #"(?![A-Za-z0-9>])"#)
-      text = replace(regex, in: text, with: pair.target, hits: &hits)
-    }
-    return (text, hits)
-  }
-
-  private static func applyPassB(_ input: String, priorHits: Int) -> (String, Int) {
-    var text = input
-    var hits = priorHits
-    text = replace(homePathRegex, in: text, with: "/Users/<user>", hits: &hits)
-    text = replace(
-      darwinTranslocatedRegex, in: text,
-      with: "/private/var/folders/<tmp>/AppTranslocation/<uuid>", hits: &hits)
-    text = replace(darwinTmpRegex, in: text, with: "/private/var/folders/<tmp>", hits: &hits)
-    text = replace(volumesRegex, in: text, with: "/Volumes/<volume>", hits: &hits)
-    return (text, hits)
-  }
-
-  private static func applyPassD(_ input: String, priorHits: Int) -> (String, Int) {
-    var text = input
-    var hits = priorHits
-    text = replace(authSchemeRegex, in: text, with: "$1 <redacted-token>", hits: &hits)
-    text = replace(wsSubprotoRegex, in: text, with: "ai.auth.<redacted-token>", hits: &hits)
-    text = replace(issuerKeysRegex, in: text, with: "<redacted:api-key>", hits: &hits)
-    text = replace(jwtRegex, in: text, with: "<redacted:jwt>", hits: &hits)
-
-    let kvNs = text as NSString
-    let kvMatches = plainKvRegex.matches(in: text, range: NSRange(location: 0, length: kvNs.length))
-    if !kvMatches.isEmpty {
-      let out = NSMutableString(string: text)
-      for match in kvMatches.reversed() {
-        let key = kvNs.substring(with: match.range(at: 1))
-        let keyQuote =
-          match.range(at: 2).location != NSNotFound ? kvNs.substring(with: match.range(at: 2)) : ""
-        let sep = kvNs.substring(with: match.range(at: 3))
-        let openQ =
-          match.range(at: 4).location != NSNotFound ? kvNs.substring(with: match.range(at: 4)) : ""
-        let closeQ =
-          match.range(at: 6).location != NSNotFound ? kvNs.substring(with: match.range(at: 6)) : ""
-        out.replaceCharacters(
-          in: match.range, with: "\(key)\(keyQuote)\(sep)\(openQ)<redacted>\(closeQ)")
-        hits += 1
+    if features.hasPathSeparator {
+      for pair in anchors.pathReplacements where pair.mayAppear(in: text, features: features) {
+        text = replace(pair.regex, in: text, with: pair.target, hits: &hits)
       }
-      text = out as String
     }
+    for pair in anchors.wordReplacements where pair.mayAppear(in: text, features: features) {
+      text = replace(pair.regex, in: text, with: pair.target, hits: &hits)
+    }
+    return (text, hits)
+  }
 
-    text = replace(emailRegex, in: text, with: "<redacted:email>", hits: &hits)
+  private static func applyPassB(
+    _ input: String, features: DiagnosticsScrubberFastScan.UTF8Features, priorHits: Int
+  ) -> (String, Int) {
+    guard features.hasSlash else { return (input, priorHits) }
+    var text = input
+    var hits = priorHits
+    if DiagnosticsScrubberFastScan.containsASCII(text, "/Users/")
+      || DiagnosticsScrubberFastScan.containsASCII(text, "/home/")
+    {
+      text = replace(homePathRegex, in: text, with: "/Users/<user>", hits: &hits)
+    }
+    if DiagnosticsScrubberFastScan.containsASCII(text, "/var/folders/") {
+      if DiagnosticsScrubberFastScan.containsASCII(text, "/AppTranslocation/") {
+        text = replace(
+          darwinTranslocatedRegex, in: text,
+          with: "/private/var/folders/<tmp>/AppTranslocation/<uuid>", hits: &hits)
+      }
+      text = replace(darwinTmpRegex, in: text, with: "/private/var/folders/<tmp>", hits: &hits)
+    }
+    if DiagnosticsScrubberFastScan.containsASCII(text, "/Volumes/") {
+      text = replace(volumesRegex, in: text, with: "/Volumes/<volume>", hits: &hits)
+    }
+    return (text, hits)
+  }
 
+  private static func applyPassD(
+    _ input: String, features: DiagnosticsScrubberFastScan.UTF8Features, priorHits: Int
+  ) -> (String, Int) {
+    var text = input
+    var hits = priorHits
+
+    if (features.hasAllLetters(bearerMask)
+      && DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(text, lowerNeedle: bearerBytes))
+      || (features.hasAllLetters(basicMask)
+        && DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(text, lowerNeedle: basicBytes))
+      || (features.hasAllLetters(digestMask)
+        && DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(text, lowerNeedle: digestBytes))
+    {
+      text = replace(authSchemeRegex, in: text, with: "$1 <redacted-token>", hits: &hits)
+    }
+    if features.hasDot && DiagnosticsScrubberFastScan.containsASCII(text, "ai.auth.") {
+      text = replace(wsSubprotoRegex, in: text, with: "ai.auth.<redacted-token>", hits: &hits)
+    }
+    if features.mayHaveIssuerKey {
+      text = replace(issuerKeysRegex, in: text, with: "<redacted:api-key>", hits: &hits)
+    }
+    if features.hasJwtPrefix && features.hasDot {
+      text = replace(jwtRegex, in: text, with: "<redacted:jwt>", hits: &hits)
+    }
+    if features.hasColon && features.hasAllLetters(cookieMask)
+      && DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(text, lowerNeedle: cookieBytes)
+    {
+      text = replace(cookieHeaderRegex, in: text, with: "$1$2<redacted>", hits: &hits)
+    }
+    if features.hasEqualsOrColon && features.mayHaveSecretKvKeyword {
+      text = applyPlainKvRedaction(text, hits: &hits)
+    }
+    if features.hasAt && features.hasDot {
+      text = replace(emailRegex, in: text, with: "<redacted:email>", hits: &hits)
+    }
+    if features.hasMixed32TokenRun {
+      text = applyRandomTokenRedaction(text, hits: &hits)
+    }
+    return (text, hits)
+  }
+
+  private static func applyPlainKvRedaction(_ text: String, hits: inout Int) -> String {
+    let kvNs = text as NSString
+    let fullRange = NSRange(location: 0, length: kvNs.length)
+    guard plainKvRegex.firstMatch(in: text, options: [], range: fullRange) != nil else {
+      return text
+    }
+    let kvMatches = plainKvRegex.matches(in: text, options: [], range: fullRange)
+    var out: NSMutableString?
+    for match in kvMatches.reversed() {
+      let key = kvNs.substring(with: match.range(at: 1))
+      guard isSecretKeyName(key) else { continue }
+      let keyQuote = substringOrEmpty(kvNs, match.range(at: 2))
+      let sep = kvNs.substring(with: match.range(at: 3))
+      let (openQ, closeQ) = matchedQuotes(in: kvNs, match: match)
+      let mutable = out ?? NSMutableString(string: text)
+      mutable.replaceCharacters(
+        in: match.range, with: "\(key)\(keyQuote)\(sep)\(openQ)<redacted>\(closeQ)")
+      out = mutable
+      hits += 1
+    }
+    return out.map { $0 as String } ?? text
+  }
+
+  private static func matchedQuotes(
+    in ns: NSString, match: NSTextCheckingResult
+  ) -> (open: String, close: String) {
+    for (openIdx, closeIdx) in [(4, 6), (7, 9), (10, 12), (13, 15)] {
+      if match.range(at: openIdx).location != NSNotFound {
+        return (
+          ns.substring(with: match.range(at: openIdx)),
+          ns.substring(with: match.range(at: closeIdx))
+        )
+      }
+    }
+    return ("", "")
+  }
+
+  private static func substringOrEmpty(_ ns: NSString, _ range: NSRange) -> String {
+    range.location != NSNotFound ? ns.substring(with: range) : ""
+  }
+
+  private static func applyRandomTokenRedaction(_ text: String, hits: inout Int) -> String {
     let tokNs = text as NSString
     let tokMatches = randomTokenRegex.matches(
-      in: text, range: NSRange(location: 0, length: tokNs.length))
-    if !tokMatches.isEmpty {
-      let out = NSMutableString(string: text)
-      for match in tokMatches.reversed() {
-        let candidate = tokNs.substring(with: match.range)
-        if isHighEntropyRandomToken(candidate[...]) {
-          out.replaceCharacters(in: match.range, with: "<redacted:high-entropy>")
-          hits += 1
-        }
+      in: text, options: [], range: NSRange(location: 0, length: tokNs.length))
+    guard !tokMatches.isEmpty else { return text }
+    var out: NSMutableString?
+    for match in tokMatches.reversed() {
+      let candidate = tokNs.substring(with: match.range)
+      if isHighEntropyRandomToken(candidate[...]) {
+        let mutable = out ?? NSMutableString(string: text)
+        mutable.replaceCharacters(in: match.range, with: "<redacted:high-entropy>")
+        out = mutable
+        hits += 1
       }
-      text = out as String
     }
-    return (text, hits)
+    return out.map { $0 as String } ?? text
   }
 
   /// Mirrors `SensitiveText` high-entropy token classifier (`>= 32` chars, mixed upper/lower/digit,

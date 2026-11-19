@@ -21,13 +21,33 @@ final class SelectionToolbarProbeRunner {
   }
 
   let ring: SelectionDecisionRing
-  private let wps: WpsSelectionAdapter
+  private let wpsEvidence: (FrontmostAppInfo, TimeInterval) async -> WpsSelectionEvidence?
+  private let secureInputEnabled: () -> Bool
+  private let frontmostAppProvider: () -> FrontmostAppInfo?
   var onLiveProbeStep: ((LiveStep) -> Void)?
   private var activeAttempt: ActiveAttempt?
+  var hasActiveAttempt: Bool { activeAttempt != nil }
 
-  init(ring: SelectionDecisionRing, wps: WpsSelectionAdapter) {
+  init(
+    ring: SelectionDecisionRing,
+    wps: WpsSelectionAdapter? = nil,
+    wpsEvidence: ((FrontmostAppInfo, TimeInterval) async -> WpsSelectionEvidence?)? = nil,
+    secureInputEnabled: @escaping () -> Bool = { IsSecureEventInputEnabled() },
+    frontmostAppProvider: @escaping () -> FrontmostAppInfo? = {
+      guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+      return FrontmostAppInfo(
+        pid: app.processIdentifier, bundleIdentifier: app.bundleIdentifier, runningApp: app)
+    }
+  ) {
     self.ring = ring
-    self.wps = wps
+    self.wpsEvidence =
+      wpsEvidence
+      ?? { info, pressedAt in
+        guard let app = info.runningApp else { return nil }
+        return await wps?.evidence(app: app, pressedAt: pressedAt)
+      }
+    self.secureInputEnabled = secureInputEnabled
+    self.frontmostAppProvider = frontmostAppProvider
   }
 
   @inline(__always)
@@ -49,8 +69,8 @@ final class SelectionToolbarProbeRunner {
   /// probing, or `nil` when gated out beforehand.
   func recordMouseUp(_ input: GestureInput, token: Int) -> (slot: Int, seq: UInt32)? {
     let nowNs = MonotonicTimestampAnchor.nowUptimeNs()
-    let app = NSWorkspace.shared.frontmostApplication
-    let secure = IsSecureEventInputEnabled()
+    let app = frontmostAppProvider()
+    let secure = secureInputEnabled()
     let bundleId = app?.bundleIdentifier
     let ownBundleId = Bundle.main.bundleIdentifier
 
@@ -68,7 +88,7 @@ final class SelectionToolbarProbeRunner {
     var entry = SelectionDecisionEntry()
     entry.uptimeNs = nowNs
     entry.frontmostBundleId = InlineText64(truncatingUTF8: bundleId)
-    entry.frontmostPid = app?.processIdentifier ?? 0
+    entry.frontmostPid = app?.pid ?? 0
     entry.flags = flags.rawValue
     if let down = input.pressedAt {
       let deciPt = Int((hypot(input.pointer.x - down.x, input.pointer.y - down.y) * 10.0).rounded())
@@ -165,37 +185,89 @@ final class SelectionToolbarProbeRunner {
     trusted: Bool,
     isStillCurrent: (_ expectedPid: pid_t) -> Bool
   ) async -> (shouldShow: Bool, bounds: CGRect?) {
-    guard let app = NSWorkspace.shared.frontmostApplication else { return (false, nil) }
+    defer {
+      if attemptIndex == 1 { clearActiveAttempt(forToken: token) }
+    }
+
+    guard let app = frontmostAppProvider() else {
+      if attemptIndex == 1, activeAttempt?.token == token {
+        ring.update(slot: slot, expectedSeq: seq) { entry in
+          entry.debounceState = 3
+          entry.dropStage = 5
+        }
+        emitLive(
+          trusted: trusted, bundleId: nil, excluded: false, role: nil, length: 0,
+          outcome: "context_disallowed")
+      }
+      return (false, nil)
+    }
+    let excluded = settings.excludedBundleIds.contains(app.bundleIdentifier ?? "")
     let context = SelectionToolbarContext(
       enabled: settings.enabled, trusted: trusted, frontmostBundleId: app.bundleIdentifier,
       ownBundleId: Bundle.main.bundleIdentifier, excludedBundleIds: settings.excludedBundleIds,
-      secureInput: IsSecureEventInputEnabled())
+      secureInput: secureInputEnabled())
     guard SelectionToolbarRules.shouldProbe(context) else {
       ring.update(slot: slot, expectedSeq: seq) { entry in
+        if attemptIndex == 1 { entry.debounceState = 3 }
         if context.secureInput { entry.flags |= SelectionGateFlags.secureInput.rawValue }
         entry.dropStage = context.secureInput ? 4 : 5
       }
       emitLive(
-        trusted: trusted, bundleId: app.bundleIdentifier,
-        excluded: settings.excludedBundleIds.contains(app.bundleIdentifier ?? ""),
+        trusted: trusted, bundleId: app.bundleIdentifier, excluded: excluded,
         role: nil, length: 0,
         outcome: context.secureInput ? "secure_input_active" : "context_disallowed")
       return (false, nil)
     }
 
-    let deadline = ContinuousClock.now + .milliseconds(300)
-    let evidence = await wps.evidence(app: app, pressedAt: startedAt)
-    guard !Task.isCancelled, ContinuousClock.now < deadline, isStillCurrent(app.processIdentifier)
-    else { return (false, nil) }
+    let wpsStart = ContinuousClock.now
+    let deadline = wpsStart + .milliseconds(300)
+    let evidence = await wpsEvidence(app, startedAt)
+    if Task.isCancelled || !isStillCurrent(app.pid) {
+      recordAppSwitchOnAttempt1(
+        attemptIndex: attemptIndex, slot: slot, seq: seq, token: token, trusted: trusted,
+        bundleId: app.bundleIdentifier, excluded: excluded)
+      return (false, nil)
+    }
+    let afterWps = ContinuousClock.now
+    if afterWps >= deadline {
+      let elapsed = wpsStart.duration(to: afterWps)
+      let elapsedUs = UInt16(
+        clamping: max(
+          0,
+          Int(elapsed.components.seconds) * 1_000_000
+            + Int(elapsed.components.attoseconds / 1_000_000_000_000)))
+      ring.update(slot: slot, expectedSeq: seq) { entry in
+        if attemptIndex == 0 {
+          entry.attempt0Outcome = 0
+          entry.attempt0ElapsedUs = elapsedUs
+          entry.debounceState = 1
+        } else {
+          entry.debounceState = 3
+          entry.attempt1Outcome = 0
+          entry.attempt1ElapsedUs = elapsedUs
+          entry.dropStage = 9
+        }
+      }
+      emitLive(
+        trusted: trusted, bundleId: app.bundleIdentifier, excluded: excluded,
+        role: nil, length: 0,
+        outcome: attemptIndex == 0 ? "attempt0_empty_debouncing" : "wps_probe_timeout")
+      return (false, nil)
+    }
 
     let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
     let (probe, trace) = await SelectionPresence.check(
-      pid: app.processIdentifier,
+      pid: app.pid,
       gestureAt: CaptureCoordinates.flip(origin, primaryHeight: primaryHeight),
       wps: evidence,
       limit: ContinuousClock.now.duration(to: deadline))
 
-    guard isStillCurrent(app.processIdentifier) else { return (false, nil) }
+    guard isStillCurrent(app.pid) else {
+      recordAppSwitchOnAttempt1(
+        attemptIndex: attemptIndex, slot: slot, seq: seq, token: token, trusted: trusted,
+        bundleId: app.bundleIdentifier, excluded: excluded)
+      return (false, nil)
+    }
 
     let permittedByGesture = !cellsOnly || probe == .cells
     let shows = permittedByGesture && SelectionToolbarRules.shows(probe)
@@ -207,56 +279,39 @@ final class SelectionToolbarProbeRunner {
     }
 
     ring.update(slot: slot, expectedSeq: seq) { entry in
-      if trace.busyMutexSkipped { entry.flags |= SelectionGateFlags.busyMutexSkipped.rawValue }
-      if selectionBounds != nil { entry.flags |= SelectionGateFlags.hasBounds.rawValue }
-      let outcomeCode = Self.encodeProbeOutcome(probe)
-      if attemptIndex == 0 {
-        entry.attempt0Outcome = outcomeCode
-        entry.attempt0Role = trace.roleCode
-        entry.attempt0WebAttrs = trace.webAttrsMask
-        entry.attempt0AxError = trace.lastAxError
-        entry.attempt0ElapsedUs = trace.elapsedUs
-        if !shows { entry.debounceState = 1 }
-      } else {
-        entry.debounceState = 3
-        entry.attempt1Outcome = outcomeCode
-        entry.attempt1AxError = trace.lastAxError
-        entry.attempt1ElapsedUs = trace.elapsedUs
-      }
-      entry.selectionLengthBucket = Self.encodeLengthBucket(probe)
-      if shows {
-        entry.flags |= SelectionGateFlags.shown.rawValue
-        entry.dropStage = 0
-      } else if attemptIndex == 1 {
-        entry.dropStage = !permittedByGesture ? 8 : 9
-      }
+      Self.applyAttemptResult(
+        to: &entry, attemptIndex: attemptIndex, probe: probe, trace: trace,
+        hasBounds: selectionBounds != nil, permittedByGesture: permittedByGesture, shows: shows)
     }
 
-    if shows || attemptIndex == 1 { clearActiveAttempt(forToken: token) }
+    if shows { clearActiveAttempt(forToken: token) }
 
     if onLiveProbeStep != nil {
-      let gateCode: String =
-        if shows {
-          "panel_shown"
-        } else if probe == .secureField {
-          "secure_text_field"
-        } else if trace.lastAxError == Int16(AXError.apiDisabled.rawValue) {
-          "ax_api_disabled"
-        } else if trace.lastAxError == Int16(AXError.cannotComplete.rawValue) {
-          "ax_timeout"
-        } else if !permittedByGesture {
-          "plain_click_no_cells"
-        } else {
-          attemptIndex == 0 ? "attempt0_empty_debouncing" : "ax_no_selection"
-        }
+      let gateCode = Self.classifyGateOutcome(
+        shows: shows, probe: probe, lastAxError: trace.lastAxError,
+        permittedByGesture: permittedByGesture, attemptIndex: attemptIndex)
       emitLive(
-        trusted: trusted, bundleId: app.bundleIdentifier,
-        excluded: settings.excludedBundleIds.contains(app.bundleIdentifier ?? ""),
+        trusted: trusted, bundleId: app.bundleIdentifier, excluded: excluded,
         role: SelectionPresence.roleName(forCode: trace.roleCode),
         length: selectedLen, outcome: gateCode)
     }
 
     return (shows, selectionBounds)
+  }
+
+  private func recordAppSwitchOnAttempt1(
+    attemptIndex: Int, slot: Int, seq: UInt32, token: Int, trusted: Bool, bundleId: String?,
+    excluded: Bool
+  ) {
+    guard attemptIndex == 1, !Task.isCancelled, activeAttempt?.token == token else { return }
+    ring.update(slot: slot, expectedSeq: seq) { entry in
+      entry.debounceState = 2
+      entry.interruptedBy = InterruptionCause.appActivated.rawValue
+      entry.dropStage = 7
+    }
+    emitLive(
+      trusted: trusted, bundleId: bundleId, excluded: excluded, role: nil, length: 0,
+      outcome: InterruptionCause.appActivated.gateOutcomeCode)
   }
 
   private func emitLive(

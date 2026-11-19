@@ -53,6 +53,9 @@ extension SystemPanels {
     suggestedName: String,
     ring: CaptureAndArbiterRing?
   ) async throws -> URL? {
+    if let override = emergencySaveURLOverrideForTesting {
+      return try await override(suggestedName)
+    }
     let claim = try prepareEmergencySaveAdmission(ring: ring)
     isOpen = true
     lowerPanel()

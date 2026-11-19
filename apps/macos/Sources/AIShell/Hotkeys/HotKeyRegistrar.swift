@@ -29,7 +29,7 @@ final class HotKeyRegistrar {
     ((_ shortcutId: String?, _ modifierMask: Int, _ outcome: String) -> Void)?
 
   private let carbon = CarbonHotKeys()
-  private let remoteModifiers = RemoteModifierRepair()
+  let remoteModifiers = RemoteModifierRepair()
   private var taps: ModifierTapMonitor!
   private var registered: [String: Registration] = [:]
   private var desired: [ShortcutRegistration] = []
@@ -208,7 +208,7 @@ final class HotKeyRegistrar {
     let startedNs = MonotonicTimestampAnchor.nowUptimeNs()
     resuming = Task { [weak self] in
       let settled = await ShortcutRelease.waitForHandoff()
-      guard let self else { return }
+      guard !Task.isCancelled, let self else { return }
       let ms = UInt16(
         clamping: (MonotonicTimestampAnchor.nowUptimeNs() &- startedNs) / 1_000_000)
       self.recordDecision(
@@ -230,7 +230,7 @@ final class HotKeyRegistrar {
     }
   }
 
-  private func handleTriggeredPress(_ id: String, isDoubleTap: Bool) {
+  func handleTriggeredPress(_ id: String, isDoubleTap: Bool) {
     let modMask = Self.sanitizedModifierMask(NSEvent.modifierFlags)
     recordDecision(
       eventKind: 1, outcome: 0, elapsedMs: 0, flags: isDoubleTap ? 2 : 1, subject: id,

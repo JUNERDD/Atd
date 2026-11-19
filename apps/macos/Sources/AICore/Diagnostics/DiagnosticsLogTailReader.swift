@@ -5,8 +5,10 @@ import Foundation
 /// Bounded log tail readers (`01` §8.1), `64 KiB` streaming file writer, and `/usr/bin/ditto`
 /// compressor backing ``DiagnosticsBundleBuilder``.
 nonisolated enum DiagnosticsLogTailReader {
-  static func collectShellTail(shellLogURL: URL?) -> Data? {
-    guard let shellLogURL, !DiagnosticsPathPolicy.isHardExcludedSource(shellLogURL) else {
+  static func collectShellTail(shellLogURL: URL?, dataDirectoryURL: URL? = nil) -> Data? {
+    guard let shellLogURL,
+      !DiagnosticsPathPolicy.isHardExcludedSource(shellLogURL, dataDirectoryURL: dataDirectoryURL)
+    else {
       return nil
     }
     let dir = shellLogURL.deletingLastPathComponent()
@@ -15,13 +17,15 @@ nonisolated enum DiagnosticsLogTailReader {
     let rotated1 = dir.appending(path: "\(base).1.\(ext)", directoryHint: .notDirectory)
     var chunks: [Data] = []
     if let older = DiagnosticsBundleBuilder.readTailSlice(
-      of: rotated1, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes),
+      of: rotated1, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes,
+      dataDirectoryURL: dataDirectoryURL),
       !older.isEmpty
     {
       chunks.append(older)
     }
     if let current = DiagnosticsBundleBuilder.readTailSlice(
-      of: shellLogURL, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes),
+      of: shellLogURL, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes,
+      dataDirectoryURL: dataDirectoryURL),
       !current.isEmpty
     {
       chunks.append(current)
@@ -31,17 +35,20 @@ nonisolated enum DiagnosticsLogTailReader {
   }
 
   static func collectServiceTail(
-    logDir: URL?, ringLines: [String], snapshotJSON: Data?
+    logDir: URL?, ringLines: [String], snapshotJSON: Data?, dataDirectoryURL: URL? = nil
   ) -> Data? {
     var chunks: [Data] = []
-    if let logDir, !DiagnosticsPathPolicy.isHardExcludedSource(logDir) {
+    if let logDir,
+      !DiagnosticsPathPolicy.isHardExcludedSource(logDir, dataDirectoryURL: dataDirectoryURL)
+    {
       for (name, cap) in [
         ("service.2.log", DiagnosticsBundleBuilder.serviceRotatedTailBytes),
         ("service.1.log", DiagnosticsBundleBuilder.serviceRotatedTailBytes),
         ("service.log", DiagnosticsBundleBuilder.servicePrimaryTailBytes),
       ] {
         let file = logDir.appending(path: name, directoryHint: .notDirectory)
-        if let slice = DiagnosticsBundleBuilder.readTailSlice(of: file, maxBytes: cap),
+        if let slice = DiagnosticsBundleBuilder.readTailSlice(
+          of: file, maxBytes: cap, dataDirectoryURL: dataDirectoryURL),
           !slice.isEmpty
         {
           chunks.append(slice)
@@ -71,13 +78,14 @@ nonisolated enum DiagnosticsLogTailReader {
     let file = dataDir.appending(
       path: "computer/atd-computer-driver.log", directoryHint: .notDirectory)
     return DiagnosticsBundleBuilder.readTailSlice(
-      of: file, maxBytes: DiagnosticsBundleBuilder.computerDriverTailBytes)
+      of: file, maxBytes: DiagnosticsBundleBuilder.computerDriverTailBytes,
+      dataDirectoryURL: dataDir)
   }
 
   static func collectBrowserWorkersTail(dataDir: URL?) -> Data? {
     guard let dataDir else { return nil }
     let dir = dataDir.appending(path: "computer/browser-workers", directoryHint: .isDirectory)
-    guard !DiagnosticsPathPolicy.isHardExcludedSource(dir),
+    guard !DiagnosticsPathPolicy.isHardExcludedSource(dir, dataDirectoryURL: dataDir),
       let files = try? FileManager.default.contentsOfDirectory(
         at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
         options: [.skipsHiddenFiles])
@@ -96,7 +104,8 @@ nonisolated enum DiagnosticsLogTailReader {
     for item in newestTwo {
       guard
         let slice = DiagnosticsBundleBuilder.readTailSlice(
-          of: item.url, maxBytes: DiagnosticsBundleBuilder.browserWorkerTailBytes),
+          of: item.url, maxBytes: DiagnosticsBundleBuilder.browserWorkerTailBytes,
+          dataDirectoryURL: dataDir),
         !slice.isEmpty
       else { continue }
       let stem = item.url.deletingPathExtension().lastPathComponent

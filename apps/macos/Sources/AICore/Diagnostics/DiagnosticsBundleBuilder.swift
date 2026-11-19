@@ -133,7 +133,8 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
 
   /// Zero-disk-write in-memory bundle assembly and 5-pass scrubbing (`diagnostics.previewBundle`).
   public func preview(inputs: Inputs) throws -> PreviewResult {
-    try validateNoExcludedSources(inputs.rejectedSourceURLs)
+    try validateNoExcludedSources(
+      inputs.rejectedSourceURLs, dataDirectoryURL: inputs.dataDirectoryURL)
     let assembled = assembleScrubbedEntries(inputs: inputs)
     var remainingPreviewBudget = Self.maxPreviewTotalBytes
     var items: [PreviewItem] = []
@@ -191,7 +192,8 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
     destinationZipURL: URL,
     temporaryParent: URL = FileManager.default.temporaryDirectory
   ) throws -> ArchiveResult {
-    try validateNoExcludedSources(inputs.rejectedSourceURLs)
+    try validateNoExcludedSources(
+      inputs.rejectedSourceURLs, dataDirectoryURL: inputs.dataDirectoryURL)
     let fm = FileManager.default
     let stagingRoot = temporaryParent.appending(
       path: "atd-diagnostics-staging-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -240,8 +242,11 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
   /// Reads up to `maxBytes` from the end of an allowlisted log file, aligning to the first `\n`
   /// within the leading `4,096` bytes, or skipping `0..3` UTF-8 continuation bytes if no newline
   /// exists in the first `4 KiB` (`01` §8.1).
-  public static func readTailSlice(of fileURL: URL, maxBytes: Int) -> Data? {
-    guard maxBytes > 0, !DiagnosticsPathPolicy.isHardExcludedSource(fileURL),
+  public static func readTailSlice(
+    of fileURL: URL, maxBytes: Int, dataDirectoryURL: URL? = nil
+  ) -> Data? {
+    guard maxBytes > 0,
+      !DiagnosticsPathPolicy.isHardExcludedSource(fileURL, dataDirectoryURL: dataDirectoryURL),
       let handle = try? FileHandle(forReadingFrom: fileURL)
     else { return nil }
     defer { try? handle.close() }

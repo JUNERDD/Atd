@@ -118,4 +118,102 @@ struct LiveProbeCoordinatorTests {
     #expect(terminal.probeId == started.probeId)
     #expect(terminal.endedReason == "timeout")
   }
+
+  @Test("Selection live probe delivers sub-50ms cancellation and gate-rejection outcomes (B20)")
+  func selectionProbeDeliversRapidDiscreteFailureTransitions() throws {
+    let tempDir = FileManager.default.temporaryDirectory
+      .appending(path: "atd-liveprobe-b20-\(UUID().uuidString)", directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let suiteName = "com.junerdd.ai.tests.b20.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let dataDir = tempDir.appending(path: "AgentServiceDev", directoryHint: .isDirectory)
+    let services = ShellServices.development(
+      environment: ["AI_AGENT_DATA_DIR": dataDir.path(percentEncoded: false)], home: tempDir)
+    let shell = ShellController(services: services, defaults: defaults)
+    defer { shell.tearDownForTesting() }
+
+    var selectionOutcomes: [String] = []
+    services.liveProbes.onEventForTesting = { event in
+      if case .selection(let payload) = event {
+        selectionOutcomes.append(payload.gateOutcome)
+      }
+    }
+
+    _ = services.liveProbes.start(kind: .selection, host: nil, shell: shell, duration: .seconds(10))
+    let emit = try #require(shell.toolbar.probeRunner.onLiveProbeStep)
+
+    // Fire 4 discrete selection transitions back-to-back (< 1 ms apart, well within 50 ms).
+    for outcome in [
+      "attempt0_empty_debouncing",
+      "debounce_interrupted_key",
+      "activation_blocked",
+      "secure_input_active",
+    ] {
+      emit(
+        .init(
+          axTrusted: true, frontmostBundleId: "com.apple.Safari", excludedByAppRule: false,
+          axRole: nil, selectedLength: 0, gateOutcome: outcome))
+    }
+
+    #expect(
+      selectionOutcomes.suffix(4) == [
+        "attempt0_empty_debouncing",
+        "debounce_interrupted_key",
+        "activation_blocked",
+        "secure_input_active",
+      ])
+  }
+
+  @Test(
+    "handleDiagnostics(.liveProbeStart) rejects closed or reloaded documents before arming (B32)")
+  func liveProbeStartRejectsClosedOrReloadedDocument() async throws {
+    let tempDir = FileManager.default.temporaryDirectory
+      .appending(path: "atd-liveprobe-b32-\(UUID().uuidString)", directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let suiteName = "com.junerdd.ai.tests.b32.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let dataDir = tempDir.appending(path: "AgentServiceDev", directoryHint: .isDirectory)
+    let services = ShellServices.development(
+      environment: ["AI_AGENT_DATA_DIR": dataDir.path(percentEncoded: false)], home: tempDir)
+    let shell = ShellController(services: services, defaults: defaults)
+    let bridge = ShellBridge()
+    let host = WebViewHost(
+      role: .settings, fragment: "settings", services: services, bridge: bridge)
+    defer {
+      host.close()
+      shell.tearDownForTesting()
+    }
+
+    let staleDocument = host.document
+    host.pageDidUnload()
+    #expect(host.document != staleDocument)
+
+    await #expect(throws: BridgeError.self) {
+      _ = try await ShellBridge.handleDiagnostics(
+        .liveProbeStart(.init(kind: .hotkey)),
+        from: host,
+        document: staleDocument,
+        shell: shell)
+    }
+    #expect(services.liveProbes.isArmed == false)
+
+    let closingDocument = host.document
+    host.close()
+    await #expect(throws: BridgeError.self) {
+      _ = try await ShellBridge.handleDiagnostics(
+        .liveProbeStart(.init(kind: .capture)),
+        from: host,
+        document: closingDocument,
+        shell: shell)
+    }
+    #expect(services.liveProbes.isArmed == false)
+  }
 }

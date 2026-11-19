@@ -136,7 +136,7 @@ final class LiveProbeCoordinator {
           probeId: probeId, reason: .running, axTrusted: step.axTrusted,
           rawBundleId: step.frontmostBundleId, excluded: step.excludedByAppRule,
           axRole: step.axRole, selectedLength: step.selectedLength,
-          gateOutcome: step.gateOutcome, force: step.gateOutcome == "panel_shown")
+          gateOutcome: step.gateOutcome, force: true)
       }
 
     case .hotkey:

@@ -306,17 +306,23 @@ final class ShellBridge {
       shell.setPanelModalsAvailable(params.available)
       return try Self.encode(NativeEmpty())
     case .diagnosticsShellReport(let params):
-      return try await Self.handleDiagnostics(.shellReport(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .shellReport(params), from: host, document: document, shell: shell)
     case .diagnosticsLiveProbeStart(let params):
-      return try await Self.handleDiagnostics(.liveProbeStart(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .liveProbeStart(params), from: host, document: document, shell: shell)
     case .diagnosticsLiveProbeStop(let params):
-      return try await Self.handleDiagnostics(.liveProbeStop(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .liveProbeStop(params), from: host, document: document, shell: shell)
     case .diagnosticsPreviewBundle(let params):
-      return try await Self.handleDiagnostics(.previewBundle(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .previewBundle(params), from: host, document: document, shell: shell)
     case .diagnosticsExportBundle(let params):
-      return try await Self.handleDiagnostics(.exportBundle(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .exportBundle(params), from: host, document: document, shell: shell)
     case .diagnosticsRestartService(let params):
-      return try await Self.handleDiagnostics(.restartService(params), from: host, shell: shell)
+      return try await Self.handleDiagnostics(
+        .restartService(params), from: host, document: document, shell: shell)
     }
   }
 

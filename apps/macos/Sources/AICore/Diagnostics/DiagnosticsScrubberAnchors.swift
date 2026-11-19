@@ -50,11 +50,56 @@ public nonisolated enum BundleIdentifierRedactor {
 }
 
 extension DiagnosticsScrubber {
-  /// Host-derived path and word anchors for Pass A.
+  /// Host-derived path and word anchors for Pass A with precompiled regexes (`B3`).
   public struct EnvironmentAnchors: Equatable, Sendable {
     struct ReplacementPair: Equatable, Sendable {
       let source: String
       let target: String
+      let requiredLetterMask: UInt32
+      let lowerASCIIBytes: [UInt8]?
+      let lowerCString: ContiguousArray<CChar>?
+      let requiresNonASCII: Bool
+      let regex: NSRegularExpression
+
+      init(source: String, target: String, pattern: String) {
+        self.source = source
+        self.target = target
+        self.requiredLetterMask = DiagnosticsScrubberFastScan.asciiLetterMask(for: source.utf8)
+        if source.utf8.allSatisfy({ $0 > 0 && $0 < 0x80 }) {
+          let lowered = source.utf8.map(DiagnosticsScrubberFastScan.lowerASCII)
+          self.lowerASCIIBytes = lowered
+          var cChars = ContiguousArray<CChar>()
+          cChars.reserveCapacity(lowered.count + 1)
+          for b in lowered { cChars.append(CChar(bitPattern: b)) }
+          cChars.append(0)
+          self.lowerCString = cChars
+          self.requiresNonASCII = false
+        } else {
+          self.lowerASCIIBytes = nil
+          self.lowerCString = nil
+          self.requiresNonASCII = !source.lowercased().utf8.allSatisfy({ $0 < 0x80 })
+        }
+        self.regex = try! NSRegularExpression(pattern: pattern)
+      }
+
+      static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.source == rhs.source && lhs.target == rhs.target
+      }
+
+      func mayAppear(
+        in text: String, features: DiagnosticsScrubberFastScan.UTF8Features
+      ) -> Bool {
+        guard (features.letterMask & requiredLetterMask) == requiredLetterMask else {
+          return false
+        }
+        if let ascii = lowerASCIIBytes {
+          return DiagnosticsScrubberFastScan.containsCaseInsensitiveASCII(text, lowerNeedle: ascii)
+        }
+        if requiresNonASCII && !features.hasNonASCII {
+          return false
+        }
+        return text.range(of: source, options: .caseInsensitive) != nil
+      }
     }
 
     let pathReplacements: [ReplacementPair]
@@ -84,37 +129,46 @@ extension DiagnosticsScrubber {
       usernames: [String],
       hostnames: [String]
     ) {
-      var paths: [ReplacementPair] = []
+      var rawPaths: [(source: String, target: String)] = []
       for raw in homePaths {
         let trimmed = Self.trimSlash(raw)
-        if trimmed.count > 1 && !paths.contains(where: { $0.source == trimmed }) {
-          paths.append(ReplacementPair(source: trimmed, target: "~"))
+        if trimmed.count > 1 && !rawPaths.contains(where: { $0.source == trimmed }) {
+          rawPaths.append((trimmed, "~"))
         }
       }
       for raw in tmpPaths {
         let trimmed = Self.trimSlash(raw)
-        if trimmed.count > 4 && !paths.contains(where: { $0.source == trimmed }) {
-          paths.append(ReplacementPair(source: trimmed, target: "$TMPDIR"))
+        if trimmed.count > 4 && !rawPaths.contains(where: { $0.source == trimmed }) {
+          rawPaths.append((trimmed, "$TMPDIR"))
         }
       }
-      paths.sort { $0.source.count > $1.source.count }
-      self.pathReplacements = paths
+      rawPaths.sort { $0.source.count > $1.source.count }
+      self.pathReplacements = rawPaths.map { item in
+        let pattern =
+          NSRegularExpression.escapedPattern(for: item.source) + #"(?=$|/|\\|\s|["'`,;:)\]}])"#
+        return ReplacementPair(source: item.source, target: item.target, pattern: pattern)
+      }
 
-      var words: [ReplacementPair] = []
+      var rawWords: [(source: String, target: String)] = []
       for user in usernames {
         let clean = user.trimmingCharacters(in: .whitespacesAndNewlines)
-        if Self.isEligibleAnchorWord(clean) && !words.contains(where: { $0.source == clean }) {
-          words.append(ReplacementPair(source: clean, target: "<user>"))
+        if Self.isEligibleAnchorWord(clean) && !rawWords.contains(where: { $0.source == clean }) {
+          rawWords.append((clean, "<user>"))
         }
       }
       for host in hostnames {
         let clean = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        if Self.isEligibleAnchorWord(clean) && !words.contains(where: { $0.source == clean }) {
-          words.append(ReplacementPair(source: clean, target: "<host>"))
+        if Self.isEligibleAnchorWord(clean) && !rawWords.contains(where: { $0.source == clean }) {
+          rawWords.append((clean, "<host>"))
         }
       }
-      words.sort { $0.source.count > $1.source.count }
-      self.wordReplacements = words
+      rawWords.sort { $0.source.count > $1.source.count }
+      self.wordReplacements = rawWords.map { item in
+        let pattern =
+          #"(?<![A-Za-z0-9<])"# + NSRegularExpression.escapedPattern(for: item.source)
+          + #"(?![A-Za-z0-9>])"#
+        return ReplacementPair(source: item.source, target: item.target, pattern: pattern)
+      }
     }
 
     private static func trimSlash(_ path: String) -> String {

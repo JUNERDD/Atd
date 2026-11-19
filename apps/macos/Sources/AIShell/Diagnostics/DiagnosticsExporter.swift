@@ -22,6 +22,7 @@ nonisolated enum DiagnosticsExporter {
     var serviceEndpoint: ServiceEndpoint?
     var serviceUnavailable: ServiceUnavailable?
     var lastFailureSummary: String?
+    var temporaryDirectoryURL: URL = FileManager.default.temporaryDirectory
     var generatedAt: Date = Date()
   }
 
@@ -74,7 +75,8 @@ nonisolated enum DiagnosticsExporter {
     let inputs = await buildBundleInputs(for: request)
     return try DiagnosticsBundleBuilder().buildZipArchive(
       inputs: inputs,
-      destinationZipURL: destinationZipURL)
+      destinationZipURL: destinationZipURL,
+      temporaryParent: request.temporaryDirectoryURL)
   }
 
   @concurrent
@@ -157,8 +159,8 @@ nonisolated enum DiagnosticsExporter {
         return .snapshot(snap)
       }
       group.addTask {
-        let run = await Deadline.value(within: .milliseconds(1_400), fallback: nil) {
-          try? await client.runDiagnostics(includeConnectivity: false, timeout: 1.2)
+        let run = await Deadline.value(within: .milliseconds(2_700), fallback: nil) {
+          try? await client.runDiagnostics(includeConnectivity: false, timeout: 2.5)
         }
         return .doctor(run)
       }
@@ -183,51 +185,12 @@ nonisolated enum DiagnosticsExporter {
     unavailable: ServiceUnavailable?,
     lastFailure: String?
   ) -> Data? {
-    let encoder = JSONEncoder()
-    guard let shellChecksData = try? encoder.encode(shellEvaluation.checks),
-      let shellArray = (try? JSONSerialization.jsonObject(with: shellChecksData))
-        as? [[String: Any]]
-    else { return nil }
-
-    var mergedChecks = shellArray
-    if let svcData = serviceArtifacts.doctorJSON,
-      let svcObj = (try? JSONSerialization.jsonObject(with: svcData)) as? [String: Any],
-      let svcChecks = svcObj["checks"] as? [[String: Any]]
-    {
-      mergedChecks.append(contentsOf: svcChecks)
-    }
-
-    var passCount = 0
-    var warnCount = 0
-    var failCount = 0
-    var skippedCount = 0
-    for check in mergedChecks {
-      switch check["status"] as? String {
-      case "pass": passCount += 1
-      case "warn": warnCount += 1
-      case "fail": failCount += 1
-      default: skippedCount += 1
-      }
-    }
-
-    let descriptor = unavailable.map {
-      ServiceUnavailableDescriptor.describe($0, lastFailure: lastFailure)
-    }
-    var root: [String: Any] = [
-      "schemaVersion": 1,
-      "capturedAt": shellEvaluation.capturedAt,
-      "serviceReachable": serviceArtifacts.reachable,
-      "summary": [
-        "passCount": passCount,
-        "warnCount": warnCount,
-        "failCount": failCount,
-        "skippedCount": skippedCount,
-      ],
-      "checks": mergedChecks,
-    ]
-    root["serviceUnavailableCode"] = descriptor?.errorCode ?? NSNull()
-    root["serviceUnavailableSummary"] = descriptor?.summary ?? NSNull()
-    return try? JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
+    encodeMergedDoctorReport(
+      shellEvaluation: shellEvaluation,
+      serviceDoctorJSON: serviceArtifacts.doctorJSON,
+      serviceReachable: serviceArtifacts.reachable,
+      unavailable: unavailable,
+      lastFailure: lastFailure)
   }
 
   private static func mapFileStatus(_ status: BundleFileStatus) -> BundlePreviewFile.Status {

@@ -127,7 +127,7 @@ public struct DiagnosticsBundleManifest: Codable, Equatable, Sendable {
   }
 }
 
-/// Allowlist-first archive entry validation and hard-exclusion enforcement (`04` §2).
+/// Allowlist-first archive entry validation and anchored hard-exclusion enforcement (`04` §2, `B15`).
 public nonisolated enum DiagnosticsPathPolicy {
   /// Exact archive relative paths permitted inside `atd-diagnostics-*.zip`.
   public static let allowedArchiveEntries: Set<String> = [
@@ -148,6 +148,10 @@ public nonisolated enum DiagnosticsPathPolicy {
     "crashes/summary.json",
   ]
 
+  private static let privateDataSubdirs: Set<String> = [
+    "memory", "resources", "extractions", "tasks", "atd",
+  ]
+
   public static func isAllowedArchiveEntry(_ relativePath: String) -> Bool {
     guard !relativePath.isEmpty,
       !relativePath.hasPrefix("/"),
@@ -159,14 +163,19 @@ public nonisolated enum DiagnosticsPathPolicy {
 
   /// Rejects sensitive local stores, credentials, transcripts, memory SQLite files, personal
   /// skills, local secret configs, and Folder-TCC protected directories (`04` §2).
-  public static func isHardExcludedSource(_ url: URL) -> Bool {
+  public static func isHardExcludedSource(_ url: URL, dataDirectoryURL: URL? = nil) -> Bool {
     let raw = url.standardizedFileURL.path(percentEncoded: false)
-    return isHardExcludedPathString(raw)
+    let dataDirPath = dataDirectoryURL?.standardizedFileURL.path(percentEncoded: false)
+    return isHardExcludedPathString(raw, dataDirectoryPath: dataDirPath)
   }
 
-  public static func isHardExcludedPathString(_ rawPath: String) -> Bool {
-    let normalized = rawPath.replacingOccurrences(of: "\\", with: "/")
-    let lowered = normalized.lowercased()
+  public static func isHardExcludedPathString(
+    _ rawPath: String,
+    dataDirectoryPath: String? = nil,
+    homeDirectoryPath: String? = FileManager.default.homeDirectoryForCurrentUser.path(
+      percentEncoded: false)
+  ) -> Bool {
+    let lowered = normalizeLowerPath(rawPath)
     let segments = lowered.split(separator: "/").map(String.init)
     let fileName = segments.last ?? ""
 
@@ -175,28 +184,91 @@ public nonisolated enum DiagnosticsPathPolicy {
     if fileName == ".env" || fileName.hasPrefix(".env.") { return true }
     if fileName == ".dev.vars" || fileName.hasPrefix(".dev.vars.") { return true }
     if fileName == "index.db" || fileName.hasPrefix("index.db-") { return true }
+    if segments.contains(".atd") || segments.contains(".local") { return true }
 
-    if lowered.hasSuffix("/auth/token") || segments.contains("auth") && fileName == "token" {
+    let nonUserStart = userHomeRelativeIndex(in: segments)
+    if segments.count >= 2 && segments[segments.count - 2] == "auth" && fileName == "token" {
       return true
     }
-    if segments.contains("audit") && fileName.hasSuffix(".jsonl") { return true }
-    if lowered.contains("/agent/sessions/") || lowered.hasSuffix("/agent/sessions") { return true }
-    if segments.contains("memory") { return true }
-    if segments.contains("resources") || segments.contains("extractions") { return true }
-    if segments.contains("tasks") || segments.contains(".atd") || segments.contains(".local") {
+    if fileName.hasSuffix(".jsonl") && segments.dropFirst(nonUserStart).dropLast().contains("audit")
+    {
       return true
     }
-    // `<dataDir>/atd/**` personal skills/agents home (distinct from `atd-computer-driver.log`).
-    if segments.contains("atd") { return true }
 
-    // Folder-TCC protected user directories: never stat, open, or enumerate.
-    for protectedSuffix in [
-      "/desktop", "/documents", "/downloads", "/library/mobile documents",
-    ] {
-      if lowered.hasSuffix(protectedSuffix) || lowered.contains(protectedSuffix + "/") {
+    if segments.count >= nonUserStart + 2 {
+      for idx in nonUserStart..<(segments.count - 1) {
+        let current = segments[idx]
+        let next = segments[idx + 1]
+        if current == "agent" && (next == "sessions" || next == "memory") {
+          return true
+        }
+        if isAgentServiceDirectory(current) && privateDataSubdirs.contains(next) {
+          return true
+        }
+      }
+    }
+
+    if let dataDirectoryPath {
+      let dataLower = normalizeLowerPath(dataDirectoryPath)
+      if !dataLower.isEmpty && dataLower != "/" {
+        for sub in privateDataSubdirs {
+          let candidate = "\(dataLower)/\(sub)"
+          if lowered == candidate || lowered.hasPrefix(candidate + "/") { return true }
+        }
+      }
+    }
+
+    // Folder-TCC protected user home directories: anchor to `/Users/<username>/...` (and firmlinks)
+    // plus `homeDirectoryPath` so a user named `documents` or `desktop` is never misclassified.
+    if nonUserStart > 0 && segments.count > nonUserStart {
+      let top = segments[nonUserStart]
+      if top == "desktop" || top == "documents" || top == "downloads" { return true }
+      if top == "library" && segments.count > nonUserStart + 1
+        && segments[nonUserStart + 1] == "mobile documents"
+      {
         return true
       }
     }
+    if let homeDirectoryPath {
+      let homeLower = normalizeLowerPath(homeDirectoryPath)
+      if !homeLower.isEmpty && homeLower != "/" {
+        for suffix in ["/desktop", "/documents", "/downloads", "/library/mobile documents"] {
+          let protectedRoot = homeLower + suffix
+          if lowered == protectedRoot || lowered.hasPrefix(protectedRoot + "/") { return true }
+        }
+      }
+    }
     return false
+  }
+
+  private static func normalizeLowerPath(_ path: String) -> String {
+    let forward = path.replacingOccurrences(of: "\\", with: "/")
+    let trimmed =
+      forward.count > 1 && forward.hasSuffix("/") ? String(forward.dropLast()) : forward
+    return trimmed.lowercased()
+  }
+
+  private static func userHomeRelativeIndex(in segments: [String]) -> Int {
+    if segments.count >= 2 && (segments[0] == "users" || segments[0] == "home") {
+      return 2
+    }
+    if segments.count >= 3 && segments[0] == "private" && segments[1] == "var"
+      && segments[2] == "root"
+    {
+      return 3
+    }
+    if segments.count >= 5 && segments[0] == "system" && segments[1] == "volumes"
+      && segments[2] == "data" && (segments[3] == "users" || segments[3] == "home")
+    {
+      return 5
+    }
+    return 0
+  }
+
+  private static func isAgentServiceDirectory(_ segment: String) -> Bool {
+    segment == "agentservice"
+      || segment.hasPrefix("agentservice ")
+      || segment.hasPrefix("agentservice-")
+      || segment.hasPrefix("agentservice_")
   }
 }

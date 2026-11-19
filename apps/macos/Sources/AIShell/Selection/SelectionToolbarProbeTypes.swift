@@ -1,7 +1,14 @@
 import AICore
 import AppKit
+import ApplicationServices
 
 extension SelectionToolbarProbeRunner {
+  struct FrontmostAppInfo {
+    let pid: pid_t
+    let bundleIdentifier: String?
+    let runningApp: NSRunningApplication?
+  }
+
   enum InterruptionCause: UInt8, Sendable {
     case none = 0
     case mouseDown = 1
@@ -108,6 +115,55 @@ extension SelectionToolbarProbeRunner {
       }
     case .unmeasured: 5
     case .cells: 6
+    }
+  }
+
+  static func classifyGateOutcome(
+    shows: Bool,
+    probe: SelectionProbe,
+    lastAxError: Int16,
+    permittedByGesture: Bool,
+    attemptIndex: Int
+  ) -> String {
+    if shows { return "panel_shown" }
+    if probe == .secureField { return "secure_text_field" }
+    if lastAxError == Int16(AXError.apiDisabled.rawValue) { return "ax_api_disabled" }
+    if lastAxError == Int16(AXError.cannotComplete.rawValue) { return "ax_timeout" }
+    if !permittedByGesture { return "plain_click_no_cells" }
+    return attemptIndex == 0 ? "attempt0_empty_debouncing" : "ax_no_selection"
+  }
+
+  static func applyAttemptResult(
+    to entry: inout SelectionDecisionEntry,
+    attemptIndex: Int,
+    probe: SelectionProbe,
+    trace: SelectionProbeTrace,
+    hasBounds: Bool,
+    permittedByGesture: Bool,
+    shows: Bool
+  ) {
+    if trace.busyMutexSkipped { entry.flags |= SelectionGateFlags.busyMutexSkipped.rawValue }
+    if hasBounds { entry.flags |= SelectionGateFlags.hasBounds.rawValue }
+    let outcomeCode = encodeProbeOutcome(probe)
+    if attemptIndex == 0 {
+      entry.attempt0Outcome = outcomeCode
+      entry.attempt0Role = trace.roleCode
+      entry.attempt0WebAttrs = trace.webAttrsMask
+      entry.attempt0AxError = trace.lastAxError
+      entry.attempt0ElapsedUs = trace.elapsedUs
+      if !shows { entry.debounceState = 1 }
+    } else {
+      entry.debounceState = 3
+      entry.attempt1Outcome = outcomeCode
+      entry.attempt1AxError = trace.lastAxError
+      entry.attempt1ElapsedUs = trace.elapsedUs
+    }
+    entry.selectionLengthBucket = encodeLengthBucket(probe)
+    if shows {
+      entry.flags |= SelectionGateFlags.shown.rawValue
+      entry.dropStage = 0
+    } else if attemptIndex == 1 {
+      entry.dropStage = !permittedByGesture ? 8 : 9
     }
   }
 }

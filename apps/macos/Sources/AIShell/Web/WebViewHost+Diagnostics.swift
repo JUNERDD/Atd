@@ -104,6 +104,64 @@ extension WebViewHost {
     return decoded
   }
 
+  /// Merges breadcrumb rings from multiple `WebViewHost` windows (for example, the resident
+  /// `panelHost` and `settings.host`), deduplicating identical entries, sorting chronologically by
+  /// `ts`, and capping to the most recent `128` entries and `<= 131_072` UTF-8 JSON bytes.
+  static func mergeBreadcrumbs(
+    _ payloads: [RendererBreadcrumbsPayload],
+    now: Date = Date()
+  ) -> RendererBreadcrumbsPayload {
+    guard !payloads.isEmpty else { return emptyBreadcrumbs(now: now) }
+    var uniquePayloads: [RendererBreadcrumbsPayload] = []
+    uniquePayloads.reserveCapacity(payloads.count)
+    for payload in payloads where !uniquePayloads.contains(payload) {
+      uniquePayloads.append(payload)
+    }
+
+    var dedupedEntries: [RendererBreadcrumbsPayload.Entrie] = []
+    var totalDropped = 0
+    for payload in uniquePayloads {
+      totalDropped += max(0, payload.droppedCount)
+      for entry in payload.entries where !dedupedEntries.contains(entry) {
+        dedupedEntries.append(entry)
+      }
+    }
+
+    var sorted = dedupedEntries.sorted { $0.ts < $1.ts }
+    if sorted.count > 128 {
+      totalDropped += sorted.count - 128
+      sorted = Array(sorted.suffix(128))
+    }
+
+    let nonEmptyCapturedAt =
+      uniquePayloads
+      .filter { !$0.entries.isEmpty || $0.droppedCount > 0 }
+      .compactMap { $0.capturedAt.isEmpty ? nil : $0.capturedAt }
+      .max()
+    let capturedAt =
+      nonEmptyCapturedAt
+      ?? uniquePayloads.compactMap { $0.capturedAt.isEmpty ? nil : $0.capturedAt }.max()
+      ?? emptyBreadcrumbs(now: now).capturedAt
+
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    while true {
+      let candidate = RendererBreadcrumbsPayload(
+        capturedAt: capturedAt,
+        droppedCount: totalDropped,
+        entries: sorted)
+      if let encoded = try? encoder.encode(candidate), encoded.count <= maxBreadcrumbsUTF8Bytes {
+        return candidate
+      }
+      guard !sorted.isEmpty else {
+        return RendererBreadcrumbsPayload(
+          capturedAt: capturedAt, droppedCount: totalDropped, entries: [])
+      }
+      sorted.removeFirst()
+      totalDropped += 1
+    }
+  }
+
   private func replaceAndLoadWebView() {
     let old = webView
     let wasFirstResponder = old.window?.firstResponder === old
