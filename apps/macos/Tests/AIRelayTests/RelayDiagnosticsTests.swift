@@ -77,21 +77,16 @@ struct RelayDiagnosticsTests {
 
     let token = String(repeating: "t", count: 43)
     let userLeak = "/Users/" + "alicecorp" + "/secret"
-    // Publishes endpoint then crashes with non-zero code after 80ms; once `healthy` marker exists,
-    // stays alive until SIGTERM.
+    // Arm the crash before publishing the endpoint. The test signals only a supervised process.
     let script = """
       #!/bin/sh
       dir="$4"
       mkdir -p "$dir/auth"
+      trap 'echo "Error: crash in \(userLeak)" >&2; exit 2' USR1
+      trap 'rm -f "$dir/endpoint.json"; exit 0' TERM
       printf '{"version":1,"serviceId":"fake","token":"\(token)","createdAt":"x"}' > "$dir/auth/token"
       printf '{"version":1,"serviceId":"fake","protocolVersion":"1","epoch":1,"host":"127.0.0.1","port":59999,"url":"http://127.0.0.1:59999","pid":%s,"startedAt":"x","buildId":"b0"}' $$ > "$dir/endpoint.json.tmp"
       mv "$dir/endpoint.json.tmp" "$dir/endpoint.json"
-      if [ ! -f "$dir/healthy" ]; then
-        echo "Error: crash in \(userLeak)" >&2
-        sleep 0.08
-        exit 2
-      fi
-      trap 'rm -f "$dir/endpoint.json"; exit 0' TERM
       end=$(( $(date +%s) + 20 ))
       while [ "$(date +%s)" -lt "$end" ]; do sleep 0.05; done
       """
@@ -103,6 +98,9 @@ struct RelayDiagnosticsTests {
       plan: ServiceLaunchPlan(resources: resources, dataDirectory: data),
       logDirectory: root.appending(path: "logs", directoryHint: .isDirectory))
 
+    supervisor.onStateChange = { state in
+      if case .running(let endpoint) = state { #expect(kill(endpoint.pid, SIGUSR1) == 0) }
+    }
     await supervisor.start()
     #expect(await Task.until(.seconds(8)) { supervisor.state == .unavailable(.stoppedTooOften) })
     let retained = try #require(supervisor.lastFailureSummary)
@@ -111,7 +109,7 @@ struct RelayDiagnosticsTests {
     #expect(!supervisor.recentExits.isEmpty)
 
     // Manual restart into `.running` clears `lastFailureSummary`.
-    try Data("ok".utf8).write(to: data.appending(path: "healthy"))
+    supervisor.onStateChange = nil
     await supervisor.restart()
     #expect(
       await Task.until(.seconds(5)) {
