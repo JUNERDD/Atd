@@ -11,6 +11,9 @@ files = [app]
 symlinks = {"Applications": "/Applications"}
 # Hiding extensions writes FinderInfo into the signed bundle and fails strict verification.
 
+# The release app contains many small files. On the macOS 26 packaging runner its
+# writable HFS+ image takes minutes to unmount; APFS detaches cleanly after verification.
+filesystem = "APFS"
 # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app supports opens it.
 format = "ULFO"
 
