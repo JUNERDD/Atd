@@ -39,6 +39,14 @@ else await renderHostRequired();
 async function renderWindow(native: NativeBridge) {
   document.documentElement.dataset.window = windowKind;
   const windowRoot = loadWindowRoot();
+  // Start importing snapshot modules in parallel with native host hydration so dev module fetches
+  // never wait behind the host's startup race before kicking off.
+  const settingsModule =
+    windowKind === 'panel' || windowKind === 'settings'
+      ? import('./features/settings/use-settings')
+      : null;
+  const serviceModule = windowKind === 'panel' ? import('./features/service/use-service') : null;
+  const agentModule = windowKind === 'panel' ? import('./features/agent/use-agent') : null;
   await installNativeHost(native, windowKind);
   // Every window runs the application menu's Undo/Redo through this entry.
   const disposeEditCommands = installEditCommands();
@@ -46,28 +54,25 @@ async function renderWindow(native: NativeBridge) {
   // A non-English first language loads its translations (started when i18n loaded) before any
   // text renders; panel and settings also prime their initial query snapshots and hydrated
   // language in parallel so the first frame paints with settled theme, language, and state.
-  const settingsReady =
-    windowKind === 'panel' || windowKind === 'settings'
-      ? import('./features/settings/use-settings')
-          .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
-          .then(async (snapshot) => {
-            await initialLanguageReady;
-            if (
-              !i18n.hasResourceBundle(snapshot.language, defaultNS) ||
-              i18n.resolvedLanguage !== snapshot.language
-            ) {
-              await changeAppLanguage(snapshot.language);
-            }
-          })
-          .catch(() => undefined)
-      : Promise.resolve();
+  const settingsReady = settingsModule
+    ? settingsModule
+        .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
+        .then(async (snapshot) => {
+          await initialLanguageReady;
+          if (
+            !i18n.hasResourceBundle(snapshot.language, defaultNS) ||
+            i18n.resolvedLanguage !== snapshot.language
+          ) {
+            await changeAppLanguage(snapshot.language);
+          }
+        })
+        .catch(() => undefined)
+    : Promise.resolve();
   const panelReady =
-    windowKind === 'panel'
+    serviceModule && agentModule
       ? Promise.all([
-          import('./features/service/use-service').then(({ readServiceStatus }) =>
-            readServiceStatus(),
-          ),
-          import('./features/agent/use-agent').then(({ readAgentSnapshot }) => readAgentSnapshot()),
+          serviceModule.then(({ readServiceStatus }) => readServiceStatus()),
+          agentModule.then(({ readAgentSnapshot }) => readAgentSnapshot()),
         ]).catch(() => undefined)
       : Promise.resolve();
   const [WindowRoot] = await Promise.all([
@@ -106,12 +111,21 @@ async function renderWindow(native: NativeBridge) {
     </React.StrictMode>,
   );
   if (windowKind === 'panel') {
-    const warmup = window.setTimeout(() => {
-      void import('./features/agent/panel-view-loaders').then(({ warmPanelDeferredChunks }) =>
-        warmPanelDeferredChunks(),
-      );
-    }, 120);
-    import.meta.hot?.dispose(() => window.clearTimeout(warmup));
+    // In dev, unbundled deferred views (transcript, Shiki, Mermaid, diffs) fan out into hundreds
+    // of HTTP requests; wait until after initial paint + idle so they never contend with reveal.
+    const delayMs = import.meta.env.DEV ? 1500 : 120;
+    let warmup = 0;
+    const frame = requestAnimationFrame(() => {
+      warmup = window.setTimeout(() => {
+        void import('./features/agent/panel-view-loaders').then(({ warmPanelDeferredChunks }) =>
+          warmPanelDeferredChunks(),
+        );
+      }, delayMs);
+    });
+    import.meta.hot?.dispose(() => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(warmup);
+    });
   }
 }
 

@@ -20,7 +20,7 @@ import { draftFiles } from '../features/composer-editor/draft-attachments';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
 import { QUICK_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
-import { QuickPanel } from '../features/quick-panel/quick-panel';
+import { QuickPanelHost } from '../features/quick-panel/quick-panel-host';
 import type { TriggerState } from '../features/quick-panel/trigger';
 import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel/use-quick-panel';
 import { IconButton } from './icon-button';
@@ -274,62 +274,62 @@ export function Composer({
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
           boundary={overlayBoundary}
         >
-          <QuickPanel
-            trigger={trigger}
-            running={active}
-            pending={waiting}
-            editor={commands}
-            handleRef={panel}
-            onAriaChange={setAria}
-            actions={{
-              ...quickActions,
-              openSettings: onOpenSettings,
-              showQueue: () => setQueueRecall((count) => count + 1),
-              compact: (instructions) => {
-                if (taskId) void compact(taskId, instructions);
-              },
-            }}
-            compact={compactBlock(task, context)}
-            policy={policy}
-            onPolicyChange={onPolicyChange}
-            connections={connections}
-            model={model}
-            aliasState={aliasState}
-            attachmentCount={files.length}
-            taskId={taskId}
-            tasks={tasks}
-            boundary={overlayBoundary}
-          >
-            <div className="composer-surface glass-control surface-glass" {...surface}>
-              <ScrollArea
-                className="composer-input-scroll"
-                viewportClassName="max-h-[inherit]"
-                gutter="stable"
+          <div className="composer-surface glass-control surface-glass" {...surface}>
+            <ScrollArea
+              className="composer-input-scroll"
+              viewportClassName="max-h-[inherit]"
+              gutter="stable"
+            >
+              <div ref={container} className="composer-input" />
+            </ScrollArea>
+            <ComposerAttachMenu
+              disabled={locked}
+              running={active}
+              room={room}
+              attach={attach}
+              onMention={commands.insertMention}
+            />
+            <div className="composer-actions">
+              <IconButton
+                label={label}
+                className="composer-send"
+                variant="default"
+                tooltipSide="top"
+                disabled={disabled}
+                onClick={() => void act()}
               >
-                <div ref={container} className="composer-input" />
-              </ScrollArea>
-              <ComposerAttachMenu
-                disabled={locked}
-                running={active}
-                room={room}
-                attach={attach}
-                onMention={commands.insertMention}
-              />
-              <div className="composer-actions">
-                <IconButton
-                  label={label}
-                  className="composer-send"
-                  variant="default"
-                  tooltipSide="top"
-                  disabled={disabled}
-                  onClick={() => void act()}
-                >
-                  {active ? <Square className="size-3 fill-current" /> : <ArrowUp />}
-                </IconButton>
-              </div>
+                {active ? <Square className="size-3 fill-current" /> : <ArrowUp />}
+              </IconButton>
             </div>
-          </QuickPanel>
+          </div>
         </ComposerPopover>
+        <QuickPanelHost
+          anchorRef={surface.ref}
+          trigger={trigger}
+          running={active}
+          pending={waiting}
+          editor={commands}
+          handleRef={panel}
+          onAriaChange={setAria}
+          actions={{
+            ...quickActions,
+            openSettings: onOpenSettings,
+            showQueue: () => setQueueRecall((count) => count + 1),
+            compact: (instructions) => {
+              if (taskId) void compact(taskId, instructions);
+            },
+          }}
+          compact={compactBlock(task, context)}
+          policy={policy}
+          onPolicyChange={onPolicyChange}
+          connections={connections}
+          model={model}
+          aliasState={aliasState}
+          attachmentCount={files.length}
+          taskId={taskId}
+          tasks={tasks}
+          boundary={overlayBoundary}
+        />
         <VisionNotice className="px-2" files={files} connections={connections} model={model} />
         <ComposerConfiguration
           connections={connections}

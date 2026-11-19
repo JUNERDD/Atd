@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactElement, type Ref } from 'react';
+import { useMemo, useState, type Ref, type RefObject } from 'react';
 import { PopoverAnchor } from '@atd/ui/components/popover';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { AgentTask } from '../../client/agent/task-schema';
@@ -41,8 +41,8 @@ export interface QuickPanelProps {
   taskId: string | null;
   /** Snapshot tasks: `@` conversations and recently attached files. */
   tasks?: readonly AgentTask[];
-  /** `.composer-surface`; the panel anchors to it without adding a trigger. */
-  children: ReactElement;
+  /** `.composer-surface`; the panel anchors to it without wrapping or remounting the editor. */
+  anchorRef: RefObject<HTMLDivElement | null>;
   /**
    * The panel body below the header. Its top edge caps the panel's height, so the panel never
    * covers the header's drag region or the macOS traffic lights. Null falls back to the viewport.
@@ -72,10 +72,17 @@ export function QuickPanel({
   compact,
   taskId,
   tasks = [],
-  children,
+  anchorRef,
   boundary,
 }: QuickPanelProps) {
-  const anchor = useRef<HTMLDivElement>(null);
+  const virtualAnchor = useMemo(
+    () => ({
+      current: {
+        getBoundingClientRect: () => anchorRef.current?.getBoundingClientRect() ?? new DOMRect(),
+      },
+    }),
+    [anchorRef],
+  );
   const open = isQuickPanelOpen(trigger, running);
   // Radix keeps the content mounted while it animates out, so it keeps the last open view.
   const [lastOpen, setLastOpen] = useState<TriggerState | null>(null);
@@ -129,12 +136,8 @@ export function QuickPanel({
       onDismiss={editor.dismissTrigger}
       handleRef={handleRef}
       onAriaChange={onAriaChange}
-      anchor={
-        <PopoverAnchor asChild ref={anchor}>
-          {children}
-        </PopoverAnchor>
-      }
-      owner={anchor}
+      anchor={<PopoverAnchor virtualRef={virtualAnchor} />}
+      owner={anchorRef}
       placement={{
         side: 'top',
         collisionBoundary: boundary,
