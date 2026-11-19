@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, readlink, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { parse } from '@atd/agent-contracts';
@@ -91,14 +91,17 @@ export async function isLockHolderAlive(pid: number, expectedCommand?: string): 
   if (!isPidAlive(pid)) return false;
   if (process.platform === 'win32') return true;
   try {
+    // Linux comm is a mutable, length-limited thread name. The lock records the executable.
+    if (process.platform === 'linux') {
+      return matchesServiceExecutable(await readlink(`/proc/${pid}/exe`), expectedCommand);
+    }
     const { stdout } = await execFileAsync('ps', ['-p', String(pid), '-o', 'comm='], {
       timeout: 1000,
     });
     const comm = stdout.trim();
     return comm ? matchesServiceExecutable(comm, expectedCommand) : isPidAlive(pid);
   } catch {
-    // Only treat `ps` failure as dead if `pid` actually exited (`ESRCH`); timeouts (`killed`) or
-    // spawn/exec failures (`ENOENT`, `EAGAIN`, `EMFILE`, `ENFILE`, `EACCES`) preserve live locks.
+    // An unreadable executable or failed ps lookup is insufficient to reclaim a live lock.
     return isPidAlive(pid);
   }
 }

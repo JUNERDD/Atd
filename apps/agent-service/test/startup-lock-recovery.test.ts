@@ -134,6 +134,7 @@ test('cli serve contention does NOT delete live owner service.lock and scrubs pe
   try {
     await execFileAsync(process.execPath, [cliPath, 'serve', '--dataDir', root], {
       env: { ...process.env, AI_AGENT_DATA_DIR: '' },
+      timeout: 30_000,
     });
   } catch (error) {
     const err = error as { code?: number; stderr?: string };
