@@ -67,11 +67,32 @@ export async function createCodegenCache({ packageRoot, buildContext, signal, lo
       for (const name of codegenSourceTrees)
         hashTree(hash, packageRoot, name, (file) => file.endsWith('.ts'), stamp);
       hashTree(hash, packageRoot, 'scripts', isCodegenScript, stamp);
-      for (const root of codegenDependencyRoots(packageRoot)) {
-        hash.update(root);
-        hashTree(hash, root, '', undefined, stamp);
+      const depRoots = codegenDependencyRoots(packageRoot);
+      const depStampHash = createHash('sha256');
+      for (const root of depRoots) {
+        depStampHash.update(root);
+        statTree(depStampHash, root, '');
       }
-      return { content: hash.digest('hex'), stamp: stamp.digest('hex') };
+      const depStamp = depStampHash.digest('hex');
+      stamp.update(depStamp);
+      const cached = read()?.codegen;
+      let depContent;
+      if (
+        cached?.version === VERSION &&
+        cached.depStamp === depStamp &&
+        typeof cached.depContent === 'string'
+      ) {
+        depContent = cached.depContent;
+      } else {
+        const depContentHash = createHash('sha256');
+        for (const root of depRoots) {
+          depContentHash.update(root);
+          hashTree(depContentHash, root, '', undefined, undefined);
+        }
+        depContent = depContentHash.digest('hex');
+      }
+      hash.update(depContent);
+      return { content: hash.digest('hex'), stamp: stamp.digest('hex'), depStamp, depContent };
     } catch {
       // Missing sources or dependencies require the real generator's diagnostics, never a hit.
       return null;
@@ -99,6 +120,8 @@ export async function createCodegenCache({ packageRoot, buildContext, signal, lo
         inputs: source?.content ?? null,
         outputs: generated?.content ?? null,
         stamp: `${source?.stamp ?? ''}:${generated?.stamp ?? ''}`,
+        depStamp: source?.depStamp ?? null,
+        depContent: source?.depContent ?? null,
       };
     },
     matches(snapshot) {
@@ -123,10 +146,27 @@ export async function createCodegenCache({ packageRoot, buildContext, signal, lo
           version: VERSION,
           inputs: snapshot.inputs,
           outputs: snapshot.outputs,
+          ...(snapshot.depStamp && snapshot.depContent
+            ? { depStamp: snapshot.depStamp, depContent: snapshot.depContent }
+            : {}),
         },
       });
     },
   };
+}
+
+function statTree(stamp, root, name) {
+  const file = path.join(root, name);
+  const stat = lstatSync(file, { bigint: true });
+  if (stat.isDirectory()) {
+    stamp.update(`d:${name}:${stat.ino}:${stat.mtimeNs}:${stat.ctimeNs}\0`);
+    for (const child of readdirSync(file).sort()) statTree(stamp, root, path.join(name, child));
+  } else {
+    if (!stat.isFile()) throw new Error(`Unsupported bridge input: ${name}`);
+    stamp.update(
+      `f:${name}:${stat.mode}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}\0`,
+    );
+  }
 }
 
 function hashTree(hash, root, name, include = () => true, stamp) {

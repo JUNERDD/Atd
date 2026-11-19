@@ -5,9 +5,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 export async function waitForServices({ rendererOrigin, dataDir, signal }) {
   // A failed service build can be repaired at any time; keep the completed native build pending.
+  const started = performance.now();
   while (!signal.aborted) {
     if (await servicesReady({ rendererOrigin, dataDir, signal })) return true;
-    await delay(250, undefined, { signal }).catch(() => {});
+    const interval = performance.now() - started < 3000 ? 50 : 200;
+    await delay(interval, undefined, { signal }).catch(() => {});
   }
   return false;
 }

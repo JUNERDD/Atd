@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDevCache } from './dev-cache.mjs';
 import { installDevCopy } from './dev-install.mjs';
-import { startDevApp } from './dev-launch.mjs';
+import { prepareDevLauncher, startDevApp } from './dev-launch.mjs';
 import { lockNativeDev, runningAppPid, startChild } from './dev-process.mjs';
 import { waitForServices } from './dev-ready.mjs';
 import { watchNativeInputs } from './dev-watch.mjs';
@@ -37,6 +37,7 @@ let build;
 let closeWatch;
 let unlock;
 let cache;
+let launcherReady;
 let timer;
 let busy = false;
 let pending = true;
@@ -61,6 +62,8 @@ if (process.platform !== 'darwin') {
   try {
     unlock = lockNativeDev();
     configureDevelopmentSigning(log);
+    process.env.AI_DEV_SIGNING_VERIFIED = '1';
+    launcherReady = prepareDevLauncher({ packageRoot, signal: lifetime.signal });
     cache = await createDevCache({
       packageRoot,
       builtApp: builtAppPath,
@@ -141,7 +144,22 @@ async function rebuild() {
         );
       } else {
         cache.invalidate();
-        if (!(await command(process.execPath, ['scripts/build.mjs', '--configuration', 'Debug']))) {
+        log('Building Debug app with Xcode…');
+        const heartbeat = setInterval(() => {
+          if (!quitting)
+            log(`Still building Debug app (${Math.round((performance.now() - started) / 1000)}s)…`);
+        }, 15_000);
+        let builtOk;
+        try {
+          builtOk = await command(process.execPath, [
+            'scripts/build.mjs',
+            '--configuration',
+            'Debug',
+          ]);
+        } finally {
+          clearInterval(heartbeat);
+        }
+        if (!builtOk) {
           nativeDirty = true;
           uninstalledBuild = false;
           if (!quitting)
@@ -173,31 +191,18 @@ async function rebuild() {
       log('Another Debug app started during the build; leaving it unchanged.');
       return;
     }
-    log('Waiting for the renderer and authenticated development service…');
-    if (!(await waitForServices({ rendererOrigin, dataDir, signal: lifetime.signal }))) return;
-    if (quitting || pending) return;
-    if (cache.inputs() !== builtInputs) return schedule('native');
-    if (!uninstalledBuild) {
-      // Readiness can take a while; another build or installation may have changed the bundles.
-      const reusable = cache.lookup(builtInputs);
-      if (!reusable.built) return schedule('native');
-      uninstalledBuild = !reusable.installed;
-    }
-    await app?.stop();
-    app = undefined;
-    if (quitting || pending || foreignAppRunning()) return;
-    if (uninstalledBuild) {
-      const result = await installDevCopy({
-        builtApp: builtAppPath,
-        installedApp: appPath,
-        bundleId: BUNDLE_ID,
-        expectedIdentity: process.env.AI_CODE_SIGN_IDENTITY,
-        keychain: process.env.AI_SIGNING_KEYCHAIN,
-        signal: lifetime.signal,
-      });
+    const installOptions = {
+      builtApp: builtAppPath,
+      installedApp: appPath,
+      bundleId: BUNDLE_ID,
+      expectedIdentity: process.env.AI_CODE_SIGN_IDENTITY,
+      keychain: process.env.AI_SIGNING_KEYCHAIN,
+      signal: lifetime.signal,
+    };
+    const recordInstallResult = (result) => {
       if (!result.installed) {
         if (!quitting) log(`Debug app installation failed: ${result.problem}`);
-        return;
+        return false;
       }
       if (!result.widgetMetadata)
         log('Warning: the widget build is missing its App Intents metadata.');
@@ -208,14 +213,46 @@ async function rebuild() {
           log('Warning: macOS did not index the widget App Intents within 10s.');
         else if (indexed === null) log("Could not confirm widget indexing from linkd's log.");
       });
-      if (quitting || pending) return;
-      if (cache.inputs() !== builtInputs) return schedule('native');
+      return true;
+    };
+
+    log('Waiting for the renderer and authenticated development service…');
+    // When no app is open yet, install the refreshed Debug copy while services finish starting.
+    const installEarly = uninstalledBuild && !app;
+    const earlyInstall = installEarly ? installDevCopy(installOptions) : null;
+    const [servicesUp, earlyResult] = await Promise.all([
+      waitForServices({ rendererOrigin, dataDir, signal: lifetime.signal }),
+      earlyInstall ?? Promise.resolve(null),
+    ]);
+    if (!servicesUp || quitting || pending) return;
+    if (earlyResult) {
+      if (!recordInstallResult(earlyResult)) return;
+      const check = cache.reverify(builtInputs);
+      if (!check.inputsCurrent) return schedule('native');
       cache.recordInstall(builtInputs);
+      uninstalledBuild = false;
+    } else {
+      const check = cache.reverify(builtInputs);
+      if (!check.inputsCurrent || !check.built) return schedule('native');
+      if (!uninstalledBuild) uninstalledBuild = !check.installed;
+      await app?.stop();
+      app = undefined;
+      if (quitting || pending || foreignAppRunning()) return;
+      if (uninstalledBuild) {
+        const result = await installDevCopy(installOptions);
+        if (!recordInstallResult(result)) return;
+        if (quitting || pending) return;
+        if (!cache.reverify(builtInputs).inputsCurrent) return schedule('native');
+        cache.recordInstall(builtInputs);
+      }
     }
+    if (quitting || foreignAppRunning()) return;
+    const launcher = await launcherReady;
     if (quitting || foreignAppRunning()) return;
     app = startDevApp({
       appPath,
       bundleId: BUNDLE_ID,
+      launcher,
       environment: {
         AI_AGENT_DATA_DIR: dataDir,
         AI_RENDERER_DEV_ORIGIN: rendererOrigin.origin,

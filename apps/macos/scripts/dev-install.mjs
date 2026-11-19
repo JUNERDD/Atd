@@ -83,24 +83,36 @@ export async function installDevCopy({
     return { installed: false, indexed: false, widgetMetadata, problem: error.message };
   }
   const since = logTimestamp(new Date(Date.now() - 1000));
-  spawnSync(LSREGISTER, ['-u', builtApp], { stdio: 'ignore' });
+  await readLog(LSREGISTER, ['-u', builtApp], { signal }).catch(() => {});
   // WidgetKit and Finder keep the old copy's extension processes alive and keep using them after
   // the bundle is replaced; end them so the next request starts the new extensions.
-  for (const name of EXTENSIONS)
-    spawnSync('pkill', ['-f', `${path.join(installedApp, PLUGINS, name)}/`], { stdio: 'ignore' });
+  await Promise.all(
+    EXTENSIONS.map((name) =>
+      readLog('pkill', ['-f', `${path.join(installedApp, PLUGINS, name)}/`], { signal }).catch(
+        () => {},
+      ),
+    ),
+  );
+  if (signal?.aborted) return { installed: false, problem: 'Development session stopped.' };
   rmSync(installedApp, { recursive: true, force: true });
   mkdirSync(path.dirname(installedApp), { recursive: true });
-  const copy = spawnSync('ditto', [builtApp, installedApp], { stdio: 'inherit' });
-  const problem =
-    copy.error || copy.status !== 0
-      ? `the build could not be copied to ${installedApp}`
-      : placeExtensions(installedApp, identity, keychain);
+  let copied = true;
+  try {
+    await readLog('ditto', [builtApp, installedApp], { signal });
+  } catch {
+    copied = false;
+  }
+  const problem = !copied
+    ? signal?.aborted
+      ? 'Development session stopped.'
+      : `the build could not be copied to ${installedApp}`
+    : await placeExtensions(installedApp, identity, keychain, signal);
   if (problem) {
     // An unsigned or half-moved copy must not be found and registered later.
     rmSync(installedApp, { recursive: true, force: true });
     return { installed: false, indexed: false, widgetMetadata, problem };
   }
-  spawnSync(LSREGISTER, ['-f', '-R', '-trusted', installedApp], { stdio: 'ignore' });
+  await readLog(LSREGISTER, ['-f', '-R', '-trusted', installedApp], { signal }).catch(() => {});
   // App Intents indexing need not hold up the interactive app. The supervisor observes this promise.
   return {
     installed: true,
@@ -112,10 +124,10 @@ export async function installDevCopy({
 
 /**
  * Moves the staged extensions into `Contents/PlugIns`, gives the app and the extensions a new
- * build number, signs the extensions and then the app with `identity`, and checks the result.
- * Returns what failed, or null.
+ * build number, signs the extensions in parallel and then the app with `identity`, and checks the
+ * result. Returns what failed, or null.
  */
-function placeExtensions(app, identity, keychain) {
+async function placeExtensions(app, identity, keychain, signal) {
   const staging = path.join(app, STAGING);
   const missing = EXTENSIONS.filter((name) => !existsSync(path.join(staging, name)));
   if (missing.length > 0) return `the build lacks ${missing.join(', ')} in ${STAGING}`;
@@ -126,32 +138,50 @@ function placeExtensions(app, identity, keychain) {
   });
   rmSync(staging, { recursive: true, force: true });
   const build = String(Math.floor(Date.now() / 1000));
-  // The extensions first: the app's signature seals theirs.
-  for (const bundle of [...extensions, app]) {
+  const stampAndSign = async (bundle) => {
     const info = path.join(bundle, 'Contents/Info.plist');
-    const stamp = spawnSync('plutil', ['-replace', 'CFBundleVersion', '-string', build, info], {
+    try {
+      await readLog('plutil', ['-replace', 'CFBundleVersion', '-string', build, info], {
+        encoding: 'utf8',
+        signal,
+      });
+    } catch {
+      return `the build number of ${bundle} could not be set`;
+    }
+    try {
+      await readLog(
+        'codesign',
+        [
+          '--force',
+          '--sign',
+          identity,
+          ...(identity !== '-' && keychain ? ['--keychain', keychain] : []),
+          '--timestamp=none',
+          '--preserve-metadata=identifier,entitlements,requirements,flags,runtime',
+          bundle,
+        ],
+        { encoding: 'utf8', signal },
+      );
+    } catch (error) {
+      return `${bundle} could not be signed: ${String(error.stderr ?? error.message).trim()}`;
+    }
+    return null;
+  };
+  // Extensions first (in parallel): the app's signature seals theirs.
+  const extensionProblems = await Promise.all(extensions.map(stampAndSign));
+  const failedExtension = extensionProblems.find(Boolean);
+  if (failedExtension) return failedExtension;
+  const appProblem = await stampAndSign(app);
+  if (appProblem) return appProblem;
+  try {
+    await readLog('codesign', ['--verify', '--deep', '--strict', app], {
       encoding: 'utf8',
+      signal,
     });
-    if (stamp.status !== 0) return `the build number of ${bundle} could not be set`;
-    const sign = spawnSync(
-      'codesign',
-      [
-        '--force',
-        '--sign',
-        identity,
-        ...(identity !== '-' && keychain ? ['--keychain', keychain] : []),
-        '--timestamp=none',
-        '--preserve-metadata=identifier,entitlements,requirements,flags,runtime',
-        bundle,
-      ],
-      { encoding: 'utf8' },
-    );
-    if (sign.status !== 0) return `${bundle} could not be signed: ${sign.stderr.trim()}`;
+    return null;
+  } catch (error) {
+    return `the signed copy does not verify: ${String(error.stderr ?? error.message).trim()}`;
   }
-  const verify = spawnSync('codesign', ['--verify', '--deep', '--strict', app], {
-    encoding: 'utf8',
-  });
-  return verify.status === 0 ? null : `the signed copy does not verify: ${verify.stderr.trim()}`;
 }
 
 /**

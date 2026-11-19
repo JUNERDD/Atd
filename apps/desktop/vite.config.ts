@@ -1,10 +1,6 @@
 import { defineConfig } from 'vite';
-import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
-import {
-  componentInspector,
-  componentInspectorBabelPlugin,
-} from './plugins/component-inspector.js';
+import { componentInspector } from './plugins/component-inspector.js';
 import { reactPlugin, workspaceResolve } from './vite.shared.js';
 
 /**
@@ -21,32 +17,20 @@ if (!Number.isInteger(devPort) || devPort < 1 || devPort > 65535)
  */
 export default defineConfig(({ command }) => ({
   base: './',
-  plugins: [
-    ...(command === 'serve'
-      ? [
-          // Tags JSX with source locations for the component inspector. Babel runs before the
-          // React plugin because the compiler transform rewrites JSX away.
-          babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
-          componentInspector(),
-        ]
-      : []),
-    reactPlugin(),
-    tailwindcss(),
-  ],
+  plugins: [...(command === 'serve' ? [componentInspector()] : []), reactPlugin(), tailwindcss()],
   resolve: workspaceResolve,
   server: {
     host: '127.0.0.1',
     port: devPort,
     strictPort: true,
     warmup: {
+      // Warm only the panel's boot graph so cold dev startup does not contend with Settings modules.
       clientFiles: [
         './index.html',
         './src/main.tsx',
         './src/native-host/index.ts',
         './src/App.tsx',
         './src/components/composer.tsx',
-        './src/features/settings/settings-window.tsx',
-        './src/features/settings/general-settings.tsx',
       ],
     },
     // The macOS shell's page is `ai-app://renderer`, which names no port, so the Vite client must

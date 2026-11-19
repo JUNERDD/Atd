@@ -15,8 +15,26 @@ nonisolated enum RelaySession {
     configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
     configuration.connectionProxyDictionary = [:]
     configuration.waitsForConnectivity = false
+    configuration.httpMaximumConnectionsPerHost = 16
     // Idle time between bytes, not a total: some service calls wait on a model or a tool.
     configuration.timeoutIntervalForRequest = 300
+    return URLSession(configuration: configuration, delegate: nil, delegateQueue: .main)
+  }()
+
+  /// Dedicated loopback session for Vite dev-server module fetches: keeps unbundled ESM
+  /// waterfalls off ``shared`` (so `/v1` startup calls never queue behind assets) and raises the
+  /// per-host connection limit above Foundation's default of 6.
+  static let devAssets: URLSession = {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.httpCookieStorage = nil
+    configuration.httpShouldSetCookies = false
+    configuration.urlCache = nil
+    configuration.urlCredentialStorage = nil
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.connectionProxyDictionary = [:]
+    configuration.waitsForConnectivity = false
+    configuration.httpMaximumConnectionsPerHost = 64
+    configuration.timeoutIntervalForRequest = 30
     return URLSession(configuration: configuration, delegate: nil, delegateQueue: .main)
   }()
 
