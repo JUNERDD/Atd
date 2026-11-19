@@ -10,13 +10,15 @@ import {
 } from '../../i18n/routes';
 import { footerCopy } from './copy';
 import { FooterDirectory } from './directory';
+import { FooterGlow } from './footer-glow';
 import { ThemeSwitch } from './theme-switch';
 import './footer.css';
 
 /**
  * The last plate: the name in dot figures paired with language links on the top row, the
  * directory of every page of the site under them, and the small print plus theme switcher below.
- * As it arrives the name decodes and the rest fades up.
+ * As it arrives the name decodes and the rest fades up, and the app's flowing light rises behind
+ * it from the bottom edge (`FooterGlow`), so every page ends on the same afterglow.
  */
 export function SiteFooter({ page }: { page: Page }) {
   const t = useCopy(footerCopy);
@@ -26,6 +28,7 @@ export function SiteFooter({ page }: { page: Page }) {
   return (
     <footer className="footer plate">
       <span className="footer__seam" aria-hidden="true" />
+      <FooterGlow />
       <div className="footer__inner container" data-reveal-group="">
         <p className="footer__word readout" aria-hidden="true" data-reveal="decode">
           {site.name}

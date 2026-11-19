@@ -1,8 +1,17 @@
-/* The last plate: the name and languages on the top row once there is room. */
+/* The last plate: the name and languages on the top row once there is room. Under the small print
+   the plate keeps a floor where the afterglow (footer-glow.css) is brightest, so the text stands in
+   the light's thinning tail. */
 .footer {
-  padding-block: 72px max(48px, env(safe-area-inset-bottom));
+  isolation: isolate;
+  padding-block: 72px max(120px, env(safe-area-inset-bottom));
   font-size: var(--fs-small);
   color: var(--fg-2);
+}
+
+/* The content stands over the afterglow. */
+.footer__inner {
+  position: relative;
+  z-index: 1;
 }
 
 .footer__seam {

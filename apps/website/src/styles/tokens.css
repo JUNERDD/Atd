@@ -43,6 +43,12 @@
   --led-glow: light-dark(none, 0 0 8px rgb(255 255 255 / 0.5));
   --led-nav-glow: light-dark(none, 0 0 6px rgb(255 255 255 / 0.6));
   --led-soft-glow: light-dark(none, 0 0 10px rgb(255 255 255 / 0.4));
+  /* The footer's afterglow: the plate between its LED holes (opaque in light mode, letting a little
+     of the light through in dark mode), the radius of each hole, and the light's peak, which is the
+     hero backdrop's brightness so the page closes on the material it opens with. */
+  --glow-veil: light-dark(#ffffff, rgb(0 0 0 / 0.7));
+  --glow-dot: 1.5px;
+  --glow-level: var(--ascii-foreground-mix);
   --ascii-foreground-mix: 34%;
   --ascii-glow-near: 22%;
   --ascii-glow-far: 12%;

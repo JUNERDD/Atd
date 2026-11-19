@@ -86,6 +86,22 @@ The shared content column grows to 1680 px on wide screens, on the 24 px grid; t
 showcase, feature display, download section and footer follow the same edges. The download wide
 review is `4259:15568`, and the footer wide review is `4259:16030`. Blog posts retain their
 1200 px reading layout within the wider site.
+Every page with a footer (all but the diagnostic downloads) ends on the app panel's flowing light
+(`src/sections/footer/footer-glow.tsx`): the panel's drifting light field rising from the bottom
+edge behind the footer, monochrome and seen only through the plate's LED holes (white dots in dark
+mode, black in light mode), over a floor of 120 px under the small print. The dots stay dim: the
+light peaks at the hero backdrop's brightness (`--glow-level`, which follows
+`--ascii-foreground-mix`), so the page closes on the material it opens with. The light powers on as
+the hero's display does rather than with the panel's bloom: once a quarter of the band is in view,
+it comes up from the bottom edge patch by patch, each patch catching a little bright as it lights,
+over about a second and a half; then it flows at 30 frames a second, and stops while it is off
+screen or the tab is hidden. Reduced motion shows it still, Increase Contrast at half its level,
+and forced colors and print not at all. Its runner loads only near the footer and draws a
+WebGL2 buffer of one texel per 16 CSS px (a few kilobytes); the dots are a static perforated sheet
+over it, so a frame costs a draw of one or two thousand texels and no repaint. In the design file,
+`Website / Site footer` carries the floor and an `Afterglow` band whose masks are a still frame of
+the shader, lit in `dot/lit` at `glow/level`, with `glow/veil` of that light between the holes; the
+wide review `4259:16030` and `Footer · Afterglow · Review` (`4388:22220`) show it.
 The features plate is one LED display set into the plate, a channel per capability (models,
 computer use, extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
 capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
