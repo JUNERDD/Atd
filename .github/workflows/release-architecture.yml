@@ -44,9 +44,9 @@ env:
 
 jobs:
   build:
-    name: Build and notarize the app
+    name: Build and sign the app
     runs-on: ${{ inputs.arch == 'arm64' && 'macos-26' || 'macos-26-intel' }}
-    timeout-minutes: 100
+    timeout-minutes: 70
     outputs:
       artifact-id: ${{ steps.app.outputs.artifact-id }}
     env:
@@ -80,16 +80,11 @@ jobs:
           cargo --version
       - run: pnpm install --frozen-lockfile
       # Separate secret names leave legacy branches and installed users' EdDSA trust intact.
-      - name: Import Developer ID and notarization credentials
+      - name: Import Developer ID credentials
         env:
           DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
           DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
-          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
-        run: |
-          args=()
-          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
-          node apps/macos/scripts/signing/ci.mjs "${args[@]}"
+        run: node apps/macos/scripts/signing/ci.mjs --skip-notarize
       # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
       # add-on lock it embeds names this version's GitHub release assets.
       - name: Bundle the service, the renderer and the add-ons
@@ -143,29 +138,17 @@ jobs:
           cmp "$lock" tmp/addons-release/addons.lock.json
           "$node" apps/macos/scripts/verify-app.mjs addons --node "$node" --lock "$lock" \
             --dir tmp/addons-release --arch "$RELEASE_ARCH"
-      - name: Notarize and staple the app
-        if: inputs.notarize
-        timeout-minutes: 40
-        run: |
-          node apps/macos/scripts/signing/distribute.mjs --app-only --app "$APP" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/app-notarization.log"
       - name: Remove temporary signing credentials
         if: always()
         run: node apps/macos/scripts/signing/ci.mjs --cleanup
-      - name: Archive the verified app and add-ons
-        run: |
-          handoff="$RUNNER_TEMP/handoff"
-          mkdir -p "$handoff"
-          # ditto stores Unix modes, symlinks and extended attributes inside the ZIP.
-          ditto -c -k --keepParent --sequesterRsrc "$APP" "$handoff/Atd.app.zip"
-          cp tmp/addons-release/{addons.lock.json,Atd-addon-*.tar.gz} "$handoff/"
-          echo "$GITHUB_RUN_ID $GITHUB_SHA $RELEASE_ARCH $VERSION $BUILD_VERSION" > "$handoff/source"
-          (cd "$handoff" && shasum -a 256 Atd.app.zip addons.lock.json Atd-addon-*.tar.gz > SHA256SUMS)
-      - name: Upload the verified app and add-ons
+      - name: Archive the signed app and add-ons
+        run: bash apps/macos/scripts/release/app-handoff.sh archive "$APP" tmp/addons-release "$RUNNER_TEMP/checkpoint"
+      - name: Upload the signed app and add-ons
         id: app
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: app-${{ inputs.arch }}
-          path: ${{ runner.temp }}/handoff/
+          name: signed-app-${{ inputs.arch }}
+          path: ${{ runner.temp }}/checkpoint/
           overwrite: true
           if-no-files-found: error
           compression-level: 0
@@ -180,9 +163,66 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  notarize:
+    name: Notarize the app
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 55
+    outputs:
+      artifact-id: ${{ steps.app.outputs.artifact-id }}
+    env:
+      DEVELOPER_ID_SHA1: ${{ vars.DEVELOPER_ID_SHA1 }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Download the signed app and add-ons
+        uses: actions/download-artifact@v8.0.0
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/signed
+      - name: Verify and restore the signed app handoff
+        run: bash apps/macos/scripts/release/app-handoff.sh restore "$RUNNER_TEMP/signed" "$RUNNER_TEMP/restored"
+      - name: Import Developer ID and notarization credentials
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
+        run: |
+          args=()
+          if [ "${{ inputs.notarize }}" != "true" ]; then args+=(--skip-notarize); fi
+          node apps/macos/scripts/signing/ci.mjs "${args[@]}"
+      - name: Notarize and staple the app
+        if: inputs.notarize
+        timeout-minutes: 40
+        run: |
+          node apps/macos/scripts/signing/notarize.mjs "$RUNNER_TEMP/signed/Atd.app.zip" "$APP"
+          node apps/macos/scripts/signing/check.mjs "$APP" --notarized
+      - name: Remove temporary signing credentials
+        if: always()
+        run: node apps/macos/scripts/signing/ci.mjs --cleanup
+      - name: Archive the verified app and add-ons
+        run: bash apps/macos/scripts/release/app-handoff.sh archive "$APP" "$RUNNER_TEMP/signed" "$RUNNER_TEMP/checkpoint"
+      - name: Upload the verified app and add-ons
+        id: app
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: app-${{ inputs.arch }}
+          path: ${{ runner.temp }}/checkpoint/
+          overwrite: true
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
   package:
     name: Package and notarize the dmg
-    needs: build
+    needs: notarize
     # DMG layout and signatures use the architecture of the archived app. No app code runs here.
     runs-on: macos-26
     timeout-minutes: 90
@@ -201,21 +241,11 @@ jobs:
       - name: Download the verified app and add-ons
         uses: actions/download-artifact@v8.0.0
         with:
-          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          artifact-ids: ${{ needs.notarize.outputs.artifact-id }}
           merge-multiple: true
           path: ${{ runner.temp }}/handoff
-      - name: Verify and restore the build handoff
-        run: |
-          handoff="$RUNNER_TEMP/handoff"
-          [ "$(cat "$handoff/source")" = "$GITHUB_RUN_ID $GITHUB_SHA $RELEASE_ARCH $VERSION $BUILD_VERSION" ]
-          (cd "$handoff" && shasum -a 256 -c SHA256SUMS)
-          ditto -x -k "$handoff/Atd.app.zip" "$RUNNER_TEMP/restored"
-          app="$RUNNER_TEMP/restored/Atd.app"
-          [ "$(lipo -archs "$app/Contents/MacOS/Atd")" = "$RELEASE_MACHINE" ]
-          [ "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "$VERSION" ]
-          [ "$(plutil -extract CFBundleVersion raw "$app/Contents/Info.plist")" = "$BUILD_VERSION" ]
-          cmp "$app/Contents/Resources/agent-service/addons.lock.json" "$handoff/addons.lock.json"
-          echo "APP=$app" >> "$GITHUB_ENV"
+      - name: Verify and restore the notarized app handoff
+        run: bash apps/macos/scripts/release/app-handoff.sh restore "$RUNNER_TEMP/handoff" "$RUNNER_TEMP/restored"
       - name: Import Developer ID and notarization credentials
         env:
           DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}

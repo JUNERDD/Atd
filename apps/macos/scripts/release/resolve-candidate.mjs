@@ -196,17 +196,23 @@ function resolveCandidate() {
   for (const arch of ['arm64', 'x64']) {
     const lane = `${source.prefix}${arch} / `;
     checks.push(
-      check(`${lane}Build and notarize the app`, [
+      check(`${lane}Build and sign the app`, [
         'Build the Release app',
         'Check the built app',
         "Check the add-ons against the app's lock",
+        'Archive the signed app and add-ons',
+        'Upload the signed app and add-ons',
+      ]),
+      check(`${lane}Notarize the app`, [
+        'Download the signed app and add-ons',
+        'Verify and restore the signed app handoff',
         'Notarize and staple the app',
         'Archive the verified app and add-ons',
         'Upload the verified app and add-ons',
       ]),
       check(`${lane}Package and notarize the dmg`, [
         'Download the verified app and add-ons',
-        'Verify and restore the build handoff',
+        'Verify and restore the notarized app handoff',
         'Build, sign and notarize the dmg',
         'Upload the dmg and add-ons',
       ]),
