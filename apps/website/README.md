@@ -214,6 +214,19 @@ covers model credential recovery after certificate updates, with Chinese and Eng
 side over the same dusk mountain ridge backdrop and handwritten notes, exported at 1440 × 900 (1x) as
 WebP at quality 85.
 
+The 0.12.0 images are in `project/4395:320965`, in the
+`W · Website · Blog · 0.12.0 images (2026-11-19)` section (`4395:320966`–`4395:320971`). The three
+scenes show the alias list and composer switcher, the same annotated selection before and after
+pinning, and the support bundle preview open inside Diagnostics. The settings,
+switcher and preview layouts follow the production React components rendered with sample data in
+each language. Windows, popovers, dialogs and toolbars use one translucent dark fill over a
+blurred backdrop. The capture and the pin share a crop of the same frozen desktop, including
+the wallpaper visible through the alias window.
+Its toolbars use artwork rendered from the AppKit controls at 3×, placed at their native sizes.
+The Chinese and English editions use Vincent Guth's _Iceland lake Northern Lights_ backdrop
+([Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Iceland_lake_Northern_Lights_(Unsplash).jpg>),
+CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as WebP at quality 85.
+
 ### Design
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`
