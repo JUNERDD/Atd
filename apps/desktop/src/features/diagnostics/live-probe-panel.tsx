@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Activity, Play, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { LiveProbeKind } from '@atd/agent-contracts';
@@ -43,59 +43,81 @@ export function LiveProbePanel({
     {},
   );
   const activeKindRef = useRef<LiveProbeKind | null>(null);
+  const activeProbeIdRef = useRef<string | null>(null);
+  const requestSeqRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const sectionActiveRef = useRef(sectionActive);
+  const mountedRef = useRef(true);
+  const onRequestedProbeHandledRef = useRef(onRequestedProbeHandled);
+
+  useLayoutEffect(() => {
+    sectionActiveRef.current = sectionActive;
+  }, [sectionActive]);
+
+  useLayoutEffect(() => {
+    onRequestedProbeHandledRef.current = onRequestedProbeHandled;
+  }, [onRequestedProbeHandled]);
 
   const clearActive = useCallback(() => {
     activeKindRef.current = null;
+    activeProbeIdRef.current = null;
     setActiveKind(null);
     setRemainingSeconds(0);
   }, []);
 
   const stopProbe = useCallback(async () => {
-    if (!activeKindRef.current) return;
+    if (activeKindRef.current === null && !inFlightRef.current) return;
+    requestSeqRef.current += 1;
+    inFlightRef.current = false;
     clearActive();
     await window.desktop?.diagnostics?.stopLiveProbe().catch(() => undefined);
   }, [clearActive]);
 
-  const startProbe = useCallback(async (kind: LiveProbeKind) => {
+  const startProbe = useCallback((kind: LiveProbeKind, onSettled?: () => void) => {
     const diagnostics = window.desktop?.diagnostics;
-    if (!diagnostics) return;
-    try {
-      const started = await diagnostics.startLiveProbe(kind);
-      activeKindRef.current = kind;
-      setActiveKind(kind);
-      setRemainingSeconds(Math.max(1, Math.ceil(started.durationMs / 1000)));
-    } catch (error) {
-      showErrorToast(error);
+    if (!diagnostics || !mountedRef.current || !sectionActiveRef.current) {
+      onSettled?.();
+      return Promise.resolve();
     }
+    const seq = ++requestSeqRef.current;
+    inFlightRef.current = true;
+    return diagnostics
+      .startLiveProbe(kind)
+      .then((started) => {
+        if (!mountedRef.current || !sectionActiveRef.current || requestSeqRef.current !== seq) {
+          void diagnostics.stopLiveProbe().catch(() => undefined);
+          return;
+        }
+        activeKindRef.current = kind;
+        activeProbeIdRef.current = started.probeId;
+        setActiveKind(kind);
+        setRemainingSeconds(Math.max(1, Math.ceil(started.durationMs / 1000)));
+      })
+      .catch((error: unknown) => {
+        if (mountedRef.current && sectionActiveRef.current && requestSeqRef.current === seq) {
+          showErrorToast(error);
+        }
+      })
+      .finally(() => {
+        if (requestSeqRef.current === seq) {
+          inFlightRef.current = false;
+        }
+        onSettled?.();
+      });
   }, []);
 
   useEffect(() => {
     if (!requestedProbe) return;
-    let active = true;
-    const diagnostics = window.desktop?.diagnostics;
-    if (diagnostics) {
-      void diagnostics
-        .startLiveProbe(requestedProbe)
-        .then((started) => {
-          if (!active) return;
-          activeKindRef.current = requestedProbe;
-          setActiveKind(requestedProbe);
-          setRemainingSeconds(Math.max(1, Math.ceil(started.durationMs / 1000)));
-        })
-        .catch(showErrorToast)
-        .finally(() => {
-          if (active) onRequestedProbeHandled?.();
-        });
-    }
-    return () => {
-      active = false;
-    };
-  }, [requestedProbe, onRequestedProbeHandled]);
+    void startProbe(requestedProbe, () => onRequestedProbeHandledRef.current?.());
+  }, [requestedProbe, startProbe]);
 
   useEffect(() => {
     const diagnostics = window.desktop?.diagnostics;
     if (!diagnostics) return;
     return diagnostics.onLiveProbeEvent((event) => {
+      if (activeProbeIdRef.current !== null && event.probeId !== activeProbeIdRef.current) {
+        return;
+      }
       setLatestEvents((prev) => ({ ...prev, [event.kind]: event }));
       if (event.endedReason === 'running') {
         setRemainingSeconds(Math.max(1, Math.ceil(event.remainingMs / 1000)));
@@ -124,21 +146,19 @@ export function LiveProbePanel({
   }
 
   useEffect(() => {
-    if (!sectionActive && activeKindRef.current) {
-      activeKindRef.current = null;
-      void window.desktop?.diagnostics?.stopLiveProbe().catch(() => undefined);
+    if (!sectionActive) {
+      void stopProbe();
     }
-  }, [sectionActive]);
+  }, [sectionActive, stopProbe]);
 
-  // Also disarm on component unmount.
+  // Also disarm on component unmount (and <Activity mode="hidden"> cleanup).
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      if (activeKindRef.current) {
-        activeKindRef.current = null;
-        void window.desktop?.diagnostics?.stopLiveProbe().catch(() => undefined);
-      }
+      mountedRef.current = false;
+      void stopProbe();
     };
-  }, []);
+  }, [stopProbe]);
 
   return (
     <section

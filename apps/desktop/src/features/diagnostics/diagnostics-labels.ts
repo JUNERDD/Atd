@@ -146,6 +146,7 @@ const REASON_KEYS = {
   provider_auth_failed: 'reasons.provider_auth_failed',
   provider_tls_or_proxy_failed: 'reasons.provider_tls_or_proxy_failed',
   local_network_permission_denied: 'reasons.local_network_permission_denied',
+  doctor_budget_exceeded: 'reasons.doctor_budget_exceeded',
 } as const;
 
 const REMEDIATION_KEYS = {

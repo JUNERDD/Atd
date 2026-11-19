@@ -143,7 +143,8 @@
     "network_unreachable": "无法访问外部更新镜像。",
     "provider_auth_failed": "部分模型提供商接口返回鉴权失败。",
     "provider_tls_or_proxy_failed": "模型提供商连接因 TLS 或代理配置失败。",
-    "local_network_permission_denied": "macOS 拒绝了对本地模型端口的局域网访问权限。"
+    "local_network_permission_denied": "macOS 拒绝了对本地模型端口的局域网访问权限。",
+    "doctor_budget_exceeded": "诊断检查超时未能完成。"
   },
   "remediation": {
     "move_bundle_to_applications": "请将 Atd.app 移至 /Applications 或 ~/Applications 并重新打开。",

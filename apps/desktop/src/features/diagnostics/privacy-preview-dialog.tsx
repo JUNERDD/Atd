@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@atd/ui/components/badge';
@@ -51,16 +51,32 @@ export function PrivacyPreviewDialog({
   const [failedCrashes, setFailedCrashes] = useState<boolean | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const previewSeqRef = useRef(0);
+  const [wasOpen, setWasOpen] = useState(open);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) {
+      setPreviewState(null);
+      setSelectedPath(null);
+      setIncludeCrashSummaries(false);
+      setFailedCrashes(null);
+    }
+  }
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      previewSeqRef.current += 1;
+      return;
+    }
     const bridge = window.desktop?.diagnostics;
     if (!bridge) return;
+    const seq = ++previewSeqRef.current;
     let active = true;
     void bridge
       .previewBundle(includeCrashSummaries)
       .then((next) => {
-        if (!active) return;
+        if (!active || previewSeqRef.current !== seq) return;
         setFailedCrashes(null);
         setPreviewState({ includeCrashes: includeCrashSummaries, result: next });
         setSelectedPath((current) =>
@@ -70,12 +86,13 @@ export function PrivacyPreviewDialog({
         );
       })
       .catch((error: unknown) => {
-        if (!active) return;
+        if (!active || previewSeqRef.current !== seq) return;
         setFailedCrashes(includeCrashSummaries);
         showErrorToast(error);
       });
     return () => {
       active = false;
+      previewSeqRef.current += 1;
     };
   }, [open, includeCrashSummaries]);
 
@@ -220,7 +237,13 @@ export function PrivacyPreviewDialog({
           </DialogClose>
           <Button
             type="button"
-            disabled={saving || loading || !window.desktop?.diagnostics}
+            disabled={
+              saving ||
+              loading ||
+              !preview ||
+              previewState?.includeCrashes !== includeCrashSummaries ||
+              !window.desktop?.diagnostics
+            }
             onClick={() => void handleSaveArchive()}
           >
             {saving ? t('preview.saving') : t('preview.saveArchive')}

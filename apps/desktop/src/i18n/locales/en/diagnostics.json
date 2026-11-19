@@ -143,7 +143,8 @@
     "network_unreachable": "External update mirror could not be reached.",
     "provider_auth_failed": "One or more provider endpoints rejected authentication.",
     "provider_tls_or_proxy_failed": "Provider endpoint connection failed due to TLS or proxy settings.",
-    "local_network_permission_denied": "Local network access to a local model endpoint was denied by macOS."
+    "local_network_permission_denied": "Local network access to a local model endpoint was denied by macOS.",
+    "doctor_budget_exceeded": "Diagnostic check timed out before completing."
   },
   "remediation": {
     "move_bundle_to_applications": "Move Atd.app into /Applications or ~/Applications and relaunch it from there.",

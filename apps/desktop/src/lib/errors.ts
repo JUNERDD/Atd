@@ -19,6 +19,20 @@ const DIAGNOSABLE_CODES = new Set([
   'desktop_unavailable',
 ]);
 
+const DIAGNOSABLE_DIRECT_TOKENS = [
+  'native shell',
+  'bridge',
+  'request failed with status 500',
+  'request failed with status 503',
+] as const;
+
+const DIAGNOSABLE_SERVICE_SUFFIXES = [
+  'disconnected',
+  'not available',
+  'not running',
+  'unavailable',
+] as const;
+
 /** Returns true when an error indicates service disconnection, 500/503 failure, or bridge refusal. */
 export function isDiagnosableError(error: unknown): boolean {
   if (typeof error === 'object' && error !== null) {
@@ -27,9 +41,13 @@ export function isDiagnosableError(error: unknown): boolean {
     if (record.status === 500 || record.status === 503) return true;
   }
   const text = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
-  return /service.*(disconnected|not available|not running|unavailable)|native shell|bridge|request failed with status 50[03]/i.test(
-    text,
-  );
+  if (!text) return false;
+  const sample = text.slice(0, 2048).toLowerCase();
+  if (DIAGNOSABLE_DIRECT_TOKENS.some((token) => sample.includes(token))) return true;
+  const serviceIdx = sample.indexOf('service');
+  if (serviceIdx === -1) return false;
+  const afterService = serviceIdx + 'service'.length;
+  return DIAGNOSABLE_SERVICE_SUFFIXES.some((suffix) => sample.includes(suffix, afterService));
 }
 
 /** Records a detached `<= 320`-char normalized breadcrumb before toast truncation runs. */

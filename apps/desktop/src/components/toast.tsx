@@ -1,7 +1,9 @@
+import { useContext } from 'react';
 import { toast, Toaster, type Toast } from 'react-hot-toast';
 import { CircleAlert, Info, TriangleAlert, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
+import { SettingsNavigationContext } from '../features/settings/settings-navigation';
 import { IconButton } from './icon-button';
 import './toast.css';
 
@@ -25,6 +27,7 @@ export function ToastCard({
   diagnose?: boolean;
 }) {
   const { t } = useTranslation('common');
+  const navigateSettings = useContext(SettingsNavigationContext);
   const ToastIcon = toastIcons[kind];
   return (
     <output
@@ -48,7 +51,11 @@ export function ToastCard({
           size="xs"
           onClick={() => {
             toast.dismiss(item.id);
-            void window.desktop?.settings?.openSection('diagnostics').catch(() => undefined);
+            if (navigateSettings) {
+              navigateSettings('diagnostics');
+            } else {
+              void window.desktop?.settings?.openSection('diagnostics').catch(() => undefined);
+            }
           }}
         >
           {t('toast.openDiagnostics')}

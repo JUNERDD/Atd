@@ -57,14 +57,69 @@ function normalizeShellCheck(check: ShellDoctorCheck): UnifiedDoctorCheck {
   };
 }
 
+const STATUS_SEVERITY: Record<DoctorStatus, number> = {
+  fail: 3,
+  warn: 2,
+  pass: 1,
+  skipped: 0,
+};
+
+function mergeCheckMetrics(
+  existing: ReadonlyArray<{ key: string; value: string }>,
+  incoming: ReadonlyArray<{ key: string; value: string }>,
+): ReadonlyArray<{ key: string; value: string }> {
+  const seen = new Set(existing.map((metric) => metric.key));
+  const merged = [...existing];
+  for (const metric of incoming) {
+    if (!seen.has(metric.key)) {
+      seen.add(metric.key);
+      merged.push(metric);
+    }
+  }
+  return merged;
+}
+
+function reconcileDoctorChecks(
+  existing: UnifiedDoctorCheck,
+  incoming: UnifiedDoctorCheck,
+): UnifiedDoctorCheck {
+  const existingRank = STATUS_SEVERITY[existing.status];
+  const incomingRank = STATUS_SEVERITY[incoming.status];
+  let winner: UnifiedDoctorCheck;
+  if (incomingRank > existingRank) {
+    winner = incoming;
+  } else if (existingRank > incomingRank) {
+    winner = existing;
+  } else {
+    winner = !existing.remediation && incoming.remediation ? incoming : existing;
+  }
+  return {
+    id: existing.id,
+    layer: winner.layer,
+    status: winner.status,
+    reasonCode: winner.reasonCode,
+    durationMs: Math.max(existing.durationMs, incoming.durationMs),
+    metrics: mergeCheckMetrics(existing.metrics, incoming.metrics),
+    ...(winner.remediation ? { remediation: winner.remediation } : {}),
+  };
+}
+
 /** Merges Swift Shell checks and Node Service checks in canonical layer order. */
 export function mergeDoctorChecks(
   shellChecks: readonly ShellDoctorCheck[],
   serviceChecks: readonly DoctorCheckResult[],
 ): UnifiedDoctorCheck[] {
   const byId = new Map<string, UnifiedDoctorCheck>();
-  for (const check of shellChecks) byId.set(check.id, normalizeShellCheck(check));
-  for (const check of serviceChecks) byId.set(check.id, normalizeServiceCheck(check));
+  for (const check of shellChecks) {
+    const normalized = normalizeShellCheck(check);
+    const existing = byId.get(normalized.id);
+    byId.set(normalized.id, existing ? reconcileDoctorChecks(existing, normalized) : normalized);
+  }
+  for (const check of serviceChecks) {
+    const normalized = normalizeServiceCheck(check);
+    const existing = byId.get(normalized.id);
+    byId.set(normalized.id, existing ? reconcileDoctorChecks(existing, normalized) : normalized);
+  }
   return [...byId.values()];
 }
 
@@ -91,11 +146,12 @@ export function useDiagnosticsDoctor(includeConnectivity: boolean) {
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [shellError, setShellError] = useState<string | null>(null);
   const runSeq = useRef(0);
-  const initialized = useRef(false);
+  const lastRunConnectivity = useRef<boolean | null>(null);
 
   const runChecks = useCallback(async (withConnectivity: boolean) => {
     const bridge = window.desktop?.diagnostics;
     if (!bridge) return;
+    lastRunConnectivity.current = withConnectivity;
     const seq = ++runSeq.current;
     setRunning(true);
     setShellError(null);
@@ -110,6 +166,7 @@ export function useDiagnosticsDoctor(includeConnectivity: boolean) {
     if (shellResult.status === 'fulfilled') {
       setShellReport(shellResult.value);
     } else {
+      setShellReport(null);
       setShellError(messageOf(shellResult.reason));
     }
     if (serviceResult.status === 'fulfilled') {
@@ -122,8 +179,8 @@ export function useDiagnosticsDoctor(includeConnectivity: boolean) {
   }, []);
 
   useEffect(() => {
-    if (!sectionActive || initialized.current) return;
-    initialized.current = true;
+    if (!sectionActive || lastRunConnectivity.current === includeConnectivity) return;
+    lastRunConnectivity.current = includeConnectivity;
     void runChecks(includeConnectivity);
   }, [sectionActive, includeConnectivity, runChecks]);
 
