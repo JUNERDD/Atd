@@ -9,12 +9,14 @@ import {
   type Page,
 } from '../../i18n/routes';
 import { footerCopy } from './copy';
+import { FooterDirectory } from './directory';
 import { ThemeSwitch } from './theme-switch';
 import './footer.css';
 
 /**
- * The last plate: the name in dot figures paired with language links on the top row, and the
- * small print plus theme switcher below. As it arrives the name decodes and the rest fades up.
+ * The last plate: the name in dot figures paired with language links on the top row, the
+ * directory of every page of the site under them, and the small print plus theme switcher below.
+ * As it arrives the name decodes and the rest fades up.
  */
 export function SiteFooter({ page }: { page: Page }) {
   const t = useCopy(footerCopy);
@@ -46,6 +48,7 @@ export function SiteFooter({ page }: { page: Page }) {
             ))}
           </ul>
         </nav>
+        <FooterDirectory page={page} labels={t.directory} />
         <div className="footer__bottom" data-reveal="fade">
           <p className="footer__note legend">
             © {year} {site.author}. {t.note}

@@ -1,0 +1,47 @@
+/* Questions and answers in a reading column: each question a heading over its answer, the pairs
+   set between hairlines. The answer reads at the posts' text size (blog.css `.post__text`). */
+.qa {
+  display: grid;
+  inline-size: 100%;
+}
+
+.qa__item {
+  display: grid;
+  gap: 10px;
+  padding-block: 28px;
+}
+
+.qa__item:first-child {
+  padding-block-start: 0;
+}
+
+.qa__item:last-child {
+  padding-block-end: 0;
+}
+
+.qa__item + .qa__item {
+  border-block-start: 1px solid var(--line-1);
+}
+
+.qa__question {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 650;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.qa__answer {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  line-height: 1.6;
+  color: var(--fg-2);
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+/* PingFang's heaviest weight is semibold; asking for more would fall back to a synthetic bold. */
+:lang(zh) .qa__question {
+  font-weight: 600;
+}

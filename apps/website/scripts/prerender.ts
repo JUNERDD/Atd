@@ -9,7 +9,8 @@ import type * as ServerEntry from '../src/entry-server.tsx';
 import { feedPath } from '../src/head.ts';
 import { LANGS } from '../src/i18n/routes.ts';
 import { fetchGitHubStars, GITHUB_STARS_FALLBACK } from '../src/lib/github-stars.ts';
-import { buildLlmsFullTxt, buildLlmsTxt, buildRssFeedXml, buildSitemapXml } from './seo-outputs.ts';
+import { buildLlmsFullTxt, buildLlmsTxt } from './llms-outputs.ts';
+import { buildRobotsTxt, buildRssFeedXml, buildSitemapXml } from './seo-outputs.ts';
 
 type Entry = typeof ServerEntry;
 
@@ -89,10 +90,7 @@ console.log('prerendered en → dist/404.html');
 
 const indexedRoutes = entry.routes.filter((route) => route.indexable);
 await writeFile(new URL('sitemap.xml', dist), buildSitemapXml(origin, indexedRoutes, entry.posts));
-await writeFile(
-  new URL('robots.txt', dist),
-  `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`,
-);
+await writeFile(new URL('robots.txt', dist), buildRobotsTxt(origin));
 for (const lang of LANGS) {
   const target = feedPath(lang).slice(1);
   await mkdir(new URL(target.includes('/') ? `${lang}/` : './', dist), { recursive: true });

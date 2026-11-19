@@ -2,10 +2,19 @@
 export const LANGS = ['en', 'zh'] as const;
 
 /**
- * A page of the site, which is also its path below the language's root: the home page, the blog's
- * list of posts, one post (`blog/<slug>`), diagnostic downloads, or a missing route.
+ * A page of the site, which is also its path below the language's root: the home page, the
+ * capability hub (`features`) and one capability (`features/<slug>`), the questions page (`faq`),
+ * the blog's list of posts, one post (`blog/<slug>`), diagnostic downloads, or a missing route.
  */
-export type Page = 'home' | 'blog' | `blog/${string}` | 'debug' | 'not-found';
+export type Page =
+  | 'home'
+  | 'features'
+  | `features/${string}`
+  | 'faq'
+  | 'blog'
+  | `blog/${string}`
+  | 'debug'
+  | 'not-found';
 
 export type Lang = (typeof LANGS)[number];
 
@@ -29,9 +38,10 @@ export function pageFromPath(path: string): Page {
   const clean = path.replace(/\/+$/, '') || '/';
   if (clean === '/' || clean === '/index.html' || clean === '/zh' || clean === '/zh/index.html')
     return 'home';
-  const page = /^\/(?:zh\/)?(debug|blog(?:\/[a-z0-9-]+)?)$/.exec(clean)?.[1];
+  const page = /^\/(?:zh\/)?(debug|faq|(?:blog|features)(?:\/[a-z0-9-]+)?)$/.exec(clean)?.[1];
   if (page === undefined) return 'not-found';
-  if (page === 'debug' || page === 'blog') return page;
+  if (page === 'debug' || page === 'faq' || page === 'blog' || page === 'features') return page;
+  if (page.startsWith('features/')) return `features/${page.slice('features/'.length)}` as const;
   return `blog/${page.slice('blog/'.length)}` as const;
 }
 
@@ -43,6 +53,11 @@ export function pageFromDocument(): Page {
 /** The post a `blog/<slug>` page shows, or `null` for every other page. */
 export function postSlugOf(page: Page): string | null {
   return page.startsWith('blog/') ? page.slice('blog/'.length) : null;
+}
+
+/** The capability a `features/<slug>` page shows, or `null` for every other page. */
+export function featureSlugOf(page: Page): string | null {
+  return page.startsWith('features/') ? page.slice('features/'.length) : null;
 }
 
 /** The localStorage key that records a visitor's explicit language choice. */

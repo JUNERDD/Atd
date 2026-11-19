@@ -45,6 +45,19 @@ the release-blog artwork ([Wikimedia Commons](<https://commons.wikimedia.org/wik
 CC0 1.0 Public Domain). Desktop and compact website reviews reference these compositions through
 connected instances. Update each illustration, both local exports and its alt text together.
 
+## Capability scenes
+
+`features/<lang>/<slug>.webp` holds the scenes of capability pages that no showcase case depicts
+(`illustration.scene` in `src/content/features/`). They are made and exported exactly like the
+showcase's foregrounds, in the same section, and appear only on the capability hub and pages, never
+in the homepage timeline. Each foreground's own export setting (PNG, 1×, contents only) keeps it
+transparent; overriding the format or scale when exporting bakes in the backdrop.
+
+| Scene          | English source | Chinese source | Product source                                  |
+| -------------- | -------------- | -------------- | ----------------------------------------------- |
+| MCP and skills | `4382:19640`   | `4383:21355`   | Settings › Extensions › Personal (`1599:72203`) |
+| Privacy        | `4383:20458`   | `4383:21374`   | Settings › Permissions (`1420:50521`)           |
+
 ## Archived case clips
 
 `clips/<lang>/<id>.mp4` and `clips/<lang>/<id>.jpg` are the former showcase’s clips and posters, in `en`
