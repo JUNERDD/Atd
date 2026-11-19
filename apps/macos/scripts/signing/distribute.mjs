@@ -24,10 +24,13 @@ const { values } = parseArgs({
     app: { type: 'string' },
     out: { type: 'string' },
     'app-only': { type: 'boolean' },
+    'dmg-only': { type: 'boolean' },
     'skip-notarize': { type: 'boolean' },
   },
 });
 const skipNotarize = Boolean(values['skip-notarize']);
+if (values['app-only'] && values['dmg-only'])
+  throw new Error('Choose only one distribution stage.');
 const app = path.resolve(
   values.app || path.join(root, 'DerivedData/Build/Products/Release/Atd.app'),
 );
@@ -53,8 +56,8 @@ const arch = run('lipo', ['-archs', path.join(app, 'Contents/MacOS/Atd')]).trim(
 // A signature-specific directory keeps submitted bytes intact across interrupted runs.
 // Stapling does not change CDHash, so a completed stage remains reusable.
 const submissions = path.join(root, 'DerivedData/notarization', cdHash);
-if (!skipNotarize) {
-  mkdirSync(submissions, { recursive: true });
+if (!skipNotarize) mkdirSync(submissions, { recursive: true });
+if (!skipNotarize && !values['dmg-only']) {
   const archive = path.join(submissions, `Atd-${version}-${arch}.zip`);
   if (!existsSync(archive)) {
     const partial = `${archive}.partial`;
@@ -63,6 +66,10 @@ if (!skipNotarize) {
     renameSync(partial, archive);
   }
   await notarize(archive, app);
+}
+if (!skipNotarize) {
+  // The DMG job restores an already stapled app from the native build's artifact.
+  if (values['dmg-only']) run('xcrun', ['stapler', 'validate', app]);
   run('spctl', ['--assess', '--type', 'execute', '--verbose=2', app]);
 }
 if (!values['app-only']) {
