@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build.mjs --configuration Debug",
     "dev": "node scripts/dev-open.mjs",
-    "test": "swift test",
+    "test": "swift test --no-parallel",
     "lint": "swiftlint lint --strict --quiet",
     "format": "swift format --in-place --recursive --parallel Package.swift App Sources Tests Widgets FinderSync",
     "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests Widgets FinderSync",
