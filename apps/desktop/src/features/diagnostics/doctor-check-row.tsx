@@ -154,20 +154,25 @@ export function DoctorCheckRow({
               </CollapsibleTrigger>
             </ItemActions>
           </div>
-          <CollapsibleContent className="mt-3 border-t border-border pt-3">
-            <div className="flex flex-col gap-2 text-xs text-muted-foreground">
-              {remediationText && <p className="text-foreground">{remediationText}</p>}
-              <div className="flex flex-wrap items-center gap-3">
-                <code className="font-mono text-xs">{check.id}</code>
-                <span>{t('checks.durationMs', { ms: Math.round(check.durationMs) })}</span>
+          <CollapsibleContent>
+            {/* The unfold keyframes close the content's one grid row, which cannot close below
+                that row's margin, border or padding (agent.css); the divider and its spacing sit
+                inside a bare wrapper so they fold away with the details instead of snapping. */}
+            <div>
+              <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                {remediationText && <p className="text-foreground">{remediationText}</p>}
+                <div className="flex flex-wrap items-center gap-3">
+                  <code className="font-mono text-xs">{check.id}</code>
+                  <span>{t('checks.durationMs', { ms: Math.round(check.durationMs) })}</span>
+                </div>
+                {check.metrics.length === 0 ? (
+                  <p>{t('checks.noMetrics')}</p>
+                ) : (
+                  <pre className="font-mono text-xs break-all whitespace-pre-wrap text-muted-foreground">
+                    {check.metrics.map(({ key, value }) => `${key}: ${value}`).join('\n')}
+                  </pre>
+                )}
               </div>
-              {check.metrics.length === 0 ? (
-                <p>{t('checks.noMetrics')}</p>
-              ) : (
-                <pre className="font-mono text-xs break-all whitespace-pre-wrap text-muted-foreground">
-                  {check.metrics.map(({ key, value }) => `${key}: ${value}`).join('\n')}
-                </pre>
-              )}
             </div>
           </CollapsibleContent>
         </Collapsible>
