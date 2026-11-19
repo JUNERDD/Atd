@@ -21,7 +21,7 @@ import { FolderStore } from './folders/store.js';
 import { invalidateOffRoute } from './invalidate.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
-import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
+import { migrateMcpSecrets } from './mcp/secrets-migration.js';
 import { createMemoryConsolidator } from './memory/consolidation/index.js';
 import { createSystemProxy, type SystemProxy } from './network/system-proxy.js';
 import { PluginHost } from './plugins/host.js';
@@ -90,25 +90,45 @@ export async function createService(
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
   const systemProxy = options.systemProxy ?? (await createSystemProxy(log));
   const startedAt = new Date().toISOString();
-  const ledger = await Ledger.load(config.paths);
+  const tier = options.tier ?? DEFAULT_PERMISSION_TIER;
+  const isDev = options.development !== undefined;
+  // Load independent profile stores and migrate legacy MCP secrets concurrently before recovery.
+  const [ledger, addons, settings, folders] = await Promise.all([
+    Ledger.load(config.paths),
+    AddonRegistry.create({ dataDir: config.paths.root, development: isDev, log }),
+    SettingsStore.load(config.paths.root, tier),
+    FolderStore.load(config.paths.root),
+    migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
+      log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
+        error: errorMessage(error),
+      }),
+    ),
+  ]);
   const events = new EventLog(config.serviceId, config.epoch);
   const confirms = new ConfirmStore(ledger, events, log);
   const capabilities = new CapabilityRegistry(ledger, events, log);
   const resources = new ResourceStore(ledger, config.paths);
   // Grants and trials are checked by the automations module; until it injects its check through
   // `computer.setGrantCheck`, every recipe-bound computer action is refused (grant-check.ts).
-  // Optional components the user downloads (design: add-ons); computer use runs on two of them.
-  const addons = await AddonRegistry.create({
-    dataDir: config.paths.root,
-    development: options.development !== undefined,
-    log,
-  });
-  const computer = await ComputerRuntime.create({
-    dataDir: config.paths.root,
-    log,
-    addons,
-    development: options.development !== undefined,
-  });
+  const [computer, report] = await Promise.all([
+    ComputerRuntime.create({ dataDir: config.paths.root, log, addons, development: isDev }),
+    recoverService({ ledger, events, confirms, capabilities, log }),
+    effectiveLanguage(settings.current().settings.language)
+      .then((language) => syncStarterCommands(config.paths.root, language))
+      .catch((error: unknown) => {
+        log.warn('The starter commands were not added or updated; the next start retries.', {
+          error: errorMessage(error),
+        });
+        return null;
+      })
+      .then((store) => store ?? CommandStore.load(config.paths.root))
+      .then((commands) => settings.releaseTakenAddedShortcuts(commands.list()))
+      .catch((error: unknown) =>
+        log.warn('A new app shortcut may share keys in use; the next start checks again.', {
+          error: errorMessage(error),
+        }),
+      ),
+  ]);
   // Reads settings, answers and automation names once runs complete, after all three exist.
   const nextSteps = new NextStepJobs({
     ledger,
@@ -128,10 +148,9 @@ export async function createService(
     computer,
     paths: config.paths,
     log,
-    tier: options.tier ?? DEFAULT_PERMISSION_TIER,
+    tier,
     nextSteps,
   };
-  const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
   const titles = new TaskTitles({
     ledger,
     paths: config.paths,
@@ -139,7 +158,6 @@ export async function createService(
     enabled: () => settings.current().settings.summaryTitles,
     notify: (taskId) => invalidateOffRoute(app, { type: 'invalidate', scope: 'task', taskId }),
   });
-  const folders = await FolderStore.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
     resources,
@@ -148,30 +166,6 @@ export async function createService(
     newTaskTier: () => settings.newTaskTier(),
     titles,
   });
-  const report = await recoverService({ ledger, events, confirms, capabilities, log });
-  // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.
-  await migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
-    log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
-      error: errorMessage(error),
-    }),
-  );
-  await syncStarterCommands(
-    config.paths.root,
-    await effectiveLanguage(settings.current().settings.language),
-  ).catch((error: unknown) =>
-    log.warn('The starter commands were not added or updated; the next start retries.', {
-      error: errorMessage(error),
-    }),
-  );
-  // Before any client reads the settings: an action this build added starts without keys where an
-  // older binding or command shortcut holds its default.
-  await CommandStore.load(config.paths.root)
-    .then((commands) => settings.releaseTakenAddedShortcuts(commands.list()))
-    .catch((error: unknown) =>
-      log.warn('A new app shortcut may share keys in use; the next start checks again.', {
-        error: errorMessage(error),
-      }),
-    );
   // After recovery and before any run dispatches: its reconciliation may cancel queued runs.
   const automations = await AutomationService.create({
     paths: config.paths,
@@ -235,6 +229,7 @@ export async function createService(
     await manager.shutdown();
     await app.close();
     capabilities.dispose();
+    const { McpAuthority } = await import('./mcp/authority.js');
     await McpAuthority.closeFor(config.paths.root);
     await PluginHost.closeFor(config.paths.root);
     await systemProxy.close();

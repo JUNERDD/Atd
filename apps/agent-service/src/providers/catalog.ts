@@ -1,5 +1,5 @@
-import { InMemoryCredentialStore, type Api, type Model } from '@earendil-works/pi-ai';
-import { ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { Api, Model } from '@earendil-works/pi-ai';
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
 import { ACCOUNT_PROVIDERS } from './auth-policy.js';
@@ -88,11 +88,16 @@ let directory: Promise<ModelRuntime> | null = null;
 
 function getDirectory(): Promise<ModelRuntime> {
   if (!directory) {
-    directory = ModelRuntime.create({
-      credentials: new InMemoryCredentialStore(),
-      modelsPath: null,
-      refreshOnCreate: false,
-    });
+    directory = Promise.all([
+      import('@earendil-works/pi-ai'),
+      import('@earendil-works/pi-coding-agent'),
+    ]).then(([{ InMemoryCredentialStore }, { ModelRuntime }]) =>
+      ModelRuntime.create({
+        credentials: new InMemoryCredentialStore(),
+        modelsPath: null,
+        refreshOnCreate: false,
+      }),
+    );
   }
   return directory;
 }

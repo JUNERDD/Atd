@@ -189,15 +189,18 @@ function refreshed(
  * show changes, so they read in the app's language until the user saves them, and writes only when
  * one changes or is added. An unreadable marker leaves every starter alone.
  */
-export async function syncStarterCommands(dataDir: string, language: AppLanguage): Promise<void> {
+export async function syncStarterCommands(
+  dataDir: string,
+  language: AppLanguage,
+): Promise<CommandStore | null> {
   const marker = await readMarker(dataDir);
-  if (marker === 'unreadable') return;
+  if (marker === 'unreadable') return null;
   const added = marker?.added ?? [];
   const store = await CommandStore.load(dataDir);
   const held = new Set(store.data.commands.map((command) => command.id));
   const due = STARTER_IDS.some((id) => !added.includes(id) && !held.has(id));
   const stale = store.data.commands.some((command) => refreshed(command, added, language));
-  if (marker && !due && !stale) return;
+  if (marker && !due && !stale) return store;
   const adding = await store.change((data) => {
     data.commands = data.commands.map((command) => refreshed(command, added, language) ?? command);
     const holding = new Set(data.commands.map((command) => command.id));
@@ -207,11 +210,12 @@ export async function syncStarterCommands(dataDir: string, language: AppLanguage
     data.commands.push(...starters);
     return starters.map((command) => command.id);
   });
-  if (marker && !adding.length) return;
+  if (marker && !adding.length) return store;
   await atomicWrite(
     starterMarkerFile(dataDir),
     marker
       ? { ...marker, added: [...added, ...adding] }
       : { version: MARKER_VERSION, seededAt: new Date().toISOString(), added: adding },
   );
+  return store;
 }

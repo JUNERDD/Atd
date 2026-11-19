@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { chmod, lstat, mkdir, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { extract, ReadEntry } from 'tar';
 import {
   AddonManifestSchema,
   errorMessage,
@@ -42,6 +41,7 @@ export async function unpackArchive(
   artifact: AddonArtifact,
   signal: AbortSignal,
 ): Promise<AddonManifest> {
+  const { extract, ReadEntry } = await import('tar');
   await mkdir(tree, { recursive: true });
   let failure: AddonFailure | undefined;
   let unpacked = 0;

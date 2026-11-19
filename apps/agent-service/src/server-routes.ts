@@ -10,7 +10,8 @@ import { scheduleExtractionSweeps } from './file-loader/extraction-store-sweep.j
 import { registerFileRoutes } from './file-routes.js';
 import { registerFolderRoutes } from './folders/routes.js';
 import { registerManageRoutes } from './manage.js';
-import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
+import type { McpAuthorityDeps } from './mcp/authority.js';
+import { registerMcpRoutes } from './mcp/routes.js';
 import { registerPluginRoutes } from './plugins/routes.js';
 import { scheduleResourceSweeps } from './resources/gc.js';
 import { registerResourceUpload } from './resources/routes.js';
@@ -34,6 +35,11 @@ export function registerDomainRoutes(app: FastifyInstance, deps: ServerDeps): vo
   const extractions = extractionLayout(deps.config.paths.extractionsDir);
   scheduleExtractionSweeps(app, { layout: extractions, log: deps.log });
 
+  const resolveMcp = async () => {
+    const { McpAuthority } = await import('./mcp/authority.js');
+    return McpAuthority.authorityFor(mcpAuthorityDeps(deps));
+  };
+
   // T6b additive: live management APIs (providers/commands/memory/tasks/resources).
   registerManageRoutes(app, {
     config: deps.config,
@@ -43,7 +49,7 @@ export function registerDomainRoutes(app: FastifyInstance, deps: ServerDeps): vo
     folders: deps.folders,
     log: deps.log,
     events: deps.events,
-    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
+    mcp: resolveMcp,
   });
 
   registerSkillRoutes(app, deps.config);
@@ -67,14 +73,14 @@ export function registerDomainRoutes(app: FastifyInstance, deps: ServerDeps): vo
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,
     log: deps.log,
-    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
+    mcp: resolveMcp,
   });
 
   // Live MCP mounts. Nothing at boot needs the authority (it reads the server records, launch
   // approvals and saved sign-ins), so the routes take a lazy resolver and it loads on first MCP
   // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
   // share one load.
-  registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
+  registerMcpRoutes(app, resolveMcp);
   registerDiagnosticsRoutes(app, deps);
 }
 
