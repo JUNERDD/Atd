@@ -3,9 +3,9 @@ import type { FeaturePage } from './types.ts';
 export const screenCapture = {
   slug: 'screen-capture',
   illustration: { case: 'screenshot' },
-  updated: '2026-11-18',
+  updated: '2026-11-19',
   related: ['selection-toolbar', 'computer-use', 'privacy'],
-  posts: ['atd-0-11-0', 'atd-0-10-7'],
+  posts: ['atd-0-12-0', 'atd-0-11-0', 'atd-0-10-7'],
   copy: {
     en: {
       name: 'Screen capture',
@@ -25,9 +25,10 @@ export const screenCapture = {
             'A command row under every screenshot offers Ask Atd, Copy Text, Cover Sensitive Info and your screenshot commands. Starter commands explain, translate or summarize a screenshot, or transcribe it as Markdown.',
           ],
           points: [
-            'Annotation tools: rectangle, ellipse, arrow, line, pen, highlighter, text, numbered steps, spotlight and mosaic.',
+            'Annotation tools: rectangle, ellipse, arrow, line, pen (with Smart Shapes), highlighter, text with plates and font picker, numbered or lettered steps, spotlight, mosaic (region or brush), custom color wheel and eyedropper.',
+            'Pin any screenshot as a borderless floating window across Spaces with zoom, opacity, border and shadow controls.',
             'Save with ⌘ S to a folder you choose, or have Atd ask each time.',
-            'Optionally copy every confirmed screenshot to the clipboard as well.',
+            'Choose in Settings → General → Screenshot whether confirming attaches and copies, attaches only or copies to the clipboard only.',
             'Questions and commands started from captures get their own Captures tab in task history.',
           ],
         },
@@ -118,9 +119,10 @@ export const screenCapture = {
             '每张截图下方都有命令栏：「问 Atd」「复制文字」「遮盖敏感信息」，以及你的截图命令。内置的起始命令可以解释、翻译、总结截图，或把它转写成 Markdown。',
           ],
           points: [
-            '标注工具：矩形、椭圆、箭头、直线、画笔、荧光笔、文字、序号、聚光灯和马赛克。',
+            '标注工具：矩形、椭圆、箭头、直线、画笔（支持智能形状）、荧光笔、带底板与字体选择的文字、数字或字母序号、聚光灯、框选或画笔马赛克，以及自定义色轮与取色器。',
+            '点击「贴图」可将截图作为无边框悬浮窗跨空间置顶显示，并支持缩放、透明度、边框与阴影调节。',
             '按 ⌘ S 保存到指定文件夹，也可以设为每次询问。',
-            '可选择在确认截图时同时复制到剪贴板。',
+            '可在「设置 → 通用 → 截图」中选择确认截图时添加到输入框并复制、仅添加到输入框，或仅复制到剪贴板。',
             '从截图或录屏发起的提问和命令，会单独归入任务历史的「截图/录屏」分类。',
           ],
         },

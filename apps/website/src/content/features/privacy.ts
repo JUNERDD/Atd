@@ -8,9 +8,9 @@ export const privacy = {
       zh: '权限设置中选中了“自动批准”，两侧是“手动批准”和“始终允许”，下方的命令允许列表包含 git status、git diff、npm test 和 ls。',
     },
   },
-  updated: '2026-11-18',
+  updated: '2026-11-19',
   related: ['models', 'computer-use', 'automations'],
-  posts: ['atd-0-11-1', 'atd-0-11-0', 'atd-0-10-6'],
+  posts: ['atd-0-12-0', 'atd-0-11-1', 'atd-0-11-0', 'atd-0-10-6'],
   copy: {
     en: {
       name: 'Privacy and control',
@@ -65,7 +65,7 @@ export const privacy = {
           title: 'Careful captures and open source',
           paragraphs: [
             'Text you cover with the mosaic tool or Cover Sensitive Info can’t be picked and is left out of the recognized text sent with a screenshot. A screen recording sends its detected steps and on-device narration, not the video file itself.',
-            'Atd is open source under the MIT License, so anyone can read how it stores data and talks to providers. If something goes wrong, choose Show Service Logs from the menu bar menu to see what the local service did.',
+            'Atd is open source under the MIT License, so anyone can read how it stores data and talks to providers. When troubleshooting, open Diagnostics beside About in Settings to run the 7-layer Doctor, test live probes without recording text or pixels, or preview and export a redacted support bundle that scrubs personal paths, keys, tokens and conversation content.',
           ],
         },
       ],
@@ -158,7 +158,7 @@ export const privacy = {
           title: '截图保护与开源代码',
           paragraphs: [
             '用马赛克或“遮盖敏感信息”盖住的文字无法被选取，也不会出现在随截图发送的识别文字中。屏幕录制发送的是识别出的操作步骤和在本机生成的旁白，而不是视频文件本身。',
-            'Atd 以 MIT 许可证开源，任何人都可以查看它如何存储数据、如何与服务商通信。遇到问题时，可以在菜单栏菜单中选择“显示服务日志”，查看本地服务做了什么。',
+            'Atd 以 MIT 许可证开源，任何人都可以查看它如何存储数据、如何与服务商通信。需要排障时，可在设置底栏“关于”旁打开“系统诊断”，运行七层自检、执行不记录文字与画面的实时探针，或在导出前预览自动擦除个人路径、密钥、令牌与对话内容的脱敏诊断支持包。',
           ],
         },
       ],

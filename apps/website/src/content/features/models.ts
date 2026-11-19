@@ -3,9 +3,9 @@ import type { FeaturePage } from './types.ts';
 export const models = {
   slug: 'models',
   illustration: { case: 'settings' },
-  updated: '2026-11-18',
+  updated: '2026-11-19',
   related: ['privacy', 'automations', 'computer-use'],
-  posts: ['atd-0-11-1', 'atd-0-11-0'],
+  posts: ['atd-0-12-0', 'atd-0-11-1', 'atd-0-11-0'],
   copy: {
     en: {
       name: 'Models',
@@ -54,6 +54,7 @@ export const models = {
             'Other features can use their own model: saved commands in Settings → Commands, automations in Settings → Automations, and Screen understanding in Settings → Computer use, which can hand screens to an image-capable model.',
           ],
           points: [
+            'Model aliases bundle a connection, model, context window and reasoning effort under one name; edit an alias once to update every bound command and automation, or cycle aliases in the composer with ⇧ ⌘ M or /model.',
             'Refresh models updates a connection’s model list.',
             'Verify model access sends one small request to confirm a connection works; it may use credits.',
             'Make default provider changes which connection new tasks start with.',
@@ -149,6 +150,7 @@ export const models = {
             '其他功能也能单独指定模型：已保存的命令在「设置 → 命令」中设置，自动化在「设置 → 自动化」中设置，「设置 → 电脑操作」的「画面理解」则可以交给支持图像的模型。',
           ],
           points: [
+            '「模型别名」将连接、模型、上下文窗口和推理强度打包为一个名称；修改一处即可同步更新所有绑定的命令和自动化，也可以在输入框中按 ⇧ ⌘ M 或输入 /model 快速切换。',
             '「刷新模型」会更新连接的模型列表。',
             '「校验模型访问」会发送一个小请求确认连接可用，可能消耗额度。',
             '「设为默认提供商」决定新任务从哪个连接开始。',
