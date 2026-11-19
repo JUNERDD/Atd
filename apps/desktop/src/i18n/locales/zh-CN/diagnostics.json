@@ -5,6 +5,7 @@
     "serviceOffline": "后台服务当前不可用，服务端检查未能运行。Shell 侧自检与支持包导出仍可正常使用。",
     "lastChecked": "上次检查：{{time}}",
     "summary": "{{pass}} 正常 · {{warn}} 需留意 · {{fail}} 异常 · {{skipped}} 已跳过",
+    "loadingChecks": "正在载入检查结果…",
     "noChecksYet": "点击运行检查以诊断应用位置、权限、工具链及网络状态。"
   },
   "actions": {

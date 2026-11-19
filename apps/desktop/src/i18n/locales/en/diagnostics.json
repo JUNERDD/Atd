@@ -5,6 +5,7 @@
     "serviceOffline": "The background service is unavailable, so service-side checks could not run. Shell checks and support bundle export remain available.",
     "lastChecked": "Last checked {{time}}",
     "summary": "{{pass}} healthy · {{warn}} attention · {{fail}} failed · {{skipped}} skipped",
+    "loadingChecks": "Loading check results…",
     "noChecksYet": "Run checks to inspect app placement, permissions, toolchain, and network health."
   },
   "actions": {

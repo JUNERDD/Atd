@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
 import type {
   DoctorCheckResult,
   DoctorLayer,
@@ -178,7 +178,9 @@ export function useDiagnosticsDoctor(includeConnectivity: boolean) {
     setRunning(false);
   }, []);
 
-  useEffect(() => {
+  // A layout effect, so the page's first paint already shows the run in progress (the busy button
+  // and the checks placeholder) instead of the idle prompt it replaces a frame later.
+  useLayoutEffect(() => {
     if (!sectionActive || lastRunConnectivity.current === includeConnectivity) return;
     lastRunConnectivity.current = includeConnectivity;
     void runChecks(includeConnectivity);

@@ -15,11 +15,16 @@ import {
 } from '@atd/ui/components/item';
 import { Label } from '@atd/ui/components/label';
 import { Switch } from '@atd/ui/components/switch';
+import {
+  ItemsPlaceholder,
+  LoadingPlaceholder,
+  TextPlaceholder,
+} from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsNavigationContext } from '../settings/settings-navigation';
 import { LAYER_KEYS } from './diagnostics-labels';
-import { useDiagnosticsDoctor } from './diagnostics-model';
+import { DOCTOR_LAYERS, useDiagnosticsDoctor } from './diagnostics-model';
 import { DoctorCheckRow } from './doctor-check-row';
 import { LiveProbePanel } from './live-probe-panel';
 import { PrivacyPreviewDialog } from './privacy-preview-dialog';
@@ -30,6 +35,25 @@ const RING_TITLE_KEYS = {
   capture_arbiter: 'rings.capture_arbiter',
   relay_supervisor: 'rings.relay_supervisor',
 } as const;
+
+/**
+ * The checks list while a run has nothing to show yet: the summary line over one titled group of
+ * outlined rows per layer, in the list's own gaps and row size. It holds the list's place, so the
+ * results replace it where they will appear instead of pushing Live probes down when they land.
+ */
+function DoctorChecksPlaceholder({ label }: { label: string }) {
+  return (
+    <LoadingPlaceholder label={label} className="gap-5">
+      <TextPlaceholder size="xs" width="half" />
+      {DOCTOR_LAYERS.map((layer) => (
+        <div key={layer} className="flex flex-col gap-2">
+          <TextPlaceholder width="quarter" />
+          <ItemsPlaceholder count={3} size="sm" variant="outline" trailing="none" />
+        </div>
+      ))}
+    </LoadingPlaceholder>
+  );
+}
 
 export function DiagnosticsSettings() {
   const { t } = useTranslation('diagnostics');
@@ -199,6 +223,8 @@ export function DiagnosticsSettings() {
             </div>
           ))}
         </div>
+      ) : running ? (
+        <DoctorChecksPlaceholder label={t('overview.loadingChecks')} />
       ) : (
         <p className="text-sm text-muted-foreground">{t('overview.noChecksYet')}</p>
       )}
