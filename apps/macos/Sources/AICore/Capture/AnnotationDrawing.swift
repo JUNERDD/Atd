@@ -58,10 +58,11 @@ extension AnnotationShape {
     case .ellipse: .ellipse(box())
     case .mosaic: .mosaic(box())
     case .spotlight: .spotlight(box())
-    case .arrow: .arrow(from: start, to: end)
-    case .line: .line(from: start, to: end)
+    case .arrow: .arrow(from: start, to: end, bend: nil)
+    case .line: .line(from: start, to: end, bend: nil)
     case .pen(let points): .pen(stroke(points))
     case .highlighter(let points): .highlighter(stroke(points))
+    case .mosaicBrush(let points): .mosaicBrush(stroke(points))
     case .step:
       // The badge stays where it was pressed; dragging past a click pulls a tail out of it.
       .step(

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { PanelView } from '../agent/use-task-panel';
-import { PanelModal, type PanelModalDeckItem } from './panel-modal';
-import { PANEL_MODAL_DEFINITIONS } from './panel-modal-registry';
+import type { PanelModalDeckItem } from './panel-modal';
+import { PANEL_MODAL_DEFINITIONS, PanelModal, preloadPanelModals } from './panel-modal-registry';
 import { usePanelModals } from './use-panel-modals';
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
@@ -82,6 +82,8 @@ export function PanelModalHost({
     return null;
   }
 
+  void preloadPanelModals();
+
   const deckItems: PanelModalDeckItem[] = renderedDefinitions.map((definition) => ({
     id: definition.id,
     hasMedia: definition.hasMedia,
@@ -94,16 +96,18 @@ export function PanelModalHost({
   }));
 
   return (
-    <PanelModal
-      open={isOpen}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) dismissAll();
-      }}
-      items={deckItems}
-      sessionKey={isOpen ? sessionKey : (cachedDeck?.sessionKey ?? 0)}
-      initialIndex={isOpen ? initialIndex : (cachedDeck?.initialIndex ?? 0)}
-      onActiveIndexChange={isOpen ? markSlideViewed : undefined}
-      closeLabel={t('modals.close')}
-    />
+    <Suspense fallback={null}>
+      <PanelModal
+        open={isOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dismissAll();
+        }}
+        items={deckItems}
+        sessionKey={isOpen ? sessionKey : (cachedDeck?.sessionKey ?? 0)}
+        initialIndex={isOpen ? initialIndex : (cachedDeck?.initialIndex ?? 0)}
+        onActiveIndexChange={isOpen ? markSlideViewed : undefined}
+        closeLabel={t('modals.close')}
+      />
+    </Suspense>
   );
 }

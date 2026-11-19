@@ -17,7 +17,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     guard isActive, !isFinished, !choosingSaveDestination, mode == .screenshot else { return }
     switch phase {
     case .selected:
-      if editor?.dismissMenus() == true { return }
+      if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
       copy()
     case .longScreenshot:
       finishLongScreenshot(action: .copy)
@@ -70,42 +70,28 @@ extension CaptureSession: CaptureOverlayDelegate {
     }
   }
 
-  func overlay(_ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, square: Bool) {
-    guard isActive else { return }
-    switch phase {
-    case .pressing(_, let start):
-      guard !SelectionModel.isClick(from: start, to: point) else { return }
-      let drag = SelectionDrag.create(origin: model.clamped(start))
-      phase = .creating(drag)
-      showCreating(drag, at: point, square: square)
-    case .creating(let drag):
-      showCreating(drag, at: point, square: square)
-    case .adjusting(let drag):
-      let rect = model.rect(for: drag, to: point)
-      show(rect, handles: true)
-      // The loupe shows the pixel being adjusted until the button goes up (`move`).
-      showLoupe(at: model.loupePoint(for: drag, rect: rect, pointer: point))
-      follow(rect)
-    case .idle, .selected, .longScreenshot:
-      break
-    }
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, constrained: Bool, centered: Bool
+  ) {
+    handleDragMoved(to: point, constrained: constrained, centered: centered)
   }
 
-  func overlay(_ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, square: Bool) {
-    guard isActive else { return }
-    switch phase {
-    case .pressing(let owner, let start):
-      let selection = model.settled(offeredArea(on: owner))
-      let pick = pickedElement(at: start, on: owner, selection: selection)
-      commit(selection)
-      self.pick = pick
-    case .creating(let drag):
-      commit(model.rect(for: drag, to: point, square: square))
-    case .adjusting(let drag):
-      move(to: model.rect(for: drag, to: point))
-    case .idle, .selected, .longScreenshot:
-      break
-    }
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool
+  ) {
+    handleDragEnded(at: point, constrained: constrained, centered: centered)
+  }
+
+  func overlay(_ overlay: CaptureOverlayView, spacePanChanged active: Bool, at point: CGPoint) {
+    updateSpacePan(active: active, at: point)
+  }
+
+  func overlayCanClickBadge(_ overlay: CaptureOverlayView) -> Bool {
+    canClickBadge(on: overlay)
+  }
+
+  func overlay(_ overlay: CaptureOverlayView, didClickBadgeWith event: NSEvent) {
+    showAspectMenu(on: overlay, with: event)
   }
 
   /// Clears the selection back to idle, unless that would lose annotations (or open text),
@@ -115,6 +101,8 @@ extension CaptureSession: CaptureOverlayDelegate {
       shotDocument?.isEmpty ?? true, accessory?.isModal != true
     else { return }
     unhost()
+    longScreenshot.resetSelection()
+    aspectPreset = .free
     phase = .idle
     refreshBars()
     renderIdle()
@@ -132,13 +120,17 @@ extension CaptureSession: CaptureOverlayDelegate {
     if case .longScreenshot = phase { return performInLongScreenshot(command) }
     switch command {
     case .cancel:
+      longScreenshot.startWhenReady = false
       // Escape steps the editor back (an open menu or field, a running text command, a result
       // card, text mode) before it ends the session; it arrives here too from a field the
       // canvas does not hold, such as a result card's.
-      if editor?.stepBack() == true || accessory?.dismissMenus() == true { return }
+      if dismissOverlayPopovers() || editor?.stepBack() == true || accessory?.dismissMenus() == true
+      {
+        return
+      }
       cancel()
     case .confirm:
-      if editor?.dismissMenus() == true { return }
+      if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
       confirm()
     case .walk(let step):
       walkChain(step)
@@ -176,8 +168,14 @@ extension CaptureSession: CaptureOverlayDelegate {
       break
     case .save:
       guard !options.reopening, mode == .screenshot, case .selected = phase else { return }
-      if editor?.dismissMenus() == true { return }
+      if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
       save()
+    case .pin:
+      guard mode == .screenshot, case .selected = phase else { return }
+      if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
+      pin()
+    case .copyColor(let asRGB):
+      _ = overlays.first(where: { $0.isLoupeVisible })?.copyLoupeColor(asRGB: asRGB)
     }
   }
 
@@ -187,15 +185,15 @@ extension CaptureSession: CaptureOverlayDelegate {
     switch phase {
     case .selected(let rect):
       if let handle = model.handle(at: point, of: rect) { return handle.cursor }
-      guard rect.contains(point) else { return .arrow }
+      guard rect.contains(point) else { return PointerRole.passive.cursor }
       if interiorClaimed || editor?.claimsPress(at: point) == true { return nil }
-      return .openHand
+      return PointerRole.grab.cursor
     case .adjusting(.move):
-      return .closedHand
+      return PointerRole.grabbing.cursor
     case .adjusting(.resize(let handle, _)):
       return handle.cursor
     case .adjusting:
-      return .arrow
+      return PointerRole.passive.cursor
     case .idle, .pressing, .creating:
       return .crosshair
     case .longScreenshot(let rect):
@@ -247,26 +245,52 @@ extension CaptureSession: CaptureOverlayDelegate {
   /// A settled move or resize: the bar takes its place for the new selection first, so the bars
   /// beside the selection keep clear of where it now is; the text is read again, and the scroll
   /// area under it looked for, once no other move came for `delay`.
-  private func move(to rect: CGRect, readAfter delay: Duration = .zero) {
+  func move(to rect: CGRect, readAfter delay: Duration = .zero) {
     phase = .selected(rect)
     showLoupe(at: nil)
     show(rect, handles: true)
     refreshBars()
     follow(rect)
+    if hasKeyboard, !overlays.contains(where: { $0.window?.firstResponder is NSTextView }) {
+      for overlay in overlays {
+        if let canvas = overlay.annotationHost.canvas, overlay.window?.firstResponder !== canvas {
+          overlay.window?.makeFirstResponder(canvas)
+        }
+      }
+      if let window = primaryOverlay(for: rect)?.window, !window.isKeyWindow {
+        window.makeKey()
+      }
+    }
     readText(in: rect, after: delay)
     probeScrollArea(in: rect, after: delay)
   }
 
   /// The editor's bars or the record bar follow `rect`, clear of the bottom bar where it is and
   /// of the size label, holding their place while the mouse still drags it.
-  private func follow(_ rect: CGRect) {
+  func follow(_ rect: CGRect) {
     editor?.keepClear = keepClear(for: rect)
     editor?.selectionDidChange(rect, dragging: isAdjusting)
     placeAccessory(beside: rect)
   }
 
-  private func showCreating(_ drag: SelectionDrag, at point: CGPoint, square: Bool) {
-    show(model.rect(for: drag, to: point, square: square), handles: false)
-    showLoupe(at: model.clamped(point))
+  /// Dismisses any overlay-owned popovers (such as the corner-radius popover); returns true when
+  /// at least one popover was closed.
+  @discardableResult
+  func dismissOverlayPopovers() -> Bool {
+    var dismissed = false
+    for overlay in overlays where overlay.hasOpenCornerPopover {
+      overlay.dismissCornerPopover()
+      dismissed = true
+    }
+    return dismissed
+  }
+
+  /// Orders out `NSColorPanel.shared` if a capture popover opened and elevated it above overlays.
+  func closeOwnedColorPanel() {
+    guard NSColorPanel.sharedColorPanelExists else { return }
+    let colorPanel = NSColorPanel.shared
+    if colorPanel.isVisible, colorPanel.level.rawValue >= ToolbarWindow.aboveCapture.rawValue {
+      colorPanel.orderOut(nil)
+    }
   }
 }

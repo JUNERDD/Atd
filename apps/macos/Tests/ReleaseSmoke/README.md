@@ -88,8 +88,13 @@ A same-repository PR targeting `main` produces a signed, dual-architecture relea
 candidate when `apps/macos/package.json` differs from its base version. The
 `ci/release-candidate-reuse` branch also opts in for integration rehearsal at the
 current version. Ordinary PRs with no version change and fork PRs keep their
-existing checks. The shared `release-candidate.yml` preserves the existing native
-build/DMG jobs, macOS 15 verification and Intel Release smoke checks. Candidate
+existing checks. Each native build uploads a `ditto` ZIP of its signed app and the verified
+add-ons. An independent job submits those bytes to Apple, staples the ticket
+and archives the verified bundle together with the add-ons. Its DMG job
+downloads that immutable artifact by ID and checks its run, commit, version and
+architecture before packaging. Rerun a failed notarization or DMG job to reuse the native build.
+Each installer proceeds directly to its own macOS 15 verification, including
+the Intel Release smoke checks on Intel. Both must pass before feed signing. Candidate
 production runs alongside quality checks; the complete CI run must pass. Xcode
 timing summaries and passive DMG phase logs are retained for seven days, including
 logs produced by failed runs.

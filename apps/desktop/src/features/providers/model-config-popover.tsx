@@ -1,21 +1,37 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
+import {
+  catalogModelDefaultThinkingLevel,
+  supportedModelThinkingLevels,
+} from '@atd/agent-contracts';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { cn } from '@atd/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
+import {
+  resolvePopoverTriggerLabels,
+  type ModelAliasPopoverProps,
+} from '../agent/use-panel-aliases';
 import { formatContextWindow } from './context-window';
-import { ConfigBackHeader, EffortOptions } from './model-config-subviews';
-import { ContextOptions } from './model-context-view';
-import { ModelList } from './model-list';
+import { ModelConfigAliases } from './model-config-aliases';
+import { useModelConfigNavState } from './model-config-keys';
+import { ModelConfigSubview } from './model-config-subviews';
 import { ProviderBrand } from './provider-brand';
 import { providerPresentation } from './provider-services';
-import { saveModelContext, useModelContexts } from './use-model-contexts';
-import { useThinkingLevels } from './use-thinking-levels';
+import { applyDraftContext, useModelContexts } from './use-model-contexts';
+import { resolveSelectedThinkingLevel, useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
 
-type ModelConfigView = 'root' | 'context' | 'effort' | 'model';
+function renderRowContent(label: string, value: string | null, nav = true, truncate = false) {
+  return (
+    <>
+      <span className="model-config-row-label">{label}</span>
+      <span className={cn('model-config-row-value', truncate && 'truncate')}>{value}</span>
+      {nav && <ChevronRight className="size-4 shrink-0" />}
+    </>
+  );
+}
 
 /**
  * The effort the popover edits, or `hideEffort` where the level is set elsewhere (a command's own
@@ -30,21 +46,22 @@ type EffortControl =
     }
   | { hideEffort: true; thinkingLevel?: undefined; onThinkingLevelChange?: undefined };
 
-type ModelConfigPopoverProps = EffortControl & {
-  connections: Connection[];
-  model: ModelReference | null;
-  onModelChange: (value: ModelReference) => void;
-  onOpenProviders?: () => void;
-  scopeLabel?: string;
-  compact?: boolean;
-  disabled?: boolean;
-};
+type ModelConfigPopoverProps = EffortControl &
+  ModelAliasPopoverProps & {
+    connections: Connection[];
+    model: ModelReference | null;
+    onModelChange: (value: ModelReference) => void;
+    onOpenProviders?: () => void;
+    scopeLabel?: string;
+    compact?: boolean;
+    disabled?: boolean;
+  };
 
 /**
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context,
  * Effort and Model rows; subviews render in the same Popover with a back header. The model view
  * is a ModelList; effort options come from useThinkingLevels, disabled until the model offers a
- * choice and falling back to levels[0] when the given level is unsupported.
+ * choice and clamping to the nearest supported level when the given level is unsupported.
  *
  * Context is a drill-in row once the model's catalog window is known, for every provider: its
  * tiers or its catalog window, and the other windows the service offers for it. Unlike model and effort, the window is the
@@ -58,34 +75,25 @@ type ModelConfigPopoverProps = EffortControl & {
  * from the trigger and the root view.
  */
 export function ModelConfigPopover(props: ModelConfigPopoverProps) {
-  const {
-    connections,
-    model,
-    onModelChange,
-    onOpenProviders,
-    scopeLabel,
-    compact = false,
-    disabled = false,
-  } = props;
+  const { connections, model, scopeLabel, activeAliasId } = props;
+  const compact = props.compact ?? false;
+  const disabled = props.disabled ?? false;
   const effort = props.hideEffort ? null : props;
   const { t } = useTranslation('providers');
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState<ModelConfigView>('root');
-  /** Whether the view changed since the popover opened; only opening plays the entry animation. */
-  const [switched, setSwitched] = useState(false);
+  const { t: tPanel } = useTranslation('panel');
   const contextRowRef = useRef<HTMLButtonElement>(null);
   const effortRowRef = useRef<HTMLButtonElement>(null);
   const modelRowRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const optionListRef = useRef<HTMLDivElement>(null);
   const modelViewRef = useRef<HTMLDivElement>(null);
-  /** The subview the root was entered from, whose row takes focus again; none on opening. */
-  const returnFrom = useRef<ModelConfigView | null>(null);
-
-  function show(next: ModelConfigView) {
-    returnFrom.current = next === 'root' ? view : null;
-    setView(next);
-    setSwitched(true);
-  }
+  const nav = useModelConfigNavState(disabled);
+  const { open, setOpen, view, switched, show } = nav;
+  const dom = () => ({
+    root: rootRef.current,
+    optionList: optionListRef.current,
+    modelView: modelViewRef.current,
+  });
 
   const connection = connections.find((item) => item.connectionId === model?.connectionId);
   const definition = connection?.catalog.find((item) => item.id === model?.modelId);
@@ -95,81 +103,85 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
     (!connection?.connected || !connection.catalog.some((item) => item.id === model.modelId)),
   );
   const displayName = unavailable ? t('models.unavailable', { name }) : name;
-  const contexts = useModelContexts(model, connection);
-  const contextText = formatContextWindow(contexts.window ?? definition?.contextWindow ?? null);
+  const scoped = scopeLabel !== undefined;
+  const activeAlias =
+    !scoped && activeAliasId
+      ? (props.aliases?.find((item) => item.id === activeAliasId) ?? null)
+      : null;
+  const isAliasModified = Boolean(activeAlias && props.aliasModified);
+  const baseContexts = useModelContexts(model, connection);
+  const contexts = props.onContextChoiceChange
+    ? applyDraftContext(baseContexts, props.draftContextChoice)
+    : baseContexts;
+  const fallbackWindow =
+    (model ? connection?.contextWindows?.[model.modelId] : undefined) ??
+    definition?.contextWindow ??
+    null;
+  const contextText = formatContextWindow(contexts.window ?? fallbackWindow);
   const contextChoice = Boolean(model && connection) && contexts.catalogWindow !== null;
   const { levels, defaultLevel, loading } = useThinkingLevels(effort ? model : null, connection);
-  // No chosen level runs with the model's default, known once its levels load.
-  const thinkingLevel = effort
-    ? (effort.thinkingLevel ?? (loading ? undefined : defaultLevel))
-    : undefined;
-  const selected =
-    thinkingLevel && !levels.includes(thinkingLevel) ? (levels[0] ?? thinkingLevel) : thinkingLevel;
+  // While loading, clamp and default from the catalog definition so frame 1 matches resolved effort.
+  const effectiveLevels = levels.length
+    ? levels
+    : definition
+      ? supportedModelThinkingLevels(definition)
+      : [];
+  const fallbackDefault = loading
+    ? definition
+      ? catalogModelDefaultThinkingLevel(definition)
+      : undefined
+    : defaultLevel;
+  const thinkingLevel = effort ? (effort.thinkingLevel ?? fallbackDefault) : undefined;
+  const selected = resolveSelectedThinkingLevel(thinkingLevel, effectiveLevels);
   const effortText = selected
     ? definition?.reasoningControl === 'fixed'
       ? t('modelConfig.modelDefault')
       : t(`thinkingLevels.levels.${selected}`)
     : null;
   const effortDisabled = !model || loading || levels.length < 2;
-  const scoped = scopeLabel !== undefined;
   const summary = { model: displayName, contextSize: contextText, effort: effortText ?? '' };
   const details = model
     ? [displayName, contextText, ...(effortText ? [effortText] : [])].join(' · ')
     : displayName;
   const title = connection && model && !scoped ? `${connection.name} · ${details}` : details;
-
-  /** What a view focuses as its content mounts; null leaves focus on the content itself. */
-  function focusTarget(): HTMLElement | null {
-    if (view === 'root') {
-      if (returnFrom.current === 'context') return contextRowRef.current;
-      if (returnFrom.current === 'effort') return effortRowRef.current;
-      if (returnFrom.current === 'model') return modelRowRef.current;
-      return null;
-    }
-    if (view === 'model') return modelViewRef.current?.querySelector('input') ?? null;
-    const list = optionListRef.current;
-    return (
-      list?.querySelector<HTMLElement>('[data-checked="true"]') ??
-      list?.querySelector<HTMLElement>('button') ??
-      null
-    );
-  }
+  const triggerLabels = resolvePopoverTriggerLabels({
+    activeAlias,
+    aliasModified: isAliasModified,
+    title,
+    details,
+    scopeLabel,
+    summary,
+    hasEffort: Boolean(effortText),
+    tProviders: t,
+    tPanel,
+  });
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        // Reset on open, not on close: Radix keeps content mounted during the
-        // exit animation, so resetting on close flashes the root over the subview.
-        if (next) {
-          returnFrom.current = null;
-          setView('root');
-          setSwitched(false);
-        }
-      }}
-    >
+    <Popover open={open} onOpenChange={nav.onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant={compact ? 'glass-ghost' : 'ghost'}
           size={compact ? 'xs' : 'default'}
           className={compact ? 'composer-model' : 'provider-model-trigger'}
           disabled={disabled}
-          aria-label={
-            scoped
-              ? t('modelConfig.scopedTriggerLabel', { label: scopeLabel, ...summary })
-              : effortText
-                ? t('modelConfig.triggerLabel', summary)
-                : t('modelConfig.modelOnlyTriggerLabel', summary)
-          }
-          title={title}
+          aria-label={triggerLabels.ariaLabel}
+          title={triggerLabels.title}
+          onClick={nav.onTriggerClick}
+          onKeyDown={(event) => nav.onTriggerKeyDown(event, dom())}
         >
           {connection && !scoped && (
             <ProviderBrand
               provider={providerPresentation(connection)?.service.brand ?? connection.provider}
             />
           )}
-          <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
+          <span className="flex min-w-0 flex-1 items-center gap-0.5 text-left">
+            <span className="min-w-0 truncate">{activeAlias ? activeAlias.name : displayName}</span>
+            {isAliasModified && (
+              <span className="composer-model-modified shrink-0" aria-hidden="true">
+                *
+              </span>
+            )}
+          </span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
           {model && effortText && (
             <span className="model-config-effort shrink-0">{effortText}</span>
@@ -188,45 +200,69 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
         )}
         align="end"
         collisionPadding={8}
-        // Each view mounts its own content, so this runs on opening and on every view change.
-        // Radix would focus the first row (usually Reasoning effort); opening leaves focus on the
-        // content instead, where Escape and Tab still work, while a view change focuses the row
-        // the root returns to or the subview's own control.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          const content = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-          (focusTarget() ?? content)?.focus();
-        }}
+        // Each view mounts its own content: pointer open leaves focus on the content while keyboard
+        // open focuses the first/last root item, and transitions focus the target row or control.
+        onOpenAutoFocus={(event) =>
+          nav.onOpenAutoFocus(event, {
+            ...dom(),
+            rootRows: {
+              context: contextRowRef.current,
+              effort: effortRowRef.current,
+              model: modelRowRef.current,
+            },
+          })
+        }
         // Unmounting a view's content would hand focus back to the trigger a tick later, after the
         // next view focused its row; only a real close returns it there.
         onCloseAutoFocus={(event) => {
           if (open) event.preventDefault();
         }}
+        onEscapeKeyDown={(event) => {
+          const el = event.target instanceof Element ? event.target : null;
+          if (view === 'root' && el?.closest('[data-alias-save-form]')) event.preventDefault();
+        }}
+        onPointerMove={nav.onPointerMove}
+        onPointerLeave={nav.onPointerLeave}
+        onKeyDown={(event) => nav.onContentKeyDown(event, dom())}
       >
         {view === 'root' && (
-          <div className="model-config-root">
+          <div ref={rootRef} className="model-config-root">
+            {!scoped && props.aliases && props.aliases.length > 0 && props.onSelectAlias && (
+              <ModelConfigAliases
+                aliases={props.aliases}
+                connections={connections}
+                activeAlias={activeAlias}
+                aliasModified={isAliasModified}
+                cycleShortcut={props.cycleShortcut}
+                onSelectAlias={props.onSelectAlias}
+                onRestoreAlias={props.onRestoreAlias}
+                onSaveAsAlias={props.onSaveAsAlias}
+                onClosePopover={() => setOpen(false)}
+              />
+            )}
             <ChatGPTPlan connection={connection} variant="menu" />
             {contextChoice ? (
               <button
                 ref={contextRowRef}
                 type="button"
+                data-root-item
+                data-drill="context"
                 className="model-config-row model-config-row-nav"
                 onClick={() => show('context')}
               >
-                <span className="model-config-row-label">{t('modelConfig.context')}</span>
-                <span className="model-config-row-value">{contextText}</span>
-                <ChevronRight className="size-4 shrink-0" />
+                {renderRowContent(t('modelConfig.context'), contextText)}
               </button>
             ) : (
               <div className="model-config-row">
-                <span className="model-config-row-label">{t('modelConfig.context')}</span>
-                <span className="model-config-row-value">{contextText}</span>
+                {renderRowContent(t('modelConfig.context'), contextText, false)}
               </div>
             )}
             {effort && (
               <button
                 ref={effortRowRef}
                 type="button"
+                data-root-item
+                data-drill="effort"
                 className="model-config-row model-config-row-nav"
                 disabled={effortDisabled}
                 title={
@@ -238,75 +274,43 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
                 }
                 onClick={() => show('effort')}
               >
-                <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
-                <span className="model-config-row-value">{effortText}</span>
-                <ChevronRight className="size-4 shrink-0" />
+                {renderRowContent(t('thinkingLevels.label'), effortText)}
               </button>
             )}
             <button
               ref={modelRowRef}
               type="button"
+              data-root-item
+              data-drill="model"
               className="model-config-row model-config-row-nav"
               onClick={() => show('model')}
             >
-              <span className="model-config-row-label">{t('modelConfig.model')}</span>
-              <span className="model-config-row-value truncate">{displayName}</span>
-              <ChevronRight className="size-4 shrink-0" />
+              {renderRowContent(t('modelConfig.model'), displayName, true, true)}
             </button>
           </div>
         )}
-        {view === 'context' && model && connection && (
-          <div className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.context')} onBack={() => show('root')} />
-            <ContextOptions
-              contexts={contexts}
-              listRef={optionListRef}
-              onSelect={(choice) => {
-                show('root');
-                if (choice) void saveModelContext(model, choice, connection.revision);
-              }}
-            />
-          </div>
-        )}
-        {view === 'effort' && effort && selected && (
-          <div className="model-config-subview">
-            <ConfigBackHeader title={t('thinkingLevels.label')} onBack={() => show('root')} />
-            <EffortOptions
-              levels={levels}
-              selected={selected}
-              listRef={optionListRef}
-              onSelect={(level) => {
-                effort.onThinkingLevelChange(level);
-                show('root');
-              }}
-            />
-          </div>
-        )}
-        {view === 'model' && (
-          <div ref={modelViewRef} className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.model')} onBack={() => show('root')} />
-            <ModelList
-              connections={connections}
-              value={model}
-              scoped={scoped}
-              searchLabel={
-                scoped
-                  ? t('models.searchScopedLabel', { label: scopeLabel })
-                  : t('models.searchLabel')
-              }
-              onSelect={(reference) => {
-                onModelChange(reference);
-                setOpen(false);
-              }}
-              onOpenProviders={
-                onOpenProviders &&
-                (() => {
-                  setOpen(false);
-                  onOpenProviders();
-                })
-              }
-            />
-          </div>
+        {view !== 'root' && (
+          <ModelConfigSubview
+            view={view}
+            model={model}
+            connection={connection}
+            connections={connections}
+            baseContexts={baseContexts}
+            draftContextChoice={props.draftContextChoice}
+            hideDraftContextNote={props.hideDraftContextNote}
+            onContextChoiceChange={props.onContextChoiceChange}
+            levels={levels}
+            selectedEffort={selected}
+            onThinkingLevelChange={effort?.onThinkingLevelChange}
+            scoped={scoped}
+            scopeLabel={scopeLabel}
+            optionListRef={optionListRef}
+            modelViewRef={modelViewRef}
+            onBack={() => show('root')}
+            onSelectModel={props.onModelChange}
+            onOpenProviders={props.onOpenProviders}
+            onClose={() => setOpen(false)}
+          />
         )}
       </PopoverContent>
     </Popover>

@@ -74,3 +74,10 @@
 .guide-features > li > .settings-card {
   flex: 1 1 auto;
 }
+/* In a short or stacked card body, let each feature card hug its text instead of multiplying one
+   wrapped description's extra line across all four cards. */
+@container onboarding-body (max-height: 460px) {
+  .guide-features {
+    grid-auto-rows: auto;
+  }
+}

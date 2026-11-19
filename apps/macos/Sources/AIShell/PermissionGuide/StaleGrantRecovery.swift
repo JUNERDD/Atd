@@ -31,8 +31,31 @@ enum StaleGrantRecovery {
     var ask: Set<PermissionPane> = []
   }
 
+  struct DiagnosticsHistory: Equatable {
+    var storedRequirement: String?
+    var previouslyHeld: Set<PermissionPane>
+  }
+
+  private final class LaunchHistoryBox {
+    let initialStoredRequirement: String?
+    let initialPreviouslyHeldGrants: Set<String>
+    var sessionObservedHeldGrants: Set<String>
+
+    init(
+      initialStoredRequirement: String?,
+      initialPreviouslyHeldGrants: Set<String>,
+      sessionObservedHeldGrants: Set<String>
+    ) {
+      self.initialStoredRequirement = initialStoredRequirement
+      self.initialPreviouslyHeldGrants = initialPreviouslyHeldGrants
+      self.sessionObservedHeldGrants = sessionObservedHeldGrants
+    }
+  }
+
   private static let requirementKey = "privacyGrants.requirement"
   private static let heldKey = "privacyGrants.held"
+  private static let launchHistories =
+    NSMapTable<UserDefaults, LaunchHistoryBox>.weakToStrongObjects()
 
   static func plan(previous: Record?, current: Record, hasAsked: Bool) -> Plan {
     guard let previous else {
@@ -45,12 +68,65 @@ enum StaleGrantRecovery {
     return Plan(reset: lost, ask: lost)
   }
 
+  /// Preserves the pre-overwrite launch grant snapshot in memory once per `defaults` store before
+  /// ``start(defaults:accessibility:screenRecording:)`` or `didBecomeActive` updates `UserDefaults`.
+  static func captureLaunchHistory(
+    defaults: UserDefaults,
+    accessibilityTrusted: Bool,
+    screenRecordingTrusted: Bool
+  ) {
+    if let existing = launchHistories.object(forKey: defaults) {
+      if accessibilityTrusted {
+        existing.sessionObservedHeldGrants.insert(PermissionPane.accessibility.rawValue)
+      }
+      if screenRecordingTrusted {
+        existing.sessionObservedHeldGrants.insert(PermissionPane.screenRecording.rawValue)
+      }
+      return
+    }
+    var observed: Set<String> = []
+    if accessibilityTrusted { observed.insert(PermissionPane.accessibility.rawValue) }
+    if screenRecordingTrusted { observed.insert(PermissionPane.screenRecording.rawValue) }
+    let box = LaunchHistoryBox(
+      initialStoredRequirement: defaults.string(forKey: requirementKey),
+      initialPreviouslyHeldGrants: Set(defaults.stringArray(forKey: heldKey) ?? []),
+      sessionObservedHeldGrants: observed)
+    launchHistories.setObject(box, forKey: defaults)
+  }
+
+  static func diagnosticsHistory(
+    defaults: UserDefaults,
+    accessibilityTrusted: Bool,
+    screenRecordingTrusted: Bool
+  ) -> DiagnosticsHistory {
+    if let box = launchHistories.object(forKey: defaults) {
+      if accessibilityTrusted {
+        box.sessionObservedHeldGrants.insert(PermissionPane.accessibility.rawValue)
+      }
+      if screenRecordingTrusted {
+        box.sessionObservedHeldGrants.insert(PermissionPane.screenRecording.rawValue)
+      }
+      let combined = box.initialPreviouslyHeldGrants.union(box.sessionObservedHeldGrants)
+      return DiagnosticsHistory(
+        storedRequirement: box.initialStoredRequirement,
+        previouslyHeld: Set(combined.compactMap(PermissionPane.init)))
+    }
+    let rawHeld = defaults.stringArray(forKey: heldKey) ?? []
+    return DiagnosticsHistory(
+      storedRequirement: defaults.string(forKey: requirementKey),
+      previouslyHeld: Set(rawHeld.compactMap(PermissionPane.init)))
+  }
+
   /// Runs once per launch, after both trust objects read their state and before anything asks.
   /// An unsigned build, which has no requirement to compare, records nothing.
   static func start(
     defaults: UserDefaults, accessibility: AccessibilityTrust,
     screenRecording: ScreenRecordingTrust
   ) {
+    captureLaunchHistory(
+      defaults: defaults,
+      accessibilityTrusted: accessibility.isTrusted,
+      screenRecordingTrusted: screenRecording.isTrusted)
     guard let requirement = designatedRequirement(),
       let bundleID = Bundle.main.bundleIdentifier
     else { return }
@@ -60,6 +136,10 @@ enum StaleGrantRecovery {
       hasAsked: accessibility.hasAsked)
     let save: @MainActor @Sendable () -> Void = { [weak accessibility, weak screenRecording] in
       guard let accessibility, let screenRecording else { return }
+      Self.captureLaunchHistory(
+        defaults: defaults,
+        accessibilityTrusted: accessibility.isTrusted,
+        screenRecordingTrusted: screenRecording.isTrusted)
       Self.save(
         record(requirement, accessibility: accessibility, screenRecording: screenRecording),
         to: defaults)

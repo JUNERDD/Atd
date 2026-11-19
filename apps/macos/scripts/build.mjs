@@ -25,7 +25,7 @@
  * at a `-`, so a build version must not contain one.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -143,8 +143,11 @@ function pinPackages() {
     'xcshareddata',
     'swiftpm',
   );
+  const source = path.join(packageRoot, 'Package.resolved');
+  const target = path.join(pins, 'Package.resolved');
+  if (existsSync(target) && readFileSync(source).equals(readFileSync(target))) return;
   mkdirSync(pins, { recursive: true });
-  copyFileSync(path.join(packageRoot, 'Package.resolved'), path.join(pins, 'Package.resolved'));
+  copyFileSync(source, target);
 }
 
 /** Removes leftover `.cstemp` files from interrupted codesign runs so Xcode can re-sign cleanly. */
@@ -172,18 +175,30 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
-const releaseSigning = configureSigning(options.configuration);
+const releaseSigning = options.configuration === 'Release' ? configureSigning('Release') : null;
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
 if (options.configuration === 'Debug') {
-  try {
-    configureDevelopmentSigning();
-  } catch (error) {
-    fail(error.message);
+  const preverified =
+    process.env.AI_DEV_SIGNING_VERIFIED === '1' &&
+    (process.env.AI_CODE_SIGN_IDENTITY === '-' ||
+      /^[A-F0-9]{40}$/.test(process.env.AI_CODE_SIGN_IDENTITY ?? ''));
+  if (!preverified) {
+    try {
+      configureDevelopmentSigning();
+    } catch (error) {
+      fail(error.message);
+    }
   }
   invalidateDevBuild(packageRoot);
 }
-run('xcodegen', ['generate', '--quiet']);
+const projectFile = path.join(packageRoot, 'AI.xcodeproj/project.pbxproj');
+const infoPlist = path.join(packageRoot, 'App/Info.plist');
+const xcodegenArgs = ['generate', '--quiet'];
+if (options.configuration === 'Debug' && existsSync(projectFile) && existsSync(infoPlist)) {
+  xcodegenArgs.push('--use-cache', '--cache-path', 'DerivedData/xcodegen-cache');
+}
+run('xcodegen', xcodegenArgs);
 pinPackages();
 removeSigningTemporaries(options.configuration);
 run('xcodebuild', args);

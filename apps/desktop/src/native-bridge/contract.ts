@@ -22,6 +22,7 @@ import {
   ShortcutCommandIntentSchema,
 } from './command-options.ts';
 import { NativeComputerEvents } from './computer-calls.ts';
+import { NativeDiagnosticsEvents } from './diagnostics-calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { NativeNotificationPosts } from './notification-calls.ts';
 import { NativePanelModalEvents } from './panel-modal-calls.ts';
@@ -35,6 +36,8 @@ import { NativeUpdateEvents, NativeUpdatePosts } from './update-calls.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
 import {
   DesktopPinSchema,
+  DragRectSchema,
+  GuideRectSchema,
   MAX_DESKTOP_PINS,
   MiniPanelOpenOnSchema,
   PinWidgetSchema,
@@ -45,22 +48,6 @@ export const MESSAGE_HANDLER = 'aiNative';
 /** The function body Swift runs with `callAsyncJavaScript`, binding `DELIVER_ARGUMENT`. */
 export const DELIVER_SCRIPT = 'window.aiNative.deliver(message)';
 export const DELIVER_ARGUMENT = 'message';
-
-const DragRectSchema = Type.Object(
-  { x: Type.Number(), y: Type.Number(), width: Type.Number(), height: Type.Number() },
-  { additionalProperties: false },
-);
-
-/** A rectangle the welcome guide reports, in CSS pixels from the web view's top-left. */
-const GuideRectSchema = Type.Object(
-  {
-    x: Type.Number({ minimum: 0 }),
-    y: Type.Number({ minimum: 0 }),
-    width: Type.Number({ minimum: 0 }),
-    height: Type.Number({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
 
 /** Longest text `onboarding.selection` takes; the practice area's sample is far shorter. */
 export const MAX_PRACTICE_SELECTION_LENGTH = 2000;
@@ -73,10 +60,15 @@ export const NativePosts = {
   ...NativeTextPosts,
   /**
    * The window drag regions in CSS pixels from the web view's top-left, interactive children
-   * already cut out. Sent on every layout change; `[]` on teardown.
+   * already cut out, and whether a window chrome drag area has mounted with non-zero bounds
+   * (even when a full-window modal portal temporarily cuts `rects` down to `[]`). Sent on every
+   * layout change; `[]` (`chrome: false`) on teardown.
    */
   'window.dragRegions': Type.Object(
-    { rects: Type.Array(DragRectSchema, { maxItems: 64 }) },
+    {
+      rects: Type.Array(DragRectSchema, { maxItems: 64 }),
+      chrome: Type.Optional(Type.Boolean()),
+    },
     { additionalProperties: false },
   ),
   /**
@@ -305,6 +297,7 @@ export const NativeEvents = {
   ...NativeRecordingEvents,
   ...NativeCaptureTextEvents,
   ...NativePanelModalEvents,
+  ...NativeDiagnosticsEvents,
 } satisfies Record<string, TSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });

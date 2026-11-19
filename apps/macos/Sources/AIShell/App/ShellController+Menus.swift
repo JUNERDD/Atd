@@ -19,6 +19,9 @@ extension ShellController {
         ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },
       showServiceLogs: { try services.revealLogs() },
+      exportDiagnostics: { [weak self] in
+        _ = try await self?.exportDiagnosticsFromNativeUI(triggerSurface: .menu)
+      },
       editCommand: { [weak self] command in self?.sendEditCommand(command) },
       developmentHint: { [weak self] in self?.menuStatus.developmentHint ?? false },
       selectionListening: { [weak self] in self?.toolbar.isListening },

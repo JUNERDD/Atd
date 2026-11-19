@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MemoryProblem, MemoryProposal, MemoryUnit } from '@atd/agent-contracts';
@@ -49,10 +49,12 @@ function MemoryProblems({ problems }: { problems: readonly MemoryProblem[] }) {
  */
 export function MemoryOverview({
   snapshot,
+  group,
   search,
   searchRef,
   writes,
   feedback,
+  onGroupChange,
   onClearSearch,
   onNew,
   onOpen,
@@ -61,11 +63,13 @@ export function MemoryOverview({
 }: {
   /** Null until the first read answers. */
   snapshot: MemorySnapshot | null;
+  group: MemoryGroup;
   search: ReturnType<typeof useCompositionQuery>;
   searchRef: Ref<HTMLInputElement>;
   writes: ReturnType<typeof useMemoryWrites>;
   /** The load failure and its Reload, if any. */
   feedback: ReactNode;
+  onGroupChange: (group: MemoryGroup) => void;
   onClearSearch: () => void;
   onNew: () => void;
   onOpen: (unit: MemoryUnit) => void;
@@ -73,10 +77,10 @@ export function MemoryOverview({
   onAccept: (proposal: MemoryProposal) => void;
 }) {
   const { t } = useTranslation('memory');
-  const [group, setGroup] = useState<MemoryGroup>('all');
   const unavailable = !snapshot || Boolean(snapshot.error);
   const units = snapshot?.units ?? [];
-  const counts = memoryGroupCounts(units);
+  const counts =
+    snapshot && (!snapshot.error || snapshot.units.length > 0) ? memoryGroupCounts(units) : null;
   const shown = units.filter((unit) => inMemoryGroup(unit, group));
   return (
     <>
@@ -100,52 +104,51 @@ export function MemoryOverview({
         />
         <MemoryAddMenu paused={Boolean(snapshot?.paused)} unavailable={unavailable} onNew={onNew} />
       </SettingsHeading>
-      {snapshot && !snapshot.error && (
-        <MemoryFilters value={group} counts={counts} onChange={setGroup} />
-      )}
-      {/* The panel owns the scrollbar; the heading and search stay put above it. */}
-      <ScrollArea
-        className="memory-scroll settings-page-scroll"
-        viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-        gutter="none"
-        scrollShadow
-      >
-        <div className="memory-list">
-          {snapshot ? (
-            <>
-              <MemoryProblems problems={snapshot.problems} />
-              <MemorySuggestions
-                proposals={snapshot.proposals}
-                units={snapshot.units}
-                busyIds={writes.proposalBusyIds}
-                onAccept={onAccept}
-                onDismiss={writes.dismiss}
-              />
-              {snapshot.error && !snapshot.units.length ? null : (
-                <MemoryList
-                  units={shown}
-                  group={group}
-                  totalUnits={units.length}
-                  query={search.query}
-                  busyIds={writes.busyIds}
-                  onClearSearch={onClearSearch}
-                  onClearFilter={() => setGroup('all')}
-                  onOpen={onOpen}
-                  // The switch flipping is the feedback; only a failure needs a message.
-                  onToggle={writes.toggle}
-                  onDelete={onDelete}
+      <MemoryFilters value={group} counts={counts} onChange={onGroupChange}>
+        {/* The panel owns the scrollbar; the heading and search stay put above it. */}
+        <ScrollArea
+          className="memory-scroll settings-page-scroll"
+          viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+          gutter="none"
+          scrollShadow
+        >
+          <div className="memory-list">
+            {snapshot ? (
+              <>
+                <MemoryProblems problems={snapshot.problems} />
+                <MemorySuggestions
+                  proposals={snapshot.proposals}
+                  units={snapshot.units}
+                  busyIds={writes.proposalBusyIds}
+                  onAccept={onAccept}
+                  onDismiss={writes.dismiss}
                 />
-              )}
-            </>
-          ) : (
-            // The cards `MemoryList` lays out, in its grid.
-            <LoadingPlaceholder label={t('memory.list.loading')}>
-              <ListCardGridPlaceholder media="ring" />
-            </LoadingPlaceholder>
-          )}
-          {feedback}
-        </div>
-      </ScrollArea>
+                {snapshot.error && !snapshot.units.length ? null : (
+                  <MemoryList
+                    units={shown}
+                    group={group}
+                    totalUnits={units.length}
+                    query={search.query}
+                    busyIds={writes.busyIds}
+                    onClearSearch={onClearSearch}
+                    onClearFilter={() => onGroupChange('all')}
+                    onOpen={onOpen}
+                    // The switch flipping is the feedback; only a failure needs a message.
+                    onToggle={writes.toggle}
+                    onDelete={onDelete}
+                  />
+                )}
+              </>
+            ) : (
+              // The cards `MemoryList` lays out, in its grid.
+              <LoadingPlaceholder label={t('memory.list.loading')}>
+                <ListCardGridPlaceholder media="ring" />
+              </LoadingPlaceholder>
+            )}
+            {feedback}
+          </div>
+        </ScrollArea>
+      </MemoryFilters>
       <MemoryLearningFooter
         learning={snapshot ? !snapshot.paused : false}
         askFirst={snapshot?.askFirst ?? false}

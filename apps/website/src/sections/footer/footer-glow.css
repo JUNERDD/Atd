@@ -1,0 +1,56 @@
+/* The footer's afterglow (footer-glow.tsx): a band along the page's bottom edge behind the footer's
+   content. The canvas draws the light as a smooth field at a few texels per hundred pixels; over
+   it, the plate itself is perforated at the displays' LED pitch, registered to the content column
+   (a dot column falls half a pitch either side of the page's centre line) and to the bottom edge,
+   so the light shows only as lit dots. The light peaks at the hero backdrop's brightness
+   (`--glow-level`), dim dots rather than bright ones, so the page ends on the material it opens
+   with. In dark mode the plate between the holes lets a little of the light through
+   (`--glow-veil`), as a lit grille does. Hidden until the light has drawn, so a page without script
+   or WebGL2 composites nothing here. */
+.footer__glow {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 0;
+  block-size: min(100%, 264px);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.footer__glow[data-live] {
+  visibility: visible;
+}
+
+.footer__glow-field {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: var(--glow-level);
+}
+
+.footer__glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle closest-side,
+    transparent calc(var(--glow-dot) - 0.5px),
+    var(--glow-veil) calc(var(--glow-dot) + 0.5px)
+  );
+  background-size: var(--led) var(--led);
+  background-position: calc(50% + var(--led) / 2) 100%;
+}
+
+/* Increase Contrast keeps the light, at half strength, so the links over it stay firm. */
+@media (prefers-contrast: more) {
+  .footer__glow-field {
+    opacity: calc(var(--glow-level) / 2);
+  }
+}
+
+@media (forced-colors: active), print {
+  .footer__glow {
+    display: none;
+  }
+}

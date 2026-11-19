@@ -26,6 +26,8 @@ final class LongScreenshotCapture {
     let scrollValue: Double?
     /// The app under the selection (auto-scroll's target).
     let pid: pid_t?
+    /// The target window under the selection (auto-scroll's window-routed target).
+    let windowID: CGWindowID?
     let appName: String?
     let windowTitle: String?
   }
@@ -56,6 +58,12 @@ final class LongScreenshotCapture {
   private(set) var ended = false
   var autoScroll: Task<Void, Never>?
   var edgeCheck: Task<Void, Never>?
+  let autoScroller = LongScreenshotAutoScroller()
+  /// Unobstructed Quartz point inside the scrollable band; falls back to the band's geometric
+  /// centre when nil.
+  var scrollLocation: (() -> CGPoint?)?
+  /// True once a direct (non-momentum) user scroll occurred in the current manual window.
+  var acceptsUserMomentum = false
   private var previewCache: (key: PreviewKey, image: CGImage)?
   private let startedAt = Date()
 
@@ -191,8 +199,11 @@ final class LongScreenshotCapture {
   private func end() {
     ended = true
     stopAutoScroll()
+    autoScroller.stop()
     edgeCheck?.cancel()
     edgeCheck = nil
+    scrollLocation = nil
+    acceptsUserMomentum = false
     drop()
   }
 

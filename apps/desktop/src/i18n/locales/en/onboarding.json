@@ -14,8 +14,8 @@
       "welcome": "Welcome",
       "hotkey": "Shortcut",
       "selection": "Selection toolbar",
-      "screenshot": "Screenshots",
-      "provider": "AI provider",
+      "screenshot": "Screen capture",
+      "provider": "Models",
       "features": "More features",
       "finish": "All set"
     },
@@ -35,9 +35,9 @@
     "planLabel": "What you'll set up",
     "plan": {
       "hotkey": "Summon Atd with a shortcut",
-      "selection": "Ask about text you select",
-      "screenshot": "Capture your screen",
-      "provider": "Connect your AI provider"
+      "selection": "Ask or run commands on selected text",
+      "screenshot": "Capture screenshots and recordings",
+      "provider": "Connect your models and aliases"
     },
     "language": "Language"
   },
@@ -47,7 +47,7 @@
     "waiting": "Waiting for you to press the shortcut…",
     "success": "It works!",
     "rowLabel": "Panel shortcut",
-    "rowDescription": "Prefer different keys? Click them to record a new combination."
+    "rowDescription": "Prefer different keys? Click to record a new combination, or double-tap a modifier."
   },
   "selection": {
     "title": "Ask about anything you select",
@@ -66,19 +66,25 @@
     },
     "practice": {
       "label": "Practice text",
-      "sample": "Good tools stay out of the way until you need them. Select a few words of this paragraph, and Atd's toolbar appears right beside them. Ask Atd quotes your selection in the panel, ready for your question.",
+      "sample": "Good tools stay out of the way until you need them. Select a few words here, and Atd appears right beside them—ready to answer in the panel, rewrite in place, or show formatted results on a floating card.",
       "caption": "Select some of this text.",
       "captionHold": "Hold {{key}} and select some of this text.",
       "captionToggle": "Press {{key}} twice, then select some of this text.",
       "needsAccess": "Grant the permission above to see the toolbar here.",
-      "needsToolbar": "Turn on the toolbar to see it here."
+      "needsToolbar": "Turn on the toolbar to see it here.",
+      "iconClickHint": "Click the small icon by the pointer to expand the toolbar.",
+      "iconHoverHint": "Rest the pointer on the small icon to expand the toolbar."
     }
   },
   "screenshot": {
-    "title": "Capture your screen",
-    "description": "Press {{shortcut}} to capture an area of your screen.",
+    "title": "Capture or record your screen",
+    "description": "Press {{shortcut}} to capture an area—annotate, pick text in the image, stitch scrolling pages, or switch to screen recording.",
     "waiting": "Waiting for Screen Recording access…",
     "success": "Access granted.",
+    "captureRow": "Take screenshot",
+    "recordRow": "Record screen",
+    "confirmTitle": "When confirming",
+    "confirmLabel": "Screenshot confirmation action",
     "screenRecording": {
       "title": "Screen Recording access",
       "description": "macOS may ask you to reopen Atd afterwards.",
@@ -88,30 +94,37 @@
     }
   },
   "provider": {
-    "title": "Connect your AI",
-    "description": "Use the models you already have: add an API key or sign in to a provider. Settings opens on top of this guide.",
+    "title": "Connect your models",
+    "description": "Add an API key, sign in to a provider, or connect a local model. Settings › Models opens on top of this guide.",
     "connect": "Connect a Provider…",
-    "manage": "Manage Providers…",
-    "waiting": "No provider is connected yet.",
+    "manage": "Open Models Settings…",
+    "reconnect": "Reconnect in Models…",
+    "waiting": "No model provider is connected yet.",
+    "unreadable": "Saved credentials for {{name}} couldn't be read. Re-enter them in Models settings.",
     "connected": "Connected to {{name}}",
     "model": "Default model: {{model}}",
-    "footnote": "You can add more providers anytime in Settings."
+    "modelWithAlias": "Default alias: {{alias}} ({{model}})",
+    "footnote": "Save model aliases in Settings › Models to bundle a model, effort, and context window for quick switching."
   },
   "features": {
     "title": "There's more to Atd",
-    "description": "Three more ways it can help.",
+    "description": "Four more ways Atd works alongside you.",
     "items": {
+      "computer": {
+        "title": "Computer use",
+        "description": "With your permission, Atd works websites and Mac apps and checks the result."
+      },
+      "extensions": {
+        "title": "Extensions & Memory",
+        "description": "Add skills, subagents, plugins and MCP servers, while Memory learns your habits."
+      },
       "apps": {
-        "title": "Apps",
-        "description": "Describe a tool, and Atd builds it as an app."
+        "title": "Apps & Views",
+        "description": "Turn ideas into apps with desktop widgets, or use interactive views right in chat."
       },
       "automations": {
-        "title": "Automations",
-        "description": "Run tasks on a schedule or when files change."
-      },
-      "miniPanel": {
-        "title": "Mini panel",
-        "description": "Quick actions and file drops at your screen's edge."
+        "title": "Automations & Mini panel",
+        "description": "Run tasks on a schedule or file change, and follow progress or approvals at the screen edge."
       }
     }
   },
@@ -127,9 +140,9 @@
     "tips": {
       "label": "Things to try",
       "toggle": "Summon or hide Atd",
-      "screenshot": "Capture a screenshot",
-      "mention": "Mention files with @",
-      "commands": "Run commands with /",
+      "screenshot": "Capture or record screen",
+      "mention": "Mention files, chats or tools",
+      "commands": "Run commands, skills or /model",
       "settings": "Open Settings"
     },
     "login": {
@@ -140,7 +153,7 @@
   "intro": {
     "badge": "Meet {{name}}",
     "title": "Your AI, one shortcut away in every app.",
-    "description": "Ask about what you select, capture your screen, and bring the AI provider you already use, without leaving what you're doing.",
+    "description": "Act on selected text, capture screenshots or recordings, work across apps, and use the models you already trust—without leaving what you're doing.",
     "begin": "Get Started",
     "hint": "or press Return"
   }

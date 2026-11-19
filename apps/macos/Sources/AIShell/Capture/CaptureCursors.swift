@@ -60,34 +60,36 @@ extension SelectionHandle {
 extension AnnotationHandle {
   /// A box grip resizes like the selection's handle at the same place; a line end moves a
   /// point freely, for which the system has no resize cursor.
-  var cursor: NSCursor { boxHandle?.cursor ?? .crosshair }
+  var cursor: NSCursor { boxHandle?.cursor ?? PointerRole.marquee.cursor }
 }
 
 extension AnnotationInteraction {
   /// The cursor for the pointer at `point` (canvas, that is view, points): the running
   /// gesture's, else what a press there would do; nil before a tool is chosen.
   func cursor(at point: CGPoint) -> NSCursor? {
+    if eyedropperActive { return PointerRole.marquee.cursor }
     guard let tool else { return nil }
     switch gesture {
     case .drawing: return Self.canvasCursor(tool)
-    case .moving: return .closedHand
+    case .moving, .movingGroup: return PointerRole.grabbing.cursor
     case .resizing(_, let handle): return handle.cursor
+    case .marquee, .creatingTextBox: return PointerRole.marquee.cursor
     case .idle: break
     }
     switch target(at: point) {
     case .grip(let handle): return handle.cursor
-    case .annotation: return .openHand
-    case .text: return .iBeam
+    case .annotation: return PointerRole.grab.cursor
+    case .text: return PointerRole.text.cursor
     case .canvas, nil: return Self.canvasCursor(tool)
     }
   }
 
   private static func canvasCursor(_ tool: AnnotationTool) -> NSCursor {
     switch tool {
-    case .select: .arrow
-    case .text: .iBeam
+    case .select: PointerRole.passive.cursor
+    case .text: PointerRole.text.cursor
     case .rectangle, .ellipse, .arrow, .line, .pen, .highlighter, .mosaic, .spotlight, .step:
-      .crosshair
+      PointerRole.marquee.cursor
     }
   }
 }

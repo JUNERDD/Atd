@@ -55,8 +55,9 @@ enum PerformHandler {
       return try axScroll(ctx, element: element, kind: kind)
     case .pointer(let point, let clickCount):
       return try PerformEvents.pointer(ctx, point: point, clickCount: clickCount)
-    case .scroll(let point, let deltaX, let deltaY):
-      return try PerformEvents.scroll(ctx, point: point, deltaX: deltaX, deltaY: deltaY)
+    case .scroll(let point, let deltaX, let deltaY, let pixels):
+      return try PerformEvents.scroll(
+        ctx, point: point, deltaX: deltaX, deltaY: deltaY, pixels: pixels)
     case .keys(let chord):
       return try PerformEvents.keys(ctx, chord: chord)
     case .text(let text):

@@ -6,8 +6,9 @@ import {
   SkillName,
   SubagentNameSchema,
   SubagentPermissionsSchema,
-  type SubagentPermissions,
   type DevelopmentSyncResponse,
+  type ServiceUnavailableCode,
+  type SubagentPermissions,
 } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { McpApprovalRequestSchema, type ServiceMcpApprovalBridge } from './mcp-approval-requests';
@@ -25,6 +26,7 @@ export type ServiceState = Static<typeof ServiceStateSchema>;
 export interface ServiceStatusView {
   state: ServiceState;
   detail: string;
+  failureCode?: ServiceUnavailableCode | null;
   serviceId: string | null;
   epoch: number | null;
   draining: boolean;

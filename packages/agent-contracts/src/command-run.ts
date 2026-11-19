@@ -4,6 +4,7 @@ import { CommandOutputSchema } from './command-output.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
 import { Identifier, OperationId } from './identifiers.js';
+import { RunContextChoiceSchema } from './model-aliases.js';
 import { ThinkingLevelSchema } from './models.js';
 import { ModelSelectionSchema, ServiceToolIdSchema, TaskInputSchema } from './task.js';
 
@@ -12,7 +13,7 @@ import { ModelSelectionSchema, ServiceToolIdSchema, TaskInputSchema } from './ta
  * override them, and the launch request itself.
  */
 
-/** The model a command runs with: the run's own selection (`inherit`), or one fixed model. */
+/** The model a command runs with: the run's own selection (`inherit`), one fixed model, or a named alias. */
 export const CommandModelSchema = Type.Union([
   Type.Object({ mode: Type.Literal('inherit') }, { additionalProperties: false }),
   Type.Object(
@@ -20,6 +21,13 @@ export const CommandModelSchema = Type.Union([
       mode: Type.Literal('fixed'),
       connectionId: Type.String({ maxLength: 4096 }),
       modelId: Type.String({ minLength: 1, maxLength: 256 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      mode: Type.Literal('alias'),
+      aliasId: Identifier,
     },
     { additionalProperties: false },
   ),
@@ -45,6 +53,7 @@ export type CommandThinkingLevel = Static<typeof CommandThinkingLevelSchema>;
 export const CommandRunPolicySchema = Type.Object(
   {
     model: Type.Optional(ModelSelectionSchema),
+    contextChoice: Type.Optional(RunContextChoiceSchema),
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
     tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
     memory: Type.Optional(Type.Boolean()),

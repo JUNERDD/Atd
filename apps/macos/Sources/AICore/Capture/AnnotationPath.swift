@@ -49,9 +49,14 @@ public enum AnnotationPath {
     switch shape {
     case .rectangle(let rect), .ellipse(let rect), .mosaic(let rect), .spotlight(let rect):
       return rect.width >= minimumExtent && rect.height >= minimumExtent
-    case .arrow(let from, let to), .line(let from, let to):
-      return AnnotationMath.distance(from, to) >= minimumExtent
-    case .pen(let points), .highlighter(let points):
+    case .arrow(let from, let to, let bend), .line(let from, let to, let bend):
+      let span = AnnotationMath.distance(from, to)
+      if let bend {
+        return max(span, AnnotationMath.distance(from, bend) + AnnotationMath.distance(bend, to))
+          >= minimumExtent
+      }
+      return span >= minimumExtent
+    case .pen(let points), .highlighter(let points), .mosaicBrush(let points):
       return !points.isEmpty
     case .text(let string, _):
       return !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

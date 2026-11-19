@@ -136,12 +136,14 @@ body {
   flex: 1;
   min-height: 0;
 }
-/* The welcome's frame (`WelcomePresence`), which sizes like the scroll area it holds. */
+/* The welcome's frame (`WelcomePresence`), which sizes like the scroll area it holds and serves as
+   a size container for proportional child caps (`cqh`). */
 .panel-page {
   display: flex;
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  container: welcome / size;
 }
 .panel-content-body {
   padding: 64px 16px 16px;
@@ -436,7 +438,7 @@ body {
    a frozen indicator reads as a hang, and the loading regions, whose only animation is a short
    delayed fade: without the delay, a load that ends at once would flash them. */
 @media (prefers-reduced-motion: reduce) {
-  *:not([data-slot='spinner'], .loading-placeholder, .service-starting-content),
+  *:not([data-slot='spinner'], .loading-placeholder),
   *::before,
   *::after {
     transition: none !important;

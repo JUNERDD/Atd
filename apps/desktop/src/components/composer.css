@@ -239,7 +239,13 @@
 
 .composer-model {
   min-width: 0;
+  max-width: 100%;
   flex-shrink: 1;
+}
+
+.composer-model-modified {
+  color: var(--muted-foreground);
+  font-weight: 600;
 }
 
 /* The merged model configuration stays one trailing control; the context ring sits before it as a
@@ -251,8 +257,15 @@
   justify-content: flex-end;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
   flex-shrink: 1;
   margin-left: auto;
+}
+
+@media (max-width: 380px) {
+  .composer-model :is(.model-config-context, .model-config-effort) {
+    display: none;
+  }
 }
 
 /* Context usage ring: an icon-xs (24px) ghost glass button (`glass-ghost`) around a 14px ring, like the progress pill's

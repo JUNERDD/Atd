@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useLayoutEffect, useRef, useSta
 import type { SettingsSectionId } from './settings-sections';
 
 /** A sub-page the settings search opens before revealing a setting on it. */
-export type SettingsSearchPage = 'panelBackground';
+export type SettingsSearchPage = 'panelBackground' | 'modelAliases';
 
 /**
  * The page a search result enters its section at: `page`, or the section's top-level page when

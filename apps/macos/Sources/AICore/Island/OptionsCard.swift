@@ -129,8 +129,8 @@ public struct OptionsCard: Equatable, Sendable {
 
   public mutating func handle(_ key: Key) -> Response {
     switch key {
-    case .up: move(by: -1, wrapping: false)
-    case .down: move(by: 1, wrapping: false)
+    case .up: move(by: -1, wrapping: true)
+    case .down: move(by: 1, wrapping: true)
     case .tab: move(by: 1, wrapping: true)
     case .backTab: move(by: -1, wrapping: true)
     case .left, .right:

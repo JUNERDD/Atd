@@ -31,13 +31,19 @@ extension AnnotationEditor {
 
   func enterTextMode() {
     guard !text.mode.isOn else { return }
+    guard recognizedText != nil else {
+      slot.selectTextPending = true
+      return
+    }
+    slot.selectTextPending = false
+    text.mode.read(recognizedText)
+    text.mode.mask(mosaics)
+    guard !text.mode.available.isEmpty else { return }
     textEditor.end()
     interaction.cancelGesture()
     store.selectedID = nil
     toolChanged()
     interaction.tool = nil
-    text.mode.read(recognizedText)
-    text.mode.mask(mosaics)
     text.mode.set(on: true)
     updateClaim()
     refreshPointer()
@@ -67,13 +73,15 @@ extension AnnotationEditor {
   /// else the tool is dropped. False when none applied, so the key goes on to the session, which
   /// cancels.
   func stepBack() -> Bool {
-    if slot.dismiss() { return true }
+    if dismissMenus() { return true }
     if let running = text.runs.running {
       slot.setup?.textRuns?.act(.stop, runId: running.id)
       return true
     }
     if textEditor.isEditing {
       textEditor.end()
+    } else if interaction.eyedropperActive {
+      styleCoordinator.setEyedropper(false)
     } else if interaction.isGesturing {
       interaction.cancelGesture()
     } else if text.mode.cancelGesture() {

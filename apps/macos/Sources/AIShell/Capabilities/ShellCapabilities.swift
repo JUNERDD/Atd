@@ -125,14 +125,15 @@ struct CapabilityFailure: LocalizedError {
 /// interactive screen (``DeviceArbiter``) while it is open, so it does not open over a capture
 /// session or a write in progress, and background writes stay out meanwhile.
 final class SystemPanels {
-  private(set) var isOpen = false {
+  var isOpen = false {
     didSet { if isOpen != oldValue { onChange?(isOpen) } }
   }
   /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
   var onChange: ((_ open: Bool) -> Void)?
-  private let lowerPanel: () -> Void
-  private let restorePanel: () -> Void
-  private let arbiter: DeviceArbiter
+  var emergencySaveURLOverrideForTesting: ((String) async throws -> URL?)?
+  let lowerPanel: () -> Void
+  let restorePanel: () -> Void
+  let arbiter: DeviceArbiter
 
   init(
     lowerPanel: @escaping () -> Void, restorePanel: @escaping () -> Void,

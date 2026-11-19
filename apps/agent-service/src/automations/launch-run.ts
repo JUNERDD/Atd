@@ -24,7 +24,12 @@ import type { ResourceStore } from '../resources.js';
 import { importResources } from '../resources/import.js';
 import type { InternalSubmitOptions } from '../tasks/submit-options.js';
 import { templateReferences } from '../commands/templates.js';
-import { commandRefusal, folderRegistered, lookups, runModel } from './checks.js';
+import { commandRefusal, folderRegistered, lookups } from './checks.js';
+import {
+  policyModelAvailable,
+  resolveAutomationPolicy,
+  type ResolvedAutomationPolicy,
+} from './model-policy.js';
 import type { AutomationComputer } from './computer-deps.js';
 import { computerPreflight, type FrozenComputer } from './computer-fire.js';
 import type { AutomationRuns } from './engine-deps.js';
@@ -113,8 +118,11 @@ export async function launchRun(
     throw new LaunchFailure('folderUnavailable', 'A folder of the automation cannot be read.');
   const { action } = automation;
   const command = action.kind === 'command' ? await saved.command(action.commandId) : null;
-  if (!(await saved.modelAvailable(runModel(automation, command))))
+  if (!(await policyModelAvailable(automation, command, saved)))
     throw new LaunchFailure('modelUnavailable', 'No provider connection can run the automation.');
+  const resolved = await resolveAutomationPolicy(deps.dataDir, automation.policy);
+  if (resolved.missingAlias)
+    throw new LaunchFailure('modelUnavailable', 'The chosen model alias no longer exists.');
   const held = deps.held(automation.id);
   const preflight = computerPreflight(automation, deps.computer, held, request.frozen);
   if (!preflight.ok) throw new LaunchFailure(preflight.reason, preflight.message);
@@ -133,8 +141,8 @@ export async function launchRun(
   };
   try {
     return automation.action.kind === 'prompt'
-      ? await submitPrompt(deps, request, automation.action.prompt, folders, internal)
-      : await submitCommand(deps, request, folders, internal, command);
+      ? await submitPrompt(deps, request, automation.action.prompt, folders, internal, resolved)
+      : await submitCommand(deps, request, folders, internal, command, resolved);
   } catch (error) {
     throw launchFailure(error);
   }
@@ -172,6 +180,7 @@ async function submitPrompt(
   prompt: string,
   folders: string[],
   internal: InternalSubmitOptions,
+  resolved: ResolvedAutomationPolicy,
 ): Promise<SubmitTaskResponse> {
   const { automation, record } = request;
   const previous = await wantedPrevious(deps, request);
@@ -181,8 +190,9 @@ async function submitPrompt(
     operationId: operationIdFor(automation.id, record.id),
     taskId: request.taskId,
     input: baseInput(text, record.firedAt, folders),
-    ...(policy.model ? { model: policy.model } : {}),
-    ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
+    ...(resolved.model ? { model: resolved.model } : {}),
+    ...(resolved.thinkingLevel ? { thinkingLevel: resolved.thinkingLevel } : {}),
+    ...(resolved.contextChoice ? { contextChoice: resolved.contextChoice } : {}),
     tools: policy.tools ?? PROMPT_TOOLS,
     memory: policy.memory,
   });
@@ -195,6 +205,7 @@ async function submitCommand(
   folders: string[],
   internal: InternalSubmitOptions,
   command: ServiceCommandFull | null,
+  resolved: ResolvedAutomationPolicy,
 ): Promise<SubmitTaskResponse> {
   const { automation, record } = request;
   if (automation.action.kind !== 'command') throw new TypeError('Not a command action.');
@@ -230,8 +241,9 @@ async function submitCommand(
       // The same context, previous answer and trigger data a prompt run reads, around the template.
       frame: automationFrame(automation, facts, previous),
       policy: {
-        ...(policy.model ? { model: policy.model } : {}),
-        ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),
+        ...(resolved.model ? { model: resolved.model } : {}),
+        ...(resolved.thinkingLevel ? { thinkingLevel: resolved.thinkingLevel } : {}),
+        ...(resolved.contextChoice ? { contextChoice: resolved.contextChoice } : {}),
         memory: policy.memory,
       },
       // A computer run starts only with the command its grant approved, as its fire froze it.

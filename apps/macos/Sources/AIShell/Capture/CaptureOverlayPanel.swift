@@ -33,8 +33,26 @@ final class CaptureOverlayPanel: NSPanel, FloatingHoverHost {
     setFrame(screen.frame, display: false)
   }
 
-  override var canBecomeKey: Bool { allowsKey }
+  override var canBecomeKey: Bool { allowsKey && !PanelKeyboard.isReturningToFrontmostApp }
   override var canBecomeMain: Bool { false }
+
+  override func close() {
+    allowsKey = false
+    PanelKeyboard.suppressResidentKey {
+      orderOut(nil)
+      super.close()
+    }
+  }
+
+  @discardableResult
+  override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+    if let overlay = contentView as? CaptureOverlayView, let canvas = overlay.annotationHost.canvas,
+      responder === overlay
+    {
+      return super.makeFirstResponder(canvas)
+    }
+    return super.makeFirstResponder(responder)
+  }
 
   /// A borderless window is otherwise kept below the menu bar; the overlay covers it, because
   /// the frozen image does.

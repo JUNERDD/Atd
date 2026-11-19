@@ -6,11 +6,13 @@ import {
   DEFAULT_NEXT_STEPS,
   DEFAULT_PANEL_BACKGROUND,
   DEFAULT_RESULT_MARKDOWN,
-  DEFAULT_SCREENSHOT_COPY_ON_CONFIRM,
+  DEFAULT_SCREENSHOT_CONFIRM_ACTION,
+  DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER,
   DEFAULT_SHORTCUTS,
   DEFAULT_SUMMARY_TITLES,
   DEFAULT_VIEW_INITIATIVE,
   LONG_SCREENSHOT_CONFIRM_ACTIONS,
+  SCREENSHOT_CONFIRM_ACTIONS,
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 
@@ -39,26 +41,44 @@ export function upgradeSettingsFile(raw: unknown): unknown {
   );
 }
 
-/** Older settings files default screenshot confirmation copy on and long screenshot to the card. */
+/**
+ * Older settings files upgrade legacy `screenshotCopyOnConfirm` into `screenshotConfirmAction`,
+ * default composer override off, and default long screenshot to the card.
+ */
 function withAddedScreenshotPreferences(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
   if (typeof settings !== 'object' || settings === null) return file;
-  const record = settings as Record<string, unknown>;
-  const screenshotCopyOnConfirm =
-    typeof record.screenshotCopyOnConfirm === 'boolean'
-      ? record.screenshotCopyOnConfirm
-      : DEFAULT_SCREENSHOT_COPY_ON_CONFIRM;
+  const { screenshotCopyOnConfirm: legacyCopyOnConfirm, ...rest } = settings as Record<
+    string,
+    unknown
+  >;
+  const screenshotConfirmAction =
+    typeof rest.screenshotConfirmAction === 'string' &&
+    (SCREENSHOT_CONFIRM_ACTIONS as readonly string[]).includes(rest.screenshotConfirmAction)
+      ? rest.screenshotConfirmAction
+      : legacyCopyOnConfirm === false
+        ? 'attach'
+        : DEFAULT_SCREENSHOT_CONFIRM_ACTION;
+  const screenshotConfirmInComposer =
+    typeof rest.screenshotConfirmInComposer === 'boolean'
+      ? rest.screenshotConfirmInComposer
+      : DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER;
   const longScreenshotConfirmAction =
-    typeof record.longScreenshotConfirmAction === 'string' &&
+    typeof rest.longScreenshotConfirmAction === 'string' &&
     (LONG_SCREENSHOT_CONFIRM_ACTIONS as readonly string[]).includes(
-      record.longScreenshotConfirmAction,
+      rest.longScreenshotConfirmAction,
     )
-      ? record.longScreenshotConfirmAction
+      ? rest.longScreenshotConfirmAction
       : DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION;
   return {
     ...file,
-    settings: { ...settings, screenshotCopyOnConfirm, longScreenshotConfirmAction },
+    settings: {
+      ...rest,
+      screenshotConfirmAction,
+      screenshotConfirmInComposer,
+      longScreenshotConfirmAction,
+    },
   };
 }
 

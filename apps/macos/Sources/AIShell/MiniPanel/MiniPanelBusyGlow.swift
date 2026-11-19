@@ -26,7 +26,7 @@ struct MiniPanelBusyGlow: View {
     )
     .frame(width: side, height: side)
     .animation(model.body.animation) {
-      $0.modifier(MiniPanelBusyFillEffect(rect: shape.rect))
+      $0.modifier(MiniPanelBusyFillEffect(shape: shape))
     }
     .animation(.easeInOut(duration: duration)) { $0.opacity(visible ? 1 : 0) }
     .frame(width: model.bodyLane.width, height: model.bodyLane.height, alignment: .topLeading)
@@ -36,22 +36,18 @@ struct MiniPanelBusyGlow: View {
 }
 
 /// Content's uniform fit would shrink a square field to the pill's narrow width. A background
-/// instead fills both axes. This opaque vector takes the same length spring as the glass clip.
+/// instead fills both axes, using the same concrete geometry and per-axis springs as its glass.
 private struct MiniPanelBusyFillEffect: GeometryEffect {
-  var rect: CGRect
+  var shape: MiniPanelGlassRect
 
-  var animatableData: AnimatablePair<AnimatablePair<Double, Double>, AnimatablePair<Double, Double>>
-  {
-    get { .init(.init(rect.minX, rect.minY), .init(rect.width, rect.height)) }
-    set {
-      rect = CGRect(
-        x: newValue.first.first, y: newValue.first.second,
-        width: newValue.second.first, height: newValue.second.second)
-    }
+  var animatableData: MiniPanelGlassRect {
+    get { shape }
+    set { shape = newValue }
   }
 
   func effectValue(size: CGSize) -> ProjectionTransform {
     guard size.width > 0, size.height > 0 else { return ProjectionTransform() }
+    let rect = shape.rect
     return ProjectionTransform(
       CGAffineTransform(
         a: max(rect.width, 0.01) / size.width, b: 0, c: 0,

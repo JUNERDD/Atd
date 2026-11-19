@@ -25,14 +25,14 @@ import {
   type RunReferences,
 } from './references/material.js';
 import { takeTaskReferences } from './references/staging.js';
-import { computerToolFor, withheldSkills } from './computer/tool-set.js';
+import { computerToolFor } from './computer/tool-set.js';
+import { recordRunPrepDegradation } from './diagnostics/run-prep-ring.js';
 import { ResourceStore } from './resources.js';
-import { ensureSkillProfile, skillProfilePaths } from './skills/profile.js';
-import { freezeRunRole } from './skills/roles.js';
-import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skills.js';
-import { takeTaskStaging } from './skills/staging.js';
-import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
-import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
+import { freezeSkillsForRun } from './run-freeze-skills.js';
+import { skillProfilePaths } from './skills/profile.js';
+import { skillChars, type RunSkills } from './skills/run-skills.js';
+import type { RunSkillCatalog } from './skills/skill-catalog.js';
+import { releaseRun } from './skills/versions.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
@@ -82,7 +82,7 @@ export async function freezeRunSelections(
   // Decided once here, so the catalog's skills and the session's tools agree (run-binding.ts).
   const computer = computerToolFor(run.snapshot, deps.ctx.computer);
   const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
-    timePreparation('freeze_skills', () => freezeSkills(deps, run, plugins.skills, computer)),
+    timePreparation('freeze_skills', () => freezeSkillsForRun(deps, run, plugins.skills, computer)),
     timePreparation('freeze_mcp', () => freezeMcp(deps, run)),
     // Agents turned off in Settings stay off for this run even if they are turned on during it,
     // and a permission change made during the run applies from the next one.
@@ -123,11 +123,13 @@ async function freezeAgents(
   sources: CatalogAgentSources,
 ): Promise<RunCatalogAgents> {
   const agents = await freezeCatalogAgents(sources);
-  if (agents.catalogError)
+  if (agents.catalogError) {
+    recordRunPrepDegradation(run.id, 'freeze_agents', 'agent_catalog_degraded');
     deps.ctx.log.warn('The agent catalog is unavailable; the run registers no ~/.atd/agents.', {
       taskId: deps.taskId,
       error: agents.catalogError,
     });
+  }
   deps.audit({
     taskId: deps.taskId,
     runId: run.id,
@@ -166,6 +168,7 @@ export async function freezeMemory(
     });
     return memory;
   } catch (error) {
+    recordRunPrepDegradation(run.id, 'freeze_memory', 'memory_degraded');
     deps.ctx.log.warn('Memory is unavailable; the run continues without it.', {
       taskId: deps.taskId,
       error: errorMessage(error),
@@ -219,6 +222,7 @@ async function freezePlugins(
     });
     return { skills: plugins.skills, agents };
   } catch (error) {
+    recordRunPrepDegradation(run.id, 'freeze_plugins', 'plugins_degraded');
     deps.ctx.log.warn('Plugin freeze degraded: plugins are unavailable to this run.', {
       taskId: deps.taskId,
       error: errorMessage(error),
@@ -263,53 +267,6 @@ async function freezeReferencesForRun(
   );
   for (const entry of resolved.audit) deps.audit({ taskId: deps.taskId, runId: run.id, ...entry });
   return resolved;
-}
-
-/**
- * Freezes skills and the role, then captures the skills the run loads and the skill catalog its
- * model is told about, both from one read of the catalog. Answers those and the run's tool ceiling
- * for its children.
- */
-async function freezeSkills(
-  deps: RunFreezeDeps,
-  run: TaskRun,
-  plugins: PluginSkillSet,
-  computer: boolean,
-): Promise<{ toolCeiling: string[]; skills: RunSkills; catalog: RunSkillCatalog }> {
-  // T3 additive freeze: staged next-run selection is consumed once; runs
-  // without staging freeze empty skills + the default role (T1/T2 shape).
-  const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
-  await ensureSkillProfile(profile);
-  const staging = await takeTaskStaging(profile, deps.taskId);
-  const catalogRecords = await loadSkillCatalog(profile, plugins);
-  const snapshot = await freezeRunSkills(profile, run.id, staging.skills, catalogRecords);
-  const { role, capabilities } = await freezeRunRole(profile, {
-    runId: run.id,
-    ...(staging.roleId !== undefined && { roleId: staging.roleId }),
-    requestedTools: [...run.snapshot.tools],
-    requestedSkills: snapshot.skills.map((skill) => skill.name),
-  });
-  const skills = await captureRunSkills(snapshot, capabilities);
-  const catalog = freezeSkillCatalog(
-    catalogRecords,
-    role,
-    capabilities.revokedSkills,
-    withheldSkills(computer),
-  );
-  deps.audit({
-    taskId: deps.taskId,
-    runId: run.id,
-    skillRevision: snapshot.revision,
-    skillCount: snapshot.skills.length,
-    loadedSkills: skills.loaded.map(({ name, revision }) => ({ name, revision })),
-    skillDiagnostics: skills.diagnostics,
-    skillCatalog: {
-      loadable: catalog.invocable.length,
-      userOnly: catalog.userOnly.length,
-      chars: catalog.text.length,
-    },
-  });
-  return { toolCeiling: capabilities.tools, skills, catalog };
 }
 
 /** Freezes the run's MCP servers and its staged tool selection, if any. */

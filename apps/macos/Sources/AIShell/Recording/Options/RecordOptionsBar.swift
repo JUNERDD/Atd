@@ -89,6 +89,7 @@ final class RecordOptionsBar: NSView, CaptureRecordAccessory {
   }
 
   func hide() {
+    CaptureTooltipPresenter.shared.dismiss()
     menus.dismiss()
     removeFromSuperview()
   }
@@ -111,6 +112,7 @@ final class RecordOptionsBar: NSView, CaptureRecordAccessory {
   }
 
   private func moved(_ drag: AnnotationGlassBar.Drag) {
+    CaptureTooltipPresenter.shared.dismiss()
     menus.close()
     switch drag {
     case .began: dragOrigin = frame.origin
@@ -131,13 +133,14 @@ final class RecordOptionsBar: NSView, CaptureRecordAccessory {
     setAccessibilityRole(.toolbar)
     setAccessibilityLabel(copy.text(.title))
     grip.image = AnnotationIcons.glyph(AnnotationIcons.grip, label: "")
-    grip.toolTip = strings.text(.captureToolbarMove)
-    optionsButton.toolTip = copy.text(.title)
+    grip.setCaptureTooltip(strings.text(.captureToolbarMove))
+    optionsButton.toolTip = nil
     let cancel = strings.text(.cancel)
     cancelButton.image = AnnotationIcons.glyph(AnnotationIcons.cancel, label: cancel)
     cancelButton.toolTip = copy.tooltip(cancel, key: "Esc")
     cancelButton.setAccessibilityLabel(cancel)
-    startButton.toolTip = copy.tooltip(copy.text(.start), key: "↩")
+    startButton.toolTip = nil
+    startButton.setCaptureTooltip(copy.tooltip(copy.text(.start), key: "↩"))
   }
 
   /// Sound's glyph, tooltip and VoiceOver name for what will be heard.
@@ -145,15 +148,18 @@ final class RecordOptionsBar: NSView, CaptureRecordAccessory {
     let sound = RecordOptionsCopy.sound(
       microphone: menus.microphone, systemAudio: menus.settings.systemAudio)
     soundButton.glyph = AnnotationIcons.glyph(sound.glyph, label: "")
-    soundButton.toolTip = sound.description
+    soundButton.toolTip = nil
+    soundButton.setCaptureTooltip(sound.description)
     soundButton.setAccessibilityLabel(sound.description)
   }
 
   @objc private func soundClicked(_ sender: RecordBarButton) {
+    CaptureTooltipPresenter.shared.dismiss()
     menus.toggle(.sound, from: sender, capsule: bar)
   }
 
   @objc private func optionsClicked(_ sender: RecordBarButton) {
+    CaptureTooltipPresenter.shared.dismiss()
     menus.toggle(.options, from: sender, capsule: bar)
   }
 

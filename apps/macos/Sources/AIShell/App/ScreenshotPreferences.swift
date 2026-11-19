@@ -1,21 +1,25 @@
 import AICore
 import Foundation
 
-/// The user's Screenshot settings in the shell: whether confirming a screenshot capture with
-/// the toolbar ✓ button (or Return / double-click) also copies it to the clipboard, whether
-/// confirming a live long screenshot opens the result card, copies, or saves locally, and the
-/// local save folder (or `nil` for "Ask each time").
+/// The user's Screenshot settings in the shell: what confirming a screenshot capture with
+/// the toolbar ✓ button (or Return / double-click) does (attach to composer and copy, attach
+/// only, or copy only), whether that preference also applies when confirming a screenshot started
+/// from the composer's "+ › Screenshot" menu, whether confirming a live long screenshot opens the
+/// result card, copies, or saves locally, and the local save folder (or `nil` for "Ask each time").
 final class ScreenshotPreferences {
   static let shared = ScreenshotPreferences()
 
-  private(set) var copyOnConfirm: Bool
+  private(set) var confirmAction: ScreenshotPreferencesSetPost.ConfirmAction
+  private(set) var confirmInComposer: Bool
   private(set) var longScreenshotConfirmAction:
     ScreenshotPreferencesSetPost.LongScreenshotConfirmAction
   private(set) var folders: SaveLocationFolders
 
   private let defaults: UserDefaults
 
-  private static let copyOnConfirmKey = "screenshotPreferences.copyOnConfirm"
+  private static let confirmActionKey = "screenshotPreferences.confirmAction"
+  private static let confirmInComposerKey = "screenshotPreferences.confirmInComposer"
+  private static let legacyCopyOnConfirmKey = "screenshotPreferences.copyOnConfirm"
   private static let longScreenshotConfirmActionKey =
     "screenshotPreferences.longScreenshotConfirmAction"
   private static let customSaveFolderKey = "screenshotPreferences.customSaveFolder"
@@ -23,13 +27,27 @@ final class ScreenshotPreferences {
 
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
-    copyOnConfirm = defaults.object(forKey: Self.copyOnConfirmKey) as? Bool ?? true
+    if let storedAction = defaults.string(forKey: Self.confirmActionKey).flatMap(
+      ScreenshotPreferencesSetPost.ConfirmAction.init(rawValue:))
+    {
+      confirmAction = storedAction
+    } else if (defaults.object(forKey: Self.legacyCopyOnConfirmKey) as? Bool) == false {
+      confirmAction = .attach
+    } else {
+      confirmAction = .attachAndCopy
+    }
+    confirmInComposer = defaults.object(forKey: Self.confirmInComposerKey) as? Bool ?? false
     longScreenshotConfirmAction =
       defaults.string(forKey: Self.longScreenshotConfirmActionKey).flatMap(
         ScreenshotPreferencesSetPost.LongScreenshotConfirmAction.init(rawValue:)) ?? .card
     let current = defaults.string(forKey: Self.customSaveFolderKey)
     let recent = defaults.stringArray(forKey: Self.recentSaveFoldersKey) ?? []
     folders = SaveLocationFolders(current: current, recent: recent).pruned(keeping: Self.isFolder)
+  }
+
+  /// Resolves what confirming a toolbar screenshot does for this entry point.
+  func effectiveConfirmAction(fromComposer: Bool) -> ScreenshotPreferencesSetPost.ConfirmAction {
+    fromComposer && !confirmInComposer ? .attach : confirmAction
   }
 
   /// What confirming a live long screenshot does.
@@ -42,10 +60,13 @@ final class ScreenshotPreferences {
   }
 
   func apply(_ post: ScreenshotPreferencesSetPost) {
-    defaults.set(post.copyOnConfirm, forKey: Self.copyOnConfirmKey)
+    defaults.set(post.confirmAction.rawValue, forKey: Self.confirmActionKey)
+    defaults.set(post.confirmInComposer, forKey: Self.confirmInComposerKey)
+    defaults.removeObject(forKey: Self.legacyCopyOnConfirmKey)
     defaults.set(
       post.longScreenshotConfirmAction.rawValue, forKey: Self.longScreenshotConfirmActionKey)
-    copyOnConfirm = post.copyOnConfirm
+    confirmAction = post.confirmAction
+    confirmInComposer = post.confirmInComposer
     longScreenshotConfirmAction = post.longScreenshotConfirmAction
   }
 

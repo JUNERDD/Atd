@@ -49,6 +49,11 @@ export function useAgent(): { snapshot: AgentSnapshot | null } {
   return { snapshot: data ?? null };
 }
 
+/** Seeds the cached agent snapshot outside React before the panel renders its first frame. */
+export function readAgentSnapshot(): Promise<AgentSnapshot> {
+  return queryClient.fetchQuery(agentSnapshotQuery());
+}
+
 /** The command list, notifying callers only when its selected data changes. */
 export function useAgentCommands(): AgentSnapshot['commands'] {
   const { data } = useQuery({ ...agentSnapshotQuery(), select: selectCommands }, queryClient);

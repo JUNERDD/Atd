@@ -8,7 +8,11 @@ import {
   CommandGetResponseSchema,
   CommandRunResponseSchema,
   isActiveStatus,
+  ModelAliasDefaultResponseSchema,
+  ModelAliasMutationResponseSchema,
+  ModelAliasRemoveResponseSchema,
   parse,
+  ProvidersListResponseSchema,
   type CommandCreate,
   type TaskInput,
 } from '@atd/agent-contracts';
@@ -217,4 +221,100 @@ test('a run asks for the picked level, else the command’s, else the connection
     assert.ok(Date.now() < deadline, 'the run did not end within 10 s');
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
+});
+
+test('model alias routes and command alias preview/fallback inheritance work end-to-end', async () => {
+  const req = (p: string, method?: string, b?: unknown) =>
+    harness
+      .call(
+        p,
+        method ? { method, ...(b !== undefined ? { body: JSON.stringify(b) } : {}) } : undefined,
+      )
+      .then((r) => r.json());
+
+  const listed0 = parse(ProvidersListResponseSchema, await req('/v1/providers'));
+  assert.deepEqual(listed0.aliases, []);
+  assert.equal(listed0.defaultAliasId, null);
+  const connectionId = listed0.connections[0]?.connectionId;
+  assert.ok(connectionId);
+  const base = { connectionId, modelId: 'gpt-4.1' };
+  const ctx64 = { contextWindow: 65536 };
+
+  const created = parse(
+    ModelAliasMutationResponseSchema,
+    await req('/v1/providers/aliases', 'POST', {
+      ...base,
+      name: ' Fast ',
+      contextChoice: ctx64,
+      thinkingLevel: 'low',
+    }),
+  );
+  assert.equal(created.alias.name, 'Fast');
+  const dup = await harness.call('/v1/providers/aliases', {
+    method: 'POST',
+    body: JSON.stringify({ ...base, name: 'fast' }),
+  });
+  assert.equal(dup.status, 409);
+
+  const id = created.alias.id;
+  const updated = parse(
+    ModelAliasMutationResponseSchema,
+    await req(`/v1/providers/aliases/${id}`, 'PUT', {
+      ...base,
+      name: 'Faster',
+      contextChoice: ctx64,
+      thinkingLevel: 'high',
+    }),
+  );
+  assert.equal(updated.alias.thinkingLevel, 'high');
+
+  const defaulted = parse(
+    ModelAliasDefaultResponseSchema,
+    await req('/v1/providers/aliases/default', 'PUT', { defaultAliasId: id }),
+  );
+  assert.equal(defaulted.defaultAliasId, id);
+
+  // Mark connection connected so defaultAliasId and alias command defaults apply in preview.
+  const dataDir = harness.config.paths.root;
+  const connections = await ConnectionStore.load(dataDir);
+  await connections.change((data) => {
+    const conn = data.connections.find((item) => item.connectionId === connectionId);
+    assert.ok(conn);
+    conn.connected = true;
+  });
+
+  const ctx = { dataDir, ledger: harness.service.ledger };
+  const inheritCmd = await create({ name: 'DefaultAliasCmd', instructions: 'Do {{input}}' });
+  const fallbackPreview = await resolvePreview(ctx, {
+    input: input('hello'),
+    commandId: inheritCmd.id,
+  });
+  assert.equal(fallbackPreview.snapshot.thinkingLevel, 'high');
+  assert.equal(fallbackPreview.snapshot.contextWindow, 65536);
+
+  const overridden = await resolvePreview(ctx, {
+    input: input('hello'),
+    commandId: inheritCmd.id,
+    policy: { contextChoice: { contextWindow: 32768 } },
+  });
+  assert.equal(overridden.snapshot.contextWindow, 32768);
+
+  const aliasCmd = await create({
+    name: 'AliasCmd',
+    instructions: 'Do {{input}}',
+    model: { mode: 'alias', aliasId: id },
+  });
+  const aliasPreview = await resolvePreview(ctx, { input: input('hello'), commandId: aliasCmd.id });
+  assert.equal(aliasPreview.snapshot.thinkingLevel, 'high');
+  assert.equal(aliasPreview.snapshot.contextWindow, 65536);
+
+  const removed = parse(
+    ModelAliasRemoveResponseSchema,
+    await req(`/v1/providers/aliases/${id}`, 'DELETE'),
+  );
+  assert.equal(removed.defaultAliasId, null);
+  await assert.rejects(
+    resolvePreview(ctx, { input: input('hello'), commandId: aliasCmd.id }),
+    /The chosen model alias no longer exists\./,
+  );
 });

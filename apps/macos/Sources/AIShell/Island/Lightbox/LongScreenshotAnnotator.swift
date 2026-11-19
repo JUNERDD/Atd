@@ -50,6 +50,7 @@ final class LongScreenshotAnnotator {
   let textEditor: AnnotationTextEditor
   let toolbar = AnnotationToolbar()
   let styleBar = AnnotationStyleBar()
+  let styleCoordinator: CaptureAnnotationStyleCoordinator
   /// The editor's canvas, filling ``canvas``.
   let drawing: AnnotationCanvasView
   private let surface: LongScreenshotAnnotatorSurface
@@ -59,6 +60,16 @@ final class LongScreenshotAnnotator {
   let defaults: UserDefaults
   /// The store's document or its undo state changed, after the card took it.
   var onChange: () -> Void = {}
+  private(set) var refreshRevision: UInt64 = 0
+  var isBurstRestyling = false
+  var pendingStylesSave: AnnotationStyles?
+  var pendingStylesFlushScheduled = false
+  var pendingCardSync = false
+  var pendingCardFlushScheduled = false
+  var lastCardAnnotations = AnnotationDocument()
+  var lastToolbarState: (tool: AnnotationTool?, canUndo: Bool, canRedo: Bool)?
+  var unmaskedSensitiveCache:
+    (mosaics: [CGRect], sensitive: [SensitiveText.Box], uncovered: [SensitiveText.Box])?
 
   /// `defaults` keeps the remembered styles, shared with the screenshot editor's.
   init(card: IslandLongScreenshotCardModel, defaults: UserDefaults = .standard) {
@@ -67,7 +78,11 @@ final class LongScreenshotAnnotator {
     let shot = card.source.shot
     let image = CGRect(origin: .zero, size: shot.pointSize)
     interaction = AnnotationInteraction(store: store)
+    interaction.selectionBounds = image
     textEditor = AnnotationTextEditor(store: store)
+    styleCoordinator = CaptureAnnotationStyleCoordinator(
+      store: store, interaction: interaction, textEditor: textEditor,
+      styleBar: styleBar, defaults: defaults)
     drawing = AnnotationCanvasView(
       store: store, interaction: interaction, textEditor: textEditor,
       renderer: AnnotationRenderer(), picker: AnnotationElementPicker())
@@ -84,6 +99,7 @@ final class LongScreenshotAnnotator {
     styleBar.pinDark()
     hover = LongScreenshotAnnotatorHover(bars: [toolbar, styleBar])
     store.load(card.state.annotations)
+    lastCardAnnotations = store.document
     wire()
     observeCard()
     refresh()
@@ -102,12 +118,15 @@ final class LongScreenshotAnnotator {
   /// Escape: steps back one level (open text, a gesture in progress, the selection, the tool), as
   /// the editor does; false with nothing to step back, so the lightbox leaves annotate mode.
   func stepBack() -> Bool {
+    if styleCoordinator.dismissPickers() { return true }
     if textEditor.isEditing {
       textEditor.end()
+    } else if interaction.eyedropperActive {
+      styleCoordinator.setEyedropper(false)
     } else if interaction.isGesturing {
       interaction.cancelGesture()
-    } else if store.selectedID != nil {
-      store.selectedID = nil
+    } else if !store.selectedIDs.isEmpty {
+      store.selectedIDs = []
     } else if interaction.tool != nil {
       choose(nil)
     } else {
@@ -120,8 +139,11 @@ final class LongScreenshotAnnotator {
   /// Ends open text, keeping it, and drops a gesture in progress: annotate mode ends, or the
   /// lightbox closes.
   func finish() {
+    styleCoordinator.dismissPickers()
+    styleCoordinator.setEyedropper(false)
     textEditor.end()
     interaction.cancelGesture()
+    flushPendingBurstWork()
   }
 
   // MARK: Wiring
@@ -129,14 +151,28 @@ final class LongScreenshotAnnotator {
   private func wire() {
     store.onChange = { [weak self] in self?.refresh() }
     store.onUndoRedo = { [weak self] in self?.styleBar.endRedactionFeedback() }
-    interaction.onStylesChange = { [weak self] styles in
-      guard let self else { return }
-      AnnotationStyleMemory.save(styles, to: defaults)
-    }
+    interaction.onStylesChange = { [weak self] styles in self?.handleStylesChange(styles) }
     interaction.onEditText = { [weak self] point, existing in
       guard let self else { return }
       textEditor.begin(
         at: point, editing: existing, style: interaction.styles.shared, in: drawing)
+    }
+    interaction.onBeginTextBox = { [weak self] point, width in
+      guard let self else { return }
+      textEditor.begin(
+        at: point, boxWidth: width, editing: nil, style: interaction.styles.shared, in: drawing)
+      refresh()
+    }
+    interaction.onSmartShapeSnapped = { [weak self] label in self?.drawing.showSizeHud(label) }
+    styleCoordinator.onRedraw = { [weak self] in self?.drawing.needsDisplay = true }
+    styleCoordinator.onRefresh = { [weak self] in self?.refresh() }
+    styleCoordinator.onRefreshPointer = { [weak self] in self?.refreshPointer() }
+    styleCoordinator.onApplyStyle = { [weak self] change, burst in
+      self?.restyle(change, burst: burst)
+    }
+    styleCoordinator.onBurstEnd = { [weak self] in self?.flushPendingBurstWork() }
+    styleCoordinator.onSpotlightDim = { [weak self] dim, burst in
+      self?.setSpotlightDim(dim, burst: burst)
     }
     textEditor.onEnd = { [weak self] in self?.focusCanvas() }
     toolbar.onTool = { [weak self] in self?.choose($0) }
@@ -144,6 +180,7 @@ final class LongScreenshotAnnotator {
     toolbar.onRedo = { [weak self] in self?.store.redo() }
     styleBar.onChange = { [weak self] in self?.restyle($0, burst: $1) }
     styleBar.onRedact = { [weak self] in self?.redactSensitive() }
+    styleCoordinator.wireCanvas(drawing)
     drawing.onChooseTool = { [weak self] in self?.choose($0) }
     drawing.onEscape = { [weak self] in self?.stepBack() ?? false }
     drawing.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
@@ -170,7 +207,13 @@ final class LongScreenshotAnnotator {
   @discardableResult
   private func adoptCard() -> Bool {
     let document = card.state.annotations
-    guard document != store.document else { return false }
+    if pendingCardSync, document == lastCardAnnotations { return false }
+    guard document != store.document else {
+      lastCardAnnotations = document
+      return false
+    }
+    pendingCardSync = false
+    lastCardAnnotations = document
     textEditor.cancel()
     interaction.cancelGesture()
     store.load(document)
@@ -180,6 +223,7 @@ final class LongScreenshotAnnotator {
   // MARK: State
 
   private func activeChanged() {
+    flushPendingBurstWork()
     // The cursor the canvas set would otherwise outlast drawing under a still pointer.
     let releasesCursor = !active && surface.isUnderPointer
     surface.isActive = active
@@ -189,10 +233,12 @@ final class LongScreenshotAnnotator {
       interaction.styles = AnnotationStyleMemory.load(from: defaults)
       toolbar.applyStrings()
       styleBar.applyStrings()
+      styleCoordinator.activateFontObserver()
       focusCanvas()
     } else {
+      CaptureFontCatalog.shared.onFontRegistered = nil
       finish()
-      store.selectedID = nil
+      store.selectedIDs = []
       if let window = drawing.window, let responder = window.firstResponder as? NSView,
         responder.isDescendant(of: surface)
       {
@@ -206,40 +252,55 @@ final class LongScreenshotAnnotator {
 
   /// Everything shown follows the store, and the card takes its document.
   func refresh() {
+    refreshRevision &+= 1
     drawing.needsDisplay = true
-    toolbar.update(
+    let toolbarState = (
       tool: interaction.tool, canUndo: store.undoManager.canUndo,
-      canRedo: store.undoManager.canRedo)
+      canRedo: store.undoManager.canRedo
+    )
+    let toolbarChanged =
+      lastToolbarState.map {
+        $0.tool != toolbarState.tool || $0.canUndo != toolbarState.canUndo
+          || $0.canRedo != toolbarState.canRedo
+      } ?? true
+    if toolbarChanged {
+      lastToolbarState = toolbarState
+      toolbar.update(
+        tool: toolbarState.tool, canUndo: toolbarState.canUndo,
+        canRedo: toolbarState.canRedo)
+      hover.refresh()
+    }
     let target = active ? styleTarget : nil
-    if let target { styleBar.update(style: target.style, controls: target.controls) }
+    if let target { styleCoordinator.syncStyleBar(target) }
     refreshRedaction()
     barsModel.update(
       toolbar: toolbar.fittingSize, styleBar: target == nil ? nil : styleBar.fittingSize)
-    hover.refresh()
-    if store.document != card.state.annotations { card.setAnnotations(store.document) }
+    if store.document != card.state.annotations {
+      if isBurstRestyling {
+        scheduleCardSync()
+      } else {
+        pendingCardSync = false
+        lastCardAnnotations = store.document
+        card.setAnnotations(store.document)
+      }
+    } else {
+      pendingCardSync = false
+      lastCardAnnotations = store.document
+    }
     onChange()
   }
 
-  /// What the style bar restyles: the open text, else the selected annotation, else the next one
+  /// What the style bar restyles: the open text, else the selected annotation(s), else the next one
   /// the active drawing tool makes; nil when there is nothing to style, which hides the bar.
   var styleTarget: (style: AnnotationStyle, controls: AnnotationStyleControls)? {
-    let target: (style: AnnotationStyle, controls: AnnotationStyleControls)
-    if let style = textEditor.style {
-      target = (style, AnnotationTool.text.styleControls)
-    } else if let selected = store.selected {
-      target = (selected.style, selected.shape.styleControls)
-    } else if let tool = interaction.tool {
-      target = (interaction.styles[tool.styleSlot], tool.styleControls)
-    } else {
-      return nil
-    }
-    let controls = target.controls.shown(for: target.style)
-    return controls.isEmpty ? nil : (target.style, controls)
+    styleCoordinator.styleTarget()
   }
 
   /// The keyboard goes to the canvas while drawing, unless text has it.
   func focusCanvas() {
-    guard active, !textEditor.isEditing, let window = drawing.window else { return }
+    guard active, !textEditor.isEditing, let window = drawing.window,
+      window.firstResponder !== drawing
+    else { return }
     window.makeFirstResponder(drawing)
   }
 

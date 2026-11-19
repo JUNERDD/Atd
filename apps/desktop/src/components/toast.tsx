@@ -1,6 +1,9 @@
+import { useContext } from 'react';
 import { toast, Toaster, type Toast } from 'react-hot-toast';
 import { CircleAlert, Info, TriangleAlert, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@atd/ui/components/button';
+import { SettingsNavigationContext } from '../features/settings/settings-navigation';
 import { IconButton } from './icon-button';
 import './toast.css';
 
@@ -12,8 +15,19 @@ const toastIcons = {
   error: CircleAlert,
 } as const;
 
-export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; text: string }) {
+export function ToastCard({
+  item,
+  kind,
+  text,
+  diagnose = false,
+}: {
+  item: Toast;
+  kind: ToastKind;
+  text: string;
+  diagnose?: boolean;
+}) {
   const { t } = useTranslation('common');
+  const navigateSettings = useContext(SettingsNavigationContext);
   const ToastIcon = toastIcons[kind];
   return (
     <output
@@ -30,6 +44,23 @@ export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; 
         }
       />
       <span>{text}</span>
+      {diagnose && (
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          onClick={() => {
+            toast.dismiss(item.id);
+            if (navigateSettings) {
+              navigateSettings('diagnostics');
+            } else {
+              void window.desktop?.settings?.openSection('diagnostics').catch(() => undefined);
+            }
+          }}
+        >
+          {t('toast.openDiagnostics')}
+        </Button>
+      )}
       <IconButton
         label={t('toast.dismiss')}
         aria-label={t('toast.dismissLabel')}

@@ -18,8 +18,8 @@ public enum RelayErrorBody {
     }
   }
 
-  public static func json(status: Int, message: String) -> Data {
-    let envelope = Envelope(error: .init(code: code(for: status), message: message))
+  public static func json(status: Int, code: String? = nil, message: String) -> Data {
+    let envelope = Envelope(error: .init(code: code ?? Self.code(for: status), message: message))
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     // Two strings always encode.

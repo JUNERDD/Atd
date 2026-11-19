@@ -57,7 +57,9 @@ const out = join(outDir, `Atd-${version}-${arch}.dmg`);
 // directory of its own.
 const backgroundDir = mkdtempSync(join(tmpdir(), 'atd-dmg-'));
 try {
+  console.error(`Rendering the installer background for ${version} (${arch}).`);
   writeBackground(backgroundDir, version, arch);
+  console.error(`Building ${basename(out)}.`);
   const here = fileURLToPath(new URL('.', import.meta.url));
   execFileSync(
     process.env.DMG_PYTHON ?? 'python3',

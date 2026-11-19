@@ -15,6 +15,10 @@ final class AnnotationHostView: NSView {
 
   override var isFlipped: Bool { true }
 
+  var canvas: AnnotationCanvasView? {
+    subviews.lazy.compactMap { $0 as? AnnotationCanvasView }.first
+  }
+
   override func hitTest(_ point: NSPoint) -> NSView? {
     let hit = super.hitTest(point)
     guard let hit, hit !== self else { return nil }

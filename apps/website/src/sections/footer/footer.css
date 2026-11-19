@@ -1,8 +1,17 @@
-/* The last plate: the name and languages on the top row once there is room. */
+/* The last plate: the name and languages on the top row once there is room. Under the small print
+   the plate keeps a floor where the afterglow (footer-glow.css) is brightest, so the text stands in
+   the light's thinning tail. */
 .footer {
-  padding-block: 72px max(48px, env(safe-area-inset-bottom));
+  isolation: isolate;
+  padding-block: 72px max(120px, env(safe-area-inset-bottom));
   font-size: var(--fs-small);
   color: var(--fg-2);
+}
+
+/* The content stands over the afterglow. */
+.footer__inner {
+  position: relative;
+  z-index: 1;
 }
 
 .footer__seam {
@@ -67,5 +76,81 @@
 
   .footer__nav {
     justify-self: end;
+  }
+}
+
+/* The directory: every page of the site, between the name and the small print, across the whole
+   column. Its groups stack on narrow screens, each list flowing down two columns; from 760px they
+   share four equal tracks, the capabilities filling three and the resources the fourth. A list's
+   columns use the tracks' gap, so they line up with the tracks above and below. */
+.footer__directory {
+  --directory-gap: 24px;
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 24px var(--directory-gap);
+  margin-block: 16px;
+}
+
+.footer__group {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.footer__heading {
+  font-size: var(--fs-legend);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--fg-3);
+}
+
+.footer__list {
+  columns: 2;
+  column-gap: var(--directory-gap);
+}
+
+.footer__item {
+  break-inside: avoid;
+}
+
+/* A directory link is 44px tall for touch and compact under a mouse, as wide as its name, which
+   wraps when the column is narrower. */
+.footer__list .footer__link {
+  display: flex;
+  gap: 4px;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  overflow-wrap: break-word;
+}
+
+.footer__out {
+  flex: none;
+  inline-size: 1em;
+  block-size: 1em;
+  color: var(--fg-3);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer__list .footer__link {
+    min-block-size: 32px;
+  }
+}
+
+@media (width >= 760px) {
+  .footer__directory {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .footer__group[data-group='features'] {
+    grid-column: span 3;
+  }
+
+  .footer__group[data-group='features'] .footer__list {
+    columns: 3;
+  }
+
+  .footer__group[data-group='resources'] .footer__list {
+    columns: 1;
   }
 }

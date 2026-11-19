@@ -8,6 +8,7 @@ import {
   type AddonArch,
   type AddonArtifact,
 } from '@atd/agent-contracts';
+import { scrubPersonalPaths } from '../diagnostics/scrub-paths.js';
 import type { Logger } from '../logging.js';
 
 /** The lock a build ships beside the service package (`addons.lock.json`, `AddonLock`). */
@@ -24,6 +25,49 @@ export interface AddonCatalog {
   ids: string[];
   /** The archive per id for this Mac's architecture. */
   artifacts: ReadonlyMap<string, AddonArtifact>;
+}
+
+export type AddonLockStatus = 'ok' | 'missing' | 'invalid';
+
+export interface AddonLockDiagnostics {
+  status: AddonLockStatus;
+  source: string | null;
+  artifactCount: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+let lastAddonLockDiagnostics: AddonLockDiagnostics = {
+  status: 'missing',
+  source: null,
+  artifactCount: 0,
+  errorCode: null,
+  errorMessage: null,
+};
+
+/** Returns a readonly snapshot of the most recent `addons.lock.json` load result. */
+export function getAddonLockDiagnostics(): AddonLockDiagnostics {
+  return { ...lastAddonLockDiagnostics };
+}
+
+/** Resets cached add-on lock diagnostics; intended for unit tests. */
+export function resetAddonLockDiagnosticsForTests(): void {
+  lastAddonLockDiagnostics = {
+    status: 'missing',
+    source: null,
+    artifactCount: 0,
+    errorCode: null,
+    errorMessage: null,
+  };
+}
+
+function classifyAddonLockError(error: unknown): string {
+  if (error instanceof SyntaxError) return 'addons_lock_invalid_json';
+  const msg = errorMessage(error);
+  if (msg.includes('lists') && msg.includes('twice')) return 'addons_lock_duplicate_entry';
+  if (msg.includes('non-https URL')) return 'addons_lock_insecure_url';
+  if (error instanceof TypeError) return 'addons_lock_invalid_schema';
+  return 'addons_lock_unreadable';
 }
 
 /** This Mac's architecture as add-on archives name it; null on any other. */
@@ -72,7 +116,16 @@ export async function loadAddonCatalog(options: {
   let file: string | null = null;
   try {
     file = await lockPath(options.development);
-    if (!file) return empty;
+    if (!file) {
+      lastAddonLockDiagnostics = {
+        status: 'missing',
+        source: null,
+        artifactCount: 0,
+        errorCode: 'addons_lock_missing',
+        errorMessage: null,
+      };
+      return empty;
+    }
     const lock = parse(AddonLockSchema, JSON.parse(await readFile(file, 'utf8')));
     const seen = new Set<string>();
     for (const artifact of lock.addons) {
@@ -83,16 +136,31 @@ export async function loadAddonCatalog(options: {
         throw new Error(`The lock offers ${artifact.id} from a non-https URL.`);
     }
     const arch = hostArch();
+    const artifacts = new Map(
+      lock.addons
+        .filter((artifact) => artifact.arch === arch)
+        .map((artifact) => [artifact.id, artifact]),
+    );
+    lastAddonLockDiagnostics = {
+      status: 'ok',
+      source: scrubPersonalPaths(file),
+      artifactCount: artifacts.size,
+      errorCode: null,
+      errorMessage: null,
+    };
     return {
       source: file,
       ids: [...new Set(lock.addons.map((artifact) => artifact.id))],
-      artifacts: new Map(
-        lock.addons
-          .filter((artifact) => artifact.arch === arch)
-          .map((artifact) => [artifact.id, artifact]),
-      ),
+      artifacts,
     };
   } catch (error) {
+    lastAddonLockDiagnostics = {
+      status: 'invalid',
+      source: file ? scrubPersonalPaths(file) : null,
+      artifactCount: 0,
+      errorCode: classifyAddonLockError(error),
+      errorMessage: scrubPersonalPaths(errorMessage(error)),
+    };
     options.log.error('The add-on lock is unusable; no add-on is offered.', {
       lock: file,
       error: errorMessage(error),

@@ -239,7 +239,7 @@ final class ManagedChromes {
     guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: lock),
       let pid = ManagedChromeLaunch.lockOwner(target),
       let executable = applicationURL.flatMap({ Bundle(url: $0)?.executableURL }),
-      ProcessIdentity.executablePath(of: pid) == executable.resolvingSymlinksInPath().path,
+      ProcessIdentity.executablePath(of: pid) == ProcessIdentity.normalizedPath(of: executable),
       let start = ProcessIdentity.start(of: pid),
       let port = Self.readPort(profile), await Self.verify(port)
     else { return nil }
@@ -287,24 +287,5 @@ final class ManagedChromes {
       guard alive() else { return }
       kill(pid, signal)
     }
-  }
-}
-
-/// A process's identity as the kernel reports it.
-nonisolated enum ProcessIdentity {
-  /// The start time in microseconds since 1970, or nil when no such process runs.
-  static func start(of pid: pid_t) -> UInt64? {
-    var info = proc_bsdinfo()
-    let size = Int32(MemoryLayout<proc_bsdinfo>.size)
-    guard pid > 0, proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
-    return UInt64(info.pbi_start_tvsec) * 1_000_000 + UInt64(info.pbi_start_tvusec)
-  }
-
-  static func executablePath(of pid: pid_t) -> String? {
-    var buffer = [UInt8](repeating: 0, count: 4 * Int(MAXPATHLEN))
-    let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
-    guard length > 0 else { return nil }
-    let path = String(decoding: buffer.prefix(Int(length)), as: UTF8.self)
-    return URL(filePath: path).resolvingSymlinksInPath().path
   }
 }

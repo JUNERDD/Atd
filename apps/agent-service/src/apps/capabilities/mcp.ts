@@ -6,7 +6,9 @@ import {
   type McpCallToolOutput,
   type McpListToolsInput,
 } from '@atd/agent-contracts';
-import { McpApprovalBroker, McpError, type McpAuthority } from '../../mcp/index.js';
+import { McpApprovalBroker } from '../../mcp/approval.js';
+import type { McpAuthority } from '../../mcp/authority.js';
+import { McpError } from '../../mcp/errors.js';
 import { AppFailure, capabilityDenied } from '../errors.js';
 
 /**

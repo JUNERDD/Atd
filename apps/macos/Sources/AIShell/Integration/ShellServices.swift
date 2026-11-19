@@ -27,22 +27,36 @@ public final class ShellServices {
   public let link: ServiceLink
   public let renderer: RendererSource
   public let dataDirectory: URL
-  private let supervisor: ServiceSupervisor?
-  private let logDirectory: URL?
+  public let decisionRings: ShellDecisionRings
+  public let shellLog: ShellLogWriter
+  let supervisor: ServiceSupervisor?
+  let logDirectory: URL?
+  let liveProbes = LiveProbeCoordinator()
+  var diagnosticsTemporaryDirectoryURL = FileManager.default.temporaryDirectory
+  var nativeDiagnosticsConsentOverrideForTesting: (() async -> Bool?)?
   /// One handler serves every window's web view and every rebuild of them.
   private(set) lazy var schemeHandler = RendererSchemeHandler(renderer: renderer, link: link)
   /// Generative views' documents, for the same web views.
   private(set) lazy var viewSchemeHandler = ViewSchemeHandler(link: link)
 
+  var isDevelopment: Bool { supervisor == nil }
+
   private init(
-    source: any ServiceEndpointSource, renderer: RendererSource, dataDirectory: URL,
-    supervisor: ServiceSupervisor?, logDirectory: URL?
+    source: any ServiceEndpointSource,
+    renderer: RendererSource,
+    dataDirectory: URL,
+    supervisor: ServiceSupervisor?,
+    logDirectory: URL?,
+    decisionRings: ShellDecisionRings,
+    shellLog: ShellLogWriter
   ) {
     link = ServiceLink(source: source)
     self.renderer = renderer
     self.dataDirectory = dataDirectory
     self.supervisor = supervisor
     self.logDirectory = logDirectory
+    self.decisionRings = decisionRings
+    self.shellLog = shellLog
   }
 
   /// The services of this build configuration.
@@ -65,9 +79,18 @@ public final class ShellServices {
       preconditionFailure("\(devOriginVariable) must be a loopback http origin, not \(raw).")
     }
     let data = ServiceDataDirectory.resolve(environment: environment, home: home, development: true)
+    let rings = ShellDecisionRings()
+    let shellLog = ShellLogWriter(
+      logFileURL: ShellLogWriter.defaultLogURL(
+        dataDirectory: data, homeDirectory: home, isDevelopment: true))
     return ShellServices(
-      source: DevelopmentServiceSource(dataDirectory: data), renderer: .devServer(origin),
-      dataDirectory: data, supervisor: nil, logDirectory: nil)
+      source: DevelopmentServiceSource(dataDirectory: data),
+      renderer: .devServer(origin),
+      dataDirectory: data,
+      supervisor: nil,
+      logDirectory: nil,
+      decisionRings: rings,
+      shellLog: shellLog)
   }
 
   public static func bundled(resources: URL, environment: [String: String], home: URL)
@@ -76,12 +99,22 @@ public final class ShellServices {
     let data = ServiceDataDirectory.resolve(
       environment: environment, home: home, development: false)
     let logs = home.appending(path: "Library/Logs/AI", directoryHint: .isDirectory)
+    let rings = ShellDecisionRings()
+    let shellLog = ShellLogWriter(
+      logFileURL: ShellLogWriter.defaultLogURL(
+        dataDirectory: data, homeDirectory: home, isDevelopment: false))
     let supervisor = ServiceSupervisor(
-      plan: ServiceLaunchPlan(resources: resources, dataDirectory: data), logDirectory: logs)
+      plan: ServiceLaunchPlan(resources: resources, dataDirectory: data),
+      logDirectory: logs,
+      decisionRing: rings.relaySupervisor)
     return ShellServices(
       source: supervisor,
       renderer: .bundle(resources.appending(path: "renderer", directoryHint: .isDirectory)),
-      dataDirectory: data, supervisor: supervisor, logDirectory: logs)
+      dataDirectory: data,
+      supervisor: supervisor,
+      logDirectory: logs,
+      decisionRings: rings,
+      shellLog: shellLog)
   }
 
   /// Brings the supervised service up (Release); Debug only connects.
@@ -116,10 +149,45 @@ public final class ShellServices {
     NSWorkspace.shared.activateFileViewerSelecting([log])
   }
 
-  /// A committed quit: stops the supervised service (shutdown, then SIGKILL if it does not exit).
-  /// Debug leaves the development service running.
+  /// A committed quit: disarms live probes, stops the supervised service, and flushes/closes
+  /// `shell.log`. Debug leaves the development service running.
   func stopForQuit() async {
+    liveProbes.stop()
     await supervisor?.stop()
+    shellLog.close(timeout: .milliseconds(500))
+  }
+
+  /// Pre-scrubbed context consumed by ``WindowRecoveryView``.
+  func recoveryServiceContext() -> WindowRecoveryView.ServiceContext {
+    if let supervisor {
+      let unavailable: ServiceUnavailable? =
+        switch supervisor.state {
+        case .unavailable(let reason): reason
+        case .starting, .restarting: .starting
+        case .idle, .running: nil
+        }
+      return WindowRecoveryView.ServiceContext(
+        isDevelopment: false,
+        unavailable: unavailable,
+        lastFailureSummary: supervisor.lastFailureSummary)
+    }
+    let unavailable: ServiceUnavailable?
+    if case .failure(let reason) = link.latest {
+      unavailable = reason
+    } else {
+      switch ServiceDiscovery.read(dataDirectory: dataDirectory) {
+      case .success:
+        unavailable = nil
+      case .failure(.notRunning), .failure(.stale):
+        unavailable = .developmentServiceNotRunning
+      case .failure(let err):
+        unavailable = .invalidEndpoint(err)
+      }
+    }
+    return WindowRecoveryView.ServiceContext(
+      isDevelopment: true,
+      unavailable: unavailable,
+      lastFailureSummary: link.lastFailureSummary)
   }
 
   /// The shell's own client for the service as it is now.

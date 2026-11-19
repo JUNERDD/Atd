@@ -1,4 +1,5 @@
 import {
+  findModelAlias,
   MAX_AUTOMATIONS,
   type Automation,
   type AutomationAction,
@@ -7,6 +8,7 @@ import {
   type AutomationTrigger,
   type AutomationTriggerProblem,
   type ComputerHold,
+  type ModelAlias,
   type ModelSelection,
   type ServiceCommandFull,
 } from '@atd/agent-contracts';
@@ -21,6 +23,7 @@ import { TEMP_CONNECTION_ID } from '../tasks/run-selection.js';
 import { checkComputerDraft } from './computer-checks.js';
 import type { AutomationComputer } from './computer-deps.js';
 import { grantProblem } from './computer-grant.js';
+import { policyModelAvailable } from './model-policy.js';
 import { scheduleProblem, validTimeZone } from './schedule.js';
 
 /**
@@ -47,11 +50,32 @@ export interface Lookups {
   command(id: string): Promise<ServiceCommandFull | null>;
   /** Whether a run could get a model: the chosen connection, else a default one or env credentials. */
   modelAvailable(model: ModelSelection | undefined): Promise<boolean>;
+  /** Whether a saved model alias exists and its connection is connected or temporary. */
+  aliasAvailable(aliasId: string): Promise<boolean>;
+  /** Saved display name of a model alias, or null when missing. */
+  aliasName?(aliasId: string): Promise<string | null>;
 }
 
 export function lookups(dataDir: string): Lookups {
   let connections: Promise<ConnectionStore | null> | undefined;
   const commands = new Map<string, Promise<ServiceCommandFull | null>>();
+  const loadConnections = () => {
+    connections ??= ConnectionStore.load(dataDir).catch(() => null);
+    return connections;
+  };
+  const connectionAvailable = (
+    store: ConnectionStore | null,
+    connectionId: string | null | undefined,
+  ): boolean => {
+    const temp = readTempCredentials() !== null;
+    if (connectionId === TEMP_CONNECTION_ID) return temp;
+    // A disconnected connection would only fail the run at its start.
+    return (
+      store?.data.connections.some(
+        (item) => item.connectionId === connectionId && item.connected,
+      ) ?? false
+    );
+  };
   return {
     command(id) {
       let found = commands.get(id);
@@ -62,15 +86,24 @@ export function lookups(dataDir: string): Lookups {
       return found;
     },
     async modelAvailable(model) {
-      connections ??= ConnectionStore.load(dataDir).catch(() => null);
-      const store = await connections;
-      // A disconnected connection would only fail the run at its start.
-      const usable = (id: string | null | undefined) =>
-        store?.data.connections.some((item) => item.connectionId === id && item.connected) ?? false;
+      const store = await loadConnections();
       const temp = readTempCredentials() !== null;
-      if (model)
-        return model.connectionId === TEMP_CONNECTION_ID ? temp : usable(model.connectionId);
-      return usable(store?.data.defaultConnectionId) || temp;
+      if (model) return connectionAvailable(store, model.connectionId);
+      const defaultAlias = findModelAlias(
+        store?.data.aliases,
+        store?.data.defaultAliasId ?? undefined,
+      );
+      if (defaultAlias && connectionAvailable(store, defaultAlias.connectionId)) return true;
+      return connectionAvailable(store, store?.data.defaultConnectionId) || temp;
+    },
+    async aliasAvailable(aliasId) {
+      const store = await loadConnections();
+      const alias = findModelAlias(store?.data.aliases, aliasId);
+      return alias !== undefined && connectionAvailable(store, alias.connectionId);
+    },
+    async aliasName(aliasId) {
+      const store = await loadConnections();
+      return findModelAlias(store?.data.aliases, aliasId)?.name ?? null;
     },
   };
 }
@@ -203,10 +236,22 @@ export function commandRefusal(
 export function runModel(
   automation: AutomationDraft,
   command: ServiceCommandFull | null,
+  aliases?: readonly ModelAlias[],
 ): ModelSelection | undefined {
   if (automation.policy.model) return automation.policy.model;
-  if (automation.action.kind !== 'command' || command?.model.mode !== 'fixed') return undefined;
-  return { connectionId: command.model.connectionId, modelId: command.model.modelId };
+  if (automation.policy.aliasId) {
+    const alias = findModelAlias(aliases, automation.policy.aliasId);
+    return alias ? { connectionId: alias.connectionId, modelId: alias.modelId } : undefined;
+  }
+  if (automation.action.kind !== 'command' || !command) return undefined;
+  if (command.model.mode === 'fixed') {
+    return { connectionId: command.model.connectionId, modelId: command.model.modelId };
+  }
+  if (command.model.mode === 'alias') {
+    const alias = findModelAlias(aliases, command.model.aliasId);
+    return alias ? { connectionId: alias.connectionId, modelId: alias.modelId } : undefined;
+  }
+  return undefined;
 }
 
 /**
@@ -227,15 +272,28 @@ export async function checkDraft(
   ctx: CheckContext,
   automationId: string | undefined,
 ): Promise<void> {
+  if (draft.policy.model && draft.policy.aliasId) {
+    throw new TypeError('An automation policy cannot set both a model and a model alias.');
+  }
   const trigger = triggerProblem(draft.trigger, ctx, automationId, true);
   if (trigger) throw problemError(trigger);
   if (!policyFoldersRegistered(draft, ctx.folders)) throw problemError('unknownFolder');
+  if (draft.policy.aliasId && !(await ctx.lookups.aliasAvailable(draft.policy.aliasId)))
+    throw problemError('modelUnavailable');
   if (draft.policy.model && !(await ctx.lookups.modelAvailable(draft.policy.model)))
     throw problemError('modelUnavailable');
   if (draft.action.kind === 'command') {
     const command = await ctx.lookups.command(draft.action.commandId);
     const refusal = commandRefusal(command, draft.action, draft.trigger);
     if (refusal) throw problemError('commandUnavailable', refusal);
+    if (
+      !draft.policy.model &&
+      !draft.policy.aliasId &&
+      command?.model.mode === 'alias' &&
+      !(await ctx.lookups.aliasAvailable(command.model.aliasId))
+    ) {
+      throw problemError('modelUnavailable');
+    }
   }
   checkComputerDraft(draft, ctx.computer?.bindings);
 }
@@ -277,7 +335,7 @@ export async function firingProblem(
   const command = action.kind === 'command' ? await ctx.lookups.command(action.commandId) : null;
   if (action.kind === 'command' && commandRefusal(command, action, automation.trigger))
     return 'commandUnavailable';
-  if (!(await ctx.lookups.modelAvailable(runModel(automation, command)))) return 'modelUnavailable';
+  if (!(await policyModelAvailable(automation, command, ctx.lookups))) return 'modelUnavailable';
   if (automation.policy.computer && ctx.hold(automation.id)) return 'computerHold';
   if (!computerAuthorized(automation, ctx, command)) return 'computerNeedsAuthorization';
   return undefined;

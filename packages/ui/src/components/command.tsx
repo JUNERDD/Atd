@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
+import { isComposingKey } from '@atd/ui/lib/ime';
+import { createPointerGate, type PointerGate } from '@atd/ui/lib/pointer-gate';
 import { cn } from '@atd/ui/lib/utils';
 
 import {
@@ -13,15 +15,50 @@ import { InputGroup, InputGroupAddon } from '@atd/ui/components/input-group';
 import { SearchIcon, CheckIcon } from 'lucide-react';
 import { ScrollArea, type ScrollGutter } from '@atd/ui/components/scroll-area';
 
-function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
+function isCommandNavKey(event: React.KeyboardEvent<HTMLDivElement>): boolean {
+  return (
+    event.key === 'ArrowDown' ||
+    event.key === 'ArrowUp' ||
+    event.key === 'Home' ||
+    event.key === 'End' ||
+    (event.ctrlKey && ['n', 'p', 'j', 'k'].includes(event.key))
+  );
+}
+
+function Command({
+  className,
+  loop = true,
+  pointerGate,
+  onKeyDownCapture,
+  onPointerMoveCapture,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive> & {
+  pointerGate?: PointerGate | undefined;
+}) {
+  const [internalPointerGate] = React.useState(() => createPointerGate(true));
+  const gate = pointerGate ?? internalPointerGate;
+
   return (
     <CommandPrimitive
       data-slot="command"
+      loop={loop}
       className={cn(
         'flex size-full flex-col overflow-hidden rounded-3xl bg-popover p-1 text-popover-foreground',
         className,
       )}
       {...props}
+      onKeyDownCapture={(event) => {
+        onKeyDownCapture?.(event);
+        if (!isComposingKey(event) && isCommandNavKey(event)) {
+          gate.lock();
+        }
+      }}
+      onPointerMoveCapture={(event) => {
+        onPointerMoveCapture?.(event);
+        if (!gate.allowMove(event)) {
+          event.stopPropagation();
+        }
+      }}
     />
   );
 }

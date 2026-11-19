@@ -6,7 +6,16 @@ import OSLog
 /// UU can reintroduce a released Command flag on the next modifier's release. Correct only
 /// that observed event at the HID boundary, before its flags enter the system state again.
 /// This never posts keys or clears an existing state without its complete release sequence.
+///
+/// Ordinary non-UU typing events incur `0 ns` ring-write overhead (`01` §3.2); only state
+/// transitions (`tapCreate` failure, `.tapDisabledByTimeout` / `.tapDisabledByUserInput`, rising
+/// edge of `IsSecureEventInputEnabled()`, and stripped stale `.maskCommand`) append a fixed 96-byte
+/// `HotKeyDecisionEntry` (`< 150 ns`, zero heap allocation).
 final class RemoteModifierRepair {
+  var decisionRing: HotKeyDecisionRing?
+  private(set) var tapDisabledCount: UInt16 = 0
+  private(set) var tapInstallFailed = false
+  private var wasSecureInput = false
   private var tap: CFMachPort?
   private var source: CFRunLoopSource?
   private var sequence = RemoteModifierSequence()
@@ -52,6 +61,7 @@ final class RemoteModifierRepair {
       !NSRunningApplication.runningApplications(withBundleIdentifier: "com.netease.uuremote")
         .isEmpty
     else {
+      tapInstallFailed = false
       stop()
       return
     }
@@ -73,39 +83,78 @@ final class RemoteModifierRepair {
         }, userInfo: Unmanaged.passUnretained(self).toOpaque()),
       let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
     else {
+      tapInstallFailed = true
       Self.log.error("Remote shortcut release correction could not install its event tap")
+      recordRing(eventKind: 10, outcome: 2, mask: 0, subject: "uuremote_tap_install_failed")
       return
     }
+    tapInstallFailed = false
     self.tap = tap
     self.source = source
     sequence.reset(keyboardIsClear: Self.keyboardIsClear)
     CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-    // Secure input can suppress events without delivering a tap-disabled callback. Never
-    // carry a partial chord through that silent gap.
     let check = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
       MainActor.assumeIsolated {
-        if IsSecureEventInputEnabled() { self?.sequence.reset() }
+        guard let self else { return }
+        let secure = IsSecureEventInputEnabled()
+        if secure {
+          self.sequence.reset()
+          if !self.wasSecureInput {
+            self.wasSecureInput = true
+            self.recordRing(eventKind: 12, outcome: 1, mask: 0, subject: "secure_input_reset")
+          }
+        } else {
+          self.wasSecureInput = false
+        }
       }
     }
     secureCheck = check
     RunLoop.main.add(check, forMode: .common)
   }
 
+  func handleTapDisabled(_ type: CGEventType, reEnableTap: (() -> Bool)? = nil) {
+    sequence.reset()
+    identity = nil
+    let disabledTotal = tapDisabledCount &+ 1
+    let recovered: Bool
+    if type == .tapDisabledByTimeout {
+      if let reEnableTap {
+        recovered = reEnableTap()
+      } else if let tap {
+        CGEvent.tapEnable(tap: tap, enable: true)
+        recovered = CGEvent.tapIsEnabled(tap: tap)
+      } else {
+        recovered = false
+      }
+    } else {
+      recovered = false
+    }
+    tapDisabledCount = recovered ? 0 : disabledTotal
+    recordRing(
+      eventKind: 11,
+      outcome: 2,
+      mask: 0,
+      tapDisabledCount: disabledTotal,
+      subject: type == .tapDisabledByTimeout ? "tap_disabled_timeout" : "tap_disabled_user")
+  }
+
   private func receive(_ type: CGEventType, event: CGEvent) {
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-      sequence.reset()
-      identity = nil
-      if type == .tapDisabledByTimeout, let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+      handleTapDisabled(type)
       return
     }
+    tapDisabledCount = 0
     guard !IsSecureEventInputEnabled() else {
       sequence.reset()
+      if !wasSecureInput {
+        wasSecureInput = true
+        recordRing(eventKind: 12, outcome: 1, mask: 0, subject: "secure_input_reset")
+      }
       return
     }
+    wasSecureInput = false
     let pid = pid_t(truncatingIfNeeded: event.getIntegerValueField(.eventSourceUnixProcessID))
     guard isUURemote(pid) else {
-      // Another source may be holding either Command key. Its clean event can establish a
-      // baseline only when the system independently reports that all shortcut keys are up.
       sequence.reset(
         keyboardIsClear: event.flags.intersection(Self.modifiers).isEmpty && Self.keyboardIsClear)
       return
@@ -114,11 +163,12 @@ final class RemoteModifierRepair {
     if !stale.isEmpty {
       event.flags.subtract(stale)
       Self.log.info("Corrected a stale Command flag in a UU shortcut release")
+      recordRing(
+        eventKind: 13, outcome: 1, mask: UInt32(truncatingIfNeeded: stale.rawValue),
+        subject: "uuremote_command_repaired")
     }
   }
 
-  /// Bind the observed PID to its current kernel start time and executable, including after a
-  /// UU restart or PID reuse. No process identity supplied in an event is trusted by itself.
   private func isUURemote(_ pid: pid_t) -> Bool {
     guard pid > 0, pid != getpid(), let start = ProcessIdentity.start(of: pid) else { return false }
     if let identity, identity.pid == pid, identity.start == start { return identity.matches }
@@ -138,9 +188,33 @@ final class RemoteModifierRepair {
     }
   }
 
-  private func stop() {
+  @inline(__always)
+  private func recordRing(
+    eventKind: UInt8,
+    outcome: UInt8,
+    mask: UInt32,
+    tapDisabledCount: UInt16 = 0,
+    subject: StaticString
+  ) {
+    guard let decisionRing else { return }
+    var entry = HotKeyDecisionEntry()
+    entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
+    entry.eventKind = eventKind
+    entry.outcome = outcome
+    entry.modifierFlagsMask = mask
+    entry.tapDisabledCount = tapDisabledCount
+    subject.withUTF8Buffer { utf8 in
+      let str = String(decoding: utf8, as: UTF8.self)
+      entry.subjectOrBundleId = InlineText64(truncatingUTF8: str)
+    }
+    decisionRing.append(entry)
+  }
+
+  func stop() {
     secureCheck?.invalidate()
     secureCheck = nil
+    wasSecureInput = false
+    tapDisabledCount = 0
     if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
     if let tap { CFMachPortInvalidate(tap) }
     source = nil

@@ -194,27 +194,40 @@ function resolveCandidate() {
     );
   }
   for (const arch of ['arm64', 'x64']) {
+    const lane = `${source.prefix}${arch} / `;
     checks.push(
-      check(`${source.prefix}Build ${arch} ${version}`, [
+      check(`${lane}Build and sign the app`, [
         'Build the Release app',
         'Check the built app',
         "Check the add-ons against the app's lock",
-        'Sign, notarize and package the dmg',
+        'Archive the signed app and add-ons',
+        'Upload the signed app and add-ons',
       ]),
-      check(
-        `${source.prefix}Verify ${arch} on ${arch === 'arm64' ? 'macos-15' : 'macos-15-intel'}`,
-        [
-          "Check the dmg's digest",
-          'Verify the app',
-          'Verify the add-ons',
-          ...(arch === 'x64'
-            ? [
-                'Test Intel Release startup and core functions',
-                'Confirm smoke tests preserved the bundle signature',
-              ]
-            : []),
-        ],
-      ),
+      check(`${lane}Notarize the app`, [
+        'Download the signed app and add-ons',
+        'Verify and restore the signed app handoff',
+        'Notarize and staple the app',
+        'Archive the verified app and add-ons',
+        'Upload the verified app and add-ons',
+      ]),
+      check(`${lane}Package and notarize the dmg`, [
+        'Download the verified app and add-ons',
+        'Verify and restore the notarized app handoff',
+        'Build, sign and notarize the dmg',
+        'Upload the dmg and add-ons',
+      ]),
+      check(`${lane}Verify the installer on macOS 15`, [
+        "Check the dmg's digest",
+        'Verify the app',
+        'Verify the app and dmg notarization tickets',
+        'Verify the add-ons',
+        ...(arch === 'x64'
+          ? [
+              'Test Intel Release startup and core functions',
+              'Confirm smoke tests preserved the bundle signature',
+            ]
+          : []),
+      ]),
     );
   }
   checks.push(

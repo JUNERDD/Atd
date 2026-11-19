@@ -35,6 +35,7 @@ final class LongScreenshotChrome: LongScreenshotChromeHosting {
   private let bar = LongScreenshotControlBar()
   private let row = LongScreenshotStatusRow()
   private weak var host: NSView?
+  private weak var backdropHost: NSView?
   private var selection = CGRect.zero
   private var keepClear = AnnotationToolbarLayout.KeepClear()
   /// Where a drag put the bar, until a double-click or another host; nil beside the selection.
@@ -55,11 +56,19 @@ final class LongScreenshotChrome: LongScreenshotChromeHosting {
   /// only when the chrome is shown again.
   var previewSize: CGSize { strip.previewSize }
 
-  func show(in host: NSView, selection: CGRect, keepClear: AnnotationToolbarLayout.KeepClear) {
-    if host !== self.host {
+  func show(
+    in host: NSView, backdrop: NSView?, selection: CGRect,
+    keepClear: AnnotationToolbarLayout.KeepClear
+  ) {
+    let stripTarget = backdrop ?? host
+    if host !== self.host || stripTarget !== self.backdropHost {
       if self.host != nil { movedOrigin = nil }
-      for view in [strip, bar, row] as [NSView] { host.addSubview(view) }
+      for view in [strip, bar, row] as [NSView] { view.removeFromSuperview() }
+      stripTarget.addSubview(strip)
+      host.addSubview(bar)
+      host.addSubview(row)
       self.host = host
+      self.backdropHost = stripTarget
     }
     self.selection = selection
     self.keepClear = keepClear
@@ -83,13 +92,16 @@ final class LongScreenshotChrome: LongScreenshotChromeHosting {
     for view in [strip, bar, row] as [NSView] { view.removeFromSuperview() }
     strip.clear()
     host = nil
+    backdropHost = nil
     movedOrigin = nil
   }
 
-  /// The strip's, the bar's and, while it shows, the row's frames.
+  /// The host-owned chrome frames (the strip when on `host`, the bar and, while it shows, the
+  /// row).
   var frames: [CGRect] {
-    guard host != nil else { return [] }
-    return [strip.frame, bar.frame] + (row.isHidden ? [] : [row.frame])
+    guard let host else { return [] }
+    let stripFrames = strip.superview === host ? [strip.frame] : []
+    return stripFrames + [bar.frame] + (row.isHidden ? [] : [row.frame])
   }
 
   // MARK: Placement

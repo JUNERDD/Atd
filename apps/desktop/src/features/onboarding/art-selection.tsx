@@ -13,21 +13,23 @@ import { usePracticeSelection } from './use-practice-selection';
  * The selection step's practice area, in the card's display panel: a short paragraph the user
  * selects to see the real selection toolbar (the shell's, not a picture of it) appear beside the
  * selection, here in the guide instead of another app. Its caption invites the try the way the
- * activation asks for (holding the key, or pressing it twice first), or says what the toolbar
- * still needs: Accessibility access, then the toolbar switch. Below it, while keys are involved,
- * their keycaps follow the keyboard, as on the shortcut step. The shell applies the
- * activation itself. The text stays selectable either way, but the selection reaches the shell
- * only while both are in place, the card is at rest (`active`) and the step is not leaving.
+ * activation asks for (holding the key, or pressing it twice first), appends the small-icon expand
+ * hint when enabled and trusted, or says what the toolbar still needs: Accessibility access, then
+ * the toolbar switch. Below it, while keys are involved, their keycaps follow the keyboard, as on
+ * the shortcut step. The shell applies the activation itself. The text stays selectable either way,
+ * but the selection reaches the shell only while both are in place, the card is at rest (`active`)
+ * and the step is not leaving.
  */
 export function SelectionPractice({
   enabled,
-  activation: { activation, activationKeys },
+  activation: { activation, activationKeys, smallIcon },
   trusted,
   active,
   platform,
 }: {
   enabled: boolean;
-  activation: Pick<SelectionToolbarSettings, 'activation' | 'activationKeys'>;
+  activation: Pick<SelectionToolbarSettings, 'activation' | 'activationKeys'> &
+    Partial<Pick<SelectionToolbarSettings, 'smallIcon'>>;
   trusted: boolean;
   active: boolean;
   platform: string;
@@ -44,6 +46,8 @@ export function SelectionPractice({
   else if (activation === 'toggle') caption = t('selection.practice.captionToggle', { key });
   if (!trusted) caption = t('selection.practice.needsAccess');
   else if (!enabled) caption = t('selection.practice.needsToolbar');
+  else if (smallIcon === 'click') caption = `${caption} ${t('selection.practice.iconClickHint')}`;
+  else if (smallIcon === 'hover') caption = `${caption} ${t('selection.practice.iconHoverHint')}`;
   return (
     <ScrollArea
       className="guide-practice-scroll"

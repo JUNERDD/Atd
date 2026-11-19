@@ -21,6 +21,7 @@
     "apps": "Apps",
     "general": "General",
     "agent": "Agent",
+    "diagnostics": "Diagnostics",
     "about": "About"
   },
   "drawer": {
@@ -75,6 +76,7 @@
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
       "defaultModel": "default provider model choose selected",
+      "modelAliases": "model alias aliases profile preset presets bundle connection effort context",
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
@@ -98,8 +100,10 @@
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection",
       "screenshotSaveLocation": "save folder ask each time choose folder path local disk screenshot",
       "recordingSaveLocation": "screen recording video mp4 save folder ask each time choose folder path local disk",
-      "screenshotCopyOnConfirm": "screenshot copy clipboard confirm attach composer toolbar check",
+      "screenshotConfirmAction": "screenshot confirm action behavior open panel main attach composer input copy clipboard toolbar check return",
+      "screenshotConfirmInComposer": "screenshot confirm composer attach menu plus input panel",
       "longScreenshotConfirmAction": "long screenshot scrolling capture confirm done return card copy clipboard",
+      "sectionDiagnostics": "diagnostics doctor health check logs support bundle export troubleshoot proxy permission crash",
       "sectionAbout": "about version build info information website homepage github repository source code open source issues bug report feedback",
       "checkForUpdates": "update updates upgrade new version latest sparkle download install",
       "notificationsFinished": "notification notifications notify alert banner finished complete completed done failed failure error system when away looking",
@@ -128,15 +132,24 @@
   "providers": {
     "overview": {
       "title": "Models",
-      "description": "Choose a default provider and set a default model for each connection.",
+      "description": "Connect model providers and save reusable model aliases.",
       "loading": "Loading providers…",
+      "tabsLabel": "Providers and model aliases",
+      "tabs": {
+        "providers": "Providers",
+        "aliases": "Model aliases"
+      },
       "searchLabel": "Search providers",
       "searchPlaceholder": "Search providers…",
+      "searchAliasesLabel": "Search model aliases",
+      "searchAliasesPlaceholder": "Search aliases…",
       "addProvider": "Add provider",
       "retry": "Try again",
       "catalogError": "The provider list could not be loaded.",
       "connectedProviders": "Connected providers",
       "defaultModel": "Default model",
+      "modelAliases": "Model aliases",
+      "modelAliasesDescription": "Bundle a connection, model, context window, and effort level into named aliases for commands, automations, and quick switching.",
       "empty": {
         "noMatchesTitle": "No providers match “{{query}}”",
         "noMatchesDescription": "Try a connection or provider name.",
@@ -390,10 +403,21 @@
       "description": "Choose each time or save screenshots and long screenshots directly to a folder",
       "saveFailed": "The screenshot save location could not be updated."
     },
-    "copyOnConfirm": {
-      "title": "Copy to clipboard when confirming",
-      "description": "When clicking ✓ on the screenshot toolbar to attach a screenshot to the composer, also copy it to the clipboard.",
-      "saveFailed": "The screenshot copy setting could not be saved."
+    "confirmAction": {
+      "title": "Screenshot confirmation",
+      "description": "Whether clicking ✓, pressing Return, or double-clicking opens the main panel and attaches to the composer, copies to the clipboard, or both",
+      "label": "Screenshot confirmation action",
+      "saveFailed": "The screenshot confirmation setting could not be saved.",
+      "modes": {
+        "attachAndCopy": "Attach to composer and copy",
+        "attach": "Attach to composer only",
+        "copy": "Copy to clipboard only"
+      }
+    },
+    "confirmInComposer": {
+      "title": "Apply to composer \"+ › Screenshot\"",
+      "description": "When on, confirming a screenshot started from \"+ › Screenshot\" in the main panel composer also follows the confirmation behavior above; when off, ✓ always attaches to the current composer.",
+      "saveFailed": "The composer screenshot confirmation setting could not be saved."
     },
     "longScreenshotConfirmAction": {
       "title": "Long screenshot confirmation",
@@ -527,6 +551,10 @@
       "recordScreen": {
         "label": "Record screen",
         "description": "Record an area, a window or the whole screen."
+      },
+      "cycleModelAlias": {
+        "label": "Switch model alias",
+        "description": "Cycle through your saved model aliases from the composer."
       },
       "newConversation": {
         "label": "New conversation",
@@ -1088,6 +1116,7 @@
     "updatesTitle": "Check for updates",
     "updatesNote": "Updates download in the background and install when Atd quits.",
     "updatesUnavailable": "Development builds don't update. Install a release from the website to get updates.",
+    "openDiagnostics": "Diagnostics…",
     "links": {
       "title": "Links",
       "website": "Website",

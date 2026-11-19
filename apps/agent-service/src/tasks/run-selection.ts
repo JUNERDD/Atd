@@ -1,6 +1,9 @@
 import {
+  findModelAlias,
   runModelSelection,
+  type ModelAlias,
   type ModelSelection,
+  type RunContextChoice,
   type RunModelSources,
   type ServiceModel,
   type ThinkingLevel,
@@ -8,7 +11,7 @@ import {
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { presentConnection } from '../providers/connection-view.js';
-import { effectiveContextWindow } from '../providers/context-tiers.js';
+import { resolveRunContextWindow } from '../providers/context-tiers.js';
 import { modelDefaultThinkingLevel } from '../providers/default-thinking.js';
 
 /** Connection id of runs on the operator's environment-injected credentials. */
@@ -20,13 +23,59 @@ export const TEMP_CONNECTION_ID = 'temp';
  */
 export function selectRunModel(
   connections: ConnectionStore,
-  sources: Omit<RunModelSources, 'hasConnection'>,
+  sources: Omit<
+    RunModelSources,
+    'aliases' | 'defaultAliasId' | 'hasConnection' | 'isConnectionUsable'
+  >,
 ): ModelSelection | undefined {
   return runModelSelection({
+    aliases: connections.data.aliases ?? [],
+    defaultAliasId: connections.data.defaultAliasId ?? null,
     ...sources,
     hasConnection: (connectionId) =>
       connections.data.connections.some((item) => item.connectionId === connectionId),
+    isConnectionUsable: (connectionId) =>
+      connections.data.connections.some(
+        (item) => item.connectionId === connectionId && item.connected,
+      ),
   });
+}
+
+/**
+ * Resolves both the model selection and the saved model alias (if any) supplying defaults for
+ * this run (`command.mode === 'alias'` when not overridden, or `defaultAliasId` fallback).
+ * Throws explicitly if a command asks for an alias that no longer exists.
+ */
+export function selectRunDefaults(
+  connections: ConnectionStore,
+  sources: Omit<
+    RunModelSources,
+    'aliases' | 'defaultAliasId' | 'hasConnection' | 'isConnectionUsable'
+  >,
+): { selection: ModelSelection | undefined; alias: ModelAlias | undefined } {
+  const { aliases, defaultAliasId } = connections.data;
+  if (!sources.requested && sources.command?.mode === 'alias') {
+    const alias = findModelAlias(aliases, sources.command.aliasId);
+    if (!alias) throw new TypeError('The chosen model alias no longer exists.');
+    return { selection: { connectionId: alias.connectionId, modelId: alias.modelId }, alias };
+  }
+  const selection = selectRunModel(connections, sources);
+  const hasLast = Boolean(
+    sources.last &&
+    connections.data.connections.some((item) => item.connectionId === sources.last?.connectionId),
+  );
+  if (!sources.requested && sources.command?.mode !== 'fixed' && !hasLast && defaultAliasId) {
+    const alias = findModelAlias(aliases, defaultAliasId);
+    if (
+      alias &&
+      connections.data.connections.some(
+        (item) => item.connectionId === alias.connectionId && item.connected,
+      )
+    ) {
+      return { selection, alias };
+    }
+  }
+  return { selection, alias: undefined };
 }
 
 /**
@@ -99,7 +148,7 @@ export function resolveRunThinkingLevel(
 /** What a run freezes from its connection's catalog; undefined for a model outside it. */
 export interface RunCatalog {
   /** The window to freeze; undefined keeps the catalog window. */
-  contextWindow(model: ServiceModel): number | undefined;
+  contextWindow(model: ServiceModel, contextChoice?: RunContextChoice): number | undefined;
   /** The model's level when neither the request nor the connection names one. */
   defaultThinkingLevel(model: ServiceModel): ThinkingLevel | undefined;
 }
@@ -126,8 +175,17 @@ export async function loadRunCatalog(
   const { catalog = [] } = await presentConnection(connection);
   const owns = (model: ServiceModel) => model.connectionId === connection.connectionId;
   return {
-    contextWindow: (model) =>
-      owns(model) ? effectiveContextWindow(connection, catalog, model.modelId) : undefined,
+    contextWindow: (model, contextChoice) => {
+      if (!owns(model)) return undefined;
+      const definition = catalog.find((item) => item.id === model.modelId);
+      return resolveRunContextWindow(
+        contextChoice,
+        connection,
+        model.modelId,
+        definition?.contextWindow,
+        catalog,
+      );
+    },
     defaultThinkingLevel: (model) => {
       const definition = owns(model)
         ? catalog.find((item) => item.id === model.modelId)

@@ -132,6 +132,7 @@ function mapRunSnapshot(run: ServiceRun): RunSnapshot {
       baseUrl: run.snapshot.model.baseUrl,
     },
     ...(run.snapshot.thinkingLevel ? { thinkingLevel: run.snapshot.thinkingLevel } : {}),
+    ...(run.snapshot.contextWindow ? { contextWindow: run.snapshot.contextWindow } : {}),
     // The desktop run snapshot lists command-policy tools only; grep/find/ls and ask_user are
     // service-side snapshot tools without a desktop policy entry.
     tools: run.snapshot.tools.filter((tool): tool is ToolId => DESKTOP_TOOL_IDS.has(tool)),

@@ -246,7 +246,8 @@ struct CommandProgressStateTests {
         .value(.init(value: "formal", label: "Formal"), current: true),
       ])
     #expect(card.handle(.up) == .handled && card.selection == 0)
-    #expect(card.handle(.up) == .handled && card.selection == 0)
+    #expect(card.handle(.up) == .handled && card.selection == 1)
+    #expect(card.handle(.down) == .handled && card.selection == 0)
     #expect(card.handle(.left) == .ignored)
     #expect(card.handle(.space) == .ignored)
     let casual = CommandArguments(output: nil, choices: ["tone": "casual"], toggles: [:])
@@ -275,8 +276,10 @@ struct CommandProgressStateTests {
     #expect(card.handle(.enter) == .handled)
     #expect(card.handle(.escape) == .handled && card.filter.isEmpty)
     #expect(card.handle(.down) == .handled && card.selection == 1)
-    for _ in 0..<9 { _ = card.handle(.down) }
+    for _ in 0..<8 { _ = card.handle(.down) }
     #expect(card.selection == 9 && card.visible == 2..<10)
+    #expect(card.handle(.down) == .handled && card.selection == 0 && card.visible == 0..<8)
+    #expect(card.handle(.up) == .handled && card.selection == 9 && card.visible == 2..<10)
     card.scroll(by: -5)
     #expect(card.visible == 0..<8)
   }

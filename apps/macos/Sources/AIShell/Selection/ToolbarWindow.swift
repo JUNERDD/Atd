@@ -4,9 +4,6 @@ import AppKit
 /// that has the selection. Its glass keeps the capture toolbar's active edge all the same
 /// (``ActiveGlassPanel``).
 final class ToolbarWindow: ActiveGlassPanel {
-  override var canBecomeKey: Bool { false }
-  override var canBecomeMain: Bool { false }
-
   /// Above the capture overlays (`.screenSaver`), for menus opened from a capture session's bars.
   static let aboveCapture = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
 

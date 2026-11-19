@@ -21,6 +21,7 @@
     "apps": "应用",
     "general": "通用",
     "agent": "智能体",
+    "diagnostics": "诊断",
     "about": "关于"
   },
   "drawer": {
@@ -75,6 +76,7 @@
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
+      "modelAliases": "模型 别名 预设 组合 连接 推理强度 上下文 模板 快捷切换 model alias preset",
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
@@ -98,8 +100,10 @@
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps",
       "screenshotSaveLocation": "截图 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
       "recordingSaveLocation": "录屏 屏幕录制 视频 mp4 保存 位置 文件夹 路径 本地 每次询问 选择文件夹",
-      "screenshotCopyOnConfirm": "截图 截屏 复制 剪贴板 确认 添加 输入框 工具栏 勾选",
+      "screenshotConfirmAction": "截图 截屏 确认 行为 操作 打开 主面板 添加 输入框 复制 剪贴板 工具栏 勾选 回车",
+      "screenshotConfirmInComposer": "截图 截屏 确认 输入框 添加上下文 加号 菜单 主面板",
       "longScreenshotConfirmAction": "长截图 滚动截图 完成 确认 回车 结果卡片 复制 剪贴板",
+      "sectionDiagnostics": "诊断 自检 健康 检查 日志 支持包 导出 排障 代理 权限 崩溃 白屏",
       "sectionAbout": "关于 版本 构建 信息 官网 主页 网站 GitHub 仓库 源代码 源码 开源 问题 反馈 缺陷 报告",
       "checkForUpdates": "更新 升级 新版本 最新版本 下载 安装",
       "notificationsFinished": "通知 提醒 横幅 完成 结束 失败 出错 系统 离开 没在看 notification notify finished failed",
@@ -128,15 +132,24 @@
   "providers": {
     "overview": {
       "title": "模型",
-      "description": "选择默认提供商，并为每个连接设置默认模型。",
+      "description": "连接模型提供商，或将常用模型配置保存为别名。",
       "loading": "正在加载提供商…",
+      "tabsLabel": "提供商与模型别名",
+      "tabs": {
+        "providers": "提供商",
+        "aliases": "模型别名"
+      },
       "searchLabel": "搜索提供商",
       "searchPlaceholder": "搜索提供商…",
+      "searchAliasesLabel": "搜索模型别名",
+      "searchAliasesPlaceholder": "搜索别名…",
       "addProvider": "添加提供商",
       "retry": "重试",
       "catalogError": "无法加载提供商列表。",
       "connectedProviders": "已连接的提供商",
       "defaultModel": "默认模型",
+      "modelAliases": "模型别名",
+      "modelAliasesDescription": "将连接、模型、上下文窗口和推理强度打包为可复用的别名，供命令、自动化和快速切换使用。",
       "empty": {
         "noMatchesTitle": "没有与“{{query}}”匹配的提供商",
         "noMatchesDescription": "试试其他连接或提供商名称。",
@@ -390,10 +403,21 @@
       "description": "每次保存时选择位置，或直接保存到指定文件夹",
       "saveFailed": "无法更新截图保存位置。"
     },
-    "copyOnConfirm": {
-      "title": "确认截图时同时复制到剪贴板",
-      "description": "在截图工具栏点击 ✓ 将截图添加到输入框时，也同时复制到剪贴板。",
-      "saveFailed": "无法保存截图复制设置。"
+    "confirmAction": {
+      "title": "确认截图时的行为",
+      "description": "在截图工具栏点击 ✓、按下回车或双击选区时，是否打开主面板添加到输入框或复制到剪贴板",
+      "label": "确认截图时的行为",
+      "saveFailed": "无法保存截图确认设置。",
+      "modes": {
+        "attachAndCopy": "添加到输入框并复制到剪贴板",
+        "attach": "仅添加到输入框",
+        "copy": "仅复制到剪贴板"
+      }
+    },
+    "confirmInComposer": {
+      "title": "对输入框内的「+ › 截图」生效",
+      "description": "开启后，从主面板输入框点击「+ › 截图」确认时也遵循上方的确认行为；关闭时点击 ✓ 始终仅添加到当前输入框。",
+      "saveFailed": "无法保存输入框截图确认设置。"
     },
     "longScreenshotConfirmAction": {
       "title": "长截图完成操作",
@@ -527,6 +551,10 @@
       "recordScreen": {
         "label": "录屏",
         "description": "录制屏幕上的区域、窗口或整个屏幕。"
+      },
+      "cycleModelAlias": {
+        "label": "切换模型别名",
+        "description": "在输入框中循环切换已保存的模型别名。"
       },
       "newConversation": {
         "label": "新建对话",
@@ -1086,6 +1114,7 @@
     "updatesTitle": "检查更新",
     "updatesNote": "更新会在后台下载，并在退出 Atd 时安装。",
     "updatesUnavailable": "开发版不会自动更新。请从官网安装正式版以获取更新。",
+    "openDiagnostics": "诊断与自检…",
     "links": {
       "title": "链接",
       "website": "官网",

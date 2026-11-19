@@ -44,8 +44,7 @@ final class IslandLightboxWindow: ActiveGlassPanel, FloatingHoverHost {
     contentView = content
   }
 
-  override var canBecomeKey: Bool { true }
-  override var canBecomeMain: Bool { false }
+  override var acceptsKeyFocus: Bool { true }
 
   /// Where the owner puts it, over the menu bar too: a borderless window is otherwise kept
   /// below it.

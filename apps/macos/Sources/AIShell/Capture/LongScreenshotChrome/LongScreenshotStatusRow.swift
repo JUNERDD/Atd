@@ -84,6 +84,7 @@ final class LongScreenshotStatusRow: NSView {
     let said = self.message.map(LongScreenshotChromeCopy.message)?.text
     self.message = message
     guard let message else {
+      CaptureTooltipPresenter.shared.dismiss(for: tailButton)
       isHidden = true
       return
     }

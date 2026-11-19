@@ -7,6 +7,7 @@ import {
   type AutomationSchedule,
   type AutomationTrigger,
   type CommandTool,
+  type ModelSelection,
 } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { defaultArguments } from '../../client/agent/command-validation';
@@ -259,6 +260,33 @@ export function withTools(
     ...policy,
     tools: snapshotToolsFor(PROMPT_TOOLS.filter((tool) => tools.includes(tool))),
   };
+}
+
+/** The policy without a model or alias of its own: runs take the command's or the app's default. */
+export function withoutModelPolicy(policy: AutomationPolicy): AutomationPolicy {
+  const next = { ...policy };
+  delete next.model;
+  delete next.aliasId;
+  delete next.thinkingLevel;
+  return next;
+}
+
+/** Pins an explicit model selection onto `policy`, clearing any conflicting alias binding. */
+export function withFixedModelPolicy(
+  policy: AutomationPolicy,
+  model: ModelSelection,
+): AutomationPolicy {
+  const next = { ...policy, model };
+  delete next.aliasId;
+  return next;
+}
+
+/** Binds `policy` to a named model alias, clearing any conflicting fixed model or effort override. */
+export function withModelAliasPolicy(policy: AutomationPolicy, aliasId: string): AutomationPolicy {
+  const next = { ...policy, aliasId };
+  delete next.model;
+  delete next.thinkingLevel;
+  return next;
 }
 
 const sorted = <T extends string | number>(values: readonly T[]) =>

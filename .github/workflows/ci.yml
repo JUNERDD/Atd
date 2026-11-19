@@ -239,7 +239,8 @@ jobs:
           sw_vers -productVersion
       - name: Swift tests
         working-directory: apps/macos
-        run: swift test
+        # The WebKit, media and latency suites measure real time on a shared runner.
+        run: swift test --no-parallel
 
   # Packages the Release app natively on Intel as the release workflow does, but unsigned (ad
   # hoc) and without secrets, then checks it with verify-app.mjs and the app's own Node. It runs

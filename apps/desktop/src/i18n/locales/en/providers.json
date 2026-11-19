@@ -357,5 +357,76 @@
       "description": "Enter the Base URL and standard API key from the Model Studio console.",
       "connectionName": "Model Studio · Pay-as-you-go API"
     }
+  },
+  "aliases": {
+    "title": "Model aliases",
+    "description": "Model aliases bundle connection, model, context window, and reasoning effort — one change updates every bound command and automation.",
+    "add": "Add alias",
+    "loading": "Loading model aliases…",
+    "limitReached": "You can save up to {{max}} model aliases.",
+    "unavailableBadge": "Unavailable",
+    "unavailableConnection": "Removed connection",
+    "actionsLabel": "Alias actions for {{name}}",
+    "actions": {
+      "edit": "Edit",
+      "editFor": "Edit {{name}}",
+      "setDefault": "Set as default",
+      "clearDefault": "Clear default",
+      "delete": "Delete"
+    },
+    "tuple": {
+      "connectionContextDefault": "Default context",
+      "standardContext": "Standard",
+      "standardContextSize": "Standard ({{size}})",
+      "extendedContext": "Extended",
+      "extendedContextSize": "Extended ({{size}})",
+      "windowContext": "{{size}} context",
+      "modelEffortDefault": "Default effort",
+      "effortValue": "{{level}} effort"
+    },
+    "empty": {
+      "noMatchesTitle": "No aliases match “{{query}}”",
+      "noMatchesDescription": "Try an alias, model, or provider name.",
+      "clearSearch": "Clear search",
+      "firstTitle": "Create your first model alias",
+      "firstDescription": "Save a connection, model, context window, and reasoning effort under one name for quick switching, commands, and automations.",
+      "noProvidersTitle": "Connect a provider first",
+      "noProvidersDescription": "Add and connect a provider with available models before creating model aliases.",
+      "addProvider": "Add provider"
+    },
+    "dialog": {
+      "createTitle": "New model alias",
+      "editTitle": "Edit model alias",
+      "description": "Bundle a connection, model, context window, and reasoning effort under one name.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Daily, Complex tasks",
+      "nameRequired": "Enter an alias name.",
+      "nameTooLong": "Alias names can be at most {{max}} characters.",
+      "nameDuplicate": "Another alias already uses this name.",
+      "model": "Model",
+      "noModel": "No connected model available",
+      "unavailableOption": "{{model}} ({{connection}} · Unavailable)",
+      "contextWindow": "Context window",
+      "connectionDefault": "Connection default",
+      "customContextSize": "Custom ({{size}})",
+      "thinkingLevel": "Reasoning effort",
+      "modelDefaultLevel": "Model default ({{level}})",
+      "inheritDefaults": "Uses the connection or model defaults unless changed here.",
+      "contextOwn": "This alias sets its own context window.",
+      "effortOwn": "This alias sets its own effort.",
+      "resetInherited": "Use inherited",
+      "makeDefault": "Default model alias",
+      "makeDefaultDescription": "Use this alias when switching aliases or starting new sessions.",
+      "cancel": "Cancel",
+      "create": "Create alias",
+      "save": "Save changes",
+      "saving": "Saving…"
+    },
+    "delete": {
+      "title": "Delete {{name}}?",
+      "description": "Commands and automations bound to this alias will show it as unavailable until reassigned.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    }
   }
 }

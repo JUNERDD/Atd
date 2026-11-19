@@ -22,6 +22,12 @@ final class AnnotationEditor: AnnotationEditing {
   var onConfirm: (() -> Void)?
   var onCancel: (() -> Void)?
   var onCopy: (() -> Void)?
+  var onPin: (() -> Void)? {
+    didSet {
+      toolbar.onPin = onPin
+      for canvas in canvases { canvas.onPin = onPin }
+    }
+  }
   var onSave: (() -> Void)? {
     didSet {
       toolbar.onSave = onSave
@@ -32,6 +38,7 @@ final class AnnotationEditor: AnnotationEditing {
     didSet { toolbar.saveFolder = saveFolder }
   }
   var onInteriorClaimChange: ((Bool) -> Void)?
+  var isInteractiveBadgeAt: ((CGPoint) -> Bool)?
   var onLaunch: ((CaptureLaunch) -> Void)?
   var commandRow: CaptureCommandRowSetup? {
     didSet {
@@ -45,21 +52,25 @@ final class AnnotationEditor: AnnotationEditing {
   var renderSelection: (() -> CaptureSelectionShot?)?
   var onTextResult: ((CaptureTextHandoff) -> Void)?
   var recognizedText: CaptureText? {
-    didSet { recognizedTextChanged() }
+    didSet {
+      recognizedTextRevision &+= 1
+      recognizedTextChanged()
+    }
   }
 
   let store = AnnotationStore()
   private let renderer = AnnotationRenderer()
   private let picker = AnnotationElementPicker()
-  private let defaults: UserDefaults
+  let defaults: UserDefaults
   let interaction: AnnotationInteraction
   let textEditor: AnnotationTextEditor
   /// One per host, in the hosts' order; empty while hidden.
   private(set) var canvases: [AnnotationCanvasView] = []
   /// The canvas pressed last, which new text opens in.
-  private weak var pressedCanvas: AnnotationCanvasView?
+  weak var pressedCanvas: AnnotationCanvasView?
   let toolbar = AnnotationToolbar()
   let styleBar = AnnotationStyleBar()
+  let styleCoordinator: CaptureAnnotationStyleCoordinator
   /// The style bar's slot while nothing is styled: the command row or its ask field.
   let slot = AnnotationCommandSlot()
   /// Text mode, the text commands' runs and their result card.
@@ -78,29 +89,49 @@ final class AnnotationEditor: AnnotationEditing {
   var anchor: AnnotationToolbarLayout.Anchor?
   /// The selection is being dragged (``selectionDidChange(_:dragging:)``).
   private(set) var isDragged = false
-  /// The run of wheel ticks in progress (``scroll(_:)``) and when its last tick came.
-  var wheelBurst = UUID()
-  var lastWheel: TimeInterval = 0
+  /// The run of wheel ticks in progress (``scroll(_:)``).
+  var wheelBurst = CaptureWheelBurst()
   /// The toolbar's origin when the drag in progress began.
   var dragOrigin = CGPoint.zero
+  private(set) var refreshRevision: UInt64 = 0
+  var isBurstRestyling = false
+  var pendingStylesSave: AnnotationStyles?
+  var pendingStylesFlushScheduled = false
+  var pendingRestylePreBounds: CGRect?
+  var pendingDirtyRect: CGRect?
+  var recognizedTextRevision: UInt64 = 0
+  var lastHasSelectText: Bool?
+  var unmaskedSensitiveCache: (mosaics: [CGRect], revision: UInt64, uncovered: [SensitiveText.Box])?
 
   /// `defaults` keeps the remembered styles.
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
     interaction = AnnotationInteraction(store: store)
     textEditor = AnnotationTextEditor(store: store)
+    styleCoordinator = CaptureAnnotationStyleCoordinator(
+      store: store, interaction: interaction, textEditor: textEditor,
+      styleBar: styleBar, defaults: defaults)
     store.onChange = { [weak self] in self?.refresh() }
     picker.onChange = { [weak self] in self?.redraw() }
     interaction.elementBox = { [weak self] point in
       guard let self else { return nil }
       return picker.box(at: point, within: selection)
     }
-    interaction.onStylesChange = { [weak self] styles in
-      guard let self else { return }
-      AnnotationStyleMemory.save(styles, to: self.defaults)
-    }
+    interaction.onStylesChange = { [weak self] styles in self?.handleStylesChange(styles) }
     interaction.onEditText = { [weak self] point, existing in self?.editText(at: point, existing) }
+    interaction.onBeginTextBox = { [weak self] point, width in
+      self?.beginTextBox(at: point, width: width)
+    }
+    interaction.onSmartShapeSnapped = { [weak self] label in self?.showCanvasHUD(label) }
     interaction.onConfirm = { [weak self] in self?.onConfirm?() }
+    styleCoordinator.onRedraw = { [weak self] in self?.redraw() }
+    styleCoordinator.onRefresh = { [weak self] in self?.refresh() }
+    styleCoordinator.onRefreshPointer = { [weak self] in self?.refreshPointer() }
+    styleCoordinator.onApplyStyle = { [weak self] change, burst in
+      self?.restyle(change, burst: burst)
+    }
+    styleCoordinator.onBurstEnd = { [weak self] in self?.flushPendingStyles() }
+    styleCoordinator.onDismissTransientMenus = { [weak self] in _ = self?.slot.dismiss() }
     textEditor.onEnd = { [weak self] in
       self?.focusCanvas()
       self?.landWaiting()
@@ -127,8 +158,10 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.styles = AnnotationStyleMemory.load(from: defaults)
     toolbar.applyStrings()
     styleBar.applyStrings()
+    toolbar.onPin = onPin
     toolbar.onSave = onSave
     toolbar.saveFolder = saveFolder
+    styleCoordinator.activateFontObserver()
     slot.prepare(commandRow, maxWidth: toolbar.fittingSize.width)
     canvases = hosts.map { host in
       let canvas = makeCanvas()
@@ -148,6 +181,8 @@ final class AnnotationEditor: AnnotationEditing {
     canvas.onPress = { [weak self, weak canvas] in self?.pressedCanvas = canvas }
     canvas.onConfirm = { [weak self] in self?.confirmFromKey() }
     canvas.onCopy = { [weak self] in self?.copyFromKey() }
+    canvas.onCopySelectionText = { [weak self] in self?.copySelectedLiveTextIfPresent() ?? false }
+    canvas.onPin = onPin
     canvas.onSave = onSave
     canvas.onSelectAll = { [weak self] in self?.selectAllFromKey() ?? false }
     canvas.onPrimary = { [weak self] in self?.text.card.primaryKey() ?? false }
@@ -158,7 +193,13 @@ final class AnnotationEditor: AnnotationEditing {
     canvas.onAsk = { [weak self] in self?.slot.askFromKey() ?? false }
     canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
     canvas.onClearAll = { [weak self] in self?.clearAll() ?? false }
+    styleCoordinator.wireCanvas(canvas)
     return canvas
+  }
+
+  var allowsBadgeInteraction: Bool {
+    !styleCoordinator.hasOpenPopover && !textEditor.isEditing && !interaction.isGesturing
+      && !interaction.eyedropperActive && slot.activeChevron == nil && !slot.isAsking
   }
 
   var hasAnnotations: Bool { !store.document.isEmpty || textEditor.isEditing }
@@ -181,6 +222,7 @@ final class AnnotationEditor: AnnotationEditing {
 
   func selectionDidChange(_ selection: CGRect, dragging: Bool) {
     self.selection = selection
+    interaction.selectionBounds = selection
     isDragged = dragging
     // A selection moving onto another display, or across displays, samples other pixels.
     let backdrop = backdrops?(selection)
@@ -199,6 +241,14 @@ final class AnnotationEditor: AnnotationEditing {
   func endText() { textEditor.end() }
 
   func hide() {
+    flushPendingStyles()
+    wheelBurst.reset()
+    lastHasSelectText = nil
+    unmaskedSensitiveCache = nil
+    clearLocalizedRestyle()
+    styleCoordinator.dismissPickers()
+    styleCoordinator.setEyedropper(false)
+    CaptureFontCatalog.shared.onFontRegistered = nil
     interaction.cancelGesture()
     textEditor.cancel()
     releaseText()
@@ -264,6 +314,8 @@ final class AnnotationEditor: AnnotationEditing {
   }
 
   func refresh() {
+    refreshRevision &+= 1
+    prepareRefreshDirtyRect()
     redraw()
     toolbar.update(
       tool: interaction.tool, canUndo: store.undoManager.canUndo,
@@ -271,24 +323,15 @@ final class AnnotationEditor: AnnotationEditing {
     refreshSlot()
     placeToolbar()
     refreshTextLayers()
-    refreshCard()
+    if hasTextResult || text.card.presentation != .hidden || text.card.card != nil {
+      refreshCard()
+    }
   }
 
   /// What the style bar restyles: the open text, else the selected annotation, else the next one
   /// the active drawing tool makes; nil when there is nothing to style (no tool, the select tool
   /// with nothing selected, or a spotlight), which hides the bar.
   var styleTarget: (style: AnnotationStyle, controls: AnnotationStyleControls)? {
-    let target: (style: AnnotationStyle, controls: AnnotationStyleControls)
-    if let style = textEditor.style {
-      target = (style, AnnotationTool.text.styleControls)
-    } else if let selected = store.selected {
-      target = (selected.style, selected.shape.styleControls)
-    } else if let tool = interaction.tool {
-      target = (interaction.styles[tool.styleSlot], tool.styleControls)
-    } else {
-      return nil
-    }
-    let controls = target.controls.shown(for: target.style)
-    return controls.isEmpty ? nil : (target.style, controls)
+    styleCoordinator.styleTarget()
   }
 }

@@ -8,7 +8,20 @@
 - [Website (简体中文)](https://atd.best/zh): product overview and installers in Simplified Chinese
 - [Blog & Release Notes (English)](https://atd.best/blog): release notes, newest first ([RSS feed](https://atd.best/feed.xml))
 - [博客与更新日志 (简体中文)](https://atd.best/zh/blog): release notes in Simplified Chinese ([RSS feed](https://atd.best/zh/feed.xml))
-- [Full LLM Reference](https://atd.best/llms-full.txt): generated full product and release notes reference in production builds
+- [Frequently asked questions about Atd](https://atd.best/faq): Answers about Atd, the free, open-source AI agent for macOS: supported Macs, installing and updating, models and cost, data storage and permissions. ([中文](https://atd.best/zh/faq))
+- [Full LLM Reference](https://atd.best/llms-full.txt): generated full product, capability, FAQ, and release notes reference in production builds
+
+## Features
+
+- [Everything Atd can do on your Mac](https://atd.best/features): What Atd does on your Mac: computer use, screenshots and recording, a selection toolbar, cloud or local models, MCP and skills, automations and apps. ([中文](https://atd.best/zh/features))
+- [Computer use](https://atd.best/features/computer-use): Atd works in Mac apps and websites for a task, only where you approve, and stops when you say so. ([中文](https://atd.best/zh/features/computer-use))
+- [Screen capture](https://atd.best/features/screen-capture): Annotated screenshots, scrolling long screenshots and screen recordings you can ask Atd about. ([中文](https://atd.best/zh/features/screen-capture))
+- [Selection toolbar](https://atd.best/features/selection-toolbar): Select text in another app to ask Atd or run a saved command, then choose where the answer goes. ([中文](https://atd.best/zh/features/selection-toolbar))
+- [Models](https://atd.best/features/models): Use your own models: ChatGPT plan sign-in, API keys, cloud services, or local and custom endpoints. ([中文](https://atd.best/zh/features/models))
+- [MCP and skills](https://atd.best/features/mcp-and-skills): Connect MCP servers, add skills and subagents, and save commands you can run from anywhere on your Mac. ([中文](https://atd.best/zh/features/mcp-and-skills))
+- [Automations](https://atd.best/features/automations): Run prompts and saved commands on a schedule, when files change, when your Mac is idle or after another automation. ([中文](https://atd.best/zh/features/automations))
+- [Personal apps](https://atd.best/features/apps): Describe a small tool and Atd builds it as an app with its own window, backend and desktop widgets. ([中文](https://atd.best/zh/features/apps))
+- [Privacy and control](https://atd.best/features/privacy): Local storage, keychain credentials, no Atd account, and approval controls you set for every task. ([中文](https://atd.best/zh/features/privacy))
 
 ## Downloads & Source
 

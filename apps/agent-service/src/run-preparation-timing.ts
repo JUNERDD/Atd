@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
+import { recordRunPrepTiming } from './diagnostics/run-prep-ring.js';
 
 type PreparationOutcome = 'completed' | 'error' | 'stopped' | 'no_turn';
 
@@ -41,13 +42,15 @@ function record(
   durationMs: number,
   outcome: PreparationOutcome,
 ): void {
+  const rounded = Math.max(0, Math.round(durationMs));
+  recordRunPrepTiming(scope.runId, phase, rounded, outcome);
   scope.audit({
     taskId: scope.taskId,
     runId: scope.runId,
     preparation: {
       phase,
       startedAt: new Date(startedAt).toISOString(),
-      durationMs: Math.max(0, Math.round(durationMs)),
+      durationMs: rounded,
       outcome,
     },
   });

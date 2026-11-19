@@ -1,32 +1,20 @@
 import AICore
 import Foundation
 
-/// Why no service endpoint is available.
-public enum ServiceUnavailable: Error, Equatable, Sendable {
-  /// Debug: nothing serves the development data directory. The shell never starts one; the
-  /// developer runs `pnpm dev`.
-  case developmentServiceNotRunning
-  /// The data directory's files exist but are not a usable endpoint.
-  case invalidEndpoint(ServiceEndpointError)
-  /// Release: the supervisor is starting or restarting the service.
-  case starting
-  /// Release: the first start failed; the detail is what the service logged.
-  case failed(String)
-  /// Release: three unexpected exits within five minutes opened the circuit breaker; only a
-  /// manual restart tries again.
-  case stoppedTooOften
-  /// Release: the supervisor was stopped (quit).
-  case stopped
-}
-
 /// Where the relay, the virtual sockets and the control stream get the service from: the
 /// Debug connect-only reader or the Release supervisor.
 public protocol ServiceEndpointSource: AnyObject {
   /// The endpoint for a new request or connection.
   func resolveEndpoint() async -> Result<ServiceEndpoint, ServiceUnavailable>
+  /// Most recent scrubbed startup/crash failure summary (retained across `.stoppedTooOften`).
+  var lastFailureSummary: String? { get }
   /// Set by ``ServiceLink``. A source calls it when its endpoint may have changed on its own
   /// (a supervised restart), so the link resolves again and tells its observers.
   var endpointMayHaveChanged: (@MainActor () -> Void)? { get set }
+}
+
+extension ServiceEndpointSource {
+  public var lastFailureSummary: String? { nil }
 }
 
 /// Reads the endpoint and token of a data directory (`discoverService` in `endpoint.ts`).
@@ -78,6 +66,8 @@ public final class ServiceLink {
   public let source: any ServiceEndpointSource
   /// The latest resolve; nil before the first.
   public private(set) var latest: Result<ServiceEndpoint, ServiceUnavailable>?
+  /// Scrubbed startup or crash summary retained from ``source`` (including `.stoppedTooOften`).
+  public var lastFailureSummary: String? { source.lastFailureSummary }
   private var observers: [UUID: @MainActor (ServiceEndpoint?) -> Void] = [:]
 
   public init(source: any ServiceEndpointSource) {

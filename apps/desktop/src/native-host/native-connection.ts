@@ -8,11 +8,39 @@ import type {
   ComputerProgress,
   InvalidateFrame,
   ServiceEvent,
+  ServiceUnavailableCode,
   SummariesFrame,
   TaskSnapshot,
 } from '@atd/agent-contracts';
 import type { AgentConnection } from '../client/agent/agent-requests';
 import type { ServiceState, ServiceStatusView } from '../client/service/ipc';
+import { diagnosticsBreadcrumbs } from '../features/diagnostics/breadcrumbs';
+
+const FAILURE_CODES = new Set<ServiceUnavailableCode>([
+  'service_starting',
+  'service_start_failed',
+  'service_stopped_too_often',
+  'service_not_running',
+]);
+
+function parseCloseReason(reason: string): {
+  failureCode: ServiceUnavailableCode | null;
+  detail: string;
+} {
+  // AgentStreamClient wraps WS close reasons as `Stream closed (<code> <reason>).`
+  const unwrapped = /^Stream closed \(\d+\s+(.+)\)\.$/.exec(reason)?.[1] ?? reason;
+  const sep = unwrapped.indexOf(': ');
+  if (sep > 0) {
+    const prefix = unwrapped.slice(0, sep);
+    if (FAILURE_CODES.has(prefix as ServiceUnavailableCode)) {
+      return {
+        failureCode: prefix as ServiceUnavailableCode,
+        detail: unwrapped.slice(sep + 2).trim(),
+      };
+    }
+  }
+  return { failureCode: null, detail: reason };
+}
 
 interface TaskHandlers {
   onSnapshot: (snapshot: TaskSnapshot) => void;
@@ -33,6 +61,7 @@ export class NativeConnection implements AgentConnection {
   private handlers: TaskHandlers | null = null;
   private state: ServiceState = 'connecting';
   private detail = '';
+  private failureCode: ServiceUnavailableCode | null = null;
   private reached = false;
   private readonly statusListeners = new Set<(status: ServiceStatusView) => void>();
   private readonly invalidateListeners = new Set<(frame: InvalidateFrame) => void>();
@@ -64,7 +93,8 @@ export class NativeConnection implements AgentConnection {
       // The relay reserves 1013 for a start still in progress; other failures must leave loading.
       onDisconnect: (reason, code) => {
         const state = this.reached ? 'reconnecting' : code === 1013 ? 'connecting' : 'disconnected';
-        this.setState(state, reason);
+        const parsed = parseCloseReason(reason);
+        this.setState(state, parsed.detail, parsed.failureCode, code);
       },
     });
   }
@@ -94,6 +124,7 @@ export class NativeConnection implements AgentConnection {
     return {
       state: this.state,
       detail: this.detail,
+      failureCode: this.failureCode,
       serviceId: null,
       epoch: this.stream.epoch || null,
       draining: false,
@@ -128,12 +159,24 @@ export class NativeConnection implements AgentConnection {
     return () => this.connectedListeners.delete(listener);
   }
 
-  private setState(state: ServiceState, detail = '') {
+  private setState(
+    state: ServiceState,
+    detail = '',
+    failureCode: ServiceUnavailableCode | null = null,
+    closeCode?: number,
+  ) {
     const connected = state === 'connected' && this.state !== 'connected';
-    if (state === this.state && detail === this.detail) return;
+    if (state === this.state && detail === this.detail && failureCode === this.failureCode) return;
     if (connected) this.reached = true;
     this.state = state;
     this.detail = detail;
+    this.failureCode = failureCode;
+    diagnosticsBreadcrumbs.record({
+      category: 'stream_state',
+      code: failureCode ?? (closeCode !== undefined ? String(closeCode) : null),
+      name: state,
+      message: detail || state,
+    });
     const status = this.status();
     for (const listener of this.statusListeners) listener(status);
     if (connected) for (const listener of this.connectedListeners) listener();

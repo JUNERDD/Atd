@@ -61,8 +61,10 @@ export class ComputerRuntime {
     development?: boolean;
   }): Promise<ComputerRuntime> {
     const { log } = options;
-    const bindings = await ComputerBindingStore.load(options.dataDir, log);
-    const records = await ComputerRecords.load(options.dataDir);
+    const [bindings, records] = await Promise.all([
+      ComputerBindingStore.load(options.dataDir, log),
+      ComputerRecords.load(options.dataDir),
+    ]);
     const access = await ComputerAccess.load(options.dataDir, bindings);
     const coordinator = new ComputerCoordinator(records, log);
     options.addons.useBy(COMPUTER_ADDONS, () => (coordinator.inFlight() ? IN_USE : null));

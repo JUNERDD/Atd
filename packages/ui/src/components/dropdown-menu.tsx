@@ -3,9 +3,17 @@
 import * as React from 'react';
 import { cn } from '@atd/ui/lib/utils';
 import { ignoreComposingEscape } from '@atd/ui/lib/ime';
+import {
+  createPointerGate,
+  gateMenuKeyDownCapture,
+  gateItemPointerProps,
+  type PointerGate,
+} from '@atd/ui/lib/pointer-gate';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+
+const DropdownPointerGateContext = React.createContext<PointerGate | null>(null);
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -42,10 +50,12 @@ function DropdownMenuContent({
   align = 'start',
   sideOffset = 4,
   collisionPadding = 8,
+  loop = true,
   children,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const [gate] = React.useState(() => createPointerGate(true));
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -53,20 +63,24 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         align={align}
         collisionPadding={collisionPadding}
+        loop={loop}
         className={cn(
           'z-50 max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-[min(8rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-2xl surface-glass p-1 wrap-anywhere text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}
+        onKeyDownCapture={gateMenuKeyDownCapture(gate, props.onKeyDownCapture)}
         onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
-        <ScrollArea
-          className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
-          viewportClassName="max-h-[inherit]"
-          gutter="none"
-        >
-          {children}
-        </ScrollArea>
+        <DropdownPointerGateContext.Provider value={gate}>
+          <ScrollArea
+            className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
+            viewportClassName="max-h-[inherit]"
+            gutter="none"
+          >
+            {children}
+          </ScrollArea>
+        </DropdownPointerGateContext.Provider>
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
@@ -85,6 +99,7 @@ function DropdownMenuItem({
   inset?: boolean;
   variant?: 'default' | 'destructive';
 }) {
+  const gate = React.useContext(DropdownPointerGateContext);
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -95,6 +110,7 @@ function DropdownMenuItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     />
   );
 }
@@ -107,6 +123,7 @@ function DropdownMenuCheckboxItem({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem> & {
   inset?: boolean;
 }) {
+  const gate = React.useContext(DropdownPointerGateContext);
   return (
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
@@ -116,6 +133,7 @@ function DropdownMenuCheckboxItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     >
       <span
         className="pointer-events-none absolute right-2 flex items-center justify-center"
@@ -146,6 +164,7 @@ function DropdownMenuRadioItem({
   inset?: boolean;
   variant?: 'default' | 'destructive';
 }) {
+  const gate = React.useContext(DropdownPointerGateContext);
   return (
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
@@ -156,6 +175,7 @@ function DropdownMenuRadioItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     >
       <span
         className="pointer-events-none absolute right-2 flex items-center justify-center"
@@ -225,6 +245,7 @@ function DropdownMenuSubTrigger({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean;
 }) {
+  const gate = React.useContext(DropdownPointerGateContext);
   return (
     <DropdownMenuPrimitive.SubTrigger
       data-slot="dropdown-menu-sub-trigger"
@@ -234,6 +255,7 @@ function DropdownMenuSubTrigger({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave, false)}
     >
       {children}
       <ChevronRightIcon className="ml-auto" />
@@ -245,9 +267,11 @@ function DropdownMenuSubContent({
   className,
   children,
   collisionPadding = 8,
+  loop = true,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  const [gate] = React.useState(() => createPointerGate(true));
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
@@ -256,16 +280,20 @@ function DropdownMenuSubContent({
         className,
       )}
       collisionPadding={collisionPadding}
+      loop={loop}
       {...props}
+      onKeyDownCapture={gateMenuKeyDownCapture(gate, props.onKeyDownCapture)}
       onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
     >
-      <ScrollArea
-        className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
-        viewportClassName="max-h-[inherit]"
-        gutter="none"
-      >
-        {children}
-      </ScrollArea>
+      <DropdownPointerGateContext.Provider value={gate}>
+        <ScrollArea
+          className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
+          viewportClassName="max-h-[inherit]"
+          gutter="none"
+        >
+          {children}
+        </ScrollArea>
+      </DropdownPointerGateContext.Provider>
     </DropdownMenuPrimitive.SubContent>
   );
 }

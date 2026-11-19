@@ -1,0 +1,158 @@
+/* The feature pages build on the blog's (blog.css): the hub is laid out like the blog's list and
+   uses its cards, and a capability's page reads like a post. What is theirs alone is here: the
+   illustration's frame, the hub's fixed columns, the header's actions, and the closing links. */
+
+/* An illustration: the shared backdrop under the transparent foreground, both filling a
+   16:10 box that is reserved before they load (case-frame.tsx), as the homepage showcase composes
+   them (sections/cases/cases.css). */
+.case-frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--ink-0);
+}
+
+.case-frame__layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+/* Long words in search-phrase titles break rather than run past a narrow column. */
+:is(.hub, .capability) :is(h1, h2, h3) {
+  overflow-wrap: break-word;
+}
+
+/* ---------- Hub ---------- */
+
+/* The hub's heading is a phrase, not the blog's one word: it wraps in balanced lines. */
+.hub .blog__title {
+  max-inline-size: 16em;
+  text-wrap: balance;
+}
+
+/* Eight capabilities: one column on phones, two from 640px, and from 1280px four, two even rows. */
+.hub__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  inline-size: 100%;
+}
+
+@media (width >= 640px) {
+  .hub__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 1280px) {
+  .hub__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Capability ---------- */
+
+/* The header's actions follow its alignment: centered, then from 1100px on its leading edge. */
+.capability__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  margin-block-start: 4px;
+}
+
+@media (width >= 1100px) {
+  .capability__actions {
+    justify-content: flex-start;
+  }
+}
+
+/* The illustration spans the reading column like a post's image: a screen set into the plate. */
+.capability__shot {
+  inline-size: 100%;
+  border-radius: var(--r-display);
+  box-shadow:
+    0 0 0 1px var(--line-1),
+    var(--shadow-shot);
+}
+
+/* The missing page's message is its heading, at the lede's size and weight. */
+.capability__missing {
+  font-weight: 400;
+}
+
+/* Related capabilities: name-and-summary cards, as many across as fit at 280px or more. */
+.capability__related {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  inline-size: 100%;
+}
+
+/* Without an image, the card holds its text directly, inset as far as a blog card's text is from
+   its edges. */
+.blog-card.capability__card {
+  --card-pad: 24px;
+  gap: 8px;
+}
+
+/* Release notes: a card of rows between hairlines, like a post's fixes. */
+.capability__posts {
+  --card-bg: var(--ink-2);
+  --card-pad: 4px 20px;
+  gap: 0;
+  inline-size: 100%;
+}
+
+@media (prefers-contrast: more) {
+  .capability__posts {
+    --card-bg: var(--ink-3);
+  }
+}
+
+.capability__posts-item + .capability__posts-item {
+  border-block-start: 1px solid var(--line-1);
+}
+
+.capability__post {
+  display: grid;
+  gap: 4px;
+  min-block-size: var(--hit);
+  padding-block: 14px;
+}
+
+.capability__post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.capability__post-release {
+  font-size: var(--fs-small);
+}
+
+.capability__post-title {
+  font-weight: 600;
+  line-height: var(--lh-title);
+  color: var(--fg-1);
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--dur-fast) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .capability__post:hover .capability__post-title {
+    text-decoration-color: var(--fg-1);
+  }
+}

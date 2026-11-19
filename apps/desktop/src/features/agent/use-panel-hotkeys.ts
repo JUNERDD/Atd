@@ -20,8 +20,13 @@ const OPTIONS: Options = {
  * already handled, such as a closing menu, never reaches it.
  */
 export function usePanelHotkeys(
-  shortcuts: Pick<ShortcutBindings, 'openSettings' | 'newConversation'>,
-  actions: { openSettings: () => void; newConversation: () => void; escape: () => void },
+  shortcuts: Pick<ShortcutBindings, 'openSettings' | 'newConversation' | 'cycleModelAlias'>,
+  actions: {
+    openSettings: () => void;
+    newConversation: () => void;
+    cycleModelAlias: () => void;
+    escape: () => void;
+  },
 ): void {
   const platform = window.desktop?.platform ?? 'web';
   // The keys stay bound across renders; each press runs the actions of the latest one.
@@ -40,6 +45,15 @@ export function usePanelHotkeys(
     () => latest.current.newConversation(),
     OPTIONS,
     [],
+  );
+  useHotkeys(
+    shortcuts.cycleModelAlias ? acceleratorToHotkey(shortcuts.cycleModelAlias, platform) : [],
+    () => latest.current.cycleModelAlias(),
+    {
+      ...OPTIONS,
+      enabled: (event) => Boolean(shortcuts.cycleModelAlias) && !event.repeat,
+    },
+    [shortcuts.cycleModelAlias, platform],
   );
   useHotkeys(
     'escape',

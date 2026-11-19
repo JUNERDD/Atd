@@ -68,7 +68,7 @@ struct MiniPanelLabelView: View {
         .frame(width: lane.width, height: lane.height)
         .animation(label.animation) { $0.modifier(follow) }
         .modifier(MiniPanelPresenceEffect(presence: model.presence(.labelText)))
-        .animation(label.animation) { $0.clipShape(AnyShape(outline)) }
+        .animation(label.animation) { $0.clipShape(outline) }
       }
       // Scope the fade to opacity: an inherited animation also retimes the glass container,
       // separating its material outline from the surface fill during entrance.

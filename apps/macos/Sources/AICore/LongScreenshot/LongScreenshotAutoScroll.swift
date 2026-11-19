@@ -16,8 +16,9 @@ import Foundation
 /// A frame that matches nothing (the page repainting, an image loading, a header folding away)
 /// pauses the loop without ending it: stitching resumes with the next frame that matches. Only
 /// once stitching has lost the page (``LongScreenshotStitch/lost``) does the loop scroll back, in
-/// small steps, until a frame matches again, and then go on with smaller steps; it gives up after
-/// ``recoveryLimit`` moving parts. A step the page does not answer is posted again after
+/// small steps, until a frame matches again, and then go on with smaller steps; if minimum-share
+/// steps still lose the page before passing where it was lost, it restores overlap once and stops,
+/// or gives up after ``recoveryLimit`` moving parts. A step the page does not answer is posted again after
 /// ``answerWait``. The page's end is the stitch's (``LongScreenshotEdges``) with the latest step
 /// unanswered, so a page that was already at its end, or loaded more since, is tried once more.
 ///
@@ -67,7 +68,8 @@ public struct LongScreenshotAutoScroll: Sendable {
     case end
     /// The image is as long as it can be.
     case limit
-    /// Stitching lost the page and scrolling back did not find it again.
+    /// Stitching lost the page and scrolling back did not find it again, or minimum-share steps
+    /// still lost it before passing where it was lost.
     case lost
     /// The page answered nothing for ``unansweredLimit`` without an end being seen.
     case unanswered
@@ -76,13 +78,13 @@ public struct LongScreenshotAutoScroll: Sendable {
   }
 
   /// The share of the moving part the first step aims for, and later ones once the gain is known.
-  static let firstShare = 0.2
-  static let share = 0.33
+  static let firstShare = 0.16
+  static let share = 0.20
   /// Each recovery from a lost page cuts the share by ``backoff``, down to ``minimumShare``.
   static let backoff = 0.6
   static let minimumShare = 0.12
   /// Steps in points whatever the band: a smaller one may move a line-scrolling app not at all.
-  static let stepRange: ClosedRange<CGFloat> = 24...120
+  static let stepRange: ClosedRange<CGFloat> = 24...72
   /// The gains a measurement is kept within.
   static let gainRange = 0.25...4.0
   /// A step that moved this share of what was expected is answered, once the gain is measured.
@@ -131,6 +133,12 @@ public struct LongScreenshotAutoScroll: Sendable {
   private var quietSince: Double?
   /// Rows scrolled back, as expected to move, since stitching lost the page.
   private var backtracked = 0.0
+  /// Expected rows of the latest downward step, so recovery backs up on the scale of what failed.
+  private var lastForwardRows: Double?
+  /// Document row recovery must pass before a lost-page backoff counts as cleared.
+  private var recoveryCeiling: Int?
+  /// True once reduced-step recovery lost the page again: restore overlap once, then stop.
+  private var stoppingAfterRestore = false
 
   public init(at time: Double) {
     startedAt = time
@@ -143,13 +151,18 @@ public struct LongScreenshotAutoScroll: Sendable {
     }
     if seen.reachedLimit { return .stop(.limit) }
     note(seen.position, at: time)
-    if let lost = seen.lost { return backtrack(from: lost, seen, at: time) }
+    if let lost = seen.lost { return recover(from: lost, seen, at: time) }
+    if stoppingAfterRestore { return .stop(.lost) }
     if backtracked > 0 {
-      // A frame matched again after scrolling back: go on, more carefully.
+      // A frame matched again after scrolling back: go on at minimumShare until past the ceiling.
       backtracked = 0
       step = nil
       quietSince = nil
-      share = max(Self.minimumShare, share * Self.backoff)
+      share = Self.minimumShare
+      if recoveryCeiling == nil {
+        let span = max(1, Int((Double(seen.movingRows) * Self.minimumShare).rounded(.up)))
+        recoveryCeiling = seen.position + span
+      }
     }
     if seen.adrift { return .wait }
     if let step {
@@ -176,6 +189,10 @@ public struct LongScreenshotAutoScroll: Sendable {
       changedAt = time
     }
     farthest = max(farthest, seen)
+    if let ceiling = recoveryCeiling, seen > ceiling {
+      recoveryCeiling = nil
+      share = measured ? Self.share : Self.firstShare
+    }
   }
 
   private func outcome(of step: Step, _ seen: Observation, at time: Double) -> Outcome {
@@ -198,16 +215,19 @@ public struct LongScreenshotAutoScroll: Sendable {
     let sample = min(
       max(Double(moved) / step.rows, Self.gainRange.lowerBound), Self.gainRange.upperBound)
     gain = measured ? (gain + sample) / 2 : sample
-    if !measured { share = max(share, Self.share) }
+    if !measured, share >= Self.firstShare { share = max(share, Self.share) }
     measured = true
   }
 
-  /// Scrolls back towards what is stitched, a small step at a time, until a frame matches.
-  private mutating func backtrack(
+  /// Scrolls back towards what is stitched when lost upward; downward loss stops immediately so
+  /// auto-scroll never twitches upward.
+  private mutating func recover(
     from lost: LongScreenshotDirection, _ seen: Observation, at time: Double
   ) -> Action {
+    if lost == .down { return .stop(.lost) }
     let back = lost.opposite
     if let step, step.direction == back, time - step.at < Self.recoveryWait { return .wait }
+    if stoppingAfterRestore, backtracked > 0 { return .stop(.lost) }
     let moving = Double(seen.movingRows)
     guard backtracked < moving * Self.recoveryLimit else { return .stop(.lost) }
     let action = post(back, aiming: moving * Self.recoveryShare, seen, at: time)
@@ -226,7 +246,10 @@ public struct LongScreenshotAutoScroll: Sendable {
     step = Step(
       direction: direction, at: time, from: seen.position, rows: Double(points) * scale,
       farthest: farthest)
-    if direction == .down, quietSince == nil { quietSince = time }
+    if direction == .down {
+      lastForwardRows = Double(points) * scale * gain
+      if quietSince == nil { quietSince = time }
+    }
     return .scroll(direction, points: points)
   }
 }

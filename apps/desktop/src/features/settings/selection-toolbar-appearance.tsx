@@ -45,9 +45,9 @@ function ChoiceRow<T extends string>({
   error,
   onChange,
 }: {
-  anchor: string;
+  anchor?: string | undefined;
   title: string;
-  description: string;
+  description?: string | undefined;
   /** The select's accessible name. */
   label: string;
   value: T;
@@ -61,9 +61,11 @@ function ChoiceRow<T extends string>({
     <Item asChild size="sm" className="settings-card-row">
       <li data-settings-anchor={anchor}>
         {/* Wide enough that the select wraps below a long description in a narrow column. */}
-        <ItemContent className="min-w-[min(200px,100%)]">
+        <ItemContent className={description ? 'min-w-[min(200px,100%)]' : 'min-w-0'}>
           <ItemTitle className="whitespace-normal">{title}</ItemTitle>
-          <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+          {description && (
+            <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+          )}
         </ItemContent>
         <ItemActions className="ml-auto flex-wrap justify-end">
           <Select
@@ -101,21 +103,23 @@ function ChoiceRow<T extends string>({
  * General › Selection toolbar: how the toolbar first appears. What a selection shows first (a
  * small icon that expands on a click or on hover, or the whole toolbar), whatever the activation;
  * and, only while the whole toolbar comes up at once, where it appears, since the small icon always
- * sits by the pointer. Settings only: the welcome guide keeps to the activation.
+ * sits by the pointer. `compact` (the welcome guide) shows only the compact "Show first" row.
  */
 export function SelectionToolbarAppearanceRows({
   settings,
+  compact = false,
 }: {
   settings: ReturnType<typeof useSelectionToolbarSettings>;
+  compact?: boolean;
 }) {
   const { t } = useTranslation('settings');
   const { smallIcon, position } = settings.value;
   return (
     <>
       <ChoiceRow
-        anchor="settings-selection-toolbar-small-icon"
+        anchor={compact ? undefined : 'settings-selection-toolbar-small-icon'}
         title={t('selectionToolbar.smallIcon.title')}
-        description={t(`selectionToolbar.smallIcon.hints.${smallIcon}`)}
+        description={compact ? undefined : t(`selectionToolbar.smallIcon.hints.${smallIcon}`)}
         label={t('selectionToolbar.smallIcon.label')}
         value={smallIcon}
         choices={SELECTION_TOOLBAR_ICON_MODES.map((mode) => ({
@@ -127,7 +131,7 @@ export function SelectionToolbarAppearanceRows({
         error={settings.errors.smallIcon}
         onChange={settings.setSmallIcon}
       />
-      {smallIcon === 'off' && (
+      {!compact && smallIcon === 'off' && (
         <ChoiceRow
           anchor="settings-selection-toolbar-position"
           title={t('selectionToolbar.position.title')}

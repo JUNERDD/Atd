@@ -14,7 +14,9 @@ extension ShellBridge {
       return try await shell.captureScreenshotInput()
     case .capture(let capture):
       let mode: CaptureMode = capture.mode == .record ? .record : .screenshot
-      return ScreenshotCaptureResult(try await shell.captureScreenshot(.capture(mode)))
+      return ScreenshotCaptureResult(
+        try await shell.captureScreenshot(
+          .capture(mode, fromComposer: capture.fromComposer == true)))
     }
   }
 

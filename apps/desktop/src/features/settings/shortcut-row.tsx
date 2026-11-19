@@ -28,13 +28,16 @@ export function ShortcutRow({
   description,
   settings,
   error,
+  compact = false,
 }: {
   action: ShortcutAction;
   label: string;
-  description: string;
+  description?: string | undefined;
   settings: ReturnType<typeof useShortcutSettings>;
   /** Why the keys do not work, such as a failed system registration; shown inside the row. */
   error?: string | undefined;
+  /** Omit the description and anchor when shown inside the welcome guide. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
@@ -68,10 +71,15 @@ export function ShortcutRow({
 
   return (
     <Item asChild size="sm" className="settings-card-row">
-      <li data-settings-anchor={`shortcut-${action}`} aria-busy={busy || undefined}>
-        <ItemContent className="min-w-[min(120px,100%)]">
+      <li
+        data-settings-anchor={compact || !description ? undefined : `shortcut-${action}`}
+        aria-busy={busy || undefined}
+      >
+        <ItemContent className={compact || !description ? 'min-w-0' : 'min-w-[min(120px,100%)]'}>
           <ItemTitle className="whitespace-normal">{label}</ItemTitle>
-          <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+          {!compact && description && (
+            <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+          )}
         </ItemContent>
         <ItemActions className="ml-auto">
           <ShortcutRecorder

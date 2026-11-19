@@ -2,8 +2,10 @@
 
 The marketing site for Atd: a static site built with Vite and React 19, prerendered once per language, with a
 WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`. The blog lives at
-`/blog` and `/zh/blog`, one page per post, edited with a Git-based CMS ([Blog](#blog)). Support
-download pages live at `/debug` and `/zh/debug`.
+`/blog` and `/zh/blog`, one page per post, edited with a Git-based CMS ([Blog](#blog)). Capability
+pages live at `/features` and `/features/<slug>`, and questions at `/faq`, in both languages
+([Capability pages, FAQ and search](#capability-pages-faq-and-search)). Support download pages live
+at `/debug` and `/zh/debug`.
 
 The look is strictly monochrome, retro-modern and spare, following the system's light or dark appearance
 with a persistent override in the footer. The page is one instrument: the hero pairs its main LED display
@@ -33,10 +35,11 @@ Run from the repository root:
 2. `vite build --ssr src/entry-server.tsx` builds a server bundle into `dist-ssr`.
 3. `scripts/prerender.ts` renders the app for each language into the template (markup, head tags, the
    `<html lang>` attributes, a preload for the dot-matrix font) and writes `dist/index.html` and
-   `dist/zh/index.html`, plus the blog's list and posts, both diagnostic routes, and `dist/404.html`.
-   Using `scripts/seo-outputs.ts`, it also writes `sitemap.xml` (only indexable pages, each with
-   `<lastmod>` and `hreflang` alternates), bilingual RSS 2.0 feeds (`feed.xml` and `zh/feed.xml`),
-   `robots.txt`, and dynamic `llms.txt` / `llms-full.txt`, then deletes `dist-ssr`.
+   `dist/zh/index.html`, plus the capability hub and pages, the FAQ, the blog's list and posts, both
+   diagnostic routes, and `dist/404.html`. Using `scripts/seo-outputs.ts`, it also writes
+   `sitemap.xml` (only indexable pages, each with `<lastmod>`, `hreflang` alternates and, for posts,
+   their images), bilingual RSS 2.0 feeds (`feed.xml` and `zh/feed.xml`) and `robots.txt`; using
+   `scripts/llms-outputs.ts`, dynamic `llms.txt` / `llms-full.txt`. It then deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
 interactive demos and the interface showcase's timeline only enhance what is already there. Canonical and Open Graph URLs
@@ -46,25 +49,32 @@ use `SITE_URL` when set, otherwise the Vercel production domain (`VERCEL_PROJECT
 
 ```text
 src/
-  app.tsx              Page composition (nav, sections in order, footer)
+  app.tsx              Page composition (nav, the page's main content, footer)
   entry-client.tsx     Hydration (or a fresh render on the dev server)
-  entry-server.tsx     Prerender entry: markup, head and html attributes per language
-  head.ts              Title, description, robots, canonical, hreflang, RSS, Open Graph and X cards
-  structured-data.ts   The schema.org graphs (home app, blog index, post BlogPosting + breadcrumbs)
+  entry-server.tsx     Prerender entry: routes, markup, head and html attributes per language
+  head.ts              Renders the head tags: title, description, robots, canonical, hreflang, RSS,
+                       Open Graph (and article tags for posts), X cards and the structured data
+  seo/page-head.ts     Each page's head facts: copy, visibility, share image and schema.org graph
+  structured-data.ts   Shared schema.org nodes (site, author, breadcrumbs) and the home page's app
+  seo/*-structured-data.ts  The blog, capability-page and FAQ graphs
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
   styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
-  ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap
+  ui/                  Shared section frame (a plate), dot-matrix glyphs, keycap, question items
   lib/                 In-view, active-section, reduced-motion and hydration hooks, press feedback
   motion/              The reveal controller and text effects (decode, type)
   gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
-  pages/<name>/        Other routes: blog, diagnostic downloads (`/debug`), and 404 fallback
+  pages/<name>/        Other routes: capability hub and pages (`features/`), FAQ, blog, diagnostic
+                       downloads (`/debug`), and 404 fallback
   content/             Site facts (links, version), the interface scenes and archived captures
+  content/features/    One module per capability page, the hub's copy, and their types
+  content/faq/         The FAQ's page copy and one module per question group
   content/blog/        The blog's posts, one YAML file per language and release (the CMS's)
 public/
   cases/               Case clips, earlier interface images, archived recordings (cases/README.md)
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
   media/blog/          Each post's images, one folder per release, served by Vercel
+  site.webmanifest     Web app manifest (name, colors, icons)
 admin/                 The blog's CMS (Sveltia CMS), served only by the dev server
 blog-content.ts        Validates the blog at build time and serves it as virtual:atd-blog
 ```
@@ -76,6 +86,22 @@ The shared content column grows to 1680 px on wide screens, on the 24 px grid; t
 showcase, feature display, download section and footer follow the same edges. The download wide
 review is `4259:15568`, and the footer wide review is `4259:16030`. Blog posts retain their
 1200 px reading layout within the wider site.
+Every page with a footer (all but the diagnostic downloads) ends on the app panel's flowing light
+(`src/sections/footer/footer-glow.tsx`): the panel's drifting light field rising from the bottom
+edge behind the footer, monochrome and seen only through the plate's LED holes (white dots in dark
+mode, black in light mode), over a floor of 120 px under the small print. The dots stay dim: the
+light peaks at the hero backdrop's brightness (`--glow-level`, which follows
+`--ascii-foreground-mix`), so the page closes on the material it opens with. The light powers on as
+the hero's display does rather than with the panel's bloom: once a quarter of the band is in view,
+it comes up from the bottom edge patch by patch, each patch catching a little bright as it lights,
+over about a second and a half; then it flows at 30 frames a second, and stops while it is off
+screen or the tab is hidden. Reduced motion shows it still, Increase Contrast at half its level,
+and forced colors and print not at all. Its runner loads only near the footer and draws a
+WebGL2 buffer of one texel per 16 CSS px (a few kilobytes); the dots are a static perforated sheet
+over it, so a frame costs a draw of one or two thousand texels and no repaint. In the design file,
+`Website / Site footer` carries the floor and an `Afterglow` band whose masks are a still frame of
+the shader, lit in `dot/lit` at `glow/level`, with `glow/veil` of that light between the holes; the
+wide review `4259:16030` and `Footer · Afterglow · Review` (`4388:22220`) show it.
 The features plate is one LED display set into the plate, a channel per capability (models,
 computer use, extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
 capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
@@ -188,6 +214,19 @@ covers model credential recovery after certificate updates, with Chinese and Eng
 side over the same dusk mountain ridge backdrop and handwritten notes, exported at 1440 × 900 (1x) as
 WebP at quality 85.
 
+The 0.12.0 images are in `project/4395:320965`, in the
+`W · Website · Blog · 0.12.0 images (2026-11-19)` section (`4395:320966`–`4395:320971`). The three
+scenes show the alias list and composer switcher, the same annotated selection before and after
+pinning, and the support bundle preview open inside Diagnostics. The settings,
+switcher and preview layouts follow the production React components rendered with sample data in
+each language. Windows, popovers, dialogs and toolbars use one translucent dark fill over a
+blurred backdrop. The capture and the pin share a crop of the same frozen desktop, including
+the wallpaper visible through the alias window.
+Its toolbars use artwork rendered from the AppKit controls at 3×, placed at their native sizes.
+The Chinese and English editions use Vincent Guth's _Iceland lake Northern Lights_ backdrop
+([Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Iceland_lake_Northern_Lights_(Unsplash).jpg>),
+CC0 1.0 Public Domain) and handwritten notes, exported at 1440 × 900 (1x) as WebP at quality 85.
+
 ### Design
 
 The pages are designed in the project design file's `Website / Blog · Review · code-backed`
@@ -221,6 +260,70 @@ The pages' own copy (heading, lede, labels and head tags) is in `src/pages/blog/
 `vite preview` serves each prerendered page at its clean URL, as Vercel does (the
 `atd-preview-clean-urls` plugin in `vite.config.ts`), so `/blog/atd-0-10-6` previews the post rather
 than the home page's HTML.
+
+## Capability pages, FAQ and search
+
+`/features` (and `/zh/features`) is the capability hub: its heading and lede, then one card per
+capability linking to its page. `/features/<slug>` is one capability's page, read like a post: a
+back button to the hub, a centered header (the capability's name as a readout, the `h1`, a lede, the
+download key and the source link), its illustration, then contents beside
+the sections, the capability's questions (always expanded), related capabilities, the release notes
+that introduced or changed it, and a closing download key. `/faq` groups its questions under
+headings, each answer optionally followed by a link to the capability page that covers it. These
+pages reuse the blog's layout and card classes (`pages/blog/blog.css`) with their own
+`features.css`, `faq.css` and the shared `ui/qa.css`. An illustration composes the showcase's
+backdrop with a transparent foreground: the showcase case that depicts the capability, or a scene
+of its own made the same way and kept off the homepage timeline (`public/cases/features/<lang>/`,
+see [`public/cases/README.md`](public/cases/README.md)). Every footer carries a directory linking the hub, each
+capability, the FAQ, the blog, and the repository and its releases, so each page links them all.
+
+### Content
+
+`src/content/features/types.ts` and `src/content/faq/types.ts` define the content. A capability
+module holds both languages' name, card summary, head title (within about 60 characters in English
+and 30 in Chinese, ending in `— Atd`), head description (about 120–155 characters in English, at
+most 80 in Chinese), `h1`, lede, sections, questions and keywords, plus its `illustration` (a
+showcase case, or its own scene with a description in each language), the pages it relates to, the posts that introduced or changed it, and `updated`, the day
+of its last substantive edit. FAQ questions and answers are written per field, so both languages
+always list the same questions.
+
+- A slug is the page's URL in both languages; keep it once published. To add a capability, add its
+  slug to `FEATURE_SLUGS` and its module to `featurePages` in the same order (the hub's); the build
+  fails when the two lists differ.
+- Describe what the released version (`site.version`) does, checked against its tag, and never
+  compare with other products. Bump `updated` with every substantive edit.
+- Section ids must not be `questions`, `related` or `release-notes`, which the page uses itself.
+- The modules are plain TypeScript that the prerender scripts load under Node: keep `.ts` import
+  extensions, and import `content/cases.ts` for its types only.
+
+### Design
+
+The pages are designed in the project design file's `Website / Features & FAQ · Review · code-backed`
+section (`4378:16466`, on the Website page): the hub (`4380:16499` Desktop, English;
+`4381:335349` Compact, Chinese), the computer use page (`4382:18910`, `4383:19588`) and the FAQ
+(`4383:20861`, `4383:21088`), with `Example · Release notes (Screen capture)` (`4383:21324`). They
+compose the blog's components with `Website / Blog card` (layouts Capability and Text),
+`Website / Case frame` (the shared backdrop under a swappable foreground),
+`Website / QA item`, `Website / Post list item` and `Website / Release note link`.
+`Website / Site footer` carries the directory in both layouts, built from `Website / Footer link`
+(Input Touch or Pointer, with an External arrow).
+
+### Search outputs
+
+`seo/page-head.ts` decides each page's head facts and `head.ts` renders them. A page is indexed,
+unlisted (the diagnostic downloads: `noindex`, outside the sitemap) or missing (the 404 page, and on
+the dev server an unknown capability slug). Every page carries the `WebSite` and `Person` nodes; the
+home page adds its `WebPage` and the `SoftwareApplication` (`#app`), which other pages name in
+`about`. The blog list is a `Blog`, a post a `BlogPosting` with breadcrumbs and article tags
+(published and modified time, author, section and one tag per keyword), the hub a `CollectionPage`
+with an `ItemList` of the capabilities, a capability page a `WebPage` with breadcrumbs and an
+`FAQPage` of its questions, and `/faq` an `FAQPage` with breadcrumbs.
+
+The sitemap's `lastmod` is a post's date for posts, `updated` for a capability page and the FAQ, the
+latest `updated` for the hub, and the newest post's date for the other pages; posts list their
+images. `robots.txt` allows everything except `/api/` and `/downloads/`. `llms.txt` indexes every
+page; `llms-full.txt` holds the capabilities, the FAQ and every release in English.
+`public/llms.txt` is the static copy the build replaces; keep its page list in step.
 
 ## Header language menu and GitHub entry
 

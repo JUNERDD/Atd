@@ -13,13 +13,17 @@ import {
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
+import { IconButton } from '../../components/icon-button';
 import { revealSettingsAnchor } from './reveal-settings-anchor';
 import type { SettingsSearchPage } from './settings-navigation';
 import { SettingsSearchField } from './settings-search-field';
 import { preloadSettingsSection } from './settings-section-loaders';
 import {
-  isSettingsFooterSection,
+  settingsFooterIconSection,
+  settingsFooterSection,
+  settingsListedSections,
   settingsSections,
+  type SettingsSection,
   type SettingsSectionId,
 } from './settings-sections';
 import { useSettingsSearch, type SettingsSearchResult } from './use-settings-search';
@@ -91,9 +95,17 @@ export function SettingsNavPanel({
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (isComposingKey(event)) return;
-    if (event.key === 'ArrowDown') {
+    const hasModifier = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
+    if (!hasModifier && event.key === 'ArrowDown') {
       event.preventDefault();
-      rows()[0]?.focus();
+      const first = rows()[0];
+      first?.focus();
+      first?.scrollIntoView?.({ block: 'nearest' });
+    } else if (!hasModifier && event.key === 'ArrowUp') {
+      event.preventDefault();
+      const last = rows().at(-1);
+      last?.focus();
+      last?.scrollIntoView?.({ block: 'nearest' });
     } else if (event.key === 'Enter' && searching && results[0]) {
       event.preventDefault();
       open(results[0]);
@@ -101,17 +113,51 @@ export function SettingsNavPanel({
   }
 
   function onRowKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (isComposingKey(event) || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+      return;
     const buttons = rows();
+    if (buttons.length === 0) return;
     const index = buttons.indexOf(event.currentTarget);
     const step = STEP[event.key];
     let target: HTMLElement | undefined;
-    if (step === -1 && index === 0) target = input.current ?? undefined;
-    else if (step) target = buttons[index + step];
-    else if (event.key === 'Home') target = buttons[0];
+    if (step) {
+      target =
+        index >= 0
+          ? buttons[(index + step + buttons.length) % buttons.length]
+          : step === 1
+            ? buttons[0]
+            : buttons.at(-1);
+    } else if (event.key === 'Home') target = buttons[0];
     else if (event.key === 'End') target = buttons.at(-1);
     else return;
     event.preventDefault();
     target?.focus();
+    target?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  /** What a section's row and the footer's icon button share: selection, focus and navigation. */
+  function sectionProps(id: SettingsSectionId) {
+    return {
+      'aria-current': current === id ? ('page' as const) : undefined,
+      tabIndex: current === id ? 0 : -1,
+      disabled,
+      onPointerEnter: () => preloadSettingsSection(id),
+      onFocus: () => preloadSettingsSection(id),
+      onClick: () => onNavigate(id),
+      onKeyDown: onRowKeyDown,
+    };
+  }
+
+  function sectionRow({ id, labelKey, icon: Icon }: SettingsSection) {
+    return (
+      <Button key={id} variant="ghost" className="settings-nav-button" {...sectionProps(id)}>
+        <Icon aria-hidden="true" />
+        {/* The hidden bold copy reserves the selected row's width (`settings.css`). */}
+        <span className="settings-nav-label" data-label={t(labelKey)}>
+          <span>{t(labelKey)}</span>
+        </span>
+      </Button>
+    );
   }
 
   return (
@@ -180,27 +226,21 @@ export function SettingsNavPanel({
                   </Button>
                 );
               })
-            : settingsSections.map(({ id, labelKey, icon: Icon }) => (
-                <Button
-                  key={id}
-                  variant="ghost"
-                  className="settings-nav-button"
-                  aria-current={current === id ? 'page' : undefined}
-                  data-footer={isSettingsFooterSection(id) || undefined}
-                  tabIndex={current === id ? 0 : -1}
-                  disabled={disabled}
-                  onPointerEnter={() => preloadSettingsSection(id)}
-                  onFocus={() => preloadSettingsSection(id)}
-                  onClick={() => onNavigate(id)}
-                  onKeyDown={onRowKeyDown}
-                >
-                  <Icon aria-hidden="true" />
-                  {/* The hidden bold copy reserves the selected row's width (`settings.css`). */}
-                  <span className="settings-nav-label" data-label={t(labelKey)}>
-                    <span>{t(labelKey)}</span>
-                  </span>
-                </Button>
-              ))}
+            : [
+                ...settingsListedSections.map(sectionRow),
+                <div key="footer" className="settings-nav-footer">
+                  {sectionRow(settingsFooterSection)}
+                  <IconButton
+                    {...sectionProps(settingsFooterIconSection.id)}
+                    label={t(settingsFooterIconSection.labelKey)}
+                    size="icon-lg"
+                    className="settings-nav-icon-button"
+                    tooltipSide="top"
+                  >
+                    <settingsFooterIconSection.icon aria-hidden="true" />
+                  </IconButton>
+                </div>,
+              ]}
         </nav>
         {searching && results.length === 0 && (
           <Empty className="settings-nav-empty">

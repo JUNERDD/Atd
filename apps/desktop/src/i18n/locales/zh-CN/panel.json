@@ -267,7 +267,9 @@
       "disconnected": "服务未连接。{{detail}}",
       "connecting": "正在连接服务…",
       "reconnecting": "连接中断，正在重连…",
-      "openSettings": "打开服务设置"
+      "openSettings": "打开服务设置",
+      "openDiagnostics": "诊断",
+      "restartService": "重启服务"
     }
   },
   "capability": {
@@ -276,10 +278,31 @@
   "errors": {
     "openDesktopApp": "打开桌面应用以运行任务并管理已保存的数据。"
   },
+  "modelConfig": {
+    "contextAppliesDraft": "仅作用于当前对话，不修改已保存的模型或别名默认设置。"
+  },
+  "aliases": {
+    "sectionTitle": "模型别名",
+    "triggerModified": "{{name}}（已修改）",
+    "triggerAriaLabel": "模型别名：{{alias}}，{{details}}",
+    "offlineHint": "{{provider}} 未连接",
+    "providerOffline": "未连接 · {{summary}}",
+    "modifiedStatus": "已偏离别名“{{name}}”的默认配置",
+    "restore": "还原“{{name}}”",
+    "saveAsNew": "另存为新别名",
+    "copySuffix": "副本",
+    "namePlaceholder": "新别名名称",
+    "cancel": "取消",
+    "save": "保存别名",
+    "emptyName": "请输入模型别名名称。",
+    "missingModel": "请先选择模型后再保存别名。",
+    "saveFailed": "无法保存模型别名。"
+  },
   "quickPanel": {
     "listLabel": "建议",
     "sectionsLabel": "分组",
     "groups": {
+      "aliases": "模型别名",
       "applications": "应用",
       "commands": "快捷指令",
       "skills": "技能",

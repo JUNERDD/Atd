@@ -10,6 +10,7 @@ import type { AddonsBridge } from './addons-contract';
 import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
 import type { ComputerBridge } from './computer-contract';
+import type { DiagnosticsBridge } from './diagnostics-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { CaptureBridge } from './capture-bridge';
 import type { FileRef } from './agent/task-schema';
@@ -203,6 +204,8 @@ export interface DesktopBridge {
   readonly addons?: AddonsBridge;
   /** Browser and computer use: targets, stopping, live progress; absent in tests that need none. */
   readonly computer?: ComputerBridge;
+  /** Diagnostics checks, live probes, and redacted support bundle export; absent in tests that need none. */
+  readonly diagnostics?: DiagnosticsBridge;
   /** The shell's task notifications and their settings; absent in tests that need none. */
   readonly notifications?: NotificationsBridge;
   /** The shell's save-location preferences and folder picker; absent in tests that need none. */

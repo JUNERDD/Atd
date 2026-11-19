@@ -81,7 +81,13 @@
       "shortcuts.recording",
       "recording.answer",
       "captureText.progress",
-      "panelModal.setAvailable"
+      "panelModal.setAvailable",
+      "diagnostics.shellReport",
+      "diagnostics.liveProbe.start",
+      "diagnostics.liveProbe.stop",
+      "diagnostics.previewBundle",
+      "diagnostics.exportBundle",
+      "diagnostics.restartService"
     ],
     "posts": [
       "bridge.ready",
@@ -138,7 +144,8 @@
       "recording.askOpen",
       "captureText.run",
       "captureText.action",
-      "panelModal.open"
+      "panelModal.open",
+      "diagnostics.liveProbe.event"
     ]
   },
   "anyOf": [
@@ -1133,6 +1140,9 @@
                           "const": "record"
                         }
                       ]
+                    },
+                    "fromComposer": {
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3939,6 +3949,418 @@
         },
         {
           "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.shellReport"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.liveProbe.start"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "selection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "hotkey"
+                    },
+                    {
+                      "type": "string",
+                      "const": "capture"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.liveProbe.stop"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.previewBundle"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rendererBreadcrumbs", "includeCrashSummaries"],
+              "properties": {
+                "rendererBreadcrumbs": {
+                  "type": "object",
+                  "required": ["capturedAt", "droppedCount", "entries"],
+                  "properties": {
+                    "capturedAt": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "droppedCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "seq",
+                          "ts",
+                          "category",
+                          "windowRole",
+                          "code",
+                          "name",
+                          "message"
+                        ],
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "ts": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "category": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "error_boundary"
+                              },
+                              {
+                                "type": "string",
+                                "const": "unhandled_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "unhandled_rejection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "query_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "mutation_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "stream_state"
+                              },
+                              {
+                                "type": "string",
+                                "const": "bridge_drop"
+                              }
+                            ]
+                          },
+                          "windowRole": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "panel"
+                              },
+                              {
+                                "type": "string",
+                                "const": "settings"
+                              },
+                              {
+                                "type": "string",
+                                "const": "onboarding"
+                              },
+                              {
+                                "type": "string",
+                                "const": "view"
+                              }
+                            ]
+                          },
+                          "code": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "type": "string",
+                            "maxLength": 320
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 128
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "includeCrashSummaries": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.exportBundle"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rendererBreadcrumbs", "includeCrashSummaries"],
+              "properties": {
+                "rendererBreadcrumbs": {
+                  "type": "object",
+                  "required": ["capturedAt", "droppedCount", "entries"],
+                  "properties": {
+                    "capturedAt": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "droppedCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "seq",
+                          "ts",
+                          "category",
+                          "windowRole",
+                          "code",
+                          "name",
+                          "message"
+                        ],
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "ts": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "category": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "error_boundary"
+                              },
+                              {
+                                "type": "string",
+                                "const": "unhandled_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "unhandled_rejection"
+                              },
+                              {
+                                "type": "string",
+                                "const": "query_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "mutation_error"
+                              },
+                              {
+                                "type": "string",
+                                "const": "stream_state"
+                              },
+                              {
+                                "type": "string",
+                                "const": "bridge_drop"
+                              }
+                            ]
+                          },
+                          "windowRole": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "panel"
+                              },
+                              {
+                                "type": "string",
+                                "const": "settings"
+                              },
+                              {
+                                "type": "string",
+                                "const": "onboarding"
+                              },
+                              {
+                                "type": "string",
+                                "const": "view"
+                              }
+                            ]
+                          },
+                          "code": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "type": "string",
+                            "maxLength": 320
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 128
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "includeCrashSummaries": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "diagnostics.restartService"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["type", "method", "params"],
           "properties": {
             "type": {
@@ -4096,9 +4518,25 @@
             },
             "params": {
               "type": "object",
-              "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+              "required": ["confirmAction", "confirmInComposer", "longScreenshotConfirmAction"],
               "properties": {
-                "copyOnConfirm": {
+                "confirmAction": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "attachAndCopy"
+                    },
+                    {
+                      "type": "string",
+                      "const": "attach"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copy"
+                    }
+                  ]
+                },
+                "confirmInComposer": {
                   "type": "boolean"
                 },
                 "longScreenshotConfirmAction": {
@@ -4309,6 +4747,9 @@
                     "additionalProperties": false
                   },
                   "maxItems": 64
+                },
+                "chrome": {
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -7034,6 +7475,295 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "diagnostics.liveProbe.event"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "probeId",
+                    "ts",
+                    "remainingMs",
+                    "endedReason",
+                    "axTrusted",
+                    "frontmostBundleId",
+                    "excludedByAppRule",
+                    "axRole",
+                    "selectedLength",
+                    "gateOutcome"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "selection"
+                    },
+                    "probeId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "ts": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "remainingMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "endedReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "running"
+                        },
+                        {
+                          "type": "string",
+                          "const": "timeout"
+                        },
+                        {
+                          "type": "string",
+                          "const": "stopped"
+                        },
+                        {
+                          "type": "string",
+                          "const": "window_closed"
+                        }
+                      ]
+                    },
+                    "axTrusted": {
+                      "type": "boolean"
+                    },
+                    "frontmostBundleId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 255
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "excludedByAppRule": {
+                      "type": "boolean"
+                    },
+                    "axRole": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "selectedLength": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "gateOutcome": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 96,
+                      "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "probeId",
+                    "ts",
+                    "remainingMs",
+                    "endedReason",
+                    "secureInputEnabled",
+                    "postEventTrusted",
+                    "globalMonitorActive",
+                    "matchedShortcutId",
+                    "modifierFlagsMask",
+                    "handoffOutcome"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "hotkey"
+                    },
+                    "probeId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "ts": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "remainingMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "endedReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "running"
+                        },
+                        {
+                          "type": "string",
+                          "const": "timeout"
+                        },
+                        {
+                          "type": "string",
+                          "const": "stopped"
+                        },
+                        {
+                          "type": "string",
+                          "const": "window_closed"
+                        }
+                      ]
+                    },
+                    "secureInputEnabled": {
+                      "type": "boolean"
+                    },
+                    "postEventTrusted": {
+                      "type": "boolean"
+                    },
+                    "globalMonitorActive": {
+                      "type": "boolean"
+                    },
+                    "matchedShortcutId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "modifierFlagsMask": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "handoffOutcome": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 96,
+                      "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "probeId",
+                    "ts",
+                    "remainingMs",
+                    "endedReason",
+                    "screenRecordingTrusted",
+                    "displayCount",
+                    "sdrFreezeReady",
+                    "arbiterInteractiveHeld",
+                    "heldOwnerSummary",
+                    "gateOutcome"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "capture"
+                    },
+                    "probeId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "ts": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "remainingMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "endedReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "running"
+                        },
+                        {
+                          "type": "string",
+                          "const": "timeout"
+                        },
+                        {
+                          "type": "string",
+                          "const": "stopped"
+                        },
+                        {
+                          "type": "string",
+                          "const": "window_closed"
+                        }
+                      ]
+                    },
+                    "screenRecordingTrusted": {
+                      "type": "boolean"
+                    },
+                    "displayCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 16
+                    },
+                    "sdrFreezeReady": {
+                      "type": "boolean"
+                    },
+                    "arbiterInteractiveHeld": {
+                      "type": "boolean"
+                    },
+                    "heldOwnerSummary": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "gateOutcome": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 96,
+                      "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -7558,6 +8288,441 @@
           "additionalProperties": false
         }
       ]
+    },
+    "ShellDoctorCheck": {
+      "type": "object",
+      "required": ["id", "layer", "status", "reasonCode", "durationMs", "metrics"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96,
+          "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+        },
+        "layer": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "install_and_bundle"
+            },
+            {
+              "type": "string",
+              "const": "permissions_and_keychain"
+            },
+            {
+              "type": "string",
+              "const": "service_and_storage"
+            },
+            {
+              "type": "string",
+              "const": "shell_and_toolchain"
+            },
+            {
+              "type": "string",
+              "const": "network_proxy_and_clock"
+            },
+            {
+              "type": "string",
+              "const": "native_addons_and_index"
+            },
+            {
+              "type": "string",
+              "const": "on_demand_connectivity"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "pass"
+            },
+            {
+              "type": "string",
+              "const": "warn"
+            },
+            {
+              "type": "string",
+              "const": "fail"
+            },
+            {
+              "type": "string",
+              "const": "skipped"
+            }
+          ]
+        },
+        "reasonCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96,
+          "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60000
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "value"],
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$"
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        },
+        "remediation": {
+          "type": "object",
+          "required": ["remediationCode", "action"],
+          "properties": {
+            "remediationCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 96,
+              "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+            },
+            "action": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "open_system_settings_accessibility"
+                },
+                {
+                  "type": "string",
+                  "const": "open_system_settings_screen_recording"
+                },
+                {
+                  "type": "string",
+                  "const": "open_system_settings_input_monitoring"
+                },
+                {
+                  "type": "string",
+                  "const": "open_system_settings_login_items"
+                },
+                {
+                  "type": "string",
+                  "const": "move_to_applications"
+                },
+                {
+                  "type": "string",
+                  "const": "restart_service"
+                },
+                {
+                  "type": "string",
+                  "const": "relaunch_app"
+                },
+                {
+                  "type": "string",
+                  "const": "open_settings_section"
+                },
+                {
+                  "type": "string",
+                  "const": "run_live_probe"
+                },
+                {
+                  "type": "string",
+                  "const": "open_external_docs"
+                },
+                {
+                  "type": "string",
+                  "const": "none"
+                }
+              ]
+            },
+            "settingsSection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+            },
+            "probeKind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "selection"
+                },
+                {
+                  "type": "string",
+                  "const": "hotkey"
+                },
+                {
+                  "type": "string",
+                  "const": "capture"
+                }
+              ]
+            },
+            "docsUrl": {
+              "type": "string",
+              "maxLength": 512,
+              "pattern": "^https://"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DecisionRingSummary": {
+      "type": "object",
+      "required": [
+        "ringId",
+        "capacity",
+        "entryCount",
+        "droppedCount",
+        "lastEventAt",
+        "recentAnomalyCount",
+        "heldResources"
+      ],
+      "properties": {
+        "ringId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "selection"
+            },
+            {
+              "type": "string",
+              "const": "hotkeys"
+            },
+            {
+              "type": "string",
+              "const": "capture_arbiter"
+            },
+            {
+              "type": "string",
+              "const": "relay_supervisor"
+            }
+          ]
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "entryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "droppedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastEventAt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recentAnomalyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "heldResources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "maxItems": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "RendererBreadcrumbsPayload": {
+      "type": "object",
+      "required": ["capturedAt", "droppedCount", "entries"],
+      "properties": {
+        "capturedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "droppedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["seq", "ts", "category", "windowRole", "code", "name", "message"],
+            "properties": {
+              "seq": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ts": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "error_boundary"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unhandled_error"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unhandled_rejection"
+                  },
+                  {
+                    "type": "string",
+                    "const": "query_error"
+                  },
+                  {
+                    "type": "string",
+                    "const": "mutation_error"
+                  },
+                  {
+                    "type": "string",
+                    "const": "stream_state"
+                  },
+                  {
+                    "type": "string",
+                    "const": "bridge_drop"
+                  }
+                ]
+              },
+              "windowRole": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "panel"
+                  },
+                  {
+                    "type": "string",
+                    "const": "settings"
+                  },
+                  {
+                    "type": "string",
+                    "const": "onboarding"
+                  },
+                  {
+                    "type": "string",
+                    "const": "view"
+                  }
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 320
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "BundlePreviewFile": {
+      "type": "object",
+      "required": [
+        "path",
+        "status",
+        "byteSize",
+        "redactionHits",
+        "previewExcerpt",
+        "excerptTruncated"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "included"
+            },
+            {
+              "type": "string",
+              "const": "omitted_redaction_error"
+            },
+            {
+              "type": "string",
+              "const": "omitted_not_opted_in"
+            },
+            {
+              "type": "string",
+              "const": "omitted_unavailable"
+            },
+            {
+              "type": "string",
+              "const": "omitted_size_cap"
+            }
+          ]
+        },
+        "byteSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8388608
+        },
+        "redactionHits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "previewExcerpt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 16384
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excerptTruncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "AppStartupParams": {
       "type": "object",
@@ -8346,6 +9511,9 @@
                   "const": "record"
                 }
               ]
+            },
+            "fromComposer": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -11782,6 +12950,866 @@
       "properties": {},
       "additionalProperties": false
     },
+    "DiagnosticsShellReportParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsShellReportResult": {
+      "type": "object",
+      "required": [
+        "capturedAt",
+        "appVersion",
+        "buildNumber",
+        "isDevelopment",
+        "serviceState",
+        "serviceFailureCode",
+        "serviceFailureSummary",
+        "checks",
+        "rings"
+      ],
+      "properties": {
+        "capturedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "appVersion": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "buildNumber": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "isDevelopment": {
+          "type": "boolean"
+        },
+        "serviceState": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "idle"
+            },
+            {
+              "type": "string",
+              "const": "starting"
+            },
+            {
+              "type": "string",
+              "const": "running"
+            },
+            {
+              "type": "string",
+              "const": "restarting"
+            },
+            {
+              "type": "string",
+              "const": "unavailable"
+            }
+          ]
+        },
+        "serviceFailureCode": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "service_starting"
+                },
+                {
+                  "type": "string",
+                  "const": "service_start_failed"
+                },
+                {
+                  "type": "string",
+                  "const": "service_stopped_too_often"
+                },
+                {
+                  "type": "string",
+                  "const": "service_not_running"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "serviceFailureSummary": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 240
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "layer", "status", "reasonCode", "durationMs", "metrics"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+              },
+              "layer": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "install_and_bundle"
+                  },
+                  {
+                    "type": "string",
+                    "const": "permissions_and_keychain"
+                  },
+                  {
+                    "type": "string",
+                    "const": "service_and_storage"
+                  },
+                  {
+                    "type": "string",
+                    "const": "shell_and_toolchain"
+                  },
+                  {
+                    "type": "string",
+                    "const": "network_proxy_and_clock"
+                  },
+                  {
+                    "type": "string",
+                    "const": "native_addons_and_index"
+                  },
+                  {
+                    "type": "string",
+                    "const": "on_demand_connectivity"
+                  }
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "pass"
+                  },
+                  {
+                    "type": "string",
+                    "const": "warn"
+                  },
+                  {
+                    "type": "string",
+                    "const": "fail"
+                  },
+                  {
+                    "type": "string",
+                    "const": "skipped"
+                  }
+                ]
+              },
+              "reasonCode": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+              },
+              "durationMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60000
+              },
+              "metrics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["key", "value"],
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$"
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 256
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 32
+              },
+              "remediation": {
+                "type": "object",
+                "required": ["remediationCode", "action"],
+                "properties": {
+                  "remediationCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+                  },
+                  "action": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "open_system_settings_accessibility"
+                      },
+                      {
+                        "type": "string",
+                        "const": "open_system_settings_screen_recording"
+                      },
+                      {
+                        "type": "string",
+                        "const": "open_system_settings_input_monitoring"
+                      },
+                      {
+                        "type": "string",
+                        "const": "open_system_settings_login_items"
+                      },
+                      {
+                        "type": "string",
+                        "const": "move_to_applications"
+                      },
+                      {
+                        "type": "string",
+                        "const": "restart_service"
+                      },
+                      {
+                        "type": "string",
+                        "const": "relaunch_app"
+                      },
+                      {
+                        "type": "string",
+                        "const": "open_settings_section"
+                      },
+                      {
+                        "type": "string",
+                        "const": "run_live_probe"
+                      },
+                      {
+                        "type": "string",
+                        "const": "open_external_docs"
+                      },
+                      {
+                        "type": "string",
+                        "const": "none"
+                      }
+                    ]
+                  },
+                  "settingsSection": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32,
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  },
+                  "probeKind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "selection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "hotkey"
+                      },
+                      {
+                        "type": "string",
+                        "const": "capture"
+                      }
+                    ]
+                  },
+                  "docsUrl": {
+                    "type": "string",
+                    "maxLength": 512,
+                    "pattern": "^https://"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 48
+        },
+        "rings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ringId",
+              "capacity",
+              "entryCount",
+              "droppedCount",
+              "lastEventAt",
+              "recentAnomalyCount",
+              "heldResources"
+            ],
+            "properties": {
+              "ringId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "selection"
+                  },
+                  {
+                    "type": "string",
+                    "const": "hotkeys"
+                  },
+                  {
+                    "type": "string",
+                    "const": "capture_arbiter"
+                  },
+                  {
+                    "type": "string",
+                    "const": "relay_supervisor"
+                  }
+                ]
+              },
+              "capacity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1024
+              },
+              "entryCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1024
+              },
+              "droppedCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "lastEventAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "recentAnomalyCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "heldResources": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "maxItems": 16
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsLiveProbeStartParams": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "selection"
+            },
+            {
+              "type": "string",
+              "const": "hotkey"
+            },
+            {
+              "type": "string",
+              "const": "capture"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsLiveProbeStartResult": {
+      "type": "object",
+      "required": ["probeId", "kind", "durationMs"],
+      "properties": {
+        "probeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "selection"
+            },
+            {
+              "type": "string",
+              "const": "hotkey"
+            },
+            {
+              "type": "string",
+              "const": "capture"
+            }
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 10000
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsLiveProbeStopParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsLiveProbeStopResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsPreviewBundleParams": {
+      "type": "object",
+      "required": ["rendererBreadcrumbs", "includeCrashSummaries"],
+      "properties": {
+        "rendererBreadcrumbs": {
+          "type": "object",
+          "required": ["capturedAt", "droppedCount", "entries"],
+          "properties": {
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "droppedCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["seq", "ts", "category", "windowRole", "code", "name", "message"],
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "ts": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "category": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "error_boundary"
+                      },
+                      {
+                        "type": "string",
+                        "const": "unhandled_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "unhandled_rejection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "query_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "mutation_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "stream_state"
+                      },
+                      {
+                        "type": "string",
+                        "const": "bridge_drop"
+                      }
+                    ]
+                  },
+                  "windowRole": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "panel"
+                      },
+                      {
+                        "type": "string",
+                        "const": "settings"
+                      },
+                      {
+                        "type": "string",
+                        "const": "onboarding"
+                      },
+                      {
+                        "type": "string",
+                        "const": "view"
+                      }
+                    ]
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 320
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 128
+            }
+          },
+          "additionalProperties": false
+        },
+        "includeCrashSummaries": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsPreviewBundleResult": {
+      "type": "object",
+      "required": [
+        "generatedAt",
+        "suggestedFileName",
+        "totalUncompressedBytes",
+        "totalRedactionHits",
+        "omittedFileCount",
+        "files"
+      ],
+      "properties": {
+        "generatedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "suggestedFileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "totalUncompressedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8388608
+        },
+        "totalRedactionHits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "omittedFileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "status",
+              "byteSize",
+              "redactionHits",
+              "previewExcerpt",
+              "excerptTruncated"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "included"
+                  },
+                  {
+                    "type": "string",
+                    "const": "omitted_redaction_error"
+                  },
+                  {
+                    "type": "string",
+                    "const": "omitted_not_opted_in"
+                  },
+                  {
+                    "type": "string",
+                    "const": "omitted_unavailable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "omitted_size_cap"
+                  }
+                ]
+              },
+              "byteSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8388608
+              },
+              "redactionHits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "previewExcerpt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 16384
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "excerptTruncated": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsExportBundleParams": {
+      "type": "object",
+      "required": ["rendererBreadcrumbs", "includeCrashSummaries"],
+      "properties": {
+        "rendererBreadcrumbs": {
+          "type": "object",
+          "required": ["capturedAt", "droppedCount", "entries"],
+          "properties": {
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "droppedCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["seq", "ts", "category", "windowRole", "code", "name", "message"],
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "ts": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "category": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "error_boundary"
+                      },
+                      {
+                        "type": "string",
+                        "const": "unhandled_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "unhandled_rejection"
+                      },
+                      {
+                        "type": "string",
+                        "const": "query_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "mutation_error"
+                      },
+                      {
+                        "type": "string",
+                        "const": "stream_state"
+                      },
+                      {
+                        "type": "string",
+                        "const": "bridge_drop"
+                      }
+                    ]
+                  },
+                  "windowRole": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "panel"
+                      },
+                      {
+                        "type": "string",
+                        "const": "settings"
+                      },
+                      {
+                        "type": "string",
+                        "const": "onboarding"
+                      },
+                      {
+                        "type": "string",
+                        "const": "view"
+                      }
+                    ]
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 320
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 128
+            }
+          },
+          "additionalProperties": false
+        },
+        "includeCrashSummaries": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticsExportBundleResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["outcome", "fileName", "archiveBytes", "omittedFileCount"],
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "const": "saved"
+            },
+            "fileName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "archiveBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "omittedFileCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["outcome"],
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "const": "cancelled"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DiagnosticsRestartServiceParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DiagnosticsRestartServiceResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reasonCode", "summary"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reasonCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 96,
+              "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+            },
+            "summary": {
+              "type": "string",
+              "maxLength": 240
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "BridgeReadyPost": {
       "type": "object",
       "properties": {},
@@ -11854,9 +13882,25 @@
     },
     "ScreenshotPreferencesSetPost": {
       "type": "object",
-      "required": ["copyOnConfirm", "longScreenshotConfirmAction"],
+      "required": ["confirmAction", "confirmInComposer", "longScreenshotConfirmAction"],
       "properties": {
-        "copyOnConfirm": {
+        "confirmAction": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "attachAndCopy"
+            },
+            {
+              "type": "string",
+              "const": "attach"
+            },
+            {
+              "type": "string",
+              "const": "copy"
+            }
+          ]
+        },
+        "confirmInComposer": {
           "type": "boolean"
         },
         "longScreenshotConfirmAction": {
@@ -12015,6 +14059,9 @@
             "additionalProperties": false
           },
           "maxItems": 64
+        },
+        "chrome": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -14038,6 +16085,280 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
+    },
+    "DiagnosticsLiveProbeEventEvent": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "probeId",
+            "ts",
+            "remainingMs",
+            "endedReason",
+            "axTrusted",
+            "frontmostBundleId",
+            "excludedByAppRule",
+            "axRole",
+            "selectedLength",
+            "gateOutcome"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "selection"
+            },
+            "probeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "ts": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "remainingMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "endedReason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "running"
+                },
+                {
+                  "type": "string",
+                  "const": "timeout"
+                },
+                {
+                  "type": "string",
+                  "const": "stopped"
+                },
+                {
+                  "type": "string",
+                  "const": "window_closed"
+                }
+              ]
+            },
+            "axTrusted": {
+              "type": "boolean"
+            },
+            "frontmostBundleId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excludedByAppRule": {
+              "type": "boolean"
+            },
+            "axRole": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "selectedLength": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "gateOutcome": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 96,
+              "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "probeId",
+            "ts",
+            "remainingMs",
+            "endedReason",
+            "secureInputEnabled",
+            "postEventTrusted",
+            "globalMonitorActive",
+            "matchedShortcutId",
+            "modifierFlagsMask",
+            "handoffOutcome"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "hotkey"
+            },
+            "probeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "ts": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "remainingMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "endedReason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "running"
+                },
+                {
+                  "type": "string",
+                  "const": "timeout"
+                },
+                {
+                  "type": "string",
+                  "const": "stopped"
+                },
+                {
+                  "type": "string",
+                  "const": "window_closed"
+                }
+              ]
+            },
+            "secureInputEnabled": {
+              "type": "boolean"
+            },
+            "postEventTrusted": {
+              "type": "boolean"
+            },
+            "globalMonitorActive": {
+              "type": "boolean"
+            },
+            "matchedShortcutId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "modifierFlagsMask": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "handoffOutcome": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 96,
+              "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "probeId",
+            "ts",
+            "remainingMs",
+            "endedReason",
+            "screenRecordingTrusted",
+            "displayCount",
+            "sdrFreezeReady",
+            "arbiterInteractiveHeld",
+            "heldOwnerSummary",
+            "gateOutcome"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "capture"
+            },
+            "probeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "ts": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "remainingMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "endedReason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "running"
+                },
+                {
+                  "type": "string",
+                  "const": "timeout"
+                },
+                {
+                  "type": "string",
+                  "const": "stopped"
+                },
+                {
+                  "type": "string",
+                  "const": "window_closed"
+                }
+              ]
+            },
+            "screenRecordingTrusted": {
+              "type": "boolean"
+            },
+            "displayCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16
+            },
+            "sdrFreezeReady": {
+              "type": "boolean"
+            },
+            "arbiterInteractiveHeld": {
+              "type": "boolean"
+            },
+            "heldOwnerSummary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gateOutcome": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 96,
+              "pattern": "^[a-z][a-z0-9_.-]{0,95}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

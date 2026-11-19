@@ -33,18 +33,47 @@ enum CaptureExport {
   /// copies: a crop of a frozen image alone would keep the whole display's pixels alive while the
   /// raw image is archived. Annotation drawing belongs to the editor on the main actor.
   static func render(
-    selection: CGRect, desktop: FrozenDesktop, editor: (any AnnotationEditing)?
+    selection: CGRect, desktop: FrozenDesktop, editor: (any AnnotationEditing)?,
+    cornerRadius: CGFloat = 0
   ) -> Rendered? {
     guard let stitch = desktop.geometry.stitch(selection), let context = desktop.draw(stitch),
       let raw = context.makeImage()
     else { return nil }
-    guard let editor else { return Rendered(image: raw, raw: raw, scale: stitch.scale) }
-    // The editor draws with the origin at the top-left, one unit per pixel, as
-    // `AnnotationEditing.render` promises.
-    context.translateBy(x: 0, y: CGFloat(stitch.height))
-    context.scaleBy(x: 1, y: -1)
-    editor.render(into: context, transform: stitch.transform)
-    return context.makeImage().map { Rendered(image: $0, raw: raw, scale: stitch.scale) }
+    let unclipped: CGImage?
+    if let editor {
+      // The editor draws with the origin at the top-left, one unit per pixel, as
+      // `AnnotationEditing.render` promises.
+      context.translateBy(x: 0, y: CGFloat(stitch.height))
+      context.scaleBy(x: 1, y: -1)
+      editor.render(into: context, transform: stitch.transform)
+      unclipped = context.makeImage()
+    } else {
+      unclipped = raw
+    }
+    guard let unclipped,
+      let image = clipRounded(unclipped, cornerRadius: cornerRadius, scale: stitch.scale)
+    else { return nil }
+    return Rendered(image: image, raw: raw, scale: stitch.scale)
+  }
+
+  /// Clips `image` to a rounded rectangle with transparent corners when `cornerRadius > 0`.
+  private static func clipRounded(
+    _ image: CGImage, cornerRadius: CGFloat, scale: CGFloat
+  ) -> CGImage? {
+    let pixels = CGSize(width: image.width, height: image.height)
+    let scaledRadius = min(max(0, cornerRadius) * scale, min(pixels.width, pixels.height) / 2)
+    guard scaledRadius > 0 else { return image }
+    guard let context = bitmap(width: image.width, height: image.height, like: image) else {
+      return nil
+    }
+    let rect = CGRect(origin: .zero, size: pixels)
+    context.clear(rect)
+    context.addPath(
+      CGPath(
+        roundedRect: rect, cornerWidth: scaledRadius, cornerHeight: scaledRadius, transform: nil))
+    context.clip()
+    context.draw(image, in: rect)
+    return context.makeImage()
   }
 
   /// Puts the annotated screenshot on `pasteboard` at the display's full pixel size, as PNG and

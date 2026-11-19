@@ -56,15 +56,21 @@ export const NativePreferencePosts = {
    */
   'resultMarkdown.set': Type.Object({ enabled: Type.Boolean() }, { additionalProperties: false }),
   /**
-   * How screenshot confirmation behaves (`screenshotCopyOnConfirm`, `longScreenshotConfirmAction`):
-   * whether clicking ✓ on the screenshot toolbar also copies the image to the clipboard, and
-   * whether clicking ✓ in long screenshot opens the result card, closes and copies directly, or
-   * saves to the configured folder and closes. Swift keeps them and restores the last ones at
-   * launch until the first push.
+   * How screenshot confirmation behaves (`screenshotConfirmAction`, `screenshotConfirmInComposer`,
+   * `longScreenshotConfirmAction`): whether clicking ✓ on the screenshot toolbar opens the main
+   * panel and attaches to the composer while copying, attaches only, or copies only; whether that
+   * setting also applies when started from composer "+ › Screenshot"; and whether clicking ✓ in
+   * long screenshot opens the result card, closes and copies directly, or saves to the configured
+   * folder and closes. Swift keeps them and restores the last ones at launch until the first push.
    */
   'screenshotPreferences.set': Type.Object(
     {
-      copyOnConfirm: Type.Boolean(),
+      confirmAction: Type.Union([
+        Type.Literal('attachAndCopy'),
+        Type.Literal('attach'),
+        Type.Literal('copy'),
+      ]),
+      confirmInComposer: Type.Boolean(),
       longScreenshotConfirmAction: Type.Union([
         Type.Literal('card'),
         Type.Literal('copy'),

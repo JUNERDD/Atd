@@ -15,10 +15,9 @@ import SwiftUI
 /// Nothing here is written while it moves: every value carries its own animation and the views
 /// apply them as scoped animations, so SwiftUI interpolates them and each axis, factor and look
 /// keeps its own curve whichever change redraws it. Each piece is drawn in a fixed lane, and its
-/// glass, its clip and the content riding inside it all take one animated value, so each frame of
-/// an animation updates only render effects, never a layout or a view body; the clip moves as the
-/// glass does (``View/clippedGlass(in:clear:)``), so the base fill and the content never
-/// show outside the glass. Buttons and rows sit plain on the glass with neutral washes,
+/// glass, its clip and the content riding inside it all take the same typed geometry. The surface
+/// evaluates only its material and clip at each presentation frame; content follows through
+/// render effects without rebuilding its layout. Buttons and rows sit plain on the glass with neutral washes,
 /// never glass on glass; a state shows through shape and content alone.
 ///
 /// No piece carries a `glassEffectID`: none is ever inserted or removed, so no glass transition
@@ -89,8 +88,8 @@ struct MiniPanelView: View {
 /// All of them are drawn into the shape, about its middle (``MiniPanelBodyShape/drawn(_:)``),
 /// never as transforms: in the glass container a glass view's scale is dropped and only its
 /// translation kept (macOS 26), so a scaled body would slide aside rather than squish. Each
-/// change moves on its own animation, which the shape carries, and only shapes and render effects
-/// change from frame to frame, so nothing lays out again (perf-v1).
+/// change moves on its own animation, which the shape carries. The surface evaluates the outline
+/// each frame while the fixed content layout follows through render effects.
 private struct MiniPanelBody: View {
   let model: MiniPanelModel
 

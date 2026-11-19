@@ -12,41 +12,28 @@ import {
   type ErrorCode,
 } from '@atd/agent-contracts';
 import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
-import { registerAddonRoutes, type AddonRegistry } from './addons/index.js';
+import type { AddonRegistry } from './addons/index.js';
+import type { AutomationService } from './automations/routes.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
-import type { ServiceConfig } from './config.js';
-import { registerComputerRoutes } from './computer/routes.js';
 import type { ComputerRuntime } from './computer/runtime.js';
+import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
+import type { SyncProfile } from './development/plan.js';
+import { registerDevelopmentRoutes } from './development/routes.js';
+import { UpstreamError } from './errors.js';
 import type { EventLog } from './event-log.js';
-import { registerFileRoutes } from './file-routes.js';
-import { registerFolderRoutes } from './folders/routes.js';
 import type { FolderStore } from './folders/store.js';
 import { announceInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
-import { registerManageRoutes } from './manage.js';
-import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
-import { ResourceStore } from './resources.js';
-import { scheduleResourceSweeps } from './resources/gc.js';
-import { extractionLayout } from './file-loader/extraction-paths.js';
-import { scheduleExtractionSweeps } from './file-loader/extraction-store-sweep.js';
-import { registerResourceUpload } from './resources/routes.js';
-import { UpstreamError } from './errors.js';
-import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
-import { registerAtdAgentRoutes } from './atd-agents/mount.js';
-import { registerAutomationRoutes, type AutomationService } from './automations/routes.js';
-import { registerBuiltinRoutes } from './builtins/mount.js';
-import { registerPluginRoutes } from './plugins/routes.js';
+import type { SystemProxy } from './network/system-proxy.js';
 import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes.js';
-import { registerSkillRoutes } from './skills/mount.js';
+import { ResourceStore } from './resources.js';
+import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
+import { registerDomainRoutes } from './server-routes.js';
 import type { SettingsStore } from './settings/store.js';
 import { registerStream } from './stream-mount.js';
-import { registerTaskNotices } from './task-notices/routes.js';
-import { registerDevelopmentRoutes } from './development/routes.js';
-import type { SyncProfile } from './development/plan.js';
-import type { SystemProxy } from './network/system-proxy.js';
 
 export interface ServerDeps {
   systemProxy: SystemProxy;
@@ -267,82 +254,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     },
   );
 
-  registerResourceUpload(app, { resources: deps.resources, config: deps.config });
-  // Resources no conversation references any longer go once the server listens, then daily.
-  scheduleResourceSweeps(app, {
-    ledger: deps.ledger,
-    dir: deps.config.paths.resourcesDir,
-    log: deps.log,
-  });
-  // What the file loader keeps of documents stays bounded, swept soon after start, then daily.
-  const extractions = extractionLayout(deps.config.paths.extractionsDir);
-  scheduleExtractionSweeps(app, { layout: extractions, log: deps.log });
-
   app.post('/v1/admin/shutdown', SHELL_ROUTE, async (_request, reply) => {
     void reply.send({ ok: true });
     setImmediate(() => deps.onShutdown());
   });
 
-  // T6b additive: live management APIs (providers/commands/memory/tasks/resources).
-  registerManageRoutes(app, {
-    config: deps.config,
-    ledger: deps.ledger,
-    manager: deps.manager,
-    settings: deps.settings,
-    folders: deps.folders,
-    log: deps.log,
-    events: deps.events,
-    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
-  });
-
-  registerSkillRoutes(app, deps.config);
-  registerBuiltinRoutes(app, deps.config);
-  registerAtdAgentRoutes(app, deps.config);
-  registerFileRoutes(app, {
-    resources: deps.resources,
-    dataDir: deps.config.paths.root,
-    log: deps.log,
-  });
-  registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
-  registerAutomationRoutes(app, deps.automations);
-  registerComputerRoutes(app, deps.computer);
-  registerAddonRoutes(app, {
-    dataDir: deps.config.paths.root,
-    addons: deps.addons,
-    settings: deps.settings,
-  });
-  registerTaskNotices(app, deps);
-  registerPluginRoutes(app, {
-    dataDir: deps.config.paths.root,
-    agentDir: deps.config.paths.agentDir,
-    log: deps.log,
-    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
-  });
-
-  // Live MCP mounts. Nothing at boot needs the authority (it reads the server records, launch
-  // approvals and saved sign-ins), so the routes take a lazy resolver and it loads on first MCP
-  // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
-  // share one load.
-  registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
+  registerDomainRoutes(app, deps);
 
   return app;
-}
-
-/**
- * The MCP authority identity for this service profile. `authorityFor` caches on
- * dataDir alone, so the plugin and MCP route resolvers must describe the same
- * profile from one place or the first caller would silently win.
- */
-function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
-  return {
-    serviceId: deps.config.serviceId,
-    dataDir: deps.config.paths.root,
-    cwd: deps.config.paths.root,
-    events: deps.events,
-    confirms: deps.confirms,
-    resources: deps.resources,
-    log: deps.log,
-  };
 }
 
 function fail(reply: FastifyReply, status: number, code: ErrorCode, message: string): FastifyReply {

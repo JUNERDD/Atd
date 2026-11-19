@@ -4,9 +4,11 @@ import {
   DEFAULT_RUN_TOOLS,
   parse,
   PreviewTaskRequestSchema,
+  resolveAliasDefaults,
   RunSnapshotSchema,
   type PreviewTaskRequest,
   type PreviewTaskResponse,
+  type RunContextChoice,
   type ServiceCommandFull,
   snapshotToolsFor,
 } from '@atd/agent-contracts';
@@ -23,7 +25,7 @@ import {
   loadRunCatalog,
   resolveRunModel,
   resolveRunThinkingLevel,
-  selectRunModel,
+  selectRunDefaults,
 } from './run-selection.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
 
@@ -55,6 +57,18 @@ export async function resolvePreview(
   body: PreviewTaskRequest,
   options: ResolveOptions = {},
 ): Promise<PreviewTaskResponse> {
+  return (await resolvePreviewDetailed(ctx, body, options)).response;
+}
+
+/**
+ * Resolves a run preview together with the effective `contextChoice` (explicit request override
+ * or inherited alias default) so callers like command launch forward it cleanly to submit.
+ */
+export async function resolvePreviewDetailed(
+  ctx: PreviewContext,
+  body: PreviewTaskRequest,
+  options: ResolveOptions = {},
+): Promise<{ response: PreviewTaskResponse; contextChoice?: RunContextChoice }> {
   const commands = await CommandStore.load(ctx.dataDir);
   const connections = await ConnectionStore.load(ctx.dataDir);
   const command = await resolveCommand(ctx.dataDir, commands, body);
@@ -69,25 +83,27 @@ export async function resolvePreview(
       warnings.push(`Attachment ${file.name} was not uploaded.`);
   }
   const policy = body.policy;
-  // A preview has no task, so only the policy's pick and the command's fixed model can select.
-  const selection = selectRunModel(connections, {
+  const { selection, alias } = selectRunDefaults(connections, {
     requested: policy?.model ?? null,
     command: command?.model ?? null,
   });
   const model = resolveRunModel(connections, selection, warnings);
+  const aliasDefaults = resolveAliasDefaults(alias);
+  const contextChoice = policy?.contextChoice ?? aliasDefaults.contextChoice;
   // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a new task.
   const tools =
     body.policy?.tools ?? (command ? snapshotToolsFor(command.tools) : [...DEFAULT_RUN_TOOLS]);
   const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : true);
-  // The policy's pick, else the command's own level, else the connection's default.
+  // The policy's pick, else the command's own level, else the alias's level, else connection default.
   const catalog = await loadRunCatalog(connections, selection);
   const thinkingLevel = resolveRunThinkingLevel(
     connections,
     model,
-    commandThinkingLevel(body.policy?.thinkingLevel, command?.thinkingLevel),
+    commandThinkingLevel(body.policy?.thinkingLevel, command?.thinkingLevel) ??
+      aliasDefaults.thinkingLevel,
     catalog,
   );
-  const contextWindow = catalog.contextWindow(model);
+  const contextWindow = catalog.contextWindow(model, contextChoice);
   const snapshot = parse(RunSnapshotSchema, {
     input,
     instructions,
@@ -98,7 +114,10 @@ export async function resolvePreview(
     ...(contextWindow ? { contextWindow } : {}),
     ...(command ? { fromCommand: true } : {}),
   });
-  return { snapshot, commandId: command?.id ?? null, warnings };
+  return {
+    response: { snapshot, commandId: command?.id ?? null, warnings },
+    ...(contextChoice ? { contextChoice } : {}),
+  };
 }
 
 /** The command to preview: the one sent, or a saved one by id, a user's first, then a plugin's. */

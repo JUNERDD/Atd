@@ -126,6 +126,19 @@ export class AutomationEngine {
     return runs.some((run) => run.outcome === 'running');
   }
 
+  /** Readonly diagnostic summary for Wave 2 Doctor without side effects. */
+  diagnosticsStatus() {
+    const { store, now } = this.deps;
+    return {
+      running: this.timer !== null && !this.stopped,
+      lastTickAt: this.lastTickAt ?? null,
+      inWakeGrace: now() < this.graceUntil,
+      failingCount: this.failing.size,
+      activeFolderScans: this.folderWork.size,
+      storeProblem: Boolean(store.problem),
+    };
+  }
+
   /** Stops the automation's memory consolidation, if one is going (it is being deleted). */
   stopConsolidation(automationId: string): void {
     this.dispatcher.consolidations.stop(automationId);

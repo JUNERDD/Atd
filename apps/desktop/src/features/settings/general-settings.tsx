@@ -30,11 +30,16 @@ import { DevelopmentSyncSettings } from './development-sync-settings';
 const OVERVIEW = { page: 'overview' } as const;
 const PANEL_BACKGROUND = { page: 'panelBackground' } as const;
 type GeneralRoute = typeof OVERVIEW | typeof PANEL_BACKGROUND;
-const SEARCH_PAGES = {
+const SEARCH_PAGES: Partial<Record<SettingsSearchPage, GeneralRoute>> = {
   panelBackground: PANEL_BACKGROUND,
-} as const satisfies Record<SettingsSearchPage, GeneralRoute>;
+};
 
 const IN_APP_SHORTCUTS = [
+  {
+    action: 'cycleModelAlias',
+    labelKey: 'shortcuts.actions.cycleModelAlias.label',
+    descriptionKey: 'shortcuts.actions.cycleModelAlias.description',
+  },
   {
     action: 'newConversation',
     labelKey: 'shortcuts.actions.newConversation.label',
@@ -92,7 +97,8 @@ export function GeneralSettings({
   const [linked, setLinked] = useState<number | null>(null);
   if (activePage?.section === 'general' && activePage.nonce !== linked) {
     setLinked(activePage.nonce);
-    if (activePage.page) history.reset(SEARCH_PAGES[activePage.page]);
+    const target = activePage.page ? SEARCH_PAGES[activePage.page] : undefined;
+    if (target) history.reset(target);
     else history.reset();
   }
   if (history.route === PANEL_BACKGROUND) return <PanelBackgroundPage settings={panelBackground} />;
@@ -244,6 +250,11 @@ export function GeneralSettings({
                   label={t(labelKey)}
                   description={t(descriptionKey)}
                   settings={settings}
+                  error={
+                    action === 'cycleModelAlias'
+                      ? settings.unboundText('cycleModelAlias') || undefined
+                      : undefined
+                  }
                 />
               ))}
             </ItemGroup>

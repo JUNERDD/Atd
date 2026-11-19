@@ -4,6 +4,24 @@ import AppKit
 /// Opening and closing the settings window, for the bridge (`settings.open`, `settings.close`)
 /// and for the shell's own menus and notifications.
 extension ShellController {
+  static func makeSettingsWindow(
+    services: ShellServices,
+    trust: AccessibilityTrust,
+    screenRecording: ScreenRecordingTrust,
+    bridge: ShellBridge
+  ) -> SettingsWindowController {
+    SettingsWindowController { fragment in
+      let host = WebViewHost(
+        role: .settings, fragment: fragment, services: services, bridge: bridge)
+      host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
+      host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+      bridge.shell?.replayPins(to: host)
+      bridge.shell?.replayComputer(to: host)
+      bridge.shell?.replayMiniPanel(to: host)
+      return host
+    }
+  }
+
   /// A new settings window opens `commandId`'s editor or `section`; an open one keeps its page,
   /// which the page's own window message steers.
   func openSettings(commandId: String?, section: String?) {

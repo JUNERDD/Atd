@@ -6,6 +6,7 @@ import enApps from './locales/en/apps.json';
 import enAutomations from './locales/en/automations.json';
 import enCommands from './locales/en/commands.json';
 import enCommon from './locales/en/common.json';
+import enDiagnostics from './locales/en/diagnostics.json';
 import enMemory from './locales/en/memory.json';
 import enOnboarding from './locales/en/onboarding.json';
 import enPanel from './locales/en/panel.json';
@@ -29,6 +30,7 @@ export const resources = {
     addons: enAddons,
     apps: enApps,
     automations: enAutomations,
+    diagnostics: enDiagnostics,
   },
 } as const;
 

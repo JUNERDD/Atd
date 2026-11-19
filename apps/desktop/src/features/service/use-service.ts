@@ -66,6 +66,11 @@ export function useServiceStatus() {
   return { status: data ?? null, loading: isLoading };
 }
 
+/** Seeds the cached service status outside React before the panel renders its first frame. */
+export function readServiceStatus() {
+  return queryClient.fetchQuery(serviceStatusQuery());
+}
+
 /**
  * One list the service answers while it is connected. Each read checks the rows against their
  * contract and leaves out the rows outside it, so one bad row cannot hide the rest. The lists

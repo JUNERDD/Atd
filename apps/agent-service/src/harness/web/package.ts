@@ -2,7 +2,6 @@ import { createRequire } from 'node:module';
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createJiti } from 'jiti';
 
 /**
  * The parts of `pi-web-access 0.44.0` the web tools reuse, loaded module by module through jiti
@@ -130,7 +129,7 @@ async function packageDir(): Promise<string> {
 }
 
 async function load(): Promise<WebPackage> {
-  const dir = await packageDir();
+  const [dir, { createJiti }] = await Promise.all([packageDir(), import('jiti')]);
   // Base inside the package: its dependencies' bare ids (linkedom, defuddle…) resolve from it.
   const jiti = createJiti(path.join(dir, 'package.json'), { moduleCache: true, fsCache: true });
   const source = (file: string) => jiti.import(pathToFileURL(path.join(dir, file)).href);

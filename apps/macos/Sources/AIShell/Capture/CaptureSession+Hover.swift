@@ -129,11 +129,14 @@ extension CaptureSession {
     model.settled(primaryOverlay(for: rect)?.bounds ?? fallback)
   }
 
-  /// "W × H" in points, plus the exported pixels when they differ (``ScreenshotRules``).
+  /// "W × H" in points, plus the exported pixels when they differ (``ScreenshotRules``) and the
+  /// active aspect ratio when locked.
   private func sizeLabel(for rect: CGRect) -> String {
     let stitch = desktop.geometry.stitch(rect)
-    return ScreenshotRules.sizeLabel(
+    let base = ScreenshotRules.sizeLabel(
       points: rect.size, pixelWidth: stitch?.width, pixelHeight: stitch?.height)
+    guard let ratio = aspectPreset.ratioLabel else { return base }
+    return "\(base) · \(ratio)"
   }
 
   private static func cut(_ rect: CGRect, to bounds: CGRect) -> CGRect? {

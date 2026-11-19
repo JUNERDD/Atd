@@ -15,30 +15,16 @@ import AppKit
 ///   editor is shown. While text is open on another display's canvas, every key reaching this
 ///   view goes to the text, whose window takes the keyboard back.
 /// - The host routes the pointer (``AnnotationHostView``): the selection's handles and edge
-///   band always go to the session, the rest of the interior comes here only once a tool is
-///   chosen. Before that, of the keys only tool letters, ⌘Z and ⇧⌘Z are taken here.
-/// - Once a tool is chosen this view also takes Return or Enter (confirm), Delete (removes the
-///   selected annotation) and arrows while an annotation is selected (nudge it, Shift ×10).
-/// - `[` and `]` step the stroke the style bar shows down or up, whenever it shows one (while
-///   text is typed, the text view keeps them as characters). ⌘Delete clears every annotation,
-///   typing included, as one undo step. ⌘C goes to the editor (text mode's selection, the result
-///   card's answer, else the screenshot); ⌘A picks every paragraph in text mode; ⌘↩ is the result
-///   card's primary action.
-/// - Esc steps back one level (E6) and is taken only when it did: a gesture in progress is
-///   dropped, else the selected annotation is deselected, else the tool is dropped (the
-///   interior goes back to the session). Open text ends on Esc in the text view itself.
-/// - Everything else goes up the responder chain to the host: Esc with nothing to step back
-///   (cancel the session), Tab, arrows with nothing selected and Option-arrows (they nudge or
-///   resize the selection), Return while idle, and right-clicks (the session decides with
-///   ``AnnotationEditing/hasAnnotations``).
+///   band always go to the session, while annotations and active tools reach this canvas.
+/// - Delete removes selected annotations and arrows nudge them (Shift ×10) even after direct
+///   selection without an active drawing tool; `[` and `]` step stroke/size; `⌘Delete` clears
+///   all annotations; `⌘C` stays with text selection / result card / screenshot copy while `⇧⌘C`
+///   copies selected annotations; `⌘D` duplicates, `⌘V` pastes, `⌘]`/`⌘[` reorder z-order, `⌘P`
+///   pins, and `⌘A` selects text paragraphs or all annotations.
+/// - Esc steps back one level (E6); open text ends on Esc in the text view itself.
 ///
 /// Text mode and the text commands' step badges come first (``pointerOwner``): while text mode
 /// is on, or over a badge with no tool chosen, presses, hover and the cursor are the owner's.
-///
-/// Cursors: this view sets its own (``AnnotationInteraction/cursor(at:)``) from a tracking area,
-/// only where the host routes the pointer here, so it never fights the session's cursors over
-/// the handles, the edge band or the bars. The same routing decides where the element preview
-/// of a tool that boxes elements shows (E10).
 final class AnnotationCanvasView: NSView {
   let store: AnnotationStore
   let interaction: AnnotationInteraction
@@ -46,19 +32,31 @@ final class AnnotationCanvasView: NSView {
   private let renderer: AnnotationRenderer
   private let picker: AnnotationElementPicker
 
-  /// The frozen pixels mosaic regions pixelate: the whole display (or the displays a selection
-  /// spans) rather than the selection, so a mosaic keeps its blocks when the selection moves.
+  /// The frozen pixels mosaic regions and the eyedropper sample: the displays a selection spans
+  /// rather than only the clipped rect, so mosaics keep their grid when the selection moves.
   var backdrop: CaptureBackdrop? {
     didSet { needsDisplay = true }
   }
 
   /// A press reached this canvas (before it is handled).
   var onPress: (() -> Void)?
+  /// Returns true if an active text selection handled ⌘C ahead of screenshot copy.
+  var onCopySelectionText: (() -> Bool)?
   /// ⌘C outside open text.
   var onCopy: (() -> Void)?
   /// ⌘S outside field editors and IME marked text.
   var onSave: (() -> Void)?
   var onConfirm: (() -> Void)?
+  /// Tab / Shift-Tab annotation cycling when no text edit is open.
+  var onTab: ((Bool) -> Bool)?
+  /// ⌘P pin action when available in screenshot mode.
+  var onPin: (() -> Void)?
+  /// `I` key toggles eyedropper sampling mode.
+  var onToggleEyedropper: (() -> Void)?
+  /// Fired on eyedropper hover/drag (`commit == false`) and click (`commit == true`).
+  var onSampleColor: ((AnnotationRGBA, Bool) -> Void)?
+  /// Returns the formatted HUD text when stepping size via `[` / `]` or scroll wheel.
+  var onStepSizeHUD: (() -> String?)?
   var onChooseTool: ((AnnotationTool) -> Void)?
   /// Esc: steps back one level; false when there was nothing to step back.
   var onEscape: (() -> Bool)?
@@ -83,14 +81,18 @@ final class AnnotationCanvasView: NSView {
     didSet { if hiddenAnnotations != oldValue { needsDisplay = true } }
   }
   /// A text command's answer under review, drawn dashed over the annotations and never part of
-  /// the document (``CaptureTextReviewPreview``).
+  /// the document (``CaptureTextPreview``).
   var reviewPreview: CaptureTextPreview? {
     didSet { if reviewPreview != oldValue { needsDisplay = true } }
   }
   /// Text mode's and the text commands' washes over the canvas.
   let textLayer = CaptureTextLayerView()
+  /// Transient direct-manipulation chrome (marquee, guides, handles, eyedropper loupe, size HUD).
+  let overlay = AnnotationCanvasOverlay()
   /// The press in progress went to ``pointerOwner``.
   private var ownerPress = false
+  /// Dragging the east width-reflow grip of the currently open text editor.
+  private var draggingOpenTextWidth = false
 
   init(
     store: AnnotationStore, interaction: AnnotationInteraction, textEditor: AnnotationTextEditor,
@@ -132,6 +134,11 @@ final class AnnotationCanvasView: NSView {
     needsDisplay = true
   }
 
+  /// Displays a transient centered HUD pill (e.g. step size, smart shape snap, copied feedback).
+  func showSizeHud(_ text: String) {
+    overlay.showSizeHud(text, on: self)
+  }
+
   /// The tool or the selected annotation changed: the cursor and element preview follow at once
   /// under a still pointer.
   func refreshPointer() {
@@ -151,47 +158,12 @@ final class AnnotationCanvasView: NSView {
       renderer.draw(reviewPreview, hiding: hiddenAnnotations, edge: edge, in: context)
     }
     if let frame = textEditor.frame, let style = textEditor.style, textEditor.isHosted(in: self) {
-      // Open text: the plate goes behind the transparent text view, the outline around both.
-      var area = frame
-      if style.hasTextPlate {
-        AnnotationRenderer.drawTextPlate(around: frame, style: style, in: context)
-        area = AnnotationPath.textPlate(around: frame, fontSize: style.textFontSize)
-      }
-      Self.outline(area.insetBy(dx: -4, dy: -3), in: context)
-    } else if let selected = store.selected {
-      drawGrips(of: selected, in: context)
+      drawOpenTextChrome(frame: frame, style: style, in: context)
     }
+    overlay.draw(on: self, in: context)
     if let element = picker.preview(within: bounds) {
       Self.outline(element, in: context, width: 1.5)
     }
-  }
-
-  /// Grips for shapes that resize; a dashed frame for those that only move, and around a
-  /// spotlight, which has no outline of its own.
-  private func drawGrips(of annotation: Annotation, in context: CGContext) {
-    let handles = annotation.handles
-    if case .spotlight(let rect) = annotation.shape { Self.outline(rect, in: context) }
-    guard !handles.isEmpty else {
-      Self.outline(annotation.bounds.insetBy(dx: -3, dy: -3), in: context)
-      return
-    }
-    context.setLineWidth(1.5)
-    context.setStrokeColor(NSColor.controlAccentColor.cgColor)
-    context.setFillColor(NSColor.white.cgColor)
-    for (_, point) in handles {
-      let grip = CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)
-      context.fillEllipse(in: grip)
-      context.strokeEllipse(in: grip)
-    }
-  }
-
-  private static func outline(_ rect: CGRect, in context: CGContext, width: CGFloat = 1) {
-    context.saveGState()
-    context.setLineWidth(width)
-    context.setStrokeColor(NSColor.controlAccentColor.cgColor)
-    context.setLineDash(phase: 0, lengths: [4, 3])
-    context.stroke(rect.insetBy(dx: width / 2, dy: width / 2))
-    context.restoreGState()
   }
 
   // MARK: Pointer
@@ -205,38 +177,76 @@ final class AnnotationCanvasView: NSView {
 
   override func mouseDown(with event: NSEvent) {
     onPress?()
+    let point = point(of: event)
+    if textEditor.isEditing, openTextWidthGripHit(at: point) {
+      draggingOpenTextWidth = true
+      SelectionHandle.right.cursor.set()
+      return
+    }
     // A click away from open text only ends the edit.
     if textEditor.isEditing {
       textEditor.end()
       updatePointer(at: event.locationInWindow)
       return
     }
-    window?.makeFirstResponder(self)
-    let point = point(of: event)
+    if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+    if interaction.eyedropperActive {
+      sampleEyedropper(at: point, commit: true)
+      interaction.directManipulationCursor(at: point)?.set()
+      return
+    }
     if let owner = pointerOwner, owner.takesPress(at: point) {
       ownerPress = true
       owner.pressDown(at: point, flags: event.modifierFlags, clicks: event.clickCount)
       owner.cursor(at: point)?.set()
       return
     }
-    interaction.mouseDown(at: point, clickCount: event.clickCount)
-    interaction.cursor(at: point)?.set()
+    interaction.mouseDown(
+      at: point,
+      clickCount: event.clickCount,
+      shift: event.modifierFlags.contains(.shift),
+      option: event.modifierFlags.contains(.option))
+    interaction.directManipulationCursor(at: point)?.set()
   }
 
   override func mouseDragged(with event: NSEvent) {
     let point = point(of: event)
+    overlay.pointerLocation = point
+    if draggingOpenTextWidth, let info = openTextOutlineRect() {
+      let width = max(24, point.x - info.plateRightPad - info.frame.minX)
+      textEditor.resizeBoxWidth(to: width)
+      SelectionHandle.right.cursor.set()
+      return
+    }
+    if interaction.eyedropperActive {
+      sampleEyedropper(at: point, commit: false)
+      interaction.directManipulationCursor(at: point)?.set()
+      return
+    }
     if ownerPress, let owner = pointerOwner {
       owner.pressDragged(to: point)
       owner.cursor(at: point)?.set()
       return
     }
-    interaction.mouseDragged(to: point, constrained: event.modifierFlags.contains(.shift))
+    interaction.mouseDragged(
+      to: point,
+      constrained: event.modifierFlags.contains(.shift),
+      centered: event.modifierFlags.contains(.option))
     // No cursor updates arrive while the button is down; the gesture's cursor is kept here.
-    interaction.cursor(at: point)?.set()
+    interaction.directManipulationCursor(at: point)?.set()
     picker.hover(at: interaction.previewsElement(at: point) ? point : nil)
   }
 
   override func mouseUp(with event: NSEvent) {
+    if draggingOpenTextWidth {
+      draggingOpenTextWidth = false
+      updatePointer(at: event.locationInWindow)
+      return
+    }
+    if interaction.eyedropperActive {
+      updatePointer(at: event.locationInWindow)
+      return
+    }
     if ownerPress {
       ownerPress = false
       pointerOwner?.pressUp(at: point(of: event))
@@ -257,51 +267,47 @@ final class AnnotationCanvasView: NSView {
   override func mouseExited(with event: NSEvent) {
     picker.hover(at: nil)
     pointerOwner?.pointerMoved(to: nil)
+    overlay.pointerLocation = nil
+    if interaction.eyedropperActive {
+      overlay.eyedropperSample = nil
+      interaction.hoveredRGBA = nil
+      needsDisplay = true
+    }
   }
 
   /// Sets the tool's cursor and element preview for the pointer at `location` (window
   /// coordinates) when the host routes the pointer there to this view; elsewhere the session or
   /// a bar owns the cursor and no element is previewed.
-  private func updatePointer(at location: CGPoint) {
+  func updatePointer(at location: CGPoint) {
     guard CaptureCursorOwnership.ownsPointer(in: window, at: NSEvent.mouseLocation),
-      let host = superview, let overlay = host.superview,
-      host.hitTest(overlay.convert(location, from: nil))?.isDescendant(of: self) == true
+      let host = superview, let parentOverlay = host.superview,
+      host.hitTest(parentOverlay.convert(location, from: nil))?.isDescendant(of: self) == true
     else {
       picker.hover(at: nil)
+      if overlay.pointerLocation != nil {
+        overlay.pointerLocation = nil
+        if interaction.eyedropperActive { needsDisplay = true }
+      }
       return
     }
     let point = convert(location, from: nil)
-    if let editing = textEditor.frame, editing.contains(point) {
-      NSCursor.iBeam.set()
+    overlay.pointerLocation = point
+    if interaction.eyedropperActive {
+      sampleEyedropper(at: point, commit: false)
+    }
+    if textEditor.isEditing, openTextWidthGripHit(at: point) {
+      SelectionHandle.right.cursor.set()
+    } else if let editing = textEditor.frame, editing.contains(point) {
+      PointerRole.text.cursor.set()
     } else if let cursor = pointerOwner?.cursor(at: point) {
       cursor.set()
     } else {
-      interaction.cursor(at: point)?.set()
+      interaction.directManipulationCursor(at: point)?.set()
     }
-    let previews = !textEditor.isEditing && interaction.previewsElement(at: point)
+    let previews =
+      !textEditor.isEditing && !interaction.eyedropperActive
+      && interaction.previewsElement(at: point)
     picker.hover(at: previews ? point : nil)
-  }
-
-  // MARK: Keys
-
-  override func keyDown(with event: NSEvent) {
-    if textEditor.isEditing, !textEditor.isHosted(in: self) {
-      textEditor.type(event)
-      return
-    }
-    if handleKey(event) { return }
-    super.keyDown(with: event)
-  }
-
-  override func performKeyEquivalent(with event: NSEvent) -> Bool {
-    keyEquivalent(event) ?? super.performKeyEquivalent(with: event)
-  }
-
-  /// ⌥ shows the originals of translated text while it is held; the host still hears it, for a
-  /// drag reshaped with Shift.
-  override func flagsChanged(with event: NSEvent) {
-    pointerOwner?.optionChanged(event.modifierFlags.contains(.option))
-    super.flagsChanged(with: event)
   }
 }
 

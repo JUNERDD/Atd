@@ -35,7 +35,16 @@ extension ScreenContext {
     guard size.width > 0, size.height > 0 else { return [] }
     let selection = CGRect(origin: .zero, size: size)
     return document.annotations.compactMap { annotation in
-      guard case .mosaic(let rect) = annotation.shape else { return nil }
+      let rawRect: CGRect? =
+        switch annotation.shape {
+        case .mosaic(let rect): rect
+        case .mosaicBrush(let points) where !points.isEmpty:
+          AnnotationMath.rect(enclosing: points).insetBy(
+            dx: -annotation.style.stroke.highlighterWidth / 2,
+            dy: -annotation.style.stroke.highlighterWidth / 2)
+        default: nil
+        }
+      guard let rect = rawRect else { return nil }
       let covered = rect.standardized.intersection(selection)
       guard Self.hasArea(covered) else { return nil }
       return CGRect(

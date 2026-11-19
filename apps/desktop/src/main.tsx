@@ -7,6 +7,7 @@ import './window-scroll.css';
 import './styles.css';
 import i18n, { changeAppLanguage, defaultNS, initialLanguageReady } from './i18n';
 import { WindowLoading } from './components/window-loading';
+import { DiagnosticsErrorBoundary } from './features/diagnostics/error-boundary';
 import { installEditCommands } from './lib/edit-commands';
 import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
@@ -38,35 +39,48 @@ else await renderHostRequired();
 async function renderWindow(native: NativeBridge) {
   document.documentElement.dataset.window = windowKind;
   const windowRoot = loadWindowRoot();
-  // The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
-  // tree, so a transcript rarely has to show plain text first.
-  if (windowKind === 'panel') {
-    void import('./features/agent/transcript/markdown-loader').then(({ loadMarkdown }) =>
-      loadMarkdown(),
-    );
-  }
+  // Start importing snapshot modules in parallel with native host hydration so dev module fetches
+  // never wait behind the host's startup race before kicking off.
+  const settingsModule =
+    windowKind === 'panel' || windowKind === 'settings'
+      ? import('./features/settings/use-settings')
+      : null;
+  const serviceModule = windowKind === 'panel' ? import('./features/service/use-service') : null;
+  const agentModule = windowKind === 'panel' ? import('./features/agent/use-agent') : null;
   await installNativeHost(native, windowKind);
   // Every window runs the application menu's Undo/Redo through this entry.
   const disposeEditCommands = installEditCommands();
   import.meta.hot?.dispose(disposeEditCommands);
   // A non-English first language loads its translations (started when i18n loaded) before any
-  // text renders; settings also primes its snapshot query and hydrated language in parallel.
-  const settingsReady =
-    windowKind === 'settings'
-      ? import('./features/settings/use-settings')
-          .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
-          .then(async (snapshot) => {
-            await initialLanguageReady;
-            if (
-              !i18n.hasResourceBundle(snapshot.language, defaultNS) ||
-              i18n.resolvedLanguage !== snapshot.language
-            ) {
-              await changeAppLanguage(snapshot.language);
-            }
-          })
-          .catch(() => undefined)
+  // text renders; panel and settings also prime their initial query snapshots and hydrated
+  // language in parallel so the first frame paints with settled theme, language, and state.
+  const settingsReady = settingsModule
+    ? settingsModule
+        .then(({ readSettingsSnapshot }) => readSettingsSnapshot())
+        .then(async (snapshot) => {
+          await initialLanguageReady;
+          if (
+            !i18n.hasResourceBundle(snapshot.language, defaultNS) ||
+            i18n.resolvedLanguage !== snapshot.language
+          ) {
+            await changeAppLanguage(snapshot.language);
+          }
+        })
+        .catch(() => undefined)
+    : Promise.resolve();
+  const panelReady =
+    serviceModule && agentModule
+      ? Promise.all([
+          serviceModule.then(({ readServiceStatus }) => readServiceStatus()),
+          agentModule.then(({ readAgentSnapshot }) => readAgentSnapshot()),
+        ]).catch(() => undefined)
       : Promise.resolve();
-  const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady, settingsReady]);
+  const [WindowRoot] = await Promise.all([
+    windowRoot,
+    initialLanguageReady,
+    settingsReady,
+    panelReady,
+  ]);
   // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
   // over the whole display, so it waits on nothing visible. The others name the window being
   // opened and paint their content surface, except a view's window, whose surface the shell draws
@@ -88,12 +102,31 @@ async function renderWindow(native: NativeBridge) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <ScrollShadowDefaultContext.Provider value={windowKind !== 'panel'}>
-        <React.Suspense fallback={fallback}>
-          <WindowRoot />
-        </React.Suspense>
+        <DiagnosticsErrorBoundary>
+          <React.Suspense fallback={fallback}>
+            <WindowRoot />
+          </React.Suspense>
+        </DiagnosticsErrorBoundary>
       </ScrollShadowDefaultContext.Provider>
     </React.StrictMode>,
   );
+  if (windowKind === 'panel') {
+    // In dev, unbundled deferred views (transcript, Shiki, Mermaid, diffs) fan out into hundreds
+    // of HTTP requests; wait until after initial paint + idle so they never contend with reveal.
+    const delayMs = import.meta.env.DEV ? 1500 : 120;
+    let warmup = 0;
+    const frame = requestAnimationFrame(() => {
+      warmup = window.setTimeout(() => {
+        void import('./features/agent/panel-view-loaders').then(({ warmPanelDeferredChunks }) =>
+          warmPanelDeferredChunks(),
+        );
+      }, delayMs);
+    });
+    import.meta.hot?.dispose(() => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(warmup);
+    });
+  }
 }
 
 // Each window loads only its own tree: the settings window never parses the panel, and vice versa.

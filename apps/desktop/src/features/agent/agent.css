@@ -1,9 +1,24 @@
+.command-launcher {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+/* Reaches 4px past the welcome's padding on top, bottom and left so row focus rings clear the
+   viewport clip, and 12px on the right so the overlay scrollbar rests 4px inside the panel edge
+   beside the rows, matching task history and My apps. Capped proportionally to `.panel-page`. */
+.quick-commands-scroll {
+  max-height: 45cqh;
+  margin: -4px -12px -4px -4px;
+}
 .quick-commands {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 12px;
   width: 100%;
-  margin-top: 12px;
+  padding: 4px 12px 4px 4px;
 }
 .quick-commands:has([data-slot='kbd-group']) {
   grid-template-columns: max-content minmax(0, 1fr) max-content;
@@ -1225,16 +1240,6 @@
   display: flex;
   flex: 1;
   min-height: 0;
-}
-/* A service that is already running settles within a moment, so the loading fades in late
-   instead of flashing before the panel content. */
-.service-starting-content {
-  animation: service-starting-in 200ms ease-out 250ms both;
-}
-@keyframes service-starting-in {
-  from {
-    opacity: 0;
-  }
 }
 .service-banner {
   display: flex;

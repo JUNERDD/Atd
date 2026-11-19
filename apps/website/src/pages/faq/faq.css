@@ -1,0 +1,20 @@
+/* The questions page reads like a post (blog.css). It has no back bar, so the header keeps the
+   blog list's distance from the nav instead of a post's. */
+.post.faq {
+  padding-block-start: calc(var(--nav-top) + var(--nav-h) + round(clamp(48px, 7vw, 96px), 24px));
+}
+
+.faq :is(h1, h2, h3) {
+  overflow-wrap: break-word;
+}
+
+/* The link to an answer's capability page sits under the answer at its leading edge: the plain
+   button's padding hangs into the margin, so its label lines up with the text above while the
+   hover fill still pads it. */
+.faq__more {
+  justify-self: start;
+  margin-inline-start: -14px;
+  padding-inline: 14px 10px;
+  gap: 4px;
+  font-size: var(--fs-small);
+}

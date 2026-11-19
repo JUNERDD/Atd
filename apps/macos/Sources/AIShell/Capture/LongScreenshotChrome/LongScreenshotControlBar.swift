@@ -69,7 +69,7 @@ final class LongScreenshotControlBar: NSView {
     let strings = ShellStrings.shared
     setAccessibilityLabel(copy.text(.bar))
     grip.image = AnnotationIcons.glyph(AnnotationIcons.grip, label: "")
-    grip.toolTip = strings.text(.captureToolbarMove)
+    grip.setCaptureTooltip(strings.text(.captureToolbarMove))
     let label = AnnotationToolbarButton.Label.self
     // The toggle and the count keep the room of their widest values in this language.
     toggleWidth =

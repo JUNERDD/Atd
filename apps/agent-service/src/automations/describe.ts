@@ -119,9 +119,10 @@ function notify(draft: AutomationDraft): string {
   }
 }
 
-function modelText(draft: AutomationDraft): string {
-  const { model } = draft.policy;
+function modelText(draft: AutomationDraft, aliasName: string | null = null): string {
+  const { model, aliasId } = draft.policy;
   if (model) return `${model.modelId} (${model.connectionId})`;
+  if (aliasId) return aliasName ? `model alias "${aliasName}"` : `model alias ${aliasId}`;
   return draft.action.kind === 'command'
     ? "the command's own model, else the default model when it runs"
     : 'the default model when it runs';
@@ -131,13 +132,17 @@ function modelText(draft: AutomationDraft): string {
  * The confirm detail of a memory consolidation: it starts no task, so the tier, tools, folders
  * and memory switch of its policy do not apply, and it has no previous answer to read.
  */
-function consolidationDetail(draft: AutomationDraft | Automation, ctx: CheckContext): string {
+function consolidationDetail(
+  draft: AutomationDraft | Automation,
+  ctx: CheckContext,
+  aliasName: string | null = null,
+): string {
   const lines = [
     `Name: ${draft.name}`,
     `When: ${describeTrigger(draft.trigger, ctx)}`,
     nextRuns(draft.trigger, ctx),
     action(draft, null),
-    `Model: ${modelText(draft)}`,
+    `Model: ${modelText(draft, aliasName)}`,
     `Stops after ${plural(draft.policy.maxDurationMinutes, 'minute')}.`,
     notify(draft),
     `Enabled: ${draft.enabled ? 'yes' : 'no'}`,
@@ -154,8 +159,9 @@ export function automationDetail(
   ctx: CheckContext,
   commandName: string | null,
   computerScope: string | null = null,
+  aliasName: string | null = null,
 ): string {
-  if (draft.action.kind === 'consolidateMemory') return consolidationDetail(draft, ctx);
+  if (draft.action.kind === 'consolidateMemory') return consolidationDetail(draft, ctx, aliasName);
   const { policy } = draft;
   const tools =
     draft.action.kind === 'command'
@@ -169,7 +175,7 @@ export function automationDetail(
     action(draft, commandName),
     `Approval tier: ${TIERS[policy.permissionTier]}`,
     `Tools: ${tools}`,
-    `Model: ${modelText(draft)}`,
+    `Model: ${modelText(draft, aliasName)}`,
     computerScope
       ? 'Every run can also search the web and fetch pages; a run that acts on the computer gets no shell, apps, subagents or MCP servers, and writes files only to its own output folder.'
       : `Every run can also search the web and fetch pages, use the person's apps, delegate to subagents and call connected MCP servers, under the same approval tier.`,

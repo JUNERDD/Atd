@@ -162,26 +162,31 @@ public enum ScreenshotCaptureParams: Codable, Equatable, Sendable {
 
   public struct Capture: Codable, Equatable, Sendable {
     public let mode: Mode
+    public let fromComposer: Bool?
 
-    public init(mode: Mode) {
+    public init(mode: Mode, fromComposer: Bool?) {
       self.mode = mode
+      self.fromComposer = fromComposer
     }
 
     public init(from decoder: any Decoder) throws {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
       try container.literal(.purpose, "capture")
       mode = try container.value(.mode, Mode.self)
+      fromComposer = try container.optional(.fromComposer) { try container.boolean($0) }
     }
 
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.container(keyedBy: CodingKeys.self)
       try container.encode("capture", forKey: .purpose)
       try container.encode(mode, forKey: .mode)
+      try container.encodeIfPresent(fromComposer, forKey: .fromComposer)
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case purpose
       case mode
+      case fromComposer
     }
 
     public enum Mode: String, Codable, Equatable, Sendable {
